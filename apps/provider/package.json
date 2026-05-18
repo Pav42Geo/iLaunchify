@@ -14,6 +14,7 @@
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/orders": "workspace:*",
+    "@ilaunchify/payments": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",
     "@hookform/resolvers": "^3.9.0",
