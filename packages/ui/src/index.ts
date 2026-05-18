@@ -9,9 +9,19 @@
 // V1 ships skeleton exports below; components added as the build progresses.
 
 export { cn } from './lib/utils'
-// export * from './primitives/button'    // added Week 1
-// export * from './primitives/input'     // added Week 1
-// export * from './primitives/dialog'    // added Week 2
-// export * from './canvas/Stage'         // added Week 2
-// export * from './canvas/ComplianceRegion'  // added Week 4
-// export * from './nutrition/NutritionFactsRenderer'  // added Week 4
+export { brandThemeToCssVars } from './brand-theme'
+
+// Primitives
+export * from './primitives/button'
+export * from './primitives/input'
+export * from './primitives/label'
+export * from './primitives/card'
+export * from './primitives/select'
+export * from './primitives/dialog'
+
+// Nutrition rendering
+export * from './nutrition/NutritionFactsRenderer'
+
+// Canvas — added Week 4-5 when Fabric.js integration begins
+// export * from './canvas/Stage'
+// export * from './canvas/ComplianceRegion'

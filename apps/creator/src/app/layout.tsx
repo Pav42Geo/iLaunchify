@@ -1,5 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { QueryProvider } from '@/components/providers/QueryProvider'
+import { Toaster } from '@/components/providers/Toaster'
 
 export const metadata: Metadata = {
   title: 'iLaunchify — Creator Dashboard',
@@ -13,7 +15,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-white text-zinc-900 antialiased">
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
+      </body>
     </html>
   )
 }

@@ -60,7 +60,9 @@ async function main() {
       rulePackId: foodPack.id,
       version: '1.0.0',
       effectiveFrom: new Date('2026-01-01'),
-      fileRef: 'services/compliance/app/rule_packs/us-fda-food-2026.01.json',
+      // fileRef is the rule pack JSON stem (matches the file's own `id` field).
+      // The compliance service maps stem → app/rule_packs/{stem}.json.
+      fileRef: 'us-fda-food-2026.01',
       changesSummary: 'Initial V1 release. See file for full change log.',
     },
   })
@@ -83,7 +85,7 @@ async function main() {
       rulePackId: suppPack.id,
       version: '1.0.0',
       effectiveFrom: new Date('2026-01-01'),
-      fileRef: 'services/compliance/app/rule_packs/us-fda-supplements-2026.01.json',
+      fileRef: 'us-fda-supplements-2026.01',
       changesSummary: 'Initial V1 release. See file for full change log.',
     },
   })
@@ -248,6 +250,103 @@ async function main() {
       },
     })
   }
+
+  // --- Ingredients (V1 mock USDA subset — ~30 common ingredients) ---
+  // Real USDA pipeline lands in Week 4-5 (services/compliance/app/usda/).
+  // These nutritionPer100g values are approximations from USDA SR Legacy.
+  const ingredients: Array<{
+    name: string
+    category: string
+    allergens: string[]
+    n: Record<string, number>
+  }> = [
+    { name: 'Oats, rolled, dry', category: 'GRAIN', allergens: [],
+      n: { calories: 389, totalFat: 6.9, saturatedFat: 1.2, transFat: 0, cholesterol: 0, sodium: 2, totalCarbohydrate: 66.3, dietaryFiber: 10.6, totalSugars: 0, addedSugars: 0, protein: 16.9, calcium: 54, iron: 4.7, potassium: 429 } },
+    { name: 'Whey protein isolate', category: 'PROTEIN', allergens: ['milk'],
+      n: { calories: 370, totalFat: 1, saturatedFat: 0.5, transFat: 0, cholesterol: 10, sodium: 200, totalCarbohydrate: 6, totalSugars: 4, addedSugars: 0, protein: 90, calcium: 250, iron: 1 } },
+    { name: 'Almonds, raw', category: 'NUT', allergens: ['tree_nuts'],
+      n: { calories: 579, totalFat: 49.9, saturatedFat: 3.8, transFat: 0, cholesterol: 0, sodium: 1, totalCarbohydrate: 21.6, dietaryFiber: 12.5, totalSugars: 4.4, addedSugars: 0, protein: 21.2, calcium: 269, iron: 3.7, potassium: 733 } },
+    { name: 'Cocoa powder, unsweetened', category: 'OTHER', allergens: [],
+      n: { calories: 228, totalFat: 13.7, saturatedFat: 8.1, transFat: 0, cholesterol: 0, sodium: 21, totalCarbohydrate: 57.9, dietaryFiber: 33.2, totalSugars: 1.8, addedSugars: 0, protein: 19.6, calcium: 128, iron: 13.9, potassium: 1524 } },
+    { name: 'Coconut oil', category: 'FAT', allergens: [],
+      n: { calories: 862, totalFat: 100, saturatedFat: 87, transFat: 0, cholesterol: 0, sodium: 0, totalCarbohydrate: 0, totalSugars: 0, addedSugars: 0, protein: 0 } },
+    { name: 'Honey', category: 'SWEETENER', allergens: [],
+      n: { calories: 304, totalFat: 0, saturatedFat: 0, transFat: 0, cholesterol: 0, sodium: 4, totalCarbohydrate: 82.4, dietaryFiber: 0.2, totalSugars: 82.1, addedSugars: 82.1, protein: 0.3, calcium: 6, iron: 0.4, potassium: 52 } },
+    { name: 'Chia seeds', category: 'SEED', allergens: [],
+      n: { calories: 486, totalFat: 30.7, saturatedFat: 3.3, transFat: 0, cholesterol: 0, sodium: 16, totalCarbohydrate: 42.1, dietaryFiber: 34.4, totalSugars: 0, addedSugars: 0, protein: 16.5, calcium: 631, iron: 7.7, potassium: 407 } },
+    { name: 'Pea protein isolate', category: 'PROTEIN', allergens: [],
+      n: { calories: 380, totalFat: 5, saturatedFat: 1, transFat: 0, cholesterol: 0, sodium: 500, totalCarbohydrate: 5, totalSugars: 0, addedSugars: 0, protein: 80, calcium: 100, iron: 8 } },
+    { name: 'Vitamin D3 (cholecalciferol)', category: 'VITAMIN', allergens: [],
+      n: { calories: 0, totalFat: 0, vitaminD: 25 } },
+    { name: 'Calcium carbonate', category: 'MINERAL', allergens: [],
+      n: { calories: 0, calcium: 40000 } },
+    { name: 'Ferrous bisglycinate', category: 'MINERAL', allergens: [],
+      n: { calories: 0, iron: 20000 } },
+    { name: 'Magnesium citrate', category: 'MINERAL', allergens: [],
+      n: { calories: 0 } },
+    { name: 'Zinc gluconate', category: 'MINERAL', allergens: [],
+      n: { calories: 0 } },
+    { name: 'Beetroot powder', category: 'BOTANICAL', allergens: [],
+      n: { calories: 320, totalFat: 0.5, saturatedFat: 0, transFat: 0, cholesterol: 0, sodium: 320, totalCarbohydrate: 72, dietaryFiber: 25, totalSugars: 45, addedSugars: 0, protein: 12, iron: 8, potassium: 3500 } },
+    { name: 'Spirulina powder', category: 'BOTANICAL', allergens: [],
+      n: { calories: 290, totalFat: 7.7, saturatedFat: 2.7, transFat: 0, cholesterol: 0, sodium: 1048, totalCarbohydrate: 23.9, dietaryFiber: 3.6, totalSugars: 3.1, addedSugars: 0, protein: 57.5, calcium: 120, iron: 28.5, potassium: 1363 } },
+    { name: 'Maca root powder', category: 'BOTANICAL', allergens: [],
+      n: { calories: 350, totalFat: 1, saturatedFat: 0, transFat: 0, cholesterol: 0, sodium: 35, totalCarbohydrate: 70, dietaryFiber: 11, totalSugars: 14, addedSugars: 0, protein: 14, calcium: 250, iron: 14, potassium: 2050 } },
+    { name: 'Cinnamon, ground', category: 'SPICE', allergens: [],
+      n: { calories: 247, totalFat: 1.2, saturatedFat: 0.3, transFat: 0, cholesterol: 0, sodium: 10, totalCarbohydrate: 80.6, dietaryFiber: 53.1, totalSugars: 2.2, addedSugars: 0, protein: 4, calcium: 1002, iron: 8.3, potassium: 431 } },
+    { name: 'Vanilla extract', category: 'FLAVOR', allergens: [],
+      n: { calories: 288, totalFat: 0.1, saturatedFat: 0, transFat: 0, cholesterol: 0, sodium: 9, totalCarbohydrate: 12.7, totalSugars: 12.7, addedSugars: 0, protein: 0.1 } },
+    { name: 'Sea salt', category: 'OTHER', allergens: [],
+      n: { calories: 0, sodium: 38758 } },
+    { name: 'Monk fruit extract', category: 'SWEETENER', allergens: [],
+      n: { calories: 0 } },
+    { name: 'Stevia leaf extract', category: 'SWEETENER', allergens: [],
+      n: { calories: 0 } },
+    { name: 'Inulin (chicory root fiber)', category: 'FIBER', allergens: [],
+      n: { calories: 150, totalCarbohydrate: 90, dietaryFiber: 90, totalSugars: 5, addedSugars: 0 } },
+    { name: 'MCT oil powder', category: 'FAT', allergens: ['milk'],
+      n: { calories: 770, totalFat: 70, saturatedFat: 65, transFat: 0, cholesterol: 0, sodium: 50, protein: 5 } },
+    { name: 'Collagen peptides', category: 'PROTEIN', allergens: [],
+      n: { calories: 360, totalFat: 0, saturatedFat: 0, transFat: 0, cholesterol: 0, sodium: 70, totalCarbohydrate: 0, totalSugars: 0, addedSugars: 0, protein: 90 } },
+    { name: 'Ashwagandha extract', category: 'BOTANICAL', allergens: [],
+      n: { calories: 250, totalFat: 0.3, protein: 3, totalCarbohydrate: 60, dietaryFiber: 30 } },
+    { name: 'Turmeric (curcumin) extract', category: 'BOTANICAL', allergens: [],
+      n: { calories: 354, totalFat: 9.9, sodium: 38, totalCarbohydrate: 65, dietaryFiber: 21, protein: 7.8, iron: 41.4, potassium: 2080 } },
+    { name: 'Caffeine anhydrous', category: 'OTHER', allergens: [],
+      n: { calories: 0 } },
+    { name: 'L-theanine', category: 'AMINO_ACID', allergens: [],
+      n: { calories: 0 } },
+    { name: 'Sunflower lecithin', category: 'OTHER', allergens: [],
+      n: { calories: 760, totalFat: 84, saturatedFat: 12.5, transFat: 0 } },
+    { name: 'Oat milk powder', category: 'OTHER', allergens: [],
+      n: { calories: 410, totalFat: 7, saturatedFat: 1, transFat: 0, sodium: 380, totalCarbohydrate: 68, dietaryFiber: 5, totalSugars: 15, addedSugars: 10, protein: 13, calcium: 400 } },
+  ]
+
+  // Ingredient.name isn't @unique in the schema (multiple ingredients can share
+  // a base name with different specs). For seeding, use findFirst + create/update.
+  for (const ing of ingredients) {
+    const existing = await prisma.ingredient.findFirst({ where: { name: ing.name } })
+    if (existing) {
+      await prisma.ingredient.update({
+        where: { id: existing.id },
+        data: {
+          nutritionPer100g: ing.n,
+          category: ing.category,
+          allergens: ing.allergens,
+        },
+      })
+    } else {
+      await prisma.ingredient.create({
+        data: {
+          name: ing.name,
+          category: ing.category,
+          allergens: ing.allergens,
+          nutritionPer100g: ing.n,
+        },
+      })
+    }
+  }
+  console.log(`Seeded ${ingredients.length} ingredients.`)
 
   console.log('Seed complete.')
 }

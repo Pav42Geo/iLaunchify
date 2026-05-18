@@ -15,6 +15,7 @@ export class ComplianceClient {
   async checkRecipe(params: {
     recipeId: string
     rulePackId: string
+    triggeredByUserId?: string
   }): Promise<ComplianceResult> {
     const res = await fetch(`${this.baseUrl}/v1/compliance/check`, {
       method: 'POST',
@@ -26,6 +27,22 @@ export class ComplianceClient {
     }
     const json = await res.json()
     return ComplianceResultSchema.parse(json)
+  }
+
+  async renderLabel(params: {
+    recipeId: string
+    rulePackId: string
+    format: 'PDF' | 'SVG'
+  }): Promise<Blob> {
+    const res = await fetch(`${this.baseUrl}/v1/labels/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) {
+      throw new Error(`Label render failed: ${res.status} ${await res.text()}`)
+    }
+    return res.blob()
   }
 
   async healthz(): Promise<boolean> {
