@@ -146,7 +146,7 @@ async function main() {
   }
 
   // --- Sample manufacturer ---
-  await prisma.user.upsert({
+  const manufUser = await prisma.user.upsert({
     where: { email: 'sample-manufacturer@ilaunchify.dev' },
     update: {},
     create: {
@@ -161,6 +161,10 @@ async function main() {
           country: 'US',
           state: 'CA',
           city: 'San Jose',
+          addressLine1: '4280 Camden Ave',
+          postalCode: '95124',
+          contactPhone: '+1-408-555-0142',
+          websiteUrl: 'https://acmefoods.example.com',
           services: {
             create: {
               type: 'MANUFACTURING',
@@ -168,16 +172,75 @@ async function main() {
               disclosureLevel: 'CITY_STATE',
               capabilities: {
                 type: 'MANUFACTURING',
-                categories: ['SUPPLEMENT', 'FOOD'],
+                categories: ['SUPPLEMENT', 'FOOD', 'BEVERAGE_FUNCTIONAL'],
                 moqMin: 500,
                 moqMax: 5000,
                 leadTimeStockDays: 28,
                 leadTimeCustomDays: 70,
-                certifications: ['FDA', 'GMP'],
-                containerFormats: ['bottle', 'tub'],
-                fillTypes: ['powder', 'capsule'],
+                certifications: ['FDA', 'GMP', 'USDA_ORGANIC', 'KOSHER'],
+                containerFormats: ['bottle', 'tub', 'pouch'],
+                fillTypes: ['powder', 'capsule', 'liquid'],
               },
             },
+          },
+        },
+      },
+    },
+    include: { partner: { include: { services: true } } },
+  })
+
+  // --- Sample co-packer (offers both copacking + manufacturing) ---
+  await prisma.user.upsert({
+    where: { email: 'sample-copacker@ilaunchify.dev' },
+    update: {},
+    create: {
+      email: 'sample-copacker@ilaunchify.dev',
+      name: 'Bayview Packing',
+      role: UserRole.PARTNER,
+      partner: {
+        create: {
+          companyName: 'Bayview Packing',
+          legalName: 'Bayview Packing Co.',
+          status: 'ACTIVE',
+          country: 'US',
+          state: 'OR',
+          city: 'Portland',
+          addressLine1: '1144 NE Industrial Way',
+          postalCode: '97211',
+          contactPhone: '+1-503-555-0188',
+          services: {
+            create: [
+              {
+                type: 'COPACKING',
+                status: 'ACTIVE',
+                disclosureLevel: 'ANONYMOUS',
+                capabilities: {
+                  type: 'COPACKING',
+                  containerFormats: ['tub', 'pouch', 'sachet'],
+                  fillTypes: ['powder', 'capsule'],
+                  moqMin: 300,
+                  moqMax: 8000,
+                  leadTimeDays: 14,
+                  certifications: ['FDA', 'GMP'],
+                },
+              },
+              {
+                type: 'LABEL_PRINTING',
+                status: 'ACTIVE',
+                disclosureLevel: 'ANONYMOUS',
+                capabilities: {
+                  type: 'LABEL_PRINTING',
+                  preferredFormats: ['PDF_X1A'],
+                  bleedMm: 3.0,
+                  trimMarks: true,
+                  registrationMarks: false,
+                  totalInkLimitPct: 300,
+                  supportedMaterials: ['paper'],
+                  moqMin: 200,
+                  leadTimeDays: 5,
+                },
+              },
+            ],
           },
         },
       },
@@ -185,7 +248,7 @@ async function main() {
   })
 
   // --- Sample print provider ---
-  await prisma.user.upsert({
+  const printUser = await prisma.user.upsert({
     where: { email: 'sample-print@ilaunchify.dev' },
     update: {},
     create: {
@@ -200,6 +263,10 @@ async function main() {
           country: 'US',
           state: 'NY',
           city: 'Brooklyn',
+          addressLine1: '88 Bushwick Ave',
+          postalCode: '11206',
+          contactPhone: '+1-718-555-0190',
+          websiteUrl: 'https://beaconlabel.example.com',
           services: {
             create: {
               type: 'LABEL_PRINTING',
@@ -207,15 +274,54 @@ async function main() {
               disclosureLevel: 'ANONYMOUS',
               capabilities: {
                 type: 'LABEL_PRINTING',
-                preferredFormats: ['PDF_X1A'],
+                preferredFormats: ['PDF_X1A', 'PDF_X4'],
                 bleedMm: 3.0,
                 trimMarks: true,
-                registrationMarks: false,
-                totalInkLimitPct: 300,
-                supportedMaterials: ['paper', 'polypropylene'],
+                registrationMarks: true,
+                totalInkLimitPct: 320,
+                supportedMaterials: ['paper', 'polypropylene', 'vinyl'],
                 moqMin: 100,
                 leadTimeDays: 7,
               },
+            },
+          },
+        },
+      },
+    },
+    include: { partner: { include: { services: true } } },
+  })
+
+  // --- Sample lead (DRAFT — appears in admin /leads) ---
+  await prisma.user.upsert({
+    where: { email: 'sample-lead@ilaunchify.dev' },
+    update: {},
+    create: {
+      email: 'sample-lead@ilaunchify.dev',
+      name: 'Alex Diaz',
+      role: UserRole.PARTNER,
+      partner: {
+        create: {
+          companyName: 'Cascade Botanicals',
+          legalName: 'Cascade Botanicals LLC',
+          status: 'DRAFT',
+          leadSource: 'public-apply-form',
+          leadNotes: JSON.stringify({
+            contactName: 'Alex Diaz',
+            phone: '+1-503-555-0123',
+            monthlyCapacity: '20K units / month',
+            certifications: 'FDA, cGMP, USDA Organic',
+            successDescription:
+              'Looking to fill 30% of our capacity with creator-brand supplement runs in 2026.',
+            submittedAt: new Date().toISOString(),
+          }),
+          contactPhone: '+1-503-555-0123',
+          country: 'US',
+          services: {
+            create: {
+              type: 'MANUFACTURING',
+              status: 'DRAFT',
+              disclosureLevel: 'ANONYMOUS',
+              capabilities: { type: 'MANUFACTURING' },   // stub — fills during onboarding
             },
           },
         },
@@ -347,6 +453,31 @@ async function main() {
     }
   }
   console.log(`Seeded ${ingredients.length} ingredients.`)
+
+  // --- Link print provider's LABEL_PRINTING service to the die-cut catalog ---
+  // The print provider supports every standard die-cut at default lead times.
+  const printService = printUser.partner?.services.find((s) => s.type === 'LABEL_PRINTING')
+  if (printService) {
+    const allDieCuts = await prisma.dieCutTemplate.findMany()
+    for (const dc of allDieCuts) {
+      await prisma.partnerServiceDieCut.upsert({
+        where: {
+          partnerServiceId_dieCutTemplateId: {
+            partnerServiceId: printService.id,
+            dieCutTemplateId: dc.id,
+          },
+        },
+        update: {},
+        create: {
+          partnerServiceId: printService.id,
+          dieCutTemplateId: dc.id,
+          surchargeCents: dc.category === 'BOTTLE_WRAP' ? 250 : null,
+          leadTimeDays: dc.category === 'CUSTOM' ? 14 : null,
+        },
+      })
+    }
+    console.log(`Linked ${allDieCuts.length} die-cuts to print provider service.`)
+  }
 
   console.log('Seed complete.')
 }

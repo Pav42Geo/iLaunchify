@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-color-primary: #111827;
+  --brand-color-secondary: #6b7280;
+  --brand-color-accent: #f59e0b;
+  --brand-font-display: 'Inter', sans-serif;
+  --brand-font-body: 'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--brand-font-body);
+}
