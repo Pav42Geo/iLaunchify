@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, staging]
+  push:
+    branches: [main, staging]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    name: Lint · Type-check · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Validate rule pack JSON
+        run: |
+          for file in services/compliance/app/rule_packs/*.json; do
+            python -c "import json; json.load(open('$file'))" || exit 1
+          done
+
+  python-checks:
+    name: Python · Ruff · Mypy · Pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/compliance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Mypy
+        run: mypy app
+
+      - name: Pytest
+        run: pytest
+
+  prisma-migration-safety:
+    name: Prisma · Migration safety check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need history to diff migrations
+
+      - name: Detect destructive migrations
+        run: |
+          # Find migrations added in this PR
+          base=${{ github.event.pull_request.base.sha || 'origin/main' }}
+          new_migrations=$(git diff --name-only $base...HEAD -- 'packages/db/prisma/migrations/**/*.sql' || true)
+          if [ -z "$new_migrations" ]; then
+            echo "No new migrations in this PR."
+            exit 0
+          fi
+          echo "New migrations:"
+          echo "$new_migrations"
+          # Flag destructive operations
+          for f in $new_migrations; do
+            if grep -iE "DROP\s+(TABLE|COLUMN)|ALTER\s+COLUMN\s+.+\s+TYPE" "$f"; then
+              echo "::warning file=$f::Destructive migration detected. Confirm with --confirm-destructive in PR title or description."
+            fi
+          done

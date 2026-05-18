@@ -1,0 +1,309 @@
+{
+  "$schema": "../schemas/rule-pack.schema.json",
+  "id": "us-fda-supplements-2026.01",
+  "version": "1.0.0",
+  "effectiveFrom": "2026-01-01",
+  "jurisdiction": "US",
+  "productCategory": "SUPPLEMENT",
+  "authoritySource": [
+    {
+      "type": "CFR",
+      "citation": "21 CFR 101.36",
+      "title": "Nutrition labeling of dietary supplements",
+      "url": "https://www.ecfr.gov/current/title-21/section-101.36"
+    },
+    {
+      "type": "CFR",
+      "citation": "21 CFR 101.93",
+      "title": "Certain types of statements for dietary supplements (structure/function disclaimer)"
+    },
+    {
+      "type": "CFR",
+      "citation": "21 CFR 101.17(e)",
+      "title": "Iron-containing supplement warning"
+    },
+    {
+      "type": "STATUTE",
+      "title": "Dietary Supplement Health and Education Act of 1994 (DSHEA)",
+      "url": "https://www.fda.gov/regulatory-information/selected-amendments-fdc-act/dietary-supplement-health-and-education-act-1994"
+    },
+    {
+      "type": "GUIDANCE",
+      "title": "FDA Dietary Supplement Labeling Guide",
+      "date": "2005-04",
+      "url": "https://www.fda.gov/food/dietary-supplements-guidance-documents-regulatory-information/dietary-supplement-labeling-guide"
+    }
+  ],
+  "panelFormat": "SUPPLEMENT_FACTS",
+  "panelDimensions": {
+    "minWidthMm": 51,
+    "headingTypeSize": "bold_13pt_minimum",
+    "nutrientTypeSize": "8pt_minimum"
+  },
+
+  "mandatoryNutrients": [
+    { "id": "servingSize",          "label": "Serving Size",          "required": true },
+    { "id": "servingsPerContainer", "label": "Servings Per Container","required": true },
+    { "id": "amountPerServingHeader","label": "Amount Per Serving",   "isHeader": true },
+    { "id": "percentDailyValueHeader","label": "% Daily Value",        "isHeader": true }
+  ],
+
+  "conditionalNutrients": [
+    {
+      "id": "calories",
+      "label": "Calories",
+      "triggerThreshold": { "operator": ">=", "value": 5, "unit": "kcal" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "totalFat",
+      "label": "Total Fat",
+      "triggerThreshold": { "operator": ">=", "value": 0.5, "unit": "g" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "saturatedFat",
+      "label": "Saturated Fat",
+      "triggerThreshold": { "operator": ">=", "value": 0.5, "unit": "g" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "transFat",
+      "label": "Trans Fat",
+      "triggerThreshold": { "operator": ">=", "value": 0.5, "unit": "g" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "cholesterol",
+      "label": "Cholesterol",
+      "triggerThreshold": { "operator": ">=", "value": 2, "unit": "mg" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "sodium",
+      "label": "Sodium",
+      "triggerThreshold": { "operator": ">=", "value": 5, "unit": "mg" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "totalCarbohydrate",
+      "label": "Total Carbohydrate",
+      "triggerThreshold": { "operator": ">=", "value": 1, "unit": "g" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    },
+    {
+      "id": "protein",
+      "label": "Protein",
+      "triggerThreshold": { "operator": ">=", "value": 1, "unit": "g" },
+      "cfrCitation": "21 CFR 101.36(b)(2)(i)"
+    }
+  ],
+
+  "voluntaryNutrients": [
+    "vitaminA", "vitaminC", "vitaminD", "vitaminE", "vitaminK",
+    "thiamin", "riboflavin", "niacin", "vitaminB6", "folate",
+    "vitaminB12", "biotin", "pantothenicAcid",
+    "calcium", "iron", "phosphorus", "iodine", "magnesium",
+    "zinc", "selenium", "copper", "manganese", "chromium",
+    "molybdenum", "potassium", "choline"
+  ],
+
+  "dietaryIngredientsWithoutDV": {
+    "description": "Botanicals, amino acids, and other dietary ingredients without an established DV are listed by weight per serving with their portion of the plant used (for botanicals).",
+    "format": "{ingredientName} ({plantPart}) — {weight} {unit}",
+    "cfrCitation": "21 CFR 101.36(b)(3)"
+  },
+
+  "proprietaryBlends": {
+    "permitted": true,
+    "rules": {
+      "totalWeightRequired": true,
+      "individualWeightsRequired": false,
+      "individualIngredientsListed": "DESCENDING_BY_PREDOMINANCE",
+      "labeled": "Proprietary Blend"
+    },
+    "cfrCitation": "21 CFR 101.36(c)(2)"
+  },
+
+  "dailyValues": {
+    "vitaminA":          { "value": 900,   "unit": "mcg" },
+    "vitaminC":          { "value": 90,    "unit": "mg" },
+    "vitaminD":          { "value": 20,    "unit": "mcg" },
+    "vitaminE":          { "value": 15,    "unit": "mg" },
+    "vitaminK":          { "value": 120,   "unit": "mcg" },
+    "thiamin":           { "value": 1.2,   "unit": "mg" },
+    "riboflavin":        { "value": 1.3,   "unit": "mg" },
+    "niacin":            { "value": 16,    "unit": "mg" },
+    "vitaminB6":         { "value": 1.7,   "unit": "mg" },
+    "folate":            { "value": 400,   "unit": "mcg" },
+    "vitaminB12":        { "value": 2.4,   "unit": "mcg" },
+    "biotin":            { "value": 30,    "unit": "mcg" },
+    "pantothenicAcid":   { "value": 5,     "unit": "mg" },
+    "calcium":           { "value": 1300,  "unit": "mg" },
+    "iron":              { "value": 18,    "unit": "mg" },
+    "phosphorus":        { "value": 1250,  "unit": "mg" },
+    "iodine":            { "value": 150,   "unit": "mcg" },
+    "magnesium":         { "value": 420,   "unit": "mg" },
+    "zinc":              { "value": 11,    "unit": "mg" },
+    "selenium":          { "value": 55,    "unit": "mcg" },
+    "copper":            { "value": 0.9,   "unit": "mg" },
+    "manganese":         { "value": 2.3,   "unit": "mg" },
+    "chromium":          { "value": 35,    "unit": "mcg" },
+    "molybdenum":        { "value": 45,    "unit": "mcg" },
+    "potassium":         { "value": 4700,  "unit": "mg" },
+    "choline":           { "value": 550,   "unit": "mg" }
+  },
+
+  "roundingRules": [
+    {
+      "nutrient": "vitaminsAndMinerals",
+      "expressAs": "percentDailyValue",
+      "rules": [
+        { "if": "<2",    "expressAs": "*" },
+        { "if": "<=10",  "increment": 2 },
+        { "if": "10-50", "increment": 5 },
+        { "if": ">50",   "increment": 10 }
+      ],
+      "cfrCitation": "21 CFR 101.36(b)(2)(iii)"
+    },
+    {
+      "nutrient": "dietaryIngredientsWithoutDV",
+      "expressAs": "weight",
+      "rules": [
+        { "if": "<1",   "expressAs": "less than 1 mg" },
+        { "if": ">=1",  "increment": "smallest_meaningful_unit" }
+      ]
+    }
+  ],
+
+  "halfwayRoundingRule": "round_up",
+
+  "allergenList": [
+    { "id": "milk",      "label": "milk",      "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "eggs",      "label": "eggs",      "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "fish",      "label": "fish",      "requiresSpecies": true,  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "shellfish", "label": "shellfish", "requiresSpecies": true,  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "tree_nuts", "label": "tree nuts", "requiresSpecificType": true, "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "peanuts",   "label": "peanuts",   "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "wheat",     "label": "wheat",     "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "soybeans",  "label": "soybeans",  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "sesame",    "label": "sesame",    "cfrCitation": "21 CFR 101.91", "act": "FASTER_Act_2021", "effectiveFrom": "2023-01-01" }
+  ],
+  "allergenStatementFormat": "BOTH_OPTIONAL",
+
+  "structureFunctionClaims": {
+    "permitted": true,
+    "definition": "Statements that describe the role of a nutrient or dietary ingredient intended to affect the structure or function in humans, or that characterize the documented mechanism by which a nutrient or dietary ingredient acts to maintain such structure or function.",
+    "exampleClaims": [
+      "supports immune health",
+      "helps maintain healthy joints",
+      "promotes restful sleep",
+      "supports cognitive function",
+      "helps maintain healthy cholesterol levels already in the normal range"
+    ],
+    "requiredDisclaimer": {
+      "id": "dshea_disclaimer",
+      "text": "These statements have not been evaluated by the Food and Drug Administration. This product is not intended to diagnose, treat, cure, or prevent any disease.",
+      "placement": "ADJACENT_TO_OR_LINKED_TO_CLAIM_ON_SAME_PANEL",
+      "typeSizeMin": "1/16in",
+      "asteriskLinkRequired": true,
+      "cfrCitation": "21 CFR 101.93(b)"
+    },
+    "fdaNotificationRequired": {
+      "required": true,
+      "deadlineDays": 30,
+      "submittedAfterFirstUse": true,
+      "cfrCitation": "21 USC 343(r)(6)"
+    }
+  },
+
+  "prohibitedClaims": [
+    {
+      "id": "drug_claim_disease",
+      "patterns": [
+        "cure[s]?\\s+[a-z]+",
+        "treat[s]?\\s+(disease|cancer|diabetes|heart\\s+disease|hypertension|arthritis|depression|anxiety|alzheimer|dementia|covid|infection)",
+        "diagnose[s]?\\s+",
+        "prevent[s]?\\s+(disease|cancer|diabetes|infection|stroke|heart\\s+attack)",
+        "remed(y|ies)\\s+for",
+        "anti-?(viral|bacterial|fungal|inflammatory)\\s+(treatment|therapy)"
+      ],
+      "severity": "BLOCKING",
+      "rationale": "Disease/treatment claims classify the product as a drug under FD&C Act §201(g), not a dietary supplement. The DSHEA disclaimer does NOT permit disease claims — only structure/function claims.",
+      "cfrCitation": "FD&C Act §201(g), 21 USC 343(r)(6)"
+    },
+    {
+      "id": "implicit_disease_claim_via_context",
+      "patterns": [
+        "FDA[-\\s]?approved",
+        "clinically\\s+proven\\s+to\\s+(cure|treat|prevent)"
+      ],
+      "severity": "BLOCKING",
+      "rationale": "FDA does not approve dietary supplements; claiming so misleads consumers and is a violation under FD&C Act."
+    }
+  ],
+
+  "conditionalWarnings": [
+    {
+      "id": "iron_overdose_warning",
+      "trigger": { "nutrient": "iron", "perServing": ">=", "value": 30, "unit": "mg" },
+      "text": "WARNING: Accidental overdose of iron-containing products is a leading cause of fatal poisoning in children under 6. Keep this product out of reach of children. In case of accidental overdose, call a doctor or poison control center immediately.",
+      "placement": "INFORMATION_PANEL_NEAR_SUPPLEMENT_FACTS",
+      "typeSizeMin": "6pt",
+      "cfrCitation": "21 CFR 101.17(e)"
+    }
+  ],
+
+  "requiredDisclosures": [
+    {
+      "id": "statement_of_identity",
+      "trigger": "always",
+      "format": "Dietary Supplement",
+      "placement": "PDP",
+      "typeSizeMin": "PROMINENT",
+      "cfrCitation": "21 CFR 101.3"
+    },
+    {
+      "id": "contains_allergen_statement",
+      "trigger": "ingredient_contains_major_allergen",
+      "format": "Contains: {allergen_list}",
+      "placement": "ADJACENT_TO_INGREDIENT_LIST",
+      "cfrCitation": "21 CFR 101.91"
+    },
+    {
+      "id": "other_ingredients_list",
+      "trigger": "always_if_present",
+      "header": "Other Ingredients",
+      "placement": "BELOW_SUPPLEMENT_FACTS_OR_INFORMATION_PANEL",
+      "orderRule": "DESCENDING_BY_WEIGHT",
+      "cfrCitation": "21 CFR 101.4(g)"
+    },
+    {
+      "id": "manufacturer_address",
+      "trigger": "always",
+      "format": "{name}, {city}, {state} {zip}",
+      "placement": "INFORMATION_PANEL",
+      "cfrCitation": "21 CFR 101.5"
+    },
+    {
+      "id": "net_quantity",
+      "trigger": "always",
+      "placement": "PDP_LOWER_30_PERCENT",
+      "cfrCitation": "21 CFR 101.105"
+    }
+  ],
+
+  "minimumTypeSize": [
+    { "element": "informationPanelText",   "minSize": "1/16in", "cfrCitation": "21 CFR 101.2(c)" },
+    { "element": "supplementFactsHeading", "minSize": "13pt_bold", "cfrCitation": "21 CFR 101.36(e)" },
+    { "element": "nutrientLines",          "minSize": "8pt",    "cfrCitation": "21 CFR 101.36(e)" }
+  ],
+
+  "changes": [
+    {
+      "version": "1.0.0",
+      "date": "2026-01-01",
+      "summary": "Initial V1 release. Encodes 21 CFR 101.36 (Supplement Facts panel), DSHEA structure/function claim framework with required disclaimer, iron overdose warning (101.17(e)), Big 9 allergens, drug-claim blocking. NOT YET INCLUDED: full new dietary ingredient (NDI) notification flow, proprietary blend special-rule edge cases, qualified health claims for supplements (Appendix F), some botanical-specific labeling guidance."
+    }
+  ]
+}

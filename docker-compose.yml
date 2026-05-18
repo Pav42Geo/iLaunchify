@@ -1,0 +1,70 @@
+# iLaunchify v2 — local development stack
+# Only what's needed to run locally: CockroachDB single-node, Redis, MinIO.
+# The Next.js apps and the Python compliance service run on the host
+# (faster iteration, attached debugger).
+#
+# Bring up:    pnpm compose:up
+# Tear down:   pnpm compose:down
+
+version: "3.9"
+
+services:
+  cockroach:
+    image: cockroachdb/cockroach:v24.2.4
+    container_name: ilaunchify-cockroach
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257" # SQL
+      - "8081:8080"   # Admin UI (avoiding 8080 which the compliance service uses)
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "/cockroach/cockroach", "node", "status", "--insecure"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cockroach-init:
+    image: cockroachdb/cockroach:v24.2.4
+    container_name: ilaunchify-cockroach-init
+    depends_on:
+      cockroach:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        /cockroach/cockroach sql --insecure --host=cockroach -e 'CREATE DATABASE IF NOT EXISTS ilaunchify;'
+      "
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    container_name: ilaunchify-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ilaunchify-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cockroach-data:
+  minio-data:

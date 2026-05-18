@@ -1,0 +1,30 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env", ".env.local"],
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "COMPLIANCE_SERVICE_URL", "AUTH_SECRET", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "prisma/**", "package.json", "tsconfig.json", "next.config.*"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "inputs": ["src/**", ".eslintrc.*", "eslint.config.*"]
+    },
+    "test": {
+      "inputs": ["src/**", "tests/**", "vitest.config.*"],
+      "outputs": ["coverage/**"]
+    },
+    "type-check": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig.json"]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

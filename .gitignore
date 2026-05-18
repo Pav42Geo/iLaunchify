@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+.yarn/
+
+# Next.js
+.next/
+out/
+.turbo/
+
+# Production builds
+dist/
+build/
+
+# Misc
+.DS_Store
+*.pem
+*.log
+.eslintcache
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment (NEVER commit secrets — use .env.example for templates)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.cursor/
+
+# Prisma
+prisma/migrations/dev.db*
+prisma/migrations/.tmp/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# FOD-reference is a 21 GB read-only quarry of the previous project.
+# Never commit it — it stays local to Pavel's machine for reference only.
+FOD-reference/

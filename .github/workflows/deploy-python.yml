@@ -1,0 +1,38 @@
+name: Deploy Python services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/compliance/**'
+      - 'services/exports/**'
+      - '.github/workflows/deploy-python.yml'
+
+concurrency:
+  group: deploy-python
+  cancel-in-progress: false
+
+jobs:
+  deploy-compliance:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        working-directory: services/compliance
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # Add exports service deploy when services/exports/ is scaffolded (Week 8 per ROADMAP)
+  # deploy-exports:
+  #   needs: deploy-compliance
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: superfly/flyctl-actions/setup-flyctl@master
+  #     - run: flyctl deploy --remote-only
+  #       working-directory: services/exports
+  #       env:
+  #         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

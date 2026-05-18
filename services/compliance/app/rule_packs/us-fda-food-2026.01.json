@@ -1,0 +1,363 @@
+{
+  "$schema": "../schemas/rule-pack.schema.json",
+  "id": "us-fda-food-2026.01",
+  "version": "1.0.0",
+  "effectiveFrom": "2026-01-01",
+  "jurisdiction": "US",
+  "productCategory": "FOOD",
+  "authoritySource": [
+    {
+      "type": "CFR",
+      "citation": "21 CFR 101",
+      "url": "https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101"
+    },
+    {
+      "type": "GUIDANCE",
+      "title": "FDA Food Labeling Guide",
+      "date": "2013-01",
+      "localPath": "docs/compliance-references/FDA-Food-Labeling-Guide.pdf"
+    },
+    {
+      "type": "RULE",
+      "title": "Nutrition Facts Label Final Rule",
+      "fr": "81 FR 33741",
+      "date": "2016-05-27"
+    },
+    {
+      "type": "RULE",
+      "title": "FASTER Act of 2021 (sesame as 9th major allergen)",
+      "effectiveFrom": "2023-01-01"
+    }
+  ],
+  "panelFormat": "STANDARD",
+  "panelDimensions": {
+    "minWidthMm": 51,
+    "calorieTypeSize": "bold_22pt_minimum",
+    "nutrientTypeSize": "8pt_minimum"
+  },
+
+  "mandatoryNutrients": [
+    { "id": "servingSize", "label": "Serving Size", "required": true },
+    { "id": "servingsPerContainer", "label": "Servings Per Container", "required": true },
+    { "id": "calories", "label": "Calories", "displayPercentDV": false },
+    { "id": "totalFat", "label": "Total Fat", "displayPercentDV": true, "indent": 0 },
+    { "id": "saturatedFat", "label": "Saturated Fat", "displayPercentDV": true, "indent": 1 },
+    { "id": "transFat", "label": "Trans Fat", "displayPercentDV": false, "indent": 1 },
+    { "id": "cholesterol", "label": "Cholesterol", "displayPercentDV": true, "indent": 0 },
+    { "id": "sodium", "label": "Sodium", "displayPercentDV": true, "indent": 0 },
+    { "id": "totalCarbohydrate", "label": "Total Carbohydrate", "displayPercentDV": true, "indent": 0 },
+    { "id": "dietaryFiber", "label": "Dietary Fiber", "displayPercentDV": true, "indent": 1 },
+    { "id": "totalSugars", "label": "Total Sugars", "displayPercentDV": false, "indent": 1 },
+    { "id": "addedSugars", "label": "Includes Added Sugars", "displayPercentDV": true, "indent": 2 },
+    { "id": "protein", "label": "Protein", "displayPercentDV": false, "indent": 0 },
+    { "id": "vitaminD", "label": "Vitamin D", "displayPercentDV": true, "indent": 0 },
+    { "id": "calcium", "label": "Calcium", "displayPercentDV": true, "indent": 0 },
+    { "id": "iron", "label": "Iron", "displayPercentDV": true, "indent": 0 },
+    { "id": "potassium", "label": "Potassium", "displayPercentDV": true, "indent": 0 }
+  ],
+
+  "dailyValues": {
+    "totalFat":          { "value": 78,    "unit": "g" },
+    "saturatedFat":      { "value": 20,    "unit": "g" },
+    "cholesterol":       { "value": 300,   "unit": "mg" },
+    "sodium":            { "value": 2300,  "unit": "mg" },
+    "totalCarbohydrate": { "value": 275,   "unit": "g" },
+    "dietaryFiber":      { "value": 28,    "unit": "g" },
+    "addedSugars":       { "value": 50,    "unit": "g" },
+    "protein":           { "value": 50,    "unit": "g" },
+    "vitaminD":          { "value": 20,    "unit": "mcg" },
+    "calcium":           { "value": 1300,  "unit": "mg" },
+    "iron":              { "value": 18,    "unit": "mg" },
+    "potassium":         { "value": 4700,  "unit": "mg" },
+    "vitaminA":          { "value": 900,   "unit": "mcg" },
+    "vitaminC":          { "value": 90,    "unit": "mg" },
+    "vitaminE":          { "value": 15,    "unit": "mg" },
+    "thiamin":           { "value": 1.2,   "unit": "mg" },
+    "riboflavin":        { "value": 1.3,   "unit": "mg" },
+    "niacin":            { "value": 16,    "unit": "mg" },
+    "vitaminB6":         { "value": 1.7,   "unit": "mg" },
+    "folate":            { "value": 400,   "unit": "mcg" },
+    "vitaminB12":        { "value": 2.4,   "unit": "mcg" },
+    "biotin":            { "value": 30,    "unit": "mcg" },
+    "pantothenicAcid":   { "value": 5,     "unit": "mg" },
+    "phosphorus":        { "value": 1250,  "unit": "mg" },
+    "iodine":            { "value": 150,   "unit": "mcg" },
+    "magnesium":         { "value": 420,   "unit": "mg" },
+    "zinc":              { "value": 11,    "unit": "mg" },
+    "copper":            { "value": 0.9,   "unit": "mg" }
+  },
+
+  "roundingRules": [
+    {
+      "nutrient": "calories",
+      "rules": [
+        { "if": "<5",   "expressAs": "0" },
+        { "if": "<=50", "increment": 5 },
+        { "if": ">50",  "increment": 10 }
+      ],
+      "insignificantThreshold": 5,
+      "cfrCitation": "21 CFR 101.9(c)(1)"
+    },
+    {
+      "nutrient": "totalFat",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<5",   "increment": 0.5 },
+        { "if": ">=5",  "increment": 1 }
+      ],
+      "insignificantThreshold": 0.5,
+      "cfrCitation": "21 CFR 101.9(c)(2)"
+    },
+    {
+      "nutrient": "saturatedFat",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<5",   "increment": 0.5 },
+        { "if": ">=5",  "increment": 1 }
+      ],
+      "insignificantThreshold": 0.5,
+      "cfrCitation": "21 CFR 101.9(c)(2)(i)"
+    },
+    {
+      "nutrient": "transFat",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<5",   "increment": 0.5 },
+        { "if": ">=5",  "increment": 1 }
+      ],
+      "insignificantThreshold": 0.5,
+      "cfrCitation": "21 CFR 101.9(c)(2)(ii)"
+    },
+    {
+      "nutrient": "cholesterol",
+      "rules": [
+        { "if": "<2",  "expressAs": "0" },
+        { "if": "2-5", "expressAs": "less than 5 mg" },
+        { "if": ">5",  "increment": 5 }
+      ],
+      "insignificantThreshold": 2,
+      "cfrCitation": "21 CFR 101.9(c)(3)"
+    },
+    {
+      "nutrient": "sodium",
+      "rules": [
+        { "if": "<5",    "expressAs": "0" },
+        { "if": "5-140", "increment": 5 },
+        { "if": ">140",  "increment": 10 }
+      ],
+      "insignificantThreshold": 5,
+      "cfrCitation": "21 CFR 101.9(c)(4)"
+    },
+    {
+      "nutrient": "potassium",
+      "rules": [
+        { "if": "<5",    "expressAs": "0" },
+        { "if": "5-140", "increment": 5 },
+        { "if": ">140",  "increment": 10 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(5)"
+    },
+    {
+      "nutrient": "totalCarbohydrate",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<1",   "expressAs": "less than 1 g" },
+        { "if": ">=1",  "increment": 1 }
+      ],
+      "insignificantThreshold": 1,
+      "cfrCitation": "21 CFR 101.9(c)(6)"
+    },
+    {
+      "nutrient": "dietaryFiber",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<1",   "expressAs": "less than 1 g" },
+        { "if": ">=1",  "increment": 1 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(6)(i)"
+    },
+    {
+      "nutrient": "totalSugars",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<1",   "expressAs": "less than 1 g" },
+        { "if": ">=1",  "increment": 1 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(6)(ii)"
+    },
+    {
+      "nutrient": "addedSugars",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<1",   "expressAs": "less than 1 g" },
+        { "if": ">=1",  "increment": 1 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(6)(iii)"
+    },
+    {
+      "nutrient": "protein",
+      "rules": [
+        { "if": "<0.5", "expressAs": "0" },
+        { "if": "<1",   "expressAs": "less than 1 g" },
+        { "if": ">=1",  "increment": 1 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(7)"
+    },
+    {
+      "nutrient": "vitaminsAndMinerals",
+      "expressAs": "percentDailyValue",
+      "rules": [
+        { "if": "<2",    "expressAs": "0" },
+        { "if": "<=10",  "increment": 2 },
+        { "if": "10-50", "increment": 5 },
+        { "if": ">50",   "increment": 10 }
+      ],
+      "cfrCitation": "21 CFR 101.9(c)(8)"
+    }
+  ],
+
+  "halfwayRoundingRule": "round_up",
+
+  "allergenList": [
+    { "id": "milk",      "label": "milk",      "requiresSpecies": false, "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "eggs",      "label": "eggs",      "requiresSpecies": false, "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "fish",      "label": "fish",      "requiresSpecies": true,  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "shellfish", "label": "shellfish", "requiresSpecies": true,  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "tree_nuts", "label": "tree nuts", "requiresSpecificType": true, "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "peanuts",   "label": "peanuts",   "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "wheat",     "label": "wheat",     "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "soybeans",  "label": "soybeans",  "cfrCitation": "21 CFR 101.91", "act": "FALCPA" },
+    { "id": "sesame",    "label": "sesame",    "cfrCitation": "21 CFR 101.91", "act": "FASTER_Act_2021", "effectiveFrom": "2023-01-01" }
+  ],
+  "allergenStatementFormat": "BOTH_OPTIONAL",
+
+  "nutrientContentClaims": [
+    { "id": "fat_free",         "label": "Fat Free",         "rule": { "nutrient": "totalFat",         "operator": "<",  "value": 0.5,  "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.62(b)(1)" },
+    { "id": "low_fat",          "label": "Low Fat",          "rule": { "nutrient": "totalFat",         "operator": "<=", "value": 3,    "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.62(b)(2)" },
+    { "id": "saturated_fat_free","label": "Saturated Fat Free","rule": { "nutrient": "saturatedFat",  "operator": "<",  "value": 0.5,  "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.62(c)(1)" },
+    { "id": "low_saturated_fat","label": "Low Saturated Fat","rule": { "nutrient": "saturatedFat",   "operator": "<=", "value": 1,    "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.62(c)(2)" },
+    { "id": "cholesterol_free", "label": "Cholesterol Free", "rule": { "nutrient": "cholesterol",     "operator": "<",  "value": 2,    "unit": "mg","perServing": true }, "cfrCitation": "21 CFR 101.62(d)(1)" },
+    { "id": "low_cholesterol",  "label": "Low Cholesterol",  "rule": { "nutrient": "cholesterol",     "operator": "<=", "value": 20,   "unit": "mg","perServing": true }, "cfrCitation": "21 CFR 101.62(d)(2)" },
+    { "id": "sodium_free",      "label": "Sodium Free",      "rule": { "nutrient": "sodium",          "operator": "<",  "value": 5,    "unit": "mg","perServing": true }, "cfrCitation": "21 CFR 101.61(b)(1)" },
+    { "id": "very_low_sodium",  "label": "Very Low Sodium",  "rule": { "nutrient": "sodium",          "operator": "<=", "value": 35,   "unit": "mg","perServing": true }, "cfrCitation": "21 CFR 101.61(b)(3)" },
+    { "id": "low_sodium",       "label": "Low Sodium",       "rule": { "nutrient": "sodium",          "operator": "<=", "value": 140,  "unit": "mg","perServing": true }, "cfrCitation": "21 CFR 101.61(b)(4)" },
+    { "id": "sugar_free",       "label": "Sugar Free",       "rule": { "nutrient": "totalSugars",     "operator": "<",  "value": 0.5,  "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.60(c)(1)" },
+    { "id": "no_added_sugars",  "label": "No Added Sugars",  "rule": { "nutrient": "addedSugars",     "operator": "==", "value": 0,    "unit": "g" }, "cfrCitation": "21 CFR 101.60(c)(2)", "additionalRequirements": "Statement of fact about natural sugars if present" },
+    { "id": "high_fiber",       "label": "High Fiber",       "rule": { "nutrient": "dietaryFiber",    "operator": ">=", "value": 5,    "unit": "g", "perServing": true }, "cfrCitation": "21 CFR 101.54(b)" },
+    { "id": "good_source_fiber","label": "Good Source of Fiber", "rule": { "nutrient": "dietaryFiber","operator": ">=", "value": 2.5,  "unit": "g","perServing": true }, "cfrCitation": "21 CFR 101.54(c)" },
+    { "id": "calorie_free",     "label": "Calorie Free",     "rule": { "nutrient": "calories",        "operator": "<",  "value": 5,                 "perServing": true }, "cfrCitation": "21 CFR 101.60(b)(1)" },
+    { "id": "low_calorie",      "label": "Low Calorie",      "rule": { "nutrient": "calories",        "operator": "<=", "value": 40,                "perServing": true }, "cfrCitation": "21 CFR 101.60(b)(2)" }
+  ],
+
+  "healthClaims": [
+    {
+      "id": "calcium_osteoporosis",
+      "label": "Calcium and risk of osteoporosis",
+      "requiredText": "Adequate calcium throughout life, as part of a well-balanced diet, may reduce the risk of osteoporosis.",
+      "qualifyingCriteria": {
+        "nutrient": "calcium",
+        "operator": ">=",
+        "value": 20,
+        "unit": "percentDV",
+        "perServing": true
+      },
+      "cfrCitation": "21 CFR 101.72"
+    },
+    {
+      "id": "sodium_hypertension",
+      "label": "Sodium and hypertension",
+      "requiredText": "Diets low in sodium may reduce the risk of high blood pressure, a disease associated with many factors.",
+      "qualifyingCriteria": [
+        { "nutrient": "sodium", "operator": "<=", "value": 140, "unit": "mg", "perServing": true }
+      ],
+      "cfrCitation": "21 CFR 101.74"
+    },
+    {
+      "id": "saturated_fat_chd",
+      "label": "Saturated fat and cholesterol and risk of coronary heart disease",
+      "requiredText": "Diets low in saturated fat and cholesterol may reduce the risk of heart disease.",
+      "qualifyingCriteria": [
+        { "nutrient": "saturatedFat", "operator": "<=", "value": 1, "unit": "g", "perServing": true },
+        { "nutrient": "cholesterol",  "operator": "<=", "value": 20,"unit": "mg","perServing": true }
+      ],
+      "cfrCitation": "21 CFR 101.75"
+    },
+    {
+      "id": "fiber_cancer",
+      "label": "Fiber-containing grain products, fruits, and vegetables and cancer",
+      "requiredText": "Low fat diets rich in fiber-containing grain products, fruits, and vegetables may reduce the risk of some types of cancer, a disease associated with many factors.",
+      "cfrCitation": "21 CFR 101.76"
+    },
+    {
+      "id": "folate_neural_tube",
+      "label": "Folate and neural tube defects",
+      "requiredText": "Healthful diets with adequate folate may reduce a woman's risk of having a child with a brain or spinal cord defect.",
+      "qualifyingCriteria": [
+        { "nutrient": "folate", "operator": ">=", "value": 10, "unit": "percentDV", "perServing": true }
+      ],
+      "cfrCitation": "21 CFR 101.79"
+    }
+  ],
+
+  "prohibitedClaims": [
+    {
+      "id": "drug_claim_disease_treatment",
+      "patterns": [
+        "cure[s]?\\s+[a-z]+",
+        "treat[s]?\\s+(disease|cancer|diabetes|heart\\s+disease|hypertension|arthritis|depression|anxiety|insomnia|alzheimer|dementia)",
+        "diagnose[s]?\\s+",
+        "prevent[s]?\\s+(disease|cancer|diabetes)",
+        "remed(y|ies)\\s+for"
+      ],
+      "severity": "BLOCKING",
+      "rationale": "Disease/treatment claims classify the product as a drug under FD&C Act §201(g), disqualifying it as food.",
+      "exceptionForSupplements": false
+    }
+  ],
+
+  "requiredDisclosures": [
+    {
+      "id": "contains_allergen_statement",
+      "trigger": "ingredient_contains_major_allergen",
+      "format": "Contains: {allergen_list}",
+      "placement": "ADJACENT_TO_INGREDIENT_LIST",
+      "typeSizeMin": "1/16in",
+      "cfrCitation": "21 CFR 101.91"
+    },
+    {
+      "id": "manufacturer_address",
+      "trigger": "always",
+      "format": "{name}, {city}, {state} {zip}",
+      "placement": "INFORMATION_PANEL",
+      "cfrCitation": "21 CFR 101.5"
+    },
+    {
+      "id": "net_quantity",
+      "trigger": "always",
+      "placement": "PDP_LOWER_30_PERCENT",
+      "cfrCitation": "21 CFR 101.105"
+    },
+    {
+      "id": "ingredient_list",
+      "trigger": "always",
+      "placement": "INFORMATION_PANEL",
+      "orderRule": "DESCENDING_BY_WEIGHT",
+      "cfrCitation": "21 CFR 101.4"
+    }
+  ],
+
+  "minimumTypeSize": [
+    { "element": "informationPanelText",   "minSize": "1/16in", "cfrCitation": "21 CFR 101.2(c)" },
+    { "element": "nutritionFactsHeading",  "minSize": "13pt",   "cfrCitation": "21 CFR 101.9(d)(1)(ii)" },
+    { "element": "calories",               "minSize": "22pt_bold", "cfrCitation": "21 CFR 101.9(d)(1)(ii)" },
+    { "element": "nutrientLines",          "minSize": "8pt",    "cfrCitation": "21 CFR 101.9(d)(1)(ii)" }
+  ],
+
+  "changes": [
+    {
+      "version": "1.0.0",
+      "date": "2026-01-01",
+      "summary": "Initial V1 release. Encodes current 21 CFR 101 (2020 Nutrition Facts format), Big 9 allergens (incl. sesame per FASTER Act 2021), Appendix H rounding rules, 15 most common nutrient content claims, 5 highest-trust authorized health claims, FDA drug-claim blocking. NOT YET INCLUDED: beverage-specific rules (101.30), small-package exemptions, full Appendix A claims catalog, qualified health claims, dual-column format."
+    }
+  ]
+}

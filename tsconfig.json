@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@ilaunchify/db": ["./packages/db/src"],
+      "@ilaunchify/db/*": ["./packages/db/src/*"],
+      "@ilaunchify/ui": ["./packages/ui/src"],
+      "@ilaunchify/ui/*": ["./packages/ui/src/*"],
+      "@ilaunchify/types": ["./packages/types/src"],
+      "@ilaunchify/auth": ["./packages/auth/src"],
+      "@ilaunchify/orders": ["./packages/orders/src"],
+      "@ilaunchify/storefront-kit": ["./packages/storefront-kit/src"],
+      "@ilaunchify/compliance-client": ["./packages/compliance-client/src"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", ".next", "dist", "FOD-reference", "**/.next/**"]
+}

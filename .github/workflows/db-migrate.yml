@@ -1,0 +1,35 @@
+name: DB migrate (production)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/db/prisma/migrations/**'
+      - 'packages/db/prisma/schema.prisma'
+      - '.github/workflows/db-migrate.yml'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    # Manual approval gate — define "production" environment in repo Settings → Environments
+    # and require Pavel as a reviewer.
+    environment: production-database
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: pnpm --filter @ilaunchify/db migrate:deploy
