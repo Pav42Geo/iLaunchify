@@ -488,6 +488,28 @@ async function main() {
     console.warn('Skipping catalog seed: no manufacturer service found.')
   }
 
+  // --- Channels registry (V1 shell; real OAuth lands in V1.1+) ---
+  // Per Pavel decision 2026-05-19: 6 channels managed via admin on/off toggle.
+  // `enabled` defaults to true so creators see the surface immediately;
+  // `oauthConfigured` stays false until platform-level OAuth credentials are
+  // set in env, at which point a creator can actually connect.
+  const channelSeeds: Array<{ code: string; displayName: string }> = [
+    { code: 'shopify',     displayName: 'Shopify' },
+    { code: 'woocommerce', displayName: 'WooCommerce' },
+    { code: 'amazon',      displayName: 'Amazon Seller Central' },
+    { code: 'etsy',        displayName: 'Etsy' },
+    { code: 'walmart',     displayName: 'Walmart Marketplace' },
+    { code: 'tiktok',      displayName: 'TikTok Shop' },
+  ]
+  for (const s of channelSeeds) {
+    await prisma.channel.upsert({
+      where: { code: s.code },
+      create: { code: s.code, displayName: s.displayName, enabled: true, oauthConfigured: false },
+      update: {}, // never overwrite admin toggles on re-seed
+    })
+  }
+  console.log(`Seeded ${channelSeeds.length} channels.`)
+
   console.log('Seed complete.')
 }
 

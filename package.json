@@ -20,6 +20,7 @@
     "db:generate": "pnpm --filter @ilaunchify/db generate",
     "db:migrate": "pnpm --filter @ilaunchify/db migrate",
     "db:studio": "pnpm --filter @ilaunchify/db studio",
+    "db:seed": "pnpm --filter @ilaunchify/db seed",
     "compliance:dev": "cd services/compliance && uvicorn app.main:app --reload",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",

@@ -393,6 +393,7 @@ model User {
   notifications       Notification[]
   notificationPreferences NotificationPreference[]
   creatorOrders       Order[]                          @relation("CreatorOrders")
+  channelConnections  ChannelConnection[]              @relation("CreatorChannelConnections")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -704,6 +705,7 @@ model Product {
   variant         ProductTemplateVariant? @relation(fields: [variantId], references: [id])
   designs         Design[]
   orderItems      OrderItem[]
+  channelLinks    ChannelProductLink[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -1547,4 +1549,99 @@ model NotificationPreference {
   user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, event, channel])
+}
+
+// ============================================================================
+// CHANNELS — V1 shell, V1.1+ adds real OAuth + listing push
+// ============================================================================
+// Per the 2026-05-19 model correction, iLaunchify is a B2B production
+// platform. After production is delivered, creators push finished SKUs to
+// their external sales channels (Shopify, Amazon, Etsy, etc.) for consumer
+// purchases. V1 ships these models + an admin toggle UI so the registry
+// exists; the real OAuth flow + Push-to-Channel actions land in V1.1+.
+
+// Admin-managed registry. One row per channel iLaunchify supports.
+// Admin sets `enabled` to expose a channel in creator UI; toggling off
+// hides it for new connections (existing ChannelConnections remain).
+model Channel {
+  id              String   @id @default(cuid())
+  code            String   @unique           // "shopify", "amazon", "woocommerce", "etsy", "walmart", "tiktok"
+  displayName     String                     // human-facing label
+  logoUrl         String?
+  enabled         Boolean  @default(false)
+  // True once the platform-level OAuth app credentials are set in env
+  // (Shopify Client ID/Secret, Amazon SP-API creds, etc.). Until true,
+  // the channel can be enabled but creators can't actually connect.
+  oauthConfigured Boolean  @default(false)
+  // Free-form notes admin can leave for ops
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  // Relations
+  connections     ChannelConnection[]
+  productLinks    ChannelProductLink[]
+}
+
+// Per-creator OAuth connection to one channel. V1: row exists only as
+// a placeholder; access/refresh tokens are not yet populated. V1.1 adds
+// the OAuth flow that fills these.
+model ChannelConnection {
+  id             String   @id @default(cuid())
+  channelId      String
+  creatorUserId  String
+  // External account identifier (shop domain for Shopify, seller_id for Amazon, etc.)
+  externalAccountId String?
+  // OAuth tokens (V1.1+) — referenced by handle, not stored raw here
+  accessTokenRef  String?                    // pointer to secret store
+  refreshTokenRef String?
+  scopes          String[]                   @default([])
+  status          ChannelConnectionStatus    @default(NOT_CONNECTED)
+  connectedAt     DateTime?
+  disconnectedAt  DateTime?
+  lastSyncAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  // Relations
+  channel         Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  creator         User    @relation("CreatorChannelConnections", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  productLinks    ChannelProductLink[]
+
+  @@unique([channelId, creatorUserId])       // one connection per (channel, creator)
+}
+
+enum ChannelConnectionStatus {
+  NOT_CONNECTED                              // placeholder row before OAuth
+  CONNECTED                                  // active, tokens valid
+  TOKEN_EXPIRED                              // needs reconnect
+  DISCONNECTED                               // creator revoked
+  ERROR                                      // last sync failed
+}
+
+// Per-product → external listing mapping. Created when a creator clicks
+// "Push to channel" for a delivered product. The external listing id is
+// what the channel returned after creating the listing.
+model ChannelProductLink {
+  id                 String   @id @default(cuid())
+  channelId          String
+  channelConnectionId String
+  productId          String
+  externalListingId  String                   // Shopify product_id, Amazon ASIN, etc.
+  externalUrl        String?                  // direct link to the listing
+  status             ChannelProductLinkStatus @default(ACTIVE)
+  lastPushedAt       DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  // Relations
+  channel            Channel           @relation(fields: [channelId], references: [id])
+  channelConnection  ChannelConnection @relation(fields: [channelConnectionId], references: [id], onDelete: Cascade)
+  product            Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, productId])           // one link per (channel, product)
+  @@index([channelConnectionId])
+}
+
+enum ChannelProductLinkStatus {
+  ACTIVE                                     // listing live on the channel
+  ARCHIVED                                   // unpublished from the channel
+  ERROR                                      // last push failed
 }
