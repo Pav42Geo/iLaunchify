@@ -3,9 +3,10 @@ import { LoginForm } from './LoginForm'
 
 export const metadata = { title: 'Sign in — Admin' }
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
-}: { searchParams: { error?: string } }) {
+}: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams
   return (
     <Card>
       <CardHeader>
@@ -13,7 +14,7 @@ export default function LoginPage({
         <CardDescription>Admin access only.</CardDescription>
       </CardHeader>
       <CardContent>
-        {searchParams.error === 'unauthorized' && (
+        {error === 'unauthorized' && (
           <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
             That account doesn&apos;t have admin access.
           </div>

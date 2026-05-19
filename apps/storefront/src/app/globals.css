@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand CSS variables. Default values used on the storefront root pages
+   that have no brand context (e.g. the storefront index). Per-brand pages
+   override these in their layout via inline style="--brand-color-primary…" */
+:root {
+  --brand-color-primary: #111827;
+  --brand-color-secondary: #6b7280;
+  --brand-color-accent: #f59e0b;
+  --brand-color-text: #111827;
+  --brand-color-background: #ffffff;
+  --brand-color-muted: #f4f4f5;
+  --brand-font-display: 'Inter', system-ui, sans-serif;
+  --brand-font-body: 'Inter', system-ui, sans-serif;
+  --brand-radius: 0.5rem;
+}
+
+body {
+  font-family: var(--brand-font-body);
+  color: var(--brand-color-text);
+  background: var(--brand-color-background);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--brand-font-display);
+}

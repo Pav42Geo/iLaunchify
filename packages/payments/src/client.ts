@@ -12,8 +12,9 @@ function getStripe(): Stripe {
     )
   }
   if (globalThis.__ilaunchifyStripe) return globalThis.__ilaunchifyStripe
+  // We let the Stripe SDK use its bundled default API version. Pinning a date
+  // literal hits strict-type drift across stripe@17.x patch releases.
   const client = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2024-10-28.acacia',
     typescript: true,
     appInfo: { name: 'iLaunchify', version: '0.1.0' },
   })

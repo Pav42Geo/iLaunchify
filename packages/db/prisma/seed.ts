@@ -13,6 +13,7 @@
 // Run from the repo root: pnpm --filter @ilaunchify/db seed
 
 import { PrismaClient, UserRole, ProductCategory } from '@prisma/client'
+import { seedCatalog } from './seed-catalog'
 
 const prisma = new PrismaClient()
 
@@ -477,6 +478,14 @@ async function main() {
       })
     }
     console.log(`Linked ${allDieCuts.length} die-cuts to print provider service.`)
+  }
+
+  // --- Catalog: categories, subcategories, ProductTemplates ---
+  const manufactService = manufUser.partner?.services.find((s) => s.type === 'MANUFACTURING')
+  if (manufactService) {
+    await seedCatalog({ manufacturerServiceId: manufactService.id })
+  } else {
+    console.warn('Skipping catalog seed: no manufacturer service found.')
   }
 
   console.log('Seed complete.')

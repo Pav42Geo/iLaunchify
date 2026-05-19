@@ -29,8 +29,8 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<{ handled:
       return { handled: true }
 
     case 'transfer.created':
-    case 'transfer.paid':
-    case 'transfer.failed':
+    case 'transfer.updated':
+    case 'transfer.reversed':
       await onTransferEvent(event)
       return { handled: true }
 

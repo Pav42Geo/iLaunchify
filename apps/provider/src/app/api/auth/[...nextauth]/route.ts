@@ -1,1 +1,3 @@
-export { GET, POST } from '@ilaunchify/auth/handlers'
+import { handlers } from '@ilaunchify/auth'
+
+export const { GET, POST } = handlers

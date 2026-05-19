@@ -23,13 +23,13 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function DispatchDetailPage({
   params,
 }: {
-  params: { dispatchId: string }
+  params: Promise<{ dispatchId: string }>
 }) {
   const user = await requireUser()
 
   const dispatch = await prisma.orderDispatch.findFirst({
     where: {
-      id: params.dispatchId,
+      id: (await params).dispatchId,
       partnerService: { partner: { userId: user.id } },
     },
     include: {

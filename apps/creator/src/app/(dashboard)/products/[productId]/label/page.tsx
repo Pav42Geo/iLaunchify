@@ -12,10 +12,10 @@ export const dynamic = 'force-dynamic'
  * For now, shows the latest ComplianceCheck's panel data.
  * Week 6-7 brings the Fabric.js canvas + die-cut frame + compliance overlay.
  */
-export default async function LabelPage({ params }: { params: { productId: string } }) {
+export default async function LabelPage({ params }: { params: Promise<{ productId: string }> }) {
   const user = await requireUser()
   const product = await prisma.product.findFirst({
-    where: { id: params.productId, brand: { creatorProfile: { userId: user.id } } },
+    where: { id: (await params).productId, brand: { creatorProfile: { userId: user.id } } },
     include: {
       brand: true,
       recipe: {

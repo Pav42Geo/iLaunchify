@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Home, Package, ShoppingBag, Settings } from 'lucide-react'
+import { Home, Store, Package, ShoppingBag, Settings } from 'lucide-react'
 
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/products',  label: 'Products',  icon: Package },
-  { href: '/orders',    label: 'Orders',    icon: ShoppingBag },
-  { href: '/settings',  label: 'Settings',  icon: Settings },
+  { href: '/dashboard',   label: 'Dashboard',   icon: Home },
+  { href: '/marketplace', label: 'Marketplace', icon: Store },
+  { href: '/products',    label: 'My products', icon: Package },
+  { href: '/orders',      label: 'Orders',      icon: ShoppingBag },
+  { href: '/settings',    label: 'Settings',    icon: Settings },
 ]
 
 export function DashboardSidebar() {

@@ -20,9 +20,9 @@ const STATUS_COLORS: Record<string, string> = {
   DISPUTED: 'bg-red-100 text-red-900',
 }
 
-export default async function AdminOrderDetail({ params }: { params: { orderId: string } }) {
+export default async function AdminOrderDetail({ params }: { params: Promise<{ orderId: string }> }) {
   const order = await prisma.order.findUnique({
-    where: { id: params.orderId },
+    where: { id: (await params).orderId },
     include: {
       brand: { include: { creatorProfile: { include: { user: true } } } },
       items: { include: { product: true } },

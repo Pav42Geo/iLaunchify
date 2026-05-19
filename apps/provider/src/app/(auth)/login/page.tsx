@@ -3,7 +3,8 @@ import { LoginForm } from './LoginForm'
 
 export const metadata = { title: 'Sign in — Partners' }
 
-export default function LoginPage({ searchParams }: { searchParams: { email?: string } }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const { email } = await searchParams
   return (
     <Card>
       <CardHeader>
@@ -13,7 +14,7 @@ export default function LoginPage({ searchParams }: { searchParams: { email?: st
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <LoginForm prefillEmail={searchParams.email} />
+        <LoginForm prefillEmail={email} />
         <p className="mt-4 text-sm text-zinc-500">
           New here?{' '}
           <a href="/" className="underline">

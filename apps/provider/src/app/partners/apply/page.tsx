@@ -21,9 +21,9 @@ const TYPE_LABELS: Record<string, { title: string; description: string }> = {
 export default function ApplyPage({
   searchParams,
 }: {
-  searchParams: { type?: string }
+  searchParams: Promise<{ type?: string }>
 }) {
-  const type = (searchParams.type ?? 'MANUFACTURING') as keyof typeof TYPE_LABELS
+  const type = ((await searchParams).type ?? 'MANUFACTURING') as keyof typeof TYPE_LABELS
   const meta = TYPE_LABELS[type] ?? TYPE_LABELS.MANUFACTURING
 
   return (

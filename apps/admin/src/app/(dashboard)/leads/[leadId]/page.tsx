@@ -5,9 +5,9 @@ import { LeadActions } from './LeadActions'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LeadDetail({ params }: { params: { leadId: string } }) {
+export default async function LeadDetail({ params }: { params: Promise<{ leadId: string }> }) {
   const lead = await prisma.partner.findUnique({
-    where: { id: params.leadId },
+    where: { id: (await params).leadId },
     include: { user: true, services: true },
   })
   if (!lead) notFound()

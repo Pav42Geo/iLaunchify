@@ -6,66 +6,128 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ProductOverview({ params }: { params: { productId: string } }) {
+export default async function ProductOverview({ params }: { params: Promise<{ productId: string }> }) {
   const user = await requireUser()
   const product = await prisma.product.findFirst({
-    where: { id: params.productId, brand: { creatorProfile: { userId: user.id } } },
+    where: { id: (await params).productId, brand: { creatorProfile: { userId: user.id } } },
     include: {
       brand: true,
-      recipe: { include: { _count: { select: { ingredients: true } } } },
+      productTemplate: { include: { subcategory: { include: { category: true } } } },
+      variant: true,
+      recipe: {
+        include: {
+          _count: { select: { ingredients: true } },
+          complianceChecks: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      },
     },
   })
   if (!product) notFound()
+
+  const lastCheck = product.recipe?.complianceChecks[0]
+  const customizeComplete = !!lastCheck && lastCheck.outcome !== 'FAILED'
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          {product.brand.name} · {product.category} · {product.status}
+          {product.brand.name}
+          {product.productTemplate && (
+            <>
+              {' · '}
+              <Link
+                href={`/marketplace/${product.productTemplate.slug}`}
+                className="hover:underline"
+              >
+                {product.productTemplate.subcategory.category.icon}{' '}
+                {product.productTemplate.subcategory.category.name}
+                {' › '}
+                {product.productTemplate.subcategory.name}
+              </Link>
+            </>
+          )}
+          {' · '}
+          {product.status}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">1. Recipe</CardTitle>
-            <CardDescription>
-              {product.recipe ? `${product.recipe._count.ingredients} ingredients` : 'Not started'} ·{' '}
-              {product.recipe?.status ?? '—'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="w-full">
-              <Link href={`/products/${product.id}/recipe`}>Edit recipe</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">2. Label</CardTitle>
-            <CardDescription>Design + compliance check</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="w-full" disabled>
-              <Link href={`/products/${product.id}/label`}>Coming in week 4-5</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">3. Publish</CardTitle>
-            <CardDescription>Manufacturer + print provider</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="outline" className="w-full" disabled>
-              <Link href={`/products/${product.id}/publish`}>Coming in week 8</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StepCard
+          n={1}
+          title="Customize recipe"
+          description={
+            product.recipe
+              ? `${product.recipe._count.ingredients} ingredients · ${product.recipe.status}`
+              : 'Not started'
+          }
+          href={`/products/${product.id}/customize`}
+          ctaLabel={customizeComplete ? 'Edit' : 'Customize'}
+        />
+        <StepCard
+          n={2}
+          title="Design label"
+          description="Fabric.js canvas"
+          href={`/products/${product.id}/design`}
+          ctaLabel="Open"
+          disabled
+          disabledNote="Week 6-7"
+        />
+        <StepCard
+          n={3}
+          title="Compliance"
+          description={
+            lastCheck
+              ? `${lastCheck.outcome} · ${new Date(lastCheck.createdAt).toLocaleDateString()}`
+              : 'Pending'
+          }
+          href={`/products/${product.id}/compliance`}
+          ctaLabel="View"
+          disabled={!product.recipe}
+        />
+        <StepCard
+          n={4}
+          title="Finalize"
+          description="Inventory order + frontstore"
+          href={`/products/${product.id}/publish`}
+          ctaLabel="Finalize"
+          disabled={!customizeComplete}
+        />
       </div>
     </div>
+  )
+}
+
+function StepCard({
+  n,
+  title,
+  description,
+  href,
+  ctaLabel,
+  disabled,
+  disabledNote,
+}: {
+  n: number
+  title: string
+  description: string
+  href: string
+  ctaLabel: string
+  disabled?: boolean
+  disabledNote?: string
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          <span className="text-brand-secondary">{n}.</span> {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild variant="outline" className="w-full" disabled={disabled}>
+          <Link href={href}>{disabledNote ?? ctaLabel}</Link>
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

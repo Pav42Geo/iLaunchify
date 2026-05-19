@@ -485,6 +485,8 @@ model PartnerService {
   dieCutSupport      PartnerServiceDieCut[]
   // Order routing — dispatches assigned to this service
   dispatches         OrderDispatch[]
+  // Catalog — ProductTemplates this manufacturer service offers (V1.1+)
+  productTemplates   ProductTemplate[]
   partner            Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
@@ -590,6 +592,10 @@ model Ingredient {
   updatedAt       DateTime @updatedAt
   // Relations
   recipeIngredients RecipeIngredient[]
+  // Catalog roles — same ingredient can serve as a base, replacement, or optional across templates
+  templateSlotsAsBase    TemplateIngredientSlot[]        @relation("SlotBaseIngredient")
+  templateReplacements   TemplateIngredientReplacement[] @relation("ReplacementIngredient")
+  templateOptionals      TemplateOptionalIngredient[]    @relation("OptionalIngredient")
 
   @@index([name])
   @@index([usdaFdcId])
@@ -618,9 +624,22 @@ model RecipeIngredient {
   ingredientId    String
   weightG         Decimal                                // grams per total recipe
   position        Int                                    // for descending-order display
+  // Track where this ingredient came from when the recipe was resolved.
+  // V1: every catalog-driven Product fills this in. Legacy rows = null.
+  source          ProductIngredientSource?
+  // For TEMPLATE_BASE / TEMPLATE_REPLACEMENT: links back to the slot it filled.
+  // Lets us reconstruct the creator's customization choices.
+  filledSlotId    String?
   recipe          Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  filledSlot      TemplateIngredientSlot? @relation(fields: [filledSlotId], references: [id])
   @@unique([recipeId, ingredientId])
+}
+
+enum ProductIngredientSource {
+  TEMPLATE_BASE          // creator kept the manufacturer's default
+  TEMPLATE_REPLACEMENT   // creator swapped to one of the offered alternatives
+  TEMPLATE_OPTIONAL      // creator toggled an optional ingredient on
 }
 
 // =============================================================================
@@ -646,12 +665,22 @@ model Product {
   disclosureLevelOverride DisclosureLevel?
   // Visual
   primaryImageAssetId String?
+  // Catalog binding — every V1 creator product starts from a ProductTemplate
+  // chosen from the admin-curated catalog (nullable to keep schema migration
+  // additive; new flows require it).
+  productTemplateId String?
+  variantId         String?
+  // Inventory-vs-storefront publishing — creators can do either or both
+  publishedToStorefront Boolean @default(false)
+  inventoryOrderQty Int?                                    // if creator pre-bought their own stock
   // Relations
   brand           Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
   market          Market            @relation(fields: [marketId], references: [id])
   recipe          Recipe?
   template        Template?         @relation(fields: [templateId], references: [id])
   templateId      String?
+  productTemplate ProductTemplate?  @relation(fields: [productTemplateId], references: [id])
+  variant         ProductTemplateVariant? @relation(fields: [variantId], references: [id])
   designs         Design[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
@@ -660,6 +689,7 @@ model Product {
 
   @@unique([brandId, slug])
   @@index([brandId, status])
+  @@index([productTemplateId])
 }
 
 // =============================================================================
@@ -814,6 +844,7 @@ model DieCutTemplate {
   templates       Template[]
   partnerServices PartnerServiceDieCut[]
   libraryItems    DesignLibraryItem[]
+  templateVariants ProductTemplateVariant[]
   createdAt       DateTime                @default(now())
 }
 
@@ -1087,4 +1118,233 @@ model ConsumerUser {
   carts           Cart[]
   orders          Order[]
   createdAt       DateTime @default(now())
+}
+
+// =============================================================================
+// CATALOG: Category → Subcategory → ProductTemplate → Variant + Ingredient Slots
+// =============================================================================
+// The catalog is the front of the creator funnel. Admin curates ProductTemplates
+// per (Sub)category. Each template has BASE ingredient slots — each slot is the
+// manufacturer's default ingredient, plus an optional list of allowed
+// replacements. Independently, the template offers a pool of OPTIONAL
+// ingredients the creator can toggle on. Variants (flavor + packaging combos)
+// are orthogonal to ingredients — same recipe, different flavor + bottle size.
+// =============================================================================
+
+enum ProductTemplateStatus {
+  DRAFT            // manufacturer authoring
+  UNDER_REVIEW     // admin queue
+  PUBLISHED        // visible in /catalog
+  ARCHIVED         // hidden, existing creator Products still valid
+}
+
+// =============================================================================
+// PACKING TOPOLOGY
+// =============================================================================
+// One axis is *what's inside* the product (ingredient slots + variants for
+// flavor). A second, orthogonal axis is *how it's packaged*: a single can, a
+// 6-pack, a sampler box, a customer-picked variety set, a subscription delivery.
+//
+// Per Pavel's spec, 14 packing types are needed at V1 to describe every product
+// SKU type the platform serves. Each ProductTemplateVariant declares one
+// PackingType plus structured fields that describe the topology (how many inner
+// packs, mixed vs. separated flavor arrangement, customer-pick parameters,
+// subscription cadence). The remainder lives in `packingConfig` JSON.
+// =============================================================================
+
+enum PackingType {
+  SINGLE_FLAVOR_SINGLE_PACK         // 1 can of cola, 1 jar of apple puree
+  SINGLE_FLAVOR_MULTIPACK           // 6-pack same flavor, 12-pack same flavor
+  MULTI_FLAVOR_MIXED_PACK           // fruit-salad gummies (all flavors in one bag)
+  MULTI_FLAVOR_COMPARTMENT_PACK     // chocolate bar with milk/white/dark sections
+  MULTI_FLAVOR_INDIVIDUAL_IN_OUTER  // variety ramen 4-pack (each flavor in own bag, in one box)
+  CUSTOMIZABLE_PICK_N               // pick 6 of 24 beer flavors; pick 10 protein bars from 5 flavors
+  SAMPLER_MINI                      // mini hot-sauce sampler (5 small bottles, different flavors)
+  SUBSCRIPTION_ROTATING             // monthly coffee, rotating flavors
+  GIFT_PREMIUM                      // luxury chocolate box, gourmet gift tin
+  VALUE_BULK_SINGLE                 // 50-pack same flavor, 10kg bag dog food
+  VALUE_BULK_VARIETY                // 10 variety packs each with 3 flavors (bulk)
+  SEASONAL_LIMITED                  // pumpkin spice set, Christmas dog treats
+  PAIRING_FUNCTIONAL                // coffee + creamer set, pre + post-workout
+  RETAIL_COUNTER_DISPLAY            // counter tray, clip strip — one SKU for retailer
+  REFILL_ECO                        // reusable container + replaceable concentrates
+}
+
+enum FlavorArrangement {
+  SINGLE         // one flavor (or unflavored)
+  MIXED          // flavors blended/scattered in the same vessel
+  SEPARATED      // flavors physically separated (compartments, individual inner packs)
+}
+
+model Category {
+  id              String        @id @default(cuid())
+  externalId      String        @unique          // imported from FOD: 1c513f19-…
+  name            String                          // "Snacks & Confectionery"
+  slug            String        @unique
+  description     String?
+  mainCategory    String                          // "Food" | "Beverages" | "Supplements" | "Other"
+  icon            String?                         // emoji or short string
+  color           String?                         // hex
+  displayOrder    Int           @default(0)
+  isActive        Boolean       @default(true)
+  // Regulatory hooks — which rule pack applies + required label elements
+  regulatoryRequirements Json?
+  designRestrictions     Json?
+  subcategories   Subcategory[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Subcategory {
+  id              String        @id @default(cuid())
+  externalId      String        @unique
+  categoryId      String
+  name            String
+  slug            String        @unique
+  description     String?
+  displayOrder    Int           @default(0)
+  isActive        Boolean       @default(true)
+  // Packaging defaults (sizes, materials, container types) — informs variants
+  packagingOptions Json?
+  category        Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  productTemplates ProductTemplate[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@index([categoryId])
+}
+
+model ProductTemplate {
+  id              String        @id @default(cuid())
+  subcategoryId   String
+  manufacturerServiceId String?                          // null until manufacturer self-builder ships (V1.1)
+  status          ProductTemplateStatus  @default(DRAFT)
+  name            String                                  // "Whey Protein Powder"
+  description     String?
+  slug            String        @unique
+  // Price floor — lowest the creator can list at (covers manuf cost + print + fee + margin floor)
+  priceFloorCents Int           @default(0)
+  // Estimated unit cost to platform (manuf's price for one base unit) — used by routing
+  unitCostCents   Int           @default(0)
+  imageAssetId    String?
+  // Optional: snapshot of base nutrition (BASE ingredients only) for fast catalog display
+  baseNutritionSnapshot Json?
+  // Relations
+  subcategory     Subcategory   @relation(fields: [subcategoryId], references: [id])
+  manufacturerService PartnerService? @relation(fields: [manufacturerServiceId], references: [id])
+  ingredientSlots TemplateIngredientSlot[]
+  optionalIngredients TemplateOptionalIngredient[]
+  variants        ProductTemplateVariant[]
+  products        Product[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@index([subcategoryId, status])
+}
+
+// One slot per BASE ingredient. The base is the default; replacements[] are
+// alternatives the creator can swap in.
+model TemplateIngredientSlot {
+  id              String        @id @default(cuid())
+  productTemplateId String
+  baseIngredientId  String                                 // default ingredient
+  weightG         Decimal                                  // grams in the base recipe (per batch)
+  displayOrder    Int           @default(0)
+  // Manufacturer can lock specific slots from replacement (e.g. structural fillers)
+  allowReplacement Boolean      @default(true)
+  // Display hints
+  label           String?                                  // optional override of the ingredient name in UI
+  description     String?
+  // Relations
+  productTemplate ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  baseIngredient  Ingredient    @relation("SlotBaseIngredient", fields: [baseIngredientId], references: [id])
+  replacements    TemplateIngredientReplacement[]
+  filledByRecipeIngredients RecipeIngredient[]            // back-relation for source tracking
+  @@index([productTemplateId])
+}
+
+model TemplateIngredientReplacement {
+  id              String        @id @default(cuid())
+  slotId          String
+  ingredientId    String                                   // the swap option
+  // Optional weight override (e.g., monk fruit at 1g replaces sugar at 30g for equivalent sweetness)
+  weightGOverride Decimal?
+  displayOrder    Int           @default(0)
+  // Display hints
+  calloutText     String?                                  // "Lower glycemic alternative"
+  // Relations
+  slot            TemplateIngredientSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient    @relation("ReplacementIngredient", fields: [ingredientId], references: [id])
+  @@unique([slotId, ingredientId])
+  @@index([slotId])
+}
+
+// Independent pool of ingredients the creator can OPTIONALLY add.
+// Toggled on/off as a whole — no per-creator weight tweaking in V1.
+model TemplateOptionalIngredient {
+  id              String        @id @default(cuid())
+  productTemplateId String
+  ingredientId    String
+  weightG         Decimal                                  // grams added when toggled on
+  displayOrder    Int           @default(0)
+  calloutText     String?                                  // "Adds 200mg L-Theanine for calm focus"
+  productTemplate ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient    @relation("OptionalIngredient", fields: [ingredientId], references: [id])
+  @@unique([productTemplateId, ingredientId])
+  @@index([productTemplateId])
+}
+
+// One row per sellable SKU configuration: a particular combination of flavor
+// content + container + packing topology. The same ProductTemplate can offer
+// (Tropical Citrus 12oz single can), (6-pack of Tropical), (mixed 6-pack
+// 3×Tropical+3×Berry), (pick-12-from-24 customizable case), etc. — each a
+// distinct variant.
+model ProductTemplateVariant {
+  id              String        @id @default(cuid())
+  productTemplateId String
+
+  // ---- Flavor + container (the consumed product) ----
+  flavor          String?                                  // "Vanilla" / "Chocolate" — null for unflavored or multi-flavor
+  containerFormat String                                   // "12oz can" / "60-count capsule bottle" / "250g pouch"
+  containerSizeG  Decimal?                                 // total contents weight inside one container
+  servingsPerContainer Int
+  servingSizeG    Decimal                                  // grams per serving
+  servingSizeDesc String?                                  // "1 scoop (30g)"
+
+  // ---- Packing topology (orthogonal to flavor/container) ----
+  packingType         PackingType        @default(SINGLE_FLAVOR_SINGLE_PACK)
+  flavorArrangement   FlavorArrangement  @default(SINGLE)
+  // Number of INDIVIDUAL packs inside one sellable outer pack (a 6-pack = 6).
+  // 1 = single pack (no outer). For VARIETY_BULK use innerPacksPerOuter for the
+  // inner-pack count and outerPacksPerCase for the case count.
+  innerPacksPerOuter  Int                @default(1)
+  outerPacksPerCase   Int                @default(1)
+  // CUSTOMIZABLE_PICK_N: consumer picks `customerPicksCount` flavors from a pool
+  // (the pool is the set of sibling variants of the same template).
+  customerPicksCount  Int?
+  // SUBSCRIPTION_ROTATING: "monthly", "weekly", "quarterly"
+  subscriptionInterval String?
+  // For MULTI_FLAVOR_MIXED / SEPARATED / SAMPLER / VARIETY_BULK / SEASONAL etc:
+  // structured list of contained flavors with per-flavor quantities.
+  // Example: [{"flavor":"Vanilla","qty":2},{"flavor":"Chocolate","qty":4}]
+  assortmentFlavors   Json?
+  // Free-form extras (retail-display dimensions, refill-pod ml, etc.)
+  packingConfig       Json?
+
+  // ---- Commercial ----
+  moqMin          Int           @default(500)
+  moqMax          Int           @default(5000)
+  leadTimeDays    Int           @default(28)
+  // Per-variant cost override (a 6-pack costs more than a single can to produce)
+  unitCostCentsOverride Int?
+
+  // ---- Visual ----
+  dieCutTemplateId String?
+  isActive        Boolean       @default(true)
+
+  // Relations
+  productTemplate ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  dieCutTemplate  DieCutTemplate? @relation(fields: [dieCutTemplateId], references: [id])
+  products        Product[]
+  createdAt       DateTime      @default(now())
+  @@index([productTemplateId, isActive])
+  @@index([packingType])
 }

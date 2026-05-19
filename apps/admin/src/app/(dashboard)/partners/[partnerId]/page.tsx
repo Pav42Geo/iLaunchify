@@ -5,9 +5,9 @@ import { PartnerActions } from './PartnerActions'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PartnerDetail({ params }: { params: { partnerId: string } }) {
+export default async function PartnerDetail({ params }: { params: Promise<{ partnerId: string }> }) {
   const partner = await prisma.partner.findUnique({
-    where: { id: params.partnerId },
+    where: { id: (await params).partnerId },
     include: {
       user: true,
       services: {

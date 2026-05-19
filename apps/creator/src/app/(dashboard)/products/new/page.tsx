@@ -1,47 +1,86 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { redirect } from 'next/navigation'
-import { NewProductForm } from './NewProductForm'
+import { redirect, notFound } from 'next/navigation'
+import { VariantPicker } from './VariantPicker'
+import Link from 'next/link'
 
-export const metadata = { title: 'New product — iLaunchify' }
+export const dynamic = 'force-dynamic'
 
-export default async function NewProductPage() {
+/**
+ * Step 1 of the catalog-driven creator flow: pick a variant.
+ * Entry is from /marketplace/[slug] → "Customize this product" CTA with ?templateId=X.
+ *
+ * On variant pick, a draft Product + Recipe is created (seeded with BASE slot
+ * ingredients) and the creator is redirected to /products/[id]/customize.
+ */
+export default async function NewProductPage({
+  searchParams,
+}: { searchParams: Promise<{ templateId?: string }> }) {
   const user = await requireUser()
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') {
+    redirect('/marketplace?error=creator-only')
+  }
+  if (!(await searchParams).templateId) redirect('/marketplace')
 
-  // Resolve creator's primary brand. V1 creates one Brand per CreatorProfile
-  // automatically when the profile is created; if missing, send them through setup.
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
     include: { brands: true },
   })
-
   if (!profile) redirect('/onboarding/creator')
   const brand = profile.brands[0]
   if (!brand) redirect('/onboarding/brand')
 
-  // V1 only has US market. Fetch it.
   const market = await prisma.market.findUnique({ where: { code: 'US' } })
-  if (!market) {
-    throw new Error('US market row missing. Run the seed script.')
-  }
+  if (!market) throw new Error('US market missing — run seed.')
+
+  const template = await prisma.productTemplate.findUnique({
+    where: { id: (await searchParams).templateId },
+    include: {
+      subcategory: { include: { category: true } },
+      variants: { where: { isActive: true }, include: { dieCutTemplate: true } },
+    },
+  })
+  if (!template || template.status !== 'PUBLISHED') notFound()
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">New product</h1>
-        <p className="mt-1 text-sm text-zinc-500">Step 1 of 3: name, category, basic info.</p>
+        <nav className="mb-2 text-xs text-zinc-500">
+          <Link href={`/marketplace/${template.slug}`} className="hover:underline">
+            ← Back to {template.name}
+          </Link>
+        </nav>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Pick a variant of {template.name}
+        </h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          Each variant has its own flavor, container, packing topology, MOQ, and lead time. You can
+          customize ingredients in the next step.
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Product basics</CardTitle>
-          <CardDescription>You can edit these later.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <NewProductForm brandId={brand.id} marketId={market.id} />
-        </CardContent>
-      </Card>
+      <VariantPicker
+        templateId={template.id}
+        brandId={brand.id}
+        marketId={market.id}
+        templateName={template.name}
+        variants={template.variants.map((v) => ({
+          id: v.id,
+          flavor: v.flavor,
+          containerFormat: v.containerFormat,
+          servingsPerContainer: v.servingsPerContainer,
+          servingSizeDesc: v.servingSizeDesc ?? `${Number(v.servingSizeG).toFixed(0)}g`,
+          packingType: v.packingType,
+          innerPacksPerOuter: v.innerPacksPerOuter,
+          customerPicksCount: v.customerPicksCount,
+          subscriptionInterval: v.subscriptionInterval,
+          assortmentFlavors: v.assortmentFlavors as any,
+          moqMin: v.moqMin,
+          moqMax: v.moqMax,
+          leadTimeDays: v.leadTimeDays,
+          dieCutName: v.dieCutTemplate?.name ?? null,
+        }))}
+      />
     </div>
   )
 }

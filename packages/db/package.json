@@ -5,22 +5,25 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts",
-    "format": "prisma format",
-    "type-check": "tsc --noEmit",
-    "clean": "rm -rf node_modules .turbo dist"
+    "// Note": "All commands load env from .env.local at the repo root via dotenv-cli — Next.js uses the same file.",
+    "generate":       "pnpm exec dotenv -e ../../.env.local -- prisma generate",
+    "migrate":        "pnpm exec dotenv -e ../../.env.local -- prisma migrate dev",
+    "migrate:deploy": "pnpm exec dotenv -e ../../.env.local -- prisma migrate deploy",
+    "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",
+    "studio":         "pnpm exec dotenv -e ../../.env.local -- prisma studio",
+    "seed":           "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "format":         "prisma format",
+    "type-check":     "tsc --noEmit",
+    "clean":          "rm -rf node_modules .turbo dist"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0"
   },
   "devDependencies": {
+    "dotenv-cli": "^7.4.4",
     "prisma": "^5.20.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
