@@ -24,14 +24,16 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ o
   const order = await prisma.order.findUnique({
     where: { id: (await params).orderId },
     include: {
-      brand: { include: { creatorProfile: { include: { user: true } } } },
+      brand: true,
+      creator: true,
+      shipToPartnerService: { include: { partner: true } },
       items: { include: { product: true } },
       dispatches: {
         include: {
           partnerService: { include: { partner: { include: { user: true } } } },
         },
       },
-      charge: { include: { transfers: { include: { user: true } } } },
+      charge: { include: { transfers: { include: { destinationUser: true } } } },
       refunds: true,
     },
   })
@@ -43,7 +45,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ o
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Order #{order.id.slice(-8)}</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {order.brand.name} · {order.consumerEmail || 'guest'} ·{' '}
+            {order.brand.name} · creator: {order.creator.email} ·{' '}
             {new Date(order.createdAt).toLocaleString()}
           </p>
         </div>
@@ -73,6 +75,32 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ o
               <span className="font-mono">${(order.totalCents / 100).toFixed(2)}</span>
             </li>
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ship to</CardTitle>
+          <CardDescription>
+            {order.shipToType === 'WAREHOUSE_PARTNER'
+              ? `Warehouse partner: ${order.shipToPartnerService?.partner.companyName ?? 'unknown'}`
+              : "Creator's own address"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          <Row label="Recipient" value={order.shipToContactName} />
+          <Row label="Phone" value={order.shipToContactPhone} />
+          <Row
+            label="Address"
+            value={[
+              order.shipToAddressLine1,
+              order.shipToAddressLine2,
+              [order.shipToCity, order.shipToState, order.shipToPostalCode].filter(Boolean).join(', '),
+              order.shipToCountry,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          />
         </CardContent>
       </Card>
 
@@ -130,7 +158,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ o
               <div key={t.id} className="rounded-md border border-zinc-200 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
-                    {t.destinationType} ({t.reason}) · {t.user.email}
+                    {t.destinationType} ({t.reason}) · {t.destinationUser.email}
                   </span>
                   <span className="font-mono">${(t.amountCents / 100).toFixed(2)}</span>
                 </div>

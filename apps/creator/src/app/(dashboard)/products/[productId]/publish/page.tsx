@@ -1,166 +1,113 @@
+// /products/[productId]/publish — V1.1 placeholder.
+//
+// The old "publish to hosted storefront" flow was retired with the model
+// correction (2026-05-19). The V1.1 version of this page will let creators
+// push the finished SKU to their connected external channels (Shopify, Amazon,
+// Etsy, WooCommerce, Walmart, TikTok). Until then this page is a friendly
+// stub explaining the change.
+
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { notFound, redirect } from 'next/navigation'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@ilaunchify/ui'
-import { PublishForm } from './PublishForm'
+import { notFound } from 'next/navigation'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
 import Link from 'next/link'
+import { ArrowLeft, ExternalLink, Truck } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Publish — iLaunchify' }
 
-export default async function PublishPage({ params }: { params: Promise<{ productId: string }> }) {
+export default async function PublishStubPage({
+  params,
+}: { params: Promise<{ productId: string }> }) {
   const user = await requireUser()
+  const { productId } = await params
 
   const product = await prisma.product.findFirst({
-    where: { id: (await params).productId, brand: { creatorProfile: { userId: user.id } } },
-    include: {
-      brand: true,
-      recipe: {
-        include: { complianceChecks: { orderBy: { createdAt: 'desc' }, take: 1 } },
-      },
-      template: { include: { dieCutTemplate: true } },
-    },
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    include: { brand: true },
   })
   if (!product) notFound()
 
-  // Gate: must be compliant
-  const lastCheck = product.recipe?.complianceChecks[0]
-  if (!lastCheck || lastCheck.outcome === 'FAILED') {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Not ready to publish</CardTitle>
-          <CardDescription>
-            Resolve compliance violations on the recipe step before publishing.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link href={`/products/${product.id}/recipe`}>Back to recipe</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Gate: Stripe Connect must be ACTIVE for the creator
-  const creator = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { stripeAccountStatus: true },
-  })
-  if (creator?.stripeAccountStatus !== 'ACTIVE') {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connect payouts first</CardTitle>
-          <CardDescription>
-            We need a place to send your share of each order. Stripe Connect takes about 5 minutes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link href="/settings/payouts">Set up payouts →</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Already published?
-  if (product.status === 'PUBLISHED') {
-    redirect(`/products/${product.id}`)
-  }
-
-  // Find candidate manufacturing services
-  const manufacturers = await prisma.partnerService.findMany({
+  // Find the most recent production order for this product
+  const latestOrder = await prisma.order.findFirst({
     where: {
-      type: 'MANUFACTURING',
-      status: 'ACTIVE',
-      partner: { status: 'ACTIVE' },
+      creatorUserId: user.id,
+      items: { some: { productId: product.id } },
     },
-    include: { partner: { include: { user: true } } },
-  })
-  const manufCandidates = manufacturers.filter((s) => {
-    const caps = s.capabilities as Record<string, unknown>
-    const cats = (caps.categories as string[] | undefined) ?? []
-    return cats.includes(product.category) && s.partner.user.stripeAccountStatus === 'ACTIVE'
+    orderBy: { createdAt: 'desc' },
   })
 
-  // Find candidate print providers (filter by template's die-cut if assigned)
-  const printProviders = await prisma.partnerService.findMany({
-    where: {
-      type: 'LABEL_PRINTING',
-      status: 'ACTIVE',
-      partner: { status: 'ACTIVE' },
-      ...(product.template?.dieCutTemplateId && {
-        dieCutSupport: { some: { dieCutTemplateId: product.template.dieCutTemplateId } },
-      }),
-    },
-    include: { partner: { include: { user: true } } },
-  })
-  const printCandidates = printProviders.filter(
-    (s) => s.partner.user.stripeAccountStatus === 'ACTIVE',
-  )
+  const isDelivered = latestOrder?.status === 'DELIVERED'
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Publish {product.name}</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Set your price + confirm fulfillment partners. After publish, the product goes live on{' '}
-          <code>shop.ilaunchify.com/{product.brand.handle}</code>.
-        </p>
-      </div>
+      <Link
+        href={`/products/${productId}`}
+        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to product
+      </Link>
 
-      {manufCandidates.length === 0 && (
-        <Card className="border-red-200">
-          <CardHeader>
-            <CardTitle className="text-base">No manufacturer available</CardTitle>
-            <CardDescription>
-              No active manufacturer covers {product.category}. Contact support to onboard one.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
-      {printCandidates.length === 0 && (
-        <Card className="border-red-200">
-          <CardHeader>
-            <CardTitle className="text-base">No print provider available</CardTitle>
-            <CardDescription>
-              {product.template?.dieCutTemplate
-                ? `No active print provider supports the ${product.template.dieCutTemplate.name} die-cut.`
-                : 'No active print provider available. Choose a template on the label step first.'}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Push to your channels — coming in V1.1</CardTitle>
+          <CardDescription>
+            iLaunchify is a B2B production platform — we don't host consumer storefronts.
+            Once your production order is delivered, you'll sell on your own external
+            channels (Shopify, Amazon, Etsy, WooCommerce, Walmart, TikTok).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+            <div className="mb-1 font-medium">What this page will do in V1.1:</div>
+            <ul className="list-inside list-disc space-y-1 text-zinc-600">
+              <li>Connect each of your sales channels via OAuth (admin enables which channels)</li>
+              <li>Push the finished SKU as a listing on each connected channel with one click</li>
+              <li>Pull inventory levels back from channels so you know when to reorder</li>
+            </ul>
+          </div>
 
-      {manufCandidates.length > 0 && printCandidates.length > 0 && (
-        <PublishForm
-          productId={product.id}
-          currentPriceCents={product.priceCents}
-          manufacturers={manufCandidates.map((s) => ({
-            id: s.id,
-            name: s.partner.companyName,
-            city: s.partner.city,
-            state: s.partner.state,
-            capabilities: s.capabilities as Record<string, unknown>,
-          }))}
-          printProviders={printCandidates.map((s) => ({
-            id: s.id,
-            name: s.partner.companyName,
-            city: s.partner.city,
-            state: s.partner.state,
-            capabilities: s.capabilities as Record<string, unknown>,
-          }))}
-        />
-      )}
+          <div className="rounded-md border border-zinc-200 p-3">
+            <div className="mb-1 flex items-center gap-2 font-medium">
+              <Truck className="h-4 w-4" /> Current order status
+            </div>
+            {latestOrder ? (
+              <p className="text-zinc-600">
+                Order <span className="font-mono">#{latestOrder.id.slice(-8)}</span> ·{' '}
+                <span className="font-medium">{latestOrder.status}</span>
+                {isDelivered
+                  ? '. Goods are at your warehouse — list them on your own channels for now.'
+                  : ". We'll surface the push-to-channel options here once it lands DELIVERED."}
+              </p>
+            ) : (
+              <p className="text-zinc-600">
+                No production order placed yet.{' '}
+                <Link href={`/products/${product.id}/order`} className="underline">
+                  Place one
+                </Link>{' '}
+                first.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {latestOrder ? (
+              <Button asChild>
+                <Link href={`/orders/${latestOrder.id}`}>Track this order →</Link>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link href={`/products/${product.id}/order`}>Place production order</Link>
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <a href="https://docs.shopify.com" target="_blank" rel="noopener noreferrer">
+                Shopify docs <ExternalLink className="ml-1 inline h-3 w-3" />
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

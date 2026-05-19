@@ -4,8 +4,7 @@
 // Renders from a PanelData object returned by services/compliance.
 //
 // Used in:
-//   - apps/creator (preview while building the recipe)
-//   - apps/storefront (consumer-facing product detail page)
+//   - apps/creator (preview while customizing the template + during compliance check)
 //   - services/exports (server-side rendered to SVG/PDF in the print pipeline)
 //
 // Type sizes follow 21 CFR 101.9(d)(1)(ii) but render in CSS units. The

@@ -1,8 +1,7 @@
 // Typed client for the Python compliance service.
 //
 // Used by:
-//   apps/creator    — runs compliance check during recipe editing
-//   apps/storefront — fetches panel data for product detail page
+//   apps/creator    — runs compliance check during template customization
 //   apps/admin      — runs ad-hoc checks for QA
 
 import { ComplianceResultSchema, type ComplianceResult } from '@ilaunchify/types'

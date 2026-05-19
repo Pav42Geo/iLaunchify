@@ -60,6 +60,7 @@ enum ServiceType {
   MANUFACTURING
   COPACKING
   LABEL_PRINTING
+  WAREHOUSE          // 3PL / fulfillment partner — holds creator inventory after production delivery
 }
 
 enum ServiceStatus {
@@ -221,6 +222,8 @@ enum DispatchStatus {
   PENDING_ACCEPT
   ACCEPTED
   PRODUCING
+  QUALITY_CHECK    // partner is QC'ing the batch before flipping to READY
+  FAILED_QC        // QC failed; needs admin attention (manual reroute or remake)
   READY
   SHIPPED
   IN_TRANSIT
@@ -307,12 +310,8 @@ enum ClawbackStatus {
 // ENUMS — CART & STOREFRONT
 // =============================================================================
 
-enum CartStatus {
-  ACTIVE
-  CHECKING_OUT
-  CONVERTED
-  ABANDONED
-}
+// CartStatus enum removed 2026-05-19 along with the Cart/CartItem/ConsumerUser
+// models. See docs/STOREFRONT.md for the corrected model.
 
 // =============================================================================
 // ENUMS — SOCIAL (V1.5+ UI; V1 table only)
@@ -393,6 +392,7 @@ model User {
   uploadedFiles       PartnerFile[]                    @relation("PartnerFileUploader")
   notifications       Notification[]
   notificationPreferences NotificationPreference[]
+  creatorOrders       Order[]                          @relation("CreatorOrders")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -504,6 +504,8 @@ model PartnerService {
   dieCutSupport      PartnerServiceDieCut[]
   // Order routing — dispatches assigned to this service
   dispatches         OrderDispatch[]
+  // When this service is type=WAREHOUSE: production orders that ship to it
+  warehouseOrders    Order[]               @relation("WarehouseShipToOrders")
   // Catalog — ProductTemplates this manufacturer service offers (V1.1+)
   productTemplates   ProductTemplate[]
   partner            Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
@@ -567,7 +569,6 @@ model Brand {
   products          Product[]
   templates         Template[]
   designs           Design[]
-  carts             Cart[]
   orders            Order[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -702,7 +703,6 @@ model Product {
   productTemplate ProductTemplate?  @relation(fields: [productTemplateId], references: [id])
   variant         ProductTemplateVariant? @relation(fields: [variantId], references: [id])
   designs         Design[]
-  cartItems       CartItem[]
   orderItems      OrderItem[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -935,37 +935,58 @@ model Asset {
 // ORDERS
 // =============================================================================
 
+// Order = a creator's production order. Per the 2026-05-19 model correction,
+// iLaunchify is B2B production: the creator pays iLaunchify for a batch, and
+// the goods ship to either the creator's own address or a connected
+// WAREHOUSE partner. End-consumer purchases happen on the creator's external
+// channels (Shopify, Amazon, etc.) and never touch iLaunchify.
 model Order {
-  id                  String         @id @default(cuid())
-  brandId             String                                // single-brand-per-cart
-  consumerUserId      String?                                // null for guest orders
-  consumerEmail       String                                 // captured at checkout
-  status              OrderStatus    @default(PENDING_PAYMENT)
-  // Money (in cents)
-  subtotalCents       Int                                    // pre-tax, pre-shipping (basis for fee)
-  shippingCents       Int            @default(0)
-  taxCents            Int            @default(0)
-  totalCents          Int                                    // subtotal + tax + shipping
-  // Routing references
-  manufacturerServiceId String?
+  id                     String         @id @default(cuid())
+  brandId                String                                // which brand this batch is produced under
+  creatorUserId          String                                // the creator paying iLaunchify
+  status                 OrderStatus    @default(PENDING_PAYMENT)
+  // Money (in cents) — what the CREATOR pays iLaunchify for this production batch
+  subtotalCents          Int                                    // production cost basis (manufacturer cost + label cost)
+  shippingCents          Int            @default(0)
+  taxCents               Int            @default(0)
+  totalCents             Int                                    // subtotal + tax + shipping + platform fee
+  // Routing references — chosen partner services
+  manufacturerServiceId  String?
   printProviderServiceId String?
+  // Ship-to: where the finished goods land after production
+  shipToType             OrderShipToType @default(CREATOR_ADDRESS)
+  shipToPartnerServiceId String?                                // when shipToType=WAREHOUSE_PARTNER, FK to a WAREHOUSE service
+  shipToContactName      String                                 // recipient name on shipping label
+  shipToContactPhone     String?
+  shipToAddressLine1     String
+  shipToAddressLine2     String?
+  shipToCity             String
+  shipToState            String?
+  shipToPostalCode       String
+  shipToCountry          String         @default("US")
   // Timestamps
-  paidAt              DateTime?
-  deliveredAt         DateTime?
+  paidAt                 DateTime?
+  deliveredAt            DateTime?
   // Notes
-  internalNotes       String?
+  internalNotes          String?
   // Relations
-  brand               Brand          @relation(fields: [brandId], references: [id])
-  consumerUser        ConsumerUser?  @relation(fields: [consumerUserId], references: [id])
-  items               OrderItem[]
-  dispatches          OrderDispatch[]
-  charge              Charge?
-  refunds             Refund[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  brand                  Brand          @relation(fields: [brandId], references: [id])
+  creator                User           @relation("CreatorOrders", fields: [creatorUserId], references: [id])
+  shipToPartnerService   PartnerService? @relation("WarehouseShipToOrders", fields: [shipToPartnerServiceId], references: [id])
+  items                  OrderItem[]
+  dispatches             OrderDispatch[]
+  charge                 Charge?
+  refunds                Refund[]
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   @@index([brandId, status])
-  @@index([consumerEmail])
+  @@index([creatorUserId, status])
+}
+
+enum OrderShipToType {
+  CREATOR_ADDRESS          // goods ship to the creator's own warehouse / address
+  WAREHOUSE_PARTNER        // goods ship to a connected WAREHOUSE partner service
 }
 
 model OrderItem {
@@ -994,8 +1015,17 @@ model OrderDispatch {
   declineReason     DispatchDeclineReason?
   declineNotes      String?
   rerouteCount      Int              @default(0)
+  // Per-state timestamps for the partner workflow (B6).
+  // Useful for SLA tracking + audit + partner self-service analytics.
+  acceptedAt              DateTime?
+  productionStartedAt     DateTime?
+  qualityCheckStartedAt   DateTime?
+  qualityCheckFailedAt    DateTime?
+  qualityCheckFailureNotes String?
+  readyAt                 DateTime?
   // Fulfillment
   shippedAt         DateTime?
+  inTransitAt       DateTime?
   trackingCarrier   String?
   trackingNumber    String?
   deliveredAt       DateTime?
@@ -1095,51 +1125,13 @@ model Dispute {
 }
 
 // =============================================================================
-// CART & CONSUMER
+// CART & CONSUMER — REMOVED 2026-05-19
 // =============================================================================
-
-model Cart {
-  id              String     @id @default(cuid())
-  sessionToken    String?    @unique             // anonymous carts
-  consumerUserId  String?                         // logged-in carts (V1.5+)
-  brandId         String                          // single-brand-per-cart
-  status          CartStatus @default(ACTIVE)
-  expiresAt       DateTime
-  items           CartItem[]
-  consumerUser    ConsumerUser? @relation(fields: [consumerUserId], references: [id])
-  brand           Brand      @relation(fields: [brandId], references: [id])
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
-  @@index([sessionToken])
-  @@index([status, expiresAt])
-}
-
-model CartItem {
-  id              String   @id @default(cuid())
-  cartId          String
-  productId       String
-  quantity        Int
-  priceAtAddCents Int                              // snapshot — protects against mid-cart price changes
-  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product         Product  @relation(fields: [productId], references: [id])
-  @@unique([cartId, productId])
-}
-
-// ConsumerUser — separate from User (creator/partner/admin role).
-// V1: row created from Stripe Checkout email; no password.
-// V1.5+: magic-link login adds login flow.
-model ConsumerUser {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  name            String?
-  emailVerifiedAt DateTime?
-  lastSeenAt      DateTime @default(now())
-  // Relations
-  carts           Cart[]
-  orders          Order[]
-  createdAt       DateTime @default(now())
-}
+// The Cart, CartItem, and ConsumerUser models were removed when the V1 model
+// was corrected. iLaunchify is a B2B production marketplace; consumers do not
+// buy on iLaunchify — they buy on the creator's external channel (Shopify,
+// Amazon, etc.). See docs/STOREFRONT.md.
+// =============================================================================
 
 // =============================================================================
 // CATALOG: Category → Subcategory → ProductTemplate → Variant + Ingredient Slots

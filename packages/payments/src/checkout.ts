@@ -1,6 +1,11 @@
-// Stripe Checkout Session creation — used by apps/storefront when consumer clicks Buy.
-// Per docs/PAYMENTS.md: separate charges + transfers pattern, dynamic statement descriptor,
-// Stripe Tax enabled, single-brand-per-cart.
+// Stripe Checkout Session creation — used by apps/creator when a creator
+// places a production order (the creator pays iLaunchify for the batch).
+// Per docs/PAYMENTS.md: separate charges + transfers pattern with platform
+// application fee withheld; partner Transfers queued at dispatch ship time.
+//
+// NOTE 2026-05-19: this file's prior caller (apps/storefront consumer checkout)
+// was removed. The fields below still apply (orderId, brand, creator, amount)
+// but the semantics now refer to a B2B production order, not a consumer purchase.
 
 import { stripe } from './client'
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/compliance-client": "workspace:*",
     "@ilaunchify/db": "workspace:*",

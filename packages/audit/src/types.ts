@@ -54,6 +54,10 @@ export const AUDIT_ACTIONS = [
   // Lead lifecycle
   'LEAD_QUALIFY',
   'LEAD_DISQUALIFY',
+  // Creator production orders
+  'ORDER_CREATED',
+  'ORDER_PAID',
+  'ORDER_CANCELLED',
   // Order / dispatch
   'DISPATCH_ACCEPT',
   'DISPATCH_DECLINE',

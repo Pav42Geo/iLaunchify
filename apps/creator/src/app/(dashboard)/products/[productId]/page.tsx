@@ -87,10 +87,10 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
         />
         <StepCard
           n={4}
-          title="Finalize"
-          description="Inventory order + frontstore"
-          href={`/products/${product.id}/publish`}
-          ctaLabel="Finalize"
+          title="Order production"
+          description="Pay iLaunchify · routes to manufacturing + print partners"
+          href={`/products/${product.id}/order`}
+          ctaLabel="Order"
           disabled={!customizeComplete}
         />
       </div>

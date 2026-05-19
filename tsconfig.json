@@ -25,8 +25,11 @@
       "@ilaunchify/ui/*": ["./packages/ui/src/*"],
       "@ilaunchify/types": ["./packages/types/src"],
       "@ilaunchify/auth": ["./packages/auth/src"],
+      "@ilaunchify/audit": ["./packages/audit/src"],
+      "@ilaunchify/notifications": ["./packages/notifications/src"],
       "@ilaunchify/orders": ["./packages/orders/src"],
-      "@ilaunchify/storefront-kit": ["./packages/storefront-kit/src"],
+      "@ilaunchify/payments": ["./packages/payments/src"],
+      "@ilaunchify/storage": ["./packages/storage/src"],
       "@ilaunchify/compliance-client": ["./packages/compliance-client/src"]
     }
   },
