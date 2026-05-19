@@ -1,5 +1,22 @@
 # Payments & Stripe Connect — Decisions
 
+> ⚠️ **Model correction 2026-05-19 — large portions of this doc are stale.**
+>
+> This document was drafted under the old assumption that **consumers pay iLaunchify** through a hosted storefront. That model has been retired. The corrected V1 model:
+>
+> - **Consumer money never touches iLaunchify.** Consumers buy on the creator's external channel (Shopify, Amazon, Etsy, etc.). The creator's revenue stays in their channel's payout account.
+> - **Creators pay iLaunchify** for production orders only. That's the single money flow iLaunchify is involved in.
+> - Application fee is taken from the creator's production payment, not from a consumer subtotal.
+> - Refunds / chargebacks from end buyers happen entirely on the channel side. iLaunchify does not observe them.
+>
+> The Stripe Connect Express partner-side architecture (Decision 2, partner accounts, Transfer queueing on dispatch shipped) is **still correct** — partners are paid by iLaunchify from the creator's production payment, gated on fulfillment milestones.
+>
+> Decisions 1, 3, 4, 5, 6, 7 contain consumer-flow examples and merchant-of-record reasoning that no longer apply. They will be rewritten when the production-order checkout (`/products/[id]/order`) is built. Until then, treat anything below describing "consumer pays $X" or "consumer chargeback" or "Stripe Tax for US sales tax" as documenting the deleted model.
+>
+> Canonical references for the corrected model: `docs/STOREFRONT.md` + memory file `ilaunchify-business-model.md`.
+
+---
+
 **Status:** Draft for Pavel approval. Once accepted, the V1 schema port adds the payment models below and the integration begins in Week 8 per `docs/ROADMAP.md`.
 
 **The seven decisions in this doc:**

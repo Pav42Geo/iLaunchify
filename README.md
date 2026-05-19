@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Pav42Geo/iLaunchify/actions/workflows/ci.yml/badge.svg)](https://github.com/Pav42Geo/iLaunchify/actions/workflows/ci.yml)
 
-A two-sided marketplace for creators, manufacturers, and print providers, focused on US-compliant supplements and functional food & beverage.
+A **B2B production marketplace + manufacturing fulfillment platform** for creators of US-compliant supplements and functional food & beverage products. Creators sell finished SKUs on their own external channels (Shopify, Amazon, etc.) — iLaunchify is the production backend, not a consumer storefront.
 
 **Repo:** https://github.com/Pav42Geo/iLaunchify
 
@@ -10,11 +10,13 @@ A two-sided marketplace for creators, manufacturers, and print providers, focuse
 
 The platform connects three sides:
 
-- **Creators** (10K–1M+ follower audiences) design branded products from a curated catalog of US-compliant ingredients and templates.
-- **Manufacturers** (small US contract manufacturers, FDA/GMP certified, 500–5,000 unit MOQ) fulfill the physical product.
+- **Creators** (10K–1M+ follower audiences) design branded products from a curated catalog of US-compliant templates, place **production orders** (paying iLaunchify), and take delivery of finished inventory at their warehouse or a connected fulfillment partner.
+- **Manufacturers** (small US contract manufacturers, FDA/GMP certified, 500–5,000 unit MOQ) fulfill the physical production.
 - **Print providers** fulfill the labels — coordinated via dual-dispatch.
 
-The platform's defensible moat is **compliance workflow + print coordination + creator-facing UX**. V1 ships one slice end-to-end: US/FDA-compliant product creation → label generation → publish → first order.
+After delivery, creators sell to end buyers on their own external channels (Shopify, Amazon, Etsy, WooCommerce, Walmart, TikTok). iLaunchify never processes consumer transactions.
+
+The platform's defensible moat is **compliance workflow + print coordination + creator-facing UX**. V1 ships one slice end-to-end: US/FDA-compliant template customization → label generation → production order → delivery to creator/warehouse.
 
 ## Documents to read before contributing
 
@@ -31,7 +33,7 @@ The platform's defensible moat is **compliance workflow + print coordination + c
 ## Stack at a glance
 
 - **Monorepo:** pnpm workspaces + Turborepo
-- **Apps:** Next.js 15 (App Router) — `creator`, `storefront`, `provider`, `admin`
+- **Apps:** Next.js 15 (App Router) — `creator`, `partner`, `admin` (consumer storefront retired 2026-05-19; see `docs/STOREFRONT.md`)
 - **DB:** CockroachDB + Prisma
 - **Auth:** Auth.js v5 (Google OAuth + email magic links)
 - **State:** TanStack Query (server) + Zustand (client) — no Redux, no Context for data
@@ -65,7 +67,6 @@ pnpm compliance:dev
 Apps available at:
 
 - Creator app: http://localhost:3000
-- Storefront: http://localhost:3001
 - Partner portal: http://localhost:3002
 - Admin: http://localhost:3003
 - Compliance service: http://localhost:8000

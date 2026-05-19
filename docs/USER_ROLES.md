@@ -138,7 +138,7 @@ model User {
 model CreatorProfile {
   id              String   @id @default(cuid())
   userId          String   @unique
-  handle          String   @unique   // public URL slug
+  handle          String   @unique   // internal identifier (was public URL slug for hosted storefront — retired 2026-05-19; kept for `Push to channel` namespacing)
   displayName     String
   // ... bio, socials, audience size, payout setup
   user            User     @relation(fields: [userId], references: [id])

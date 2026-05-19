@@ -45,20 +45,22 @@ Built around the V1 scope in `ARCHITECTURE.md`: US-only, supplements + functiona
 ## Week 8 — Order flow + Payments
 
 - Stripe Connect Express onboarding for manufacturers + print providers.
-- Stripe Checkout for end consumers.
+- Stripe Checkout **for creators paying iLaunchify for production orders** (consumer checkout is out of scope — see `docs/STOREFRONT.md`).
 - `packages/orders` FSM ported from FOD's `orderLifecycleService.js` to TypeScript.
 - Dual-dispatch: `Order` → `OrderDispatch[]` (product + label) advancing independently.
 - Webhooks: Stripe events drive order state transitions.
 
-## Weeks 9–10 — Storefront
+## Weeks 9–10 — ~~Storefront~~ Channel scaffolding (V1.1)
 
-- `apps/storefront` — one template, public, per creator handle (`/{handle}/{slug}`).
-- Cart + checkout that creates an Order with two dispatches.
-- Email transactional templates (order placed, shipped, delivered).
+> ⚠️ Reframed 2026-05-19. The original plan called for a hosted iLaunchify storefront at `shop.ilaunchify.com/{handle}`. That has been retired — iLaunchify is B2B production, not consumer-facing. The deferred work that replaces it:
+- `Channel` registry (admin-managed: Shopify / Amazon / Etsy / WooCommerce / Walmart / TikTok with per-channel on/off)
+- `ChannelConnection` per creator (OAuth token store) — V1.1
+- "Push to channel" action on a delivered Product, creating a listing in the connected channel
+- No iLaunchify-hosted consumer pages, no cart, no consumer transactional emails
 
 ## Week 11 — Hardening
 
-- E2E tests for the happy path: creator builds product → publishes → consumer buys → both dispatches deliver.
+- E2E tests for the happy path: creator browses marketplace → customizes → places production order → both dispatches deliver to creator/warehouse.
 - Load test: 100 concurrent compliance checks against the Python service.
 - OTel instrumentation across all apps + service.
 - Vercel + Fly.io deploy pipelines for staging.

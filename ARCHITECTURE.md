@@ -8,9 +8,11 @@
 
 ## North star
 
-A **two-sided marketplace** connecting creators (Tier 1: 10K–100K followers) with small contract manufacturers and print providers, doing US/FDA-compliant supplements and functional food & beverage products end-to-end. The platform's moat is **compliance workflow + print coordination + creator-facing UX**.
+> ⚠️ **Model correction 2026-05-19.** Earlier drafts described iLaunchify as hosting a consumer storefront where end buyers checked out. That's wrong. The corrected V1 model: iLaunchify is a **B2B production marketplace + manufacturing fulfillment platform**. Creators pick templates, place production orders, and pay iLaunchify. Partners produce. Goods ship to the creator or to a WAREHOUSE partner. Creators then sell to end buyers on their own external channels (Shopify, Amazon, etc.) — iLaunchify never touches consumer money. See `docs/STOREFRONT.md` for full detail. Sections of this doc that describe consumer checkout / `apps/storefront` / `shop.ilaunchify.com` are stale and will be patched as the schema reshape lands.
 
-V1 must ship one full slice — creator builds a product, gets it FDA-compliance-checked, gets a label generated, publishes to a storefront, takes an order, dual-dispatches to manufacturer + print provider. Everything else is V1.5 or V2.
+A **B2B production marketplace + manufacturing fulfillment platform** connecting creators (Tier 1: 10K–100K followers) with small contract manufacturers and print providers, doing US/FDA-compliant supplements and functional food & beverage products end-to-end. The platform's moat is **compliance workflow + print coordination + creator-facing UX**.
+
+V1 must ship one full slice — creator browses the marketplace, customizes a manufacturer-listed template, gets it FDA-compliance-checked, gets a label generated, places a **production order** (paying iLaunchify), and watches the order dual-dispatch to manufacturer + print provider through to delivery at the creator's warehouse (or a connected WAREHOUSE partner). After delivery, the creator sells the finished SKU on their own external channel (Shopify, Amazon, etc.) — out of iLaunchify's scope. Everything else is V1.5 or V2.
 
 ---
 
@@ -159,11 +161,13 @@ Each decision below is paired with the alternative considered and the reason for
 ```
 iLaunchify/
 ├── apps/
-│   ├── creator/                  # Next.js — creator-facing builder + dashboard
-│   ├── storefront/               # Next.js — public creator storefronts (path: /{handle})
-│   ├── provider/                 # Next.js — manufacturer + print-partner portal
+│   ├── creator/                  # Next.js — creator-facing marketplace + customize + production order
+│   ├── partner/                  # Next.js — manufacturer + print-partner portal (renamed from `provider`)
 │   ├── admin/                    # Next.js — internal admin panel
 │   └── api/                      # Next.js — public API for third-party integrations (V2+)
+│   # NOTE 2026-05-19: `apps/storefront` has been removed. iLaunchify does not
+│   # host consumer storefronts — creators connect external channels (Shopify,
+│   # Amazon, Etsy, etc.). See docs/STOREFRONT.md.
 ├── packages/
 │   ├── db/                       # Prisma schema + generated client + migrations
 │   │   ├── prisma/
@@ -313,28 +317,27 @@ The rule-pack format is designed so adding a new jurisdiction is data work, not 
 This is the architectural piece the FOD codebase scaffolded but never fully wired:
 
 ```
-Consumer checkout
+Creator places production order
        │
-       ▼
+       ▼  (creator pays iLaunchify via Stripe Checkout)
    Order created
        │
    Order.dispatches: [
        │
        ├── ProductDispatch  → routed to chosen Manufacturer (Tier 1)
-       │   - state machine: ASSIGNED → PRODUCING → READY → SHIPPED → DELIVERED
+       │   - state machine: PENDING_ACCEPT → ACCEPTED → PRODUCING →
+       │     [QUALITY_CHECK] → READY → SHIPPED → IN_TRANSIT → DELIVERED
        │
        └── LabelDispatch    → routed to chosen Print Provider
-           - state machine: ASSIGNED → PRINTING → READY → SHIPPED → DELIVERED
+           - state machine: same as above (QC step typically skipped
+             for label dispatch via `qcRequired=false` on PartnerService)
                                                        │
                                                        └── delivered to manufacturer
-                                                           OR to a fulfillment hub
-                                                           OR direct to consumer
-                                                           (TBD per provider profile)
+                                                           (V1 default: labels mailed
+                                                           to manufacturer who applies)
 ```
 
-Both dispatches advance independently. The order is `READY_TO_SHIP` only when both are `READY`. The order is `DELIVERED` when both are `DELIVERED`.
-
-**Open architectural question:** does the print provider ship labels to the manufacturer (who applies them), or do they ship pre-labeled containers, or do they ship to a fulfillment hub? The schema supports all three; the V1 default needs to come from print-provider research (Simona).
+Both dispatches advance independently. The order is `READY_TO_SHIP` only when both are `READY`. The order is `DELIVERED` when both are `DELIVERED` — delivery target is the creator's warehouse OR a connected `WAREHOUSE` partner service. After delivery, iLaunchify is done; the creator's onward sales happen on their own external channels (Shopify, etc.).
 
 ---
 

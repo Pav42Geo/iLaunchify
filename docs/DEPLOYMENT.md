@@ -20,7 +20,7 @@
 
 | Workload | Host | Why | V1 cost |
 |---|---|---|---|
-| Next.js apps (creator, storefront, provider, admin) | **Vercel** | Made by the Next.js team. Zero-config preview environments per PR. Edge network. ISR caching built-in. | $0–$20/mo (free tier covers 100K monthly views) |
+| Next.js apps (creator, partner, admin) | **Vercel** | Made by the Next.js team. Zero-config preview environments per PR. Edge network. ISR caching built-in. | $0–$20/mo (free tier covers 100K monthly views) |
 | Python compliance + exports services | **Fly.io** | Docker-native (matches our local stack). Regional placement near DB. Stateful workloads OK (Ghostscript needs disk). | $0–$30/mo (Fly's free allowance + small VM) |
 | Database | **Cockroach Cloud Serverless** | Managed CockroachDB. Free tier: 5 GB storage + 50M RUs/mo. Regional replication available when we grow. | $0/mo at V1; $50–$200/mo at scale |
 | Object storage | **Cloudflare R2** | S3-compatible, **zero egress fees** (critical for serving labels + brand assets). | $0–$5/mo (free 10 GB, $0.015/GB after) |
@@ -29,7 +29,7 @@
 | DNS | **Cloudflare** | Fast, free, plays well with Vercel and Fly.io. | $0/mo |
 | CDN | Vercel for apps + Cloudflare for R2 assets | Both built-in. | $0 |
 
-**Total V1 hosting bill estimate: $0–$65/mo.** Big jumps happen when storefront traffic crosses Vercel's free tier (~100K monthly views) or when Cockroach Cloud usage crosses serverless free tier (~10K active orders/mo).
+**Total V1 hosting bill estimate: $0–$65/mo.** Big jumps happen when creator + partner app traffic crosses Vercel's free tier (~100K monthly views) or when Cockroach Cloud usage crosses serverless free tier (~10K active orders/mo).
 
 ### Alternatives considered (and rejected)
 
@@ -58,7 +58,6 @@
 |---|---|---|
 | `ilaunchify.com` + `www.ilaunchify.com` | Marketing site (V1: simple landing; V1.5+: full content site) | `apps/marketing` (V1.5+ — V1 ships a single-page redirect to `app.ilaunchify.com`) |
 | `app.ilaunchify.com` | Creator dashboard, builder, settings | `apps/creator` |
-| `shop.ilaunchify.com/{handle}` | Public creator storefronts | `apps/storefront` |
 | `partners.ilaunchify.com` | Manufacturer + print-partner portal | `apps/partner` |
 | `admin.ilaunchify.com` | Internal admin panel | `apps/admin` |
 | `api.ilaunchify.com` | Public API for third-party integrations | `apps/api` (V2+) |
@@ -66,23 +65,11 @@
 | `cmpl.ilaunchify.com` | Compliance service (internal-only DNS, not customer-facing) | Fly.io |
 | `exp.ilaunchify.com` | Exports service (internal-only DNS) | Fly.io |
 
-### Why subdomains, not paths
-
-I floated `app.ilaunchify.com/{handle}` for storefronts in `STOREFRONT.md`. Revising to **`shop.ilaunchify.com/{handle}`** for cleaner separation:
-
-| Reason | Detail |
-|---|---|
-| Independent deploy cadence | Storefront ships on a different schedule than creator app — separate Vercel projects |
-| Different caching profiles | Storefront wants aggressive ISR/CDN; creator app wants fresh data |
-| Different attack surfaces | Storefront has anonymous traffic + Stripe Checkout; creator app is auth-walled. Separate WAF rules |
-| No reserved-handle collision | `app.ilaunchify.com/dashboard` collides with a potential `/dashboard` creator handle. `shop.ilaunchify.com/dashboard` doesn't — `app` and `shop` namespaces are separate |
-| Cookie scoping | Auth cookie set on `app.ilaunchify.com` doesn't leak to `shop.ilaunchify.com` — better for storefront caching and security |
-
-This is a small revision to `STOREFRONT.md` to update. Custom domains and `{handle}.ilaunchify.com` subdomains arrive in V1.5+ as outlined in that doc.
+> Earlier drafts included `shop.ilaunchify.com/{handle}` for hosted creator storefronts. That subdomain is retired (and the corresponding `apps/storefront` app removed) per the 2026-05-19 model correction — iLaunchify does not host consumer storefronts. Creators connect their own external channels (Shopify, Amazon, etc.). See `docs/STOREFRONT.md`.
 
 ### Reserved subdomains
 
-These can never be assigned as creator handles or partner slugs: `www`, `app`, `shop`, `partners`, `admin`, `api`, `cdn`, `cmpl`, `exp`, `mail`, `blog`, `help`, `status`, `auth`, `support`, plus all standard ones (`mx`, `ns1`, etc.).
+These can never be assigned as partner slugs: `www`, `app`, `partners`, `admin`, `api`, `cdn`, `cmpl`, `exp`, `mail`, `blog`, `help`, `status`, `auth`, `support`, plus all standard ones (`mx`, `ns1`, etc.). The `shop` subdomain is also reserved (for potential future use) even though no service binds to it in V1.
 
 ---
 
@@ -114,7 +101,7 @@ Four environments, well-separated.
 
 - Mirrors production stack exactly but uses **Stripe test mode** + a **separate Cockroach DB** + separate R2 bucket.
 - Deployed automatically from a `staging` branch.
-- Real DNS: `staging-app.ilaunchify.com`, `staging-shop.ilaunchify.com`, etc.
+- Real DNS: `staging-app.ilaunchify.com`, `staging-partners.ilaunchify.com`, `staging-admin.ilaunchify.com`, etc.
 - Used by Pavel + Simona + first beta creators for QA before features hit production.
 
 ### Production
@@ -135,10 +122,10 @@ Four environments, well-separated.
 |---|---|---|
 | `DATABASE_URL` | Vercel env (app projects) + Fly.io secret (Python service) | Pavel (Simona later) |
 | `AUTH_SECRET` | Vercel env (all apps) | Pavel |
-| `STRIPE_SECRET_KEY` | Vercel env (creator + storefront + api) + Fly.io (exports service) | Pavel |
-| `STRIPE_WEBHOOK_SECRET` | Vercel env (api app) | Pavel |
+| `STRIPE_SECRET_KEY` | Vercel env (creator + partner + admin) + Fly.io (exports service) | Pavel |
+| `STRIPE_WEBHOOK_SECRET` | Vercel env (admin app — webhook handler lives there) | Pavel |
 | `R2_*` | Vercel + Fly.io | Pavel |
-| `RESEND_API_KEY` | Vercel env (creator + storefront for transactional email) | Pavel |
+| `RESEND_API_KEY` | Vercel env (creator + partner + admin for transactional + magic-link email) | Pavel |
 | `UPSTASH_REDIS_URL` | Vercel + Fly.io | Pavel |
 | `SENTRY_DSN` | Vercel + Fly.io (public — exposed to client) | Pavel |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Vercel + Fly.io | Pavel |
@@ -329,7 +316,7 @@ The remaining ~$165 of the $200 ceiling is buffer for: domain, design assets, re
 ### When V1 economics break
 
 The cost shoots up when:
-- Storefront traffic crosses 100K monthly views → Vercel Pro tier (~$20/proj or $250+/mo)
+- Creator + partner app traffic crosses 100K monthly views → Vercel Pro tier (~$20/proj or $250+/mo)
 - Cockroach RUs cross free tier (50M RUs/mo) → switch to paid serverless (~$50–$200/mo)
 - Print export pipeline gets heavy → larger Fly.io VMs (~$50–$100/mo)
 - Resend free tier insufficient → $20/mo for 50K emails

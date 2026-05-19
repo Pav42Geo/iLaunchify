@@ -85,8 +85,7 @@ pnpm compliance:dev
 | App | URL |
 |---|---|
 | Creator | http://localhost:3000 |
-| Storefront | http://localhost:3001 |
-| Provider | http://localhost:3002 |
+| Partner | http://localhost:3002 |
 | Admin | http://localhost:3003 |
 | Compliance | http://localhost:8000/docs |
 | CockroachDB | http://localhost:8081 |
