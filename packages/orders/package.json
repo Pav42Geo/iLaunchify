@@ -10,6 +10,7 @@
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
+    "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "zod": "^3.23.8"

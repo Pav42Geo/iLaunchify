@@ -1,0 +1,34 @@
+// Key generation helpers — keep storage paths predictable so we can find +
+// list files without DB lookups when needed.
+//
+// Path convention:
+//   partners/{partnerId}/{section}/{cuid}-{filename}
+//
+// Why this shape:
+//   - leading "partners/" namespaces away from other R2 use cases (assets, exports)
+//   - partnerId lets us delete-all-by-partner with a single ListObjectsV2 + Delete
+//   - section lets us list files for one verification section
+//   - cuid prefix on the filename guarantees uniqueness (two uploads of "license.pdf" don't collide)
+//   - original filename is preserved at the end so manual debugging is easier
+
+import { randomBytes } from 'crypto'
+
+function generateCuid(): string {
+  // Mini cuid — 12 hex chars is enough for collision-free filenames per partner
+  return randomBytes(6).toString('hex')
+}
+
+function sanitizeFilename(filename: string): string {
+  // Strip path separators + anything weird; keep dots, dashes, underscores
+  return filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100)
+}
+
+export function partnerFileKey(params: {
+  partnerId: string
+  section: 'business' | 'facility' | 'documents' | 'public_profile'
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `partners/${params.partnerId}/${params.section}/${id}-${safe}`
+}

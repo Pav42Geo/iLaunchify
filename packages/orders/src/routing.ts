@@ -212,5 +212,28 @@ export async function createDispatches(params: {
     })
   })
 
+  // Notify both partners that a new dispatch is waiting for them. Imported
+  // lazily so the orders package doesn't take a hard dep on notifications
+  // for callers that don't need it (cron jobs, tests, etc.).
+  const { dispatchNotification } = await import('@ilaunchify/notifications')
+  const brand = await prisma.brand.findUnique({
+    where: { id: order.brandId },
+    select: { name: true },
+  })
+  await Promise.allSettled([
+    dispatchNotification({
+      userId: routing.manufacturingUserId,
+      event: 'DISPATCH_RECEIVED',
+      data: { orderId: order.id, brandName: brand?.name, type: 'PRODUCT' },
+      audience: 'partner',
+    }),
+    dispatchNotification({
+      userId: routing.labelPrintingUserId,
+      event: 'DISPATCH_RECEIVED',
+      data: { orderId: order.id, brandName: brand?.name, type: 'LABEL' },
+      audience: 'partner',
+    }),
+  ])
+
   return { ok: true }
 }

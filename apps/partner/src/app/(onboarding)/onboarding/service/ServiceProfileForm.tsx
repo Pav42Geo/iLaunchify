@@ -20,9 +20,22 @@ interface Props {
   serviceType: 'MANUFACTURING' | 'LABEL_PRINTING' | 'COPACKING'
   disclosureLevel: 'FULL' | 'CITY_STATE' | 'ANONYMOUS'
   initial: Record<string, unknown>
+  /** Where to navigate after a successful save. Defaults to the onboarding documents step. */
+  redirectAfterSave?: string
+  /** Button label. Defaults to the onboarding wording. */
+  submitLabel?: string
+  successMessage?: string
 }
 
-export function ServiceProfileForm({ serviceId, serviceType, disclosureLevel: initialDisclosure, initial }: Props) {
+export function ServiceProfileForm({
+  serviceId,
+  serviceType,
+  disclosureLevel: initialDisclosure,
+  initial,
+  redirectAfterSave = '/onboarding/documents',
+  submitLabel = 'Save & continue',
+  successMessage = 'Service profile saved',
+}: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [disclosure, setDisclosure] = useState(initialDisclosure)
@@ -89,8 +102,8 @@ export function ServiceProfileForm({ serviceId, serviceType, disclosureLevel: in
         toast.error(result.error)
         return
       }
-      toast.success('Service profile saved')
-      router.push('/onboarding/documents')
+      toast.success(successMessage)
+      router.push(redirectAfterSave)
     } finally {
       setBusy(false)
     }
@@ -220,7 +233,7 @@ export function ServiceProfileForm({ serviceId, serviceType, disclosureLevel: in
 
       <div className="flex justify-end">
         <Button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save & continue'}
+          {busy ? 'Saving…' : submitLabel}
         </Button>
       </div>
     </form>

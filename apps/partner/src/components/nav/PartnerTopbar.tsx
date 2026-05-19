@@ -3,6 +3,7 @@
 import { Button } from '@ilaunchify/ui'
 import { signOut } from 'next-auth/react'
 import type { User } from '@ilaunchify/auth'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 export function PartnerTopbar({ user, companyName }: { user: User; companyName: string }) {
   return (
@@ -11,9 +12,12 @@ export function PartnerTopbar({ user, companyName }: { user: User; companyName: 
         <span className="font-medium">{companyName}</span>
         <span className="ml-2 text-zinc-500">· {user.email}</span>
       </div>
-      <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/login' })}>
-        Sign out
-      </Button>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/login' })}>
+          Sign out
+        </Button>
+      </div>
     </header>
   )
 }

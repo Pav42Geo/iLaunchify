@@ -378,10 +378,21 @@ model User {
   // Activity
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+  // Notification preferences — single quiet-hours window per user (any event
+  // not delivered by email during this window is held until the window closes).
+  // Stored as minutes-since-UTC-midnight so we don't fight timezones. Both
+  // null = no quiet hours (deliver any time).
+  quietHoursStartUtc  Int?                              // 0..1439, e.g. 22*60 for 10pm UTC
+  quietHoursEndUtc    Int?                              // 0..1439, e.g. 7*60 for 7am UTC
   // Outbound relations
   initiatedRefunds    Refund[]
   transferDestinations Transfer[]      @relation("TransferDestinationUser")
   complianceChecks    ComplianceCheck[]
+  auditLogs           AuditLog[]                       @relation("AuditLogActor")
+  verifiedSections    PartnerVerificationSection[]     @relation("VerificationSectionVerifier")
+  uploadedFiles       PartnerFile[]                    @relation("PartnerFileUploader")
+  notifications       Notification[]
+  notificationPreferences NotificationPreference[]
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -464,12 +475,20 @@ model Partner {
   state             String?
   postalCode        String?
   country           String           @default("US")
+  // Onboarding wizard progress — tracks which steps a partner has completed,
+  // so the wizard can resume after partial completion and "Edit section" deep-links
+  // from My Application can jump to the right step. Shape:
+  //   { currentStep: "documents", completedSteps: ["company", "service"], updatedAt: "..." }
+  // Cleared on first ACTIVE transition.
+  onboardingProgress    Json?
   // Relations
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  services          PartnerService[]
-  clawbacks         PartnerClawback[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  user                  User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services              PartnerService[]
+  clawbacks             PartnerClawback[]
+  verificationSections  PartnerVerificationSection[]
+  files                 PartnerFile[]
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
 }
 
 model PartnerService {
@@ -549,6 +568,7 @@ model Brand {
   templates         Template[]
   designs           Design[]
   carts             Cart[]
+  orders            Order[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 }
@@ -935,6 +955,7 @@ model Order {
   // Notes
   internalNotes       String?
   // Relations
+  brand               Brand          @relation(fields: [brandId], references: [id])
   consumerUser        ConsumerUser?  @relation(fields: [consumerUserId], references: [id])
   items               OrderItem[]
   dispatches          OrderDispatch[]
@@ -1347,4 +1368,191 @@ model ProductTemplateVariant {
   createdAt       DateTime      @default(now())
   @@index([productTemplateId, isActive])
   @@index([packingType])
+}
+
+// ============================================================================
+// Phase A — Verification + Files + Audit Log
+// See docs/FOD_RECOVERY_PLAN.md §6 for context.
+// ============================================================================
+
+// 4-section verification model (per Pavel decision 2026-05-19, keeping FOD's
+// taxonomy). Each section is independently reviewed by an admin with notes;
+// overall Partner.status is computed from the section statuses:
+//   - any REJECTED      → Partner.status = SUSPENDED (admin manual)
+//   - any NEEDS_CHANGES → Partner.status = IN_PROGRESS (partner must fix)
+//   - all VERIFIED      → Partner.status = ACTIVE (admin manual approve)
+//   - else              → Partner.status = UNDER_REVIEW (initial submit)
+enum VerificationSectionType {
+  BUSINESS         // Legal name, registration, EIN/VAT, addresses, KYB
+  FACILITY         // Production capabilities, certifications, MOQ, lead time
+  DOCUMENTS        // Uploaded compliance docs (license, insurance, cert PDFs)
+  PUBLIC_PROFILE   // Public-facing brand info (logo, description, badges)
+}
+
+enum VerificationSectionStatus {
+  PENDING          // Not yet reviewed
+  VERIFIED         // Approved by admin
+  NEEDS_CHANGES    // Admin requested edits; partner can resubmit this section
+  REJECTED         // Permanently rejected (rare; usually leads to suspension)
+}
+
+model PartnerVerificationSection {
+  id            String                     @id @default(cuid())
+  partnerId     String
+  type          VerificationSectionType
+  status        VerificationSectionStatus  @default(PENDING)
+  adminNotes    String?                    // Internal note shown to partner verbatim
+  verifiedAt    DateTime?
+  verifiedById  String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  partner       Partner                    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  verifiedBy    User?                      @relation("VerificationSectionVerifier", fields: [verifiedById], references: [id])
+  files         PartnerFile[]              // files attached to this section
+
+  @@unique([partnerId, type])              // exactly one row per (partner, section)
+  @@index([status])
+}
+
+// Partner-uploaded files, stored on R2 (per Pavel decision 2026-05-19).
+// The r2Key is the canonical storage path; we generate signed URLs on read.
+// Files are grouped by sectionType so the admin verification queue can show
+// "all DOCUMENTS-section files for this partner" in one place.
+enum PartnerFileKind {
+  CERTIFICATE              // ISO, BRC, SQF, organic, kosher, etc.
+  BUSINESS_LICENSE
+  INSURANCE
+  FACILITY_PHOTO
+  LOGO
+  KYB_ID                   // Beneficial owner ID (driver's license, passport)
+  CERT_OF_INCORPORATION
+  PRODUCT_SAMPLE           // For verification (photos of finished goods)
+  OTHER
+}
+
+model PartnerFile {
+  id               String                       @id @default(cuid())
+  partnerId        String
+  sectionType      VerificationSectionType      // which verification section this file belongs to
+  sectionId        String?                      // optional FK to the specific PartnerVerificationSection row
+  kind             PartnerFileKind
+  r2Key            String                       @unique  // bucket-relative path
+  originalFilename String
+  contentType      String                       // MIME type
+  sizeBytes        Int
+  uploadedById     String                       // who uploaded (partner user)
+  uploadedAt       DateTime                     @default(now())
+
+  partner          Partner                      @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  section          PartnerVerificationSection?  @relation(fields: [sectionId], references: [id])
+  uploadedBy       User                         @relation("PartnerFileUploader", fields: [uploadedById], references: [id])
+
+  @@index([partnerId, sectionType])
+  @@index([partnerId, kind])
+}
+
+// AuditLog — every state transition on User, Partner, PartnerService, Order,
+// OrderDispatch, etc. Per Pavel decision 2026-05-19, system-driven transitions
+// (Stripe webhooks, scheduled cron) log with actorRole=SYSTEM so we have a
+// complete forensic trail.
+//
+// Writers should use logAudit() from @ilaunchify/audit rather than touching this
+// model directly — that helper handles actor resolution + payload serialization.
+enum AuditActorRole {
+  ADMIN
+  CREATOR
+  PARTNER
+  SYSTEM           // Webhook handlers, cron jobs, migrations
+}
+
+model AuditLog {
+  id           String          @id @default(cuid())
+  actorId      String?         // null when actorRole=SYSTEM
+  actorRole    AuditActorRole
+  // Entity identification
+  entityType   String          // "Partner" / "OrderDispatch" / "PartnerVerificationSection" etc.
+  entityId     String          // the affected row's id
+  // What happened
+  action       String          // "ACTIVATE" / "SUSPEND" / "VERIFY_SECTION" / "MARK_SHIPPED" etc.
+  fromValue    String?         // previous state when applicable (status enum value, etc.)
+  toValue      String?         // new state when applicable
+  // Free-form context — sources can stash anything (decline reason, admin notes, etc.)
+  payload      Json?
+  at           DateTime        @default(now())
+
+  actor        User?           @relation("AuditLogActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId, at])    // history for a single entity
+  @@index([actorId, at])                 // what did this user do
+  @@index([at])                          // time-range queries
+}
+
+// ============================================================================
+// Phase B — Notifications
+// See docs/FOD_RECOVERY_PLAN.md §4 (B1).
+// ============================================================================
+
+// Channels users can receive notifications on. EMAIL goes through Resend;
+// IN_APP is the bell/notification center inside the app.
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+}
+
+// V1 event taxonomy — keep small and meaningful. Each maps to a templated
+// title + body in packages/notifications/src/templates.ts.
+enum NotificationEvent {
+  // Partner-facing
+  SECTION_VERIFIED            // admin approved one of their verification sections
+  SECTION_NEEDS_CHANGES       // admin requested partner edit a section
+  PARTNER_ACTIVATED           // welcome / fully approved
+  DISPATCH_RECEIVED           // new order dispatch needs partner action
+  DISPATCH_ACCEPT_REMINDER    // accept window is closing soon (defer to V1.1)
+  // Admin-facing
+  PARTNER_APPLIED             // new lead arrived
+  PARTNER_SUBMITTED           // partner finished onboarding, ready for review
+  ORDER_NEEDS_ATTENTION       // order moved to ON_HOLD / DISPUTED (defer to V1.1)
+}
+
+// One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
+// each get their own row so we can independently track read state vs. send state.
+model Notification {
+  id           String              @id @default(cuid())
+  userId       String
+  event        NotificationEvent
+  channel      NotificationChannel
+  // Display
+  title        String                                          // e.g. "Acme Foods approved"
+  body         String?                                         // longer description
+  link         String?                                         // app-relative URL (e.g. "/my-application")
+  // Channel-specific state
+  emailSentAt  DateTime?                                       // when Resend confirmed send
+  emailError   String?                                         // truncated error if send failed
+  readAt       DateTime?                                       // in-app read state
+  // Free-form context (entity ids the receiver may want to navigate to)
+  payload      Json?
+  createdAt    DateTime            @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])                                    // unread feed query
+  @@index([userId, createdAt])                                 // chronological feed
+  @@index([event])
+}
+
+// Per-user per-event per-channel opt-out. Default: enabled. Rows are upserted
+// only when the user explicitly toggles a preference; absent rows are treated
+// as enabled by the dispatcher.
+model NotificationPreference {
+  id       String              @id @default(cuid())
+  userId   String
+  event    NotificationEvent
+  channel  NotificationChannel
+  enabled  Boolean             @default(true)
+  updatedAt DateTime           @updatedAt
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, event, channel])
 }

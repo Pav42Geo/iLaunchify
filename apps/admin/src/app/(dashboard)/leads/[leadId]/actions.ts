@@ -2,6 +2,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 export type QualifyResult =
@@ -15,7 +16,7 @@ export type QualifyResult =
  * AUTH_RESEND_KEY is missing, the link is logged to stderr — copy from there.
  */
 export async function qualifyLead({ leadId }: { leadId: string }): Promise<QualifyResult> {
-  await requireRole('ADMIN')
+  const admin = await requireRole('ADMIN')
 
   const partner = await prisma.partner.findUnique({
     where: { id: leadId },
@@ -29,6 +30,15 @@ export async function qualifyLead({ leadId }: { leadId: string }): Promise<Quali
   await prisma.partner.update({
     where: { id: leadId },
     data: { status: 'INVITED' },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'Lead',
+    entityId: leadId,
+    action: 'LEAD_QUALIFY',
+    fromValue: partner.status,
+    toValue: 'INVITED',
+    payload: { companyName: partner.companyName, partnerEmail: partner.user.email },
   })
 
   // Send the magic link via Resend (Auth.js).
@@ -57,7 +67,7 @@ export async function qualifyLead({ leadId }: { leadId: string }): Promise<Quali
 export async function disqualifyLead({
   leadId,
 }: { leadId: string }): Promise<{ ok: true } | { ok: false; error: string }> {
-  await requireRole('ADMIN')
+  const admin = await requireRole('ADMIN')
 
   const partner = await prisma.partner.findUnique({
     where: { id: leadId },
@@ -67,6 +77,21 @@ export async function disqualifyLead({
   if (partner.status === 'ACTIVE') {
     return { ok: false, error: 'Cannot disqualify an active partner. Use Suspend instead.' }
   }
+
+  // Audit BEFORE delete so we still have the actor + payload after the row is gone.
+  // entityId stays so historical lookups by id still surface "this lead was disqualified".
+  await logAuditAs(admin, {
+    entityType: 'Lead',
+    entityId: leadId,
+    action: 'LEAD_DISQUALIFY',
+    fromValue: partner.status,
+    toValue: null,
+    payload: {
+      companyName: partner.companyName,
+      partnerEmail: partner.user.email,
+      servicesCount: partner.services.length,
+    },
+  })
 
   // Cascade: PartnerService rows cascade-delete with Partner; Partner cascades with User
   await prisma.user.delete({ where: { id: partner.userId } })

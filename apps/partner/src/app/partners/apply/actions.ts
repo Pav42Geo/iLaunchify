@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@ilaunchify/db'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { z } from 'zod'
 
 const LeadSchema = z.object({
@@ -33,7 +34,7 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
   }
 
   // Create User + Partner + draft PartnerService in one transaction.
-  await prisma.user.create({
+  const created = await prisma.user.create({
     data: {
       email: v.email,
       name: v.contactName,
@@ -66,7 +67,31 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
         },
       },
     },
+    include: { partner: true },
   })
+
+  // Fan out PARTNER_APPLIED to every admin user. Notifications dispatcher
+  // never throws, so this won't block the response if email is unconfigured.
+  if (created.partner) {
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    })
+    await Promise.allSettled(
+      admins.map((a) =>
+        dispatchNotification({
+          userId: a.id,
+          event: 'PARTNER_APPLIED',
+          data: {
+            companyName: v.companyName,
+            partnerEmail: v.email,
+            partnerId: created.partner!.id,
+          },
+          audience: 'admin',
+        }),
+      ),
+    )
+  }
 
   return { ok: true }
 }

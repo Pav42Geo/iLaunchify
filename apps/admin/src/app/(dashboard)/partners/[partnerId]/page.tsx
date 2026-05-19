@@ -1,21 +1,28 @@
 import { prisma } from '@ilaunchify/db'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ShieldCheck } from 'lucide-react'
 import { PartnerActions } from './PartnerActions'
+import { computeOverallStatus, statusBadgeClass } from '@/lib/verification'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PartnerDetail({ params }: { params: Promise<{ partnerId: string }> }) {
+  const { partnerId } = await params
   const partner = await prisma.partner.findUnique({
-    where: { id: (await params).partnerId },
+    where: { id: partnerId },
     include: {
       user: true,
       services: {
         include: { dieCutSupport: { include: { dieCutTemplate: true } } },
       },
+      verificationSections: true,
     },
   })
   if (!partner) notFound()
+
+  const overall = computeOverallStatus(partner.verificationSections)
 
   return (
     <div className="space-y-6">
@@ -95,7 +102,28 @@ export default async function PartnerDetail({ params }: { params: Promise<{ part
           ))}
         </div>
 
-        <div>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-base">Verification</CardTitle>
+                <CardDescription>4-section review</CardDescription>
+              </div>
+              <span
+                className={`rounded px-2 py-0.5 text-xs font-medium uppercase ${statusBadgeClass(overall)}`}
+              >
+                {overall.replace('_', ' ')}
+              </span>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full" variant="outline">
+                <Link href={`/partners/${partnerId}/verification`}>
+                  <ShieldCheck className="mr-2 h-4 w-4" /> Review sections
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
           <PartnerActions partnerId={partner.id} currentStatus={partner.status} />
         </div>
       </div>

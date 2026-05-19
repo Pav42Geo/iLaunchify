@@ -11,8 +11,10 @@
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
+    "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/db": "workspace:*",
+    "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.2",

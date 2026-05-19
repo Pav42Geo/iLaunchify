@@ -2,6 +2,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -29,7 +30,21 @@ export async function saveServiceProfile(input: z.infer<typeof Schema>) {
     },
   })
 
+  await logAuditAs(user, {
+    entityType: 'PartnerService',
+    entityId: service.id,
+    action: 'SERVICE_UPDATE',
+    payload: {
+      type: service.type,
+      capabilities: parsed.data.capabilities,
+      disclosureLevel: parsed.data.disclosureLevel,
+    },
+  })
+
+  // Revalidate everywhere this data is shown
   revalidatePath('/onboarding')
   revalidatePath('/onboarding/service')
+  revalidatePath('/services')
+  revalidatePath('/my-application')
   return { ok: true as const }
 }

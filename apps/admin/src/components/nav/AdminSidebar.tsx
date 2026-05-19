@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag } from 'lucide-react'
+import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History } from 'lucide-react'
 
 const NAV = [
   { href: '/leads',      label: 'Leads',      icon: Inbox },
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/products',   label: 'Products',   icon: Package },
   { href: '/orders',     label: 'Orders',     icon: ShoppingBag },
   { href: '/compliance', label: 'Compliance', icon: ShieldCheck },
+  { href: '/audit',      label: 'Audit log',  icon: History },
 ]
 
 export function AdminSidebar() {
