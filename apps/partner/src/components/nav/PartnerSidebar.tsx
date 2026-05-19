@@ -12,7 +12,7 @@ const NAV = [
   { href: '/settings',  label: 'Settings',  icon: Settings },
 ]
 
-export function ProviderSidebar() {
+export function PartnerSidebar() {
   const pathname = usePathname()
   return (
     <aside className="hidden w-56 shrink-0 border-r border-zinc-200 bg-white p-4 lg:block">

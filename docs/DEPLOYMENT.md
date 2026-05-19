@@ -59,7 +59,7 @@
 | `ilaunchify.com` + `www.ilaunchify.com` | Marketing site (V1: simple landing; V1.5+: full content site) | `apps/marketing` (V1.5+ — V1 ships a single-page redirect to `app.ilaunchify.com`) |
 | `app.ilaunchify.com` | Creator dashboard, builder, settings | `apps/creator` |
 | `shop.ilaunchify.com/{handle}` | Public creator storefronts | `apps/storefront` |
-| `partners.ilaunchify.com` | Manufacturer + print-provider portal | `apps/provider` |
+| `partners.ilaunchify.com` | Manufacturer + print-partner portal | `apps/partner` |
 | `admin.ilaunchify.com` | Internal admin panel | `apps/admin` |
 | `api.ilaunchify.com` | Public API for third-party integrations | `apps/api` (V2+) |
 | `cdn.ilaunchify.com` | Asset delivery via Cloudflare → R2 | — (Cloudflare worker) |
@@ -357,7 +357,7 @@ Top three failure modes and prepared responses:
 ### 3. Print provider receives wrong file
 
 **Impact:** Wrong label printed → bad customer experience.
-**Mitigation:** Every exported PDF has a unique hash + dispatch ID embedded. Print provider portal lets them verify file integrity before printing.
+**Mitigation:** Every exported PDF has a unique hash + dispatch ID embedded. Print partner portal lets them verify file integrity before printing.
 **Response:** Auto-reroute with apology email + free reprint. Cost absorbed by platform unless print provider was at fault.
 
 ---

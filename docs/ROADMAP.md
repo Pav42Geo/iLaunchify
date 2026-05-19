@@ -35,11 +35,11 @@ Built around the V1 scope in `ARCHITECTURE.md`: US-only, supplements + functiona
 - ComplianceCheck audit log written on every call.
 - Label PDF rendered via WeasyPrint, stored to R2.
 
-## Weeks 6–7 — Supplements + Provider portal
+## Weeks 6–7 — Supplements + Partner portal
 
 - `us-fda-supplements-2026.json` rule pack (21 CFR 111 + DSHEA).
 - Supplement Facts panel renderer.
-- `apps/provider` scaffold: signup, capability profile (MOQ, lead time, categories, disclosure level), order inbox.
+- `apps/partner` scaffold: signup, capability profile (MOQ, lead time, categories, disclosure level), order inbox.
 - Manufacturer + print-provider seed data with realistic profiles.
 
 ## Week 8 — Order flow + Payments

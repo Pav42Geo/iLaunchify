@@ -233,7 +233,7 @@ In Vercel dashboard, "New Project" four times, one per app:
 |---|---|---|---|
 | creator | `ilaunchify-creator` | `apps/creator` | `app.ilaunchify.com` |
 | storefront | `ilaunchify-storefront` | `apps/storefront` | `shop.ilaunchify.com` |
-| provider | `ilaunchify-provider` | `apps/provider` | `partners.ilaunchify.com` |
+| provider | `ilaunchify-partner` | `apps/partner` | `partners.ilaunchify.com` |
 | admin | `ilaunchify-admin` | `apps/admin` | `admin.ilaunchify.com` |
 
 For each project:
@@ -307,7 +307,7 @@ These get built in subsequent weeks per `docs/ROADMAP.md`:
 
 - Recipe builder UI (Week 2-3)
 - Real compliance logic in the Python service (Week 4-5)
-- Provider portal flows (Week 6-7)
+- Partner portal flows (Week 6-7)
 - Order flow + Stripe Connect wiring (Week 8)
 - Storefront real pages (Week 9-10)
 - Hardening + first beta (Week 11-12)

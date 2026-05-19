@@ -297,7 +297,7 @@ Until then, curation is a feature, not a constraint.
 The current scaffold needs three small changes once you confirm:
 
 1. **Add Partner + PartnerService + enums** to the schema port (when we land the Prisma schema from FOD).
-2. **Add `apps/provider`** is already in the scaffold — confirm the V1 routes (per `apps/creator/README.md` pattern):
+2. **Add `apps/partner`** is already in the scaffold — confirm the V1 routes (per `apps/creator/README.md` pattern):
    - `/invite/[token]` — invitation entrypoint (passwordless first touch)
    - `/onboarding` — multi-step profile completion (gated until ACTIVE)
    - `/services` — manage active services post-activation

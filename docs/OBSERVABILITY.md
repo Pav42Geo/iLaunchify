@@ -229,7 +229,7 @@ V1 traces every request (low traffic, free tier covers it). V1.5+ samples down t
 
 | Project | Sentry SDK |
 |---|---|
-| `apps/creator`, `apps/storefront`, `apps/provider`, `apps/admin` | `@sentry/nextjs` |
+| `apps/creator`, `apps/storefront`, `apps/partner`, `apps/admin` | `@sentry/nextjs` |
 | `services/compliance`, `services/exports` | `sentry-sdk[fastapi]` |
 
 Free tier: 5K errors/mo + 10K performance units. More than enough for V1.

@@ -66,7 +66,7 @@ Apps available at:
 
 - Creator app: http://localhost:3000
 - Storefront: http://localhost:3001
-- Provider portal: http://localhost:3002
+- Partner portal: http://localhost:3002
 - Admin: http://localhost:3003
 - Compliance service: http://localhost:8000
 - CockroachDB admin: http://localhost:8081

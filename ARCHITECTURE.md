@@ -31,7 +31,7 @@ V1 must ship one full slice — creator builds a product, gets it FDA-compliance
          ┌────────▼─────┐  ┌──▼──────────┐  ┌─▼──────────────┐
          │ Provider     │  │ Admin app   │  │ Public API     │
          │ portal       │  │ (apps/admin)│  │ (apps/api)     │
-         │(apps/provider│  │             │  │                │
+         │(apps/partner│  │             │  │                │
          └────────┬─────┘  └─────┬───────┘  └────────┬───────┘
                   │              │                   │
                   └──────────────┼───────────────────┘
@@ -58,7 +58,7 @@ V1 must ship one full slice — creator builds a product, gets it FDA-compliance
                        └───────────────────┘
 ```
 
-**Two app surfaces, one shared platform.** Creator + Storefront + Provider portal + Admin live in the same Next.js monorepo, share auth/db/ui/types via packages. The Python service handles compute-heavy domain work (nutrient summation, rule-pack evaluation, label PDF rendering).
+**Two app surfaces, one shared platform.** Creator + Storefront + Partner portal + Admin live in the same Next.js monorepo, share auth/db/ui/types via packages. The Python service handles compute-heavy domain work (nutrient summation, rule-pack evaluation, label PDF rendering).
 
 This is a **modular monolith**, not a microservices fleet. The previous attempt's 28-container compose is what we're explicitly *not* doing in V1. The boundary lines drawn between apps and packages are clean enough that any single piece can be extracted into its own service later when load demands.
 
@@ -161,7 +161,7 @@ iLaunchify/
 ├── apps/
 │   ├── creator/                  # Next.js — creator-facing builder + dashboard
 │   ├── storefront/               # Next.js — public creator storefronts (path: /{handle})
-│   ├── provider/                 # Next.js — manufacturer + print-provider portal
+│   ├── provider/                 # Next.js — manufacturer + print-partner portal
 │   ├── admin/                    # Next.js — internal admin panel
 │   └── api/                      # Next.js — public API for third-party integrations (V2+)
 ├── packages/
@@ -364,7 +364,7 @@ Everything else stays in `FOD-reference/` as a read-only quarry.
 
 **Weeks 4–5:** Compliance service. Real rule eval against `us-fda-food-2026.json`. Label PDF render.
 
-**Weeks 6–7:** Supplement Facts panel + `us-fda-supplements-2026.json`. Provider portal MVP.
+**Weeks 6–7:** Supplement Facts panel + `us-fda-supplements-2026.json`. Partner portal MVP.
 
 **Week 8:** Order flow end-to-end. Stripe Connect. Dual-dispatch with mock providers.
 

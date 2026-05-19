@@ -457,7 +457,7 @@ For V1, PCI scope is overhead we don't need. Checkout's hosted page can be reaso
 - [ ] Add Charge, Transfer, Refund, Dispute, PlatformFeeConfig, PartnerClawback models to schema port.
 - [ ] Update User schema: `stripeAccountId`, `stripeAccountStatus`.
 - [ ] Set up Stripe Connect application (platform Stripe account).
-- [ ] Implement `accountLinks.create` flow in `apps/creator` and `apps/provider` onboarding.
+- [ ] Implement `accountLinks.create` flow in `apps/creator` and `apps/partner` onboarding.
 - [ ] Implement Stripe Checkout integration in `apps/storefront`.
 - [ ] Implement webhook handler in `apps/api` for `payment_intent.succeeded`, `account.updated`, `charge.refunded`, `charge.dispute.*`, `transfer.*`.
 - [ ] Implement Transfer scheduler (BullMQ job): wakes every 5 min, advances PENDING → READY → EXECUTING → COMPLETED.

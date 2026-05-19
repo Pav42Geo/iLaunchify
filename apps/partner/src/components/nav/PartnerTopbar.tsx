@@ -4,7 +4,7 @@ import { Button } from '@ilaunchify/ui'
 import { signOut } from 'next-auth/react'
 import type { User } from '@ilaunchify/auth'
 
-export function ProviderTopbar({ user, companyName }: { user: User; companyName: string }) {
+export function PartnerTopbar({ user, companyName }: { user: User; companyName: string }) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-6">
       <div className="text-sm">

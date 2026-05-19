@@ -1,10 +1,10 @@
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { redirect } from 'next/navigation'
-import { ProviderSidebar } from '@/components/nav/ProviderSidebar'
-import { ProviderTopbar } from '@/components/nav/ProviderTopbar'
+import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
+import { PartnerTopbar } from '@/components/nav/PartnerTopbar'
 
-export default async function ProviderDashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function PartnerDashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
   if (user.role !== 'PARTNER') redirect('/login?error=unauthorized')
 
@@ -18,9 +18,9 @@ export default async function ProviderDashboardLayout({ children }: { children: 
 
   return (
     <div className="flex min-h-screen">
-      <ProviderSidebar />
+      <PartnerSidebar />
       <div className="flex flex-1 flex-col">
-        <ProviderTopbar user={user} companyName={partner.companyName} />
+        <PartnerTopbar user={user} companyName={partner.companyName} />
         <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
