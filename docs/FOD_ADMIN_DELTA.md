@@ -173,9 +173,11 @@ NotificationBroadcast
 
 ### 2.5 Languages & Markets (`/admin/languages-markets/`)
 
-**FOD source:** 897 lines for i18n + per-market settings (US, Canada, EU rules). Out of scope for US-only V1.
+**FOD source:** 897 lines for the admin page + 5,783 lines across 6 component tabs (Markets, Assignments, Translations, Settings, TemplateSpecs, RulePacks). Pavel built a real `Market` model + `MarketConfig` + `MarketLanguage` + ~13 entities cross-referenced to Market.
 
-**Where it lands:** `PLATFORM_SPEC.md` roadmap as V2 — when iLaunchify expands beyond the US. Skip for now.
+**Status correction (2026-05-24):** My first-pass call of "V2 defer" was wrong. The *idea* of market-and-region awareness is V1-critical — even if V1 only serves the US — because adding it later is migration-hostile (existing partner/product references become ambiguous when retroactively scoping). The *FOD admin implementation* (6 tabs, 5,783 lines) is overbuilt for V1; ship a leaner version.
+
+**Where it lands:** New dedicated `docs/MARKETS_AND_REGIONS.md` spec, written 2026-05-24. V1 schema for Market + Region + Language + MarketLanguage + PartnerMarketCert + BrandTargetMarket (tasks #150–#154). V1 seeds US-only + CA-as-COMING_SOON. V1.1 activates Canada (bilingual labels + Health Canada cert verification). V2 adds EU.
 
 ---
 
