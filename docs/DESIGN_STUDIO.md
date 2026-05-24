@@ -48,10 +48,37 @@ A single printable surface within a PackagingSystem. Example: "Front Panel" of t
 
 The visual composition that sits inside one DieCutTemplate. Example: "Modern Minimalist Front Panel" or "Bold Wellness Back Panel". One DieCutTemplate (one surface) can host many LabelDesignTemplates (different aesthetics for the same surface).
 
-- Owned by: same as die-line
+- Owned by: same as die-line, OR by admin (curated library), OR by `AI_AGENT` (V2 — generated then human-approved)
 - Defined by: HTML/CSS or React template, fill zones (brand name, logo, hero image, color slots), compliance-zone anchors with legal-position sets, default-on field declarations (which fields appear by default), hidable-field declarations (which default-on fields can be hidden)
-- Lifecycle: published linked to a `DieCutTemplate`
+- **Compatibility fields (V1, drive Design Studio filtering):**
+  - `compatiblePackagingTypeIds[]` — which canonical PackagingTypes (from `MANUFACTURER_PRODUCT_BUILDER.md` §6) this design fits
+  - `compatibleSurfaces[]` — FRONT | BACK | LID | FULL_WRAP | SLEEVE | NECK
+  - `productCategoryFit[]` — SUPPLEMENT | BEVERAGE | SAUCE | GUMMY | SNACK | POWDER | …
+  - `styleTags[]` — MINIMALIST | VINTAGE | BOLD | ORGANIC | SCIENTIFIC | LUXURY | PLAYFUL | …
+- **Tier + licensing (V1 schema, V1.5 billing):**
+  - `tier enum` — REGULAR (free with any plan) | PREMIUM (paid one-time or per-use) | EXCLUSIVE (max N partners can license)
+  - `priceCents Int?` — only for PREMIUM
+  - `exclusiveSeats Int?` — only for EXCLUSIVE (default 5)
+  - `exclusiveLicenseHolders String[]` — partnerIds that have claimed seats
+- **Provenance (V2 AI integration):**
+  - `createdBy enum` — ADMIN | DESIGNER (contractor) | AI_AGENT | PARTNER (V2+ — letting partners contribute)
+  - `aiSubAgent String?` — when createdBy=AI_AGENT: which sub-agent produced it (Generator-v1, Generator-v2-personalized, …)
+  - `trendReportId String?` — links back to the DesignTrendReport that informed the generation
+  - `humanCuratorId String?` — who approved it for ACTIVE status
+- Lifecycle: DRAFT → PENDING_REVIEW → ACTIVE → DEPRECATED (never hard-delete; existing products keep referencing)
 - New model: `LabelDesignTemplate`
+
+### Filtering in Design Studio (V1)
+
+When a creator opens Design Studio for a product, the template gallery auto-filters by:
+
+1. `compatiblePackagingTypeIds` ∋ the product's PackagingSystem's packagingTypeId
+2. `compatibleSurfaces` ∋ the surface being designed
+3. `productCategoryFit` ∋ the product's categoryId
+4. `tier` ∈ tiers the partner / creator has access to (REGULAR always visible; PREMIUM if entitled; EXCLUSIVE only if already licensed OR seats available + creator willing to pay)
+5. `status = ACTIVE`
+
+Style tags + search are creator-side refinements on top. Default sort: featured first, then most-used by similar products, then most recent.
 
 ### How creator interacts with the three layers
 
@@ -527,6 +554,52 @@ V1 total impact: Design Studio slot in PLATFORM_SPEC.md was Weeks 4-6 (3 weeks);
 | DS-V2-7 | **Variant-specific label edits** — flavor X uses different color than flavor Y; same template, per-variant overrides |
 | DS-V2-8 | **A/B testing labels** — split production: 250 units with Design A, 250 with Design B; track sell-through on creator's channel |
 
+## V2 AI Template Agent — production engine for LabelDesignTemplate library
+
+**Discussed with Pavel 2026-05-24.** DS-V2-5 above (AI generation of label variations) is *creator‑facing* — the creator describes their brand vibe and AI generates 3–5 templated variations. This subsection covers the separate but related *admin‑facing* engine that grows the LabelDesignTemplate library itself, so the V1‑seeded ~20 templates can scale to hundreds without proportional curator labor.
+
+### Three‑sub‑agent pipeline
+
+| Sub‑agent | Role | Input | Output |
+|---|---|---|---|
+| **Trend Researcher** | Monthly scan of design publications, packaging trend boards, recent product launches in each productCategoryFit. | A category + month | `DesignTrendReport` row: synthesized themes, reference image board (no copyrighted reproductions), recommended style direction |
+| **Template Generator** | Per trend report + per PackagingType + die-line constraints (printable area, bleed, mandatory zones from `MANUFACTURER_PRODUCT_BUILDER.md` §6.1a's PackagingSurface), generates N visual variations via image-gen API (FLUX / Imagen / Midjourney). Validates output against mandatory zones before saving. | A trend report + a (PackagingType, surface) pair | Draft LabelDesignTemplate rows in status DRAFT |
+| **Auto‑Tagger** | Vision LLM analyzes each generated template, fills out: styleTags, productCategoryFit, color-palette dominant tones, suggested tier (PREMIUM if luxury feel / fine detail, REGULAR otherwise), readability score, mandatory-zone-compliance score. | A DRAFT LabelDesignTemplate | Tags + tier suggestion + quality score populated |
+
+A human curator then sees a queue at `/admin/library/label-templates/curator-queue` — drafts ranked by auto-tagger quality score. They approve/reject/edit/set price/publish. Approval moves DRAFT → PENDING_REVIEW → ACTIVE.
+
+### IP + safety constraints (non-negotiable)
+
+- Trend Researcher aggregates themes, never copies specific products or names competing brands in prompts.
+- Generator prompts NEVER contain "in the style of Brand X" — themes only, never source attribution.
+- Every template stores `createdBy = AI_AGENT` + `aiSubAgent = "Generator-vN"` + `trendReportId` so admin always knows provenance.
+- Mandatory-zone validation runs post‑generation; templates that violate die-line printable area or required compliance zones auto‑reject before the curator queue.
+- No template publishes without human approval in V2; even in V2.5 semi‑autonomous mode (see below), AI signals drive curator attention, never bypass it.
+
+### Roadmap stages
+
+| Stage | When | What |
+|---|---|---|
+| **V1** | Now | Schema (tier + compatibility + provenance fields on LabelDesignTemplate). Filtering in Design Studio. ~20 hand-curated templates seeded by contracted designer. |
+| **V1.5** | Post-launch | Premium / Exclusive billing flow + Stripe entitlements. Necessary plumbing before AI-produced premium content has anywhere to land. |
+| **V2** | Major release after V1.5 | Three sub-agent pipeline + curator queue. Targets ~50–100 templates / month with ~4–8h / month of curator labor. Estimated ~$100–200/month in AI API costs. |
+| **V2.5** | Iteration | Auto-tagger trained on curator approve/reject signals; high-confidence templates auto-publish to a "Beta" shelf labeled as such; curator only reviews flagged ones. |
+| **V3** | Differentiator | Per-partner brand-styled generation — Generator takes a partner's brand kit (logo, palette, voice from company profile) and produces templates already pre-styled for them. Premium-tier feature. |
+
+### Cost model
+
+At V2 production rate (~100 templates/month entering curator queue, ~50 published):
+- Image generation: $0.04–0.08 per variant × 10 variants per source × 100 = ~$50/month
+- Vision LLM auto-tagging: ~$0.01 × 100 = ~$1/month
+- Trend Researcher (Claude or similar): $2–5 per report × monthly = ~$60/year
+- Total: ~$50–60/month in API costs + ~4–8h/month curator labor
+
+Compared to a contracted designer at ~5–10 templates/week for ~$5k/month, the economics flip fast once the platform has >100 active partners.
+
+### Forward dependency
+
+Requires the Asset Management library (FOD delta §1.2 — V1.1) to be in place before V2 can store generated templates with proper versioning. Don't schedule the AI agent until Asset Management has shipped.
+
 ## V3+ additions
 
 | # | Feature |
@@ -551,3 +624,4 @@ V1 total impact: Design Studio slot in PLATFORM_SPEC.md was Weeks 4-6 (3 weeks);
 
 - **2026-05-19** Spec locked: V1 ships Path A (upload) + Path B (template + brand-fill). Authoring by partners + admin. Compliance regions auto-injected and locked. 3-week build estimate. Supersedes `docs/CANVAS_ENGINE.md` (Fabric.js canvas deferred to V2+).
 - **2026-05-19** Expanded vision pass: V1 compliance regions changed from "locked" to "preset legal positions" (creator picks from declared options via form, no canvas). V1 adds: ready-to-use phrases library, certificate badges, default-on packaging labels (Net Weight, Address, "Produced for", etc.). V1.1 substantially expanded: Regular/Premium template tiers, multiple Nutrition Facts variants + rules engine, brand assets library, color-palette template re-shuffle, barcode/QR generator, version history. V2 confirmed as Full Fabric.js canvas with 3D visualizer + AI advisor + AI variation generator. V3+ adds AI video generator + collaborative design.
+- **2026-05-24** LabelDesignTemplate expanded with V1 compatibility fields (compatiblePackagingTypeIds, compatibleSurfaces, productCategoryFit, styleTags) + tier model (REGULAR/PREMIUM/EXCLUSIVE) + provenance fields (createdBy, aiSubAgent, trendReportId, humanCuratorId). Design Studio auto-filtering by those fields locked. New V2 section: AI Template Agent (three sub-agent pipeline — Trend Researcher + Template Generator + Auto-Tagger) with human curator queue, IP/safety constraints, cost model, and roadmap stages V1→V1.5→V2→V2.5→V3. Pavel-prioritized 2026-05-24 — depends on Asset Management (FOD_ADMIN_DELTA §1.2) landing first.
