@@ -1,79 +1,61 @@
+// Partner onboarding — 4-section accordion form.
+// Per docs/PARTNER_ONBOARDING.md §7.4.
+//
+// Single scrollable page with 4 collapsible sections. Section 1 ("Your
+// business") fully implemented in Phase 1 of build; Sections 2-4 are
+// progressive stubs that will get fleshed out in Phase 2.
+//
+// Replaces the previous 5-step linear wizard (legacy step pages at
+// /onboarding/company, /service, /documents, /stripe, /review still exist
+// for back-compat but the primary UX is now this accordion).
+//
+// Auth + role check happens in the parent (onboarding) layout.
+
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
-import Link from 'next/link'
-import { CheckCircle2, Circle } from 'lucide-react'
+import { OnboardingAccordion } from '@/components/onboarding/OnboardingAccordion'
+import { getOnboardingState } from './actions'
 
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Set up your partner account — iLaunchify' }
 
-export default async function OnboardingOverview() {
+export default async function OnboardingPage() {
   const user = await requireUser()
+
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    include: { services: true },
+    select: { id: true, companyName: true },
   })
-
   if (!partner) return null
 
-  const steps = [
-    {
-      title: 'Company details',
-      href: '/onboarding/company',
-      complete: !!partner.city && !!partner.state,
-    },
-    {
-      title: 'Service profile',
-      href: '/onboarding/service',
-      complete: partner.services.every((s) => {
-        const caps = s.capabilities as Record<string, unknown>
-        return Object.keys(caps).length > 1   // beyond the "type" stub
-      }),
-    },
-    {
-      title: 'Documents',
-      href: '/onboarding/documents',
-      complete: false,                          // V1.5+
-    },
-    {
-      title: 'Stripe payouts',
-      href: '/onboarding/stripe',
-      complete: !!user.stripeAccountId,
-    },
-  ]
-  const allComplete = steps.every((s) => s.complete)
+  const state = await getOnboardingState()
+
+  // Load Market + Region options for Section 1's pickers.
+  // Markets: hide COMING_SOON so partners don't try to declare interest in CA before V1.1.
+  // Regions: state-level only (METRO is V1.1+).
+  const [markets, regions] = await Promise.all([
+    prisma.market.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, code: true, name: true, region: true },
+      orderBy: { code: 'asc' },
+    }),
+    prisma.region.findMany({
+      where: { kind: 'STATE_PROVINCE', isActive: true },
+      select: { id: true, code: true, name: true, marketId: true, parentRegionId: true },
+      orderBy: { name: 'asc' },
+    }),
+  ])
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Get set up</CardTitle>
-          <CardDescription>Finish each step, then submit for review.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {steps.map((step) => (
-              <li key={step.href}>
-                <Link href={step.href} className="flex items-center gap-3 rounded-md p-2 hover:bg-zinc-50">
-                  {step.complete ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-zinc-300" />
-                  )}
-                  <span className={step.complete ? 'text-zinc-500 line-through' : ''}>
-                    {step.title}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button asChild disabled={!allComplete}>
-          <Link href="/onboarding/review">Submit for review</Link>
-        </Button>
-      </div>
-    </div>
+    <OnboardingAccordion
+      companyName={partner.companyName}
+      initialState={{
+        targetMarketIds: state?.marketsCert?.map((c) => c.marketId) ?? [],
+        primaryRegionId: state?.primaryRegion?.id ?? null,
+        serviceTypes: state?.services?.map((s) => s.type) ?? [],
+      }}
+      markets={markets}
+      regions={regions}
+    />
   )
 }
