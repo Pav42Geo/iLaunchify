@@ -6,8 +6,6 @@
 # Bring up:    pnpm compose:up
 # Tear down:   pnpm compose:down
 
-version: "3.9"
-
 services:
   cockroach:
     image: cockroachdb/cockroach:v24.2.4

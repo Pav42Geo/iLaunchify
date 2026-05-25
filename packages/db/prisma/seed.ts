@@ -14,23 +14,50 @@
 
 import { PrismaClient, UserRole, ProductCategory } from '@prisma/client'
 import { seedCatalog } from './seed-catalog'
+import { seedMarketsRegions } from './seed-markets-regions'
+import { seedPartnerOnboarding } from './seed-partner-onboarding'
+import { seedBrandIdentity } from './seed-brand-identity'
+import { seedCertificateTypes } from './seed-certificate-types'
+import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('Seeding iLaunchify V1...')
 
-  // --- Market ---
-  const us = await prisma.market.upsert({
-    where: { code: 'US' },
-    update: {},
-    create: {
-      code: 'US',
-      name: 'United States — FDA',
-      jurisdictionAct: 'FDA',
-      currency: 'USD',
-    },
-  })
+  // --- Markets + Languages + Regions ---
+  // Seeds: en-US/en-CA/fr-CA Languages; US (ACTIVE) + CA (COMING_SOON) Markets
+  // with full policy JSON; MarketLanguage joins; US region tree
+  // (1 country + 5 Census sub-regions + 50 states).
+  await seedMarketsRegions(prisma)
+
+  // Get the US market for use below (rule packs, etc.). Idempotent re-fetch
+  // — the row was created/backfilled by seedMarketsRegions above.
+  const us = await prisma.market.findUniqueOrThrow({ where: { code: 'US' } })
+
+  // --- Partner 5-layer onboarding foundation ---
+  // Seeds the singleton PlatformMandatedStandards row + the STANDARD_V1.0 ContractTerms
+  // that every partner agrees to during onboarding (per docs/PARTNER_ONBOARDING.md §2.5).
+  await seedPartnerOnboarding(prisma)
+
+  // --- Brand identity placeholders ---
+  // Bare-minimum BrandStylePreset / ColorPalette / TypographyPair / TypographyFont
+  // so the Step 4 Quickstart picker isn't empty in dev. Full ~12-preset catalog
+  // is contractor work tracked as task #164.
+  await seedBrandIdentity(prisma)
+
+  // --- Admin certificate library ---
+  // 12 starter CertificateType rows (NSF, USDA Organic, etc.) per
+  // docs/MANUFACTURER_PRODUCT_BUILDER.md §7.2. Admin uploads branded
+  // thumbnails via /admin/certificates after launch (task #129).
+  await seedCertificateTypes(prisma)
+
+  // --- Ingredient governance dictionaries ---
+  // ~30 banned + ~40 controversial ingredients per
+  // docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5. Hard-blocks ephedra/SARMs/etc.
+  // Soft-warns high-dose caffeine combinations, kratom, etc.
+  // FINAL list should be regulatory-consultant reviewed before V1 launch.
+  await seedIngredientDictionaries(prisma)
 
   // --- Platform fee config ---
   await prisma.platformFeeConfig.create({
