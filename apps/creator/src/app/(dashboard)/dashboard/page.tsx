@@ -8,7 +8,12 @@ export default async function DashboardHome() {
 
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
-    include: { brands: { include: { _count: { select: { products: true } } } } },
+    include: {
+      brands: {
+        include: { _count: { select: { products: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
   })
 
   const brand = profile?.brands[0]
@@ -58,6 +63,29 @@ export default async function DashboardHome() {
           </CardContent>
         </Card>
       </div>
+
+      {brand && (
+        <Card>
+          <CardHeader>
+            <CardDescription>Brand Identity Studio</CardDescription>
+            <CardTitle className="text-base">
+              Deepen {brand.name}&apos;s look &amp; feel
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-zinc-500">
+              Fine-tune your color system, typography, voice, and taglines. Every change feeds
+              the label renderer and the Design Studio template gallery.
+            </p>
+            <Link
+              href={`/brands/${brand.id}/identity`}
+              className="text-sm text-brand-primary underline"
+            >
+              Open Brand Identity Studio →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
