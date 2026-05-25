@@ -14,7 +14,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { OnboardingAccordion } from '@/components/onboarding/OnboardingAccordion'
-import { capsFromJson } from '@/components/onboarding/sections/WhatYouCanDoSection'
+import { capsFromJson } from '@/components/onboarding/sections/capabilities'
 import { getOnboardingState } from './actions'
 
 export const dynamic = 'force-dynamic'
