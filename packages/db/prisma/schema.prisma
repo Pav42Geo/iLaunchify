@@ -484,6 +484,11 @@ model CreatorProfile {
   displayName         String
   bio                 String?
   audienceSizeBand    String?                      // "10K-100K", "100K-1M", "1M+"
+  // V1: 5-step onboarding stepper progress per docs/CREATOR_ONBOARDING.md.
+  // Shape: { welcomeSeen, currentStep, completedSteps[], declaredTargetMarketIds[],
+  //         step1CompletedAt, step2CompletedAt, ... } — mirrors the Partner pattern.
+  // Cleared (or kept frozen) once all 5 steps are complete.
+  onboardingProgress  Json?
   // Fee overrides
   feeRateOverrideBp   Int?
   feeRateOverrideReason String?

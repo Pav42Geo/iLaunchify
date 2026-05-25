@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 import { Home, Store, Package, ShoppingBag, Settings } from 'lucide-react'
+import { LaunchChecklistTrigger } from '@/components/checklist/LaunchChecklistTrigger'
 
 const NAV = [
   { href: '/dashboard',   label: 'Dashboard',   icon: Home },
@@ -39,6 +40,12 @@ export function DashboardSidebar() {
             </Link>
           )
         })}
+
+        {/* Launch Checklist trigger — opens the drawer. Lives inside the
+            LaunchChecklistProvider context wrapped by (dashboard)/layout.tsx. */}
+        <div className="mt-4 border-t border-zinc-200 pt-4">
+          <LaunchChecklistTrigger />
+        </div>
       </nav>
     </aside>
   )
