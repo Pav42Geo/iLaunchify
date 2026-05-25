@@ -19,4 +19,4 @@ export {
   type UploadResult,
 } from './upload'
 export { getSignedReadUrl } from './signed-url'
-export { partnerFileKey, brandAssetKey } from './keys'
+export { partnerFileKey, brandAssetKey, packagingAssetKey } from './keys'

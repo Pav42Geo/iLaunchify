@@ -24,6 +24,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Refund',
   'ProductTemplate',
   'Product',
+  'PackagingSystem',
   'RulePack',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]

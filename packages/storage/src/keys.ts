@@ -46,3 +46,18 @@ export function brandAssetKey(params: {
   const safe = sanitizeFilename(params.filename)
   return `brands/${params.brandId}/${params.kind}/${id}-${safe}`
 }
+
+// Partner packaging assets (die-lines + reference photos). Path convention:
+//   partners/{partnerId}/packaging/{packagingSystemId}/{kind}/{cuid}-{filename}
+// Lets us delete-all-by-packaging-system on archival + delete-all-by-partner
+// on teardown. {kind} = 'die_line' | 'reference_photo'.
+export function packagingAssetKey(params: {
+  partnerId: string
+  packagingSystemId: string
+  kind: 'die_line' | 'reference_photo'
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `partners/${params.partnerId}/packaging/${params.packagingSystemId}/${params.kind}/${id}-${safe}`
+}
