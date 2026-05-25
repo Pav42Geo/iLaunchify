@@ -40,6 +40,10 @@ export default async function ProductEditPage({ params }: PageProps) {
       ingredientSlots: {
         include: {
           baseIngredient: { select: { name: true, allergenFlags: true, source: true } },
+          replacements: {
+            include: { ingredient: { select: { name: true } } },
+            orderBy: { displayOrder: 'asc' },
+          },
         },
         orderBy: { displayOrder: 'asc' },
       },
@@ -50,7 +54,7 @@ export default async function ProductEditPage({ params }: PageProps) {
           },
         },
       },
-      variants: { select: { id: true, containerFormat: true, servingsPerContainer: true, servingSizeG: true } },
+      variants: { orderBy: { createdAt: 'asc' } },
       certificates: { select: { instanceId: true } },
     },
   })
@@ -101,6 +105,13 @@ export default async function ProductEditPage({ params }: PageProps) {
           weightG: Number(s.weightG),
           source: s.baseIngredient.source,
           allergens: s.baseIngredient.allergenFlags,
+          allowReplacement: s.allowReplacement,
+          replacements: s.replacements.map((r) => ({
+            id: r.id,
+            name: r.ingredient.name,
+            weightGOverride: r.weightGOverride != null ? Number(r.weightGOverride) : null,
+            calloutText: r.calloutText,
+          })),
         }))}
         packagingLinks={template.packagingSystems.map((p) => ({
           packagingSystemId: p.packagingSystemId,
@@ -112,10 +123,22 @@ export default async function ProductEditPage({ params }: PageProps) {
         }))}
         variants={template.variants.map((v) => ({
           id: v.id,
+          flavor: v.flavor,
           containerFormat: v.containerFormat,
+          containerSizeG: v.containerSizeG != null ? Number(v.containerSizeG) : null,
           servingsPerContainer: v.servingsPerContainer,
           servingSizeG: Number(v.servingSizeG),
+          servingSizeDesc: v.servingSizeDesc,
+          moqMin: v.moqMin,
+          moqMax: v.moqMax,
+          leadTimeDays: v.leadTimeDays,
+          unitCostCentsOverride: v.unitCostCentsOverride,
         }))}
+        allergenManualOverrides={
+          Array.isArray(template.allergenManualOverrides)
+            ? (template.allergenManualOverrides as Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>)
+            : []
+        }
       />
     </div>
   )

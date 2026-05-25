@@ -38,6 +38,9 @@ import {
 } from 'lucide-react'
 import type { ProductTemplateStatus, IngredientSource } from '@prisma/client'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
+import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
+import { AllergensCard } from './cards/AllergensCard'
+import { VariantsCard, type VariantRow } from './cards/VariantsCard'
 
 // -----------------------------------------------------------------------------
 // Props
@@ -63,12 +66,10 @@ interface Counts {
   certificates: number
 }
 
-interface IngredientSlot {
-  id: string
-  name: string
-  weightG: number
+// IngredientSlot now mirrors the SlotRow shape used by IngredientsCard
+// (so we can pass through without re-mapping).
+interface IngredientSlot extends SlotRow {
   source: IngredientSource | null
-  allergens: string[]
 }
 
 interface PackagingLink {
@@ -80,12 +81,7 @@ interface PackagingLink {
   leadTimeDays: number
 }
 
-interface VariantRow {
-  id: string
-  containerFormat: string
-  servingsPerContainer: number
-  servingSizeG: number
-}
+// VariantRow re-exported from VariantsCard so the page loader passes through.
 
 interface EditorShellProps {
   template: TemplateSnapshot
@@ -93,6 +89,7 @@ interface EditorShellProps {
   ingredientSlots: IngredientSlot[]
   packagingLinks: PackagingLink[]
   variants: VariantRow[]
+  allergenManualOverrides: Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>
 }
 
 // -----------------------------------------------------------------------------
@@ -105,6 +102,7 @@ export function EditorShell({
   ingredientSlots,
   packagingLinks,
   variants,
+  allergenManualOverrides,
 }: EditorShellProps) {
   const router = useRouter()
 
@@ -115,9 +113,7 @@ export function EditorShell({
   const [priceFloorDollars, setPriceFloorDollars] = useState(
     (template.priceFloorCents / 100).toFixed(2),
   )
-  const [allergenCrossContamination, setAllergenCrossContamination] = useState(
-    template.allergenCrossContamination ?? '',
-  )
+  // allergenCrossContamination is owned by AllergensCard now — see ③ below.
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   // Open-card map — cards are open by default; user collapses what they don't need.
@@ -151,7 +147,6 @@ export function EditorShell({
         name,
         description,
         priceFloorCents: Number.isFinite(priceCents) ? priceCents : undefined,
-        allergenCrossContamination: allergenCrossContamination || null,
       })
       if (result.ok) {
         setSaveStatus('saved')
@@ -165,7 +160,7 @@ export function EditorShell({
       if (timerRef.current) clearTimeout(timerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, description, priceFloorDollars, allergenCrossContamination])
+  }, [name, description, priceFloorDollars])
 
   // -------- Submit + archive --------
   const [isSubmitting, startSubmit] = useTransition()
@@ -265,27 +260,11 @@ export function EditorShell({
           onToggle={() => toggleCard('ingredients')}
           reapprovalRequired
         >
-          <div className="space-y-2">
-            <ul className="space-y-1.5">
-              {ingredientSlots.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2"
-                >
-                  <div>
-                    <div className="font-medium text-zinc-900">{s.name}</div>
-                    <div className="text-xs text-zinc-500">
-                      {s.weightG}g · {sourceLabel(s.source)}
-                    </div>
-                  </div>
-                  {s.allergens.length > 0 && (
-                    <span className="text-xs text-amber-700">{s.allergens.join(', ')}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <Stub note="Slot replacements + per-slot lock + USDA picker land in #131 (W2 editor cards)." />
-          </div>
+          <IngredientsCard
+            productTemplateId={template.id}
+            initialSlots={ingredientSlots}
+            isDraft={isDraft}
+          />
         </EditorCard>
 
         {/* ③ Allergens */}
@@ -293,22 +272,20 @@ export function EditorShell({
           id="allergens"
           icon={ShieldAlert}
           title="Allergens"
-          subtitle="Auto-derived from ingredients + cross-contamination statement"
+          subtitle="Auto-derived from ingredients + manual overrides + cross-contamination statement"
           open={!!openCards.allergens}
           onToggle={() => toggleCard('allergens')}
           reapprovalRequired
         >
-          <Field label="Cross-contamination statement" hint="Prints on the label">
-            <textarea
-              value={allergenCrossContamination}
-              onChange={(e) => setAllergenCrossContamination(e.target.value)}
-              rows={2}
-              placeholder='e.g. "Manufactured in a facility that also processes peanuts and tree nuts."'
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
-              disabled={!isDraft}
-            />
-          </Field>
-          <Stub note="Auto-derived Big-9 contains-list + manual overrides land in #131." />
+          <AllergensCard
+            productTemplateId={template.id}
+            isDraft={isDraft}
+            autoDerived={Array.from(
+              new Set(ingredientSlots.flatMap((s) => s.allergens)),
+            )}
+            initialManualOverrides={allergenManualOverrides}
+            initialCrossContamination={template.allergenCrossContamination}
+          />
         </EditorCard>
 
         {/* ④ Packaging */}
@@ -340,32 +317,21 @@ export function EditorShell({
           <Stub note="Add/remove packaging links + per-size pricing tiers land in #132 (W3 editor cards)." />
         </EditorCard>
 
-        {/* ⑤ Pricing */}
+        {/* ⑤ Pricing / Variants */}
         <EditorCard
           id="pricing"
           icon={DollarSign}
-          title="Pricing"
-          subtitle={`${counts.variants} variant${counts.variants === 1 ? '' : 's'} · base price + per-tier discounts`}
+          title="Variants & pricing"
+          subtitle={`${counts.variants} variant${counts.variants === 1 ? '' : 's'} · per-SKU container, servings, MOQ, lead time, cost override`}
           open={!!openCards.pricing}
           onToggle={() => toggleCard('pricing')}
           reapprovalRequired
         >
-          <ul className="space-y-1.5">
-            {variants.map((v) => (
-              <li
-                key={v.id}
-                className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2"
-              >
-                <div>
-                  <div className="font-medium text-zinc-900">{v.containerFormat}</div>
-                  <div className="text-xs text-zinc-500">
-                    {v.servingsPerContainer} × {v.servingSizeG}g servings
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <Stub note="Variant CRUD + volume-tier pricing land in #131 (W2 editor cards)." />
+          <VariantsCard
+            productTemplateId={template.id}
+            initialVariants={variants}
+            isDraft={isDraft}
+          />
         </EditorCard>
 
         {/* ⑥ Certificates */}
