@@ -124,7 +124,12 @@ export default async function PartnerDetail({ params }: { params: Promise<{ part
             </CardContent>
           </Card>
 
-          <PartnerActions partnerId={partner.id} currentStatus={partner.status} />
+          <PartnerActions
+            partnerId={partner.id}
+            currentStatus={partner.status}
+            overall={overall}
+            statusChangedAt={partner.statusChangedAt}
+          />
         </div>
       </div>
     </div>
