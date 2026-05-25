@@ -5,7 +5,7 @@ writes a ComplianceCheck audit row, returns ComplianceResult.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException
@@ -129,5 +129,5 @@ async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
         panelData=panel,
         auditRef=audit.id,
         rulePackVersion=rule_pack_version.version,
-        evaluatedAt=datetime.now(timezone.utc).isoformat(),
+        evaluatedAt=datetime.now(UTC).isoformat(),
     )

@@ -203,7 +203,12 @@ def _build_panel_data(
     rows: list[NutrientRow] = []
     for nutrient_def in rule_pack.get("mandatoryNutrients", []):
         nid = nutrient_def.get("id")
-        if nid in ("servingSize", "servingsPerContainer", "amountPerServingHeader", "percentDailyValueHeader"):
+        if nid in (
+            "servingSize",
+            "servingsPerContainer",
+            "amountPerServingHeader",
+            "percentDailyValueHeader",
+        ):
             continue
         if nid is None:
             continue

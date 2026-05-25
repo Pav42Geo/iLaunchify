@@ -115,7 +115,10 @@ class TestProteinRounding:
 
 
 class TestPercentDV:
-    """Vitamins & minerals: < 2% = '*' (or 0); ≤ 10% = nearest 2%; 10-50% = nearest 5%; > 50% = nearest 10%."""
+    """Vitamins & minerals %DV rounding.
+
+    Rules: <2% = '*' (or 0); ≤10% nearest 2%; 10-50% nearest 5%; >50% nearest 10%.
+    """
 
     def test_below_2pct_returns_none(self, rule_pack):
         # 1mg calcium against 1300mg DV = 0.08% → *

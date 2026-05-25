@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.calculation import calculate_nutrition
 from app.db import get_prisma
-from app.schemas import NutritionRequest, NutrientProfile
+from app.schemas import NutrientProfile, NutritionRequest
 
 router = APIRouter()
 

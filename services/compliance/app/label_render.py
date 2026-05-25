@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML  # type: ignore[import-not-found]
@@ -65,8 +64,13 @@ def render_panel_svg(panel: PanelData) -> str:
     html_body = render_panel_html(panel)
     width_mm = 73
     height_mm = 110  # approximate; auto-grows in foreignObject
+    svg_attrs = (
+        f'xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width_mm}mm" height="{height_mm}mm" '
+        f'viewBox="0 0 280 420"'
+    )
     return f"""<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="{width_mm}mm" height="{height_mm}mm" viewBox="0 0 280 420">
+<svg {svg_attrs}>
   <foreignObject x="0" y="0" width="280" height="420">
     <div xmlns="http://www.w3.org/1999/xhtml">{html_body}</div>
   </foreignObject>

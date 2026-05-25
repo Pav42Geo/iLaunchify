@@ -9,7 +9,6 @@ hardcoded compliance check removed (that's compliance.py now).
 """
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any
 
 from app.schemas import NutrientProfile
