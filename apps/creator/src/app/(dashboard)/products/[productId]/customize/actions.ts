@@ -6,6 +6,7 @@ import { ComplianceClient } from '@ilaunchify/compliance-client'
 import type { ComplianceResult } from '@ilaunchify/types'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { maybeStampFirstProductSelected } from '../../../_actions/checklist-actions'
 
 const Schema = z.object({
   productId: z.string(),
@@ -59,6 +60,15 @@ export async function saveCustomization(input: z.infer<typeof Schema>): Promise<
 
   revalidatePath(`/products/${product.id}/customize`)
   revalidatePath(`/products/${product.id}`)
+
+  // Step 5 of Launch Checklist — first product customization counts as
+  // "picked your first product." Idempotent: only the first call stamps.
+  try {
+    await maybeStampFirstProductSelected()
+  } catch {
+    // Don't fail the save if the milestone stamp errors — it'll get
+    // re-tried on the next customize save.
+  }
 
   // Run compliance check against the Python service
   const rulePackExternalId =

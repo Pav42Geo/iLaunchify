@@ -32,3 +32,17 @@ export function partnerFileKey(params: {
   const safe = sanitizeFilename(params.filename)
   return `partners/${params.partnerId}/${params.section}/${id}-${safe}`
 }
+
+// Brand assets — logo, hero, patterns, etc. Path convention:
+//   brands/{brandId}/{kind}/{cuid}-{filename}
+// Where {kind} is the AssetType enum value lower-cased (e.g., 'logo', 'hero_image').
+// Brand-scoped namespacing lets us delete-all-by-brand on brand teardown.
+export function brandAssetKey(params: {
+  brandId: string
+  kind: 'logo' | 'logo_icon' | 'logo_horizontal' | 'logo_vertical' | 'logo_monogram' | 'logo_inverse' | 'hero_image' | 'pattern' | 'favicon'
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `brands/${params.brandId}/${params.kind}/${id}-${safe}`
+}

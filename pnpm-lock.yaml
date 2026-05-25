@@ -141,6 +141,9 @@ importers:
       '@ilaunchify/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@ilaunchify/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types

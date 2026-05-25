@@ -76,6 +76,77 @@ export async function saveTellUsAboutYou(input: TellUsAboutYouInput) {
 }
 
 // -----------------------------------------------------------------------------
+// Step 3 — "Connect a channel" (Shopify / Amazon / brand site / other).
+// V1 just persists the creator's intent. Real channel integration is V1.5+
+// (#111 schema is already in place via ChannelConnection rows).
+// -----------------------------------------------------------------------------
+
+export type ChannelChoice = 'SHOPIFY' | 'AMAZON' | 'BRAND_SITE' | 'OTHER' | 'NOT_SURE'
+
+export async function saveChannelChoice(input: {
+  channel: ChannelChoice
+  url: string
+}) {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') {
+    return { ok: false, error: 'NOT_A_CREATOR' as const }
+  }
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true, onboardingProgress: true },
+  })
+  if (!profile) return { ok: false, error: 'PROFILE_NOT_FOUND' as const }
+
+  const progress = (profile.onboardingProgress as Record<string, unknown> | null) ?? {}
+  const next = {
+    ...progress,
+    selectedChannel: input.channel,
+    channelUrl: input.url.trim() || null,
+    step3CompletedAt: new Date().toISOString(),
+  }
+
+  await prisma.creatorProfile.update({
+    where: { id: profile.id },
+    data: { onboardingProgress: next },
+  })
+
+  revalidatePath('/dashboard')
+  revalidatePath('/settings/channels')
+  return { ok: true as const }
+}
+
+// -----------------------------------------------------------------------------
+// Step 5 hook — stamped from saveCustomization (and any other "first product
+// committed" entry point) so the drawer reflects the milestone.
+// Idempotent: only the first call writes.
+// -----------------------------------------------------------------------------
+
+export async function maybeStampFirstProductSelected() {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false as const }
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true, onboardingProgress: true },
+  })
+  if (!profile) return { ok: false as const }
+
+  const progress = (profile.onboardingProgress as Record<string, unknown> | null) ?? {}
+  if (progress.step5CompletedAt) return { ok: true as const }
+
+  await prisma.creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      onboardingProgress: { ...progress, step5CompletedAt: new Date().toISOString() },
+    },
+  })
+
+  revalidatePath('/dashboard')
+  return { ok: true as const }
+}
+
+// -----------------------------------------------------------------------------
 // Stamp drawer-dismissed so we don't auto-open on every dashboard load.
 // The drawer auto-opens once, then respects the dismiss until creator
 // re-opens it manually from the sidebar nav item.
