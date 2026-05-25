@@ -47,13 +47,38 @@ enum StripeAccountStatus {
 // ENUMS — PARTNER & SERVICE
 // =============================================================================
 
+// Partner lifecycle FSM. The original 6 values are Phase-A legacy and remain
+// supported for existing rows; new code uses the 8 V1 values added per
+// docs/PARTNER_ONBOARDING.md §3 activation FSM:
+//
+//   LEAD → IDENTITY_PENDING_REVIEW → IDENTITY_VERIFIED → OPS_PENDING_REVIEW
+//        → OPERATIONALLY_CONFIGURED → ACTIVE → (INTEGRATION_ENHANCED)
+//        + side states PAUSED / SUSPENDED / TERMINATED
+//
+// Legacy mapping (for back-compat when reading Phase-A rows):
+//   DRAFT       → LEAD
+//   INVITED     → LEAD
+//   IN_PROGRESS → LEAD
+//   UNDER_REVIEW → IDENTITY_PENDING_REVIEW
+//   ACTIVE      → ACTIVE (same)
+//   SUSPENDED   → SUSPENDED (same)
 enum PartnerStatus {
+  // V1 (canonical from 2026-05-24 forward)
+  LEAD
+  IDENTITY_PENDING_REVIEW
+  IDENTITY_VERIFIED
+  OPS_PENDING_REVIEW
+  OPERATIONALLY_CONFIGURED
+  ACTIVE
+  INTEGRATION_ENHANCED
+  PAUSED
+  SUSPENDED
+  TERMINATED
+  // Phase-A legacy values (deprecated; preserved for back-compat with existing rows)
   DRAFT
   INVITED
   IN_PROGRESS
   UNDER_REVIEW
-  ACTIVE
-  SUSPENDED
 }
 
 enum ServiceType {
@@ -334,14 +359,31 @@ model Market {
   id              String   @id @default(cuid())
   code            String   @unique          // 'US' (V1 only); 'EU', 'CA', 'AU', 'UK' (V2+)
   name            String                    // 'United States — FDA'
-  jurisdictionAct String                    // 'FDA', 'EFSA', etc.
+  jurisdictionAct String                    // 'FDA', 'EFSA', etc. (regulator)
   currency        String   @default("USD")
+  // V1 additions per docs/MARKETS_AND_REGIONS.md
+  region          String?                   // display grouping: 'North America', 'EU', 'UK'
+  status          MarketStatus @default(ACTIVE)
+  defaultLanguageId String?
+  // Policy JSON — validated by the rule pack; shape per market regulator:
+  typography      Json?                     // { minFontSizePt, requiredFonts[], boldRules }
+  allergenPolicy  Json?                     // { allergenList[], declarationFormat, ... }
+  barcodeRules    Json?                     // { allowedSymbologies[], placementRules }
+  // Legacy isActive kept for backward compat; new code reads `status` instead.
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Existing relations
   rulePacks       RulePack[]
   products        Product[]
+  // V1 new relations
+  defaultLanguage Language? @relation("DefaultLanguage", fields: [defaultLanguageId], references: [id])
+  languages       MarketLanguage[]
+  regions         Region[]
+  configs         MarketConfig[]
+  partnersServing PartnerMarketCert[]
+  brandsTargeting BrandTargetMarket[]
 }
 
 // PlatformFeeConfig — historical revisions; never edit, only insert new rows
@@ -482,12 +524,32 @@ model Partner {
   //   { currentStep: "documents", completedSteps: ["company", "service"], updatedAt: "..." }
   // Cleared on first ACTIVE transition.
   onboardingProgress    Json?
+  // V1: geographic + market scoping per docs/MARKETS_AND_REGIONS.md
+  primaryRegionId       String?                                    // FK to Region (state-level); nullable until partner provides
+  // V1: FSM transition tracking per docs/PARTNER_ONBOARDING.md §3
+  statusChangedAt       DateTime?
+  statusChangedById     String?                                    // User who triggered the last status change (null for SYSTEM)
+  statusChangeReason    String?
   // Relations
   user                  User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   services              PartnerService[]
   clawbacks             PartnerClawback[]
   verificationSections  PartnerVerificationSection[]
   files                 PartnerFile[]
+  // V1 new relations (markets/regions)
+  primaryRegion         Region?                       @relation("PartnerPrimaryRegion", fields: [primaryRegionId], references: [id])
+  marketsCert           PartnerMarketCert[]
+  // V1 new relations (5-layer onboarding — 1:1 each, populated as the partner advances)
+  operationalCapability PartnerOperationalCapability?
+  operationalStandards  PartnerOperationalStandards?
+  commercialTerms       PartnerCommercialTerms?
+  integrationCapability PartnerIntegrationCapability?
+  onboardingState       PartnerOnboardingProgress?
+  // V1 new relations (ingredient sourcing)
+  privateIngredients    Ingredient[]                    @relation("PartnerPrivateIngredients")
+  // V1 new relations (manufacturer product builder — packaging + certificates)
+  packagingSystems      PackagingSystem[]
+  certificateInstances  PartnerCertificateInstance[]
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt
 }
@@ -564,15 +626,59 @@ model Brand {
   tagline           String?
   aboutText         String?
   isActive          Boolean        @default(true)
+  // V1 — geographic + market scoping per docs/MARKETS_AND_REGIONS.md
+  operatingRegionId String?                                       // brand's home region (US state V1)
+  // V1 — Brand Identity Quickstart (Step 4 of Creator Onboarding)
+  // Per docs/CREATOR_ONBOARDING.md + docs/BRAND_IDENTITY_STUDIO.md
+  brandStylePresetId      String?                                 // FK to BrandStylePreset; null if built from scratch
+  colorPaletteId          String?                                 // FK to ColorPalette (curated picks); null if customColorsJson populated
+  customColorsJson        Json?                                   // partner-built palette { primary, secondary, accent } when no curated pick
+  typographyPairId        String?                                 // FK to TypographyPair (curated; legacy fontDisplay/fontBody preserved for back-compat)
+  typographyAccentId      String?                                 // FK to TypographyFont (optional accent font)
+  brandVoiceTags          String[]                                // MAX 2 — matches LabelDesignTemplate.styleTags vocab (minimalist|vintage|bold|organic|scientific|luxury|playful|wellness|athletic|clinical)
+  packagingDirectionNotes String?                                 // partner-supplied notes for the V2 AI Template Agent
+  directionNotes          String?                                 // general brand direction notes
+  // V1 — Brand Identity Studio (deep fields polished after onboarding)
+  logoIconAssetId         String?                                 // icon-only logo variant
+  logoHorizontalAssetId   String?                                 // horizontal lockup
+  logoVerticalAssetId     String?                                 // vertical / stacked
+  logoMonogramAssetId     String?                                 // monogram / seal
+  logoInverseAssetId      String?                                 // inverse / single-color for dark BG
+  faviconAssetId          String?                                 // 16/32/180 favicon
+  logoMinClearSpaceUnits  Float    @default(0.5)                  // minimum padding around logo (multiple of logo height)
+  typeScaleRatio          Float    @default(1.250)                // 1.125 / 1.250 / 1.333 / 1.414
+  colorSystem             Json?                                   // 11 semantic roles: { primary, secondary, accent, surface, background, textPrimary, textSecondary, success, warning, error, border }
+  customPaletteOverride   Boolean  @default(false)                // true if creator overrode the curated palette
+  photographyStyle        PhotographyStyle?
+  illustrationStyle       IllustrationStyle?
+  patternAssetIds         String[]                                // Asset rows, kind=PATTERN
+  heroImageAssetIds       String[]                                // additional brand hero photos (Brand.heroAssetId is primary)
+  writingToneWords        String[]                                // MAX 4 from controlled vocab
+  brandKeywords           String[]                                // free-text ~3-7 short phrases
+  personaDescription      String?                                 // ~150 word brand audience paragraph
+  secondaryTaglines       String[]                                // additional brand taglines beyond `tagline`
+  bannedWords             String[]                                // linted in label copy + product descriptions
+  brandHealthScore        Int      @default(0)                    // computed 0-100% Studio completion
+  brandBookExportedAt     DateTime?                               // V1.5+: last PDF brand book export
+  onboardingCompletedAt   DateTime?                               // null until all 5 stepper steps done; dashboard widget hides on != null
   // Relations
-  creatorProfile    CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  socialAccounts    SocialAccount[]
-  products          Product[]
-  templates         Template[]
-  designs           Design[]
-  orders            Order[]
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  creatorProfile          CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  socialAccounts          SocialAccount[]
+  products                Product[]
+  templates               Template[]
+  designs                 Design[]
+  orders                  Order[]
+  // V1 new relations (markets/regions)
+  operatingRegion         Region?        @relation("BrandOperatingRegion", fields: [operatingRegionId], references: [id])
+  targetMarkets           BrandTargetMarket[]
+  // V1 new relations (brand identity)
+  brandStylePreset        BrandStylePreset? @relation(fields: [brandStylePresetId], references: [id])
+  colorPalette            ColorPalette?     @relation(fields: [colorPaletteId], references: [id])
+  typographyPair          TypographyPair?   @relation(fields: [typographyPairId], references: [id])
+  typographyAccent        TypographyFont?   @relation("BrandTypographyAccent", fields: [typographyAccentId], references: [id])
+  onboardingState         CreatorOnboardingProgress?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 }
 
 // =============================================================================
@@ -600,16 +706,30 @@ model SocialAccount {
 
 model Ingredient {
   id              String   @id @default(cuid())
-  // USDA reference (when available)
-  usdaFdcId       String?  @unique
-  name            String
-  // Per-100g nutrition snapshot — fast read for calc engine
-  nutritionPer100g Json    // { calories, totalFat, saturatedFat, ... }
-  // Categorization
-  category        String?
+  // Legacy fields (preserved for back-compat with rows created before 2026-05-24):
+  usdaFdcId       String?  @unique                       // populated for USDA-sourced rows
+  name            String                                  // legacy display name; new code reads internalName
+  nutritionPer100g Json                                   // { calories, totalFat, saturatedFat, ... } — also the canonical V1 nutrient profile
+  category        String?                                 // legacy free-text category
   isOrganic       Boolean  @default(false)
-  // Allergen flags
-  allergens       String[]                       // ["milk","wheat","sesame",...]
+  allergens       String[]                                // legacy ["milk","wheat","sesame"]; new code reads allergenFlags
+  // V1 — three-tier sourcing per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a
+  source             IngredientSource?                    // nullable until backfilled; new rows must set
+  sourceRefId        String?                              // FDC fdc_id (mirrors usdaFdcId for USDA), library slug, or partner UUID
+  internalName       String?                              // 'Symrise Natural Vanilla 67-B' — used in recipe editor / cost / COA matching
+  labelDeclarationName String?                            // 'Natural Flavor' — printed on FDA label; defaults to internalName if unset
+  densityGPerML      Float?                               // for volume↔mass conversion
+  allergenFlags      String[]                             // canonical Big-9 set ["milk","eggs","fish","shellfish","tree_nuts","peanuts","wheat","soybeans","sesame"] + iLaunchify-extended
+  complianceNotes    String?                              // e.g. 'FDA class I nutrient', '21 CFR exemption'
+  // V1 — verification governance per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5
+  verificationStatus VerificationStatus @default(LIBRARY_PROMOTED)  // USDA/seed = LIBRARY_PROMOTED; partner-private = SELF_ATTESTED by default
+  coaFileId          String?                              // optional uploaded COA PDF (PartnerFile)
+  createdById        String?                              // User who created (null for USDA-imported)
+  verifiedById       String?                              // admin User who verified (null until ADMIN_VERIFIED)
+  ownerPartnerId     String?                              // NULL for USDA + LIBRARY; partner id for PARTNER_PRIVATE
+  promotedFromIngredientId String?                        // breadcrumb if this LIBRARY row was promoted from a PRIVATE one
+  // V1 — bioengineered disclosure per USDA BE Standard 2022 (Recipal parity, FOD admin delta §1.5e)
+  bioengineeredStatus BioengineeredStatus @default(NOT_APPLICABLE)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   // Relations
@@ -618,9 +738,17 @@ model Ingredient {
   templateSlotsAsBase    TemplateIngredientSlot[]        @relation("SlotBaseIngredient")
   templateReplacements   TemplateIngredientReplacement[] @relation("ReplacementIngredient")
   templateOptionals      TemplateOptionalIngredient[]    @relation("OptionalIngredient")
+  // V1 new relations
+  ownerPartner            Partner?     @relation("PartnerPrivateIngredients", fields: [ownerPartnerId], references: [id])
+  promotedFrom            Ingredient?  @relation("IngredientPromotionLineage", fields: [promotedFromIngredientId], references: [id])
+  promotedTo              Ingredient[] @relation("IngredientPromotionLineage")
+  usageStats              IngredientUsage[]
 
   @@index([name])
   @@index([usdaFdcId])
+  @@index([source, sourceRefId])
+  @@index([ownerPartnerId])
+  @@index([verificationStatus])
 }
 
 model Recipe {
@@ -888,6 +1016,9 @@ model PartnerServiceDieCut {
 // =============================================================================
 
 model DesignLibraryItem {
+  // Conceptual name in spec docs: "LabelDesignTemplate" (docs/DESIGN_STUDIO.md §3).
+  // The Studio's template gallery filters this table by the compatibility fields
+  // below + the creator's brand.brandVoiceTags overlap with styleTags.
   id              String              @id @default(cuid())
   name            String
   description     String?
@@ -895,15 +1026,35 @@ model DesignLibraryItem {
   dieCutTemplateId String
   previewAssetId  String
   templateSpec    Json                                     // serialized design (layers, slots)
-  tags            String[]                                 // ["minimal", "organic", ...]
-  source          DesignLibrarySource @default(CURATED)
+  // Legacy fields (preserved for back-compat):
+  tags            String[]                                 // ["minimal", "organic", ...] — superseded by styleTags
+  source          DesignLibrarySource @default(CURATED)    // superseded by createdBy
+  isActive        Boolean             @default(true)       // superseded by lifecycleStatus
   generationMeta  Json?                                    // for AI_AUTHORED
-  isActive        Boolean             @default(true)
+  // V1 compatibility fields driving Design Studio auto-filtering
+  // (per docs/DESIGN_STUDIO.md §3 + task #148)
+  compatiblePackagingTypeIds  String[]                     // FK-ish to PackagingType.id; empty = compatible with any
+  compatibleSurfaces          LabelTemplateSurface[]       // FRONT | BACK | LID | FULL_WRAP | SLEEVE | NECK
+  productCategoryFit          String[]                     // e.g., ['SUPPLEMENT', 'BEVERAGE', 'SAUCE']
+  styleTags                   String[]                     // matches Brand.brandVoiceTags vocab (minimalist|vintage|bold|organic|scientific|luxury|playful|wellness|athletic|clinical)
+  // V1 tier model — billing flow lands V1.5
+  tier                        LabelTemplateTier  @default(REGULAR)
+  priceCents                  Int?                         // PREMIUM only
+  exclusiveSeats              Int?                         // EXCLUSIVE only (default 5 per spec; nullable for REGULAR/PREMIUM)
+  exclusiveLicenseHolders     String[]                     // partnerIds (or brandIds) that have claimed seats
+  // V1 provenance — supports V2 AI Template Agent pipeline
+  createdBy                   LabelTemplateCreator  @default(ADMIN)
+  aiSubAgent                  String?                      // when createdBy=AI_AGENT (e.g., 'Generator-v1', 'Generator-v2-personalized')
+  trendReportId               String?                      // V2 — links to DesignTrendReport when AI-generated
+  humanCuratorId              String?                      // admin User who approved ACTIVE
+  // V1 lifecycle (distinct from legacy isActive boolean)
+  lifecycleStatus             LabelTemplateStatus  @default(DRAFT)
   // Relations
   dieCutTemplate  DieCutTemplate      @relation(fields: [dieCutTemplateId], references: [id])
   clonedTemplates Template[]
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+  @@index([lifecycleStatus, tier])
 }
 
 // =============================================================================
@@ -1146,11 +1297,32 @@ model Dispute {
 // are orthogonal to ingredients — same recipe, different flavor + bottle size.
 // =============================================================================
 
+// ProductTemplate lifecycle per docs/MANUFACTURER_PRODUCT_BUILDER.md §8.1.
+// Legacy 4-value enum extended with 5 V1 canonical states. Legacy values are
+// preserved for back-compat with rows created before 2026-05-24.
+//
+// Canonical FSM:
+//   DRAFT → PENDING_REVIEW ─Approve─→ PUBLISHED
+//                          ─Request changes─→ NEEDS_CHANGES ─Resubmit─→ PENDING_REVIEW
+//                          ─Reject─→ REJECTED
+//   PUBLISHED ─edit approval-marked field─→ PENDING_EDIT_REVIEW ─Approve─→ PUBLISHED
+//   PUBLISHED / PENDING_EDIT_REVIEW ⇄ PAUSED (admin or partner)
+//
+// Legacy mapping (for back-compat when reading older rows):
+//   UNDER_REVIEW → PENDING_REVIEW
+//   ARCHIVED     → REJECTED (semantically closest; admin can re-classify)
 enum ProductTemplateStatus {
-  DRAFT            // manufacturer authoring
-  UNDER_REVIEW     // admin queue
-  PUBLISHED        // visible in /catalog
-  ARCHIVED         // hidden, existing creator Products still valid
+  // V1 canonical (from 2026-05-24 forward)
+  DRAFT                  // manufacturer authoring (same as legacy)
+  PENDING_REVIEW         // admin queue (first submission of a never-published template)
+  NEEDS_CHANGES          // admin requested changes via ProductReviewItem checklist
+  PUBLISHED              // visible in /catalog (same as legacy)
+  PENDING_EDIT_REVIEW    // changes to a live published template held for admin approval; live version keeps serving
+  PAUSED                 // hidden from marketplace (admin or partner initiated); reversible
+  REJECTED               // admin rejected; partner can resubmit as new submission
+  // Legacy (deprecated; preserved for back-compat)
+  UNDER_REVIEW           // alias for PENDING_REVIEW
+  ARCHIVED               // alias for REJECTED
 }
 
 // =============================================================================
@@ -1243,6 +1415,15 @@ model ProductTemplate {
   imageAssetId    String?
   // Optional: snapshot of base nutrition (BASE ingredients only) for fast catalog display
   baseNutritionSnapshot Json?
+  // V1 — per docs/MANUFACTURER_PRODUCT_BUILDER.md
+  pendingEditPayload          Json?                       // proposed edits while in PENDING_EDIT_REVIEW; live row keeps serving
+  finishedProductWeightG      Int?                        // derived from slots; cached for shipping calc
+  customMeta                  Json?                       // partner-supplied key/value pairs ([{key,value}] max 10)
+  allergenCrossContamination  String?                     // partner-input cross-contamination statement
+  allergenManualOverrides     Json?                       // [{ allergen, reason }] for manual additions
+  // V1 — Recipal-parity additions per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5c + §4a.5d
+  nutrientOverrides           Json?                       // [{ nutrient, value, reason }] — applied after sum, before rounding
+  ingredientGroups            Json?                       // [{ groupName, ingredientIds[], displayMode, sortAs }] for FDA-allowed grouping ('Spices', 'Natural Flavors')
   // Relations
   subcategory     Subcategory   @relation(fields: [subcategoryId], references: [id])
   manufacturerService PartnerService? @relation(fields: [manufacturerServiceId], references: [id])
@@ -1250,6 +1431,12 @@ model ProductTemplate {
   optionalIngredients TemplateOptionalIngredient[]
   variants        ProductTemplateVariant[]
   products        Product[]
+  // V1 new relations (manufacturer product builder)
+  packagingSystems ProductTemplatePackaging[]
+  certificates    ProductCertificate[]
+  reviewItems     ProductReviewItem[]
+  notes           ProductNote[]
+  flavorPresets   FlavorPreset[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   @@index([subcategoryId, status])
@@ -1377,10 +1564,11 @@ model ProductTemplateVariant {
 //   - all VERIFIED      → Partner.status = ACTIVE (admin manual approve)
 //   - else              → Partner.status = UNDER_REVIEW (initial submit)
 enum VerificationSectionType {
-  BUSINESS         // Legal name, registration, EIN/VAT, addresses, KYB
-  FACILITY         // Production capabilities, certifications, MOQ, lead time
-  DOCUMENTS        // Uploaded compliance docs (license, insurance, cert PDFs)
-  PUBLIC_PROFILE   // Public-facing brand info (logo, description, badges)
+  BUSINESS               // Legal name, registration, EIN/VAT, addresses, KYB
+  FACILITY               // Production capabilities, certifications, MOQ, lead time
+  DOCUMENTS              // Uploaded compliance docs (license, insurance, cert PDFs)
+  PUBLIC_PROFILE         // Public-facing brand info (logo, description, badges)
+  OPERATIONAL_STANDARDS  // 5-section model addition per docs/PARTNER_ONBOARDING.md §5 + #159
 }
 
 enum VerificationSectionStatus {
@@ -1644,4 +1832,936 @@ enum ChannelProductLinkStatus {
   ACTIVE                                     // listing live on the channel
   ARCHIVED                                   // unpublished from the channel
   ERROR                                      // last push failed
+}
+
+// =============================================================================
+// MARKETS & REGIONS — V1 (US-only ACTIVE; CA seeded COMING_SOON; EU V2)
+// Spec: docs/MARKETS_AND_REGIONS.md
+// =============================================================================
+//
+// Two distinct concepts:
+//   Market = regulatory + commercial jurisdiction (drives label rules, allergen
+//            policy, language requirements, currency, rule pack selection)
+//   Region = physical location (drives shipping, lead time, partner-proximity
+//            matching, freight zones)
+//
+// V1 seed:
+//   - 1 ACTIVE Market: "US" (FDA)
+//   - 1 COMING_SOON Market: "CA" (CFIA, hidden from selection)
+//   - 1 Language: "en-US"
+//   - Region tree: 1 country (US) + 5 sub-regions (NE/SE/MW/SW/NW per Census)
+//     + 50 STATE_PROVINCE rows linked to parent sub-regions
+
+enum MarketStatus {
+  ACTIVE                                     // selectable by partners/brands; products can target it
+  COMING_SOON                                // seeded but hidden from selection (admin can preview)
+  DEPRECATED                                 // no new selections; existing relations preserved
+}
+
+enum RegionKind {
+  COUNTRY                                    // 'US', 'CA'
+  SUBNATIONAL_GROUP                          // 'US-NE', 'US-SE' (Census Bureau divisions)
+  STATE_PROVINCE                             // 'US-CA', 'US-NY' (or CA provinces)
+  METRO                                      // V1.1+ — major metro areas for finer proximity
+}
+
+enum PartnerMarketStatus {
+  ACTIVE                                     // certification verified, in date
+  LAPSED                                     // expired; partner notified, soft-suspended for this market
+  REVOKED                                    // admin revoked; permanent
+}
+
+// -----------------------------------------------------------------------------
+// Language + MarketLanguage — supports bilingual jurisdictions (CFIA EN+FR)
+// -----------------------------------------------------------------------------
+
+model Language {
+  id              String           @id                    // 'en-US', 'fr-CA', 'es-MX'
+  code            String                                  // 'en', 'fr', 'es'
+  name            String                                  // 'English (US)'
+  region          String?                                 // 'US', 'CA'
+  isActive        Boolean          @default(true)
+  marketLinks     MarketLanguage[]
+  defaultIn       Market[]         @relation("DefaultLanguage")
+}
+
+model MarketLanguage {
+  id              String           @id @default(cuid())
+  marketId        String
+  languageId      String
+  isDefault       Boolean          @default(false)
+  isRequired      Boolean          @default(false)        // CFIA Canada requires EN+FR
+  displayOrder    Int              @default(0)
+  market          Market           @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  language        Language         @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  @@unique([marketId, languageId])
+}
+
+// -----------------------------------------------------------------------------
+// MarketConfig — key/value extensions per market (number_format, date_format,
+//                weight_unit_default, etc.)
+// -----------------------------------------------------------------------------
+
+model MarketConfig {
+  id              String           @id @default(cuid())
+  marketId        String
+  key             String                                  // 'number_format', 'date_format'
+  value           Json
+  market          Market           @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  @@unique([marketId, key])
+}
+
+// -----------------------------------------------------------------------------
+// Region — geographic tree (country → subnational group → state/province →
+//          metro V1.1+). Each region belongs to one Market.
+// -----------------------------------------------------------------------------
+
+model Region {
+  id               String     @id @default(cuid())
+  code             String     @unique                     // 'US', 'US-NE', 'US-CA', 'US-NYC'
+  name             String                                 // 'California', 'Northeast US'
+  marketId         String
+  parentRegionId   String?                                 // 'US-NE' is parent of 'US-NY'
+  kind             RegionKind
+  centroidLatLng   Json?                                   // { lat, lng } for distance math
+  shippingZone     String?                                 // freight-zone identifier
+  isActive         Boolean    @default(true)
+  market           Market     @relation(fields: [marketId], references: [id])
+  parent           Region?    @relation("RegionTree", fields: [parentRegionId], references: [id])
+  children         Region[]   @relation("RegionTree")
+  partnersAtRegion Partner[]  @relation("PartnerPrimaryRegion")
+  brandsOperating  Brand[]    @relation("BrandOperatingRegion")
+  @@index([marketId, kind])
+}
+
+// -----------------------------------------------------------------------------
+// PartnerMarketCert — which markets a partner is certified to produce for,
+//                     with cert ref + expiry. Admin verifies in Vendor
+//                     Verification queue (#94 extension #159).
+// -----------------------------------------------------------------------------
+
+model PartnerMarketCert {
+  partnerId        String
+  marketId         String
+  certifiedAt      DateTime
+  expiresAt        DateTime?
+  certificationRef String?                                 // FDA registration #, Health Canada licence #
+  status           PartnerMarketStatus @default(ACTIVE)
+  partner          Partner            @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  market           Market             @relation(fields: [marketId], references: [id])
+  @@id([partnerId, marketId])
+  @@index([marketId, status])
+}
+
+// -----------------------------------------------------------------------------
+// BrandTargetMarket — which markets a brand sells into. First-written is
+//                     marked isPrimary for default labelling.
+// -----------------------------------------------------------------------------
+
+model BrandTargetMarket {
+  brandId    String
+  marketId   String
+  isPrimary  Boolean @default(false)
+  brand      Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  market     Market  @relation(fields: [marketId], references: [id])
+  @@id([brandId, marketId])
+  @@index([marketId])
+}
+
+// =============================================================================
+// PARTNER 5-LAYER ONBOARDING — V1
+// Spec: docs/PARTNER_ONBOARDING.md
+// =============================================================================
+//
+// The 5 layers (each independent, non-sequential after Identity):
+//   L1 Identity & Verification    — Phase A model (PartnerVerificationSection 4 sections + 5th OPERATIONAL_STANDARDS)
+//   L2 Operational Capability     — structured productTypes / packagingFormats / specs / MOQ / lead time / specialties
+//   L3 Operational Standards      — partner-wide: response SLA, comm channel, escalation, revisions
+//   L4 Financial & Commercial     — fixed STANDARD_V1.0 contract for V1; per-partner override via contractOverrideId V1.5+
+//   L5 System Integration         — dashboard-only baseline; CSV/webhook/API hooks reserved
+//
+// Activation FSM (PartnerStatus enum above): LEAD → IDENTITY_PENDING_REVIEW
+//   → IDENTITY_VERIFIED → OPS_PENDING_REVIEW → OPERATIONALLY_CONFIGURED → ACTIVE
+//   → (INTEGRATION_ENHANCED) + side states PAUSED / SUSPENDED / TERMINATED.
+
+// -----------------------------------------------------------------------------
+// LAYER 2 — Operational Capability
+// -----------------------------------------------------------------------------
+
+model PartnerOperationalCapability {
+  id                   String   @id @default(cuid())
+  partnerId            String   @unique
+  // Controlled vocabularies (admin-managed; values validated in app layer for V1)
+  productTypes         String[]                              // e.g., ['carbonated_beverage', 'supplement_powder', 'hot_sauce']
+  packagingFormats     String[]                              // e.g., ['12oz_slim_can', '16oz_pet_bottle']
+  productionSpecs      String[]                              // e.g., ['hot_fill', 'cold_fill', 'HPP', 'pasteurization']
+  // Quantitative
+  moqUnitsMin          Int                                   // typical minimum order qty floor
+  moqUnitsTypical      Int                                   // most common MOQ partners quote
+  leadTimeDaysMin      Int                                   // typical lead time window low end
+  leadTimeDaysMax      Int                                   // typical lead time window high end
+  monthlyCapacityUnits Int?                                  // optional production ceiling per month
+  // Specialty boost — subset of productTypes the partner is best at;
+  // drives marketplace ranking (per docs/MARKETS_AND_REGIONS.md matching).
+  specialties          String[]
+  notes                String?                               // partner-supplied free-text caveats
+  updatedAt            DateTime @updatedAt
+  partner              Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// LAYER 3 — Operational Standards (partner-wide V1; per-product override V1.5+)
+// -----------------------------------------------------------------------------
+
+enum CommChannel {
+  EMAIL
+  IN_APP
+  PHONE
+}
+
+enum RevisionPolicy {
+  PLATFORM_DEFAULT      // V1 default — uses PlatformMandatedStandards rules
+  CUSTOM_NEGOTIATED     // V1.5+ admin-mediated per-partner negotiated terms
+}
+
+enum ProductionConfirmationMode {
+  SLOW_CONFIRM          // 24h email loop (default for non-integrated partners)
+  FAST_CONFIRM          // in-app, immediate (requires partner to be active in dashboard)
+}
+
+model PartnerOperationalStandards {
+  id                          String                     @id @default(cuid())
+  partnerId                   String                     @unique
+  responseTimeHours           Int                        @default(24)   // partner commits to respond to new orders within X hours
+  preferredCommChannel        CommChannel                @default(IN_APP)
+  escalationContact           Json                                       // { name, email, phone, role }
+  revisionPolicy              RevisionPolicy             @default(PLATFORM_DEFAULT)
+  customRevisionTerms         String?                                    // only set when revisionPolicy=CUSTOM_NEGOTIATED
+  productionConfirmationMode  ProductionConfirmationMode @default(SLOW_CONFIRM)
+  acceptedDefaults            Boolean                    @default(true)  // convenience flag — "partner accepted all V1 defaults"
+  updatedAt                   DateTime                   @updatedAt
+  partner                     Partner                    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+}
+
+// Singleton — platform-wide standards applied to ALL partners.
+// Admin-edited via /admin/platform-settings/operational-standards.
+// Versioned for audit (append-only; never edit existing rows).
+model PlatformMandatedStandards {
+  id                           String   @id @default(cuid())
+  version                      String   @unique                          // 'v1.0', 'v1.1'
+  acceptedArtworkFormats       String[] @default(["AI", "PDF", "SVG", "PSD"])
+  versioningRule               String   @default("every_change_new_version")
+  disputeResolutionWindowDays  Int      @default(14)
+  escalationPath               Json                                       // tier sequence: tier1 admin → tier2 admin → legal
+  effectiveFrom                DateTime
+  effectiveTo                  DateTime?
+  createdAt                    DateTime @default(now())
+}
+
+// -----------------------------------------------------------------------------
+// LAYER 4 — Financial & Commercial
+// Fixed standard contract V1; per-partner override hook reserved for V1.5+.
+// -----------------------------------------------------------------------------
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+enum PaymentMethod {
+  ACH
+  WIRE
+  STRIPE_CONNECT       // V1 default — already wired via #54
+}
+
+enum PricingModel {
+  FIXED
+  QUOTE_BASED
+  VOLUME_TIERED
+}
+
+enum InvoiceCycle {
+  PER_ORDER
+  WEEKLY
+  MONTHLY
+}
+
+// Admin-managed library of contract versions. Partners reference, never edit.
+// V1 seed: one row, 'STANDARD_V1.0'.
+// V1.5+: additional rows can be created for per-partner side agreements;
+//        admin sets PartnerCommercialTerms.contractOverrideId to point at them.
+model ContractTerms {
+  id                    String          @id @default(cuid())
+  version               String          @unique                          // 'STANDARD_V1.0', 'ACME_CUSTOM_V1' (V1.5+)
+  name                  String
+  description           String
+  status                ContractStatus
+  failureResponsibility Json                                              // matrix per docs/PARTNER_ONBOARDING.md §2.5
+  paymentTerms          Json                                              // standard payment timing + supported methods
+  pricingModelOptions   PricingModel[]                                    // which models partners under this contract can offer
+  invoiceCycleOptions   InvoiceCycle[]
+  disputePolicy         Json
+  effectiveFrom         DateTime
+  effectiveTo           DateTime?
+  pdfFileId             String?                                           // R2 reference to human-signable PDF
+  createdAt             DateTime        @default(now())
+  partnersReferencing   PartnerCommercialTerms[] @relation("StandardContract")
+  partnersOverriding    PartnerCommercialTerms[] @relation("OverrideContract")
+}
+
+model PartnerCommercialTerms {
+  id                     String         @id @default(cuid())
+  partnerId              String         @unique
+  contractTermsId        String                                            // FK — defaults to current STANDARD_V1.0 ACTIVE row
+  // V1.5+ extensibility hook (nullable; never set in V1 — every partner uses standard contract)
+  contractOverrideId     String?
+  paymentMethod          PaymentMethod  @default(STRIPE_CONNECT)
+  payoutTimingDays       Int            @default(7)
+  pricingModel           PricingModel   @default(FIXED)
+  invoiceCycle           InvoiceCycle   @default(PER_ORDER)
+  signedAt               DateTime
+  signedById             String                                            // User who clicked "I accept the contract"
+  stripeConnectAccountId String?                                           // mirrors User.stripeAccountId for partner-level scoping
+  updatedAt              DateTime       @updatedAt
+  partner                Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  contractTerms          ContractTerms  @relation("StandardContract", fields: [contractTermsId], references: [id])
+  contractOverride       ContractTerms? @relation("OverrideContract", fields: [contractOverrideId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// LAYER 5 — System Integration (V1 = dashboard-only baseline for everyone)
+// -----------------------------------------------------------------------------
+
+enum InventorySyncMode {
+  NONE              // V1 default — no automatic inventory sync
+  MANUAL            // V1.5+ — partner enters inventory adjustments by hand
+  CSV_BATCH         // V1.5+ — periodic CSV import/export
+  WEBHOOK           // V2 — push notifications to partner endpoint
+  API               // V2 — full programmatic sync
+}
+
+model PartnerIntegrationCapability {
+  id                   String            @id @default(cuid())
+  partnerId            String            @unique
+  hasDashboardOnly     Boolean           @default(true)                   // everyone has this in V1
+  canUseCSVImport      Boolean           @default(false)                  // V1.5+ feature flag
+  canUseCSVExport      Boolean           @default(false)
+  hasWebhookEndpoint   Boolean           @default(false)                  // V2+ feature flag
+  webhookUrl           String?
+  webhookSigningSecret String?                                            // rotated by admin
+  hasAPIIntegration    Boolean           @default(false)                  // V2+ feature flag
+  apiKeyId             String?                                            // future FK to APIKey rotation system (V2)
+  inventorySyncMode    InventorySyncMode @default(NONE)
+  updatedAt            DateTime          @updatedAt
+  partner              Partner           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// OnboardingProgress — per-layer completion tracking for the wizard at
+// /partner/onboarding. Distinct from the legacy Partner.onboardingProgress
+// Json field (Phase A) which is preserved for back-compat.
+// -----------------------------------------------------------------------------
+
+enum LayerStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED                  // partner has submitted; awaiting admin review
+  APPROVED                   // admin approved this layer
+  CHANGES_REQUESTED          // admin requested changes via changeRequests Json
+}
+
+model PartnerOnboardingProgress {
+  id                    String      @id @default(cuid())
+  partnerId             String      @unique
+  layer1Identity        LayerStatus @default(NOT_STARTED)
+  layer2Capability      LayerStatus @default(NOT_STARTED)
+  layer3Standards       LayerStatus @default(NOT_STARTED)
+  layer4Commercial      LayerStatus @default(NOT_STARTED)
+  layer5Integration     LayerStatus @default(NOT_STARTED)
+  // Structured admin feedback per layer — array of { category, description, createdAt, resolvedAt? }
+  // Partner sees these as a checklist on /partner/my-application with deep-links to fix.
+  layer1ChangeRequests  Json?
+  layer2ChangeRequests  Json?
+  layer3ChangeRequests  Json?
+  layer4ChangeRequests  Json?
+  layer5ChangeRequests  Json?
+  lastActivityAt        DateTime?
+  partner               Partner     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+}
+
+// =============================================================================
+// CREATOR ONBOARDING + BRAND IDENTITY — V1
+// Specs: docs/CREATOR_ONBOARDING.md + docs/BRAND_IDENTITY_STUDIO.md
+// =============================================================================
+//
+// Creator onboarding = 5-step guided stepper (much lighter than partner
+// onboarding). Brand Identity = Quickstart (in onboarding Step 4) + dedicated
+// Brand Identity Studio destination (7 tabs, open-ended polish).
+//
+// Curated libraries (admin-managed; ~12 BrandStylePresets + ~30 ColorPalettes
+// + ~20 TypographyPairs + ~60 TypographyFont rows seeded by contractor at V1
+// launch — see task #164).
+
+enum PhotographyStyle {
+  LIFESTYLE      // humans using the product in context
+  PRODUCT        // clean product shots on solid backgrounds
+  LAB            // scientific / technical contexts
+  INGREDIENT     // close-ups of raw inputs
+  EDITORIAL      // magazine / aspirational
+  NONE           // brand doesn't use photography (illustrated-only)
+}
+
+enum IllustrationStyle {
+  LINE_ART
+  FLAT
+  HAND_DRAWN
+  GEOMETRIC
+  NONE
+}
+
+enum FontSource {
+  GOOGLE_FONTS      // V1 default — all curated fonts come from Google Fonts
+  ADOBE             // V1.1+
+  PRIVATE_LICENSED  // V1.5+ — partner uploads with license attestation
+}
+
+enum BrandLibraryStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+enum OnboardingStepStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED            // distinguishes deliberate skip from "not yet started"
+}
+
+// -----------------------------------------------------------------------------
+// CURATED LIBRARIES — admin-managed, referenced by Brand
+// -----------------------------------------------------------------------------
+
+// Complete starter brand kits picker shown in Onboarding Step 4 + Studio.
+// Picking a preset auto-fills ~70% of Brand fields (color palette, typography
+// pair, voice tags, sample tagline pattern).
+model BrandStylePreset {
+  id                          String              @id @default(cuid())
+  slug                        String              @unique          // 'modern-minimalist-wellness'
+  name                        String                                // 'Modern Minimalist Wellness'
+  description                 String
+  styleTags                   String[]                              // matches LabelDesignTemplate.styleTags + Brand.brandVoiceTags vocab
+  recommendedColorPaletteId   String?
+  recommendedTypographyPairId String?
+  sampleLabelAssetId          String?                               // preview thumbnail shown in picker
+  sampleTagline               String?                               // example tagline pattern
+  status                      BrandLibraryStatus
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  // Relations
+  recommendedColorPalette     ColorPalette?       @relation("PresetRecommendedPalette", fields: [recommendedColorPaletteId], references: [id])
+  recommendedTypographyPair   TypographyPair?     @relation("PresetRecommendedTypography", fields: [recommendedTypographyPairId], references: [id])
+  brandsUsing                 Brand[]
+}
+
+// Curated color palettes — each specifies all 11 semantic roles + pre-computed
+// WCAG contrast report so picker can show "✓ AA passes" inline.
+model ColorPalette {
+  id              String             @id @default(cuid())
+  slug            String             @unique                // 'sage-serenity'
+  name            String                                    // 'Sage Serenity'
+  description     String?
+  styleTags       String[]                                  // tags this palette suits
+  colorSystem     Json                                      // all 11 semantic roles
+  contrastReport  Json                                      // pre-computed WCAG ratios per text/bg pair
+  isCurated       Boolean            @default(true)         // admin-curated vs user-custom (V1: all curated)
+  status          BrandLibraryStatus
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  // Reverse relations
+  brandsUsing     Brand[]
+  presets         BrandStylePreset[] @relation("PresetRecommendedPalette")
+}
+
+// Curated typography pairs — heading + body fonts that work together.
+model TypographyPair {
+  id                String             @id @default(cuid())
+  slug              String             @unique              // 'playfair-source-sans'
+  name              String                                  // 'Playfair Display + Source Sans Pro'
+  description       String?
+  styleTags         String[]
+  headingFontId     String                                  // FK to TypographyFont
+  bodyFontId        String                                  // FK to TypographyFont
+  recommendedRatio  Float              @default(1.250)
+  status            BrandLibraryStatus
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  // Relations
+  headingFont       TypographyFont     @relation("PairHeading", fields: [headingFontId], references: [id])
+  bodyFont          TypographyFont     @relation("PairBody",    fields: [bodyFontId],    references: [id])
+  // Reverse relations
+  brandsUsing       Brand[]
+  presets           BrandStylePreset[] @relation("PresetRecommendedTypography")
+}
+
+// Individual font rows (Google Fonts at V1 launch).
+model TypographyFont {
+  id                  String     @id @default(cuid())
+  family              String                                // 'Inter', 'Playfair Display'
+  weight              String                                // 'Regular', 'Bold', 'Black'
+  style               String                                // 'Normal', 'Italic'
+  source              FontSource @default(GOOGLE_FONTS)
+  webfontUrl          String?                               // for browser rendering
+  printFileAssetId    String?                               // OTF/TTF asset for label PDF rendering (R2)
+  unicodeRanges       String[]                              // subset support (latin, latin-ext, ...)
+  licenseTerms        String                                // brief license summary for creator
+  status              BrandLibraryStatus
+  createdAt           DateTime   @default(now())
+  // Reverse relations
+  headingInPairs      TypographyPair[] @relation("PairHeading")
+  bodyInPairs         TypographyPair[] @relation("PairBody")
+  accentInBrands      Brand[]    @relation("BrandTypographyAccent")
+  @@unique([family, weight, style])
+}
+
+// -----------------------------------------------------------------------------
+// CreatorOnboardingProgress — 5-step stepper tracking (per Brand)
+// Distinct from PartnerOnboardingProgress (different ceremony, different shape).
+// -----------------------------------------------------------------------------
+
+model CreatorOnboardingProgress {
+  id                       String                @id @default(cuid())
+  brandId                  String                @unique
+  step1TellUsAboutYou      OnboardingStepStatus  @default(NOT_STARTED)  // markets + region + brand name
+  step2PaymentSetup        OnboardingStepStatus  @default(NOT_STARTED)  // Stripe Checkout for funding production orders
+  step3ConnectChannel      OnboardingStepStatus  @default(NOT_STARTED)  // Shopify/WC/BigC/Amazon/Direct (optional)
+  step4BrandIdentity       OnboardingStepStatus  @default(NOT_STARTED)  // Brand Quickstart (logo, palette, typography, voice tags, tagline)
+  step5FirstProduct        OnboardingStepStatus  @default(NOT_STARTED)  // marketplace browse + pick first product
+  lastActivityAt           DateTime?
+  brand                    Brand                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
+}
+
+// =============================================================================
+// MANUFACTURER PRODUCT BUILDER — Packaging + Certificates + Notes + FlavorPresets
+// Spec: docs/MANUFACTURER_PRODUCT_BUILDER.md
+// =============================================================================
+//
+// V1 schema additions covering:
+//   §5  FlavorPreset (overlay on base recipe — one product, many curated flavor variations)
+//   §6  Two-tier Packaging (admin canonical PackagingType + partner-owned PackagingSystem
+//       with admin override layer; PackagingSurface with die-line files per surface)
+//   §7  Certificate library (admin CertificateType catalog + partner
+//       PartnerCertificateInstance with private PDFs + ProductCertificate link
+//       with per-size scope via appliesToPackagingSystemIds[])
+//   §8  ProductReviewItem (structured admin feedback checklist)
+//   §8a ProductNote (per-product partner ↔ admin thread)
+//   §15 ProductTemplatePackaging (the per-size bridge with pricing tiers, MOQ,
+//       lead time, surface-die-line overrides)
+
+enum PackagingTopology {
+  SINGLE_CONTAINER       // one jar / bottle / pouch / can / box
+  MULTI_CONTAINER_BOX    // outer carton holding N inner containers (variety pack, sampler)
+  STICK_PACK             // single-serve sticks (powder, supplement)
+  SACHET                 // single-serve flexible sachets
+  CASE                   // shipper/case (24-pack, etc.) — wholesale unit
+  CAPSULE_JAR            // bottle of capsules/tablets (supplement form factor)
+  POUCH_STAND_UP         // stand-up pouch with resealable zipper
+  POUCH_FLAT             // flat sealed pouch
+  TUBE                   // squeeze tube (sauces, gels)
+  OTHER                  // catch-all (V1.5+ admin can add canonical types via PackagingType)
+}
+
+enum FlavorMode {
+  SINGLE                 // one flavor per packaging unit (1 jar = 1 flavor)
+  MULTI                  // multiple flavors per packaging unit (variety pack)
+}
+
+enum FlavorPolicy {
+  CREATOR_PICK           // creator selects flavor(s) per unit
+  PARTNER_FIXED          // partner has fixed assortment; creator can't customize
+}
+
+enum PackagingStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum PackagingTypeStatus {
+  ACTIVE
+  DEPRECATED
+}
+
+enum CertificateTypeStatus {
+  ACTIVE
+  DEPRECATED
+}
+
+enum PartnerCertInstanceStatus {
+  PENDING_REVIEW
+  VERIFIED
+  EXPIRED                // auto-transitioned when expiresAt passes
+  REJECTED
+}
+
+enum NoteAuthor {
+  PARTNER
+  ADMIN
+}
+
+enum FlavorPresetStatus {
+  ACTIVE
+  DRAFT
+  RETIRED
+}
+
+// -----------------------------------------------------------------------------
+// PACKAGING — two-tier admin canonical + partner-owned with override layer
+// -----------------------------------------------------------------------------
+
+// Admin-curated canonical packaging taxonomy. Starts EMPTY at V1 launch and grows
+// as admin clusters partner-contributed PackagingSystems via the promotion
+// queue (task #135).
+model PackagingType {
+  id                String              @id @default(cuid())
+  slug              String              @unique             // 'hdpe-jar-16oz-wide-mouth'
+  displayName       String                                   // canonical name shown publicly
+  imageFileId       String?                                  // admin-curated reference photo (Asset/PartnerFile soft FK)
+  defaultTopology   PackagingTopology
+  defaultDimensions Json?                                    // { lengthMm, widthMm, heightMm }
+  defaultSurfaces   Json?                                    // [{ name, defaultBleedMm }]
+  status            PackagingTypeStatus @default(ACTIVE)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  systems           PackagingSystem[]
+}
+
+// Partner-owned packaging system — links optionally to a canonical PackagingType.
+// Display-name + image resolution priority:
+//   1. overrideDisplayName / overrideImageFileId  (admin override)
+//   2. linked PackagingType.displayName / imageFileId
+//   3. partnerName / partnerImageFileId  (fallback)
+model PackagingSystem {
+  id                    String           @id @default(cuid())
+  partnerId             String
+  packagingTypeId       String?                              // optional FK to canonical type
+  // Partner-supplied (fallback when no type link and no admin override):
+  partnerName           String
+  partnerImageFileId    String?                              // soft FK to Asset/PartnerFile
+  // Admin override layer (wins over partner if set):
+  overrideDisplayName   String?
+  overrideImageFileId   String?
+  // Physical implementation:
+  topology              PackagingTopology
+  unitCount             Int              @default(1)
+  flavorMode            FlavorMode       @default(SINGLE)
+  flavorPolicy          FlavorPolicy     @default(CREATOR_PICK)
+  moq                   Int
+  dimensions            Json?                                // { lengthMm, widthMm, heightMm }
+  maxWeightG            Int?
+  status                PackagingStatus  @default(DRAFT)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  // Relations
+  partner               Partner          @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  packagingType         PackagingType?   @relation(fields: [packagingTypeId], references: [id])
+  surfaces              PackagingSurface[]
+  templates             ProductTemplatePackaging[]
+  @@index([partnerId, status])
+  @@index([packagingTypeId])
+}
+
+// Per-surface die-line + print spec on a PackagingSystem.
+// E.g., a 16oz jar has surfaces { Front, Back, Lid } — each its own die-line file.
+model PackagingSurface {
+  id                  String           @id @default(cuid())
+  packagingSystemId   String
+  name                String                                 // 'Front', 'Lid', 'Inner Tray'
+  dieLineFileId       String?                                // soft FK to PartnerFile (R2)
+  printableAreaSqIn   Float?
+  bleedMm             Float            @default(3)
+  // Print spec (from FOD admin delta §1.1; V1 schema, V1.1 visual zone editor)
+  printDpi            Int?
+  colorMode           String?                                // 'CMYK', 'RGB', 'BW'
+  mandatoryZones      Json?                                  // [{ type, x, y, w, h, required }] — V1.1 zone editor
+  registrationMarks   Json?
+  packagingSystem     PackagingSystem  @relation(fields: [packagingSystemId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// CERTIFICATES — admin canonical types + partner instances + product links
+// -----------------------------------------------------------------------------
+
+// Admin-curated catalog of recognised certifications (NSF, USDA Organic, etc.).
+// Each entry has a branded badge thumbnail for public display + verification notes.
+// V1 seed: 12 starter types per spec §7.2.
+model CertificateType {
+  id                  String                       @id @default(cuid())
+  name                String
+  slug                String                       @unique
+  thumbnailFileId     String?                                            // admin-uploaded badge, ~256x256
+  description         String                                              // shown on hover/tooltip publicly
+  verificationNotes   String?                                             // what admin looks for when verifying partner uploads
+  status              CertificateTypeStatus        @default(ACTIVE)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  partnerInstances    PartnerCertificateInstance[]
+}
+
+// Partner's actual certification — they upload the PDF (private to admin),
+// admin verifies in queue (task #129). Status auto-flips to EXPIRED on expiry.
+// Only ACTIVE/VERIFIED instances appear in the product builder's certificate picker.
+model PartnerCertificateInstance {
+  id                  String                       @id @default(cuid())
+  partnerId           String
+  certificateTypeId   String
+  pdfFileId           String                                              // PartnerFile, private — never exposed publicly
+  certificateNumber   String?
+  issuingBody         String?
+  issueDate           DateTime?
+  expiryDate          DateTime
+  status              PartnerCertInstanceStatus    @default(PENDING_REVIEW)
+  reviewedById        String?                                             // admin User
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  notes               String?                                             // optional partner-supplied notes for admin
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  partner             Partner                      @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  certificateType     CertificateType              @relation(fields: [certificateTypeId], references: [id])
+  productAssignments  ProductCertificate[]
+  @@index([partnerId, status])
+  @@index([expiryDate])
+}
+
+// Per-product certificate selections. Per-size scope: NULL appliesToPackagingSystemIds
+// means cert applies to ALL of the product's PackagingSystems. Array form scopes
+// to specific sizes (e.g., NSF only certified for the 16oz SKU).
+model ProductCertificate {
+  productTemplateId            String
+  instanceId                   String
+  appliesToPackagingSystemIds  String[]                                   // NULL/empty = all sizes
+  productTemplate              ProductTemplate            @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  instance                     PartnerCertificateInstance @relation(fields: [instanceId], references: [id])
+  @@id([productTemplateId, instanceId])
+}
+
+// -----------------------------------------------------------------------------
+// PRODUCT REVIEW + NOTES — admin feedback + per-product partner ↔ admin thread
+// -----------------------------------------------------------------------------
+
+// Structured admin feedback items (NOT free-text comments — those are ProductNote).
+// Each item is a checklist entry the partner must resolve before resubmit.
+model ProductReviewItem {
+  id                  String           @id @default(cuid())
+  productTemplateId   String
+  category            String                                              // 'ingredients' | 'packaging' | 'media' | 'compliance' | 'other'
+  description         String
+  resolved            Boolean          @default(false)
+  resolvedAt          DateTime?
+  createdById         String                                              // admin User
+  productTemplate     ProductTemplate  @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt           DateTime         @default(now())
+  @@index([productTemplateId, resolved])
+}
+
+// Per-product comment thread between partner and admin. Use for messy human
+// stuff (clarifications, photo requests, supplier-change heads-ups). Separate
+// from ProductReviewItem (which is structured blocking checklist).
+model ProductNote {
+  id                  String           @id @default(cuid())
+  productTemplateId   String
+  authorId            String                                              // User who wrote it
+  authorType          NoteAuthor
+  body                String
+  attachmentFileId    String?                                             // soft FK to PartnerFile
+  editedAt            DateTime?
+  productTemplate     ProductTemplate  @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt           DateTime         @default(now())
+  @@index([productTemplateId, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// PRODUCT TEMPLATE ↔ PACKAGING (per-size bridge with pricing + per-product overrides)
+// -----------------------------------------------------------------------------
+
+model ProductTemplatePackaging {
+  // Bridge between a product template and one of its size/packaging configurations.
+  // Per-size pricing, MOQ, lead time, and surface-die-line overrides live here
+  // (NOT on ProductTemplate itself — different sizes have different prices).
+  productTemplateId String
+  packagingSystemId String
+  basePriceCents    Int                                                   // per unit at base MOQ
+  moqOverride       Int?                                                  // overrides PackagingSystem.moq if set
+  leadTimeDays      Int                                                   // absolute, not delta from system default
+  pricingTiers      Json                                                  // [{ minQuantity, unitPriceCents }]
+  surfaceOverrides  Json?                                                 // [{ surfaceId, overrideFileId }] per-product die-line overrides
+  productTemplate   ProductTemplate  @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  packagingSystem   PackagingSystem  @relation(fields: [packagingSystemId], references: [id])
+  @@id([productTemplateId, packagingSystemId])
+}
+
+// -----------------------------------------------------------------------------
+// FLAVOR PRESETS — one product, many curated flavor variations (NOT separate recipes)
+// Per docs/MANUFACTURER_PRODUCT_BUILDER.md §5
+// -----------------------------------------------------------------------------
+
+model FlavorPreset {
+  id                   String              @id @default(cuid())
+  productTemplateId    String
+  name                 String                                             // 'Chocolate', 'Vanilla', 'Strawberry'
+  swatchHex            String?                                            // '#5C3317' for picker
+  swatchImageFileId    String?                                            // small jar/scoop photo for picker
+  // The overlay — defines which slot picks apply for this flavor + flavor-only extras
+  slotResolution       Json                                               // [{ slotId, optionId | { customIngredientId, qty, unit } }]
+  extras               Json?                                              // [{ name, ingredientId, qty, unit }] flavor-only ingredients
+  priceDeltaCents      Int                 @default(0)                    // additive to per-size base price
+  status               FlavorPresetStatus  @default(ACTIVE)
+  sortOrder            Int                 @default(0)
+  // V1 — per-flavor nutrient overrides (e.g., strawberry adds water content; shifts moisture)
+  nutrientOverrides    Json?                                              // [{ nutrient, value, reason }] — preset overrides win on conflict with ProductTemplate.nutrientOverrides
+  productTemplate      ProductTemplate     @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  @@index([productTemplateId, status, sortOrder])
+}
+
+// =============================================================================
+// INGREDIENT SOURCING (#136) + USAGE TRACKING + DICTIONARIES (#143)
+// Spec: docs/MANUFACTURER_PRODUCT_BUILDER.md §4a
+// =============================================================================
+//
+// Three-tier sourcing model: USDA FDC (~10k high-quality Foundation/SR Legacy
+// + ~30-50k filtered Branded Foods) + iLaunchify Curated Library (~1,000-1,200
+// supplement-specific items, admin-curated) + Partner-Private (each partner's
+// supplier SKUs with COA-derived nutrient panels).
+//
+// Sliding verification governance — SELF_ATTESTED partner-private ingredients
+// are usable in published products immediately. Admin scales control via:
+//   - Hard blocks (banned dictionary)
+//   - Soft warns (controversial dictionary)
+//   - Red flags in product approval queue when >5% of recipe weight
+//   - Library promotion queue that absorbs cross-partner repeats over time
+
+enum IngredientSource {
+  USDA                  // imported from USDA FoodData Central
+  LIBRARY               // iLaunchify-curated supplement-specific item
+  PARTNER_PRIVATE       // partner-uploaded with COA, scoped to one partner via ownerPartnerId
+}
+
+enum VerificationStatus {
+  SELF_ATTESTED         // default for new PARTNER_PRIVATE; usable in published products
+  ADMIN_VERIFIED        // admin reviewed COA/nutrient values
+  LIBRARY_PROMOTED      // promoted from PARTNER_PRIVATE to public LIBRARY (default for USDA + LIBRARY rows)
+}
+
+enum BioengineeredStatus {
+  NONE                  // confirmed not bioengineered
+  BIOENGINEERED         // is a BE food per USDA BE Standard 2022
+  DERIVED_FROM_BIOENGINEERED  // ingredient derived from BE source
+  NOT_APPLICABLE        // not in scope (e.g., minerals, vitamins, salt)
+}
+
+// -----------------------------------------------------------------------------
+// IngredientUsage — drives personalized search ranking in IngredientPicker
+// per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5a (Recipal-parity trick).
+// Updated on every "save slot" / "save preset" action.
+// -----------------------------------------------------------------------------
+
+model IngredientUsage {
+  id           String     @id @default(cuid())
+  partnerId    String                                          // who used this ingredient
+  ingredientId String
+  useCount     Int        @default(1)
+  lastUsedAt   DateTime   @default(now())
+  // Relations
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  @@unique([partnerId, ingredientId])
+  @@index([partnerId, lastUsedAt(sort: Desc)])                  // primary sort key for personalized ranking
+}
+
+// -----------------------------------------------------------------------------
+// BannedIngredient — hard-block dictionary
+// Partner literally cannot save an ingredient whose name matches an active row.
+// Seeded with ~30 entries: ephedra, sibutramine, undeclared stimulants,
+// certain SARMs precursors, undeclared steroids, etc.
+// Admin manages via /admin/library/banned-ingredients (V1.5+ UI; V1 = seed only).
+// -----------------------------------------------------------------------------
+
+model BannedIngredient {
+  id              String   @id @default(cuid())
+  // Matchers — at least one must be populated
+  matchName       String?                                       // case-insensitive exact match on Ingredient.name or internalName
+  matchPattern    String?                                       // optional regex (advanced)
+  casNumber       String?                                       // Chemical Abstracts Service number when known
+  // Context
+  reason          String                                        // why this is banned (FDA action, safety concern, regulatory)
+  reference       String?                                       // URL to FDA notice / journal article / regulation
+  isActive        Boolean  @default(true)
+  effectiveFrom   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([isActive, matchName])
+  @@index([casNumber])
+}
+
+// -----------------------------------------------------------------------------
+// ControversialIngredient — soft-warn dictionary
+// Partner can save the ingredient but sees a warning at creation time AND
+// admin gets a high-priority notification on use in any product.
+// Seeded with ~40 entries: high-dose caffeine combinations, kratom, certain
+// herbal extracts with uncertain safety profile, etc.
+// -----------------------------------------------------------------------------
+
+model ControversialIngredient {
+  id              String   @id @default(cuid())
+  matchName       String?
+  matchPattern    String?
+  casNumber       String?
+  // Context
+  concern         String                                        // what the concern is (interaction, dosing, regulatory ambiguity)
+  recommendation  String?                                       // suggested action (lower dose, alternative, COA required)
+  reference       String?
+  isActive        Boolean  @default(true)
+  effectiveFrom   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([isActive, matchName])
+}
+
+// =============================================================================
+// LABEL DESIGN TEMPLATE — compatibility + tier + provenance enums (#147)
+// Spec: docs/DESIGN_STUDIO.md §3
+// Schema applies to DesignLibraryItem (which is the "LabelDesignTemplate" the
+// spec refers to).
+// =============================================================================
+
+enum LabelTemplateSurface {
+  FRONT
+  BACK
+  LID
+  FULL_WRAP
+  SLEEVE
+  NECK
+}
+
+enum LabelTemplateTier {
+  REGULAR             // free with any partner plan
+  PREMIUM             // paid (one-time per use or via plan tier) — billing flow lands V1.5
+  EXCLUSIVE           // limited-license; max exclusiveSeats partners can claim
+}
+
+enum LabelTemplateCreator {
+  ADMIN               // hand-curated by iLaunchify ops
+  DESIGNER            // contractor-produced (the ~20 hand-curated V1 launch seed will be this)
+  AI_AGENT            // V2+ Trend Researcher + Template Generator pipeline
+  PARTNER             // V2+ partners contributing templates
+}
+
+enum LabelTemplateStatus {
+  DRAFT
+  PENDING_REVIEW      // submitted (AI-generated or partner-submitted) awaiting human curator approval
+  ACTIVE              // available in Design Studio gallery
+  DEPRECATED          // hidden from gallery; existing creator Designs still valid
 }
