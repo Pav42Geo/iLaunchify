@@ -55,7 +55,14 @@ export default async function ProductEditPage({ params }: PageProps) {
         },
       },
       variants: { orderBy: { createdAt: 'asc' } },
-      certificates: { select: { instanceId: true } },
+      certificates: {
+        include: {
+          instance: {
+            include: { certificateType: { select: { name: true } } },
+          },
+        },
+      },
+      notes: { orderBy: { createdAt: 'asc' } },
     },
   })
   if (!template) notFound()
@@ -64,6 +71,28 @@ export default async function ProductEditPage({ params }: PageProps) {
   if (template.manufacturerServiceId && !serviceIds.includes(template.manufacturerServiceId)) {
     notFound()
   }
+
+  // Load packaging + cert options the partner can pick from in the editor cards.
+  // Notes need author names — ProductNote.authorId is a soft FK.
+  const [availablePackaging, availableCerts, noteAuthors] = await Promise.all([
+    prisma.packagingSystem.findMany({
+      where: { partnerId: partner.id, status: 'ACTIVE' },
+      select: { id: true, partnerName: true, topology: true, unitCount: true, moq: true },
+      orderBy: { partnerName: 'asc' },
+    }),
+    prisma.partnerCertificateInstance.findMany({
+      where: { partnerId: partner.id, status: { in: ['VERIFIED', 'PENDING_REVIEW'] } },
+      include: { certificateType: { select: { name: true } } },
+      orderBy: { expiryDate: 'asc' },
+    }),
+    template.notes.length
+      ? prisma.user.findMany({
+          where: { id: { in: Array.from(new Set(template.notes.map((n) => n.authorId))) } },
+          select: { id: true, name: true, email: true },
+        })
+      : Promise.resolve([] as Array<{ id: string; name: string | null; email: string }>),
+  ])
+  const nameByAuthor = new Map(noteAuthors.map((u) => [u.id, u.name ?? u.email] as const))
 
   return (
     <div className="space-y-6">
@@ -139,6 +168,39 @@ export default async function ProductEditPage({ params }: PageProps) {
             ? (template.allergenManualOverrides as Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>)
             : []
         }
+        availablePackaging={availablePackaging.map((p) => ({
+          id: p.id,
+          name: p.partnerName,
+          topology: p.topology,
+          unitCount: p.unitCount,
+          moq: p.moq,
+        }))}
+        attachedCerts={template.certificates.map((c) => ({
+          instanceId: c.instanceId,
+          certName: c.instance.certificateType.name,
+          expiryDate: c.instance.expiryDate,
+          certificateNumber: c.instance.certificateNumber,
+        }))}
+        availableCertInstances={availableCerts.map((c) => ({
+          id: c.id,
+          certName: c.certificateType.name,
+          certificateNumber: c.certificateNumber,
+          expiryDate: c.expiryDate,
+          status: c.status as 'PENDING_REVIEW' | 'VERIFIED' | 'EXPIRED' | 'REJECTED',
+        }))}
+        heroAssetId={template.imageAssetId}
+        customMeta={
+          Array.isArray(template.customMeta)
+            ? (template.customMeta as Array<{ key: string; value: string }>)
+            : []
+        }
+        notes={template.notes.map((n) => ({
+          id: n.id,
+          authorName: nameByAuthor.get(n.authorId) ?? 'Unknown',
+          authorType: n.authorType,
+          body: n.body,
+          createdAt: n.createdAt,
+        }))}
       />
     </div>
   )

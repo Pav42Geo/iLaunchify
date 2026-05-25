@@ -41,6 +41,19 @@ import { saveProductFields, submitProductForReview, archiveDraft } from '../../a
 import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
 import { AllergensCard } from './cards/AllergensCard'
 import { VariantsCard, type VariantRow } from './cards/VariantsCard'
+import {
+  PackagingCard,
+  type PackagingLinkRow,
+  type AvailablePackagingOption,
+} from './cards/PackagingCard'
+import {
+  CertificatesCard,
+  type AttachedCertRow,
+  type AvailableCertOption,
+} from './cards/CertificatesCard'
+import { NotesThread, type NoteRow } from './cards/NotesThread'
+import { MediaCard } from './cards/MediaCard'
+import { CustomMetaCard, type CustomMetaRow } from './cards/CustomMetaCard'
 
 // -----------------------------------------------------------------------------
 // Props
@@ -72,24 +85,22 @@ interface IngredientSlot extends SlotRow {
   source: IngredientSource | null
 }
 
-interface PackagingLink {
-  packagingSystemId: string
-  name: string
-  topology: string
-  unitCount: number
-  basePriceCents: number
-  leadTimeDays: number
-}
-
-// VariantRow re-exported from VariantsCard so the page loader passes through.
+// PackagingLink / VariantRow / SlotRow / NoteRow re-exported from card files
+// so the page loader passes through without separate mapping.
 
 interface EditorShellProps {
   template: TemplateSnapshot
   counts: Counts
   ingredientSlots: IngredientSlot[]
-  packagingLinks: PackagingLink[]
+  packagingLinks: PackagingLinkRow[]
   variants: VariantRow[]
   allergenManualOverrides: Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>
+  availablePackaging: AvailablePackagingOption[]
+  attachedCerts: AttachedCertRow[]
+  availableCertInstances: AvailableCertOption[]
+  heroAssetId: string | null
+  customMeta: CustomMetaRow[]
+  notes: NoteRow[]
 }
 
 // -----------------------------------------------------------------------------
@@ -103,6 +114,12 @@ export function EditorShell({
   packagingLinks,
   variants,
   allergenManualOverrides,
+  availablePackaging,
+  attachedCerts,
+  availableCertInstances,
+  heroAssetId,
+  customMeta,
+  notes,
 }: EditorShellProps) {
   const router = useRouter()
 
@@ -293,28 +310,17 @@ export function EditorShell({
           id="packaging"
           icon={Box}
           title="Packaging"
-          subtitle={`${counts.packaging} system${counts.packaging === 1 ? '' : 's'} linked · per-size pricing in #132`}
+          subtitle={`${counts.packaging} system${counts.packaging === 1 ? '' : 's'} linked · per-size price + lead time`}
           open={!!openCards.packaging}
           onToggle={() => toggleCard('packaging')}
           reapprovalRequired
         >
-          <ul className="space-y-1.5">
-            {packagingLinks.map((p) => (
-              <li
-                key={p.packagingSystemId}
-                className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2"
-              >
-                <div>
-                  <div className="font-medium text-zinc-900">{p.name}</div>
-                  <div className="text-xs text-zinc-500">
-                    {humanizeTopology(p.topology)} · ${(p.basePriceCents / 100).toFixed(2)} ·{' '}
-                    {p.leadTimeDays}d lead
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <Stub note="Add/remove packaging links + per-size pricing tiers land in #132 (W3 editor cards)." />
+          <PackagingCard
+            productTemplateId={template.id}
+            initialLinks={packagingLinks}
+            availableOptions={availablePackaging}
+            isDraft={isDraft}
+          />
         </EditorCard>
 
         {/* ⑤ Pricing / Variants */}
@@ -344,19 +350,28 @@ export function EditorShell({
           onToggle={() => toggleCard('certificates')}
           reapprovalRequired
         >
-          <Stub note="Per-size cert scope picker lands in #132 (W3 editor cards)." />
+          <CertificatesCard
+            productTemplateId={template.id}
+            attached={attachedCerts}
+            availableInstances={availableCertInstances}
+            isDraft={isDraft}
+          />
         </EditorCard>
 
         {/* ⑦ Media + description */}
         <EditorCard
           id="media"
           icon={ImageIcon}
-          title="Media + description"
-          subtitle="Photos + long-form copy for the creator marketplace card"
+          title="Media"
+          subtitle="Hero image for the creator marketplace card"
           open={!!openCards.media}
           onToggle={() => toggleCard('media')}
         >
-          <Stub note="Photo gallery upload lands in #132." />
+          <MediaCard
+            productTemplateId={template.id}
+            isDraft={isDraft}
+            currentHeroAssetId={heroAssetId}
+          />
         </EditorCard>
 
         {/* ⑧ Custom meta */}
@@ -368,7 +383,11 @@ export function EditorShell({
           open={!!openCards.customMeta}
           onToggle={() => toggleCard('customMeta')}
         >
-          <Stub note="Key/value editor lands in #132." />
+          <CustomMetaCard
+            productTemplateId={template.id}
+            initial={customMeta}
+            isDraft={isDraft}
+          />
         </EditorCard>
 
         {/* ⑨ Finished-product weight */}
@@ -388,11 +407,11 @@ export function EditorShell({
           id="notes"
           icon={MessageSquare}
           title="Notes thread (admin ↔ partner)"
-          subtitle="Persistent thread for clarifications, requested photos, etc."
+          subtitle={`${notes.length} message${notes.length === 1 ? '' : 's'} · admin sees this on the review queue`}
           open={!!openCards.notes}
           onToggle={() => toggleCard('notes')}
         >
-          <Stub note="Threaded chat UI lands in #132/#133 alongside the admin product queue." />
+          <NotesThread productTemplateId={template.id} notes={notes} isDraft={isDraft} />
         </EditorCard>
       </div>
 

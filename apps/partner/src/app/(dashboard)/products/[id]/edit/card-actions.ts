@@ -9,6 +9,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 
 type Result<T = void> =
@@ -355,6 +356,287 @@ export async function saveManualAllergens(input: {
   await prisma.productTemplate.update({
     where: { id: template.id },
     data: { allergenManualOverrides: input.manualOverrides },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// PACKAGING LINKS — add / remove / per-size price + lead-time edit.
+// Pricing tiers are JSON; UI exposes only basePriceCents + leadTimeDays at V1.
+// -----------------------------------------------------------------------------
+
+export async function addPackagingLink(input: {
+  productTemplateId: string
+  packagingSystemId: string
+  basePriceCents: number
+  leadTimeDays: number
+}): Promise<Result> {
+  const { partner, template, error } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Verify the picked PackagingSystem belongs to this partner and is ACTIVE
+  const sys = await prisma.packagingSystem.findUnique({
+    where: { id: input.packagingSystemId },
+    select: { partnerId: true, status: true },
+  })
+  if (!sys || sys.partnerId !== partner.id) {
+    return { ok: false, error: 'Packaging system not found in your catalog.' }
+  }
+  if (sys.status !== 'ACTIVE') {
+    return { ok: false, error: 'Activate the packaging system before linking to a product.' }
+  }
+  if (input.basePriceCents < 1) return { ok: false, error: 'Set a base price.' }
+  if (input.leadTimeDays < 0) return { ok: false, error: 'Lead time must be ≥ 0.' }
+
+  // @@id([productTemplateId, packagingSystemId]) — duplicate insert would error
+  const existing = await prisma.productTemplatePackaging.findUnique({
+    where: {
+      productTemplateId_packagingSystemId: {
+        productTemplateId: template.id,
+        packagingSystemId: input.packagingSystemId,
+      },
+    },
+  })
+  if (existing) return { ok: false, error: 'That packaging is already linked.' }
+
+  await prisma.productTemplatePackaging.create({
+    data: {
+      productTemplateId: template.id,
+      packagingSystemId: input.packagingSystemId,
+      basePriceCents: input.basePriceCents,
+      leadTimeDays: input.leadTimeDays,
+      pricingTiers: [],
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+export async function updatePackagingLink(input: {
+  productTemplateId: string
+  packagingSystemId: string
+  basePriceCents?: number
+  leadTimeDays?: number
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  await prisma.productTemplatePackaging.update({
+    where: {
+      productTemplateId_packagingSystemId: {
+        productTemplateId: template.id,
+        packagingSystemId: input.packagingSystemId,
+      },
+    },
+    data: {
+      ...(input.basePriceCents !== undefined ? { basePriceCents: input.basePriceCents } : {}),
+      ...(input.leadTimeDays !== undefined ? { leadTimeDays: input.leadTimeDays } : {}),
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+export async function removePackagingLink(input: {
+  productTemplateId: string
+  packagingSystemId: string
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Refuse if it's the last link — every template needs ≥1
+  const count = await prisma.productTemplatePackaging.count({
+    where: { productTemplateId: template.id },
+  })
+  if (count <= 1) {
+    return { ok: false, error: 'Templates need at least one packaging link. Add another before removing this one.' }
+  }
+
+  await prisma.productTemplatePackaging.delete({
+    where: {
+      productTemplateId_packagingSystemId: {
+        productTemplateId: template.id,
+        packagingSystemId: input.packagingSystemId,
+      },
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// CERTIFICATES — attach VERIFIED instances + remove.
+// Per-size scope (appliesToPackagingSystemIds) defaults to NULL = all sizes.
+// UI for per-size scope is V1.1.
+// -----------------------------------------------------------------------------
+
+export async function attachCertificate(input: {
+  productTemplateId: string
+  instanceId: string
+}): Promise<Result> {
+  const { partner, template, error } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  const instance = await prisma.partnerCertificateInstance.findUnique({
+    where: { id: input.instanceId },
+    select: { partnerId: true, status: true },
+  })
+  if (!instance || instance.partnerId !== partner.id) {
+    return { ok: false, error: 'Certificate not found in your catalog.' }
+  }
+  if (instance.status !== 'VERIFIED') {
+    return { ok: false, error: 'Only VERIFIED certificates can be attached. Wait for admin review.' }
+  }
+
+  const existing = await prisma.productCertificate.findUnique({
+    where: { productTemplateId_instanceId: { productTemplateId: template.id, instanceId: input.instanceId } },
+  })
+  if (existing) return { ok: false, error: 'That certificate is already attached.' }
+
+  await prisma.productCertificate.create({
+    data: {
+      productTemplateId: template.id,
+      instanceId: input.instanceId,
+      appliesToPackagingSystemIds: [],
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+export async function detachCertificate(input: {
+  productTemplateId: string
+  instanceId: string
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  await prisma.productCertificate.delete({
+    where: {
+      productTemplateId_instanceId: { productTemplateId: template.id, instanceId: input.instanceId },
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// MEDIA — hero image upload via R2.
+// Reuses brandAssetKey for now (paths under brands/ make sense since the
+// ProductTemplate is brand-adjacent). Future #166 may move to a dedicated
+// productAssetKey.
+// -----------------------------------------------------------------------------
+
+export async function uploadProductHero(formData: FormData): Promise<Result> {
+  const productTemplateId = String(formData.get('productTemplateId') ?? '')
+  const file = formData.get('file')
+  if (!productTemplateId) return { ok: false, error: 'Missing productTemplateId.' }
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'No image provided.' }
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    return { ok: false, error: 'Image too large (max 10 MB).' }
+  }
+
+  const { user, error, template } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  let upload
+  try {
+    upload = await uploadFile({
+      key: brandAssetKey({
+        brandId: template.id, // re-use brand path with template id as "brandId"
+        kind: 'hero_image',
+        filename: file.name,
+      }),
+      body: buffer,
+      contentType: file.type,
+    })
+  } catch (err) {
+    return { ok: false, error: `Upload failed: ${(err as Error).message}` }
+  }
+
+  const asset = await prisma.asset.create({
+    data: {
+      ownerType: 'PRODUCT',
+      ownerId: template.id,
+      type: 'PRODUCT_IMAGE',
+      source: 'USER_UPLOAD',
+      storageKey: upload.key,
+      mimeType: file.type,
+      sizeBytes: upload.sizeBytes,
+      isPublic: true,
+      uploadedByUserId: user.id,
+    },
+  })
+
+  await prisma.productTemplate.update({
+    where: { id: template.id },
+    data: { imageAssetId: asset.id },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// CUSTOM META — key/value pairs (max 10).
+// -----------------------------------------------------------------------------
+
+export async function saveCustomMeta(input: {
+  productTemplateId: string
+  customMeta: Array<{ key: string; value: string }>
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  if (input.customMeta.length > 10) {
+    return { ok: false, error: 'Max 10 custom meta fields.' }
+  }
+  // Drop blank rows + dedupe by key (keep last write)
+  const cleaned: Record<string, string> = {}
+  for (const { key, value } of input.customMeta) {
+    const k = key.trim()
+    if (k) cleaned[k] = value.trim()
+  }
+  const final = Object.entries(cleaned).map(([key, value]) => ({ key, value }))
+
+  await prisma.productTemplate.update({
+    where: { id: template.id },
+    data: { customMeta: final },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// PARTNER NOTE — partner side of the admin↔partner thread.
+// -----------------------------------------------------------------------------
+
+export async function postPartnerProductNote(input: {
+  productTemplateId: string
+  body: string
+}): Promise<Result> {
+  const { user, error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+  if (!input.body.trim()) return { ok: false, error: 'Note body is required.' }
+
+  await prisma.productNote.create({
+    data: {
+      productTemplateId: template.id,
+      authorId: user.id,
+      authorType: 'PARTNER',
+      body: input.body.trim(),
+    },
   })
 
   revalidatePath(`/products/${template.id}/edit`)
