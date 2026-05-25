@@ -1,7 +1,11 @@
 // Per-partner verification queue.
-// Renders one card per section (4 sections per Pavel decision 2026-05-19),
-// each with a status picker + admin notes + file list. Overall status derived
-// from sections; activation/suspension remain explicit on the partner detail page.
+// Renders one review card per section (5-section model per #159 — adds
+// OPERATIONAL_STANDARDS for the 5-layer onboarding rollout). Each card has
+// a status picker + admin notes + file list. Phase 2 also surfaces
+// read-only "context panels" above the BUSINESS, FACILITY, and
+// OPERATIONAL_STANDARDS cards so admin can see WHAT they're verifying —
+// not just metadata. Overall status is derived; activation/suspension
+// remain explicit on the partner detail page.
 
 import { prisma } from '@ilaunchify/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ilaunchify/ui'
@@ -16,6 +20,11 @@ import {
   statusBadgeClass,
 } from '@/lib/verification'
 import { SectionReview } from './SectionReview'
+import {
+  BusinessContext,
+  CapabilitiesContext,
+  CommercialContext,
+} from './SectionContext'
 import type { PartnerFile, VerificationSectionType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -30,11 +39,22 @@ export default async function VerificationPage({ params }: PageProps) {
   const partner = await prisma.partner.findUnique({
     where: { id: partnerId },
     include: {
-      user: true,
+      user: { select: { name: true, email: true, stripeAccountId: true, stripeAccountStatus: true } },
       verificationSections: {
         include: { verifiedBy: { select: { name: true, email: true } } },
       },
       files: { orderBy: { uploadedAt: 'desc' } },
+      services: {
+        select: { id: true, type: true, status: true, capabilities: true },
+        orderBy: { type: 'asc' },
+      },
+      commercialTerms: {
+        include: {
+          contractTerms: {
+            select: { version: true, name: true, status: true },
+          },
+        },
+      },
     },
   })
   if (!partner) notFound()
@@ -49,6 +69,12 @@ export default async function VerificationPage({ params }: PageProps) {
   }
 
   const overall = computeOverallStatus(partner.verificationSections)
+
+  // Pull signer name from Partner.onboardingProgress JSON (set by
+  // acceptStandardContract). Falls back to the User.name lookup below.
+  const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  const signerName =
+    typeof progress.contractSignerName === 'string' ? progress.contractSignerName : ''
 
   return (
     <div className="space-y-6">
@@ -73,8 +99,8 @@ export default async function VerificationPage({ params }: PageProps) {
           <div>
             <CardTitle className="text-base">Overall verification</CardTitle>
             <CardDescription>
-              Derived from the 4 sections below. Activation remains a separate explicit step on
-              the partner detail page.
+              Derived from the {ALL_SECTIONS.length} sections below. Activation remains a
+              separate explicit step on the partner detail page.
             </CardDescription>
           </div>
           <span
@@ -101,14 +127,14 @@ export default async function VerificationPage({ params }: PageProps) {
           )}
           {overall === 'NEEDS_CHANGES' && (
             <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-              Partner has been asked to make changes. They&apos;ll see your notes on the My
-              Application page (coming in A4) and resubmit.
+              Partner has been asked to make changes. They&apos;ll see your notes on{' '}
+              /onboarding/status and can resubmit by editing the relevant accordion section.
             </div>
           )}
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {ALL_SECTIONS.map((type) => {
           const section = sectionByType.get(type)
           const files = filesBySection.get(type) ?? []
@@ -119,15 +145,31 @@ export default async function VerificationPage({ params }: PageProps) {
             verifierName: section?.verifiedBy?.name ?? section?.verifiedBy?.email ?? null,
           }
           return (
-            <SectionReview
-              key={type}
-              partnerId={partnerId}
-              sectionType={type}
-              label={SECTION_LABEL[type]}
-              description={SECTION_DESCRIPTION[type]}
-              current={current}
-              files={files}
-            />
+            <section key={type} className="space-y-3">
+              {/* Context preview — surfaces the Phase 2 data the admin is verifying */}
+              {type === 'BUSINESS' && <BusinessContext partner={partner} />}
+              {type === 'FACILITY' && <CapabilitiesContext services={partner.services} />}
+              {type === 'OPERATIONAL_STANDARDS' && (
+                <CommercialContext
+                  contract={partner.commercialTerms?.contractTerms ?? null}
+                  signedAt={partner.commercialTerms?.signedAt ?? null}
+                  signerName={signerName}
+                  signerEmail={partner.user.email}
+                  payoutTimingDays={partner.commercialTerms?.payoutTimingDays ?? null}
+                  stripeAccountId={partner.user.stripeAccountId}
+                  stripeAccountStatus={partner.user.stripeAccountStatus}
+                />
+              )}
+
+              <SectionReview
+                partnerId={partnerId}
+                sectionType={type}
+                label={SECTION_LABEL[type] ?? type}
+                description={SECTION_DESCRIPTION[type] ?? ''}
+                current={current}
+                files={files}
+              />
+            </section>
           )
         })}
       </div>

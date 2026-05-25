@@ -7,17 +7,24 @@ import type {
   VerificationSectionType,
 } from '@prisma/client'
 
+// 5-section model — extended 2026-05-25 with OPERATIONAL_STANDARDS for the
+// 5-layer onboarding model (docs/PARTNER_ONBOARDING.md §2 + §7.4).
+// Order matters: the queue UI renders sections in this order, matching the
+// partner accordion's section order (Your business → Your company → What you
+// can do → Payment & contract).
 export const ALL_SECTIONS: VerificationSectionType[] = [
   'BUSINESS',
   'FACILITY',
   'DOCUMENTS',
+  'OPERATIONAL_STANDARDS',
   'PUBLIC_PROFILE',
 ]
 
 export const SECTION_LABEL: Record<VerificationSectionType, string> = {
   BUSINESS: 'Business identity',
-  FACILITY: 'Facility & capabilities',
+  FACILITY: 'Capabilities & facility',
   DOCUMENTS: 'Compliance documents',
+  OPERATIONAL_STANDARDS: 'Operational standards & contract',
   PUBLIC_PROFILE: 'Public profile',
 }
 
@@ -28,6 +35,8 @@ export const SECTION_DESCRIPTION: Record<VerificationSectionType, string> = {
     'Production capabilities, MOQ, lead time, facility photos.',
   DOCUMENTS:
     'FDA / cGMP certificate, general liability insurance, supporting compliance docs.',
+  OPERATIONAL_STANDARDS:
+    'Contract version + signer, payout terms, Stripe Connect status, V1 default standards.',
   PUBLIC_PROFILE:
     'Logo, public-facing brand info, verified badge readiness.',
 }

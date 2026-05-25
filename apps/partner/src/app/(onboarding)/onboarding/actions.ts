@@ -285,6 +285,14 @@ export async function acceptStandardContract(input: AcceptContractInput) {
     },
   })
 
+  // Stamp the OPERATIONAL_STANDARDS verification section so admin's queue
+  // (5-section model per #159) picks it up for review.
+  await prisma.partnerVerificationSection.upsert({
+    where: { partnerId_type: { partnerId: partner.id, type: 'OPERATIONAL_STANDARDS' } },
+    create: { partnerId: partner.id, type: 'OPERATIONAL_STANDARDS', status: 'PENDING' },
+    update: { updatedAt: new Date() },
+  })
+
   // Stash signer name on Partner.onboardingProgress for the audit trail —
   // human-readable record of who typed their name into the acceptance box.
   const existing = await prisma.partner.findUnique({
