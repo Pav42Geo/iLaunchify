@@ -19,6 +19,7 @@ import { seedPartnerOnboarding } from './seed-partner-onboarding'
 import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
+import { seedStarterTemplates } from './seed-starter-templates'
 
 const prisma = new PrismaClient()
 
@@ -514,6 +515,11 @@ async function main() {
   } else {
     console.warn('Skipping catalog seed: no manufacturer service found.')
   }
+
+  // --- iLaunchify starter templates (#134) ---
+  // Platform-curated, manufacturerServiceId=NULL. Partners clone these as
+  // a head start on /products/new/starter.
+  await seedStarterTemplates(prisma)
 
   // --- Channels registry (V1 shell; real OAuth lands in V1.1+) ---
   // Per Pavel decision 2026-05-19: 6 channels managed via admin on/off toggle.

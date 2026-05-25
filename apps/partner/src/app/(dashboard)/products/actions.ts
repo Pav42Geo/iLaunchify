@@ -376,6 +376,254 @@ export async function archiveDraft(productTemplateId: string): Promise<Result> {
 }
 
 // -----------------------------------------------------------------------------
+// CLONE — create a new DRAFT ProductTemplate by copying an existing source.
+// Per docs/MANUFACTURER_PRODUCT_BUILDER.md §4.1a + #134.
+//
+// Two source modes:
+//   STARTER — admin-curated platform template (slug starts with 'starter-',
+//             manufacturerServiceId NULL). Anyone can clone.
+//   OWN     — partner's own template (DRAFT or PUBLISHED). Ownership-checked.
+//
+// We copy: name, description, prices, subcategory, ingredient slots (with
+// their base ingredients + replacements + replacements' ingredients), variants,
+// allergen overrides, customMeta. We DO NOT copy: packaging links (partner
+// picks their own), certificates (partner attaches their own VERIFIED ones),
+// notes, status, slug. New row is always DRAFT.
+// -----------------------------------------------------------------------------
+
+export type CloneSource = 'STARTER' | 'OWN'
+
+export async function cloneTemplate(input: {
+  sourceTemplateId: string
+  source: CloneSource
+  newName: string
+}): Promise<Result<{ id: string; slug: string }>> {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') {
+    return { ok: false, error: 'Sign in as a partner.' }
+  }
+
+  const partner = await prisma.partner.findUnique({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      services: { where: { type: 'MANUFACTURING' }, select: { id: true }, take: 1 },
+    },
+  })
+  if (!partner) return { ok: false, error: 'Your partner record is missing.' }
+
+  // -------- Source validation --------
+  const source = await prisma.productTemplate.findUnique({
+    where: { id: input.sourceTemplateId },
+    include: {
+      ingredientSlots: {
+        include: {
+          baseIngredient: true,
+          replacements: { include: { ingredient: true } },
+        },
+        orderBy: { displayOrder: 'asc' },
+      },
+      variants: true,
+    },
+  })
+  if (!source) return { ok: false, error: 'Source template not found.' }
+
+  // STARTER: must start with 'starter-' + have NULL manufacturerServiceId
+  // OWN:     must belong to this partner via manufacturerServiceId
+  if (input.source === 'STARTER') {
+    if (!source.slug.startsWith('starter-') || source.manufacturerServiceId !== null) {
+      return { ok: false, error: 'That template is not a starter — you cannot clone it.' }
+    }
+  } else {
+    const owned =
+      source.manufacturerServiceId !== null &&
+      (await prisma.partnerService.findFirst({
+        where: { id: source.manufacturerServiceId, partnerId: partner.id },
+        select: { id: true },
+      }))
+    if (!owned) return { ok: false, error: 'You can only clone your own templates.' }
+  }
+
+  // -------- Slug generation (unique) --------
+  const newName = input.newName.trim() || `${source.name} (copy)`
+  if (newName.length > 120) {
+    return { ok: false, error: 'New name must be ≤ 120 characters.' }
+  }
+  const baseSlug = slugify(newName)
+  let slug = `${baseSlug}-${partner.id.slice(-6)}`
+  let suffix = 0
+  while (await prisma.productTemplate.findUnique({ where: { slug }, select: { id: true } })) {
+    suffix += 1
+    slug = `${baseSlug}-${partner.id.slice(-6)}-${suffix}`
+    if (suffix > 50) return { ok: false, error: 'Could not generate a unique slug — try a different name.' }
+  }
+
+  // -------- Transactional clone --------
+  let created: { id: string; slug: string }
+  try {
+    created = await prisma.$transaction(async (tx) => {
+      // 1. Reuse vs copy ingredients: for STARTER clones we point at the same
+      //    LIBRARY ingredients (they're public). For OWN clones with partner-
+      //    private ingredients, we create new partner-private duplicates so
+      //    edits to the clone don't bleed into the original.
+      const slotIngredientIds: string[] = []
+      const replacementMappings: Array<{
+        slotIndex: number
+        replacementIds: string[]
+      }> = []
+
+      for (let i = 0; i < source.ingredientSlots.length; i++) {
+        const slot = source.ingredientSlots[i]!
+        const base = slot.baseIngredient
+
+        let newBaseId: string
+        if (base.source === 'LIBRARY' || base.source === 'USDA') {
+          // Public — reuse
+          newBaseId = base.id
+        } else {
+          // Partner-private — duplicate (owned by this partner)
+          const dup = await tx.ingredient.create({
+            data: {
+              name: base.name,
+              internalName: base.internalName,
+              labelDeclarationName: base.labelDeclarationName,
+              nutritionPer100g: base.nutritionPer100g as never,
+              source: 'PARTNER_PRIVATE',
+              ownerPartnerId: partner.id,
+              verificationStatus: 'SELF_ATTESTED',
+              createdById: user.id,
+              allergenFlags: base.allergenFlags,
+              densityGPerML: base.densityGPerML,
+              complianceNotes: base.complianceNotes,
+              bioengineeredStatus: base.bioengineeredStatus,
+            },
+          })
+          newBaseId = dup.id
+        }
+        slotIngredientIds.push(newBaseId)
+
+        // Replacements — same logic
+        const newReplacementIds: string[] = []
+        for (const r of slot.replacements) {
+          const ing = r.ingredient
+          if (ing.source === 'LIBRARY' || ing.source === 'USDA') {
+            newReplacementIds.push(ing.id)
+          } else {
+            const dup = await tx.ingredient.create({
+              data: {
+                name: ing.name,
+                internalName: ing.internalName,
+                labelDeclarationName: ing.labelDeclarationName,
+                nutritionPer100g: ing.nutritionPer100g as never,
+                source: 'PARTNER_PRIVATE',
+                ownerPartnerId: partner.id,
+                verificationStatus: 'SELF_ATTESTED',
+                createdById: user.id,
+                allergenFlags: ing.allergenFlags,
+              },
+            })
+            newReplacementIds.push(dup.id)
+          }
+        }
+        replacementMappings.push({ slotIndex: i, replacementIds: newReplacementIds })
+      }
+
+      // 2. ProductTemplate row
+      const tpl = await tx.productTemplate.create({
+        data: {
+          slug,
+          name: newName,
+          description: source.description,
+          subcategoryId: source.subcategoryId,
+          manufacturerServiceId: partner.services[0]?.id ?? null,
+          status: 'DRAFT',
+          priceFloorCents: source.priceFloorCents,
+          unitCostCents: source.unitCostCents,
+          allergenManualOverrides: source.allergenManualOverrides ?? undefined,
+          customMeta: source.customMeta ?? undefined,
+        },
+      })
+
+      // 3. Slots + replacements (in source order)
+      for (let i = 0; i < source.ingredientSlots.length; i++) {
+        const srcSlot = source.ingredientSlots[i]!
+        const newSlot = await tx.templateIngredientSlot.create({
+          data: {
+            productTemplateId: tpl.id,
+            baseIngredientId: slotIngredientIds[i]!,
+            weightG: srcSlot.weightG,
+            displayOrder: srcSlot.displayOrder,
+            allowReplacement: srcSlot.allowReplacement,
+            label: srcSlot.label,
+            description: srcSlot.description,
+          },
+        })
+        const mapping = replacementMappings[i]!
+        for (let j = 0; j < srcSlot.replacements.length; j++) {
+          await tx.templateIngredientReplacement.create({
+            data: {
+              slotId: newSlot.id,
+              ingredientId: mapping.replacementIds[j]!,
+              weightGOverride: srcSlot.replacements[j]!.weightGOverride,
+              calloutText: srcSlot.replacements[j]!.calloutText,
+              displayOrder: srcSlot.replacements[j]!.displayOrder,
+            },
+          })
+        }
+      }
+
+      // 4. Variants (copy every variant — partner can prune later)
+      for (const v of source.variants) {
+        await tx.productTemplateVariant.create({
+          data: {
+            productTemplateId: tpl.id,
+            flavor: v.flavor,
+            containerFormat: v.containerFormat,
+            containerSizeG: v.containerSizeG,
+            servingsPerContainer: v.servingsPerContainer,
+            servingSizeG: v.servingSizeG,
+            servingSizeDesc: v.servingSizeDesc,
+            packingType: v.packingType,
+            flavorArrangement: v.flavorArrangement,
+            innerPacksPerOuter: v.innerPacksPerOuter,
+            outerPacksPerCase: v.outerPacksPerCase,
+            customerPicksCount: v.customerPicksCount,
+            subscriptionInterval: v.subscriptionInterval,
+            assortmentFlavors: v.assortmentFlavors ?? undefined,
+            packingConfig: v.packingConfig ?? undefined,
+            moqMin: v.moqMin,
+            moqMax: v.moqMax,
+            leadTimeDays: v.leadTimeDays,
+            unitCostCentsOverride: v.unitCostCentsOverride,
+          },
+        })
+      }
+
+      return { id: tpl.id, slug: tpl.slug }
+    })
+  } catch (err) {
+    return { ok: false, error: `Clone failed: ${(err as Error).message}` }
+  }
+
+  // Distinct audit action so admin can spot starter-derived templates
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: created.id,
+    action: input.source === 'STARTER' ? 'PRODUCT_TEMPLATE_CLONE_STARTER' : 'PRODUCT_TEMPLATE_CLONE_OWN',
+    toValue: 'DRAFT',
+    payload: {
+      partnerId: partner.id,
+      sourceTemplateId: input.sourceTemplateId,
+      sourceName: source.name,
+      newName,
+    },
+  })
+
+  revalidatePath('/products')
+  return { ok: true, data: created }
+}
+
+// -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
 
