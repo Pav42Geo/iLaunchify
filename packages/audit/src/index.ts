@@ -8,6 +8,9 @@
 
 export { logAudit, logAuditAs, logSystemAudit } from './log'
 export { listAuditLogs, listEntityHistory, listActorHistory } from './query'
+// Runtime constants (the const arrays themselves) — needed by admin UI for
+// the audit filter dropdown. The TYPE forms are also exported below.
+export { AUDIT_ENTITY_TYPES, AUDIT_ACTIONS } from './types'
 export type {
   AuditEntry,
   AuditEntryInput,

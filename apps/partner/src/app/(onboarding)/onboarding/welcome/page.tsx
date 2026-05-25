@@ -10,8 +10,9 @@
 import { Button } from '@ilaunchify/ui'
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
-import { ArrowRight, CalendarClock, ClipboardList, FileText } from 'lucide-react'
+import { CalendarClock, ClipboardList, FileText } from 'lucide-react'
 import Link from 'next/link'
+import { ContinueSetupButton } from './ContinueButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Welcome — iLaunchify Partners' }
@@ -83,11 +84,7 @@ export default async function WelcomePage() {
       </div>
 
       <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-        <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-          <Link href="/onboarding">
-            Continue setup <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        <ContinueSetupButton />
         <Button asChild variant="outline" size="lg">
           <Link href="/api/auth/signout">I&apos;ll come back later</Link>
         </Button>

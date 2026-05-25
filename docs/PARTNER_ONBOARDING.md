@@ -76,7 +76,7 @@ Onboarding is structured as five independent systems, not one linear flow. A par
 | # | Layer | Purpose | V1 status | Required to activate? |
 |---|---|---|---|---|
 | 1 | **Identity & Verification** | Confirm legitimacy, reduce platform risk | Phase A shipped (4-section model: Legal, Compliance Docs, Capabilities, Payment) | **Yes** |
-| 2 | **Operational Capability** | Structured operational data: what they actually do | Partial (capability checkboxes shipped via #98); deepening to structured fields (MOQ, lead time, production specs) is V1 work | **Yes** |
+| 2 | **Operational Capability** | Structured operational data: what they actually do (**multi‑select partner types** — schema supports many `PartnerService` rows per partner; one per type max via `@@unique([partnerId, type])`) | Partial (capability checkboxes shipped via #98); deepening to structured fields (MOQ, lead time, production specs) is V1 work | **Yes** |
 | 3 | **Operational Standards** | How communication, revisions, escalation, file standards work | **New layer (V1)** — partner-wide defaults accepted; customization V1.5+ for premium tiers | **Defaults required (no opt-out)** |
 | 4 | **Financial & Commercial** | Payment, pricing model, failure responsibility matrix | Partial (Stripe Connect shipped); fixed standard contract layer is V1 work | **Yes** |
 | 5 | **System Integration** | Digital capability: dashboard-only / CSV / webhook / API | **New layer; V1 default is "dashboard-only" for everyone** | **No** (opt-in enhancement) |
@@ -553,19 +553,175 @@ Lifecycle events that may occur post-ACTIVE:
 - Activation decision: ≤ 1 business day after OPERATIONALLY_CONFIGURED
 - Total signup-to-active: typically 14–28 days for well-prepared partners; 6 weeks for slower
 
-## 7. Onboarding UX principles
+## 7. Onboarding UX — 4‑section accordion + Welcome screen (locked 2026‑05‑25 with Pavel)
 
-1. **Modular dashboard, not a linear wizard.** `/partner/onboarding` shows all 5 layers as cards with per-layer completion percentages + status badges. Partner can work on any layer that's unlocked. Layer 1 is the only true prerequisite (Layer 2-4 unlock simultaneously after Layer 1 is verified).
+V1 onboarding UX departs from a linear wizard in favor of a **modern accordion on one scrollable page**, preceded by a Welcome screen on first login. Schema stays the 5‑layer model from §2 (data architecture unchanged); what follows is the *user experience* sitting on top of that data.
 
-2. **Defaults exist for everything optional.** Layer 3 has full defaults; partner can accept-all in 30 seconds. Layer 5 defaults to "dashboard only." Friction is concentrated where signal matters (Layers 1, 2, 4).
+### 7.1 Post‑login routing — what does `/dashboard` show?
 
-3. **Partner can see admin progress.** When in `IDENTITY_PENDING_REVIEW`, partner sees "Your identity is being reviewed. Typically takes 3–5 business days." Not a black box.
+When a partner lands on `/dashboard`, conditional rendering based on `Partner.status` decides what they see:
 
-4. **Change requests are structured, not free-text.** When admin needs more info, they create `layerNChangeRequests` items with category + description. Partner sees these as a checklist on `/partner/my-application` with deep-links to fix.
+| Partner.status | Has opened onboarding? | `/dashboard` shows |
+|---|---|---|
+| LEAD | No (first visit) | **Welcome screen** (§7.2) with packing list + Continue setup CTA |
+| LEAD or IDENTITY_PENDING_REVIEW | Yes (returned later) | **Application Status** page — read‑only summary of progress + "Resume setup" button |
+| IDENTITY_PENDING_REVIEW / OPS_PENDING_REVIEW (in admin queue) | n/a | **Application Status** — status pill, "Typically 3–5 business days," ProductNote thread |
+| IDENTITY_VERIFIED+ | n/a | Real partner dashboard (orders, marketplace listing, payouts) |
+| PAUSED / SUSPENDED | n/a | Status notice + admin contact link |
 
-5. **Welcome flow at ACTIVE is intentional.** When a partner activates, the next dashboard visit shows a one-time welcome modal explaining what's now possible: appearing in marketplace, receiving order notifications, accessing partner support channel.
+The Welcome is a **moment in time** shown once. Subsequent visits land on Application Status (read‑only summary) until activation. This avoids re‑showing the introductory copy every time.
 
-6. **Re-onboarding for major changes.** A partner who changes their facility address (Layer 1) goes back to `IDENTITY_PENDING_REVIEW` for that section only. Other layers stay APPROVED. Partial re-verification, not full restart.
+### 7.2 The Welcome screen (first visit only)
+
+The partner has just signed up — gentler psychological onramp than landing directly on a form. Sets expectations, lists what they'll need to gather, and provides multiple paths.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ ☰ iLaunchify Partner                                  Jane @ Acme ▾  │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│                       Welcome, Acme Co‑Pack 👋                       │
+│                                                                      │
+│             You're a few steps away from being an active             │
+│                       iLaunchify partner.                            │
+│                                                                      │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     │
+│                                                                      │
+│   📋 Here's what to expect                                           │
+│   The form takes 10–15 minutes if you have everything ready.         │
+│   Our verification team typically reviews within 3–5 business        │
+│   days. You can save your progress and return any time.              │
+│                                                                      │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     │
+│                                                                      │
+│   📎 Have these ready before you start                               │
+│   • Business license / certificate of incorporation                  │
+│   • EIN or other tax ID                                              │
+│   • Certificate of liability insurance                               │
+│   • W‑9 or W‑8 form                                                  │
+│   • Facility address + production capacity                           │
+│   • Industry certifications (NSF, USDA Organic, cGMP, …) — optional  │
+│   • Bank account for production payouts                              │
+│                                                                      │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     │
+│                                                                      │
+│         [Continue setup →]      [I'll come back later]               │
+│                                                                      │
+│              How does verification work?   ·   Talk to our team      │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Why the packing list is the highest‑leverage element:** partners who try the form unprepared get stuck mid‑section and abandon. The packing list lets them gather everything FIRST → one clean pass through the form. Massive completion‑rate lift in B2B onboarding contexts (Stripe Atlas, Notion enterprise onboarding follow this pattern).
+
+**"I'll come back later"** logs them out gracefully — they can return any time via the magic link or password‑less re‑auth. Doesn't lose progress (form is empty at this point anyway).
+
+### 7.3 The Application Status page (subsequent visits before activation)
+
+After the partner clicks "Continue setup" once, `/dashboard` lands them on `/dashboard` (which conditionally renders Application Status instead of Welcome):
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Your application — Acme Co‑Pack                       Status: DRAFT  │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│   Progress  ████████░░░░░░░░░  45%                                   │
+│                                                                      │
+│   ✓ Your business              Complete                              │
+│   ◐ Your company               In progress (3 of 6 fields)           │
+│   ○ What you can do            Not started                           │
+│   ○ Payment & contract         Not started                           │
+│                                                                      │
+│                       [Resume setup →]                               │
+│                                                                      │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     │
+│                                                                      │
+│   📋 Messages from our team   (2 unread)                             │
+│   Admin asked for an updated insurance certificate — see Your        │
+│   company section.                                                   │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+When `Partner.status = OPS_PENDING_REVIEW` or `IDENTITY_PENDING_REVIEW` (with admin), this page also shows the queue ETA and a non‑dismissable "In review" banner.
+
+### 7.4 The accordion form (`/partner/onboarding`)
+
+Single scrollable page with **4 accordion sections** (Layer 5 / integrations is NOT shown in V1 — nothing partner‑configurable there yet; schema scaffolding only). Each section has a status pill in its header.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Welcome, Acme Co‑Pack                              Progress: 45%     │
+│ Complete these sections so we can verify your account.               │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│ ▾ Your business              ●●●● COMPLETE  ← EXPANDED by default     │
+│   • What you make (food / beverage / supplement / sauce / …)         │
+│   • What markets you sell into (US auto‑selected V1)                 │
+│   • Where you operate from (state)                                   │
+│   • What you do  (multi‑select checkboxes):                          │
+│       ☑ Manufacturing    ☑ Label printing                            │
+│       ☐ Co‑packing       ☐ Warehouse                                 │
+│                                                                      │
+│ ▸ Your company               ●●○○ IN PROGRESS                        │
+│ ▸ What you can do            ○○○○ NOT STARTED                        │
+│ ▸ Payment & contract         ○○○○ NOT STARTED                        │
+│                                                                      │
+│            [Save draft]              [Submit for review →]           │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+The 4 sections map to the data architecture as follows (no schema change needed):
+
+| Accordion section | Maps to Layer | Data writes |
+|---|---|---|
+| Your business | Layer 2 seed + Layer 1 context | PartnerOperationalCapability.productTypes/specialties; PartnerService rows (one per checked partner type); BrandTargetMarket; Partner.primaryRegionId |
+| Your company | Layer 1 (Identity & Verification) | Phase A PartnerVerificationSection rows (BUSINESS, DOCUMENTS, PUBLIC_PROFILE); PartnerFile uploads to R2 |
+| What you can do | Layer 2 (Operational Capability) + certificates | PartnerOperationalCapability fields (MOQ, lead time, monthly capacity); PartnerCertificateInstance picks |
+| Payment & contract | Layer 4 (Commercial) + Layer 3 (Standards defaults) | PartnerCommercialTerms (Stripe Connect, payment method, STANDARD_V1.0 contract sign‑off); PartnerOperationalStandards (defaults accepted) |
+
+### 7.5 Multi‑select partner types
+
+Per Pavel decision 2026‑05‑25: a partner is rarely one thing. A real food company often does manufacturing AND label printing, or co‑packing AND warehouse fulfillment. The schema already supports this via `PartnerService[]` (one row per type with `@@unique([partnerId, type])` meaning "one of each type max" — not "one type total").
+
+**UI surfaces this as checkboxes inside "Your business"** rather than a radio button. Each checked type creates a `PartnerService` row when the section saves.
+
+V1 ServiceType values stay at 4 (per Pavel 2026‑05‑25 — packaging suppliers are upstream of our model, not a partner type):
+- `MANUFACTURING`
+- `COPACKING`
+- `LABEL_PRINTING`
+- `WAREHOUSE`
+
+### 7.6 Conditional fields by partner type
+
+To avoid form fatigue, fields inside "What you can do" and "Payment & contract" conditionally appear based on which partner types are checked. Pattern lifted from FOD's `partnerOnboardingFlow.ts`:
+
+| Visible only if | Field |
+|---|---|
+| MANUFACTURING checked | "Monthly production capacity (units)", "Production specs you support (hot‑fill, cold‑fill, HPP, pasteurization, …)" |
+| LABEL_PRINTING checked | "Print substrates you handle", "Color modes (CMYK/RGB)", "Max print width" |
+| COPACKING checked | "Receiving capabilities (refrigerated / ambient / frozen)", "Co‑packing minimum batch size" |
+| WAREHOUSE checked | "Storage temperature ranges", "SKU capacity", "Pick‑and‑pack vs bulk only" |
+| MANUFACTURING or COPACKING checked | "Industry certifications" picker (NSF, USDA Organic, cGMP, …) becomes prominent |
+
+A pure WAREHOUSE partner doesn't see manufacturing capacity questions. A pure LABEL_PRINTING partner doesn't see USDA Organic certification options. Field count scales DOWN with specificity, not up.
+
+### 7.7 Other UX behaviors
+
+1. **Save on blur** — every field auto‑saves to server when the user tabs/clicks away. No "lost work" anxiety. `Partner.onboardingProgress` Json or per‑layer rows update silently.
+
+2. **Section status pills in accordion headers** — COMPLETE / IN PROGRESS / NOT STARTED / NEEDS CHANGES. NEEDS CHANGES turns the section header red and shows admin's structured feedback (ProductReviewItem rows scoped to that section) when partner expands it.
+
+3. **Submit for review** button activates only when minimum sections complete: Your business + Your company + What you can do + Payment & contract. Sections can be partially complete — the button is greyed with a hover tooltip listing what's still required.
+
+4. **Partner can see admin progress.** When status is *_PENDING_REVIEW, the page header shows "Your application is being reviewed — typically 3–5 business days." Not a black box.
+
+5. **Change requests are structured, not free‑text.** When admin needs more info, they create `layer*ChangeRequests` items with category + description. Partner sees these inline on the affected section + as a "Messages from our team" callout on Application Status.
+
+6. **Re‑onboarding for major changes.** A partner who edits Layer 1 fields (facility address, legal entity) on a published partner goes back to `IDENTITY_PENDING_REVIEW` for that section only. Other layers stay APPROVED. Partial re‑verification, not full restart.
+
+7. **Welcome flow at ACTIVE** — when a partner is activated by admin, the next `/dashboard` visit shows a one‑time celebration modal explaining what's now possible: appearing in marketplace, receiving order notifications, accessing partner support channel. After dismissal, `/dashboard` becomes the real partner dashboard.
 
 ## 8. Future extensibility (designed in V1, implemented V1.5+)
 
@@ -667,3 +823,4 @@ Both override patterns share the same shape: **a nullable FK to a more-specific 
 ## 11. Changelog
 
 - **2026-05-24** Spec written. Synthesizes Pavel's onboarding research ("onboarding as system architecture, not signup UI"), the 5-layer model, FOD's role-separated signup auth audit, and the activation FSM. Pavel locked V1 decisions: fixed standard contract (Layer 4); partner-wide standards (Layer 3); both with extensibility hooks for V1.5+ overrides. Extends Phase A (shipped) without invalidating its model — adds Layer 3 + Layer 5 as new layers, deepens Layer 2 with structured fields, formalizes Layer 4 via ContractTerms model. Role-separated signup architecture replaces FOD's overbuilt 1,211-line partner signup with magic-link auth + OAuth + company-info-at-signup. Activation FSM has 10 states with clear transitions and SLA targets.
+- **2026-05-25** §7 UX rewrite. Pavel-locked decisions after FOD onboarding audit: (a) replace 5-layer linear wizard with 4-section accordion on one scrollable page; (b) add Welcome screen + packing list as first-visit gate before form; (c) Application Status page for subsequent visits before activation; (d) drop Layer 5 / integrations from V1 partner-facing UI (nothing actionable; schema scaffolding only — re-introduce in V1.5 when CSV/webhook/API features ship); (e) multi-select partner types (checkboxes inside "Your business") — schema already supports via PartnerService[]; (f) conditional fields by selected partner type (warehouse-only partners don't see manufacturing capacity questions, etc.). V1 ServiceType vocabulary stays at 4 values (MANUFACTURING, COPACKING, LABEL_PRINTING, WAREHOUSE); packaging suppliers are upstream of the iLaunchify model, not partners. Section names use modern user-friendly wording (Your business / Your company / What you can do / Payment & contract). Wizard step labels from earlier draft superseded.

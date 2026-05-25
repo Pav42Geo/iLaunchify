@@ -18,7 +18,7 @@ const TYPE_LABELS: Record<string, { title: string; description: string }> = {
   },
 }
 
-export default function ApplyPage({
+export default async function ApplyPage({
   searchParams,
 }: {
   searchParams: Promise<{ type?: string }>
