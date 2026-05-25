@@ -24,15 +24,32 @@ export const metadata = { title: 'Create your brand — iLaunchify' }
 
 export default async function NewBrandPage() {
   const user = await requireUser()
-  const profile = await prisma.creatorProfile.findUnique({
-    where: { userId: user.id },
-    select: {
-      id: true,
-      displayName: true,
-      handle: true,
-      brands: { select: { id: true, name: true, handle: true } },
-    },
-  })
+  const [profile, stylePresets] = await Promise.all([
+    prisma.creatorProfile.findUnique({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        displayName: true,
+        handle: true,
+        brands: { select: { id: true, name: true, handle: true } },
+      },
+    }),
+    prisma.brandStylePreset.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        recommendedColorPalette: { select: { id: true, name: true, colorSystem: true } },
+        recommendedTypographyPair: {
+          select: {
+            id: true,
+            name: true,
+            headingFont: { select: { family: true, weight: true } },
+            bodyFont: { select: { family: true, weight: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    }),
+  ])
 
   if (!profile) {
     return (
@@ -41,6 +58,37 @@ export default async function NewBrandPage() {
       </div>
     )
   }
+
+  // Shape presets for the picker — extract primary + secondary + accent colors
+  // for the swatch preview without leaking the full JSON to the client.
+  const presetOptions = stylePresets.map((p) => {
+    const cs = (p.recommendedColorPalette?.colorSystem ?? null) as Record<string, string> | null
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      styleTags: p.styleTags,
+      sampleTagline: p.sampleTagline,
+      paletteId: p.recommendedColorPalette?.id ?? null,
+      paletteName: p.recommendedColorPalette?.name ?? null,
+      paletteSwatch: cs
+        ? {
+            primary: cs.primary ?? '#16a34a',
+            secondary: cs.secondary ?? '#64748b',
+            accent: cs.accent ?? '#f59e0b',
+          }
+        : null,
+      typographyPairId: p.recommendedTypographyPair?.id ?? null,
+      typographyPairName: p.recommendedTypographyPair?.name ?? null,
+      headingFont: p.recommendedTypographyPair?.headingFont
+        ? `${p.recommendedTypographyPair.headingFont.family} ${p.recommendedTypographyPair.headingFont.weight}`
+        : null,
+      bodyFont: p.recommendedTypographyPair?.bodyFont
+        ? `${p.recommendedTypographyPair.bodyFont.family} ${p.recommendedTypographyPair.bodyFont.weight}`
+        : null,
+    }
+  })
 
   // If the creator already has a brand, surface it + nudge to add another
   // (multi-brand-per-creator is V1 per memory note).
@@ -79,7 +127,11 @@ export default async function NewBrandPage() {
         </div>
       )}
 
-      <BrandQuickstartForm defaultHandle={profile.handle} defaultName={profile.displayName} />
+      <BrandQuickstartForm
+        defaultHandle={profile.handle}
+        defaultName={profile.displayName}
+        stylePresets={presetOptions}
+      />
 
       <p className="text-xs text-zinc-500">
         Need a refresher?{' '}
