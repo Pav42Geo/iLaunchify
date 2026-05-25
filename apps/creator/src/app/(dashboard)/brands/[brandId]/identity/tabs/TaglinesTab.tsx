@@ -6,8 +6,10 @@
 import { useState, useTransition } from 'react'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import { Quote, Plus, X } from 'lucide-react'
+import { Quote, Plus, X, AlertCircle } from 'lucide-react'
 import { saveBrandTaglines } from '../actions'
+import { BannedWordsHint } from '../BannedWordsHint'
+import { lintForBannedWords } from '../banned-words'
 
 interface TaglinesTabProps {
   brandId: string
@@ -15,9 +17,10 @@ interface TaglinesTabProps {
     tagline: string | null
     secondaryTaglines: string[]
   }
+  bannedWords: string[]
 }
 
-export function TaglinesTab({ brandId, initial }: TaglinesTabProps) {
+export function TaglinesTab({ brandId, initial, bannedWords }: TaglinesTabProps) {
   const [primary, setPrimary] = useState(initial.tagline ?? '')
   const [secondary, setSecondary] = useState<string[]>(initial.secondaryTaglines)
   const [draft, setDraft] = useState('')
@@ -83,6 +86,7 @@ export function TaglinesTab({ brandId, initial }: TaglinesTabProps) {
           className="max-w-2xl text-lg"
         />
         <p className="text-[11px] text-zinc-400">{primary.length} / 120</p>
+        <BannedWordsHint text={primary} bannedWords={bannedWords} />
       </section>
 
       {/* Secondary list */}
@@ -101,23 +105,37 @@ export function TaglinesTab({ brandId, initial }: TaglinesTabProps) {
           </p>
         ) : (
           <ul className="space-y-1.5">
-            {secondary.map((t, i) => (
-              <li
-                key={i}
-                className="flex items-start justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
-              >
-                <span className="text-zinc-700">{t}</span>
-                <button
-                  type="button"
-                  onClick={() => removeSecondary(i)}
-                  disabled={isPending}
-                  aria-label="Remove tagline"
-                  className="text-zinc-400 hover:text-red-600"
+            {secondary.map((t, i) => {
+              const hits = lintForBannedWords(t, bannedWords)
+              const isFlagged = hits.length > 0
+              return (
+                <li
+                  key={i}
+                  className={`flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
+                    isFlagged ? 'border-amber-300 bg-amber-50/50' : 'border-zinc-200 bg-white'
+                  }`}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
+                  <span className="flex min-w-0 items-center gap-2 text-zinc-700">
+                    {isFlagged && (
+                      <AlertCircle
+                        className="h-3.5 w-3.5 flex-shrink-0 text-amber-600"
+                        aria-label={`Contains banned word: ${hits.map((h) => h.matchedText).join(', ')}`}
+                      />
+                    )}
+                    <span>{t}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeSecondary(i)}
+                    disabled={isPending}
+                    aria-label="Remove tagline"
+                    className="text-zinc-400 hover:text-red-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
 

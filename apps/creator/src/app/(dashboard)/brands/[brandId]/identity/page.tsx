@@ -20,6 +20,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { ArrowLeft } from 'lucide-react'
 import { StudioTabs } from './StudioTabs'
+import { BrandPreview } from './BrandPreview'
 import { computeBrandHealth } from './brand-health'
 
 export const dynamic = 'force-dynamic'
@@ -122,6 +123,28 @@ export default async function BrandIdentityStudio({ params }: PageProps) {
           <HealthScoreBadge score={healthScore} />
         </div>
       </header>
+
+      <BrandPreview
+        brand={{
+          name: brand.name,
+          tagline: brand.tagline,
+          colorSystem: (brand.colorSystem as Record<string, string> | null) ?? null,
+          colorPrimary: brand.colorPrimary,
+          colorSecondary: brand.colorSecondary,
+          colorAccent: brand.colorAccent,
+          voiceArchetype: brand.voiceArchetype,
+          writingToneWords: brand.writingToneWords,
+          bannedWords: brand.bannedWords,
+          personaDescription: brand.personaDescription,
+          typographyPair: brand.typographyPair
+            ? {
+                headingFont: { family: brand.typographyPair.headingFont.family },
+                bodyFont: { family: brand.typographyPair.bodyFont.family },
+              }
+            : null,
+          typeScaleRatio: brand.typeScaleRatio,
+        }}
+      />
 
       <StudioTabs
         brand={{

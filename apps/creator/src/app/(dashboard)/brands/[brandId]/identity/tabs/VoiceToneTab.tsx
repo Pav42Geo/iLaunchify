@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { MessageCircle, Plus, X } from 'lucide-react'
 import type { BrandArchetype } from '@prisma/client'
 import { saveBrandVoice } from '../actions'
+import { BannedWordsHint } from '../BannedWordsHint'
 
 const ARCHETYPES: Array<{ value: BrandArchetype; label: string; description: string }> = [
   { value: 'HERO', label: 'Hero', description: 'Courage, mastery, triumph. Athletic gear, performance supps.' },
@@ -204,6 +205,7 @@ export function VoiceToneTab({ brandId, initial }: VoiceToneTabProps) {
           className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
           disabled={isPending}
         />
+        <BannedWordsHint text={persona} bannedWords={banned} />
       </section>
 
       {/* Notes */}

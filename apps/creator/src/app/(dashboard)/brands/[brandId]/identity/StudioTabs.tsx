@@ -171,6 +171,7 @@ export function StudioTabs({ brand, palettes, typographyPairs, accentFonts }: St
               tagline: brand.tagline,
               secondaryTaglines: brand.secondaryTaglines,
             }}
+            bannedWords={brand.bannedWords}
           />
         )}
         {active === 'logo' && <LogoSuiteTab brandId={brand.id} brandName={brand.name} />}
