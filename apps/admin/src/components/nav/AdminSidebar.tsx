@@ -3,17 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug } from 'lucide-react'
+import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug, Award } from 'lucide-react'
 
 const NAV = [
-  { href: '/leads',      label: 'Leads',      icon: Inbox },
-  { href: '/partners',   label: 'Partners',   icon: Building2 },
-  { href: '/creators',   label: 'Creators',   icon: Users },
-  { href: '/products',   label: 'Products',   icon: Package },
-  { href: '/orders',     label: 'Orders',     icon: ShoppingBag },
-  { href: '/channels',   label: 'Channels',   icon: Plug },
-  { href: '/compliance', label: 'Compliance', icon: ShieldCheck },
-  { href: '/audit',      label: 'Audit log',  icon: History },
+  { href: '/leads',             label: 'Leads',             icon: Inbox },
+  { href: '/partners',          label: 'Partners',          icon: Building2 },
+  { href: '/creators',          label: 'Creators',          icon: Users },
+  { href: '/products',          label: 'Products',          icon: Package },
+  { href: '/orders',            label: 'Orders',            icon: ShoppingBag },
+  { href: '/channels',          label: 'Channels',          icon: Plug },
+  { href: '/compliance',        label: 'Compliance',        icon: ShieldCheck },
+  { href: '/certificate-types', label: 'Cert library',      icon: Award },
+  { href: '/audit',             label: 'Audit log',         icon: History },
 ]
 
 export function AdminSidebar() {

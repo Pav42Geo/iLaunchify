@@ -47,6 +47,33 @@ export function brandAssetKey(params: {
   return `brands/${params.brandId}/${params.kind}/${id}-${safe}`
 }
 
+// Partner certificate PDFs (private — admin verifies, public sees only badges).
+// Path convention:
+//   partners/{partnerId}/certificates/{instanceId}/{cuid}-{filename}
+// Per-instance namespacing so we can purge by cert when a partner deletes it.
+export function certPdfKey(params: {
+  partnerId: string
+  instanceId: string
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `partners/${params.partnerId}/certificates/${params.instanceId}/${id}-${safe}`
+}
+
+// Admin-uploaded thumbnail for a CertificateType (the public badge image
+// shown on creator product detail pages when an instance is VERIFIED).
+// Path convention:
+//   platform/certificate-types/{slug}/{cuid}-{filename}
+export function certificateThumbnailKey(params: {
+  slug: string
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `platform/certificate-types/${params.slug}/${id}-${safe}`
+}
+
 // Partner packaging assets (die-lines + reference photos). Path convention:
 //   partners/{partnerId}/packaging/{packagingSystemId}/{kind}/{cuid}-{filename}
 // Lets us delete-all-by-packaging-system on archival + delete-all-by-partner

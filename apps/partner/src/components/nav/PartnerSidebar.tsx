@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box } from 'lucide-react'
+import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award } from 'lucide-react'
 import type { PartnerStatus } from '@prisma/client'
 
 interface NavItem {
@@ -17,6 +17,7 @@ const FULL_NAV: NavItem[] = [
   { href: '/orders',          label: 'Orders',          icon: Inbox },
   { href: '/services',        label: 'Services',        icon: Wrench },
   { href: '/packaging',       label: 'Packaging',       icon: Box },
+  { href: '/certifications',  label: 'Certifications',  icon: Award },
   { href: '/payments',        label: 'Payments',        icon: DollarSign },
   { href: '/my-application',  label: 'My Application',  icon: FileCheck2 },
   { href: '/settings',        label: 'Settings',        icon: Settings },

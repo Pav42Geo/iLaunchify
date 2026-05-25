@@ -25,6 +25,8 @@ export const AUDIT_ENTITY_TYPES = [
   'ProductTemplate',
   'Product',
   'PackagingSystem',
+  'CertificateType',
+  'PartnerCertificateInstance',
   'RulePack',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]

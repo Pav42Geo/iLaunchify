@@ -25,6 +25,7 @@ import {
   CapabilitiesContext,
   CommercialContext,
 } from './SectionContext'
+import { CertificationsReview, type CertInstanceRow } from './CertificationsReview'
 import type { PartnerFile, VerificationSectionType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -55,6 +56,14 @@ export default async function VerificationPage({ params }: PageProps) {
           },
         },
       },
+      certificateInstances: {
+        include: {
+          certificateType: {
+            select: { name: true, slug: true, description: true, verificationNotes: true },
+          },
+        },
+        orderBy: [{ status: 'asc' }, { expiryDate: 'asc' }],
+      },
     },
   })
   if (!partner) notFound()
@@ -69,6 +78,30 @@ export default async function VerificationPage({ params }: PageProps) {
   }
 
   const overall = computeOverallStatus(partner.verificationSections)
+
+  // Hydrate cert instances for the CertificationsReview block. PDF filenames
+  // come from PartnerFile (separate lookup since the schema doesn't join).
+  const pdfFileIds = partner.certificateInstances.map((c) => c.pdfFileId).filter(Boolean)
+  const pdfFiles = pdfFileIds.length
+    ? await prisma.partnerFile.findMany({
+        where: { id: { in: pdfFileIds } },
+        select: { id: true, originalFilename: true },
+      })
+    : []
+  const pdfFilenameById = new Map(pdfFiles.map((f) => [f.id, f.originalFilename]))
+
+  const certInstances: CertInstanceRow[] = partner.certificateInstances.map((c) => ({
+    id: c.id,
+    status: c.status,
+    certificateNumber: c.certificateNumber,
+    issuingBody: c.issuingBody,
+    issueDate: c.issueDate,
+    expiryDate: c.expiryDate,
+    rejectionReason: c.rejectionReason,
+    reviewedAt: c.reviewedAt,
+    pdfFileName: pdfFilenameById.get(c.pdfFileId) ?? null,
+    certificateType: c.certificateType,
+  }))
 
   // Pull signer name from Partner.onboardingProgress JSON (set by
   // acceptStandardContract). Falls back to the User.name lookup below.
@@ -172,6 +205,11 @@ export default async function VerificationPage({ params }: PageProps) {
             </section>
           )
         })}
+
+        {/* Cert-by-cert reviewer block — distinct from the 5-section grid */}
+        <section className="space-y-3 pt-4">
+          <CertificationsReview instances={certInstances} />
+        </section>
       </div>
     </div>
   )
