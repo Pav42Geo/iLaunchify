@@ -319,6 +319,7 @@ Total: ~6.5 days of dedicated work.
 - AI brand voice analyzer — creator drops their logo + 3 sample social posts, system suggests brand voice + colors
 - Multi-brand support — single creator account can manage 2+ brands (e.g., agency creators)
 - Onboarding analytics for admin (where do creators drop off?)
+- **Creator Team model with financial-authority gate** — mirrors `docs/PRINT_PRODUCTION_WORKFLOW.md` §2 partner team architecture. Influencer creators delegate design / print / compliance / channel work to teammates (managers, designers, brand ops) but financial authority (production orders, subscription changes, payouts) stays with the owner unless explicitly delegated per-teammate with optional spend caps. Schema mirrors partner side: `CreatorMembership` (org-wide owner flag) + `CreatorBrandMembership` (brand-scoped roles) + `CreatorMembershipPermissions` (granular financial-authority flags) + `CreatorInvite`. Full spec in [[ilaunchify-creator-team-model-v1.5]] memory note. **V1 watchouts to avoid corner-painting:** never hardcode `creatorProfile.userId === user.id` at action sites — wrap in a helper from day one. Store Stripe payment-method handles on CreatorProfile/Brand, not on User. ChannelConnection tokens belong to the Brand, not the User. These choices cost nothing in V1 but make the V1.5 migration cleanly additive instead of touch-every-file painful.
 
 ### V2
 - Per-region onboarding variants (Canadian creators get bilingual brand voice options; CFIA market reminder)
