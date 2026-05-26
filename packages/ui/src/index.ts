@@ -22,6 +22,9 @@ export * from './primitives/dialog'
 // Nutrition rendering
 export * from './nutrition/NutritionFactsRenderer'
 
-// Canvas — added Week 4-5 when Fabric.js integration begins
-// export * from './canvas/Stage'
-// export * from './canvas/ComplianceRegion'
+// Canvas — Fabric.js wrappers + die-cut overlay (Phase C of DESIGN_STUDIO_REBUILD).
+// Stage + DieCutFrame are 'use client' — host pages should dynamic-import them
+// with `ssr: false` because Fabric.js requires `window`.
+export * from './canvas/types'
+export { Stage } from './canvas/Stage'
+export { DieCutFrame, DieCutLegend } from './canvas/DieCutFrame'
