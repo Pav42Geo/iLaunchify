@@ -1,66 +1,37 @@
 'use client'
 
+// V1 minimal brand quickstart form. The preset / palette / typography-pair
+// picker that used to live here was dropped 2026-05-26 — those were web
+// design-system concepts (per docs/DESIGN_STUDIO_REBUILD.md §4 scope correction).
+//
+// Fields: name + handle (required), tagline (optional), primary color
+// (optional), logo (optional). Everything else (logo variants, additional
+// swatches, fonts) is added later at /brands/[id]/assets.
+
 import { useRef, useState, useTransition } from 'react'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, FileImage, Sparkles, Check } from 'lucide-react'
+import { Upload, FileImage } from 'lucide-react'
 import { createBrand } from './actions'
-
-export interface StylePresetOption {
-  id: string
-  slug: string
-  name: string
-  description: string
-  styleTags: string[]
-  sampleTagline: string | null
-  paletteId: string | null
-  paletteName: string | null
-  paletteSwatch: { primary: string; secondary: string; accent: string } | null
-  typographyPairId: string | null
-  typographyPairName: string | null
-  headingFont: string | null
-  bodyFont: string | null
-}
 
 interface Props {
   defaultName: string
   defaultHandle: string
-  stylePresets: StylePresetOption[]
 }
 
 const SUGGESTED_COLORS = ['#16a34a', '#0ea5e9', '#f59e0b', '#dc2626', '#9333ea', '#0f172a']
 
-export function BrandQuickstartForm({ defaultName, defaultHandle, stylePresets }: Props) {
+export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(defaultName)
   const [handle, setHandle] = useState(defaultHandle)
   const [tagline, setTagline] = useState('')
   const [colorPrimary, setColorPrimary] = useState('#16a34a')
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
   const [logo, setLogo] = useState<File | null>(null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-
-  const selectedPreset = stylePresets.find((p) => p.id === selectedPresetId) ?? null
-
-  function pickPreset(preset: StylePresetOption) {
-    if (selectedPresetId === preset.id) {
-      // Toggle off — go back to custom
-      setSelectedPresetId(null)
-      return
-    }
-    setSelectedPresetId(preset.id)
-    // Auto-fill primary color from the recommended palette
-    if (preset.paletteSwatch) {
-      setColorPrimary(preset.paletteSwatch.primary)
-    }
-    // Pre-fill tagline if creator hasn't typed one
-    if (!tagline.trim() && preset.sampleTagline) {
-      setTagline(preset.sampleTagline)
-    }
-  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -71,13 +42,6 @@ export function BrandQuickstartForm({ defaultName, defaultHandle, stylePresets }
     formData.set('handle', handle)
     formData.set('tagline', tagline)
     formData.set('colorPrimary', colorPrimary)
-    if (selectedPreset) {
-      formData.set('brandStylePresetId', selectedPreset.id)
-      if (selectedPreset.paletteId) formData.set('colorPaletteId', selectedPreset.paletteId)
-      if (selectedPreset.typographyPairId) {
-        formData.set('typographyPairId', selectedPreset.typographyPairId)
-      }
-    }
     if (logo) formData.set('logo', logo)
 
     startTransition(async () => {
@@ -104,79 +68,6 @@ export function BrandQuickstartForm({ defaultName, defaultHandle, stylePresets }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6">
-      {/* Style preset picker — curated catalog of palette + typography combos */}
-      {stylePresets.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <Label className="flex items-center gap-2 text-sm font-medium text-zinc-900">
-              <Sparkles className="h-4 w-4 text-emerald-600" />
-              Pick a starting style
-              <span className="text-xs font-normal text-zinc-500">(optional)</span>
-            </Label>
-            <p className="mt-1 text-xs text-zinc-500">
-              Each preset locks in a curated palette + typography pair. You can fine-tune
-              later in Brand Studio.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {stylePresets.map((p) => {
-              const isSelected = selectedPresetId === p.id
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => pickPreset(p)}
-                  className={`flex flex-col items-start gap-2 rounded-md border p-3 text-left transition-colors ${
-                    isSelected
-                      ? 'border-emerald-500 bg-emerald-50'
-                      : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
-                  }`}
-                  disabled={isPending}
-                >
-                  <div className="flex w-full items-start justify-between gap-2">
-                    <span className="font-semibold text-zinc-900">{p.name}</span>
-                    {isSelected && <Check className="h-4 w-4 flex-shrink-0 text-emerald-600" />}
-                  </div>
-                  {p.paletteSwatch && (
-                    <div className="flex h-5 w-full overflow-hidden rounded">
-                      <span
-                        className="h-full flex-1"
-                        style={{ backgroundColor: p.paletteSwatch.primary }}
-                        aria-label={`primary ${p.paletteSwatch.primary}`}
-                      />
-                      <span
-                        className="h-full flex-1"
-                        style={{ backgroundColor: p.paletteSwatch.secondary }}
-                        aria-label={`secondary ${p.paletteSwatch.secondary}`}
-                      />
-                      <span
-                        className="h-full flex-1"
-                        style={{ backgroundColor: p.paletteSwatch.accent }}
-                        aria-label={`accent ${p.paletteSwatch.accent}`}
-                      />
-                    </div>
-                  )}
-                  <div className="text-xs text-zinc-500">{p.description}</div>
-                  {p.headingFont && p.bodyFont && (
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-400">
-                      {p.headingFont} + {p.bodyFont}
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          {selectedPreset && (
-            <div className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-              ✓ Locked in <strong>{selectedPreset.name}</strong> — palette + typography ride
-              along automatically. Tweak the brand color below if you want a custom primary.
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Brand name + handle */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -268,7 +159,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle, stylePresets }
           </div>
         </div>
         <p className="text-xs text-zinc-500">
-          Used on labels + storefront. You can refine the full palette in Brand Studio later.
+          Surfaces in the Design Studio canvas color pickers. Add more swatches later in Brand Assets.
         </p>
       </div>
 
@@ -302,12 +193,15 @@ export function BrandQuickstartForm({ defaultName, defaultHandle, stylePresets }
             <>
               <Upload className="h-5 w-5 text-zinc-400" />
               <div className="text-sm text-zinc-600">
-                <span className="font-medium text-zinc-900">Upload logo</span>
+                <span className="font-medium text-zinc-900">Upload primary logo</span>
                 <span className="ml-1 text-xs">PNG, JPEG, WebP, SVG · up to 5 MB</span>
               </div>
             </>
           )}
         </button>
+        <p className="text-xs text-zinc-500">
+          Add icon and horizontal logo variants later in Brand Assets.
+        </p>
       </div>
 
       {error && (

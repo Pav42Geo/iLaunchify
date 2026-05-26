@@ -20,6 +20,7 @@ import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
+import { seedDesignLibrary } from './seed-design-library'
 
 const prisma = new PrismaClient()
 
@@ -520,6 +521,13 @@ async function main() {
   // Platform-curated, manufacturerServiceId=NULL. Partners clone these as
   // a head start on /products/new/starter.
   await seedStarterTemplates(prisma)
+
+  // --- Design Studio template gallery (#148) ---
+  // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
+  // Each ships with an inline-SVG TEMPLATE_THUMBNAIL Asset so the gallery
+  // renders without R2 setup. Real designer-produced assets replace these
+  // pre-launch.
+  await seedDesignLibrary(prisma)
 
   // --- Channels registry (V1 shell; real OAuth lands in V1.1+) ---
   // Per Pavel decision 2026-05-19: 6 channels managed via admin on/off toggle.

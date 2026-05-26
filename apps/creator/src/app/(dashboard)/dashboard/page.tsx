@@ -67,21 +67,21 @@ export default async function DashboardHome() {
       {brand && (
         <Card>
           <CardHeader>
-            <CardDescription>Brand Identity Studio</CardDescription>
+            <CardDescription>Brand Assets</CardDescription>
             <CardTitle className="text-base">
-              Deepen {brand.name}&apos;s look &amp; feel
+              Manage {brand.name}&apos;s logos, colors &amp; fonts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-sm text-zinc-500">
-              Fine-tune your color system, typography, voice, and taglines. Every change feeds
-              the label renderer and the Design Studio template gallery.
+              Upload logo variants, pick your brand colors, and choose fonts. These appear
+              automatically inside the Design Studio canvas when you design a product label.
             </p>
             <Link
-              href={`/brands/${brand.id}/identity`}
+              href={`/brands/${brand.id}/assets`}
               className="text-sm text-brand-primary underline"
             >
-              Open Brand Identity Studio →
+              Open Brand Assets →
             </Link>
           </CardContent>
         </Card>

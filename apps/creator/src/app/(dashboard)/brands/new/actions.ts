@@ -54,12 +54,8 @@ export async function createBrand(formData: FormData): Promise<CreateBrandResult
     .toLowerCase()
   const tagline = String(formData.get('tagline') ?? '').trim()
   const colorPrimary = String(formData.get('colorPrimary') ?? '').trim() || null
-  // Optional curated picks from the Brand Style Preset card grid (#164).
-  // When set, the brand picks up the preset's recommended palette + typography
-  // pair so the label renderer + storefront use consistent system colors.
-  const brandStylePresetId = String(formData.get('brandStylePresetId') ?? '').trim() || null
-  const colorPaletteId = String(formData.get('colorPaletteId') ?? '').trim() || null
-  const typographyPairId = String(formData.get('typographyPairId') ?? '').trim() || null
+  // BrandStylePreset / ColorPalette / TypographyPair picker fields removed
+  // 2026-05-26 (see docs/DESIGN_STUDIO_REBUILD.md §4 scope correction).
 
   if (name.length < 2 || name.length > 120) {
     return { ok: false, error: 'Brand name must be 2–120 characters.', field: 'name' }
@@ -120,9 +116,6 @@ export async function createBrand(formData: FormData): Promise<CreateBrandResult
           handle,
           tagline: tagline || null,
           colorPrimary,
-          brandStylePresetId,
-          colorPaletteId,
-          typographyPairId,
           isActive: true,
         },
       })

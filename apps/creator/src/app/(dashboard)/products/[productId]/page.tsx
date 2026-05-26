@@ -67,11 +67,11 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
         <StepCard
           n={2}
           title="Design label"
-          description="Fabric.js canvas"
+          description="Fabric.js canvas (coming next)"
           href={`/products/${product.id}/design`}
           ctaLabel="Open"
           disabled
-          disabledNote="Week 6-7"
+          disabledNote="Canvas in progress — Phase C"
         />
         <StepCard
           n={3}

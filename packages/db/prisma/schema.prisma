@@ -104,20 +104,9 @@ enum DisclosureLevel {
 // ENUMS — BRAND, PRODUCT, RECIPE
 // =============================================================================
 
-enum BrandArchetype {
-  HERO
-  SAGE
-  CAREGIVER
-  EXPLORER
-  CREATOR
-  JESTER
-  EVERYMAN
-  INNOCENT
-  LOVER
-  MAGICIAN
-  OUTLAW
-  RULER
-}
+// BrandArchetype (Jungian 12-type) enum dropped 2026-05-26 — was used by the
+// over-built Brand Identity Studio voice/tone editor; out of scope for V1
+// packaging-asset library per docs/DESIGN_STUDIO_REBUILD.md §4.
 
 enum ProductCategory {
   FOOD
@@ -608,64 +597,43 @@ model Brand {
   name              String
   handle            String         @unique           // public URL slug (storefront route)
   positioning       String?                          // short positioning statement
-  // Visual identity
-  colorPrimary      String?
+  // === Brand Assets (V1 corrected scope per docs/DESIGN_STUDIO_REBUILD.md §4) ===
+  // The brand identity in iLaunchify is a packaging-design ASSET LIBRARY that
+  // feeds the Fabric.js canvas — NOT a web design-system editor. Per memory note
+  // ilaunchify-brand-assets-not-design-system.md (2026-05-25 scope correction).
+  //
+  // What the canvas consumes:
+  //   - Colors  → color pickers (text / background / ink) get brand swatches pinned at the top
+  //   - Fonts   → Text drawer font dropdown gets brand fonts pinned at the top
+  //   - Logos   → Images drawer "My Brand" section gets logo variants for drag-onto-canvas
+  //
+  // Colors: 3 named slots (primary/secondary/accent) for the canonical brand triad,
+  // plus an optional brandSwatches[] for additional swatches (cap ~5 total in UI).
+  colorPrimary      String?                                       // #16a34a etc; surfaces in canvas color pickers
   colorSecondary    String?
   colorAccent       String?
-  fontDisplay       String?                          // from curated list
-  fontBody          String?                          // from curated list
-  logoAssetId       String?
-  heroAssetId       String?
-  // Voice & tone — structured fields the AI layer reads
-  voiceArchetype    BrandArchetype?
-  voiceFormality    Int?                             // 1..5
-  voicePlayfulness  Int?                             // 1..5
-  voiceWarmth       Int?                             // 1..5
-  voiceNotes        String?                          // free-text overrides
-  // Audience model — AI strategy generation input
-  audienceAgeMin    Int?
-  audienceAgeMax    Int?
-  audienceInterests Json?                            // string[]
-  audienceValues    Json?                            // string[]
-  // Storefront content
+  brandSwatches     String[]                                      // optional 4th/5th swatches beyond the primary 3
+  // Fonts: list of 1-3 TypographyFont IDs (typically heading + body + optional accent).
+  // No PairId / ScaleRatio — those were web-design-system concepts (typographic scales,
+  // pair lockups) that don't apply to packaging design where the canvas tools choose
+  // per-element size.
+  brandFontIds      String[]                                      // FK-ish to TypographyFont.id (validated in app code)
+  // Logos: PRIMARY is the master mark. ICON + HORIZONTAL are the most commonly-used
+  // variants. VERTICAL / MONOGRAM / INVERSE / FAVICON dropped — creators get confused
+  // by the distinctions (per Pavel feedback 2026-05-26) and label designers rarely
+  // need more than 3 logo variants in V1.
+  logoAssetId       String?                                       // PRIMARY logo mark
+  logoIconAssetId   String?                                       // icon-only variant
+  logoHorizontalAssetId String?                                   // horizontal lockup
+  heroAssetId       String?                                       // brand hero image (used in marketing surfaces if any)
+  // Tagline — single string. secondaryTaglines[] dropped (over-build).
   tagline           String?
   aboutText         String?
   isActive          Boolean        @default(true)
   // V1 — geographic + market scoping per docs/MARKETS_AND_REGIONS.md
   operatingRegionId String?                                       // brand's home region (US state V1)
-  // V1 — Brand Identity Quickstart (Step 4 of Creator Onboarding)
-  // Per docs/CREATOR_ONBOARDING.md + docs/BRAND_IDENTITY_STUDIO.md
-  brandStylePresetId      String?                                 // FK to BrandStylePreset; null if built from scratch
-  colorPaletteId          String?                                 // FK to ColorPalette (curated picks); null if customColorsJson populated
-  customColorsJson        Json?                                   // partner-built palette { primary, secondary, accent } when no curated pick
-  typographyPairId        String?                                 // FK to TypographyPair (curated; legacy fontDisplay/fontBody preserved for back-compat)
-  typographyAccentId      String?                                 // FK to TypographyFont (optional accent font)
-  brandVoiceTags          String[]                                // MAX 2 — matches LabelDesignTemplate.styleTags vocab (minimalist|vintage|bold|organic|scientific|luxury|playful|wellness|athletic|clinical)
-  packagingDirectionNotes String?                                 // partner-supplied notes for the V2 AI Template Agent
-  directionNotes          String?                                 // general brand direction notes
-  // V1 — Brand Identity Studio (deep fields polished after onboarding)
-  logoIconAssetId         String?                                 // icon-only logo variant
-  logoHorizontalAssetId   String?                                 // horizontal lockup
-  logoVerticalAssetId     String?                                 // vertical / stacked
-  logoMonogramAssetId     String?                                 // monogram / seal
-  logoInverseAssetId      String?                                 // inverse / single-color for dark BG
-  faviconAssetId          String?                                 // 16/32/180 favicon
-  logoMinClearSpaceUnits  Float    @default(0.5)                  // minimum padding around logo (multiple of logo height)
-  typeScaleRatio          Float    @default(1.250)                // 1.125 / 1.250 / 1.333 / 1.414
-  colorSystem             Json?                                   // 11 semantic roles: { primary, secondary, accent, surface, background, textPrimary, textSecondary, success, warning, error, border }
-  customPaletteOverride   Boolean  @default(false)                // true if creator overrode the curated palette
-  photographyStyle        PhotographyStyle?
-  illustrationStyle       IllustrationStyle?
-  patternAssetIds         String[]                                // Asset rows, kind=PATTERN
-  heroImageAssetIds       String[]                                // additional brand hero photos (Brand.heroAssetId is primary)
-  writingToneWords        String[]                                // MAX 4 from controlled vocab
-  brandKeywords           String[]                                // free-text ~3-7 short phrases
-  personaDescription      String?                                 // ~150 word brand audience paragraph
-  secondaryTaglines       String[]                                // additional brand taglines beyond `tagline`
-  bannedWords             String[]                                // linted in label copy + product descriptions
-  brandHealthScore        Int      @default(0)                    // computed 0-100% Studio completion
-  brandBookExportedAt     DateTime?                               // V1.5+: last PDF brand book export
-  onboardingCompletedAt   DateTime?                               // null until all 5 stepper steps done; dashboard widget hides on != null
+  // Onboarding completion flag (creator launch checklist Step 4)
+  onboardingCompletedAt   DateTime?                               // null until creator has filled in brand basics
   // Relations
   creatorProfile          CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
   socialAccounts          SocialAccount[]
@@ -673,14 +641,8 @@ model Brand {
   templates               Template[]
   designs                 Design[]
   orders                  Order[]
-  // V1 new relations (markets/regions)
   operatingRegion         Region?        @relation("BrandOperatingRegion", fields: [operatingRegionId], references: [id])
   targetMarkets           BrandTargetMarket[]
-  // V1 new relations (brand identity)
-  brandStylePreset        BrandStylePreset? @relation(fields: [brandStylePresetId], references: [id])
-  colorPalette            ColorPalette?     @relation(fields: [colorPaletteId], references: [id])
-  typographyPair          TypographyPair?   @relation(fields: [typographyPairId], references: [id])
-  typographyAccent        TypographyFont?   @relation("BrandTypographyAccent", fields: [typographyAccentId], references: [id])
   onboardingState         CreatorOnboardingProgress?
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
@@ -2196,34 +2158,18 @@ model PartnerOnboardingProgress {
 }
 
 // =============================================================================
-// CREATOR ONBOARDING + BRAND IDENTITY — V1
-// Specs: docs/CREATOR_ONBOARDING.md + docs/BRAND_IDENTITY_STUDIO.md
+// CREATOR ONBOARDING + BRAND ASSETS — V1
+// Specs: docs/CREATOR_ONBOARDING.md + docs/DESIGN_STUDIO_REBUILD.md §4
 // =============================================================================
 //
-// Creator onboarding = 5-step guided stepper (much lighter than partner
-// onboarding). Brand Identity = Quickstart (in onboarding Step 4) + dedicated
-// Brand Identity Studio destination (7 tabs, open-ended polish).
+// Creator onboarding = 5-step guided stepper. Brand Assets = simple 3-section
+// page (Logos / Colors / Fonts) that feeds the Fabric.js Design Studio canvas.
 //
-// Curated libraries (admin-managed; ~12 BrandStylePresets + ~30 ColorPalettes
-// + ~20 TypographyPairs + ~60 TypographyFont rows seeded by contractor at V1
-// launch — see task #164).
-
-enum PhotographyStyle {
-  LIFESTYLE      // humans using the product in context
-  PRODUCT        // clean product shots on solid backgrounds
-  LAB            // scientific / technical contexts
-  INGREDIENT     // close-ups of raw inputs
-  EDITORIAL      // magazine / aspirational
-  NONE           // brand doesn't use photography (illustrated-only)
-}
-
-enum IllustrationStyle {
-  LINE_ART
-  FLAT
-  HAND_DRAWN
-  GEOMETRIC
-  NONE
-}
+// V1 has ONE curated library that survives: TypographyFont (~24 Google Fonts
+// rows). Creators pick 1-3 of these per brand. BrandStylePreset / ColorPalette
+// / TypographyPair were dropped 2026-05-26 as scope creep (web design-system
+// concepts that don't apply to packaging design). PhotographyStyle and
+// IllustrationStyle enums also dropped.
 
 enum FontSource {
   GOOGLE_FONTS      // V1 default — all curated fonts come from Google Fonts
@@ -2248,69 +2194,17 @@ enum OnboardingStepStatus {
 // CURATED LIBRARIES — admin-managed, referenced by Brand
 // -----------------------------------------------------------------------------
 
-// Complete starter brand kits picker shown in Onboarding Step 4 + Studio.
-// Picking a preset auto-fills ~70% of Brand fields (color palette, typography
-// pair, voice tags, sample tagline pattern).
-model BrandStylePreset {
-  id                          String              @id @default(cuid())
-  slug                        String              @unique          // 'modern-minimalist-wellness'
-  name                        String                                // 'Modern Minimalist Wellness'
-  description                 String
-  styleTags                   String[]                              // matches LabelDesignTemplate.styleTags + Brand.brandVoiceTags vocab
-  recommendedColorPaletteId   String?
-  recommendedTypographyPairId String?
-  sampleLabelAssetId          String?                               // preview thumbnail shown in picker
-  sampleTagline               String?                               // example tagline pattern
-  status                      BrandLibraryStatus
-  createdAt                   DateTime            @default(now())
-  updatedAt                   DateTime            @updatedAt
-  // Relations
-  recommendedColorPalette     ColorPalette?       @relation("PresetRecommendedPalette", fields: [recommendedColorPaletteId], references: [id])
-  recommendedTypographyPair   TypographyPair?     @relation("PresetRecommendedTypography", fields: [recommendedTypographyPairId], references: [id])
-  brandsUsing                 Brand[]
-}
+// BrandStylePreset / ColorPalette / TypographyPair models were dropped 2026-05-26
+// per docs/DESIGN_STUDIO_REBUILD.md §4 — they were web design-system concepts
+// (style presets, 11-role color tokens, typographic pair lockups) that do not
+// apply to packaging-design where the canvas tools choose per-element sizing
+// and the creator picks individual swatches + fonts directly.
+//
+// TypographyFont is the ONLY brand library model that survives — creators pick
+// 1-3 fonts from this catalog and they're stored as Brand.brandFontIds[].
 
-// Curated color palettes — each specifies all 11 semantic roles + pre-computed
-// WCAG contrast report so picker can show "✓ AA passes" inline.
-model ColorPalette {
-  id              String             @id @default(cuid())
-  slug            String             @unique                // 'sage-serenity'
-  name            String                                    // 'Sage Serenity'
-  description     String?
-  styleTags       String[]                                  // tags this palette suits
-  colorSystem     Json                                      // all 11 semantic roles
-  contrastReport  Json                                      // pre-computed WCAG ratios per text/bg pair
-  isCurated       Boolean            @default(true)         // admin-curated vs user-custom (V1: all curated)
-  status          BrandLibraryStatus
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  // Reverse relations
-  brandsUsing     Brand[]
-  presets         BrandStylePreset[] @relation("PresetRecommendedPalette")
-}
-
-// Curated typography pairs — heading + body fonts that work together.
-model TypographyPair {
-  id                String             @id @default(cuid())
-  slug              String             @unique              // 'playfair-source-sans'
-  name              String                                  // 'Playfair Display + Source Sans Pro'
-  description       String?
-  styleTags         String[]
-  headingFontId     String                                  // FK to TypographyFont
-  bodyFontId        String                                  // FK to TypographyFont
-  recommendedRatio  Float              @default(1.250)
-  status            BrandLibraryStatus
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  // Relations
-  headingFont       TypographyFont     @relation("PairHeading", fields: [headingFontId], references: [id])
-  bodyFont          TypographyFont     @relation("PairBody",    fields: [bodyFontId],    references: [id])
-  // Reverse relations
-  brandsUsing       Brand[]
-  presets           BrandStylePreset[] @relation("PresetRecommendedTypography")
-}
-
-// Individual font rows (Google Fonts at V1 launch).
+// Individual font rows (Google Fonts at V1 launch). Creators pick 1-3 of these
+// per brand; references stored as Brand.brandFontIds[].
 model TypographyFont {
   id                  String     @id @default(cuid())
   family              String                                // 'Inter', 'Playfair Display'
@@ -2323,10 +2217,6 @@ model TypographyFont {
   licenseTerms        String                                // brief license summary for creator
   status              BrandLibraryStatus
   createdAt           DateTime   @default(now())
-  // Reverse relations
-  headingInPairs      TypographyPair[] @relation("PairHeading")
-  bodyInPairs         TypographyPair[] @relation("PairBody")
-  accentInBrands      Brand[]    @relation("BrandTypographyAccent")
   @@unique([family, weight, style])
 }
 
