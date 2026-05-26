@@ -163,12 +163,10 @@ async function main() {
         colorPrimary: '#0EA5E9',
         colorSecondary: '#1E293B',
         colorAccent: '#F59E0B',
-        fontDisplay: 'Plus Jakarta Sans',
-        fontBody: 'Inter',
-        voiceArchetype: 'CAREGIVER',
-        voiceFormality: 2,
-        voicePlayfulness: 3,
-        voiceWarmth: 4,
+        // fontDisplay / fontBody / voiceArchetype / voiceFormality / voicePlayfulness /
+        // voiceWarmth were dropped in the 2026-05-26 Brand model cleanup
+        // (docs/DESIGN_STUDIO_REBUILD.md §4). Fonts now picked at /brands/[id]/assets
+        // and stored as Brand.brandFontIds[].
         tagline: 'Built for you.',
         aboutText: 'Sample brand seeded for local development.',
       },
