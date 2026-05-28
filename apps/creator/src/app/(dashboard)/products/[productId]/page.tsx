@@ -3,6 +3,8 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { RetailIdentityCard } from './RetailIdentityCard'
+import type { BarcodeMode } from './identity-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +16,8 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
       brand: true,
       productTemplate: { include: { subcategory: { include: { category: true } } } },
       variant: true,
+      // GTIN / internal SKU / barcode mode for the Retail Identity card (DS-52c)
+      // are top-level fields on Product — pulled by default by findFirst.
       recipe: {
         include: {
           _count: { select: { ingredients: true } },
@@ -92,6 +96,15 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
           disabled={!customizeComplete}
         />
       </div>
+
+      <RetailIdentityCard
+        productId={product.id}
+        initial={{
+          gtin: product.gtin,
+          internalSku: product.internalSku,
+          barcodeMode: product.barcodeMode as BarcodeMode,
+        }}
+      />
     </div>
   )
 }
