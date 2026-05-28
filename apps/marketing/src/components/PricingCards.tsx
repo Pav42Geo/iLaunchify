@@ -161,7 +161,7 @@ function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
   const ctaHref =
     tier.id === 'agency'
       ? '/contact-sales?plan=agency'
-      : creatorUrl('/signup/creator', { plan: tier.id, billing })
+      : creatorUrl('/signup', { plan: tier.id, billing })
 
   return (
     <div

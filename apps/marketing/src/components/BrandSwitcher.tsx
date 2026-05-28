@@ -1,8 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import Link from 'next/link'
 import { ChevronDown, Check, Plus } from 'lucide-react'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * BrandSwitcher — top-nav pill showing the active brand with a dropdown to
@@ -125,15 +125,13 @@ export function BrandSwitcher({ brands, activeBrandId, onChange }: BrandSwitcher
             })}
           </ul>
           <div className="border-t border-ink-100 mt-1">
-            <Link
-              href="/creator/brands/new"
-              role="menuitem"
-              onClick={() => setOpen(false)}
+            <a
+              href={creatorUrl('/brands/new')}
               className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-pink-700 hover:bg-pink-50 transition-colors"
             >
               <Plus strokeWidth={2.5} className="w-4 h-4" />
               Add a brand
-            </Link>
+            </a>
           </div>
         </div>
       )}

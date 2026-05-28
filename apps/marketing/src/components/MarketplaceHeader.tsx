@@ -80,7 +80,7 @@ export function MarketplaceHeader({
                 Sign in
               </a>
               <a
-                href={creatorUrl('/signup/creator')}
+                href={creatorUrl('/signup')}
                 className="inline-flex items-center gap-[7px] bg-ink-900 text-white font-semibold text-sm px-[22px] py-[11px] rounded-pill transition-all hover:bg-black hover:-translate-y-px"
               >
                 Start launching

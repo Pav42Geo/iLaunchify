@@ -123,12 +123,12 @@ export default async function ContactSalesPage({
                 <div className="text-[13px] text-ink-700 leading-[1.55]">
                   Just one brand, scaling to launch? You don't need a sales
                   call.{' '}
-                  <Link
-                    href="/signup/creator?plan=builder"
+                  <a
+                    href={creatorUrl('/signup', { plan: 'builder' })}
                     className="font-semibold text-pink-700 hover:text-pink-600"
                   >
                     Start on Builder for $79/mo →
-                  </Link>
+                  </a>
                 </div>
               </div>
             </aside>

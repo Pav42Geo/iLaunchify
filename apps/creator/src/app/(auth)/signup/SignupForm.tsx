@@ -97,10 +97,10 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
           onChange={(e) => setBrandName(e.target.value)}
           disabled={busy}
         />
-        <p className="text-xs text-zinc-500">Don&apos;t worry if you haven&apos;t picked a name yet.</p>
+        <p className="text-xs text-ink-500">Don&apos;t worry if you haven&apos;t picked a name yet.</p>
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-zinc-600">
+      <label className="flex items-start gap-2 text-sm text-ink-600">
         <input
           type="checkbox"
           checked={agreedToTerms}

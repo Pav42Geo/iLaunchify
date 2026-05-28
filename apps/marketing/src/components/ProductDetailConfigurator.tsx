@@ -218,9 +218,13 @@ export function ProductDetailConfigurator({
         // domain in prod). Use raw <a> for hard cross-app navigation.
         //   Authenticated → Design Studio with selection pre-loaded
         //   Guest         → Signup with selection carried into Step 5
+        // Authenticated → New product flow (the existing entry point to
+        // the canvas; productId-scoped /products/{id}/design/canvas can't
+        // be deep-linked without picking a product first).
+        // Guest → Signup, which apps/creator may read for carryover.
         const launchHref = isAuthenticated
-          ? creatorUrl('/design-studio', selection)
-          : creatorUrl('/signup/creator', selection)
+          ? creatorUrl('/products/new', selection)
+          : creatorUrl('/signup', selection)
         return (
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <Button asChild variant="primary" size="md">

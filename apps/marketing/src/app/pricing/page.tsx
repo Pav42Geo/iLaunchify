@@ -4,6 +4,7 @@ import { Check, X, ArrowRight } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { PricingCards } from '@/components/PricingCards'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * /pricing — public-facing tier comparison.
@@ -190,10 +191,10 @@ export default async function PricingPage({
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button asChild variant="neon" size="lg">
-              <Link href="/signup/creator">
+              <a href={creatorUrl('/signup')}>
                 Start free
                 <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
-              </Link>
+              </a>
             </Button>
             <Button asChild variant="ghost" size="lg" className="text-white hover:bg-white/10">
               <Link href="/marketplace">Browse the marketplace →</Link>

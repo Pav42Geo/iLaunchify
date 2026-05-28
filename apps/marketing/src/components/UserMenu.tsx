@@ -15,6 +15,7 @@ import {
   HelpCircle,
   LogOut,
 } from 'lucide-react'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * UserMenu — avatar + dropdown for logged-in creators in the marketplace
@@ -119,9 +120,8 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
               </div>
             )}
             {user.tier && (
-              <Link
-                href="/creator/subscription"
-                onClick={() => setOpen(false)}
+              <a
+                href={creatorUrl('/settings/profile')}
                 className="inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-bold uppercase tracking-[0.06em] bg-pink-50 text-pink-700 px-2.5 py-1 rounded-pill hover:bg-pink-100 transition-colors group"
               >
                 <Crown strokeWidth={2.5} className="w-3 h-3" />
@@ -129,16 +129,14 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
                 <span className="text-pink-700/60 group-hover:text-pink-700 transition-colors normal-case font-medium tracking-normal ml-0.5">
                   · Manage
                 </span>
-              </Link>
+              </a>
             )}
           </div>
 
           {/* Active brand chip — only when multi-brand */}
           {user.activeBrandName && (
-            <Link
-              href="/creator/brands"
-              role="menuitem"
-              onClick={() => setOpen(false)}
+            <a
+              href={creatorUrl('/brands')}
               className="mx-2 my-2 px-2 py-2 rounded-md flex items-center gap-2 hover:bg-ink-50 transition-colors"
             >
               <span className="w-7 h-7 rounded-md bg-gradient-to-br from-pink-400 to-pink-600 flex-shrink-0" />
@@ -154,35 +152,35 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
                 strokeWidth={2}
                 className="w-3.5 h-3.5 text-ink-400 -rotate-90"
               />
-            </Link>
+            </a>
           )}
 
           <div className="border-t border-ink-100 my-1" />
 
-          {/* Work — what the creator does on iLaunchify */}
-          <MenuLink href="/creator/dashboard" icon={LayoutDashboard} onClick={() => setOpen(false)}>
+          {/* Work — what the creator does on iLaunchify (all cross-app) */}
+          <MenuLink href={creatorUrl('/dashboard')} icon={LayoutDashboard} crossApp>
             Dashboard
           </MenuLink>
-          <MenuLink href="/creator/brands" icon={Layers} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/brands')} icon={Layers} crossApp>
             My brands
           </MenuLink>
-          <MenuLink href="/creator/products" icon={Package} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/products')} icon={Package} crossApp>
             My products
           </MenuLink>
-          <MenuLink href="/creator/orders" icon={Truck} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/products')} icon={Truck} crossApp>
             Production orders
           </MenuLink>
 
           <div className="border-t border-ink-100 my-1" />
 
           {/* Account — connections + settings */}
-          <MenuLink href="/creator/channels" icon={Plug} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/settings/channels')} icon={Plug} crossApp>
             Channels
           </MenuLink>
-          <MenuLink href="/creator/payments" icon={CreditCard} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/settings/payouts')} icon={CreditCard} crossApp>
             Payments
           </MenuLink>
-          <MenuLink href="/creator/settings" icon={Settings} onClick={() => setOpen(false)}>
+          <MenuLink href={creatorUrl('/settings/profile')} icon={Settings} crossApp>
             Settings
           </MenuLink>
 
@@ -215,19 +213,27 @@ function MenuLink({
   icon: Icon,
   children,
   onClick,
+  crossApp,
 }: {
   href: string
   icon: React.ComponentType<{ strokeWidth?: number; className?: string }>
   children: React.ReactNode
   onClick?: () => void
+  /** Use raw <a> for cross-origin (apps/creator) targets. */
+  crossApp?: boolean
 }) {
+  const cls =
+    'flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-700 hover:bg-ink-50 transition-colors'
+  if (crossApp) {
+    return (
+      <a href={href} className={cls}>
+        <Icon strokeWidth={1.75} className="w-4 h-4 text-ink-500" />
+        {children}
+      </a>
+    )
+  }
   return (
-    <Link
-      href={href}
-      role="menuitem"
-      onClick={onClick}
-      className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-700 hover:bg-ink-50 transition-colors"
-    >
+    <Link href={href} role="menuitem" onClick={onClick} className={cls}>
       <Icon strokeWidth={1.75} className="w-4 h-4 text-ink-500" />
       {children}
     </Link>
