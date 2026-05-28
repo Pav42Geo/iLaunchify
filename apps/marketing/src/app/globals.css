@@ -10,3 +10,56 @@ body {
   color: var(--text-primary);
   background: var(--bg-canvas);
 }
+
+/* ============================================================
+   STUDIO POP — landing-page animations (home page only)
+   Ported from design/mood-board-landing.html
+   ============================================================ */
+
+/* Mesh-gradient blobs — slow drift behind hero + final CTA. */
+@keyframes float-mesh {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(60px, -40px) scale(1.1); }
+  66%      { transform: translate(-40px, 60px) scale(0.95); }
+}
+.mesh-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  animation: float-mesh 18s ease-in-out infinite;
+}
+
+/* Floating stickers — gentle up-down bob with rotation. */
+@keyframes float-sticker {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50%      { transform: translateY(-12px) rotate(var(--rot, 0deg)); }
+}
+.sticker { animation: float-sticker 6s ease-in-out infinite; }
+
+/* Pulsing dot in the "Now open" hero tag. */
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 46, 99, 0.2); }
+  50%      { box-shadow: 0 0 0 10px rgba(255, 46, 99, 0); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* Pop-in entrance for hero copy + CTAs. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pop-in { animation: pop-in 1000ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Marquee ticker — horizontal scroll. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track { animation: marquee 32s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mesh-blob, .sticker, .pulse-dot, .pop-in, .marquee-track {
+    animation: none !important;
+  }
+}
