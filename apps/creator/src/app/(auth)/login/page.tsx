@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { LoginForm } from './LoginForm'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const metadata = { title: 'Sign in — iLaunchify' }
 
@@ -29,12 +30,12 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen flex flex-col">
       <header className="px-6 py-5">
-        <Link href="/" className="flex items-center gap-[7px] w-fit">
+        <a href={marketingUrl('/')} className="flex items-center gap-[7px] w-fit">
           <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
           <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-ink-900">
             iLaunchify
           </span>
-        </Link>
+        </a>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12 pt-2">

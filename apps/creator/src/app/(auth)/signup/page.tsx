@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Sparkles, ShieldCheck, Truck } from 'lucide-react'
 import { SignupForm } from './SignupForm'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const metadata = { title: 'Start your creator account — iLaunchify' }
 
@@ -51,12 +52,12 @@ export default async function SignupPage({
         />
 
         <div className="relative">
-          <Link href="/" className="flex items-center gap-[7px] mb-12">
+          <a href={marketingUrl('/')} className="flex items-center gap-[7px] mb-12">
             <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
             <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-white">
               iLaunchify
             </span>
-          </Link>
+          </a>
 
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-4">
             Creator account
@@ -84,15 +85,15 @@ export default async function SignupPage({
       <main className="flex items-start md:items-center justify-center p-6 md:p-12 pt-12">
         <div className="w-full max-w-[440px]">
           {/* Mobile-only logo */}
-          <Link
-            href="/"
+          <a
+            href={marketingUrl('/')}
             className="md:hidden flex items-center gap-[7px] mb-7"
           >
             <span className="w-[24px] h-[24px] rounded-md bg-pink-500" />
             <span className="font-display text-[18px] font-extrabold tracking-[-0.04em] text-ink-900">
               iLaunchify
             </span>
-          </Link>
+          </a>
 
           <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-ink-900 mb-2">
             Create your account
