@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Marketplace</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pink-50:#FFE9F0; --pink-100:#FFD0E0; --pink-200:#FFB3CC; --pink-300:#FF7FA8;
+    --pink-400:#FF5285; --pink-500:#FF2E63; --pink-600:#E91E5A; --pink-700:#C71350;
+    --neon-400:#C2FF4D; --neon-500:#B5FF3D;
+    --ink-50:#F8F8F9; --ink-100:#EEEFF1; --ink-200:#E0E1E5; --ink-300:#CBCCD3;
+    --ink-400:#9A9CA6; --ink-500:#6B6D78; --ink-600:#474954; --ink-700:#33343C;
+    --ink-800:#232327; --ink-900:#18181A;
+    --success-500:#1E7C4A; --info-500:#1F4D8F; --warning-500:#B07A0A;
+    --font-sans:'Inter',system-ui,sans-serif;
+    --font-display:'Bricolage Grotesque','Inter',sans-serif;
+    --r-md:8px;--r-lg:10px;--r-pill:999px;
+    --shadow-sm:0 1px 2px rgba(24,24,26,0.06);
+    --shadow-lg:0 16px 36px rgba(24,24,26,0.10);
+    --ease:cubic-bezier(0.16,1,0.3,1);
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{margin:0;font-family:var(--font-sans);background:var(--ink-50);color:var(--ink-900);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.5;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+
+  /* ===== WHITE HEADER (Option C Hybrid) ===== */
+  .header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px) saturate(150%);border-bottom:1px solid var(--ink-200);}
+  .header-row{max-width:1400px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:20px;}
+  .logo{font-family:var(--font-display);font-size:23px;font-weight:800;letter-spacing:-0.04em;display:inline-flex;align-items:center;gap:7px;flex-shrink:0;color:var(--ink-900);}
+  .logo::before{content:'';width:26px;height:26px;border-radius:7px;background:var(--pink-500);}
+  .cat-btn{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:14px;padding:9px 14px;border-radius:var(--r-md);background:var(--ink-100);color:var(--ink-900);transition:background .2s var(--ease);flex-shrink:0;}
+  .cat-btn:hover{background:var(--ink-200);}
+  .cat-btn .chev{font-size:11px;color:var(--ink-500);}
+  .search{flex:1;position:relative;}
+  .search input{width:100%;height:42px;padding:0 16px 0 42px;border:1px solid var(--ink-300);border-radius:var(--r-pill);font-family:inherit;font-size:14px;background:#fff;color:var(--ink-900);transition:border-color .2s,box-shadow .2s;}
+  .search input::placeholder{color:var(--ink-500);}
+  .search input:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,0.16);}
+  .search svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--ink-400);}
+  .utils{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .icon-btn{width:40px;height:40px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;color:var(--ink-600);position:relative;transition:background .2s var(--ease),color .2s;}
+  .icon-btn:hover{background:var(--ink-100);color:var(--ink-900);}
+  .icon-btn svg{width:20px;height:20px;}
+  .icon-btn .dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--pink-500);border:1.5px solid #fff;}
+  .start-btn{display:inline-flex;align-items:center;gap:7px;background:var(--ink-900);color:#fff;font-weight:600;font-size:14px;padding:11px 22px;border-radius:var(--r-pill);transition:background .2s,transform .12s var(--ease);flex-shrink:0;}
+  .start-btn:hover{background:#000;transform:translateY(-1px);}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--pink-500);margin-left:4px;}
+
+  .subnav{border-top:1px solid var(--ink-100);background:rgba(255,255,255,0.6);}
+  .subnav a{color:var(--ink-600);}
+  .subnav a:hover{color:var(--ink-900);}
+  .subnav a.active{color:var(--pink-700);border-bottom-color:var(--pink-500);font-weight:600;}
+  .subnav-row{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;gap:4px;overflow-x:auto;}
+  .subnav a{padding:11px 12px;font-size:13px;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;}
+
+  .body{max-width:1400px;margin:0 auto;padding:24px;display:grid;grid-template-columns:240px 1fr;gap:28px;align-items:start;}
+  @media(max-width:900px){.body{grid-template-columns:1fr;}.sidebar{display:none;}}
+  .crumb{grid-column:1/-1;font-size:13px;color:var(--ink-500);margin-bottom:4px;}
+
+  /* ===== SIDEBAR — FILTERS ONLY (previous version) ===== */
+  .sidebar{position:sticky;top:124px;}
+  .side-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--ink-500);margin-bottom:6px;}
+  .filter-group{border-top:1px solid var(--ink-200);padding:14px 0;}
+  .filter-group:first-of-type{border-top:none;}
+  .filter-head{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;cursor:pointer;padding:2px 0;}
+  .filter-head .chev{font-size:10px;color:var(--ink-400);}
+  .filter-opts{margin-top:11px;display:flex;flex-direction:column;gap:9px;}
+  .check{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-600);cursor:pointer;}
+  .check .box{width:16px;height:16px;border:1.5px solid var(--ink-300);border-radius:4px;flex-shrink:0;}
+  .check.on .box{background:var(--pink-500);border-color:var(--pink-500);position:relative;}
+  .check.on .box::after{content:'✓';position:absolute;inset:0;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;}
+  .check.on{color:var(--ink-900);}
+  .slider{height:4px;background:var(--ink-200);border-radius:999px;position:relative;margin:14px 4px 8px;}
+  .slider .fill{position:absolute;left:10%;right:45%;top:0;bottom:0;background:var(--pink-500);border-radius:999px;}
+  .slider .knob{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--pink-500);transform:translateY(-50%);}
+  .slider .knob.a{left:10%;margin-left:-7px;}
+  .slider .knob.b{left:55%;margin-left:-7px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-500);margin:0 4px;}
+  .more-filters{margin-top:14px;font-size:13px;font-weight:600;color:var(--pink-700);cursor:pointer;}
+
+  /* ===== CONTENT ===== */
+  .active-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:24px;}
+  .fchip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 12px;border-radius:var(--r-pill);background:var(--pink-500);color:#fff;font-weight:500;}
+  .fchip .x{opacity:0.85;font-size:14px;line-height:1;}
+  .clear{font-size:13px;color:var(--ink-500);cursor:pointer;}
+  .clear:hover{color:var(--ink-900);}
+
+  .cat-row{margin-bottom:44px;}
+  .cat-row-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;}
+  .cat-row-head h2{font-family:var(--font-display);font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:0;}
+  .cat-row-head .seeall{font-size:13px;font-weight:600;color:var(--pink-700);}
+  .cat-row-head .seeall:hover{color:var(--pink-600);}
+
+  /* 5 cards per row */
+  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+  @media(max-width:1400px){.cards{grid-template-columns:repeat(4,1fr);}}
+  @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:800px){.cards{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:500px){.cards{grid-template-columns:1fr;}}
+
+  /* ===== NEW PRODUCT CARD (the only thing redesigned) ===== */
+  .card{background:#fff;border:1px solid var(--ink-200);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .22s var(--ease);display:flex;flex-direction:column;}
+  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--ink-300);}
+
+  .card-img{aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;}
+  .status{position:absolute;top:10px;left:10px;font-size:10px;font-weight:600;padding:4px 9px;border-radius:var(--r-pill);background:rgba(255,255,255,0.94);color:var(--ink-900);box-shadow:var(--shadow-sm);}
+  .status.dark{background:var(--ink-900);color:#fff;}
+  .status.pink{background:var(--pink-500);color:#fff;}
+  .check-circle{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:var(--neon-500);display:flex;align-items:center;justify-content:center;color:var(--ink-900);font-size:12px;font-weight:700;box-shadow:var(--shadow-sm);}
+  .heart{position:absolute;bottom:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;color:var(--ink-700);font-size:13px;cursor:pointer;transition:color .15s,transform .15s;}
+  .heart:hover{color:var(--pink-500);transform:scale(1.1);}
+  .icon-art{font-size:46px;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.08));}
+
+  /* gradient backgrounds (warm/playful) */
+  .g-lime{background:radial-gradient(120% 130% at 50% 0%,#E8FFB8,#B8FF66 65%,#9EE61F);}
+  .g-pink{background:radial-gradient(120% 130% at 50% 0%,#FFE0EC,#FFB3CC 60%,#FF7FA8);}
+  .g-purple{background:radial-gradient(120% 130% at 50% 0%,#EEE6FF,#C9B6FF 60%,#A48CFF);}
+  .g-yellow{background:radial-gradient(120% 130% at 50% 0%,#FFF6C2,#FFE074 60%,#F5C842);}
+  .g-cyan{background:radial-gradient(120% 130% at 50% 0%,#D1F2FF,#8DE0FF 60%,#5BC5F0);}
+  .g-coral{background:radial-gradient(120% 130% at 50% 0%,#FFDFD2,#FFB5A0 60%,#FF8A6C);}
+  .g-mint{background:radial-gradient(120% 130% at 50% 0%,#D6F5E4,#9CE6BB 60%,#6BD198);}
+  .g-blush{background:radial-gradient(120% 130% at 50% 0%,#FFE6E0,#FFC1B3 60%,#FF9B85);}
+  .g-sky{background:radial-gradient(120% 130% at 50% 0%,#E5EFFF,#B8CCFF 60%,#8DA8FF);}
+
+  .card-body{padding:12px 12px 14px;display:flex;flex-direction:column;gap:7px;}
+  .niche-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--ink-500);}
+  .card-title{font-size:14px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;color:var(--ink-900);min-height:34px;}
+  .tag-row{display:flex;flex-wrap:wrap;gap:4px;}
+  .tag{font-size:10px;font-weight:500;padding:3px 8px;border-radius:var(--r-pill);background:var(--ink-100);color:var(--ink-700);border:1px solid var(--ink-200);white-space:nowrap;}
+  .tag.organic{background:var(--neon-500);border-color:var(--neon-500);color:var(--ink-900);font-weight:600;}
+
+  .stats-row{display:flex;align-items:flex-end;justify-content:space-between;padding-top:10px;border-top:1px solid var(--ink-100);margin-top:2px;gap:4px;}
+  .stat{display:flex;flex-direction:column;gap:1px;min-width:0;}
+  .stat-val{font-size:15px;font-weight:700;line-height:1.0;letter-spacing:-0.02em;color:var(--ink-900);}
+  .stat-lbl{font-size:9px;color:var(--ink-500);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;}
+  .stat.price{text-align:right;}
+  .stat.price .stat-val{color:var(--pink-700);font-size:16px;}
+
+  /* hero banner (same as before) */
+  .hero-banner{background:var(--ink-900);border-radius:14px;padding:36px 40px;margin-bottom:36px;color:#fff;position:relative;overflow:hidden;}
+  .hero-banner::after{content:'';position:absolute;right:-60px;top:-60px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(255,46,99,0.55),transparent 70%);}
+  .hero-banner .eye{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--pink-400);margin-bottom:10px;position:relative;}
+  .hero-banner h1{font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-0.025em;margin:0 0 10px;max-width:18ch;line-height:1.04;position:relative;}
+  .hero-banner p{color:var(--ink-400);font-size:15px;max-width:52ch;margin:0 0 20px;position:relative;}
+  .btn-hero{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--ink-900);padding:13px 26px;border-radius:var(--r-pill);background:#fff;position:relative;transition:transform .12s var(--ease),background .2s;}
+  .btn-hero:hover{background:var(--ink-100);transform:translateY(-1px);}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-row">
+    <a href="#" class="logo">iLaunchify</a>
+    <button class="cat-btn">All Categories <span class="chev">▼</span></button>
+    <div class="search">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" placeholder="Search recipes, templates, niches…" />
+    </div>
+    <div class="utils">
+      <button class="icon-btn" title="Favorites"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>
+      <button class="icon-btn" title="Notifications"><span class="dot"></span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></button>
+      <button class="icon-btn" title="Cart"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg></button>
+      <a href="#" class="start-btn">Start launching</a>
+      <div class="avatar"></div>
+    </div>
+  </div>
+  <nav class="subnav">
+    <div class="subnav-row">
+      <a href="#" class="active">Energy &amp; Performance</a>
+      <a href="#">Wellness &amp; Holistic Health</a>
+      <a href="#">Beauty &amp; Self-Care</a>
+      <a href="#">Healthy Lifestyle</a>
+      <a href="#">Gourmet &amp; Culinary</a>
+      <a href="#">Family &amp; Kids</a>
+      <a href="#">Pet Wellness</a>
+      <a href="#">Social &amp; Lifestyle</a>
+    </div>
+  </nav>
+</header>
+
+<div class="body">
+  <div class="crumb"><a href="#">Home</a> › <span>Marketplace</span></div>
+
+  <!-- SIDEBAR — filters only -->
+  <aside class="sidebar">
+    <div class="side-title">Filter</div>
+    <div class="filter-group">
+      <div class="filter-head">Format <span class="chev">▾</span></div>
+      <div class="filter-opts">
+        <label class="check on"><span class="box"></span> Powder</label>
+        <label class="check"><span class="box"></span> Capsule</label>
+        <label class="check"><span class="box"></span> Ready-to-drink</label>
+        <label class="check"><span class="box"></span> Bar</label>
+        <label class="check"><span class="box"></span> Gummy</label>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-head">Diet <span class="chev">▾</span></div>
+      <div class="filter-opts">
+        <label class="check on"><span class="box"></span> Vegan</label>
+        <label class="check"><span class="box"></span> Keto</label>
+        <label class="check"><span class="box"></span> Gluten-free</label>
+        <label class="check"><span class="box"></span> Organic</label>
+        <label class="check"><span class="box"></span> Sugar-free</label>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-head">Audience <span class="chev">▾</span></div>
+      <div class="filter-opts">
+        <label class="check"><span class="box"></span> Athletes</label>
+        <label class="check"><span class="box"></span> Kids</label>
+        <label class="check"><span class="box"></span> Seniors</label>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-head">MOQ <span class="chev">▾</span></div>
+      <div class="slider"><div class="fill"></div><div class="knob a"></div><div class="knob b"></div></div>
+      <div class="slider-label"><span>50</span><span>2,000+</span></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-head">Lead time <span class="chev">▾</span></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-head">Market <span class="chev">▾</span></div>
+    </div>
+    <div class="more-filters">+ More filters</div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main>
+    <div class="hero-banner">
+      <div class="eye">The marketplace for makers</div>
+      <h1>Find your product. Make it yours. Launch it.</h1>
+      <p>Browse curated, production-ready templates across 8 niches. Customize the label — we handle manufacturing, printing, and fulfillment.</p>
+      <a href="#" class="btn-hero">Start launching →</a>
+    </div>
+
+    <div class="active-filters">
+      <span class="fchip">Vegan <span class="x">×</span></span>
+      <span class="fchip">Powder <span class="x">×</span></span>
+      <span class="clear">Clear all</span>
+    </div>
+
+    <!-- Coffee & Tea -->
+    <section class="cat-row">
+      <div class="cat-row-head"><h2>Coffee &amp; Tea</h2><a href="#" class="seeall">See all →</a></div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-img g-mint">
+            <span class="status">Bestseller</span><span class="check-circle">✓</span>
+            <span class="icon-art">☕</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Coffee &amp; Tea</div>
+            <h3 class="card-title">Colombian Single-Origin</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Fair Trade</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">100</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">12d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$3.90</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-coral">
+            <span class="status">Top rated</span><span class="check-circle">✓</span>
+            <span class="icon-art">🧋</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Coffee &amp; Tea</div>
+            <h3 class="card-title">Cold Brew Concentrate</h3>
+            <div class="tag-row"><span class="tag">Vegan</span><span class="tag">Non-GMO</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">250</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">10d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$4.10</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-lime">
+            <span class="status">Fast ship</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍵</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Coffee &amp; Tea</div>
+            <h3 class="card-title">Matcha Ceremonial Grade</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">150</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">8d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$6.80</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-yellow">
+            <span class="status">Low MOQ</span><span class="check-circle">✓</span>
+            <span class="icon-art">🌼</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Coffee &amp; Tea</div>
+            <h3 class="card-title">Adaptogenic Herbal Tea</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Caffeine-free</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">50</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">7d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$2.90</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-pink">
+            <span class="status pink">New</span><span class="check-circle">✓</span>
+            <span class="icon-art">🌹</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Coffee &amp; Tea</div>
+            <h3 class="card-title">Rose Hibiscus Bloom</h3>
+            <div class="tag-row"><span class="tag">Vegan</span><span class="tag">Caffeine-free</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">200</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">9d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$4.50</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Functional Beverages -->
+    <section class="cat-row">
+      <div class="cat-row-head"><h2>Functional &amp; Wellness Beverages</h2><a href="#" class="seeall">See all →</a></div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-img g-cyan">
+            <span class="status">Top rated</span><span class="check-circle">✓</span>
+            <span class="icon-art">🫧</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Functional Beverages</div>
+            <h3 class="card-title">Sparkling Botanical Water</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">500</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">6d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$1.95</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-sky">
+            <span class="status">Fast ship</span><span class="check-circle">✓</span>
+            <span class="icon-art">⚡</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Functional Beverages</div>
+            <h3 class="card-title">Electrolyte Hydration Mix</h3>
+            <div class="tag-row"><span class="tag">Sugar-free</span><span class="tag">NSF</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">250</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">5d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$2.40</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-mint">
+            <span class="status">Bestseller</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍄</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Functional Beverages</div>
+            <h3 class="card-title">Mushroom Coffee Blend</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Adaptogenic</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">150</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">9d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$5.20</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-coral">
+            <span class="status pink">New</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍸</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Functional Beverages</div>
+            <h3 class="card-title">RTD Botanical Aperitif</h3>
+            <div class="tag-row"><span class="tag">Vegan</span><span class="tag">Low-cal</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">300</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">11d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$3.80</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-yellow">
+            <span class="status">Popular</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍊</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Functional Beverages</div>
+            <h3 class="card-title">Vitamin C Sparkler</h3>
+            <div class="tag-row"><span class="tag">Sugar-free</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">400</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">7d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$2.10</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Supplements -->
+    <section class="cat-row">
+      <div class="cat-row-head"><h2>Supplements</h2><a href="#" class="seeall">See all →</a></div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-img g-lime">
+            <span class="status">Bestseller</span><span class="check-circle">✓</span>
+            <span class="icon-art">🌿</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Supplements</div>
+            <h3 class="card-title">Adaptogen Powder Blend</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Vegan</span><span class="tag">Non-GMO</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">200</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">7d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$8.40</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-purple">
+            <span class="status">Top rated</span><span class="check-circle">✓</span>
+            <span class="icon-art">💊</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Supplements</div>
+            <h3 class="card-title">Magnesium Glycinate</h3>
+            <div class="tag-row"><span class="tag">cGMP</span><span class="tag">Non-GMO</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">200</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">6d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$5.10</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-mint">
+            <span class="status">Fast ship</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍄</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Supplements</div>
+            <h3 class="card-title">Adaptogenic Mushroom Caps</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">250</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">7d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$8.40</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-yellow">
+            <span class="status">Low MOQ</span><span class="check-circle">✓</span>
+            <span class="icon-art">🥬</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Supplements</div>
+            <h3 class="card-title">Daily Greens Powder</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Vegan</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">50</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">9d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$6.90</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-pink">
+            <span class="status pink">New</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍓</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Supplements</div>
+            <h3 class="card-title">Collagen Berry Drink</h3>
+            <div class="tag-row"><span class="tag">High-protein</span><span class="tag">Sugar-free</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">250</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">8d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$3.40</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Snacks -->
+    <section class="cat-row">
+      <div class="cat-row-head"><h2>Snacks &amp; Confectionery</h2><a href="#" class="seeall">See all →</a></div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-img g-coral">
+            <span class="status pink">Popular</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍫</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Snacks</div>
+            <h3 class="card-title">Protein Bar — Triple Choc</h3>
+            <div class="tag-row"><span class="tag">High-protein</span><span class="tag">Gluten-free</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">500</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">8d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$2.10</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-purple">
+            <span class="status">Top rated</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍬</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Snacks</div>
+            <h3 class="card-title">Functional Gummies</h3>
+            <div class="tag-row"><span class="tag">Vegan</span><span class="tag">Sugar-free</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">300</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">11d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$3.40</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-yellow">
+            <span class="status">Low MOQ</span><span class="check-circle">✓</span>
+            <span class="icon-art">🥣</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Snacks</div>
+            <h3 class="card-title">Keto Granola Clusters</h3>
+            <div class="tag-row"><span class="tag organic">USDA Organic</span><span class="tag">Keto</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">50</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">9d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$4.80</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-blush">
+            <span class="status">Fast ship</span><span class="check-circle">✓</span>
+            <span class="icon-art">🥨</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Snacks</div>
+            <h3 class="card-title">Sea Salt Pretzel Bites</h3>
+            <div class="tag-row"><span class="tag">Vegan</span><span class="tag">Non-GMO</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">400</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">6d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$2.60</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-img g-mint">
+            <span class="status">Bestseller</span><span class="check-circle">✓</span>
+            <span class="icon-art">🍪</span><span class="heart">♡</span>
+          </div>
+          <div class="card-body">
+            <div class="niche-label">Snacks</div>
+            <h3 class="card-title">Cassava Cookie Bites</h3>
+            <div class="tag-row"><span class="tag">Gluten-free</span><span class="tag">Paleo</span></div>
+            <div class="stats-row">
+              <div class="stat"><div class="stat-val">250</div><div class="stat-lbl">min. units</div></div>
+              <div class="stat"><div class="stat-val">8d</div><div class="stat-lbl">lead time</div></div>
+              <div class="stat price"><div class="stat-val">$3.20</div><div class="stat-lbl">per unit</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+</body>
+</html>

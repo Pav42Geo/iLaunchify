@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Button Study v2 (yellow inner glow)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #F7F8FA;
+    color: #1A1F2E;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 64px 32px; }
+  h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .sub { color: #4A5160; font-size: 16px; margin: 0 0 24px; max-width: 72ch; }
+  .note { color: #6B7385; font-size: 13px; margin: 0 0 40px; padding: 12px 16px; background: #FFF7E8; border-radius: 8px; border: 1px solid #FFE9B8; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+    padding: 30px 0;
+    border-bottom: 1px solid #E1E6ED;
+  }
+  .row:last-child { border-bottom: none; }
+  .row-meta .name { font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+  .row-meta .desc { font-size: 13px; color: #6B7385; }
+  .row-meta .tag { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px; background: #E1E6ED; color: #4A5160; }
+
+  .stage { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 36px; border-radius: 12px; }
+  .stage.light { background: #FFFFFF; border: 1px solid #E1E6ED; }
+  .stage.dark { background: #1A1F2E; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    padding: 18px 40px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: transform 140ms cubic-bezier(0.16,1,0.3,1), filter 200ms ease, box-shadow 200ms ease, background 200ms ease;
+  }
+  .btn:active { transform: translateY(1px); }
+
+  /* ============ YELLOW INNER-GLOW VARIATIONS — NO DARK ============ */
+
+  /* A — Linear: yellow top → tangerine bottom (clean, no dark) */
+  .btn-a {
+    background: linear-gradient(180deg, #FFB347 0%, #FF6B35 100%);
+  }
+  .btn-a:hover { filter: brightness(1.05); }
+
+  /* B — Radial glow from top-center: yellow core fading to tangerine */
+  .btn-b {
+    background: radial-gradient(120% 130% at 50% 0%, #FFC75E 0%, #FF8A3D 45%, #FF6B35 100%);
+  }
+  .btn-b:hover { filter: brightness(1.05); }
+
+  /* C — Inset warm glow: tangerine base lit from within by soft yellow light */
+  .btn-c {
+    background: #FF6B35;
+    box-shadow:
+      inset 0 0 22px rgba(255, 205, 110, 0.65),
+      inset 0 1px 2px rgba(255, 235, 170, 0.55);
+  }
+  .btn-c:hover {
+    box-shadow:
+      inset 0 0 28px rgba(255, 210, 120, 0.78),
+      inset 0 1px 2px rgba(255, 240, 180, 0.65);
+  }
+
+  /* D — Radial + soft top sheen (brightest warm glow, still no dark) */
+  .btn-d {
+    background: radial-gradient(135% 130% at 50% -10%, #FFD884 0%, #FF9248 42%, #FF6B35 100%);
+    box-shadow: inset 0 1px 1px rgba(255, 244, 210, 0.55);
+  }
+  .btn-d:hover { filter: brightness(1.04) saturate(1.04); }
+
+  /* E — Subtle: barely-there yellow warmth at top */
+  .btn-e {
+    background: linear-gradient(180deg, #FF8A4D 0%, #FF6B35 70%);
+    box-shadow: inset 0 1px 2px rgba(255, 224, 160, 0.5);
+  }
+  .btn-e:hover { filter: brightness(1.04); }
+
+  .pill { border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Button study v2 — warm yellow inner glow, no dark</h1>
+  <p class="sub">All dark shadows removed. Every button here is lit by a <strong>warm yellow-ish glow from inside</strong> — the tangerine base with light that reads yellow toward the brightest area, fading back to tangerine at the edges. Hover to feel the glow lift. Tell me the letter that matches the Bizee button.</p>
+  <p class="note">A &amp; E push the warm light from the top. B &amp; D radiate it from the top-center (most "glowing from within"). C lights it evenly from inside via an inset glow. No drop shadows, no dark edges anywhere.</p>
+
+  <!-- A -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">A · Top gradient</div>
+      <div class="desc">Yellow at the top, tangerine at the bottom. Simple clean warmth.</div>
+      <span class="tag">linear</span>
+    </div>
+    <div class="stage light"><button class="btn btn-a">Start My Business</button></div>
+    <div class="stage dark"><button class="btn btn-a">Start My Business</button></div>
+  </div>
+
+  <!-- B -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">B · Radial from top</div>
+      <div class="desc">Yellow light radiating from top-center, fading to tangerine.</div>
+      <span class="tag">radial</span>
+    </div>
+    <div class="stage light"><button class="btn btn-b">Start My Business</button></div>
+    <div class="stage dark"><button class="btn btn-b">Start My Business</button></div>
+  </div>
+
+  <!-- C -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">C · Inner glow</div>
+      <div class="desc">Tangerine lit from within by soft yellow light — even, lantern-like.</div>
+      <span class="tag">inset glow</span>
+    </div>
+    <div class="stage light"><button class="btn btn-c">Start My Business</button></div>
+    <div class="stage dark"><button class="btn btn-c">Start My Business</button></div>
+  </div>
+
+  <!-- D -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">D · Bright radial + sheen</div>
+      <div class="desc">Strongest warm glow from the top, brightest yellow core.</div>
+      <span class="tag">brightest</span>
+    </div>
+    <div class="stage light"><button class="btn btn-d">Start My Business</button></div>
+    <div class="stage dark"><button class="btn btn-d">Start My Business</button></div>
+  </div>
+
+  <!-- E -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">E · Subtle warmth</div>
+      <div class="desc">Barely-there yellow light at the very top. Most restrained.</div>
+      <span class="tag">subtle</span>
+    </div>
+    <div class="stage light"><button class="btn btn-e">Start My Business</button></div>
+    <div class="stage dark"><button class="btn btn-e">Start My Business</button></div>
+  </div>
+
+  <!-- Shape check -->
+  <div class="row">
+    <div class="row-meta">
+      <div class="name">Shape check</div>
+      <div class="desc">Glow candidate as rounded vs. pill.</div>
+    </div>
+    <div class="stage light">
+      <button class="btn btn-b">Rounded 10px</button>
+      <button class="btn btn-b pill">Pill 999px</button>
+    </div>
+    <div class="stage dark">
+      <button class="btn btn-b">Rounded 10px</button>
+      <button class="btn btn-b pill">Pill 999px</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -7,18 +7,6 @@ const config: Config = {
     './src/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/src/**/*.{js,ts,jsx,tsx}',
   ],
-  theme: {
-    extend: {
-      colors: {
-        brand: {
-          primary: 'var(--brand-color-primary)',
-          secondary: 'var(--brand-color-secondary)',
-          accent: 'var(--brand-color-accent)',
-        },
-      },
-    },
-  },
-  plugins: [],
 }
 
 export default config

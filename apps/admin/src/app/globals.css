@@ -1,7 +1,11 @@
+@import '@ilaunchify/ui/theme.css';
+@import '@ilaunchify/ui/fonts.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Per-creator-brand contract preserved for any preview surfaces admin uses. */
 :root {
   --brand-color-primary: #111827;
   --brand-color-secondary: #6b7280;
@@ -11,5 +15,7 @@
 }
 
 body {
-  font-family: var(--brand-font-body);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
 }

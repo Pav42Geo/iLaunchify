@@ -1,7 +1,14 @@
+@import '@ilaunchify/ui/theme.css';
+@import '@ilaunchify/ui/fonts.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Per-creator-brand CSS-variable contract — these defaults are overridden at
+ * runtime by the Design Studio canvas root layout (see packages/ui/src/brand-theme.ts).
+ * Distinct from the platform tokens above, which never change at runtime.
+ */
 :root {
   --brand-color-primary: #111827;
   --brand-color-secondary: #6b7280;
@@ -11,6 +18,7 @@
 }
 
 body {
-  font-family: var(--brand-font-body);
-  color: var(--brand-color-primary);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
 }

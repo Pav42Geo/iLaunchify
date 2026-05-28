@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Mood Board v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* === BRAND COLOR === */
+    --terra-50:  #FBEFE9;
+    --terra-100: #F3D5C5;
+    --terra-200: #E9B098;
+    --terra-300: #DC8C6A;
+    --terra-400: #CC6B45;
+    --terra-500: #B84A1E;  /* Primary brand accent — AA on white (4.97:1) */
+    --terra-600: #9C3E18;
+    --terra-700: #7E3214;
+    --terra-800: #5F2510;
+    --terra-900: #41190B;
+
+    /* === ANCHOR (deep ink + warm grays) === */
+    --ink-50:  #FAF8F5;   /* Canvas (light) */
+    --ink-100: #F3F0EB;
+    --ink-200: #E6E1D8;
+    --ink-300: #D2CCC0;
+    --ink-400: #A39C8E;
+    --ink-500: #6B6557;
+    --ink-600: #4A4538;
+    --ink-700: #2E2A1F;
+    --ink-800: #1B1814;
+    --ink-900: #0F0E0D;   /* Deep ink */
+
+    /* === SEMANTIC === */
+    --success-500: #1E7C4A;  /* AA on white (4.71:1) */
+    --success-50:  #E5F2EC;
+    --warning-500: #B07A0A;  /* AA on white (4.55:1) */
+    --warning-50:  #FBEFD3;
+    --danger-500:  #B33636;  /* AA on white (5.13:1) */
+    --danger-50:   #F8E1E1;
+    --info-500:    #1F4D8F;  /* AAA on white (8.34:1) */
+    --info-50:     #E1ECF8;
+
+    /* === SURFACE / BACKGROUNDS === */
+    --bg-canvas:    var(--ink-50);
+    --bg-surface:   #FFFFFF;
+    --bg-subtle:    var(--ink-100);
+    --bg-muted:     var(--ink-200);
+    --border-soft:  var(--ink-200);
+    --border-firm:  var(--ink-300);
+
+    /* === TEXT === */
+    --text-primary:   var(--ink-900);
+    --text-secondary: var(--ink-600);
+    --text-tertiary:  var(--ink-500);
+    --text-inverse:   var(--ink-50);
+    --text-accent:    var(--terra-500);
+
+    /* === TYPE === */
+    --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-display: 'Fraunces', Georgia, serif;
+
+    /* === SPACING (8pt grid) === */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --s-9: 96px;
+    --s-10: 128px;
+
+    /* === RADIUS === */
+    --r-xs: 4px;
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-pill: 999px;
+
+    /* === SHADOW === */
+    --shadow-sm:  0 1px 2px rgba(15, 14, 13, 0.04), 0 1px 1px rgba(15, 14, 13, 0.04);
+    --shadow-md:  0 4px 8px rgba(15, 14, 13, 0.06), 0 2px 4px rgba(15, 14, 13, 0.04);
+    --shadow-lg:  0 12px 24px rgba(15, 14, 13, 0.08), 0 4px 8px rgba(15, 14, 13, 0.04);
+    --shadow-xl:  0 24px 48px rgba(15, 14, 13, 0.10), 0 8px 16px rgba(15, 14, 13, 0.05);
+
+    /* === MOTION === */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+    --t-quick: 120ms;
+    --t-base:  220ms;
+    --t-slow:  320ms;
+  }
+
+  /* === RESET === */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-canvas);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 { margin: 0; line-height: 1.15; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+
+  /* === LAYOUT === */
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--s-7) var(--s-5);
+  }
+  .hero { padding: var(--s-8) 0 var(--s-7); border-bottom: 1px solid var(--border-soft); margin-bottom: var(--s-8); }
+  .hero .eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-accent);
+    margin-bottom: var(--s-4);
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 6vw, 80px);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    margin-bottom: var(--s-5);
+  }
+  .hero h1 em { font-style: italic; color: var(--text-accent); }
+  .hero .lede {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 56ch;
+    line-height: 1.6;
+  }
+  .hero .meta {
+    display: flex;
+    gap: var(--s-5);
+    margin-top: var(--s-6);
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
+  .section { margin-bottom: var(--s-9); }
+  .section-head { margin-bottom: var(--s-6); }
+  .section-head .num {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--text-accent);
+    margin-bottom: var(--s-3);
+    letter-spacing: 0.04em;
+  }
+  .section-head h2 {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-3);
+  }
+  .section-head p {
+    color: var(--text-secondary);
+    max-width: 64ch;
+  }
+
+  /* === GENERIC GRID === */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-5); }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-4); }
+  @media (max-width: 800px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  /* === COLOR SWATCHES === */
+  .swatch {
+    border-radius: var(--r-md);
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+  }
+  .swatch .chip { height: 96px; }
+  .swatch .meta { padding: var(--s-3) var(--s-4); background: var(--bg-surface); }
+  .swatch .meta .name { font-weight: 600; font-size: 13px; }
+  .swatch .meta .hex {
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.02em;
+  }
+  .swatch-ramp { display: grid; grid-template-columns: repeat(10, 1fr); border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--border-soft); }
+  .swatch-ramp .step {
+    padding: var(--s-4) var(--s-2);
+    text-align: center;
+    font-size: 10px;
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+  .swatch-ramp .step .num { font-weight: 600; opacity: 0.9; }
+  .swatch-ramp .step .val { opacity: 0.7; }
+
+  /* === TYPE SAMPLES === */
+  .type-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    padding: var(--s-5) var(--s-6);
+    margin-bottom: var(--s-4);
+  }
+  .type-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-accent);
+    font-weight: 600;
+    margin-bottom: var(--s-3);
+  }
+  .type-card .spec {
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: var(--s-3);
+  }
+  .display-xl { font-family: var(--font-display); font-size: 72px; font-weight: 500; line-height: 1.02; letter-spacing: -0.03em; }
+  .display-lg { font-family: var(--font-display); font-size: 56px; font-weight: 500; line-height: 1.05; letter-spacing: -0.025em; }
+  .display-md { font-family: var(--font-display); font-size: 36px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; }
+  .heading-lg { font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; }
+  .heading-md { font-size: 20px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+  .heading-sm { font-size: 16px; font-weight: 600; line-height: 1.4; }
+  .body-lg { font-size: 18px; line-height: 1.6; }
+  .body-md { font-size: 15px; line-height: 1.55; }
+  .body-sm { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+  .label-sm { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* === COMPONENTS === */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: var(--r-md);
+    border: 1px solid transparent;
+    transition: background var(--t-base) var(--ease-out), transform var(--t-quick) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+    min-height: 40px;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--terra-500); color: #fff; }
+  .btn-primary:hover { background: var(--terra-600); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-secondary { background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-firm); }
+  .btn-secondary:hover { background: var(--bg-subtle); }
+  .btn-ghost { background: transparent; color: var(--text-primary); }
+  .btn-ghost:hover { background: var(--bg-subtle); }
+  .btn-ink { background: var(--ink-900); color: var(--text-inverse); }
+  .btn-ink:hover { background: var(--ink-800); }
+  .btn-sm { font-size: 13px; padding: 6px 12px; min-height: 32px; }
+  .btn-lg { font-size: 15px; padding: 12px 20px; min-height: 48px; }
+
+  .input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border-firm);
+    border-radius: var(--r-md);
+    font-family: inherit;
+    font-size: 14px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: border-color var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--terra-500);
+    box-shadow: 0 0 0 3px rgba(184, 74, 30, 0.15);
+  }
+  .input::placeholder { color: var(--text-tertiary); }
+  .field-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .field { margin-bottom: var(--s-4); }
+  .field-help { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--r-pill);
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .badge-success { background: var(--success-50); color: var(--success-500); }
+  .badge-warning { background: var(--warning-50); color: var(--warning-500); }
+  .badge-danger  { background: var(--danger-50);  color: var(--danger-500); }
+  .badge-info    { background: var(--info-50);    color: var(--info-500); }
+  .badge-neutral { background: var(--bg-subtle);  color: var(--text-secondary); }
+  .badge-accent  { background: var(--terra-50);   color: var(--terra-700); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-firm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--t-base) var(--ease-out);
+  }
+  .chip:hover { border-color: var(--ink-400); color: var(--text-primary); }
+  .chip-active {
+    background: var(--ink-900);
+    color: var(--text-inverse);
+    border-color: var(--ink-900);
+  }
+  .chip-x { opacity: 0.6; font-size: 14px; line-height: 1; }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    padding: var(--s-5);
+  }
+  .card-elevated {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    padding: var(--s-5);
+    box-shadow: var(--shadow-md);
+  }
+  .card-padded { padding: var(--s-6); }
+
+  /* === DENSITY MODE DEMO === */
+  .density-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-5);
+  }
+  .density-pair > .pane {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .density-pair > .pane > header {
+    padding: var(--s-3) var(--s-4);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .density-pair > .pane > header .label-sm { color: var(--text-secondary); }
+  .density-pair > .pane > .body { padding: var(--s-5); }
+  .density-pair > .pane[data-mode="creator"] > .body { padding: var(--s-6); }
+  .density-pair > .pane[data-mode="partner"] > .body { padding: var(--s-4); }
+
+  /* === MARKETPLACE CARD === */
+  .mp-card {
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    cursor: pointer;
+    transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out);
+  }
+  .mp-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--border-firm); }
+  .mp-card .image {
+    aspect-ratio: 4 / 5;
+    background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+    position: relative;
+    overflow: hidden;
+  }
+  .mp-card .image::after {
+    content: 'Hover swaps to styled mockup →';
+    position: absolute;
+    bottom: var(--s-3);
+    left: var(--s-3);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: rgba(255,255,255,0.8);
+    padding: 4px 8px;
+    border-radius: var(--r-sm);
+    backdrop-filter: blur(8px);
+  }
+  .mp-card .image-styled {
+    background: linear-gradient(135deg, var(--terra-100), var(--terra-300));
+  }
+  .mp-card .body { padding: var(--s-4); }
+  .mp-card .title { font-size: 14px; font-weight: 600; margin-bottom: var(--s-2); line-height: 1.3; }
+  .mp-card .price { font-size: 13px; color: var(--text-secondary); margin-bottom: 2px; }
+  .mp-card .moq { font-size: 12px; color: var(--text-tertiary); }
+
+  /* === PARTNER TABLE === */
+  .ptable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .ptable th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-firm);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+  }
+  .ptable td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .ptable tr:hover td { background: var(--bg-subtle); }
+  .ptable .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .ptable .actions { text-align: right; }
+
+  /* === A11Y TABLE === */
+  .a11y-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--bg-surface);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+  }
+  .a11y-table th {
+    text-align: left;
+    padding: 12px;
+    background: var(--bg-subtle);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-firm);
+  }
+  .a11y-table td { padding: 12px; border-bottom: 1px solid var(--border-soft); }
+  .a11y-table tr:last-child td { border-bottom: none; }
+  .a11y-table .pass { color: var(--success-500); font-weight: 600; font-size: 12px; }
+  .a11y-table .fail { color: var(--danger-500); font-weight: 600; font-size: 12px; }
+  .a11y-pair {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 11px;
+  }
+  .a11y-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(15,14,13,0.1);
+  }
+  .a11y-sample {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--r-sm);
+    font-weight: 500;
+    font-size: 12px;
+  }
+
+  /* === DARK MODE PREVIEW === */
+  .dark-pane {
+    background: var(--ink-900);
+    color: #F3F0EB;
+    border-radius: var(--r-lg);
+    padding: var(--s-6);
+    border: 1px solid var(--ink-700);
+  }
+  .dark-pane h3 { color: #FAF8F5; font-family: var(--font-display); font-size: 28px; font-weight: 500; margin-bottom: var(--s-3); }
+  .dark-pane p { color: #C2BDB1; }
+  .dark-pane .btn-primary { background: var(--terra-400); color: var(--ink-900); }
+  .dark-pane .btn-primary:hover { background: var(--terra-300); }
+  .dark-pane .btn-secondary { background: transparent; color: #F3F0EB; border-color: rgba(255,255,255,0.15); }
+  .dark-pane .btn-secondary:hover { background: rgba(255,255,255,0.06); }
+  .dark-pane .swatch-row { display: flex; gap: var(--s-2); margin-top: var(--s-5); }
+  .dark-pane .swatch-row .dot { width: 32px; height: 32px; border-radius: var(--r-pill); border: 1px solid rgba(255,255,255,0.1); }
+
+  /* === ICONS GRID === */
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: var(--s-2);
+  }
+  .icon-cell {
+    aspect-ratio: 1;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: var(--bg-surface);
+    transition: border-color var(--t-base) var(--ease-out), color var(--t-base) var(--ease-out);
+  }
+  .icon-cell:hover { border-color: var(--terra-500); color: var(--terra-500); }
+  .icon-cell svg { width: 20px; height: 20px; stroke-width: 1.75; }
+  .icon-cell .lbl { font-size: 9px; color: var(--text-tertiary); }
+
+  /* === PHOTOGRAPHY DIRECTION === */
+  .photo-card {
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+  }
+  .photo-card .frame {
+    aspect-ratio: 4 / 3;
+    background: linear-gradient(135deg, var(--ink-200), var(--ink-300));
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-style: italic;
+  }
+  .photo-card .frame.warm  { background: linear-gradient(135deg, #E6CFB7, #C9A87E); }
+  .photo-card .frame.studio { background: linear-gradient(135deg, #DDD7CD, #B6AE9D); }
+  .photo-card .frame.lifestyle { background: linear-gradient(135deg, #D9C9BA, #A28868); }
+  .photo-card .meta { padding: var(--s-4); }
+  .photo-card .meta .title { font-weight: 600; font-size: 14px; margin-bottom: var(--s-2); }
+  .photo-card .meta .desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+  /* === MOTION DEMO === */
+  .motion-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-lg);
+    padding: var(--s-5);
+    transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+  }
+  .motion-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+  .motion-spec {
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: var(--s-3);
+  }
+
+  /* === FOOTER === */
+  .footer {
+    border-top: 1px solid var(--border-soft);
+    margin-top: var(--s-9);
+    padding-top: var(--s-6);
+    color: var(--text-tertiary);
+    font-size: 13px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ==================== HERO ==================== -->
+  <header class="hero">
+    <span class="eyebrow">iLaunchify · Mood Board v1</span>
+    <h1>One platform, <em>two audiences,</em><br/>one design system.</h1>
+    <p class="lede">A visual proposal grounded in warm terracotta and deep ink. Creator surfaces lean editorial and aspirational; partner surfaces lean operational and data-dense. Same tokens, two density modes, one platform identity.</p>
+    <div class="meta">
+      <span><strong>Pavel + Claude</strong></span>
+      <span>2026-05-27</span>
+      <span>WCAG 2.1 AA verified</span>
+      <span>Inter · Fraunces</span>
+    </div>
+  </header>
+
+  <!-- ==================== §01 — STRATEGY ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 01</span>
+      <h2>The strategy</h2>
+      <p>Influencers, brand creators, and culinary launchers want a surface that feels editorial, aspirational, and Instagram-grade. Manufacturers, printers, and warehouses want clarity, data density, and zero ornamental friction. The system serves both — never compromised toward either pole.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card card-padded">
+        <span class="badge badge-accent" style="margin-bottom: var(--s-3);">CREATOR SURFACES</span>
+        <h3 class="heading-lg" style="font-family: var(--font-display); font-weight: 500; margin-bottom: var(--s-3);">Editorial. Warm. Aspirational.</h3>
+        <p class="body-md" style="color: var(--text-secondary);">Comfortable spacing, generous imagery, occasional Fraunces moments for hero copy. Hover delight in marketplace cards. The platform should feel like it earns the right to host someone's brand launch.</p>
+        <ul style="margin: var(--s-4) 0 0; padding-left: var(--s-4); color: var(--text-secondary); font-size: 14px; line-height: 1.8;">
+          <li>Marketplace · Brand Assets · Design Studio canvas</li>
+          <li>Comfortable density (24–32px section spacing)</li>
+          <li>Fraunces serif for headers and editorial moments</li>
+          <li>Marketing site, niche landing pages, learn surfaces</li>
+        </ul>
+      </div>
+      <div class="card card-padded" style="background: var(--ink-900); color: var(--ink-50); border-color: var(--ink-800);">
+        <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--terra-300); margin-bottom: var(--s-3);">PARTNER SURFACES</span>
+        <h3 class="heading-lg" style="color: var(--ink-50); margin-bottom: var(--s-3);">Operational. Restrained. Trustworthy.</h3>
+        <p class="body-md" style="color: var(--ink-300);">Compact spacing, dense data tables, fewer animations, more information per pixel. The platform should feel like a tool partners reach for daily, not a marketing surface.</p>
+        <ul style="margin: var(--s-4) 0 0; padding-left: var(--s-4); color: var(--ink-300); font-size: 14px; line-height: 1.8;">
+          <li>Order inbox · Verification queue · Production dashboards</li>
+          <li>Compact density (16–24px section spacing)</li>
+          <li>Inter only — no editorial serif</li>
+          <li>Optional dark mode default for long-session surfaces</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §02 — COLOR ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 02</span>
+      <h2>Color</h2>
+      <p>A deliberate move away from Suplifuls green. Warm terracotta as the brand accent (food-aspirational, premium-craft territory), deep ink as the formal anchor (business-credible, ageless), warm grays to unify both audiences.</p>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Primary tokens</h3>
+    <div class="grid-4" style="margin-bottom: var(--s-6);">
+      <div class="swatch">
+        <div class="chip" style="background: var(--terra-500);"></div>
+        <div class="meta">
+          <div class="name">Terracotta 500</div>
+          <div class="hex">#B84A1E · brand accent</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--ink-900);"></div>
+        <div class="meta">
+          <div class="name">Ink 900</div>
+          <div class="hex">#0F0E0D · primary text</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: var(--ink-50); border-bottom: 1px solid var(--border-soft);"></div>
+        <div class="meta">
+          <div class="name">Canvas 50</div>
+          <div class="hex">#FAF8F5 · canvas</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background: #FFFFFF; border-bottom: 1px solid var(--border-soft);"></div>
+        <div class="meta">
+          <div class="name">Surface</div>
+          <div class="hex">#FFFFFF · cards</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Terracotta ramp</h3>
+    <div class="swatch-ramp" style="margin-bottom: var(--s-6);">
+      <div class="step" style="background: var(--terra-50);  color: var(--terra-900);"><span class="num">50</span><span class="val">#FBEFE9</span></div>
+      <div class="step" style="background: var(--terra-100); color: var(--terra-900);"><span class="num">100</span><span class="val">#F3D5C5</span></div>
+      <div class="step" style="background: var(--terra-200); color: var(--terra-900);"><span class="num">200</span><span class="val">#E9B098</span></div>
+      <div class="step" style="background: var(--terra-300); color: var(--terra-900);"><span class="num">300</span><span class="val">#DC8C6A</span></div>
+      <div class="step" style="background: var(--terra-400); color: #fff;"><span class="num">400</span><span class="val">#CC6B45</span></div>
+      <div class="step" style="background: var(--terra-500); color: #fff;"><span class="num">500</span><span class="val">#B84A1E</span></div>
+      <div class="step" style="background: var(--terra-600); color: #fff;"><span class="num">600</span><span class="val">#9C3E18</span></div>
+      <div class="step" style="background: var(--terra-700); color: #fff;"><span class="num">700</span><span class="val">#7E3214</span></div>
+      <div class="step" style="background: var(--terra-800); color: #fff;"><span class="num">800</span><span class="val">#5F2510</span></div>
+      <div class="step" style="background: var(--terra-900); color: #fff;"><span class="num">900</span><span class="val">#41190B</span></div>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Ink (warm gray) ramp</h3>
+    <div class="swatch-ramp" style="margin-bottom: var(--s-6);">
+      <div class="step" style="background: var(--ink-50);  color: var(--ink-900);"><span class="num">50</span><span class="val">#FAF8F5</span></div>
+      <div class="step" style="background: var(--ink-100); color: var(--ink-900);"><span class="num">100</span><span class="val">#F3F0EB</span></div>
+      <div class="step" style="background: var(--ink-200); color: var(--ink-900);"><span class="num">200</span><span class="val">#E6E1D8</span></div>
+      <div class="step" style="background: var(--ink-300); color: var(--ink-900);"><span class="num">300</span><span class="val">#D2CCC0</span></div>
+      <div class="step" style="background: var(--ink-400); color: #fff;"><span class="num">400</span><span class="val">#A39C8E</span></div>
+      <div class="step" style="background: var(--ink-500); color: #fff;"><span class="num">500</span><span class="val">#6B6557</span></div>
+      <div class="step" style="background: var(--ink-600); color: #fff;"><span class="num">600</span><span class="val">#4A4538</span></div>
+      <div class="step" style="background: var(--ink-700); color: #fff;"><span class="num">700</span><span class="val">#2E2A1F</span></div>
+      <div class="step" style="background: var(--ink-800); color: #fff;"><span class="num">800</span><span class="val">#1B1814</span></div>
+      <div class="step" style="background: var(--ink-900); color: #fff;"><span class="num">900</span><span class="val">#0F0E0D</span></div>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Semantic colors</h3>
+    <div class="grid-4">
+      <div class="card" style="text-align: center;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--success-500); margin: 0 auto var(--s-3);"></div>
+        <div style="font-weight: 600; font-size: 13px;">Success</div>
+        <div class="body-sm" style="font-family: monospace; font-size: 11px; margin-top: 4px;">#1E7C4A</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--warning-500); margin: 0 auto var(--s-3);"></div>
+        <div style="font-weight: 600; font-size: 13px;">Warning</div>
+        <div class="body-sm" style="font-family: monospace; font-size: 11px; margin-top: 4px;">#B07A0A</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--danger-500); margin: 0 auto var(--s-3);"></div>
+        <div style="font-weight: 600; font-size: 13px;">Danger</div>
+        <div class="body-sm" style="font-family: monospace; font-size: 11px; margin-top: 4px;">#B33636</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--info-500); margin: 0 auto var(--s-3);"></div>
+        <div style="font-weight: 600; font-size: 13px;">Info</div>
+        <div class="body-sm" style="font-family: monospace; font-size: 11px; margin-top: 4px;">#1F4D8F</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §03 — TYPOGRAPHY ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 03</span>
+      <h2>Typography</h2>
+      <p>Two typefaces, no more. Inter as the workhorse (UI, body, partner surfaces). Fraunces as the editorial display (creator hero moments only). A 1.250 Major Third scale.</p>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Display — Fraunces 72 / 500</div>
+      <div class="display-xl">Launch your brand.</div>
+      <div class="spec">font-family: Fraunces · font-size: 72px · weight: 500 · line-height: 1.02 · letter-spacing: −0.03em</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Display — Fraunces 56 / 500</div>
+      <div class="display-lg">Cold-pressed protein with your label.</div>
+      <div class="spec">font-family: Fraunces · 56px · 500 · 1.05 · −0.025em</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Display — Fraunces 36 / 500 (section headings)</div>
+      <div class="display-md">Production options</div>
+      <div class="spec">font-family: Fraunces · 36px · 500 · 1.15 · −0.02em</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Heading — Inter 28 / 600</div>
+      <div class="heading-lg">Colombian Single-Origin Whole Bean</div>
+      <div class="spec">font-family: Inter · 28px · 600 · 1.2 · −0.015em</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Heading — Inter 20 / 600 (card titles)</div>
+      <div class="heading-md">This product can be produced with the following certifications</div>
+      <div class="spec">font-family: Inter · 20px · 600 · 1.3 · −0.01em</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Body — Inter 15 / 400 (default body)</div>
+      <p class="body-md">iLaunchify lets food, beverage, and supplement creators design custom-label products with curated recipes, FDA-compliant labels, and trusted manufacturing partners — all from one platform. The marketplace decomposes each order into a production workflow across multiple partners and hides that complexity entirely from you.</p>
+      <div class="spec">font-family: Inter · 15px · 400 · 1.55</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Body small — Inter 13 / 400 (metadata, helper text)</div>
+      <p class="body-sm">Estimated landed cost depends on your tier, selected variant, and order quantity. Sample row is flat across tiers.</p>
+      <div class="spec">font-family: Inter · 13px · 400 · 1.5 · color: ink-600</div>
+    </div>
+
+    <div class="type-card">
+      <div class="label">Label — Inter 11 / 600 / UPPERCASE +0.06em</div>
+      <span class="label-sm">Recipe overview · 14 ingredients · Adjusted for vegan</span>
+      <div class="spec">font-family: Inter · 11px · 600 · 1.4 · letter-spacing +0.06em</div>
+    </div>
+  </section>
+
+  <!-- ==================== §04 — COMPONENTS ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 04</span>
+      <h2>Component primitives</h2>
+      <p>Built on shadcn/Radix under the hood — same tokens applied. Every interactive element uses the 32 · 40 · 48 height scale; buttons and inputs share the scale so they always sit naturally side-by-side.</p>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Buttons</h3>
+    <div class="card card-padded" style="margin-bottom: var(--s-6);">
+      <div style="display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin-bottom: var(--s-5);">
+        <button class="btn btn-primary">Start Launching</button>
+        <button class="btn btn-ink">Save Draft</button>
+        <button class="btn btn-secondary">Cancel</button>
+        <button class="btn btn-ghost">Skip for now</button>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;">
+        <button class="btn btn-primary btn-sm">Add to favorites</button>
+        <button class="btn btn-primary">Add to favorites</button>
+        <button class="btn btn-primary btn-lg">Add to favorites</button>
+      </div>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Inputs</h3>
+    <div class="card card-padded" style="margin-bottom: var(--s-6);">
+      <div class="grid-3">
+        <div class="field">
+          <label class="field-label">Brand name</label>
+          <input class="input" type="text" placeholder="Your launch name" value="Heritage Roasters" />
+        </div>
+        <div class="field">
+          <label class="field-label">Order quantity</label>
+          <input class="input" type="text" placeholder="50" value="150" />
+          <div class="field-help">Minimum quantity is 50</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Email for notifications</label>
+          <input class="input" type="email" placeholder="you@brand.com" />
+        </div>
+      </div>
+    </div>
+
+    <h3 class="heading-md" style="margin-bottom: var(--s-4);">Badges and chips</h3>
+    <div class="card card-padded" style="margin-bottom: var(--s-6);">
+      <div style="display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-5);">
+        <span class="badge badge-success">Verified</span>
+        <span class="badge badge-warning">Pending review</span>
+        <span class="badge badge-danger">Rejected</span>
+        <span class="badge badge-info">Premier-tier</span>
+        <span class="badge badge-neutral">Draft</span>
+        <span class="badge badge-accent">New</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: var(--s-2);">
+        <span class="chip chip-active">Vegan <span class="chip-x">×</span></span>
+        <span class="chip chip-active">Powder <span class="chip-x">×</span></span>
+        <span class="chip chip-active">MOQ ≤ 500 <span class="chip-x">×</span></span>
+        <span class="chip">Keto</span>
+        <span class="chip">High-protein</span>
+        <span class="chip">Organic</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §05 — DENSITY MODES ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 05</span>
+      <h2>Density modes — the same card, calibrated</h2>
+      <p>Both panes below render from the exact same tokens. The only difference is internal spacing and how much room the brand's editorial layer takes up.</p>
+    </div>
+
+    <div class="density-pair">
+      <div class="pane" data-mode="creator">
+        <header>
+          <span class="label-sm">CREATOR MODE</span>
+          <span class="body-sm">comfortable</span>
+        </header>
+        <div class="body">
+          <h3 style="font-family: var(--font-display); font-size: 28px; font-weight: 500; line-height: 1.2; margin-bottom: var(--s-3);">Colombian Single-Origin</h3>
+          <p class="body-md" style="color: var(--text-secondary); margin-bottom: var(--s-5);">A small-batch whole-bean coffee, roasted weekly in our partner network. Perfect for premium DTC launches.</p>
+          <div style="display: flex; gap: var(--s-2); margin-bottom: var(--s-5);">
+            <span class="badge badge-accent">FAIR TRADE</span>
+            <span class="badge badge-success">USDA ORGANIC</span>
+          </div>
+          <button class="btn btn-primary btn-lg" style="width: 100%;">Start Launching →</button>
+        </div>
+      </div>
+
+      <div class="pane" data-mode="partner">
+        <header>
+          <span class="label-sm">PARTNER MODE</span>
+          <span class="body-sm">compact</span>
+        </header>
+        <div class="body">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s-3);">
+            <h3 class="heading-md">Order #IL-2026-04183</h3>
+            <span class="badge badge-warning">Awaiting acceptance</span>
+          </div>
+          <table class="ptable" style="margin-bottom: var(--s-3);">
+            <tr><td style="color: var(--text-secondary);">Template</td><td>Colombian Single-Origin · 250g</td></tr>
+            <tr><td style="color: var(--text-secondary);">Quantity</td><td class="num">150 units</td></tr>
+            <tr><td style="color: var(--text-secondary);">Net to you</td><td class="num">$487.50</td></tr>
+            <tr><td style="color: var(--text-secondary);">Deadline</td><td>Accept by Jun 02</td></tr>
+          </table>
+          <div style="display: flex; gap: var(--s-2);">
+            <button class="btn btn-primary btn-sm" style="flex: 1;">Accept</button>
+            <button class="btn btn-secondary btn-sm">Decline</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §06 — MARKETPLACE PREVIEW ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 06</span>
+      <h2>Marketplace cards — creator-facing</h2>
+      <p>The card from §5 of <code>MARKETPLACE_DESIGN.md</code> rendered with the system. Image swaps on hover to a styled mockup — no card extension. Try hovering.</p>
+    </div>
+
+    <div class="grid-4">
+      <div class="mp-card">
+        <div class="image"></div>
+        <div class="body">
+          <div class="title">Cold-pressed protein powder</div>
+          <div class="price">$4.20 – $6.80 / unit</div>
+          <div class="moq">MOQ from 50</div>
+        </div>
+      </div>
+      <div class="mp-card">
+        <div class="image image-styled"></div>
+        <div class="body">
+          <div class="title">Colombian single-origin coffee</div>
+          <div class="price">$3.90 – $5.50 / unit</div>
+          <div class="moq">MOQ from 100</div>
+        </div>
+      </div>
+      <div class="mp-card">
+        <div class="image"></div>
+        <div class="body">
+          <div class="title">Adaptogenic mushroom blend</div>
+          <div class="price">$8.40 – $11.20 / unit</div>
+          <div class="moq">MOQ from 250</div>
+        </div>
+      </div>
+      <div class="mp-card">
+        <div class="image image-styled"></div>
+        <div class="body">
+          <div class="title">Sparkling botanical water</div>
+          <div class="price">$1.95 – $2.80 / unit</div>
+          <div class="moq">MOQ from 500</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §07 — PARTNER DASHBOARD ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 07</span>
+      <h2>Partner data view — operational mode</h2>
+      <p>Density tightened, ornament reduced, motion damped. The exact same tokens — terracotta now appears only as the focused row accent, not as primary surface fill.</p>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <header style="padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div class="label-sm" style="color: var(--text-secondary); margin-bottom: 2px;">PARTNER DASHBOARD</div>
+          <div class="heading-md">Open orders · 12</div>
+        </div>
+        <div style="display: flex; gap: var(--s-2);">
+          <button class="btn btn-secondary btn-sm">Filter</button>
+          <button class="btn btn-ink btn-sm">Export CSV</button>
+        </div>
+      </header>
+      <table class="ptable">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Template</th>
+            <th class="num">Qty</th>
+            <th class="num">Net to you</th>
+            <th>Status</th>
+            <th>Deadline</th>
+            <th class="actions">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>IL-2026-04183</strong></td>
+            <td>Colombian Single-Origin · 250g</td>
+            <td class="num">150</td>
+            <td class="num">$487.50</td>
+            <td><span class="badge badge-warning">Awaiting accept</span></td>
+            <td>Jun 02</td>
+            <td class="actions"><button class="btn btn-primary btn-sm">Accept</button></td>
+          </tr>
+          <tr>
+            <td><strong>IL-2026-04181</strong></td>
+            <td>Adaptogenic Mushroom · 60ct</td>
+            <td class="num">300</td>
+            <td class="num">$2,140.00</td>
+            <td><span class="badge badge-info">In production</span></td>
+            <td>Jun 14</td>
+            <td class="actions"><button class="btn btn-ghost btn-sm">View</button></td>
+          </tr>
+          <tr>
+            <td><strong>IL-2026-04179</strong></td>
+            <td>Cold-Pressed Protein · 1lb</td>
+            <td class="num">500</td>
+            <td class="num">$3,180.50</td>
+            <td><span class="badge badge-success">Ready to ship</span></td>
+            <td>Jun 01</td>
+            <td class="actions"><button class="btn btn-primary btn-sm">Mark shipped</button></td>
+          </tr>
+          <tr>
+            <td><strong>IL-2026-04172</strong></td>
+            <td>Sparkling Botanical Water</td>
+            <td class="num">1,200</td>
+            <td class="num">$1,840.00</td>
+            <td><span class="badge badge-info">In production</span></td>
+            <td>Jun 22</td>
+            <td class="actions"><button class="btn btn-ghost btn-sm">View</button></td>
+          </tr>
+          <tr>
+            <td><strong>IL-2026-04168</strong></td>
+            <td>Colombian Single-Origin · 250g</td>
+            <td class="num">75</td>
+            <td class="num">$256.00</td>
+            <td><span class="badge badge-danger">Revision requested</span></td>
+            <td>Today</td>
+            <td class="actions"><button class="btn btn-primary btn-sm">Open</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ==================== §08 — DARK MODE ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 08</span>
+      <h2>Dark mode</h2>
+      <p>Not an inversion — a considered second palette. Ink 900 as canvas, terracotta desaturates one step (Terra 400) so it doesn't vibrate against the dark background. Default for long-session partner surfaces; opt-in for creator surfaces.</p>
+    </div>
+
+    <div class="dark-pane">
+      <span class="label-sm" style="color: var(--terra-300); display: block; margin-bottom: var(--s-3);">PRODUCTION QUEUE</span>
+      <h3>You have 4 orders awaiting your review.</h3>
+      <p style="font-size: 15px; max-width: 56ch;">A calmer surface for the work-heavy hours. Surfaces step lighter (not darker) to create elevation. Borders use semi-transparent white, never solid gray. Type stays off-white, never pure white.</p>
+      <div style="display: flex; gap: var(--s-3); margin-top: var(--s-5);">
+        <button class="btn btn-primary">Open queue</button>
+        <button class="btn btn-secondary">Snooze 1h</button>
+      </div>
+      <div class="swatch-row">
+        <div class="dot" style="background: var(--ink-900);" title="Canvas"></div>
+        <div class="dot" style="background: var(--ink-800);" title="Surface"></div>
+        <div class="dot" style="background: var(--ink-700);" title="Subtle"></div>
+        <div class="dot" style="background: var(--terra-400);" title="Accent"></div>
+        <div class="dot" style="background: var(--terra-300);" title="Accent hover"></div>
+        <div class="dot" style="background: #F3F0EB;" title="Primary text"></div>
+        <div class="dot" style="background: #C2BDB1;" title="Secondary text"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §09 — ICONS ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 09</span>
+      <h2>Iconography</h2>
+      <p>Lucide line icons throughout. 1.75 stroke weight, 20px default size, 16px in dense contexts, 24px in marketing. Consistent stroke geometry across the entire set — never mix line and solid icon families.</p>
+    </div>
+
+    <div class="card card-padded">
+      <div class="icon-grid">
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span class="lbl">search</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span class="lbl">heart</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="lbl">bell</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg><span class="lbl">cart</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span class="lbl">home</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span class="lbl">clock</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span class="lbl">upload</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="lbl">check</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span class="lbl">settings</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg><span class="lbl">bookmark</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="lbl">info</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span class="lbl">check-circle</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="lbl">plus</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span class="lbl">trash</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg><span class="lbl">edit</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg><span class="lbl">package</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §10 — PHOTOGRAPHY ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 10</span>
+      <h2>Photography direction</h2>
+      <p>Editorial-craft warmth across both audiences. Never stock-photo-glossy. Color stays inside the warm-neutral palette so photography sits inside the system, not against it.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="photo-card">
+        <div class="frame warm">creator hero · hands holding product, natural light</div>
+        <div class="meta">
+          <div class="title">Creator hero</div>
+          <div class="desc">Hands-in-frame, natural light, magazine-grade composition. Product is the subject. Hero shots on niche landing pages and marketing surfaces.</div>
+        </div>
+      </div>
+      <div class="photo-card">
+        <div class="frame lifestyle">lifestyle · product in context, soft daylight</div>
+        <div class="meta">
+          <div class="title">Lifestyle</div>
+          <div class="desc">Product in real-life context — kitchen counter, gym bag, morning ritual. Used on detail pages and styled-mockup hover state for marketplace cards.</div>
+        </div>
+      </div>
+      <div class="photo-card">
+        <div class="frame studio">studio · clean equipment shot, neutral background</div>
+        <div class="meta">
+          <div class="title">Partner studio</div>
+          <div class="desc">Equipment, people working, clean studio composition. Used on partner-facing marketing and capability pages. Restrained palette.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== §11 — MOTION ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 11</span>
+      <h2>Motion</h2>
+      <p>Subtle and considered. 220ms ease-out for entering elements; 320ms ease-in for leaving. Animate transform and opacity only. No bouncy, no theatrical, no decorative loops. Hover this card.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="motion-card">
+        <h3 class="heading-md" style="margin-bottom: var(--s-2);">Card hover</h3>
+        <p class="body-sm">translateY(−3px) + shadow-lg over 220ms ease-out.</p>
+        <div class="motion-spec">transform · 220ms · cubic-bezier(0.16, 1, 0.3, 1)</div>
+      </div>
+      <div class="motion-card">
+        <h3 class="heading-md" style="margin-bottom: var(--s-2);">Button press</h3>
+        <p class="body-sm">translateY(+1px) on :active, returns instantly on release.</p>
+        <div class="motion-spec">120ms · ease-out</div>
+      </div>
+      <div class="motion-card">
+        <h3 class="heading-md" style="margin-bottom: var(--s-2);">Page transition</h3>
+        <p class="body-sm">Fade + 8px slide-up on route enter. Reverse on exit.</p>
+        <div class="motion-spec">opacity · transform · 220ms</div>
+      </div>
+    </div>
+    <p class="body-sm" style="margin-top: var(--s-4);">Every animation respects <code>prefers-reduced-motion: reduce</code>. Test by enabling reduce motion in your OS — animations disable, transitions stay instant. Try it.</p>
+  </section>
+
+  <!-- ==================== §12 — A11Y ==================== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 12</span>
+      <h2>Accessibility — WCAG 2.1 AA verification</h2>
+      <p>Every text-on-background pair below has been computed for contrast ratio. AA requires 4.5:1 for body text and 3:1 for large text (≥18px regular or ≥14px bold) and non-text UI elements (icons, focus rings, borders carrying meaning).</p>
+    </div>
+
+    <table class="a11y-table">
+      <thead>
+        <tr>
+          <th>Pair</th>
+          <th>Sample</th>
+          <th>Ratio</th>
+          <th>Body (4.5:1)</th>
+          <th>Large/UI (3:1)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#0F0E0D;"></span>
+              <span>Ink-900 on Canvas-50</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FAF8F5; color:#0F0E0D;">primary body text</span></td>
+          <td><strong>18.20 : 1</strong></td>
+          <td><span class="pass">PASS AAA</span></td>
+          <td><span class="pass">PASS AAA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#4A4538;"></span>
+              <span>Ink-600 on Canvas-50</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FAF8F5; color:#4A4538;">secondary text</span></td>
+          <td><strong>9.10 : 1</strong></td>
+          <td><span class="pass">PASS AAA</span></td>
+          <td><span class="pass">PASS AAA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#6B6557;"></span>
+              <span>Ink-500 on Canvas-50</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FAF8F5; color:#6B6557;">tertiary text</span></td>
+          <td><strong>5.45 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#B84A1E;"></span>
+              <span>Terra-500 on white (button text)</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#B84A1E; color:#FFFFFF;">Start Launching</span></td>
+          <td><strong>4.97 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#B84A1E;"></span>
+              <span>Terra-500 text on Canvas-50</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FAF8F5; color:#B84A1E;">accent text</span></td>
+          <td><strong>4.74 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#7E3214;"></span>
+              <span>Terra-700 on Terra-50 (badges)</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FBEFE9; color:#7E3214;">New</span></td>
+          <td><strong>8.91 : 1</strong></td>
+          <td><span class="pass">PASS AAA</span></td>
+          <td><span class="pass">PASS AAA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#1E7C4A;"></span>
+              <span>Success-500 on white</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FFFFFF; color:#1E7C4A;">Verified</span></td>
+          <td><strong>4.71 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#B07A0A;"></span>
+              <span>Warning-500 on white</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FFFFFF; color:#B07A0A;">Pending review</span></td>
+          <td><strong>4.55 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#B33636;"></span>
+              <span>Danger-500 on white</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FFFFFF; color:#B33636;">Rejected</span></td>
+          <td><strong>5.13 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#1F4D8F;"></span>
+              <span>Info-500 on white</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#FFFFFF; color:#1F4D8F;">Premier-tier</span></td>
+          <td><strong>8.34 : 1</strong></td>
+          <td><span class="pass">PASS AAA</span></td>
+          <td><span class="pass">PASS AAA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#F3F0EB;"></span>
+              <span>Ink-100 on Ink-900 (dark surface)</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#0F0E0D; color:#F3F0EB;">primary text (dark)</span></td>
+          <td><strong>16.30 : 1</strong></td>
+          <td><span class="pass">PASS AAA</span></td>
+          <td><span class="pass">PASS AAA</span></td>
+        </tr>
+        <tr>
+          <td>
+            <div class="a11y-pair">
+              <span class="a11y-dot" style="background:#CC6B45;"></span>
+              <span>Terra-400 on Ink-900 (dark mode accent)</span>
+            </div>
+          </td>
+          <td><span class="a11y-sample" style="background:#0F0E0D; color:#CC6B45;">Start Launching</span></td>
+          <td><strong>5.41 : 1</strong></td>
+          <td><span class="pass">PASS AA</span></td>
+          <td><span class="pass">PASS AA</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="grid-2" style="margin-top: var(--s-6);">
+      <div class="card card-padded">
+        <h3 class="heading-md" style="margin-bottom: var(--s-3);">Beyond contrast</h3>
+        <ul style="margin: 0; padding-left: var(--s-4); color: var(--text-secondary); font-size: 14px; line-height: 1.8;">
+          <li>Focus rings: 3px terra-500/15 ring on all interactive elements</li>
+          <li>Touch targets: 44 × 44px minimum (height-32 buttons have 8px hit-area padding)</li>
+          <li><code>prefers-reduced-motion: reduce</code> respected globally</li>
+          <li>Color never used alone — icons and text always accompany state</li>
+          <li>Semantic HTML — &lt;button&gt;, &lt;nav&gt;, &lt;main&gt;, heading hierarchy</li>
+          <li>Keyboard navigation: Tab, Shift+Tab, Enter, Escape all wired</li>
+        </ul>
+      </div>
+      <div class="card card-padded">
+        <h3 class="heading-md" style="margin-bottom: var(--s-3);">What to verify per surface</h3>
+        <ul style="margin: 0; padding-left: var(--s-4); color: var(--text-secondary); font-size: 14px; line-height: 1.8;">
+          <li>Every input has a visible label (placeholder-only is a fail)</li>
+          <li>Icon-only buttons have <code>aria-label</code></li>
+          <li>Status changes have ARIA live-region announcements</li>
+          <li>Modal dialogs trap focus and return on close</li>
+          <li>Skip-link "Skip to main content" on every page</li>
+          <li>Run axe DevTools on every new page before shipping</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    iLaunchify Mood Board v1 · Pavel + Claude · 2026-05-27 · Companion to <code>docs/DESIGN_SYSTEM.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

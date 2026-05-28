@@ -1,0 +1,203 @@
+/**
+ * iLaunchify platform theme — CSS custom properties.
+ *
+ * Imported once at the root layout of each app:
+ *   import '@ilaunchify/ui/src/theme.css'
+ *
+ * Surface theming via attribute on <html> or any wrapper element:
+ *   <html data-surface="light">    → default (white/cream canvas, dark text)
+ *   <html data-surface="dark">     → ink-900 canvas, white text, neon accents
+ *   <html data-surface="cream">    → warm cream canvas (FBFAF7), dark text
+ *
+ * Density via a sibling attribute (mostly app-shell scoped):
+ *   <html data-density="creator">  → comfortable padding
+ *   <html data-density="partner">  → compact padding
+ *
+ * Full design spec: docs/DESIGN_SYSTEM.md
+ */
+
+:root {
+  /* ============================================================
+     RAW TOKENS (same values as packages/ui/src/tokens/*.ts).
+     Use the SEMANTIC variables below for components — only reach
+     into raw tokens when you need a specific ramp step.
+     ============================================================ */
+
+  /* Pink — brand */
+  --pink-50:  #FFE9F0;
+  --pink-100: #FFD0E0;
+  --pink-200: #FFB3CC;
+  --pink-300: #FF7FA8;
+  --pink-400: #FF5285;
+  --pink-500: #FF2E63;
+  --pink-600: #E91E5A;
+  --pink-700: #C71350;
+  --pink-800: #9E0E40;
+  --pink-900: #6E0A2D;
+
+  /* Neon green — accent (DARK SURFACES ONLY) */
+  --neon-300: #D4FF7A;
+  --neon-400: #C2FF4D;
+  --neon-500: #B5FF3D;
+  --neon-600: #9EE61F;
+
+  /* Ink — cool near-neutral */
+  --ink-50:  #F8F8F9;
+  --ink-100: #EEEFF1;
+  --ink-200: #E0E1E5;
+  --ink-300: #CBCCD3;
+  --ink-400: #9A9CA6;
+  --ink-500: #6B6D78;
+  --ink-600: #474954;
+  --ink-700: #33343C;
+  --ink-800: #232327;
+  --ink-900: #18181A;
+
+  /* Cream — warm canvas for landing-page light bands */
+  --cream: #FBFAF7;
+
+  /* Semantic */
+  --success-500: #1E7C4A;
+  --success-50:  #E5F2EC;
+  --warning-500: #B07A0A;
+  --warning-50:  #FBEFD3;
+  --danger-500:  #B33636;
+  --danger-50:   #F8E1E1;
+  --info-500:    #1F4D8F;
+  --info-50:     #E1ECF8;
+
+  /* Spacing — 8pt grid */
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+  --s-9:  96px;
+  --s-10: 128px;
+
+  /* Radius */
+  --r-xs:   4px;
+  --r-sm:   6px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(24, 24, 26, 0.06);
+  --shadow-md: 0 4px 10px rgba(24, 24, 26, 0.08);
+  --shadow-lg: 0 12px 28px rgba(24, 24, 26, 0.12);
+  --shadow-xl: 0 24px 48px rgba(24, 24, 26, 0.16);
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-quick: 120ms;
+  --duration-base:  220ms;
+  --duration-slow:  320ms;
+
+  /* Fonts */
+  --font-sans:    'Inter', -apple-system, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+  --font-serif:   'Fraunces', Georgia, serif;
+
+  /* ============================================================
+     SEMANTIC TOKENS — default (light surface).
+     Components should always reference these, never raw tokens.
+     ============================================================ */
+
+  --bg-canvas:     #FFFFFF;
+  --bg-surface:    #FFFFFF;
+  --bg-subtle:     var(--ink-50);
+  --bg-muted:      var(--ink-100);
+
+  --border-soft:   var(--ink-200);
+  --border-firm:   var(--ink-300);
+
+  --text-primary:   var(--ink-900);
+  --text-secondary: var(--ink-600);
+  --text-tertiary:  var(--ink-500);
+  --text-inverse:   #FFFFFF;
+  --text-accent:    var(--pink-700);
+
+  /* Italic emphasis color on this surface */
+  --emphasis: var(--pink-700);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(255, 46, 99, 0.15);
+
+  /* Default density = creator (comfortable) */
+  --card-padding: var(--s-5);
+  --section-gap:  var(--s-7);
+}
+
+/* ============================================================
+   DARK SURFACE — Business landing, partner app, dark sections.
+   Flips canvas to ink-900, text to white, emphasis to neon.
+   ============================================================ */
+[data-surface='dark'] {
+  --bg-canvas:   var(--ink-900);
+  --bg-surface:  var(--ink-800);
+  --bg-subtle:   var(--ink-700);
+  --bg-muted:    var(--ink-700);
+
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-firm: rgba(255, 255, 255, 0.12);
+
+  --text-primary:   #FFFFFF;
+  --text-secondary: var(--ink-300);
+  --text-tertiary:  var(--ink-400);
+  --text-inverse:   var(--ink-900);
+  --text-accent:    var(--neon-500);
+
+  /* Italic emphasis flips to neon on dark — the locked rule. */
+  --emphasis: var(--neon-500);
+
+  /* Focus ring tints neon on dark for visibility */
+  --focus-ring: 0 0 0 3px rgba(181, 255, 61, 0.25);
+}
+
+/* ============================================================
+   CREAM SURFACE — landing-page light bands (Business landing
+   stats/why/test sections). Same semantics as light but with the
+   warm cream canvas instead of pure white.
+   ============================================================ */
+[data-surface='cream'] {
+  --bg-canvas:  var(--cream);
+  --bg-surface: #FFFFFF;
+  --bg-subtle:  #F3EFE8;
+  --bg-muted:   var(--ink-100);
+
+  /* Text + accent + emphasis inherit from :root (light defaults). */
+}
+
+/* ============================================================
+   DENSITY MODES — wire via <html data-density="partner">.
+   ============================================================ */
+[data-density='partner'] {
+  --card-padding: var(--s-4); /* 16px compact */
+  --section-gap:  var(--s-5); /* 24px tighter */
+}
+
+[data-density='creator'] {
+  --card-padding: var(--s-5); /* 24px comfortable */
+  --section-gap:  var(--s-7); /* 48px breathing */
+}
+
+/* ============================================================
+   GLOBAL — accessibility baselines.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

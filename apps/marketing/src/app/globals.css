@@ -1,0 +1,12 @@
+@import '@ilaunchify/ui/theme.css';
+@import '@ilaunchify/ui/fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+}

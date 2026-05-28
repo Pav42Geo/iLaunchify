@@ -50,7 +50,7 @@ Production order:
               ↓
             Partner gets paid for their slice (manufacturer for product, printer for label)
 
-Subscription (Builder / Master):
+Subscription (Builder / Agency):
   Creator → iLaunchify Stripe (monthly or annual)
               ↓
             iLaunchify recurring revenue. Partners don't see this.
@@ -77,7 +77,7 @@ All values below are **admin-editable defaults** via the Subscription & Fee Mana
 | --- | --- |
 | Maker | 15% |
 | Builder | 12% |
-| Master | 9% |
+| Agency | 9% |
 
 #### Default per-tier marketplace commission (iLaunchify's cut of partner revenue)
 
@@ -89,18 +89,18 @@ All values below are **admin-editable defaults** via the Subscription & Fee Mana
 
 ### Creator subscription tiers
 
-Names (locked): **Maker → Builder → Master**.
-Billing: Maker free; Builder + Master offer **monthly OR annual** (annual = 2 months free, equivalent to ~17% discount).
+Names (locked): **Maker → Builder → Agency**.
+Billing: Maker free; Builder + Agency offer **monthly OR annual** (annual = 2 months free, equivalent to ~17% discount).
 
-| Feature | Maker (free) | Builder (~$49–99/mo, annual ~$490–990/yr) | Master (~$199–299/mo, annual ~$1,990–2,990/yr) |
+| Feature | Maker (free) | Builder (~$49–99/mo, annual ~$490–990/yr) | Agency (~$199–299/mo, annual ~$1,990–2,990/yr) |
 | --- | --- | --- | --- |
-| Active products | 1 | Unlimited | Unlimited |
+| Active products | Unlimited | Unlimited | Unlimited |
 | Brand profiles | 1 | 3 | Unlimited |
 | Production-order fee | 15% | 12% | 9% |
 | Routing priority | Standard | Priority queue | First-look |
 | Channel connections (V1.1+) | 1 | 3 | All 6 |
 | Sample-order fee | Standard | Discount on first sample (see activation perk) | Free + credited against main order if placed within 30 days |
-| **Bulk / volume pricing visibility** | — | — | ✓ (Master-only) |
+| **Bulk / volume pricing visibility** | — | — | ✓ (Agency-only) |
 | AI label design | Basic templates | Custom AI suggestions | Premium AI + custom templates |
 | AI formulation suggestions | — | Read-only | Full editor |
 | Compliance check depth | Standard | Advanced (claims dictionary) | Advanced + pre-clearance review |
@@ -111,16 +111,16 @@ Billing: Maker free; Builder + Master offer **monthly OR annual** (annual = 2 mo
 | Co-marketing (newsletter, case study) | — | — | ✓ |
 | Early access to V1.5+ features | — | — | ✓ |
 
-Per Pavel decision 2026-05-19: **bulk pricing is a Master-only gate**. Builder creators see partner base prices; Master creators see the full volume tier ladder (e.g., 500–1,999 @ $X / 2,000–9,999 @ $Y / 10,000+ @ $Z).
+Per Pavel decision 2026-05-19: **bulk pricing is a Agency-only gate**. Builder creators see partner base prices; Agency creators see the full volume tier ladder (e.g., 500–1,999 @ $X / 2,000–9,999 @ $Y / 10,000+ @ $Z).
 
 ### Platform-wide activation perk: First Sample Discount
 
-**Every new creator** (Maker / Builder / Master alike) gets one **First Sample Order Discount** on their first sample order, with these constraints:
+**Every new creator** (Maker / Builder / Agency alike) gets one **First Sample Order Discount** on their first sample order, with these constraints:
 - **Up to 3 distinct products** in the sample order
 - **Up to 3 units per product** (so 9 units total max)
 - Discount amount: admin-editable; default proposal **50% off production cost** (covers shipping + labeling that's high per-unit on small sample runs)
 - One-time per creator account (`User.firstSamplePerkUsedAt` flag)
-- Doesn't stack with Master-tier "free sample credited against main order" — Master tier just gets the better deal automatically
+- Doesn't stack with Agency-tier "free sample credited against main order" — Agency tier just gets the better deal automatically
 
 Schema: `Order.firstSamplePerkApplied: Boolean @default(false)` — set when this perk consumes the user's allowance.
 
@@ -159,7 +159,7 @@ Partners set their own pricing. Three pricing mechanisms:
 2. **Volume tiers** — e.g., 500–1,999 = $X/unit, 2,000–9,999 = $Y/unit, 10,000+ = $Z/unit (Trusted + Premier only)
 3. **Subscription reorder discount** — Amazon Subscribe & Save style. Creator commits to reorder every N weeks/months, gets % off per reorder (Trusted + Premier only)
 
-**V1.5+ addition:** Creator-specific deal cards — Premier partners can negotiate custom rate cards with specific high-value creators (e.g., "Master-tier creator with 12-month history gets 5% off all reorders").
+**V1.5+ addition:** Creator-specific deal cards — Premier partners can negotiate custom rate cards with specific high-value creators (e.g., "Agency-tier creator with 12-month history gets 5% off all reorders").
 
 ### Sample order economics
 
@@ -169,7 +169,7 @@ Samples are typically small runs (5–10 units per SKU). Per-unit cost is much h
 | --- | --- |
 | Maker | Pay production cost + standard platform fee (no discount) |
 | Builder | First sample uses the platform-wide First Sample Discount; subsequent samples pay full production cost with no Builder-tier discount |
-| Master | First sample fully free + future samples credited against main order if creator places one within 30 days |
+| Agency | First sample fully free + future samples credited against main order if creator places one within 30 days |
 
 Sample orders flow through the same `Order` schema with a flag (`Order.orderKind: STANDARD | SAMPLE` enum). Sample orders skip channel-listing pushes and don't qualify for Subscribe & Save reorder discounts.
 
@@ -364,14 +364,14 @@ The CTA on the customize-complete screen is **"Try a sample (with First Sample D
 **Phase 5: Tier evolution (days 90–365)**
 - In-app nudge when 2+ products active or 2+ main orders placed: "You'd save $X/year on Builder"
 - Builder upgrade → unlocks unlimited products, 12% fee, AI design, sample discount on future samples
-- Master qualification: typically 5+ products active + 10+ main orders + $50K+ in production order LTV → "You qualify for Master" prompt
-- Master perks unlock Premier partners + bulk pricing visibility + dedicated AM
+- Agency qualification: typically 5+ products active + 10+ main orders + $50K+ in production order LTV → "You qualify for Agency" prompt
+- Agency perks unlock Premier partners + bulk pricing visibility + dedicated AM
 
 **Activation success criteria:**
 - TTFPS (time to first paid sample): <30 min express, <2 hr guided
 - D7 retention (still active in app 7 days after signup): >40%
 - Sample → main order conversion (within 30 days of sample delivery): >25%
-- Builder upgrade rate (active creators on Builder/Master after 90 days): >15%
+- Builder upgrade rate (active creators on Builder/Agency after 90 days): >15%
 
 ### Production partner journey — full lifecycle
 
@@ -445,7 +445,7 @@ The CTA on the customize-complete screen is **"Try a sample (with First Sample D
 
 **Monthly (4–8 hours):**
 - Performance metrics review (TTFPS, D7 retention, sample→main conversion, partner promotion rate)
-- High-potential creator outreach (Master tier eligibility, co-marketing)
+- High-potential creator outreach (Agency tier eligibility, co-marketing)
 - Partner check-ins (Trusted → Premier interviews)
 - Marketplace analytics: which categories are growing, which partners are bottlenecks
 - Fee tuning if a tier's conversion is off
@@ -458,7 +458,7 @@ Pavel-prioritized for V1 → V1.5 (2026-05-19):
 | Priority | Loop | Why this ordering | Investment level |
 | --- | --- | --- | --- |
 | **1** | **Partner SEO inbound** | Supply-side first. Manufacturers + print providers searching "how to get wholesale orders" or "print on demand for creators" bring their existing creator networks. A single partner can onboard dozens of creators indirectly. Faster initial traction than pure creator-to-creator. Each partner profile is its own SEO landing page. | Most effort in V1: partner profile SEO optimization, schema.org markup, partner-specific landing pages. |
-| **2** | **Creator-to-creator organic referral** | Critical, but a flywheel that needs ~50 active creators before it spins. Master tier creators in newsletter + case studies become referral magnets. Word-of-mouth at conferences + Discord/Slack creator communities. | Medium effort: build the case-study template + newsletter pipeline. |
+| **2** | **Creator-to-creator organic referral** | Critical, but a flywheel that needs ~50 active creators before it spins. Agency tier creators in newsletter + case studies become referral magnets. Word-of-mouth at conferences + Discord/Slack creator communities. | Medium effort: build the case-study template + newsletter pipeline. |
 | **3** | **Transparency reports** | Underrated growth lever — treat as marketing, not just compliance. Monthly publication of marketplace metrics builds trust + shareable content + SEO. In 2025, creators care deeply about ethical manufacturing, carbon footprint, lead times. Specific metrics to publish: average QC pass rate by partner sub-type, average on-time shipping %, average lead times by category, total partner payouts (anonymized), top-rated partners (opt-in). | Medium effort: data pipeline + monthly editorial cycle. |
 | **4** | **Content marketing** | Compliance guides, partner-spotlight content, "how I launched X with iLaunchify" creator stories. Slow but compounds. Keep a steady drumbeat — 1 long-form post per week. | Steady, low-bar effort. |
 | **5** | **Outbound sales** | Once activation metrics are dialed (TTFPS <30 min, D7 retention >40%), hire 1–2 BDRs to source Tier-1 creators directly. Premature without solid activation metrics. | V1.5+ only. |
@@ -725,7 +725,7 @@ enum CandidateStatus { PENDING_REVIEW APPROVED DECLINED }
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ACTIVE: creator subscribes (Builder/Master)
+    [*] --> ACTIVE: creator subscribes (Builder/Agency)
     ACTIVE --> PAYMENT_FAILED: Stripe charge fails
     PAYMENT_FAILED --> GRACE: 1st retry fails (Stripe smart retries)
     GRACE --> ACTIVE: card succeeds on retry
@@ -746,7 +746,7 @@ stateDiagram-v2
 **Downgrade behavior:**
 - All creator data preserved (products, brands, recipes)
 - Tier-specific perks **lock** (extra brands hidden but not deleted; AI features disabled; etc.)
-- Master-only Premier partner access reverts (creator can keep orders in flight with Premier partners but can't initiate new ones)
+- Agency-only Premier partner access reverts (creator can keep orders in flight with Premier partners but can't initiate new ones)
 - Bulk pricing visibility hidden
 - Re-subscribe anytime → all perks immediately restored
 
@@ -755,7 +755,7 @@ stateDiagram-v2
 - Cancellation takes effect at end of current billing period (no proration)
 - Status flips to CANCEL_PENDING, then DOWNGRADED on period end
 
-**V1.1+: Pause-not-cancel.** Builder/Master can pause for 1–3 months instead of cancelling. Saves churn.
+**V1.1+: Pause-not-cancel.** Builder/Agency can pause for 1–3 months instead of cancelling. Saves churn.
 
 **Schema additions (V1):**
 ```prisma
@@ -830,7 +830,7 @@ Per Pavel decision 2026-05-19. The flow involves enough complexity (partner disc
 | Order cancellation paths | ⚪ partial (admin only; partner-request + creator pre-accept pending) | **V1** |
 | Subscribe & Save | ⚪ deferred | V1.5+ |
 | Capacity calendar (partner-self-reported) | ⚪ deferred | V1.5+ |
-| Sample-to-main credit (Master tier) | ⚪ to build | **V1** (Master tier perk) |
+| Sample-to-main credit (Agency tier) | ⚪ to build | **V1** (Agency tier perk) |
 
 ---
 
@@ -893,14 +893,14 @@ This Tier supersedes `docs/FOD_RECOVERY_PLAN.md`. That plan was written before t
 | --- | --- | --- | --- |
 | 1 | Platform | **Subscription & Fee Manager** admin module (DB models + admin UI). Replaces all hardcoded fee constants with DB lookups. | L (3-5 days) |
 | 2 | Platform | `@ilaunchify/plans` package with `lookupFeeRate()`, `lookupPlanFeature()`, tier gating helpers | M (2 days) |
-| 3 | Creator | Subscription billing flow (Stripe Billing recurring) — subscribe to Builder/Master, manage card via Stripe Customer Portal | M (2-3 days) |
+| 3 | Creator | Subscription billing flow (Stripe Billing recurring) — subscribe to Builder/Agency, manage card via Stripe Customer Portal | M (2-3 days) |
 | 4 | Creator | Tier-based feature gating throughout creator app (lock features per tier) | M (2-3 days) |
 | 5 | Platform | Auto-downgrade cron: PAYMENT_FAILED → GRACE (7d) → DOWNGRADED via Stripe webhook + scheduled task | S (1 day) |
 | 6 | Creator | Differentiated onboarding wizard: signup question (Beginner / Experienced) → branching → escape hatch on guided path | M (3 days) |
 | 7 | Creator | Compliance education content + interactive 5-section quizzes for guided path | M (2-3 days copy-heavy) |
 | 8 | Platform | `Order.orderKind: STANDARD | SAMPLE` enum + sample-specific routing logic | S (1 day) |
 | 9 | Creator | First Sample Discount mechanic: per-creator `firstSamplePerkUsedAt` flag, auto-applies at checkout, 3 products × 3 units cap | S (1 day) |
-| 10 | Master tier | Sample-to-main credit logic: track delivered-sample cost, credit toward subsequent main order if placed within 30 days | M (2 days) |
+| 10 | Agency tier | Sample-to-main credit logic: track delivered-sample cost, credit toward subsequent main order if placed within 30 days | M (2 days) |
 | 11 | Platform | **Quality dispute system**: `OrderDispute` + `PartnerStrike` models, creator filing UI on order detail, admin arbitration dashboard at `/admin/disputes`, partner response UI | L (4-5 days) |
 | 12 | Platform | **Tier promotion**: `Partner.tier` field, `TierPromotionCandidate` model, nightly cron evaluating Verified→Trusted gates + auto-flip, admin UI for Trusted→Premier interview queue | M (3 days) |
 | 13 | Platform | Tier-down cron (Trusted → Verified, Premier → Trusted) on 90d sub-threshold metrics | S (1 day) |
@@ -936,7 +936,7 @@ Items that aren't strictly necessary for soft launch but become obvious prioriti
 | V1.1-8 | **Pause-not-cancel** for creator subscriptions | Churn-saving optimization; minor edge case in V1 |
 | V1.1-9 | **Sample-side referral** (creator who placed sample referring another creator) | Organic growth loop; needs traffic to be worth building |
 | V1.1-10 | **Tier 2 channels** (Amazon, Etsy, WooCommerce — beyond Shopify) | Each channel is its own integration effort; sequence after Shopify proves out |
-| V1.1-11 | **AI features per tier** (AI label design improvements, AI formulation suggestions for Builder/Master) | Defer until we know creators use the basic version |
+| V1.1-11 | **AI features per tier** (AI label design improvements, AI formulation suggestions for Builder/Agency) | Defer until we know creators use the basic version |
 | V1.1-12 | **Public per-creator profile pages** (creator's iLaunchify partner-side trust signal) | SEO play; not urgent for soft launch |
 
 ### Explicitly NOT in V1 or V1.1
@@ -972,7 +972,7 @@ Week 3: Differentiated onboarding + sample mechanics
   - Compliance education content + 5 interactive quizzes
   - orderKind=SAMPLE enum + sample-specific flow
   - First Sample Discount mechanic
-  - Sample-to-main credit (Master tier)
+  - Sample-to-main credit (Agency tier)
 
 Weeks 4-7: Design Studio (see docs/DESIGN_STUDIO.md)
   - Week 4: Schema (PackagingSystem + DieCutTemplate refactor + LabelDesignTemplate + DesignSurface) + migration with backfill + render + validation pipelines (Puppeteer, Ghostscript, OCR)
@@ -1040,7 +1040,7 @@ V1 is "soft-launch ready" when **all** of these are true:
 
 Decisions deferred until they become blocking:
 
-1. **Subscription tier prices** — Builder $49 vs $99 vs $79; Master $199 vs $299. Likely settled by surveying first 5 soft-launch creators' willingness-to-pay.
+1. **Subscription tier prices** — Builder $49 vs $99 vs $79; Agency $199 vs $299. Likely settled by surveying first 5 soft-launch creators' willingness-to-pay.
 2. **Compliance advisor** — hire ad-hoc consult or use Big Law published material? Either is fine; consult is faster.
 3. **Email sender domain reputation** — fresh Resend → may need SPF/DKIM warmup before high-volume sends.
 4. **Cron infrastructure** — Vercel Cron is V1; if cron count exceeds Vercel limits, move to Fly.io scheduled worker (V1.1).
@@ -1049,10 +1049,11 @@ Decisions deferred until they become blocking:
 
 ## Changelog
 
-- **2026-05-19** Tier 1 locked. Affiliate program scoped out. Builder bulk-pricing access moved to Master-only. Platform-wide First Sample Discount perk added.
+- **2026-05-19** Tier 1 locked. Affiliate program scoped out. Builder bulk-pricing access moved to Agency-only. Platform-wide First Sample Discount perk added.
 - **2026-05-19** Tier 2 locked. Personas, activation moment (first paid sample), full lifecycle journeys for creator + partner + admin, growth loops (organic only in V1).
 - **2026-05-19** Tier 2 refinements: differentiated onboarding paths (express <30 min with compliance waiver vs guided <2 hr with interactive quizzes + escape hatch); growth loops reordered with partner SEO at #1 + transparency reports promoted to #3.
 - **2026-05-19** Tier 3 locked. 4 existing FSMs documented (Order / Dispatch / Partner / Verification section). 4 new FSMs designed (Quality dispute 14d window; Verified→Trusted auto-flip + Trusted→Premier admin interview; subscription billing with 7d grace + auto-downgrade to Maker; order cancellation with 3 paths). Subscribe & Save deferred to V1.5+. Schema additions: OrderDispute, PartnerStrike, TierPromotionCandidate, CreatorSubscription, CancellationRequest + Partner.tier enum.
 - **2026-05-19** Tier 4 locked. V1 launch target: soft launch 5-10 creators + 3-5 partners. Build window: 6-8 weeks disciplined. V1 + V1.1 spec horizon. ~30-35 working days of new code estimated. FOD_RECOVERY_PLAN.md to be archived once Tier 4 ships (it predated the model correction).
 - **2026-05-19** Design Studio spec locked in `docs/DESIGN_STUDIO.md`. V1 ships Path A (upload) + Path B (template + brand-fill). Adds ~13.5 days / ~3 weeks to V1 build. Total V1 effort revised to ~43-48 working days / ~10 weeks. Build sequence updated to slot Design Studio at Weeks 4-6.
 - **2026-05-19** Design Studio expanded to multi-surface model (PackagingSystem → DieCutTemplate × N → LabelDesignTemplate × M per surface) + AI compliance scan for hidden mandatory fields. Reflects real packaging which has multiple printable surfaces. Adds ~6 days. Total V1 effort: ~49-54 days / ~11 weeks. Build sequence: Design Studio now Weeks 4-7; remaining work pushed to Weeks 8-11.
+- **2026-05-28** Creator tier #3 renamed: **Master → Agency** (better aligns with influencer-agency persona). Maker tier active-product cap lifted: 1 → Unlimited (revenue comes from production fees, not product creation; brand-profile count remains the real upgrade lever at 1/3/Unlimited). TierKey type in `packages/ui/src/components/pricing-tier-data.ts` renamed from `'master'` to `'agency'`. Pricing page + UserMenu + PricingTierModal updated.

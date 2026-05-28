@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — App System · Tangerine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* === BRAND: TANGERINE === */
+    --tang-50:  #FFF1EB;
+    --tang-100: #FFE0D1;
+    --tang-200: #FFC2A8;
+    --tang-300: #FF9D75;
+    --tang-400: #FF8351;
+    --tang-500: #FF6B35;  /* primary brand — button fill */
+    --tang-600: #E5532B;  /* hover */
+    --tang-700: #C2410C;  /* accent text (AA on white 5.94:1) */
+    --tang-800: #9A3412;
+    --tang-900: #7C2D12;
+
+    /* === NEUTRAL: COOL SLATE (anchored on landing ink #1A1F2E) === */
+    --ink-50:  #F7F8FA;   /* canvas */
+    --ink-100: #EEF1F5;
+    --ink-200: #E1E6ED;
+    --ink-300: #CDD4DF;
+    --ink-400: #9AA3B2;
+    --ink-500: #6B7385;   /* tertiary text (4.92:1) */
+    --ink-600: #4A5160;   /* secondary text (8.04:1) */
+    --ink-700: #333A47;
+    --ink-800: #242A36;   /* dark-mode surface */
+    --ink-900: #1A1F2E;   /* primary text / dark-mode canvas */
+
+    /* === SEMANTIC === */
+    --success-500: #1E7C4A; --success-50: #E5F2EC;
+    --warning-500: #B07A0A; --warning-50: #FBEFD3;
+    --danger-500:  #B33636; --danger-50:  #F8E1E1;
+    --info-500:    #1F4D8F; --info-50:    #E1ECF8;
+
+    /* === SURFACE === */
+    --bg-canvas:   var(--ink-50);
+    --bg-surface:  #FFFFFF;
+    --bg-subtle:   var(--ink-100);
+    --bg-muted:    var(--ink-200);
+    --border-soft: var(--ink-200);
+    --border-firm: var(--ink-300);
+
+    /* === TEXT === */
+    --text-primary:   var(--ink-900);
+    --text-secondary: var(--ink-600);
+    --text-tertiary:  var(--ink-500);
+    --text-inverse:   #FFFFFF;
+    --text-accent:    var(--tang-700);
+
+    /* === TYPE === */
+    --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+
+    /* === SPACING (8pt) === */
+    --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px;
+    --s-6:32px; --s-7:48px; --s-8:64px; --s-9:96px; --s-10:128px;
+
+    /* === RADIUS === */
+    --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:10px; --r-xl:16px; --r-pill:999px;
+
+    /* === SHADOW === */
+    --shadow-sm: 0 1px 2px rgba(26,31,46,0.05), 0 1px 1px rgba(26,31,46,0.04);
+    --shadow-md: 0 4px 8px rgba(26,31,46,0.06), 0 2px 4px rgba(26,31,46,0.04);
+    --shadow-lg: 0 12px 24px rgba(26,31,46,0.08), 0 4px 8px rgba(26,31,46,0.04);
+    /* Tangerine INNER glow — glossy top highlight + inner-bottom depth, no outer halo */
+    --glow-tang:    inset 0 1px 0 rgba(255,255,255,0.40), inset 0 -3px 7px rgba(124,45,18,0.40);
+    --glow-tang-hi: inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -3px 10px rgba(124,45,18,0.52);
+
+    /* === MOTION === */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --t-quick: 120ms; --t-base: 220ms;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--font-sans); color: var(--text-primary);
+    background: var(--bg-canvas); font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4 { margin: 0; line-height: 1.15; letter-spacing: -0.015em; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+  code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.88em; }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: var(--s-7) var(--s-5); }
+
+  /* === HERO === */
+  .hero { padding: var(--s-8) 0 var(--s-7); border-bottom: 1px solid var(--border-soft); margin-bottom: var(--s-8); }
+  .hero .eyebrow { display:inline-block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-accent); margin-bottom:var(--s-4); }
+  .hero h1 { font-family:var(--font-display); font-size:clamp(44px,6vw,76px); font-weight:800; line-height:0.98; letter-spacing:-0.03em; margin-bottom:var(--s-5); }
+  .hero h1 .accent { color: var(--tang-500); }
+  .hero .lede { font-size:18px; color:var(--text-secondary); max-width:60ch; line-height:1.6; }
+  .hero .meta { display:flex; gap:var(--s-5); margin-top:var(--s-6); font-size:13px; color:var(--text-tertiary); flex-wrap:wrap; }
+
+  .section { margin-bottom: var(--s-9); }
+  .section-head { margin-bottom: var(--s-6); }
+  .section-head .num { display:inline-block; font-family:var(--font-display); font-size:13px; color:var(--tang-600); margin-bottom:var(--s-3); letter-spacing:0.02em; font-weight:700; }
+  .section-head h2 { font-family:var(--font-display); font-size:34px; font-weight:700; letter-spacing:-0.02em; margin-bottom:var(--s-3); }
+  .section-head p { color:var(--text-secondary); max-width:64ch; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--s-6); }
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--s-5); }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s-4); }
+  @media (max-width:800px){ .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr; } }
+
+  /* === SWATCHES === */
+  .swatch { border-radius:var(--r-md); overflow:hidden; border:1px solid var(--border-soft); }
+  .swatch .chip { height:88px; }
+  .swatch .meta { padding:var(--s-3) var(--s-4); background:var(--bg-surface); }
+  .swatch .meta .name { font-weight:600; font-size:13px; }
+  .swatch .meta .hex { font-family:monospace; font-size:11px; color:var(--text-tertiary); }
+  .ramp { display:grid; grid-template-columns:repeat(10,1fr); border-radius:var(--r-md); overflow:hidden; border:1px solid var(--border-soft); }
+  .ramp .step { padding:var(--s-4) var(--s-2); text-align:center; font-size:10px; font-family:monospace; min-height:76px; display:flex; flex-direction:column; justify-content:flex-end; gap:2px; }
+  .ramp .step .n { font-weight:700; opacity:0.9; }
+  .ramp .step .v { opacity:0.7; }
+
+  /* === TYPE CARDS === */
+  .type-card { background:var(--bg-surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:var(--s-5) var(--s-6); margin-bottom:var(--s-4); }
+  .type-card .label { font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-accent); font-weight:600; margin-bottom:var(--s-3); }
+  .type-card .spec { font-family:monospace; font-size:11px; color:var(--text-tertiary); margin-top:var(--s-3); }
+  .d-xl { font-family:var(--font-display); font-size:64px; font-weight:800; line-height:1.0; letter-spacing:-0.035em; }
+  .d-lg { font-family:var(--font-display); font-size:44px; font-weight:700; line-height:1.05; letter-spacing:-0.03em; }
+  .h-lg { font-size:28px; font-weight:700; line-height:1.2; letter-spacing:-0.02em; }
+  .h-md { font-size:20px; font-weight:600; line-height:1.3; letter-spacing:-0.01em; }
+  .b-lg { font-size:18px; line-height:1.6; }
+  .b-md { font-size:15px; line-height:1.55; }
+  .b-sm { font-size:13px; line-height:1.5; color:var(--text-secondary); }
+  .lbl { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; }
+
+  /* === BUTTONS (Bizee-style glow) === */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:var(--s-2); font-size:14px; font-weight:600; padding:10px 18px; border-radius:var(--r-lg); border:1px solid transparent; transition:background var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out), transform var(--t-quick) var(--ease-out); min-height:42px; white-space:nowrap; }
+  .btn-primary { background:var(--tang-500); color:#fff; border-color:var(--tang-600); border-bottom-color:var(--tang-700); box-shadow:var(--glow-tang); }
+  .btn-primary:hover { background:var(--tang-600); box-shadow:var(--glow-tang-hi); transform:translateY(-1px); }
+  .btn-primary:active { transform:translateY(0); }
+  .btn-secondary { background:var(--bg-surface); color:var(--text-primary); border-color:var(--border-firm); box-shadow:var(--shadow-sm); }
+  .btn-secondary:hover { background:var(--bg-subtle); }
+  .btn-ghost { background:transparent; color:var(--text-primary); }
+  .btn-ghost:hover { background:var(--bg-subtle); }
+  .btn-pill { border-radius:var(--r-pill); }
+  .btn-sm { font-size:13px; padding:6px 14px; min-height:34px; }
+  .btn-lg { font-size:15px; padding:13px 24px; min-height:50px; }
+
+  /* === INPUTS === */
+  .input { width:100%; height:42px; padding:0 12px; border:1px solid var(--border-firm); border-radius:var(--r-md); font-family:inherit; font-size:14px; background:var(--bg-surface); color:var(--text-primary); transition:border-color var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out); }
+  .input:focus { outline:none; border-color:var(--tang-500); box-shadow:0 0 0 3px rgba(255,107,53,0.18); }
+  .input::placeholder { color:var(--text-tertiary); }
+  .field-label { display:block; font-size:13px; font-weight:500; margin-bottom:6px; }
+  .field { margin-bottom:var(--s-4); }
+  .field-help { font-size:12px; color:var(--text-tertiary); margin-top:4px; }
+
+  /* === BADGES / CHIPS === */
+  .badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:3px 9px; border-radius:var(--r-pill); letter-spacing:0.02em; line-height:1; }
+  .badge-success{background:var(--success-50);color:var(--success-500);}
+  .badge-warning{background:var(--warning-50);color:var(--warning-500);}
+  .badge-danger{background:var(--danger-50);color:var(--danger-500);}
+  .badge-info{background:var(--info-50);color:var(--info-500);}
+  .badge-neutral{background:var(--bg-subtle);color:var(--text-secondary);}
+  .badge-accent{background:var(--tang-50);color:var(--tang-700);}
+
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:6px 12px; border-radius:var(--r-pill); background:var(--bg-surface); border:1px solid var(--border-firm); color:var(--text-secondary); cursor:pointer; transition:all var(--t-base) var(--ease-out); }
+  .chip:hover { border-color:var(--ink-400); color:var(--text-primary); }
+  .chip-active { background:var(--tang-500); color:#fff; border-color:var(--tang-500); box-shadow:var(--glow-tang); }
+  .chip-active .x { opacity:0.8; }
+
+  /* === CARDS === */
+  .card { background:var(--bg-surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:var(--s-5); }
+  .card-pad { padding:var(--s-6); }
+  .num-circle { width:24px; height:24px; border-radius:50%; background:var(--tang-500); color:#fff; font-size:13px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; box-shadow:var(--glow-tang); }
+
+  /* === DENSITY PAIR === */
+  .density-pair { display:grid; grid-template-columns:1fr 1fr; gap:var(--s-5); }
+  @media (max-width:800px){ .density-pair{ grid-template-columns:1fr; } }
+  .density-pair > .pane { background:var(--bg-surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); overflow:hidden; }
+  .density-pair > .pane > header { padding:var(--s-3) var(--s-4); background:var(--bg-subtle); border-bottom:1px solid var(--border-soft); display:flex; align-items:center; justify-content:space-between; }
+  .density-pair > .pane > header .lbl { color:var(--text-secondary); }
+  .density-pair > .pane[data-mode="creator"] > .body { padding:var(--s-6); }
+  .density-pair > .pane[data-mode="partner"] > .body { padding:var(--s-4); }
+
+  /* === MARKETPLACE CARD === */
+  .mp-card { border-radius:var(--r-lg); overflow:hidden; background:var(--bg-surface); border:1px solid var(--border-soft); cursor:pointer; transition:transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out); }
+  .mp-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--border-firm); }
+  .mp-card .image { aspect-ratio:4/5; background:linear-gradient(135deg,var(--ink-100),var(--ink-200)); position:relative; }
+  .mp-card .image.styled { background:linear-gradient(135deg,var(--tang-100),var(--tang-300)); }
+  .mp-card .image::after { content:'Hover → styled mockup'; position:absolute; bottom:var(--s-3); left:var(--s-3); font-size:11px; color:var(--text-tertiary); background:rgba(255,255,255,0.82); padding:4px 8px; border-radius:var(--r-sm); }
+  .mp-card .body { padding:var(--s-4); }
+  .mp-card .title { font-size:14px; font-weight:600; margin-bottom:var(--s-2); line-height:1.3; }
+  .mp-card .price { font-size:13px; color:var(--text-secondary); }
+  .mp-card .moq { font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* === PARTNER TABLE === */
+  .ptable { width:100%; border-collapse:collapse; font-size:13px; }
+  .ptable th { text-align:left; padding:10px 12px; background:var(--bg-subtle); border-bottom:1px solid var(--border-firm); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); }
+  .ptable td { padding:12px; border-bottom:1px solid var(--border-soft); }
+  .ptable tr:hover td { background:var(--bg-subtle); }
+  .ptable .num { font-variant-numeric:tabular-nums; text-align:right; }
+  .ptable .actions { text-align:right; }
+
+  /* === A11Y TABLE === */
+  .a11y { width:100%; border-collapse:collapse; font-size:13px; background:var(--bg-surface); border-radius:var(--r-lg); overflow:hidden; border:1px solid var(--border-soft); }
+  .a11y th { text-align:left; padding:12px; background:var(--bg-subtle); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); border-bottom:1px solid var(--border-firm); }
+  .a11y td { padding:12px; border-bottom:1px solid var(--border-soft); }
+  .a11y tr:last-child td { border-bottom:none; }
+  .a11y .pass { color:var(--success-500); font-weight:600; font-size:12px; }
+  .a11y-pair { display:inline-flex; align-items:center; gap:8px; font-family:monospace; font-size:11px; }
+  .a11y-dot { width:16px; height:16px; border-radius:50%; border:1px solid rgba(26,31,46,0.1); }
+  .a11y-sample { display:inline-block; padding:4px 10px; border-radius:var(--r-sm); font-weight:500; font-size:12px; }
+
+  /* === DARK === */
+  .dark-pane { background:var(--ink-900); color:#EEF1F5; border-radius:var(--r-lg); padding:var(--s-6); border:1px solid var(--ink-700); }
+  .dark-pane h3 { color:#fff; font-family:var(--font-display); font-size:26px; font-weight:700; margin-bottom:var(--s-3); }
+  .dark-pane p { color:#9AA3B2; }
+  .dark-pane .btn-primary { background:var(--tang-500); color:#fff; border-color:var(--tang-400); border-bottom-color:var(--tang-600); }
+  .dark-pane .btn-primary:hover { background:var(--tang-400); }
+  .dark-pane .btn-secondary { background:transparent; color:#EEF1F5; border-color:rgba(255,255,255,0.15); box-shadow:none; }
+  .dark-pane .swatch-row { display:flex; gap:var(--s-2); margin-top:var(--s-5); }
+  .dark-pane .swatch-row .dot { width:32px; height:32px; border-radius:var(--r-pill); border:1px solid rgba(255,255,255,0.1); }
+
+  /* === ICONS === */
+  .icon-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:var(--s-2); }
+  .icon-cell { aspect-ratio:1; border:1px solid var(--border-soft); border-radius:var(--r-md); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; background:var(--bg-surface); transition:border-color var(--t-base) var(--ease-out), color var(--t-base) var(--ease-out); }
+  .icon-cell:hover { border-color:var(--tang-500); color:var(--tang-600); }
+  .icon-cell svg { width:20px; height:20px; stroke-width:1.75; }
+  .icon-cell .l { font-size:9px; color:var(--text-tertiary); }
+
+  /* === PHOTO === */
+  .photo-card { border-radius:var(--r-lg); overflow:hidden; background:var(--bg-surface); border:1px solid var(--border-soft); }
+  .photo-card .frame { aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.85); font-size:12px; font-style:italic; text-align:center; padding:0 var(--s-4); }
+  .photo-card .frame.warm { background:linear-gradient(135deg,#FFB088,#FF6B35); }
+  .photo-card .frame.studio { background:linear-gradient(135deg,#C9CFDA,#6B7385); }
+  .photo-card .frame.life { background:linear-gradient(135deg,#FFD0B5,#E5532B); }
+  .photo-card .meta { padding:var(--s-4); }
+  .photo-card .meta .title { font-weight:600; font-size:14px; margin-bottom:var(--s-2); }
+  .photo-card .meta .desc { font-size:13px; color:var(--text-secondary); line-height:1.5; }
+
+  /* === MOTION === */
+  .motion-card { background:var(--bg-surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:var(--s-5); transition:transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out); }
+  .motion-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+  .motion-spec { font-family:monospace; font-size:11px; color:var(--text-tertiary); margin-top:var(--s-3); }
+
+  .footer { border-top:1px solid var(--border-soft); margin-top:var(--s-9); padding-top:var(--s-6); color:var(--text-tertiary); font-size:13px; }
+
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{ transition:none!important; animation:none!important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <header class="hero">
+    <span class="eyebrow">iLaunchify · App System (tangerine)</span>
+    <h1>The boring part of the platform, <span class="accent">done beautifully.</span></h1>
+    <p class="lede">The landing pages bring the energy. This is the daily-use system — marketplace, dashboards, the partner queue, admin. Same tangerine brand color, calmed down for surfaces people live in for hours. Clean white canvas, cool slate neutrals, the signature glowing tangerine button.</p>
+    <div class="meta">
+      <span><strong>Pavel + Claude</strong></span>
+      <span>2026-05-27</span>
+      <span>WCAG 2.1 AA verified</span>
+      <span>Inter · Bricolage Grotesque</span>
+      <span>Pairs with Studio Pop landing</span>
+    </div>
+  </header>
+
+  <!-- §01 STRATEGY -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 01</span>
+      <h2>One brand, two registers</h2>
+      <p>The landing pages (Studio Pop) are loud — mesh gradients, marquees, big bold type, energy. The app is the opposite: quiet, dense, fast. The thread that ties them together is the tangerine brand color and the shared type family. When a creator clicks "Start launching" on a vibrant landing page, they cross into this calmer surface — same brand, different job.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card card-pad">
+        <span class="badge badge-accent" style="margin-bottom:var(--s-3);">CREATOR APP</span>
+        <h3 class="h-lg" style="font-family:var(--font-display);font-weight:700;margin-bottom:var(--s-3);">Comfortable. Confident. Clean.</h3>
+        <p class="b-md" style="color:var(--text-secondary);">Marketplace browse, Brand Assets, Design Studio. Comfortable spacing, larger imagery, the tangerine accent on primary actions. Feels premium without shouting.</p>
+        <ul style="margin:var(--s-4) 0 0;padding-left:var(--s-4);color:var(--text-secondary);font-size:14px;line-height:1.8;">
+          <li>24px card padding · generous whitespace</li>
+          <li>Tangerine glow on the one primary CTA per view</li>
+          <li>Bricolage for the occasional welcome/empty-state moment</li>
+        </ul>
+      </div>
+      <div class="card card-pad" style="background:var(--ink-900);color:var(--ink-50);border-color:var(--ink-800);">
+        <span class="badge" style="background:rgba(255,255,255,0.08);color:var(--tang-300);margin-bottom:var(--s-3);">PARTNER + ADMIN</span>
+        <h3 class="h-lg" style="color:var(--ink-50);margin-bottom:var(--s-3);">Dense. Operational. No nonsense.</h3>
+        <p class="b-md" style="color:var(--ink-400);">Order queues, verification, dashboards. Compact spacing, data tables, fewer animations. Tangerine appears only on the action that matters — accept, ship, approve.</p>
+        <ul style="margin:var(--s-4) 0 0;padding-left:var(--s-4);color:var(--ink-400);font-size:14px;line-height:1.8;">
+          <li>16px card padding · tabular numbers</li>
+          <li>Tangerine reserved for the row's primary action</li>
+          <li>Optional dark mode default for long sessions</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- §02 COLOR -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 02</span>
+      <h2>Color</h2>
+      <p>Tangerine is the brand. But in the app it's an <em>accent</em>, not a flood — it lives on primary buttons, focused states, and active chips, never as a large surface fill. Cool slate neutrals (anchored on the landing's midnight ink) keep the canvas clean and modern.</p>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Primary tokens</h3>
+    <div class="grid-4" style="margin-bottom:var(--s-6);">
+      <div class="swatch"><div class="chip" style="background:var(--tang-500);"></div><div class="meta"><div class="name">Tangerine 500</div><div class="hex">#FF6B35 · brand</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--tang-700);"></div><div class="meta"><div class="name">Tangerine 700</div><div class="hex">#C2410C · accent text</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--ink-900);"></div><div class="meta"><div class="name">Ink 900</div><div class="hex">#1A1F2E · text</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--ink-50);border-bottom:1px solid var(--border-soft);"></div><div class="meta"><div class="name">Canvas 50</div><div class="hex">#F7F8FA</div></div></div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Tangerine ramp</h3>
+    <div class="ramp" style="margin-bottom:var(--s-6);">
+      <div class="step" style="background:var(--tang-50);color:var(--tang-900);"><span class="n">50</span><span class="v">#FFF1EB</span></div>
+      <div class="step" style="background:var(--tang-100);color:var(--tang-900);"><span class="n">100</span><span class="v">#FFE0D1</span></div>
+      <div class="step" style="background:var(--tang-200);color:var(--tang-900);"><span class="n">200</span><span class="v">#FFC2A8</span></div>
+      <div class="step" style="background:var(--tang-300);color:var(--tang-900);"><span class="n">300</span><span class="v">#FF9D75</span></div>
+      <div class="step" style="background:var(--tang-400);color:#fff;"><span class="n">400</span><span class="v">#FF8351</span></div>
+      <div class="step" style="background:var(--tang-500);color:#fff;"><span class="n">500</span><span class="v">#FF6B35</span></div>
+      <div class="step" style="background:var(--tang-600);color:#fff;"><span class="n">600</span><span class="v">#E5532B</span></div>
+      <div class="step" style="background:var(--tang-700);color:#fff;"><span class="n">700</span><span class="v">#C2410C</span></div>
+      <div class="step" style="background:var(--tang-800);color:#fff;"><span class="n">800</span><span class="v">#9A3412</span></div>
+      <div class="step" style="background:var(--tang-900);color:#fff;"><span class="n">900</span><span class="v">#7C2D12</span></div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Slate (cool neutral) ramp</h3>
+    <div class="ramp" style="margin-bottom:var(--s-6);">
+      <div class="step" style="background:var(--ink-50);color:var(--ink-900);"><span class="n">50</span><span class="v">#F7F8FA</span></div>
+      <div class="step" style="background:var(--ink-100);color:var(--ink-900);"><span class="n">100</span><span class="v">#EEF1F5</span></div>
+      <div class="step" style="background:var(--ink-200);color:var(--ink-900);"><span class="n">200</span><span class="v">#E1E6ED</span></div>
+      <div class="step" style="background:var(--ink-300);color:var(--ink-900);"><span class="n">300</span><span class="v">#CDD4DF</span></div>
+      <div class="step" style="background:var(--ink-400);color:#fff;"><span class="n">400</span><span class="v">#9AA3B2</span></div>
+      <div class="step" style="background:var(--ink-500);color:#fff;"><span class="n">500</span><span class="v">#6B7385</span></div>
+      <div class="step" style="background:var(--ink-600);color:#fff;"><span class="n">600</span><span class="v">#4A5160</span></div>
+      <div class="step" style="background:var(--ink-700);color:#fff;"><span class="n">700</span><span class="v">#333A47</span></div>
+      <div class="step" style="background:var(--ink-800);color:#fff;"><span class="n">800</span><span class="v">#242A36</span></div>
+      <div class="step" style="background:var(--ink-900);color:#fff;"><span class="n">900</span><span class="v">#1A1F2E</span></div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Semantic</h3>
+    <div class="grid-4">
+      <div class="card" style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:var(--success-500);margin:0 auto var(--s-3);"></div><div style="font-weight:600;font-size:13px;">Success</div><div class="b-sm" style="font-family:monospace;font-size:11px;margin-top:4px;">#1E7C4A</div></div>
+      <div class="card" style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:var(--warning-500);margin:0 auto var(--s-3);"></div><div style="font-weight:600;font-size:13px;">Warning</div><div class="b-sm" style="font-family:monospace;font-size:11px;margin-top:4px;">#B07A0A</div></div>
+      <div class="card" style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:var(--danger-500);margin:0 auto var(--s-3);"></div><div style="font-weight:600;font-size:13px;">Danger</div><div class="b-sm" style="font-family:monospace;font-size:11px;margin-top:4px;">#B33636</div></div>
+      <div class="card" style="text-align:center;"><div style="width:52px;height:52px;border-radius:50%;background:var(--info-500);margin:0 auto var(--s-3);"></div><div style="font-weight:600;font-size:13px;">Info</div><div class="b-sm" style="font-family:monospace;font-size:11px;margin-top:4px;">#1F4D8F</div></div>
+    </div>
+  </section>
+
+  <!-- §03 TYPOGRAPHY -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 03</span>
+      <h2>Typography</h2>
+      <p>Inter is the workhorse — every label, table, form, and paragraph. Bricolage Grotesque (the landing's display face) appears in the app only for big moments: dashboard welcomes, empty states, section heroes. The shared display face is what makes the app feel related to the landing.</p>
+    </div>
+
+    <div class="type-card"><div class="label">Display — Bricolage 64 / 800 (welcome moments only)</div><div class="d-xl">Welcome back, Heritage Roasters.</div><div class="spec">Bricolage Grotesque · 64px · 800 · -0.035em</div></div>
+    <div class="type-card"><div class="label">Display — Bricolage 44 / 700 (empty states, hero cards)</div><div class="d-lg">No orders yet — let's change that.</div><div class="spec">Bricolage Grotesque · 44px · 700 · -0.03em</div></div>
+    <div class="type-card"><div class="label">Heading — Inter 28 / 700</div><div class="h-lg">Colombian Single-Origin Whole Bean</div><div class="spec">Inter · 28px · 700 · -0.02em</div></div>
+    <div class="type-card"><div class="label">Heading — Inter 20 / 600 (card titles)</div><div class="h-md">Production options for your order</div><div class="spec">Inter · 20px · 600 · -0.01em</div></div>
+    <div class="type-card"><div class="label">Body — Inter 15 / 400</div><p class="b-md">iLaunchify decomposes each order into a production workflow across manufacturer, label printer, co-packer, and warehouse — then hides that complexity so you see one quote, one timeline, one approval.</p><div class="spec">Inter · 15px · 400 · 1.55</div></div>
+    <div class="type-card"><div class="label">Body small — Inter 13 / 400</div><p class="b-sm">Estimated landed cost depends on your tier, selected variant, and order quantity.</p><div class="spec">Inter · 13px · 400 · color: ink-600</div></div>
+    <div class="type-card"><div class="label">Label — Inter 11 / 600 UPPERCASE</div><span class="lbl">Recipe overview · 14 ingredients · vegan</span><div class="spec">Inter · 11px · 600 · +0.06em</div></div>
+  </section>
+
+  <!-- §04 COMPONENTS -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 04</span>
+      <h2>Components — the glowing tangerine button</h2>
+      <p>The signature component, borrowed from the Bizee reference: tangerine fill, white text, a subtle darker bottom border for depth, an inner top highlight, and a soft tangerine glow shadow. It lifts on hover and the glow intensifies. One primary button per view — everything else is secondary or ghost.</p>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Buttons</h3>
+    <div class="card card-pad" style="margin-bottom:var(--s-6);">
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center;margin-bottom:var(--s-5);">
+        <button class="btn btn-primary">Start Launching</button>
+        <button class="btn btn-primary btn-pill">Get Started</button>
+        <button class="btn btn-secondary">Save Draft</button>
+        <button class="btn btn-ghost">Cancel</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center;">
+        <button class="btn btn-primary btn-sm">Small</button>
+        <button class="btn btn-primary">Medium</button>
+        <button class="btn btn-primary btn-lg">Large action</button>
+      </div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Inputs &amp; numbered steps</h3>
+    <div class="card card-pad" style="margin-bottom:var(--s-6);">
+      <div class="grid-3" style="margin-bottom:var(--s-5);">
+        <div class="field"><label class="field-label">Brand name</label><input class="input" type="text" value="Heritage Roasters" /></div>
+        <div class="field"><label class="field-label">Order quantity</label><input class="input" type="text" value="150" /><div class="field-help">Minimum quantity is 50</div></div>
+        <div class="field"><label class="field-label">Focused input (tangerine ring)</label><input class="input" placeholder="Click to focus me" style="border-color:var(--tang-500);box-shadow:0 0 0 3px rgba(255,107,53,0.18);" /></div>
+      </div>
+      <div style="display:flex;gap:var(--s-4);align-items:center;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;gap:var(--s-2);"><span class="num-circle">1</span> Pick template</span>
+        <span style="display:inline-flex;align-items:center;gap:var(--s-2);color:var(--text-tertiary);"><span class="num-circle" style="background:var(--ink-300);box-shadow:none;">2</span> Customize label</span>
+        <span style="display:inline-flex;align-items:center;gap:var(--s-2);color:var(--text-tertiary);"><span class="num-circle" style="background:var(--ink-300);box-shadow:none;">3</span> Launch</span>
+      </div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Badges &amp; chips</h3>
+    <div class="card card-pad">
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-5);">
+        <span class="badge badge-success">Verified</span>
+        <span class="badge badge-warning">Pending review</span>
+        <span class="badge badge-danger">Rejected</span>
+        <span class="badge badge-info">Premier-tier</span>
+        <span class="badge badge-neutral">Draft</span>
+        <span class="badge badge-accent">New</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);">
+        <span class="chip chip-active">Vegan <span class="x">×</span></span>
+        <span class="chip chip-active">Powder <span class="x">×</span></span>
+        <span class="chip">Keto</span>
+        <span class="chip">High-protein</span>
+        <span class="chip">Organic</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- §05 DENSITY -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 05</span>
+      <h2>Density modes — same tokens, calibrated</h2>
+      <p>Both panes render from the same components. Creator surfaces breathe; partner surfaces pack in.</p>
+    </div>
+    <div class="density-pair">
+      <div class="pane" data-mode="creator">
+        <header><span class="lbl">CREATOR MODE</span><span class="b-sm">comfortable</span></header>
+        <div class="body">
+          <h3 style="font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1.2;margin-bottom:var(--s-3);">Colombian Single-Origin</h3>
+          <p class="b-md" style="color:var(--text-secondary);margin-bottom:var(--s-5);">A small-batch whole-bean coffee, roasted weekly in our partner network. Perfect for premium DTC launches.</p>
+          <div style="display:flex;gap:var(--s-2);margin-bottom:var(--s-5);"><span class="badge badge-accent">FAIR TRADE</span><span class="badge badge-success">USDA ORGANIC</span></div>
+          <button class="btn btn-primary btn-lg" style="width:100%;">Start Launching →</button>
+        </div>
+      </div>
+      <div class="pane" data-mode="partner">
+        <header><span class="lbl">PARTNER MODE</span><span class="b-sm">compact</span></header>
+        <div class="body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);"><h3 class="h-md">Order #IL-2026-04183</h3><span class="badge badge-warning">Awaiting acceptance</span></div>
+          <table class="ptable" style="margin-bottom:var(--s-3);">
+            <tr><td style="color:var(--text-secondary);">Template</td><td>Colombian · 250g</td></tr>
+            <tr><td style="color:var(--text-secondary);">Quantity</td><td class="num">150 units</td></tr>
+            <tr><td style="color:var(--text-secondary);">Net to you</td><td class="num">$487.50</td></tr>
+            <tr><td style="color:var(--text-secondary);">Deadline</td><td>Accept by Jun 02</td></tr>
+          </table>
+          <div style="display:flex;gap:var(--s-2);"><button class="btn btn-primary btn-sm" style="flex:1;">Accept</button><button class="btn btn-secondary btn-sm">Decline</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §06 MARKETPLACE -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 06</span>
+      <h2>Marketplace cards</h2>
+      <p>The card from <code>MARKETPLACE_DESIGN.md</code> §5. Hover swaps to a styled mockup — no card extension. Three lines: title, price range, MOQ.</p>
+    </div>
+    <div class="grid-4">
+      <div class="mp-card"><div class="image"></div><div class="body"><div class="title">Cold-pressed protein powder</div><div class="price">$4.20 – $6.80 / unit</div><div class="moq">MOQ from 50</div></div></div>
+      <div class="mp-card"><div class="image styled"></div><div class="body"><div class="title">Colombian single-origin</div><div class="price">$3.90 – $5.50 / unit</div><div class="moq">MOQ from 100</div></div></div>
+      <div class="mp-card"><div class="image"></div><div class="body"><div class="title">Adaptogenic mushroom blend</div><div class="price">$8.40 – $11.20 / unit</div><div class="moq">MOQ from 250</div></div></div>
+      <div class="mp-card"><div class="image styled"></div><div class="body"><div class="title">Sparkling botanical water</div><div class="price">$1.95 – $2.80 / unit</div><div class="moq">MOQ from 500</div></div></div>
+    </div>
+  </section>
+
+  <!-- §07 PARTNER DASHBOARD -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 07</span>
+      <h2>Partner dashboard — operational mode</h2>
+      <p>Density tightened, ornament gone. Tangerine appears only on the row's primary action.</p>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <header style="padding:var(--s-4) var(--s-5);border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:center;">
+        <div><div class="lbl" style="color:var(--text-secondary);margin-bottom:2px;">PARTNER DASHBOARD</div><div class="h-md">Open orders · 12</div></div>
+        <div style="display:flex;gap:var(--s-2);"><button class="btn btn-secondary btn-sm">Filter</button><button class="btn btn-primary btn-sm">Export CSV</button></div>
+      </header>
+      <table class="ptable">
+        <thead><tr><th>Order</th><th>Template</th><th class="num">Qty</th><th class="num">Net</th><th>Status</th><th>Deadline</th><th class="actions">Action</th></tr></thead>
+        <tbody>
+          <tr><td><strong>IL-04183</strong></td><td>Colombian · 250g</td><td class="num">150</td><td class="num">$487.50</td><td><span class="badge badge-warning">Awaiting</span></td><td>Jun 02</td><td class="actions"><button class="btn btn-primary btn-sm">Accept</button></td></tr>
+          <tr><td><strong>IL-04181</strong></td><td>Adaptogen · 60ct</td><td class="num">300</td><td class="num">$2,140</td><td><span class="badge badge-info">In production</span></td><td>Jun 14</td><td class="actions"><button class="btn btn-ghost btn-sm">View</button></td></tr>
+          <tr><td><strong>IL-04179</strong></td><td>Protein · 1lb</td><td class="num">500</td><td class="num">$3,180</td><td><span class="badge badge-success">Ready to ship</span></td><td>Jun 01</td><td class="actions"><button class="btn btn-primary btn-sm">Ship</button></td></tr>
+          <tr><td><strong>IL-04168</strong></td><td>Colombian · 250g</td><td class="num">75</td><td class="num">$256</td><td><span class="badge badge-danger">Revision</span></td><td>Today</td><td class="actions"><button class="btn btn-primary btn-sm">Open</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- §08 DARK -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 08</span>
+      <h2>Dark mode</h2>
+      <p>Considered, not inverted. Ink-900 canvas, ink-800 surfaces step lighter for elevation. Tangerine stays 500 on dark (it holds up), brightening to 400 on hover. Default for long-session partner views.</p>
+    </div>
+    <div class="dark-pane">
+      <span class="lbl" style="color:var(--tang-300);display:block;margin-bottom:var(--s-3);">PRODUCTION QUEUE</span>
+      <h3>You have 4 orders awaiting review.</h3>
+      <p style="font-size:15px;max-width:56ch;">A calmer surface for the work-heavy hours. Surfaces step lighter to create elevation, borders use semi-transparent white, text stays off-white — and the tangerine button keeps its glow.</p>
+      <div style="display:flex;gap:var(--s-3);margin-top:var(--s-5);"><button class="btn btn-primary">Open queue</button><button class="btn btn-secondary">Snooze 1h</button></div>
+      <div class="swatch-row">
+        <div class="dot" style="background:var(--ink-900);" title="Canvas"></div>
+        <div class="dot" style="background:var(--ink-800);" title="Surface"></div>
+        <div class="dot" style="background:var(--ink-700);" title="Subtle"></div>
+        <div class="dot" style="background:var(--tang-500);" title="Accent"></div>
+        <div class="dot" style="background:var(--tang-400);" title="Accent hover"></div>
+        <div class="dot" style="background:#EEF1F5;" title="Text"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §09 ICONS -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 09</span>
+      <h2>Iconography</h2>
+      <p>Lucide line icons. 1.75 stroke, 20px default, 16px in tables. Hover tints tangerine. Never mix icon families.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="icon-grid">
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><span class="l">search</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span class="l">heart</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="l">bell</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg><span class="l">cart</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span class="l">home</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span class="l">clock</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span class="l">upload</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="l">check</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span class="l">settings</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg><span class="l">bookmark</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span class="l">info</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span class="l">check-circle</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="l">plus</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span class="l">trash</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg><span class="l">edit</span></div>
+        <div class="icon-cell"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg><span class="l">package</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §10 PHOTOGRAPHY -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 10</span>
+      <h2>Photography direction</h2>
+      <p>Warm, vibrant, but cleaner than the editorial route — the tangerine palette extends into photography. Product on color-blocked backgrounds, creators in punchy daylight, partners in clean studio. Never stock-photo glossy.</p>
+    </div>
+    <div class="grid-3">
+      <div class="photo-card"><div class="frame warm">creator portrait · punchy daylight, tangerine wall</div><div class="meta"><div class="title">Creator</div><div class="desc">Tight crop, eye contact, warm energetic lighting. Used in marketplace hero and creator testimonials.</div></div></div>
+      <div class="photo-card"><div class="frame life">product · color-blocked tangerine background</div><div class="meta"><div class="title">Product</div><div class="desc">Single product on a pop-color gradient. The styled-mockup hover state on marketplace cards.</div></div></div>
+      <div class="photo-card"><div class="frame studio">partner · clean studio, cool neutral</div><div class="meta"><div class="title">Partner studio</div><div class="desc">Equipment + people, clean composition, cool neutral palette. Partner-facing surfaces.</div></div></div>
+    </div>
+  </section>
+
+  <!-- §11 MOTION -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 11</span>
+      <h2>Motion</h2>
+      <p>Restrained in the app (the energy lives on the landing). 220ms ease-out, transform + opacity only. The one indulgence: the tangerine button glow intensifying on hover. Hover these cards.</p>
+    </div>
+    <div class="grid-3">
+      <div class="motion-card"><h3 class="h-md" style="margin-bottom:var(--s-2);">Card hover</h3><p class="b-sm">translateY(−3px) + shadow-lg over 220ms.</p><div class="motion-spec">transform · 220ms · ease-out</div></div>
+      <div class="motion-card"><h3 class="h-md" style="margin-bottom:var(--s-2);">Button glow</h3><p class="b-sm">Tangerine glow shadow expands + lifts on hover.</p><div class="motion-spec">box-shadow + transform · 220ms</div></div>
+      <div class="motion-card"><h3 class="h-md" style="margin-bottom:var(--s-2);">Focus ring</h3><p class="b-sm">3px tangerine/18 ring appears instantly on focus.</p><div class="motion-spec">box-shadow · 220ms</div></div>
+    </div>
+    <p class="b-sm" style="margin-top:var(--s-4);">All motion respects <code>prefers-reduced-motion: reduce</code>.</p>
+  </section>
+
+  <!-- §12 A11Y -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">§ 12</span>
+      <h2>Accessibility — WCAG 2.1 AA</h2>
+      <p>Every text/background pair computed. The key rule: tangerine-500 is a <em>button-fill</em> color (white text on it passes AA), not a body-text color. For tangerine text on white, use tangerine-700.</p>
+    </div>
+    <table class="a11y">
+      <thead><tr><th>Pair</th><th>Sample</th><th>Ratio</th><th>Body 4.5:1</th><th>Large/UI 3:1</th></tr></thead>
+      <tbody>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#1A1F2E;"></span><span>Ink-900 on Canvas-50</span></div></td><td><span class="a11y-sample" style="background:#F7F8FA;color:#1A1F2E;">primary text</span></td><td><strong>15.85:1</strong></td><td class="pass">AAA</td><td class="pass">AAA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#4A5160;"></span><span>Ink-600 on Canvas-50</span></div></td><td><span class="a11y-sample" style="background:#F7F8FA;color:#4A5160;">secondary text</span></td><td><strong>8.04:1</strong></td><td class="pass">AAA</td><td class="pass">AAA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#6B7385;"></span><span>Ink-500 on Canvas-50</span></div></td><td><span class="a11y-sample" style="background:#F7F8FA;color:#6B7385;">tertiary text</span></td><td><strong>4.92:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#FF6B35;"></span><span>White on Tangerine-500 (button)</span></div></td><td><span class="a11y-sample" style="background:#FF6B35;color:#fff;">Start Launching</span></td><td><strong>4.61:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#C2410C;"></span><span>Tangerine-700 text on white</span></div></td><td><span class="a11y-sample" style="background:#fff;color:#C2410C;">accent text link</span></td><td><strong>5.94:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#C2410C;"></span><span>Tangerine-700 on Tangerine-50 (badge)</span></div></td><td><span class="a11y-sample" style="background:#FFF1EB;color:#C2410C;">New</span></td><td><strong>5.52:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#1E7C4A;"></span><span>Success-500 on white</span></div></td><td><span class="a11y-sample" style="background:#fff;color:#1E7C4A;">Verified</span></td><td><strong>4.71:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#B33636;"></span><span>Danger-500 on white</span></div></td><td><span class="a11y-sample" style="background:#fff;color:#B33636;">Rejected</span></td><td><strong>5.13:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#EEF1F5;"></span><span>Ink-100 on Ink-900 (dark)</span></div></td><td><span class="a11y-sample" style="background:#1A1F2E;color:#EEF1F5;">primary text (dark)</span></td><td><strong>15.10:1</strong></td><td class="pass">AAA</td><td class="pass">AAA</td></tr>
+        <tr><td><div class="a11y-pair"><span class="a11y-dot" style="background:#FF6B35;"></span><span>White on Tangerine-500 (dark mode btn)</span></div></td><td><span class="a11y-sample" style="background:#FF6B35;color:#fff;">Open queue</span></td><td><strong>4.61:1</strong></td><td class="pass">AA</td><td class="pass">AA</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:var(--s-6);">
+      <div class="card card-pad">
+        <h3 class="h-md" style="margin-bottom:var(--s-3);">The tangerine rule</h3>
+        <p class="b-md" style="color:var(--text-secondary);">Tangerine-500 on white is only 3.13:1 — fine as a <em>button fill</em> (white text on it hits 4.61:1) but it fails as body text. For tangerine text on light surfaces, always step to tangerine-700 (#C2410C, 5.94:1). This is the one trap in the palette.</p>
+      </div>
+      <div class="card card-pad">
+        <h3 class="h-md" style="margin-bottom:var(--s-3);">Beyond contrast</h3>
+        <ul style="margin:0;padding-left:var(--s-4);color:var(--text-secondary);font-size:14px;line-height:1.8;">
+          <li>Focus rings: 3px tangerine-500/18 on all interactive elements</li>
+          <li>Touch targets ≥ 44×44px</li>
+          <li><code>prefers-reduced-motion</code> respected globally</li>
+          <li>Color never alone — paired with icon or text</li>
+          <li>Semantic HTML + visible labels on every input</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    iLaunchify App System (tangerine) · Pavel + Claude · 2026-05-27 · Pairs with Studio Pop landing (<code>design/mood-board-landing-v2.html</code>)
+  </footer>
+</div>
+</body>
+</html>

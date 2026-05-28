@@ -1,0 +1,26 @@
+/**
+ * iLaunchify platform fonts — self-hosted via Fontsource.
+ *
+ * Import once per app from globals.css:
+ *   @import '@ilaunchify/ui/fonts.css';
+ *
+ * Subset to weights actually used in the design system (per DESIGN_SYSTEM.md §3):
+ *   - Inter        400 / 500 / 600 / 700
+ *   - Bricolage    600 / 700 / 800   (display only — no light weights)
+ *   - Fraunces     italic 400 / 500   (italic emphasis only — no roman)
+ */
+
+/* Inter — workhorse */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+/* Bricolage Grotesque — bold display */
+@import '@fontsource/bricolage-grotesque/600.css';
+@import '@fontsource/bricolage-grotesque/700.css';
+@import '@fontsource/bricolage-grotesque/800.css';
+
+/* Fraunces — italic emphasis only (no roman) */
+@import '@fontsource/fraunces/400-italic.css';
+@import '@fontsource/fraunces/500-italic.css';

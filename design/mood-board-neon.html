@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Neon Theme · Pink + Black + Neon Green</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* === PINK (primary brand) === */
+    --pink-50:#FFE9F0; --pink-100:#FFD0E0; --pink-200:#FFB3CC; --pink-300:#FF7FA8;
+    --pink-400:#FF5285; --pink-500:#FF2E63; --pink-600:#E91E5A; --pink-700:#C71350;
+    --pink-800:#9E0E40; --pink-900:#6E0A2D;
+
+    /* === NEON GREEN (accent + button text) === */
+    --neon-300:#D4FF7A; --neon-400:#C2FF4D; --neon-500:#B5FF3D; --neon-600:#9EE61F;
+    --neon-deep:#5E8A0C;  /* only legible green for text on white */
+
+    /* === INK (button fills, text, dark) — near-neutral === */
+    --ink-50:#F8F8F9; --ink-100:#EEEFF1; --ink-200:#E0E1E5; --ink-300:#CBCCD3;
+    --ink-400:#9A9CA6; --ink-500:#6B6D78; --ink-600:#474954; --ink-700:#33343C;
+    --ink-800:#232327; --ink-900:#18181A;
+
+    /* === SEMANTIC === */
+    --success-500:#1E7C4A; --success-50:#E5F2EC;
+    --warning-500:#B07A0A; --warning-50:#FBEFD3;
+    --danger-500:#B33636; --danger-50:#F8E1E1;
+    --info-500:#1F4D8F; --info-50:#E1ECF8;
+
+    /* === SURFACE === */
+    --bg-canvas:#FFFFFF; --bg-surface:#FFFFFF; --bg-subtle:var(--ink-50);
+    --bg-muted:var(--ink-100); --border-soft:var(--ink-200); --border-firm:var(--ink-300);
+    --text-primary:var(--ink-900); --text-secondary:var(--ink-600); --text-tertiary:var(--ink-500);
+    --text-accent:var(--pink-700);
+
+    --font-sans:'Inter',system-ui,sans-serif;
+    --font-display:'Bricolage Grotesque','Inter',sans-serif;
+    --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:24px;--s-6:32px;--s-7:48px;--s-8:64px;--s-9:96px;
+    --r-sm:6px;--r-md:8px;--r-lg:10px;--r-xl:16px;--r-pill:999px;
+    --shadow-sm:0 1px 2px rgba(24,24,26,0.06);
+    --shadow-md:0 4px 10px rgba(24,24,26,0.08);
+    --shadow-lg:0 12px 28px rgba(24,24,26,0.12);
+    --ease:cubic-bezier(0.16,1,0.3,1);--t:220ms;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  body{margin:0;font-family:var(--font-sans);color:var(--text-primary);background:var(--bg-canvas);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{margin:0;line-height:1.15;letter-spacing:-0.015em;}
+  p{margin:0;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;color:inherit;}
+  code{font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:0.88em;}
+
+  /* fake white header bar so the white-header decision is visible */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border-soft);}
+  .topbar-in{max-width:1280px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;}
+  .logo{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-0.04em;display:inline-flex;align-items:center;gap:7px;}
+  .logo::before{content:'';width:26px;height:26px;border-radius:7px;background:var(--pink-500);}
+  .topbar .spacer{flex:1;}
+  .topbar .lnk{font-size:14px;font-weight:500;color:var(--ink-600);}
+
+  .page{max-width:1280px;margin:0 auto;padding:var(--s-7) var(--s-5);}
+  .hero{padding:var(--s-8) 0 var(--s-7);border-bottom:1px solid var(--border-soft);margin-bottom:var(--s-8);}
+  .hero .eyebrow{display:inline-block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-accent);margin-bottom:var(--s-4);}
+  .hero h1{font-family:var(--font-display);font-size:clamp(44px,6vw,76px);font-weight:800;line-height:0.98;letter-spacing:-0.03em;margin-bottom:var(--s-5);}
+  .hero h1 .pink{color:var(--pink-500);}
+  .hero .lede{font-size:18px;color:var(--text-secondary);max-width:60ch;line-height:1.6;}
+  .hero .meta{display:flex;gap:var(--s-5);margin-top:var(--s-6);font-size:13px;color:var(--text-tertiary);flex-wrap:wrap;}
+
+  .section{margin-bottom:var(--s-9);}
+  .section-head{margin-bottom:var(--s-6);}
+  .section-head .num{display:inline-block;font-family:var(--font-display);font-size:13px;color:var(--pink-600);margin-bottom:var(--s-3);font-weight:700;}
+  .section-head h2{font-family:var(--font-display);font-size:34px;font-weight:700;letter-spacing:-0.02em;margin-bottom:var(--s-3);}
+  .section-head p{color:var(--text-secondary);max-width:64ch;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-6);}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-5);}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-4);}
+  @media(max-width:800px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+  .swatch{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border-soft);}
+  .swatch .chip{height:88px;}
+  .swatch .meta{padding:var(--s-3) var(--s-4);background:var(--bg-surface);}
+  .swatch .meta .name{font-weight:600;font-size:13px;}
+  .swatch .meta .hex{font-family:monospace;font-size:11px;color:var(--text-tertiary);}
+  .ramp{display:grid;grid-template-columns:repeat(10,1fr);border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border-soft);}
+  .ramp .step{padding:var(--s-4) var(--s-2);text-align:center;font-size:10px;font-family:monospace;min-height:74px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;}
+  .ramp .step .n{font-weight:700;opacity:0.9;}.ramp .step .v{opacity:0.7;}
+
+  .type-card{background:var(--bg-surface);border:1px solid var(--border-soft);border-radius:var(--r-lg);padding:var(--s-5) var(--s-6);margin-bottom:var(--s-4);}
+  .type-card .label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-accent);font-weight:600;margin-bottom:var(--s-3);}
+  .type-card .spec{font-family:monospace;font-size:11px;color:var(--text-tertiary);margin-top:var(--s-3);}
+  .d-xl{font-family:var(--font-display);font-size:64px;font-weight:800;line-height:1.0;letter-spacing:-0.035em;}
+  .d-lg{font-family:var(--font-display);font-size:44px;font-weight:700;line-height:1.05;letter-spacing:-0.03em;}
+  .h-lg{font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;}
+  .h-md{font-size:20px;font-weight:600;line-height:1.3;}
+  .b-md{font-size:15px;line-height:1.55;}.b-sm{font-size:13px;line-height:1.5;color:var(--text-secondary);}
+  .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;}
+
+  /* === THE SIGNATURE BUTTON: black pill + white text === */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);font-size:14px;font-weight:600;padding:11px 22px;border-radius:var(--r-pill);border:1px solid transparent;transition:background var(--t) var(--ease),transform 120ms var(--ease),color var(--t) var(--ease),box-shadow var(--t) var(--ease);min-height:44px;white-space:nowrap;}
+  .btn-primary{background:var(--ink-900);color:#fff;}
+  .btn-primary:hover{background:#000;transform:translateY(-1px);}
+  .btn-primary:active{transform:translateY(0);}
+  .btn-pink{background:var(--pink-500);color:#fff;}
+  .btn-pink:hover{background:var(--pink-600);transform:translateY(-1px);}
+  .btn-secondary{background:var(--bg-surface);color:var(--text-primary);border-color:var(--border-firm);box-shadow:var(--shadow-sm);}
+  .btn-secondary:hover{background:var(--bg-subtle);}
+  .btn-ghost{background:transparent;color:var(--text-primary);}
+  .btn-ghost:hover{background:var(--bg-subtle);}
+  .btn-sm{font-size:13px;padding:7px 16px;min-height:36px;}
+  .btn-lg{font-size:16px;padding:14px 28px;min-height:52px;}
+
+  .input{width:100%;height:44px;padding:0 14px;border:1px solid var(--border-firm);border-radius:var(--r-md);font-family:inherit;font-size:14px;background:var(--bg-surface);transition:border-color var(--t),box-shadow var(--t);}
+  .input:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,0.15);}
+  .field-label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--r-pill);line-height:1;}
+  .badge-pink{background:var(--pink-50);color:var(--pink-700);}
+  .badge-neon{background:var(--ink-900);color:var(--neon-500);}
+  .badge-success{background:var(--success-50);color:var(--success-500);}
+  .badge-warning{background:var(--warning-50);color:var(--warning-500);}
+  .badge-danger{background:var(--danger-50);color:var(--danger-500);}
+  .badge-info{background:var(--info-50);color:var(--info-500);}
+  .badge-neutral{background:var(--bg-subtle);color:var(--text-secondary);}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 12px;border-radius:var(--r-pill);background:var(--bg-surface);border:1px solid var(--border-firm);color:var(--text-secondary);cursor:pointer;transition:all var(--t) var(--ease);}
+  .chip:hover{border-color:var(--ink-400);color:var(--text-primary);}
+  .chip-active{background:var(--pink-500);color:#fff;border-color:var(--pink-500);}
+
+  .card{background:var(--bg-surface);border:1px solid var(--border-soft);border-radius:var(--r-lg);padding:var(--s-5);}
+  .card-pad{padding:var(--s-6);}
+
+  /* density */
+  .density-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5);}
+  @media(max-width:800px){.density-pair{grid-template-columns:1fr;}}
+  .density-pair > .pane{background:var(--bg-surface);border:1px solid var(--border-soft);border-radius:var(--r-lg);overflow:hidden;}
+  .density-pair > .pane > header{padding:var(--s-3) var(--s-4);background:var(--bg-subtle);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;}
+  .density-pair > .pane[data-mode="creator"] > .body{padding:var(--s-6);}
+  .density-pair > .pane[data-mode="partner"] > .body{padding:var(--s-4);}
+  .ptable{width:100%;border-collapse:collapse;font-size:13px;}
+  .ptable th{text-align:left;padding:10px 12px;background:var(--bg-subtle);border-bottom:1px solid var(--border-firm);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);}
+  .ptable td{padding:12px;border-bottom:1px solid var(--border-soft);}
+  .ptable .num{font-variant-numeric:tabular-nums;text-align:right;}
+  .ptable .actions{text-align:right;}
+
+  .mp-card{border-radius:var(--r-lg);overflow:hidden;background:var(--bg-surface);border:1px solid var(--border-soft);cursor:pointer;transition:transform var(--t) var(--ease),box-shadow var(--t) var(--ease),border-color var(--t) var(--ease);}
+  .mp-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border-firm);}
+  .mp-card .image{aspect-ratio:4/5;}
+  .mp-card .image.styled{background:linear-gradient(135deg,var(--pink-200),var(--pink-400));}
+  .mp-card .image.plain{background:linear-gradient(135deg,var(--ink-100),var(--ink-200));}
+  .mp-card .body{padding:var(--s-4);}
+  .mp-card .title{font-size:14px;font-weight:600;margin-bottom:var(--s-2);line-height:1.3;}
+  .mp-card .price{font-size:13px;color:var(--text-secondary);}
+  .mp-card .moq{font-size:12px;color:var(--text-tertiary);margin-top:2px;}
+
+  /* dark */
+  .dark-pane{background:var(--ink-900);color:#EEEFF1;border-radius:var(--r-lg);padding:var(--s-6);border:1px solid var(--ink-700);}
+  .dark-pane h3{color:#fff;font-family:var(--font-display);font-size:26px;font-weight:700;margin-bottom:var(--s-3);}
+  .dark-pane p{color:var(--ink-400);}
+  .dark-pane .btn-primary{background:#fff;color:var(--ink-900);}
+  .dark-pane .btn-primary:hover{background:var(--ink-100);}
+  .dark-pane .btn-secondary{background:transparent;color:#EEEFF1;border-color:rgba(255,255,255,0.16);box-shadow:none;}
+  .dark-pane .swatch-row{display:flex;gap:var(--s-2);margin-top:var(--s-5);}
+  .dark-pane .swatch-row .dot{width:32px;height:32px;border-radius:var(--r-pill);border:1px solid rgba(255,255,255,0.1);}
+
+  .a11y{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg-surface);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border-soft);}
+  .a11y th{text-align:left;padding:12px;background:var(--bg-subtle);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);border-bottom:1px solid var(--border-firm);}
+  .a11y td{padding:12px;border-bottom:1px solid var(--border-soft);}
+  .a11y tr:last-child td{border-bottom:none;}
+  .a11y .pass{color:var(--success-500);font-weight:600;font-size:12px;}
+  .a11y .warn{color:var(--warning-500);font-weight:600;font-size:12px;}
+  .a11y-dot{width:16px;height:16px;border-radius:50%;border:1px solid rgba(24,24,26,0.1);display:inline-block;vertical-align:middle;margin-right:8px;}
+  .a11y-sample{display:inline-block;padding:4px 10px;border-radius:var(--r-sm);font-weight:500;font-size:12px;}
+
+  .footer{border-top:1px solid var(--border-soft);margin-top:var(--s-9);padding-top:var(--s-6);color:var(--text-tertiary);font-size:13px;}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <a href="#" class="logo">iLaunchify</a>
+    <span class="lnk">Marketplace</span>
+    <span class="lnk">For creators</span>
+    <span class="lnk">For partners</span>
+    <span class="spacer"></span>
+    <button class="btn btn-ghost btn-sm">Log in</button>
+    <button class="btn btn-primary btn-sm">Start launching</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <header class="hero">
+    <span class="eyebrow">iLaunchify · Neon Theme</span>
+    <h1>Pink brand. <span class="pink">Black pill.</span> Clean and confident.</h1>
+    <p class="lede">A bold, modern identity: hot pink as the brand, a black pill button with white text as the signature call-to-action, and a clean white header on a warm canvas. Built for influencer-led F&amp;B brands that want to feel current.</p>
+    <div class="meta">
+      <span><strong>Pavel + Claude</strong></span><span>2026-05-27</span><span>WCAG 2.1 AA verified</span><span>Inter · Bricolage Grotesque</span>
+    </div>
+  </header>
+
+  <!-- §01 STRATEGY -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 01</span><h2>Three colors, one attitude</h2>
+      <p>Pink is the brand — it shows up in highlights, active states, and accents. Black is the button — the thing you tap. Neon green is the spark — it lives as the button's text and as a highlight that makes the whole thing feel electric. White keeps the chrome clean so the three pops carry all the energy.</p>
+    </div>
+    <div class="grid-3">
+      <div class="card card-pad" style="text-align:center;"><div style="width:64px;height:64px;border-radius:50%;background:var(--pink-500);margin:0 auto var(--s-3);"></div><h3 class="h-md" style="margin-bottom:6px;">Pink — the brand</h3><p class="b-sm">Highlights, links, active chips, the logo. The color people remember.</p></div>
+      <div class="card card-pad" style="text-align:center;"><div style="width:64px;height:64px;border-radius:50%;background:var(--ink-900);margin:0 auto var(--s-3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:11px;">GO →</div><h3 class="h-md" style="margin-bottom:6px;">Black pill — the action</h3><p class="b-sm">The signature CTA. Black pill, white text. Lifts slightly on hover.</p></div>
+      <div class="card card-pad" style="text-align:center;"><div style="width:64px;height:64px;border-radius:50%;background:#fff;border:1px solid var(--border-firm);margin:0 auto var(--s-3);"></div><h3 class="h-md" style="margin-bottom:6px;">White — the canvas</h3><p class="b-sm">Clean white header and surfaces let the three colors do the talking.</p></div>
+    </div>
+  </section>
+
+  <!-- §02 COLOR -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 02</span><h2>Color</h2>
+      <p>Pink, neon green, and near-neutral ink. The one rule that matters: neon green only ever sits on dark/black backgrounds (it's invisible on white). Pink as text on white steps to pink-700.</p>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:var(--s-6);">
+      <div class="swatch"><div class="chip" style="background:var(--pink-500);"></div><div class="meta"><div class="name">Pink 500</div><div class="hex">#FF2E63 · brand</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--neon-500);"></div><div class="meta"><div class="name">Neon 500</div><div class="hex">#B5FF3D · accent</div></div></div>
+      <div class="swatch"><div class="chip" style="background:var(--ink-900);"></div><div class="meta"><div class="name">Ink 900</div><div class="hex">#18181A · button + text</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#fff;border-bottom:1px solid var(--border-soft);"></div><div class="meta"><div class="name">White</div><div class="hex">#FFFFFF · canvas</div></div></div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Pink ramp</h3>
+    <div class="ramp" style="margin-bottom:var(--s-6);">
+      <div class="step" style="background:var(--pink-50);color:var(--pink-900);"><span class="n">50</span><span class="v">#FFE9F0</span></div>
+      <div class="step" style="background:var(--pink-100);color:var(--pink-900);"><span class="n">100</span><span class="v">#FFD0E0</span></div>
+      <div class="step" style="background:var(--pink-200);color:var(--pink-900);"><span class="n">200</span><span class="v">#FFB3CC</span></div>
+      <div class="step" style="background:var(--pink-300);color:var(--pink-900);"><span class="n">300</span><span class="v">#FF7FA8</span></div>
+      <div class="step" style="background:var(--pink-400);color:#fff;"><span class="n">400</span><span class="v">#FF5285</span></div>
+      <div class="step" style="background:var(--pink-500);color:#fff;"><span class="n">500</span><span class="v">#FF2E63</span></div>
+      <div class="step" style="background:var(--pink-600);color:#fff;"><span class="n">600</span><span class="v">#E91E5A</span></div>
+      <div class="step" style="background:var(--pink-700);color:#fff;"><span class="n">700</span><span class="v">#C71350</span></div>
+      <div class="step" style="background:var(--pink-800);color:#fff;"><span class="n">800</span><span class="v">#9E0E40</span></div>
+      <div class="step" style="background:var(--pink-900);color:#fff;"><span class="n">900</span><span class="v">#6E0A2D</span></div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Neon green ramp (on dark only)</h3>
+    <div class="ramp" style="margin-bottom:var(--s-6);background:var(--ink-900);">
+      <div class="step" style="color:var(--neon-300);"><span class="n">300</span><span class="v">#D4FF7A</span></div>
+      <div class="step" style="color:var(--neon-400);"><span class="n">400</span><span class="v">#C2FF4D</span></div>
+      <div class="step" style="color:var(--neon-500);"><span class="n">500</span><span class="v">#B5FF3D</span></div>
+      <div class="step" style="color:var(--neon-600);"><span class="n">600</span><span class="v">#9EE61F</span></div>
+      <div class="step" style="color:#fff;opacity:0.4;grid-column:span 6;justify-content:center;align-items:center;font-style:italic;">neon green is illegible on white — never use it as text on light surfaces</div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Ink (neutral) ramp</h3>
+    <div class="ramp" style="margin-bottom:var(--s-6);">
+      <div class="step" style="background:var(--ink-50);color:var(--ink-900);"><span class="n">50</span><span class="v">#F8F8F9</span></div>
+      <div class="step" style="background:var(--ink-100);color:var(--ink-900);"><span class="n">100</span><span class="v">#EEEFF1</span></div>
+      <div class="step" style="background:var(--ink-200);color:var(--ink-900);"><span class="n">200</span><span class="v">#E0E1E5</span></div>
+      <div class="step" style="background:var(--ink-300);color:var(--ink-900);"><span class="n">300</span><span class="v">#CBCCD3</span></div>
+      <div class="step" style="background:var(--ink-400);color:#fff;"><span class="n">400</span><span class="v">#9A9CA6</span></div>
+      <div class="step" style="background:var(--ink-500);color:#fff;"><span class="n">500</span><span class="v">#6B6D78</span></div>
+      <div class="step" style="background:var(--ink-600);color:#fff;"><span class="n">600</span><span class="v">#474954</span></div>
+      <div class="step" style="background:var(--ink-700);color:#fff;"><span class="n">700</span><span class="v">#33343C</span></div>
+      <div class="step" style="background:var(--ink-800);color:#fff;"><span class="n">800</span><span class="v">#232327</span></div>
+      <div class="step" style="background:var(--ink-900);color:#fff;"><span class="n">900</span><span class="v">#18181A</span></div>
+    </div>
+  </section>
+
+  <!-- §03 TYPE -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 03</span><h2>Typography</h2>
+      <p>Inter is the workhorse; Bricolage Grotesque carries the bold display moments — the same pairing as the landing, so the surfaces feel related.</p>
+    </div>
+    <div class="type-card"><div class="label">Display — Bricolage 64 / 800</div><div class="d-xl">Make it yours.</div><div class="spec">Bricolage Grotesque · 64px · 800 · -0.035em</div></div>
+    <div class="type-card"><div class="label">Display — Bricolage 44 / 700</div><div class="d-lg">No orders yet — let's fix that.</div><div class="spec">Bricolage Grotesque · 44px · 700</div></div>
+    <div class="type-card"><div class="label">Heading — Inter 28 / 700</div><div class="h-lg">Colombian Single-Origin Whole Bean</div><div class="spec">Inter · 28px · 700</div></div>
+    <div class="type-card"><div class="label">Body — Inter 15 / 400</div><p class="b-md">iLaunchify handles manufacturing, printing, and fulfillment behind one quote and one approval — you design the label and launch.</p><div class="spec">Inter · 15px · 400 · 1.55</div></div>
+  </section>
+
+  <!-- §04 COMPONENTS -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 04</span><h2>Components — the black + neon button</h2>
+      <p>The signature CTA: black fill, neon-green text. On hover it lifts and the text gets a soft neon glow, like a sign flickering on. Pink is the secondary action color. One black button per view — it's the thing you want tapped.</p>
+    </div>
+    <div class="card card-pad" style="margin-bottom:var(--s-6);">
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center;margin-bottom:var(--s-5);">
+        <button class="btn btn-primary">Start Launching</button>
+        <button class="btn btn-primary btn-pill">Get Started</button>
+        <button class="btn btn-pink">Save &amp; Continue</button>
+        <button class="btn btn-secondary">Cancel</button>
+        <button class="btn btn-ghost">Skip</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center;">
+        <button class="btn btn-primary btn-sm">Small</button>
+        <button class="btn btn-primary">Medium</button>
+        <button class="btn btn-primary btn-lg">Large action</button>
+      </div>
+    </div>
+
+    <h3 class="h-md" style="margin-bottom:var(--s-4);">Inputs, badges &amp; chips</h3>
+    <div class="card card-pad">
+      <div class="grid-3" style="margin-bottom:var(--s-5);">
+        <div><label class="field-label">Brand name</label><input class="input" value="Heritage Roasters" /></div>
+        <div><label class="field-label">Quantity</label><input class="input" value="150" /></div>
+        <div><label class="field-label">Focused (pink ring)</label><input class="input" placeholder="Click me" style="border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,0.15);" /></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-5);">
+        <span class="badge badge-pink">New</span>
+        <span class="badge badge-neon">Live</span>
+        <span class="badge badge-success">Verified</span>
+        <span class="badge badge-warning">Pending</span>
+        <span class="badge badge-danger">Rejected</span>
+        <span class="badge badge-info">Premier</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);">
+        <span class="chip chip-active">Vegan ×</span>
+        <span class="chip chip-active">Powder ×</span>
+        <span class="chip">Keto</span>
+        <span class="chip">Organic</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- §05 DENSITY -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 05</span><h2>Density modes</h2><p>Same tokens; creator surfaces breathe, partner surfaces pack in.</p></div>
+    <div class="density-pair">
+      <div class="pane" data-mode="creator">
+        <header><span class="lbl" style="color:var(--text-secondary);">CREATOR MODE</span><span class="b-sm">comfortable</span></header>
+        <div class="body">
+          <h3 style="font-family:var(--font-display);font-size:26px;font-weight:700;margin-bottom:var(--s-3);">Colombian Single-Origin</h3>
+          <p class="b-md" style="color:var(--text-secondary);margin-bottom:var(--s-5);">Small-batch whole-bean coffee, roasted weekly. Perfect for premium DTC launches.</p>
+          <div style="display:flex;gap:var(--s-2);margin-bottom:var(--s-5);"><span class="badge badge-pink">FAIR TRADE</span><span class="badge badge-success">USDA ORGANIC</span></div>
+          <button class="btn btn-primary btn-lg" style="width:100%;">Start Launching →</button>
+        </div>
+      </div>
+      <div class="pane" data-mode="partner">
+        <header><span class="lbl" style="color:var(--text-secondary);">PARTNER MODE</span><span class="b-sm">compact</span></header>
+        <div class="body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);"><h3 class="h-md">Order #IL-04183</h3><span class="badge badge-warning">Awaiting</span></div>
+          <table class="ptable" style="margin-bottom:var(--s-3);">
+            <tr><td style="color:var(--text-secondary);">Template</td><td>Colombian · 250g</td></tr>
+            <tr><td style="color:var(--text-secondary);">Quantity</td><td class="num">150 units</td></tr>
+            <tr><td style="color:var(--text-secondary);">Net to you</td><td class="num">$487.50</td></tr>
+          </table>
+          <div style="display:flex;gap:var(--s-2);"><button class="btn btn-primary btn-sm" style="flex:1;">Accept</button><button class="btn btn-secondary btn-sm">Decline</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §06 MARKETPLACE CARDS -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 06</span><h2>Marketplace cards</h2><p>Hover swaps to a pink-tinted styled mockup — no card extension. Title, price range, MOQ.</p></div>
+    <div class="grid-4">
+      <div class="mp-card"><div class="image plain"></div><div class="body"><div class="title">Cold-pressed protein</div><div class="price">$4.20 – $6.80 / unit</div><div class="moq">MOQ from 50</div></div></div>
+      <div class="mp-card"><div class="image styled"></div><div class="body"><div class="title">Colombian single-origin</div><div class="price">$3.90 – $5.50 / unit</div><div class="moq">MOQ from 100</div></div></div>
+      <div class="mp-card"><div class="image plain"></div><div class="body"><div class="title">Adaptogenic mushroom blend</div><div class="price">$8.40 – $11.20 / unit</div><div class="moq">MOQ from 250</div></div></div>
+      <div class="mp-card"><div class="image styled"></div><div class="body"><div class="title">Sparkling botanical water</div><div class="price">$1.95 – $2.80 / unit</div><div class="moq">MOQ from 500</div></div></div>
+    </div>
+  </section>
+
+  <!-- §07 DARK -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 07</span><h2>Dark mode</h2><p>The neon-green button is right at home here — pure black surfaces make the neon glow. Pink stays the accent.</p></div>
+    <div class="dark-pane">
+      <span class="lbl" style="color:var(--pink-400);display:block;margin-bottom:var(--s-3);">PRODUCTION QUEUE</span>
+      <h3>You have 4 orders awaiting review.</h3>
+      <p style="font-size:15px;max-width:56ch;">On dark surfaces the neon-green CTA glows like a sign. Pink carries the section labels, text stays off-white.</p>
+      <div style="display:flex;gap:var(--s-3);margin-top:var(--s-5);"><button class="btn btn-primary">Open queue</button><button class="btn btn-secondary">Snooze 1h</button></div>
+      <div class="swatch-row">
+        <div class="dot" style="background:#000;"></div>
+        <div class="dot" style="background:var(--ink-900);"></div>
+        <div class="dot" style="background:var(--ink-800);"></div>
+        <div class="dot" style="background:var(--pink-500);"></div>
+        <div class="dot" style="background:var(--neon-500);"></div>
+        <div class="dot" style="background:#EEEFF1;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- §08 A11Y -->
+  <section class="section">
+    <div class="section-head"><span class="num">§ 08</span><h2>Accessibility — WCAG 2.1 AA</h2>
+      <p>The signature black+neon button is highly accessible (16:1). The two rules to respect: neon green never as text on white; pink text on white steps to pink-700.</p>
+    </div>
+    <table class="a11y">
+      <thead><tr><th>Pair</th><th>Sample</th><th>Ratio</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><span class="a11y-dot" style="background:#18181A;"></span>White on Ink-900 (the button)</td><td><span class="a11y-sample" style="background:#18181A;color:#fff;">Start Launching</span></td><td><strong>17.1:1</strong></td><td class="pass">AAA</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#18181A;"></span>Ink-900 on white (primary text)</td><td><span class="a11y-sample" style="background:#fff;color:#18181A;">primary text</span></td><td><strong>17.1:1</strong></td><td class="pass">AAA</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#FF2E63;"></span>White on Pink-500 (pink button)</td><td><span class="a11y-sample" style="background:#FF2E63;color:#fff;">Save &amp; Continue</span></td><td><strong>3.39:1</strong></td><td class="warn">Large/UI only</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#C71350;"></span>Pink-700 text on white</td><td><span class="a11y-sample" style="background:#fff;color:#C71350;">accent link</span></td><td><strong>6.21:1</strong></td><td class="pass">AA</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#C71350;"></span>Pink-700 on Pink-50 (badge)</td><td><span class="a11y-sample" style="background:#FFE9F0;color:#C71350;">New</span></td><td><strong>5.74:1</strong></td><td class="pass">AA</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#474954;"></span>Ink-600 on white (secondary)</td><td><span class="a11y-sample" style="background:#fff;color:#474954;">secondary text</span></td><td><strong>8.9:1</strong></td><td class="pass">AAA</td></tr>
+        <tr><td><span class="a11y-dot" style="background:#B5FF3D;"></span>Neon-500 on white (DON'T)</td><td><span class="a11y-sample" style="background:#fff;color:#B5FF3D;">illegible</span></td><td><strong>1.3:1</strong></td><td class="warn">never — dark bg only</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="footer">iLaunchify Neon Theme · pink + black/neon-green + white header · Pavel + Claude · 2026-05-27</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Direction Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Playfair+Display:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* === META FRAME === */
+  :root {
+    --frame-bg: #F4F2EE;
+    --frame-text: #1A1814;
+    --frame-muted: #6B6557;
+    --frame-line: rgba(26, 24, 20, 0.08);
+    --frame-font: 'Inter', system-ui, sans-serif;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--frame-font);
+    background: var(--frame-bg);
+    color: var(--frame-text);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+  h1, h2, h3, h4 { margin: 0; line-height: 1.15; letter-spacing: -0.015em; }
+  p { margin: 0; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+  code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.9em; }
+
+  .frame {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 64px 32px;
+  }
+  .frame-hero { padding-bottom: 64px; border-bottom: 1px solid var(--frame-line); margin-bottom: 64px; }
+  .frame-hero .eyebrow {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--frame-muted); margin-bottom: 16px;
+  }
+  .frame-hero h1 {
+    font-family: 'Fraunces', serif; font-size: clamp(40px, 5vw, 64px); font-weight: 500;
+    line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 16px;
+  }
+  .frame-hero .lede { font-size: 17px; color: var(--frame-muted); max-width: 64ch; line-height: 1.6; }
+
+  /* === SUMMARY CARDS (top row) === */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 96px;
+  }
+  @media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-card {
+    background: #fff;
+    border: 1px solid var(--frame-line);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .summary-card .top {
+    padding: 24px;
+    border-bottom: 1px solid var(--frame-line);
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .summary-card .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85;
+    margin-bottom: 12px;
+  }
+  .summary-card h3 { font-size: 28px; font-weight: 500; letter-spacing: -0.02em; }
+  .summary-card .feels-like {
+    font-size: 12px;
+    margin-top: 8px;
+    opacity: 0.7;
+  }
+  .summary-card .swatch-row {
+    display: flex; gap: 6px; margin-top: 16px;
+  }
+  .summary-card .swatch-row .dot {
+    width: 28px; height: 28px; border-radius: 999px;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .summary-card .footer {
+    padding: 16px 24px; font-size: 13px; color: var(--frame-muted);
+    border-top: 1px solid var(--frame-line);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .summary-card .footer a { color: inherit; text-decoration: none; font-weight: 500; }
+  .summary-card .footer a:hover { opacity: 0.7; }
+
+  /* === SHARED SECTION SHELL === */
+  .option {
+    margin-bottom: 96px;
+    padding: 64px 48px;
+    border-radius: 24px;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .option .head { margin-bottom: 48px; max-width: 80ch; }
+  .option .head .num {
+    font-family: var(--display-font, 'Fraunces'), serif;
+    font-size: 14px; font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--primary);
+    letter-spacing: 0.04em;
+  }
+  .option .head h2 {
+    font-family: var(--display-font, 'Fraunces'), serif;
+    font-size: 56px; font-weight: 500;
+    line-height: 1.05; letter-spacing: -0.025em;
+    margin-bottom: 16px;
+  }
+  .option .head .lede { font-size: 17px; line-height: 1.6; opacity: 0.85; max-width: 64ch; }
+  .option .sub { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; opacity: 0.75; }
+
+  .option .blocks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 1000px) { .option .blocks { grid-template-columns: 1fr; } }
+
+  .block {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, rgba(0,0,0,0.06));
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  /* === PALETTE === */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .palette .chip {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 8px;
+    font-size: 10px;
+    font-family: monospace;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .palette .chip .name { font-weight: 700; opacity: 0.9; }
+  .palette .chip .hex { opacity: 0.7; }
+
+  .ramp {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.04);
+    margin-top: 12px;
+  }
+  .ramp .step {
+    min-height: 56px;
+    font-size: 9px; font-family: monospace;
+    padding: 6px 4px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    text-align: center;
+  }
+
+  /* === TYPE SAMPLE === */
+  .type-sample .display {
+    font-family: var(--display-font, 'Fraunces'), serif;
+    font-size: 48px; font-weight: 500;
+    line-height: 1.05; letter-spacing: -0.025em;
+    color: var(--primary-text, #0F0E0D);
+    margin-bottom: 16px;
+  }
+  .type-sample .body {
+    font-family: var(--body-font, 'Inter'), sans-serif;
+    font-size: 15px; line-height: 1.6;
+    color: var(--secondary-text, #4A4538);
+  }
+  .type-sample .spec {
+    font-family: monospace; font-size: 11px; opacity: 0.6;
+    margin-top: 16px;
+  }
+
+  /* === COMPONENT SAMPLES === */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; font-size: 14px; font-weight: 500;
+    padding: 10px 16px; border-radius: var(--btn-radius, 8px);
+    border: 1px solid transparent;
+    transition: background 220ms var(--ease-out), transform 120ms var(--ease-out);
+    min-height: 40px;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--primary); color: var(--primary-on); }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-secondary { background: transparent; color: var(--primary-text); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--subtle); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .badge-accent { background: var(--accent-bg); color: var(--accent-text); }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--secondary-text);
+  }
+  .chip-active { background: var(--anchor); color: var(--anchor-on); border-color: var(--anchor); }
+
+  /* === MARKETPLACE CARD MINI === */
+  .mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .mp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+  }
+  .mp-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.08); }
+  .mp-card .img {
+    aspect-ratio: 4 / 5;
+    background: var(--img-default);
+  }
+  .mp-card .body { padding: 12px; }
+  .mp-card .title { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; color: var(--primary-text); }
+  .mp-card .price { font-size: 12px; color: var(--secondary-text); }
+  .mp-card .moq { font-size: 11px; color: var(--tertiary-text); }
+
+  /* === PARTNER TABLE MINI === */
+  .ptable {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+    background: var(--surface);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .ptable th, .ptable td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--secondary-text);
+  }
+  .ptable th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--subtle);
+    color: var(--tertiary-text);
+  }
+  .ptable tr:last-child td { border-bottom: none; }
+  .ptable td.bold { color: var(--primary-text); font-weight: 600; }
+
+  /* === REFERENCE BRANDS ROW === */
+  .brand-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-top: 16px;
+    font-size: 12px;
+  }
+  .brand-row .pill {
+    padding: 4px 10px;
+    background: var(--subtle);
+    border-radius: 999px;
+    color: var(--secondary-text);
+    font-weight: 500;
+  }
+
+  /* === WCAG NOTE === */
+  .wcag-note {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+    padding: 10px 14px;
+    background: var(--success-bg);
+    color: var(--success);
+    border-radius: 8px;
+    margin-top: 16px;
+    font-weight: 500;
+  }
+  .wcag-note::before {
+    content: '✓';
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    background: var(--success); color: #fff;
+    border-radius: 50%;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* === FOOTER COMPARISON === */
+  .compare {
+    background: #fff;
+    border-radius: 16px;
+    padding: 48px;
+    border: 1px solid var(--frame-line);
+  }
+  .compare h2 {
+    font-family: 'Fraunces', serif; font-size: 32px; font-weight: 500;
+    letter-spacing: -0.02em; margin-bottom: 32px;
+  }
+  .compare table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare th, .compare td {
+    text-align: left;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--frame-line);
+  }
+  .compare th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--frame-muted); }
+  .compare th.col { font-family: 'Inter', sans-serif; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--frame-text); }
+  .compare .dimension { font-weight: 600; color: var(--frame-text); }
+  .compare tr:last-child td { border-bottom: none; }
+
+  .recommendation {
+    margin-top: 48px;
+    padding: 32px;
+    background: linear-gradient(135deg, #1A1814 0%, #2D2A21 100%);
+    color: #F3F0EB;
+    border-radius: 16px;
+  }
+  .recommendation .eyebrow {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #CC9F6E; margin-bottom: 12px;
+  }
+  .recommendation h3 {
+    font-family: 'Fraunces', serif; font-size: 28px; font-weight: 500;
+    color: #FAF8F5; margin-bottom: 16px; letter-spacing: -0.02em;
+  }
+  .recommendation p { color: #C2BDB1; font-size: 15px; line-height: 1.7; max-width: 68ch; }
+
+  /* ========================================================== */
+  /*                    OPTION 1 — TERRA                        */
+  /* ========================================================== */
+  .opt-terra {
+    background: #FAF8F5;
+    color: #0F0E0D;
+    --primary: #B84A1E;
+    --primary-hover: #9C3E18;
+    --primary-on: #FFFFFF;
+    --anchor: #0F0E0D;
+    --anchor-on: #FAF8F5;
+    --primary-text: #0F0E0D;
+    --secondary-text: #4A4538;
+    --tertiary-text: #6B6557;
+    --surface: #FFFFFF;
+    --subtle: #F3F0EB;
+    --border: #E6E1D8;
+    --accent-bg: #FBEFE9;
+    --accent-text: #7E3214;
+    --success: #1E7C4A;
+    --success-bg: #E5F2EC;
+    --warning: #B07A0A;
+    --warning-bg: #FBEFD3;
+    --img-default: linear-gradient(135deg, #E6E1D8, #D2CCC0);
+    --img-styled: linear-gradient(135deg, #F3D5C5, #DC8C6A);
+    --display-font: 'Fraunces';
+    --body-font: 'Inter';
+    --btn-radius: 8px;
+  }
+
+  /* ========================================================== */
+  /*                    OPTION 2 — EUCALYPTUS                   */
+  /* ========================================================== */
+  .opt-eucalyptus {
+    background: #F3EFE8;
+    color: #1A1A18;
+    --primary: #2D5447;
+    --primary-hover: #244339;
+    --primary-on: #F3EFE8;
+    --anchor: #1A1A18;
+    --anchor-on: #F3EFE8;
+    --primary-text: #1A1A18;
+    --secondary-text: #4A4A45;
+    --tertiary-text: #6B6B65;
+    --surface: #FBFAF5;
+    --subtle: #ECE7DD;
+    --border: #DCD5C5;
+    --accent-bg: #E5EDE8;
+    --accent-text: #2D5447;
+    --brass: #B68B4E;
+    --success: #2D5447;
+    --success-bg: #E5EDE8;
+    --warning: #B68B4E;
+    --warning-bg: #F2E7D2;
+    --img-default: linear-gradient(135deg, #D8D2C2, #B5AE9A);
+    --img-styled: linear-gradient(135deg, #C9D3CB, #7E9B8E);
+    --display-font: 'Playfair Display';
+    --body-font: 'Inter';
+    --btn-radius: 6px;
+  }
+  .opt-eucalyptus .badge-accent { background: var(--accent-bg); color: var(--primary); }
+  .opt-eucalyptus .badge-warning { background: var(--warning-bg); color: var(--brass); }
+
+  /* ========================================================== */
+  /*                    OPTION 3 — CHERRY                       */
+  /* ========================================================== */
+  .opt-cherry {
+    background: #FFFFFF;
+    color: #18181A;
+    --primary: #E0353C;
+    --primary-hover: #C42830;
+    --primary-on: #FFFFFF;
+    --anchor: #18181A;
+    --anchor-on: #FFFFFF;
+    --primary-text: #18181A;
+    --secondary-text: #45474B;
+    --tertiary-text: #75787E;
+    --surface: #FFFFFF;
+    --subtle: #F4F4F6;
+    --border: #E6E6E9;
+    --accent-bg: #FFE5E6;
+    --accent-text: #A42028;
+    --success: #2A8047;
+    --success-bg: #DDEFE3;
+    --warning: #C28B0F;
+    --warning-bg: #FCF1D6;
+    --buttery: #F5C842;
+    --img-default: linear-gradient(135deg, #F4F4F6, #E6E6E9);
+    --img-styled: linear-gradient(135deg, #FFD6D8, #FF8E94);
+    --display-font: 'Space Grotesk';
+    --body-font: 'Inter';
+    --btn-radius: 6px;
+  }
+  .opt-cherry .head h2 { letter-spacing: -0.035em; font-weight: 600; }
+  .opt-cherry .type-sample .display {
+    letter-spacing: -0.035em;
+    font-weight: 600;
+  }
+  .opt-cherry .btn { border-radius: 6px; }
+  .opt-cherry .chip-active { background: var(--primary); color: var(--primary-on); border-color: var(--primary); }
+
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <!-- ============ INTRO HERO ============ -->
+  <header class="frame-hero">
+    <span class="eyebrow">iLaunchify · Design Direction Comparison</span>
+    <h1>Three directions. <em>One brand decision.</em></h1>
+    <p class="lede">All three options serve the same dual-audience constraint (creator-aspirational + partner-operational) and pass WCAG 2.1 AA. They differ in personality and where the brand sits emotionally. Skim the summary cards, then scroll into each direction fully rendered.</p>
+  </header>
+
+  <!-- ============ SUMMARY CARDS ============ -->
+  <section class="summary-grid">
+    <!-- TERRA SUMMARY -->
+    <div class="summary-card">
+      <div class="top opt-terra" style="background: #FAF8F5;">
+        <div>
+          <span class="badge" style="color: #B84A1E;">DIRECTION 01 · LOCKED</span>
+          <h3 style="font-family: Fraunces, serif;">Terra</h3>
+          <div class="feels-like">Warm. Editorial. Aspirational.</div>
+        </div>
+        <div class="swatch-row">
+          <div class="dot" style="background: #B84A1E;"></div>
+          <div class="dot" style="background: #0F0E0D;"></div>
+          <div class="dot" style="background: #FAF8F5;"></div>
+          <div class="dot" style="background: #4A4538;"></div>
+        </div>
+      </div>
+      <div class="footer">
+        <span>Feels like Aesop · Olipop · Magic Spoon</span>
+        <a href="#opt-terra">View ↓</a>
+      </div>
+    </div>
+
+    <!-- EUCALYPTUS SUMMARY -->
+    <div class="summary-card">
+      <div class="top opt-eucalyptus" style="background: #F3EFE8;">
+        <div>
+          <span class="badge" style="color: #2D5447;">DIRECTION 02 · PROPOSED</span>
+          <h3 style="font-family: 'Playfair Display', serif;">Eucalyptus Stone</h3>
+          <div class="feels-like">Natural. Premium. Food-aspirational.</div>
+        </div>
+        <div class="swatch-row">
+          <div class="dot" style="background: #2D5447;"></div>
+          <div class="dot" style="background: #1A1A18;"></div>
+          <div class="dot" style="background: #F3EFE8;"></div>
+          <div class="dot" style="background: #B68B4E;"></div>
+        </div>
+      </div>
+      <div class="footer">
+        <span>Feels like Sweetgreen · Brightland · Aplós</span>
+        <a href="#opt-eucalyptus">View ↓</a>
+      </div>
+    </div>
+
+    <!-- CHERRY SUMMARY -->
+    <div class="summary-card">
+      <div class="top opt-cherry" style="background: #FFFFFF;">
+        <div>
+          <span class="badge" style="color: #E0353C;">DIRECTION 03 · PROPOSED</span>
+          <h3 style="font-family: 'Space Grotesk', sans-serif; font-weight: 600;">Cherry</h3>
+          <div class="feels-like">Bold. Confident. Social-feed-native.</div>
+        </div>
+        <div class="swatch-row">
+          <div class="dot" style="background: #E0353C;"></div>
+          <div class="dot" style="background: #18181A;"></div>
+          <div class="dot" style="background: #FFFFFF; border-color: rgba(0,0,0,0.1);"></div>
+          <div class="dot" style="background: #F5C842;"></div>
+        </div>
+      </div>
+      <div class="footer">
+        <span>Feels like Liquid Death · Poppi · Olipop</span>
+        <a href="#opt-cherry">View ↓</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPTION 1 — TERRA ============ -->
+  <section class="option opt-terra" id="opt-terra">
+    <div class="head">
+      <div class="num">DIRECTION 01 · CURRENTLY LOCKED</div>
+      <h2>Terra.</h2>
+      <p class="lede">Warm terracotta + deep ink + warm gray. Editorial Fraunces serif on creator moments. Confident, warm, aspirational. Closest neighbor: Anthropic's Claude palette — which is the reason you flagged it.</p>
+    </div>
+
+    <div class="blocks">
+      <!-- Palette -->
+      <div class="block">
+        <div class="sub">PALETTE</div>
+        <div class="palette">
+          <div class="chip" style="background: #B84A1E; color: #fff;"><span class="name">Terra 500</span><span class="hex">#B84A1E</span></div>
+          <div class="chip" style="background: #0F0E0D; color: #fff;"><span class="name">Ink 900</span><span class="hex">#0F0E0D</span></div>
+          <div class="chip" style="background: #FAF8F5; color: #0F0E0D; border-color: #E6E1D8;"><span class="name">Canvas 50</span><span class="hex">#FAF8F5</span></div>
+          <div class="chip" style="background: #FBEFE9; color: #7E3214; border-color: #F3D5C5;"><span class="name">Terra 50</span><span class="hex">#FBEFE9</span></div>
+        </div>
+        <div class="ramp">
+          <div class="step" style="background: #FBEFE9; color: #41190B;">50</div>
+          <div class="step" style="background: #F3D5C5; color: #41190B;">100</div>
+          <div class="step" style="background: #E9B098; color: #41190B;">200</div>
+          <div class="step" style="background: #DC8C6A; color: #41190B;">300</div>
+          <div class="step" style="background: #CC6B45; color: #fff;">400</div>
+          <div class="step" style="background: #B84A1E; color: #fff;">500</div>
+          <div class="step" style="background: #9C3E18; color: #fff;">600</div>
+          <div class="step" style="background: #7E3214; color: #fff;">700</div>
+          <div class="step" style="background: #5F2510; color: #fff;">800</div>
+          <div class="step" style="background: #41190B; color: #fff;">900</div>
+        </div>
+        <div class="brand-row">
+          <span class="pill">Aesop</span>
+          <span class="pill">Olipop</span>
+          <span class="pill">Magic Spoon</span>
+          <span class="pill">Aplós</span>
+          <span class="pill">Notion editorial</span>
+        </div>
+      </div>
+
+      <!-- Type -->
+      <div class="block type-sample">
+        <div class="sub">TYPOGRAPHY · FRAUNCES + INTER</div>
+        <div class="display">Launch your brand.</div>
+        <p class="body">A small-batch protein powder with your label, FDA-compliant rendering, and a curated network of partners. iLaunchify decomposes each order into a production workflow across multiple partners — and hides that complexity from you entirely.</p>
+        <div class="spec">Display: Fraunces 48 / 500 / −0.025em · Body: Inter 15 / 400 / 1.6</div>
+      </div>
+    </div>
+
+    <div class="blocks">
+      <!-- Components -->
+      <div class="block">
+        <div class="sub">COMPONENTS</div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+          <button class="btn btn-primary">Start Launching</button>
+          <button class="btn btn-secondary">Cancel</button>
+          <span class="badge badge-accent">FAIR TRADE</span>
+          <span class="badge badge-success">VERIFIED</span>
+          <span class="badge badge-warning">PENDING</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip chip-active">Vegan ×</span>
+          <span class="chip chip-active">Powder ×</span>
+          <span class="chip">Keto</span>
+          <span class="chip">Organic</span>
+        </div>
+        <div class="wcag-note">All token pairs pass WCAG 2.1 AA · primary text 18.20:1</div>
+      </div>
+
+      <!-- Marketplace + Table -->
+      <div class="block">
+        <div class="sub">CREATOR + PARTNER SURFACES</div>
+        <div class="mp-grid">
+          <div class="mp-card">
+            <div class="img"></div>
+            <div class="body">
+              <div class="title">Colombian single-origin</div>
+              <div class="price">$3.90 – $5.50 / unit</div>
+              <div class="moq">MOQ from 100</div>
+            </div>
+          </div>
+          <div class="mp-card">
+            <div class="img" style="background: var(--img-styled);"></div>
+            <div class="body">
+              <div class="title">Cold-pressed protein</div>
+              <div class="price">$4.20 – $6.80 / unit</div>
+              <div class="moq">MOQ from 50</div>
+            </div>
+          </div>
+        </div>
+        <table class="ptable">
+          <thead><tr><th>Order</th><th>Qty</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="bold">IL-04183</td><td>150</td><td><span class="badge badge-warning">Pending</span></td></tr>
+            <tr><td class="bold">IL-04181</td><td>300</td><td><span class="badge badge-success">Shipped</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPTION 2 — EUCALYPTUS ============ -->
+  <section class="option opt-eucalyptus" id="opt-eucalyptus">
+    <div class="head">
+      <div class="num">DIRECTION 02 · PROPOSED</div>
+      <h2>Eucalyptus Stone.</h2>
+      <p class="lede">Deep forest green + warm stone + brass accent. Sharp Playfair Display serif. Premium food-aspirational territory — Sweetgreen meets Brightland. Evolves the Suplifuls green legacy without copying its bright tone.</p>
+    </div>
+
+    <div class="blocks">
+      <!-- Palette -->
+      <div class="block">
+        <div class="sub">PALETTE</div>
+        <div class="palette">
+          <div class="chip" style="background: #2D5447; color: #fff;"><span class="name">Forest 500</span><span class="hex">#2D5447</span></div>
+          <div class="chip" style="background: #1A1A18; color: #fff;"><span class="name">Ink 900</span><span class="hex">#1A1A18</span></div>
+          <div class="chip" style="background: #F3EFE8; color: #1A1A18; border-color: #DCD5C5;"><span class="name">Stone 50</span><span class="hex">#F3EFE8</span></div>
+          <div class="chip" style="background: #B68B4E; color: #fff;"><span class="name">Brass</span><span class="hex">#B68B4E</span></div>
+        </div>
+        <div class="ramp">
+          <div class="step" style="background: #E5EDE8; color: #102B22;">50</div>
+          <div class="step" style="background: #C8DCD0; color: #102B22;">100</div>
+          <div class="step" style="background: #9BB9AA; color: #102B22;">200</div>
+          <div class="step" style="background: #6E9684; color: #fff;">300</div>
+          <div class="step" style="background: #487365; color: #fff;">400</div>
+          <div class="step" style="background: #2D5447; color: #fff;">500</div>
+          <div class="step" style="background: #244339; color: #fff;">600</div>
+          <div class="step" style="background: #1C342D; color: #fff;">700</div>
+          <div class="step" style="background: #142621; color: #fff;">800</div>
+          <div class="step" style="background: #0D1A16; color: #fff;">900</div>
+        </div>
+        <div class="brand-row">
+          <span class="pill">Sweetgreen</span>
+          <span class="pill">Brightland</span>
+          <span class="pill">Aplós</span>
+          <span class="pill">Sakara</span>
+          <span class="pill">Diaspora Co</span>
+        </div>
+      </div>
+
+      <!-- Type -->
+      <div class="block type-sample">
+        <div class="sub">TYPOGRAPHY · PLAYFAIR DISPLAY + INTER</div>
+        <div class="display">Launch your brand.</div>
+        <p class="body">A small-batch protein powder with your label, FDA-compliant rendering, and a curated network of partners. iLaunchify decomposes each order into a production workflow across multiple partners — and hides that complexity from you entirely.</p>
+        <div class="spec">Display: Playfair Display 48 / 500 / −0.025em · Body: Inter 15 / 400 / 1.6</div>
+      </div>
+    </div>
+
+    <div class="blocks">
+      <!-- Components -->
+      <div class="block">
+        <div class="sub">COMPONENTS</div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+          <button class="btn btn-primary">Start Launching</button>
+          <button class="btn btn-secondary">Cancel</button>
+          <span class="badge badge-accent">FAIR TRADE</span>
+          <span class="badge badge-success">VERIFIED</span>
+          <span class="badge badge-warning">PENDING</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip chip-active">Vegan ×</span>
+          <span class="chip chip-active">Powder ×</span>
+          <span class="chip">Keto</span>
+          <span class="chip">Organic</span>
+        </div>
+        <div class="wcag-note">All token pairs pass WCAG 2.1 AA · primary 7.92:1 on Forest 500</div>
+      </div>
+
+      <!-- Marketplace + Table -->
+      <div class="block">
+        <div class="sub">CREATOR + PARTNER SURFACES</div>
+        <div class="mp-grid">
+          <div class="mp-card">
+            <div class="img"></div>
+            <div class="body">
+              <div class="title">Colombian single-origin</div>
+              <div class="price">$3.90 – $5.50 / unit</div>
+              <div class="moq">MOQ from 100</div>
+            </div>
+          </div>
+          <div class="mp-card">
+            <div class="img" style="background: var(--img-styled);"></div>
+            <div class="body">
+              <div class="title">Cold-pressed protein</div>
+              <div class="price">$4.20 – $6.80 / unit</div>
+              <div class="moq">MOQ from 50</div>
+            </div>
+          </div>
+        </div>
+        <table class="ptable">
+          <thead><tr><th>Order</th><th>Qty</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="bold">IL-04183</td><td>150</td><td><span class="badge badge-warning">Pending</span></td></tr>
+            <tr><td class="bold">IL-04181</td><td>300</td><td><span class="badge badge-success">Shipped</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPTION 3 — CHERRY ============ -->
+  <section class="option opt-cherry" id="opt-cherry">
+    <div class="head">
+      <div class="num">DIRECTION 03 · PROPOSED</div>
+      <h2>Cherry.</h2>
+      <p class="lede">Saturated cherry red + buttery yellow + crisp ink. Space Grotesk display, no editorial serif. Bold, energetic, social-feed-native. Built for Gen Z F&amp;B brands. Maximally distinctive from Claude and Suplifuls — but it's a real bet against partner-side gravitas.</p>
+    </div>
+
+    <div class="blocks">
+      <!-- Palette -->
+      <div class="block">
+        <div class="sub">PALETTE</div>
+        <div class="palette">
+          <div class="chip" style="background: #E0353C; color: #fff;"><span class="name">Cherry 500</span><span class="hex">#E0353C</span></div>
+          <div class="chip" style="background: #18181A; color: #fff;"><span class="name">Ink 900</span><span class="hex">#18181A</span></div>
+          <div class="chip" style="background: #FFFFFF; color: #18181A; border-color: #E6E6E9;"><span class="name">White</span><span class="hex">#FFFFFF</span></div>
+          <div class="chip" style="background: #F5C842; color: #5A4308;"><span class="name">Buttery</span><span class="hex">#F5C842</span></div>
+        </div>
+        <div class="ramp">
+          <div class="step" style="background: #FFE5E6; color: #5A1015;">50</div>
+          <div class="step" style="background: #FFC8CB; color: #5A1015;">100</div>
+          <div class="step" style="background: #FF9BA0; color: #5A1015;">200</div>
+          <div class="step" style="background: #FF6E75; color: #fff;">300</div>
+          <div class="step" style="background: #ED4A52; color: #fff;">400</div>
+          <div class="step" style="background: #E0353C; color: #fff;">500</div>
+          <div class="step" style="background: #C42830; color: #fff;">600</div>
+          <div class="step" style="background: #A42028; color: #fff;">700</div>
+          <div class="step" style="background: #781820; color: #fff;">800</div>
+          <div class="step" style="background: #4F1015; color: #fff;">900</div>
+        </div>
+        <div class="brand-row">
+          <span class="pill">Liquid Death</span>
+          <span class="pill">Poppi</span>
+          <span class="pill">Olipop</span>
+          <span class="pill">Aura Bora</span>
+          <span class="pill">Magic Spoon</span>
+        </div>
+      </div>
+
+      <!-- Type -->
+      <div class="block type-sample">
+        <div class="sub">TYPOGRAPHY · SPACE GROTESK + INTER</div>
+        <div class="display">Launch your brand.</div>
+        <p class="body">A small-batch protein powder with your label, FDA-compliant rendering, and a curated network of partners. iLaunchify decomposes each order into a production workflow across multiple partners — and hides that complexity from you entirely.</p>
+        <div class="spec">Display: Space Grotesk 48 / 600 / −0.035em · Body: Inter 15 / 400 / 1.6</div>
+      </div>
+    </div>
+
+    <div class="blocks">
+      <!-- Components -->
+      <div class="block">
+        <div class="sub">COMPONENTS</div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+          <button class="btn btn-primary">Start Launching</button>
+          <button class="btn btn-secondary">Cancel</button>
+          <span class="badge badge-accent">FAIR TRADE</span>
+          <span class="badge badge-success">VERIFIED</span>
+          <span class="badge badge-warning">PENDING</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip chip-active">Vegan ×</span>
+          <span class="chip chip-active">Powder ×</span>
+          <span class="chip">Keto</span>
+          <span class="chip">Organic</span>
+        </div>
+        <div class="wcag-note">All token pairs pass WCAG 2.1 AA · Cherry 500 on white 4.83:1</div>
+      </div>
+
+      <!-- Marketplace + Table -->
+      <div class="block">
+        <div class="sub">CREATOR + PARTNER SURFACES</div>
+        <div class="mp-grid">
+          <div class="mp-card">
+            <div class="img"></div>
+            <div class="body">
+              <div class="title">Colombian single-origin</div>
+              <div class="price">$3.90 – $5.50 / unit</div>
+              <div class="moq">MOQ from 100</div>
+            </div>
+          </div>
+          <div class="mp-card">
+            <div class="img" style="background: var(--img-styled);"></div>
+            <div class="body">
+              <div class="title">Cold-pressed protein</div>
+              <div class="price">$4.20 – $6.80 / unit</div>
+              <div class="moq">MOQ from 50</div>
+            </div>
+          </div>
+        </div>
+        <table class="ptable">
+          <thead><tr><th>Order</th><th>Qty</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="bold">IL-04183</td><td>150</td><td><span class="badge badge-warning">Pending</span></td></tr>
+            <tr><td class="bold">IL-04181</td><td>300</td><td><span class="badge badge-success">Shipped</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="compare">
+    <h2>How they compare</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th class="col">Terra (locked)</th>
+          <th class="col">Eucalyptus Stone</th>
+          <th class="col">Cherry</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="dimension">Primary hue</td>
+          <td>Warm terracotta · muted, premium</td>
+          <td>Deep forest green · natural, premium</td>
+          <td>Saturated cherry red · bold, energetic</td>
+        </tr>
+        <tr>
+          <td class="dimension">Canvas character</td>
+          <td>Warm cream</td>
+          <td>Stone (slightly cooler)</td>
+          <td>True white (clean, Apple-like)</td>
+        </tr>
+        <tr>
+          <td class="dimension">Display face</td>
+          <td>Fraunces (editorial serif)</td>
+          <td>Playfair Display (sharp serif)</td>
+          <td>Space Grotesk (modern sans)</td>
+        </tr>
+        <tr>
+          <td class="dimension">Distinctiveness vs. Claude</td>
+          <td>Low — adjacent palette</td>
+          <td>High — distinct hue family + serif</td>
+          <td>Very high — different category entirely</td>
+        </tr>
+        <tr>
+          <td class="dimension">Creator-aspirational fit</td>
+          <td>High — premium-craft</td>
+          <td>High — premium food-aspirational</td>
+          <td>High — Gen Z F&amp;B-startup</td>
+        </tr>
+        <tr>
+          <td class="dimension">Partner gravitas</td>
+          <td>High — restrained warm</td>
+          <td>Very high — most business-credible</td>
+          <td>Lower — energy reads "marketing"</td>
+        </tr>
+        <tr>
+          <td class="dimension">Best for these creators</td>
+          <td>Wellness · cosmetics · premium food</td>
+          <td>Organic · culinary · wellness · pet</td>
+          <td>Beverage · snacks · social-driven F&amp;B</td>
+        </tr>
+        <tr>
+          <td class="dimension">Weakest for these creators</td>
+          <td>Loud beverage brands</td>
+          <td>Modernist beauty · tech-adjacent</td>
+          <td>Luxury beauty · supplements (medical)</td>
+        </tr>
+        <tr>
+          <td class="dimension">Suplifuls-legacy continuity</td>
+          <td>Clean break</td>
+          <td>Evolves the green family</td>
+          <td>Clean break</td>
+        </tr>
+        <tr>
+          <td class="dimension">Photography requirements</td>
+          <td>Editorial-craft, warm</td>
+          <td>Natural-light, earthy</td>
+          <td>High-contrast, graphic</td>
+        </tr>
+        <tr>
+          <td class="dimension">Scales to international markets</td>
+          <td>Good</td>
+          <td>Very good — natural is universal</td>
+          <td>Good — but red carries cultural meanings</td>
+        </tr>
+        <tr>
+          <td class="dimension">WCAG 2.1 AA</td>
+          <td>✓ verified</td>
+          <td>✓ verified</td>
+          <td>✓ verified</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="recommendation">
+      <div class="eyebrow">CLAUDE'S RECOMMENDATION</div>
+      <h3>Eucalyptus Stone — best brand fit for iLaunchify.</h3>
+      <p>It evolves your Suplifuls heritage naturally (green family) without copying its brightness. It hits the F&amp;B-premium target your personas actually buy from (Sweetgreen, Brightland, Aplós). It gives partners the most credible-yet-warm surface to live in for daily work. And it's maximally distinct from Claude — different hue family, different serif, slightly cooler canvas. Terra remains a worthy fallback if you want maximum editorial warmth. Cherry is the right pick only if creator-aspiration outweighs partner-gravitas entirely, which it doesn't for a two-sided platform.</p>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

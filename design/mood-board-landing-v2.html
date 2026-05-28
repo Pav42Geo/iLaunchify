@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Studio Pop v2 · Tangerine + Lime</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,ital,wght@9..144,1,400;9..144,1,500;9..144,1,600;9..144,0,700;9..144,0,800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+<style>
+  /* ============================================================
+     STUDIO POP v2 — landing-page treatment
+     Tangerine + lime + lavender + midnight ink. White chrome.
+     No pink. No black buttons.
+     ============================================================ */
+  :root {
+    --pop-tang:    #FF6B35;        /* primary — electric tangerine */
+    --pop-tang-2:  #FF8A5C;
+    --pop-tang-3:  #E5532B;
+    --pop-lime:    #B8FF66;        /* secondary accent */
+    --pop-lemon:   #FFE74C;        /* sticker accent */
+    --pop-lilac:   #C9B6FF;        /* tertiary pop */
+    --pop-sky:     #8EE5F5;        /* fourth pop, cooler counterpoint */
+
+    --pop-white:   #FFFFFF;
+    --pop-cream:   #FFFCF7;        /* very subtle warm surface */
+    --pop-stone:   #F5F3EE;        /* subtle muted surface */
+    --pop-ink:     #1A1F2E;        /* midnight slate — text + one dark section */
+    --pop-ink-2:   #2A3145;
+    --pop-mute:    #5E6577;
+    --pop-line:    rgba(26, 31, 46, 0.08);
+
+    --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+    --font-serif:   'Fraunces', Georgia, serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--pop-white);
+    color: var(--pop-ink);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3 { margin: 0; line-height: 1.02; letter-spacing: -0.03em; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+
+  /* === ANIMATED MESH BG === */
+  .mesh-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .mesh-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.55;
+    animation: float-mesh 22s ease-in-out infinite;
+  }
+  .mesh-blob.b1 { width: 540px; height: 540px; background: var(--pop-tang);  top: -120px;  left: -80px; }
+  .mesh-blob.b2 { width: 480px; height: 480px; background: var(--pop-lime);  top: 240px;   right: -140px; animation-delay: -7s; opacity: 0.65; }
+  .mesh-blob.b3 { width: 420px; height: 420px; background: var(--pop-lilac); bottom: -180px; left: 28%;   animation-delay: -14s; }
+  .mesh-blob.b4 { width: 320px; height: 320px; background: var(--pop-lemon); top: 60%; left: 40%;        animation-delay: -3s; opacity: 0.45; }
+  .mesh-blob.b5 { width: 360px; height: 360px; background: var(--pop-sky);   top: 10%;  right: 30%;       animation-delay: -10s; opacity: 0.40; }
+
+  @keyframes float-mesh {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(60px, -50px) scale(1.1); }
+    66%      { transform: translate(-50px, 70px) scale(0.95); }
+  }
+
+  /* === NAV (WHITE) === */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(150%);
+    border-bottom: 1px solid var(--pop-line);
+  }
+  .nav-inner {
+    max-width: 1400px; margin: 0 auto;
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 24px; font-weight: 800;
+    letter-spacing: -0.04em;
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--pop-ink);
+  }
+  .logo::before {
+    content: '';
+    display: inline-block;
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--pop-tang), var(--pop-lemon));
+    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+  }
+  .nav-links {
+    display: flex; align-items: center; gap: 28px;
+    font-size: 14px; font-weight: 500;
+  }
+  .nav-link { opacity: 0.85; transition: opacity 220ms var(--ease-out); }
+  .nav-link:hover { opacity: 1; }
+  .nav-cta {
+    background: var(--pop-tang); color: var(--pop-white);
+    padding: 10px 18px; border-radius: 999px; font-weight: 500;
+    transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out), background 220ms var(--ease-out);
+  }
+  .nav-cta {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.40), inset 0 -3px 7px rgba(124,45,18,0.38);
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px);
+    background: var(--pop-tang-3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -3px 9px rgba(124,45,18,0.50);
+  }
+
+  /* === HERO === */
+  .hero {
+    position: relative;
+    min-height: 92vh;
+    padding: 96px 32px 80px;
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden;
+    background: var(--pop-white);
+  }
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--pop-white);
+    border: 1px solid var(--pop-line);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 500;
+    margin-bottom: 32px;
+    animation: pop-in 800ms var(--ease-out) both;
+  }
+  .hero-tag .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pop-tang);
+    box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.2);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.2); }
+    50%      { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); }
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 9vw, 144px);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+    max-width: 18ch;
+    margin-bottom: 32px;
+    color: var(--pop-ink);
+  }
+  .hero h1 .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--pop-tang);
+    letter-spacing: -0.025em;
+  }
+  .hero h1 .lime {
+    background: var(--pop-lime);
+    padding: 0 8px;
+    margin-left: -4px;
+    border-radius: 6px;
+    transform: rotate(-1.5deg);
+    display: inline-block;
+    color: var(--pop-ink);
+  }
+  .hero .lede {
+    font-size: clamp(17px, 2vw, 22px);
+    max-width: 56ch;
+    line-height: 1.55;
+    color: var(--pop-ink);
+    opacity: 0.78;
+    margin-bottom: 40px;
+    animation: pop-in 1000ms var(--ease-out) 200ms both;
+  }
+  .hero-ctas {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    animation: pop-in 1000ms var(--ease-out) 400ms both;
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === BUTTONS (tangerine primary, outline secondary — no black) === */
+  .btn-pop {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--pop-tang);
+    color: var(--pop-white);
+    padding: 18px 28px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: 600;
+    transition: transform 320ms var(--ease-bounce), box-shadow 320ms var(--ease-out), background 220ms var(--ease-out);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.40), inset 0 -3px 8px rgba(124,45,18,0.40);
+  }
+  .btn-pop:hover {
+    transform: translateY(-2px) scale(1.02);
+    background: var(--pop-tang-3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -3px 11px rgba(124,45,18,0.52);
+  }
+  .btn-pop .arrow { transition: transform 280ms var(--ease-out); }
+  .btn-pop:hover .arrow { transform: translateX(4px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--pop-ink);
+    border: 1.5px solid var(--pop-line);
+    padding: 16px 24px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background 220ms var(--ease-out), border-color 220ms var(--ease-out);
+  }
+  .btn-ghost:hover {
+    background: var(--pop-stone);
+    border-color: rgba(26, 31, 46, 0.18);
+  }
+
+  /* === FLOATING STICKERS === */
+  .sticker {
+    position: absolute;
+    border-radius: 16px;
+    padding: 12px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 12px 30px rgba(26, 31, 46, 0.12);
+    z-index: 3;
+    animation: float-sticker 6s ease-in-out infinite;
+  }
+  @keyframes float-sticker {
+    0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    50%      { transform: translateY(-12px) rotate(var(--rot, 0deg)); }
+  }
+  .sticker.s1 {
+    top: 130px; right: 6%;
+    background: var(--pop-lime);
+    color: var(--pop-ink);
+    --rot: 5deg;
+  }
+  .sticker.s2 {
+    top: 290px; right: 18%;
+    background: var(--pop-tang);
+    color: var(--pop-white);
+    --rot: -8deg;
+    animation-delay: -2s;
+  }
+  .sticker.s3 {
+    bottom: 130px; right: 8%;
+    background: var(--pop-white);
+    border: 1.5px solid var(--pop-ink);
+    color: var(--pop-ink);
+    --rot: 6deg;
+    animation-delay: -4s;
+  }
+  .sticker.s4 {
+    top: 200px; left: 50%;
+    background: var(--pop-lemon);
+    color: var(--pop-ink);
+    --rot: -4deg;
+    animation-delay: -1s;
+  }
+  .sticker.s5 {
+    bottom: 200px; left: 6%;
+    background: var(--pop-lilac);
+    color: var(--pop-ink);
+    --rot: 4deg;
+    animation-delay: -3s;
+  }
+  @media (max-width: 900px) {
+    .sticker { display: none; }
+  }
+
+  /* === MARQUEE (midnight slate, not pure black) === */
+  .marquee {
+    position: relative;
+    background: var(--pop-ink);
+    color: var(--pop-white);
+    padding: 28px 0;
+    overflow: hidden;
+  }
+  .marquee-track {
+    display: flex;
+    gap: 48px;
+    animation: marquee 32s linear infinite;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-size: clamp(28px, 3.5vw, 56px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  .marquee-track .item { display: inline-flex; align-items: center; gap: 32px; }
+  .marquee-track .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--pop-tang);
+    flex-shrink: 0;
+  }
+  .marquee-track .tang { color: var(--pop-tang); }
+  .marquee-track .lime { color: var(--pop-lime); }
+  .marquee-track .lemon { color: var(--pop-lemon); }
+  .marquee-track .lilac { color: var(--pop-lilac); }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* === STATS === */
+  .stats {
+    padding: 128px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--pop-white);
+  }
+  .stats-eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--pop-tang);
+    margin-bottom: 16px;
+  }
+  .stats-title {
+    font-family: var(--font-display);
+    font-size: clamp(40px, 5vw, 72px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    margin-bottom: 80px;
+    max-width: 18ch;
+  }
+  .stats-title .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--pop-tang);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+  .stat-card {
+    padding: 40px;
+    border-radius: 24px;
+    transition: transform 320ms var(--ease-bounce), box-shadow 320ms var(--ease-out);
+  }
+  .stat-card:hover { transform: translateY(-6px); }
+  .stat-card.tang  { background: var(--pop-tang); color: var(--pop-white); }
+  .stat-card.tang:hover  { box-shadow: 0 24px 48px rgba(255, 107, 53, 0.35); }
+  .stat-card.lime  { background: var(--pop-lime); color: var(--pop-ink); }
+  .stat-card.lime:hover  { box-shadow: 0 24px 48px rgba(184, 255, 102, 0.5); }
+  .stat-card.lilac { background: var(--pop-lilac); color: var(--pop-ink); }
+  .stat-card.lilac:hover { box-shadow: 0 24px 48px rgba(201, 182, 255, 0.5); }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 7vw, 96px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    margin-bottom: 16px;
+  }
+  .stat-label {
+    font-size: 16px;
+    font-weight: 500;
+    opacity: 0.92;
+    line-height: 1.4;
+  }
+
+  /* === NICHES (dark accent break — midnight slate) === */
+  .niches {
+    padding: 96px 32px;
+    background: var(--pop-ink);
+    color: var(--pop-white);
+    border-radius: 48px 48px 0 0;
+  }
+  .niches-inner { max-width: 1400px; margin: 0 auto; }
+  .niches h2 {
+    font-family: var(--font-display);
+    font-size: clamp(40px, 6vw, 88px);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-bottom: 64px;
+    max-width: 16ch;
+  }
+  .niches h2 .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--pop-lime);
+  }
+  .niche-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1000px) { .niche-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px)  { .niche-grid { grid-template-columns: 1fr; } }
+  .niche-card {
+    aspect-ratio: 3 / 4;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    background: var(--pop-ink-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: transform 320ms var(--ease-out), border-color 320ms var(--ease-out);
+  }
+  .niche-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--pop-tang);
+  }
+  .niche-card .shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(44px);
+    opacity: 0.75;
+    transition: transform 600ms var(--ease-out);
+  }
+  .niche-card:hover .shape { transform: scale(1.4); }
+  .niche-card.energy   .shape { background: var(--pop-tang);  width: 220px; height: 220px; top: -40px; right: -40px; }
+  .niche-card.wellness .shape { background: var(--pop-lime);  width: 240px; height: 240px; bottom: -60px; left: -40px; }
+  .niche-card.beauty   .shape { background: var(--pop-lilac); width: 200px; height: 200px; top: 30%; right: -30px; }
+  .niche-card.lifestyle .shape { background: var(--pop-lemon); width: 220px; height: 220px; bottom: -40px; right: -40px; }
+  .niche-card .icon {
+    position: relative;
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(12px);
+    font-size: 24px;
+  }
+  .niche-card .info { position: relative; }
+  .niche-card .name {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+  .niche-card .meta {
+    font-size: 13px;
+    opacity: 0.7;
+  }
+
+  /* === EDITORIAL QUOTE === */
+  .quote-section {
+    background: var(--pop-cream);
+    padding: 128px 32px;
+    text-align: left;
+  }
+  .quote-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .quote-text {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+    color: var(--pop-ink);
+  }
+  .quote-text .highlight {
+    background: var(--pop-lime);
+    padding: 0 12px;
+    border-radius: 8px;
+    font-style: normal;
+    font-family: var(--font-display);
+    font-weight: 700;
+    transform: rotate(-1deg);
+    display: inline-block;
+  }
+  .quote-text .tang-highlight {
+    color: var(--pop-tang);
+    font-style: italic;
+  }
+  .quote-attribution {
+    display: flex; align-items: center; gap: 16px;
+    font-size: 15px;
+    color: var(--pop-ink);
+  }
+  .quote-avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--pop-tang), var(--pop-lemon));
+  }
+  .quote-attribution strong { font-weight: 600; }
+  .quote-attribution .role { opacity: 0.65; }
+
+  /* === FINAL CTA === */
+  .final-cta {
+    position: relative;
+    padding: 160px 32px;
+    overflow: hidden;
+    text-align: center;
+    background: var(--pop-white);
+  }
+  .final-cta-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .final-cta h2 {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 9vw, 144px);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+    margin-bottom: 32px;
+    color: var(--pop-ink);
+  }
+  .final-cta h2 .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--pop-tang);
+  }
+  .final-cta p {
+    font-size: clamp(17px, 2vw, 22px);
+    color: var(--pop-ink);
+    opacity: 0.78;
+    margin-bottom: 48px;
+    max-width: 54ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .big-cta-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--pop-tang);
+    color: var(--pop-white);
+    padding: 24px 40px;
+    border-radius: 999px;
+    font-size: clamp(18px, 2vw, 24px);
+    font-weight: 600;
+    transition: transform 320ms var(--ease-bounce), box-shadow 320ms var(--ease-out), background 220ms var(--ease-out);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.42), inset 0 -4px 12px rgba(124,45,18,0.42);
+  }
+  .big-cta-btn:hover {
+    transform: translateY(-4px) scale(1.03);
+    background: var(--pop-tang-3);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.50), inset 0 -4px 16px rgba(124,45,18,0.55);
+  }
+
+  /* === REVEAL === */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* === FOOTER === */
+  .footer {
+    background: var(--pop-ink);
+    color: var(--pop-white);
+    padding: 64px 32px 32px;
+    font-size: 13px;
+  }
+  .footer-inner { max-width: 1400px; margin: 0 auto; }
+  .footer .copy { opacity: 0.5; margin-top: 32px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =============== NAV (WHITE) =============== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">iLaunchify</a>
+    <div class="nav-links">
+      <a href="#" class="nav-link">Marketplace</a>
+      <a href="#" class="nav-link">For creators</a>
+      <a href="#" class="nav-link">For partners</a>
+      <a href="#" class="nav-link">Pricing</a>
+      <a href="#" class="nav-cta">Start launching</a>
+    </div>
+  </div>
+</nav>
+
+<!-- =============== HERO =============== -->
+<section class="hero">
+  <div class="mesh-bg">
+    <div class="mesh-blob b1"></div>
+    <div class="mesh-blob b2"></div>
+    <div class="mesh-blob b3"></div>
+    <div class="mesh-blob b4"></div>
+    <div class="mesh-blob b5"></div>
+  </div>
+
+  <div class="sticker s1">+1,247 launches</div>
+  <div class="sticker s2">USDA Organic ✓</div>
+  <div class="sticker s3">8-day avg lead time</div>
+  <div class="sticker s4">★ 4.9 partner trust</div>
+  <div class="sticker s5">No setup fees</div>
+
+  <div class="hero-inner">
+    <div class="hero-tag">
+      <span class="dot"></span>
+      <span>Now open to creators in the US</span>
+    </div>
+
+    <h1>Launch <span class="serif">your</span> brand <span class="lime">in days,</span> not years.</h1>
+
+    <p class="lede">From recipe to packaging to shipped product — iLaunchify handles the entire production graph behind one quote, one timeline, one approval. Built for influencers, culinary creators, and brand launchers who refuse to wait.</p>
+
+    <div class="hero-ctas">
+      <a href="#" class="btn-pop">
+        Start your launch
+        <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      <a href="#" class="btn-ghost">See how it works</a>
+    </div>
+  </div>
+</section>
+
+<!-- =============== MARQUEE =============== -->
+<section class="marquee">
+  <div class="marquee-track">
+    <span class="item">PROTEIN POWDERS <span class="dot"></span></span>
+    <span class="item tang">FUNCTIONAL DRINKS <span class="dot" style="background: var(--pop-lime);"></span></span>
+    <span class="item">ADAPTOGEN BLENDS <span class="dot"></span></span>
+    <span class="item lime">COLD-PRESSED COFFEE <span class="dot" style="background: var(--pop-lemon);"></span></span>
+    <span class="item">SKINCARE LAUNCHES <span class="dot"></span></span>
+    <span class="item lemon">PET WELLNESS <span class="dot" style="background: var(--pop-tang);"></span></span>
+    <span class="item">SNACK BARS <span class="dot"></span></span>
+    <span class="item lilac">RTD COCKTAILS <span class="dot" style="background: var(--pop-lime);"></span></span>
+    <!-- dup -->
+    <span class="item">PROTEIN POWDERS <span class="dot"></span></span>
+    <span class="item tang">FUNCTIONAL DRINKS <span class="dot" style="background: var(--pop-lime);"></span></span>
+    <span class="item">ADAPTOGEN BLENDS <span class="dot"></span></span>
+    <span class="item lime">COLD-PRESSED COFFEE <span class="dot" style="background: var(--pop-lemon);"></span></span>
+    <span class="item">SKINCARE LAUNCHES <span class="dot"></span></span>
+    <span class="item lemon">PET WELLNESS <span class="dot" style="background: var(--pop-tang);"></span></span>
+    <span class="item">SNACK BARS <span class="dot"></span></span>
+    <span class="item lilac">RTD COCKTAILS <span class="dot" style="background: var(--pop-lime);"></span></span>
+  </div>
+</section>
+
+<!-- =============== STATS =============== -->
+<section class="stats">
+  <div class="reveal">
+    <div class="stats-eyebrow">By the numbers</div>
+    <h2 class="stats-title">A platform built on <span class="serif">momentum.</span></h2>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card tang reveal">
+      <div class="stat-num" data-target="1247">1,247</div>
+      <div class="stat-label">Creator launches shipped in the last 12 months — and counting.</div>
+    </div>
+    <div class="stat-card lime reveal">
+      <div class="stat-num" data-target="312">312</div>
+      <div class="stat-label">Verified partners across manufacturing, label printing, co-packing, and logistics.</div>
+    </div>
+    <div class="stat-card lilac reveal">
+      <div class="stat-num" data-target="8">8 <span style="font-size: 0.6em; font-weight: 600; opacity: 0.7;">days</span></div>
+      <div class="stat-label">Average lead time from "Start Launching" to ready-to-ship.</div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== NICHES =============== -->
+<section class="niches">
+  <div class="niches-inner">
+    <h2 class="reveal">Eight niches. <span class="serif">One marketplace.</span> Endless launches.</h2>
+
+    <div class="niche-grid">
+      <div class="niche-card energy reveal">
+        <div class="shape"></div>
+        <div class="icon">⚡</div>
+        <div class="info">
+          <div class="name">Energy &<br/>Performance</div>
+          <div class="meta">Pre-workout · RTD energy · Recovery</div>
+        </div>
+      </div>
+      <div class="niche-card wellness reveal">
+        <div class="shape"></div>
+        <div class="icon">🌿</div>
+        <div class="info">
+          <div class="name">Wellness &<br/>Holistic Health</div>
+          <div class="meta">Adaptogens · Nootropics · Sleep</div>
+        </div>
+      </div>
+      <div class="niche-card beauty reveal">
+        <div class="shape"></div>
+        <div class="icon">✨</div>
+        <div class="info">
+          <div class="name">Beauty &<br/>Self-Care</div>
+          <div class="meta">Skin · Hair · Body · Inner beauty</div>
+        </div>
+      </div>
+      <div class="niche-card lifestyle reveal">
+        <div class="shape"></div>
+        <div class="icon">🥂</div>
+        <div class="info">
+          <div class="name">Social &<br/>Lifestyle</div>
+          <div class="meta">RTD cocktails · Mocktails · Gifting</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== QUOTE =============== -->
+<section class="quote-section">
+  <div class="quote-inner reveal">
+    <p class="quote-text">I launched <span class="highlight">three SKUs</span> in the time it used to take to get a single MOQ quote. iLaunchify replaced an <span class="tang-highlight">entire ops team</span> for me.</p>
+    <div class="quote-attribution">
+      <div class="quote-avatar"></div>
+      <div>
+        <strong>Maya Reyes</strong> · <span class="role">Culinary creator · 480k followers · Cold-pressed sauce brand</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== FINAL CTA =============== -->
+<section class="final-cta">
+  <div class="mesh-bg">
+    <div class="mesh-blob b1" style="background: var(--pop-tang); width: 600px; height: 600px;"></div>
+    <div class="mesh-blob b2" style="background: var(--pop-lime); width: 500px; height: 500px;"></div>
+    <div class="mesh-blob b3" style="background: var(--pop-lilac); width: 400px; height: 400px;"></div>
+    <div class="mesh-blob b5" style="background: var(--pop-sky); width: 380px; height: 380px;"></div>
+  </div>
+  <div class="final-cta-inner">
+    <h2>Ready when <span class="serif">you</span> are.</h2>
+    <p>Free to start. No setup fees. No commitment. Pick your first product, customize it in minutes, and we'll handle the rest.</p>
+    <a href="#" class="big-cta-btn">
+      Start launching →
+    </a>
+  </div>
+</section>
+
+<!-- =============== FOOTER =============== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="logo" style="color: var(--pop-white);">iLaunchify</div>
+    <div class="copy">© 2026 iLaunchify · Studio Pop v2 — tangerine + lime · landing-page concept</div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -80px 0px' });
+  reveals.forEach(el => observer.observe(el));
+
+  // Number counter
+  const counters = document.querySelectorAll('.stat-num[data-target]');
+  const counterObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        const target = parseInt(el.dataset.target, 10);
+        const isUnit = el.innerHTML.includes('<span');
+        const unitHTML = isUnit ? el.innerHTML.match(/<span.*<\/span>/)[0] : '';
+        let curr = 0;
+        const step = Math.max(1, Math.round(target / 60));
+        const tick = () => {
+          curr += step;
+          if (curr >= target) curr = target;
+          el.innerHTML = curr.toLocaleString() + (isUnit ? ' ' + unitHTML : '');
+          if (curr < target) requestAnimationFrame(tick);
+        };
+        tick();
+        counterObs.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+  counters.forEach(el => counterObs.observe(el));
+</script>
+
+</body>
+</html>

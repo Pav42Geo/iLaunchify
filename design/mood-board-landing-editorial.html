@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify — Editorial Concept · Vol. 01</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital,wght@0,400;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ============================================================
+     iLaunchify — Editorial Magazine Landing
+     Kinfolk / Cereal / NYT Cooking aesthetic.
+     Eucalyptus Stone palette. Asymmetric magazine grid.
+     Restrained motion (fade + subtle parallax only).
+     ============================================================ */
+  :root {
+    /* === EDITORIAL PALETTE === */
+    --forest:      #2D5447;
+    --forest-2:    #244339;
+    --brass:       #B68B4E;
+    --brass-2:     #8E6A36;
+    --stone:       #F3EFE8;
+    --stone-2:     #ECE7DD;
+    --paper:       #FBFAF5;
+    --ink:         #1A1A18;
+    --ink-2:       #4A4A45;
+    --ink-3:       #6B6B65;
+    --line:        rgba(26, 26, 24, 0.08);
+    --line-2:      rgba(26, 26, 24, 0.16);
+
+    /* === TYPE === */
+    --serif-display: 'DM Serif Display', Georgia, serif;
+    --serif-body:    'Cormorant Garamond', Georgia, serif;
+    --sans:          'Inter', system-ui, sans-serif;
+
+    --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 { margin: 0; line-height: 1.05; }
+  p { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+
+  /* === MAGAZINE CHROME (top bar with issue meta) === */
+  .chrome {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .chrome-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  @media (max-width: 700px) { .chrome-inner { padding: 0 24px; font-size: 10px; } }
+
+  /* === NAV === */
+  .nav {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 24px 0;
+  }
+  .nav-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: var(--serif-display);
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .logo .amp { color: var(--brass); font-style: italic; }
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .nav-link {
+    color: var(--ink-2);
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: border-color 220ms var(--ease-out), color 220ms var(--ease-out);
+  }
+  .nav-link:hover {
+    color: var(--ink);
+    border-bottom-color: var(--forest);
+  }
+  .nav-cta {
+    font-family: var(--serif-body);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--forest);
+  }
+  @media (max-width: 800px) {
+    .nav-links { display: none; }
+  }
+
+  /* === COVER HERO === */
+  .cover {
+    padding: 96px 48px 128px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: 80px;
+    align-items: end;
+  }
+  @media (max-width: 1000px) { .cover-inner { grid-template-columns: 1fr; gap: 48px; } }
+
+  .issue-mark {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .issue-mark::before {
+    content: '';
+    width: 32px;
+    height: 1px;
+    background: var(--ink-3);
+  }
+  .cover-headline {
+    font-family: var(--serif-display);
+    font-size: clamp(56px, 8vw, 124px);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 40px;
+    max-width: 14ch;
+  }
+  .cover-headline em {
+    font-style: italic;
+    color: var(--forest);
+  }
+  .cover-deck {
+    font-family: var(--serif-body);
+    font-size: clamp(20px, 1.8vw, 26px);
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--ink-2);
+    max-width: 36ch;
+    margin-bottom: 48px;
+  }
+  .cover-deck em { color: var(--forest); }
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .cover-meta strong {
+    color: var(--ink);
+    font-weight: 500;
+    display: block;
+    margin-top: 4px;
+    text-transform: none;
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
+  .cover-photo {
+    aspect-ratio: 3 / 4;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #C9D3CB 0%, #7E9B8E 50%, #4A6B5C 100%);
+  }
+  .cover-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255, 246, 230, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(45, 84, 71, 0.3) 0%, transparent 50%);
+  }
+  .cover-photo-caption {
+    position: absolute;
+    bottom: -36px;
+    right: 0;
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+    font-style: italic;
+    max-width: 280px;
+    text-align: right;
+  }
+  @media (max-width: 1000px) {
+    .cover-photo-caption { position: relative; bottom: auto; margin-top: 12px; text-align: left; }
+  }
+
+  /* === SECTION RHYTHM === */
+  .section {
+    padding: 128px 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  @media (max-width: 700px) { .section { padding: 80px 24px; } }
+  .section-mark {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-mark::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: var(--brass);
+  }
+  .section-title {
+    font-family: var(--serif-display);
+    font-size: clamp(40px, 5vw, 64px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 32px;
+    max-width: 18ch;
+  }
+  .section-title em { font-style: italic; color: var(--forest); }
+  .section-deck {
+    font-family: var(--serif-body);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 48ch;
+  }
+
+  /* === EDITOR'S LETTER === */
+  .letter {
+    background: var(--stone);
+    padding: 128px 48px;
+  }
+  .letter-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 80px;
+    align-items: start;
+  }
+  @media (max-width: 1000px) { .letter-inner { grid-template-columns: 1fr; gap: 48px; } }
+
+  .letter-photo {
+    aspect-ratio: 4 / 5;
+    background: linear-gradient(135deg, #B8A988 0%, #8B7654 50%, #5C4934 100%);
+    position: relative;
+  }
+  .letter-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 60% 30%, rgba(255, 246, 230, 0.3) 0%, transparent 60%);
+  }
+  .letter-photo-caption {
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--ink-3);
+    font-style: italic;
+    letter-spacing: 0.02em;
+  }
+
+  .letter-body {
+    padding-top: 24px;
+  }
+  .letter-byline {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 24px;
+  }
+  .letter-headline {
+    font-family: var(--serif-display);
+    font-size: clamp(36px, 4vw, 56px);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 40px;
+  }
+  .letter-headline em { font-style: italic; color: var(--forest); }
+  .letter-text {
+    font-family: var(--serif-body);
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  .letter-text:first-of-type::first-letter {
+    font-family: var(--serif-display);
+    font-size: 84px;
+    line-height: 0.85;
+    float: left;
+    margin: 4px 12px -4px 0;
+    color: var(--forest);
+  }
+  .letter-sig {
+    margin-top: 32px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .letter-sig .name {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-size: 24px;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .letter-sig .role {
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  /* === FEATURED LAUNCHES === */
+  .features {
+    padding: 128px 48px;
+    background: var(--paper);
+  }
+  .features-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .features-head { margin-bottom: 96px; }
+  .feature {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: 80px;
+    align-items: center;
+    margin-bottom: 128px;
+    padding-bottom: 128px;
+    border-bottom: 1px solid var(--line);
+  }
+  .feature:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+  .feature.reverse { grid-template-columns: 5fr 7fr; }
+  .feature.reverse .feature-photo { order: 2; }
+  .feature.reverse .feature-body { order: 1; }
+  @media (max-width: 1000px) {
+    .feature, .feature.reverse {
+      grid-template-columns: 1fr;
+      gap: 32px;
+      margin-bottom: 80px;
+      padding-bottom: 80px;
+    }
+    .feature.reverse .feature-photo { order: 0; }
+    .feature.reverse .feature-body { order: 1; }
+  }
+
+  .feature-photo {
+    aspect-ratio: 4 / 5;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-photo.f1 {
+    background: linear-gradient(135deg, #D9C9B8 0%, #B89876 50%, #8B6840 100%);
+  }
+  .feature-photo.f2 {
+    background: linear-gradient(135deg, #BFCEC4 0%, #7E9B8E 50%, #3F5E50 100%);
+  }
+  .feature-photo.f3 {
+    background: linear-gradient(135deg, #D8C8B8 0%, #A88A68 50%, #604530 100%);
+  }
+  .feature-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 25% 25%, rgba(255, 248, 234, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(26, 26, 24, 0.15) 0%, transparent 50%);
+  }
+  .feature-number {
+    font-family: var(--serif-display);
+    font-size: 84px;
+    line-height: 0.9;
+    color: var(--brass);
+    margin-bottom: 16px;
+  }
+  .feature-niche {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 16px;
+  }
+  .feature-title {
+    font-family: var(--serif-display);
+    font-size: clamp(32px, 3.5vw, 48px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  .feature-title em { font-style: italic; color: var(--forest); }
+  .feature-story {
+    font-family: var(--serif-body);
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    margin-bottom: 32px;
+  }
+  .feature-byline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--ink-2);
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  .feature-byline .name { font-weight: 600; color: var(--ink); }
+  .feature-byline .sep { color: var(--ink-3); }
+
+  /* === PULL QUOTE === */
+  .pull {
+    padding: 160px 48px;
+    background: var(--forest);
+    color: var(--paper);
+  }
+  .pull-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  .pull-mark {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 250, 245, 0.6);
+    margin-bottom: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pull-mark::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: rgba(255, 250, 245, 0.4);
+  }
+  .pull-quote {
+    font-family: var(--serif-display);
+    font-style: italic;
+    font-size: clamp(40px, 5.5vw, 84px);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--paper);
+    margin-bottom: 48px;
+  }
+  .pull-quote-mark {
+    font-family: var(--serif-display);
+    font-size: 1.2em;
+    color: var(--brass);
+    line-height: 0;
+    vertical-align: -0.05em;
+  }
+  .pull-attribution {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: rgba(255, 250, 245, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .pull-attribution .dot {
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 250, 245, 0.4);
+    border-radius: 50%;
+  }
+  .pull-attribution strong { color: var(--paper); }
+
+  /* === PROCESS GUIDE === */
+  .guide { padding: 128px 48px; }
+  .guide-inner { max-width: 1400px; margin: 0 auto; }
+  .guide-head { margin-bottom: 96px; max-width: 56ch; }
+  .guide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 64px;
+  }
+  @media (max-width: 900px) { .guide-grid { grid-template-columns: 1fr; gap: 64px; } }
+
+  .guide-step .step-num {
+    font-family: var(--serif-display);
+    font-size: 64px;
+    color: var(--forest);
+    line-height: 0.9;
+    margin-bottom: 24px;
+    display: block;
+  }
+  .guide-step .step-title {
+    font-family: var(--serif-display);
+    font-size: 28px;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  .guide-step .step-text {
+    font-family: var(--serif-body);
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  .guide-step .step-meta {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* === PARTNER FEATURE === */
+  .partner-feature {
+    background: var(--stone);
+    padding: 128px 48px;
+  }
+  .partner-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: 80px;
+    align-items: center;
+  }
+  @media (max-width: 1000px) { .partner-inner { grid-template-columns: 1fr; gap: 48px; } }
+  .partner-photo {
+    aspect-ratio: 4 / 5;
+    background: linear-gradient(135deg, #5E5853 0%, #3F3A35 50%, #221E1A 100%);
+    position: relative;
+  }
+  .partner-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 40% 30%, rgba(182, 139, 78, 0.3) 0%, transparent 60%);
+  }
+  .partner-body { padding-top: 24px; }
+
+  /* === FINAL CTA === */
+  .final {
+    padding: 160px 48px;
+    text-align: center;
+    background: var(--paper);
+  }
+  .final-inner { max-width: 900px; margin: 0 auto; }
+  .final-mark {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 24px;
+  }
+  .final-headline {
+    font-family: var(--serif-display);
+    font-size: clamp(56px, 7vw, 112px);
+    font-weight: 400;
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 32px;
+  }
+  .final-headline em { font-style: italic; color: var(--forest); }
+  .final-deck {
+    font-family: var(--serif-body);
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin-bottom: 56px;
+    max-width: 48ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .final-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--serif-body);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--forest);
+    border-bottom: 1px solid var(--forest);
+    padding-bottom: 6px;
+    transition: color 220ms var(--ease-out), border-color 220ms var(--ease-out);
+  }
+  .final-cta:hover {
+    color: var(--brass);
+    border-color: var(--brass);
+  }
+  .final-cta .arrow {
+    transition: transform 220ms var(--ease-out);
+  }
+  .final-cta:hover .arrow { transform: translateX(6px); }
+
+  /* === FOOTER (masthead-style) === */
+  .footer {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 96px 48px 48px;
+  }
+  .footer-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .masthead {
+    font-family: var(--serif-display);
+    font-size: clamp(40px, 5vw, 72px);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 64px;
+  }
+  .masthead em { font-style: italic; color: var(--brass); }
+  .footer-cols {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    padding-top: 48px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  @media (max-width: 800px) { .footer-cols { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .footer-cols { grid-template-columns: 1fr; } }
+  .footer-col-title {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 24px;
+  }
+  .footer-col ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+    line-height: 2;
+    color: rgba(255,250,245,0.78);
+  }
+  .footer-col a:hover { color: var(--paper); }
+  .footer-bottom {
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,250,245,0.5);
+  }
+
+  /* === REVEAL === */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 1000ms var(--ease-out), transform 1000ms var(--ease-out);
+  }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+
+  .parallax {
+    transition: transform 400ms var(--ease-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =============== MAGAZINE CHROME =============== -->
+<div class="chrome">
+  <div class="chrome-inner">
+    <span>Volume 01 · Issue 03</span>
+    <span>Spring 2026</span>
+    <span>The Launch Issue</span>
+  </div>
+</div>
+
+<!-- =============== NAV =============== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">iLaunchify<span class="amp">.</span></a>
+    <div class="nav-links">
+      <a href="#" class="nav-link">Marketplace</a>
+      <a href="#" class="nav-link">Creators</a>
+      <a href="#" class="nav-link">Partners</a>
+      <a href="#" class="nav-link">Journal</a>
+    </div>
+    <a href="#" class="nav-cta">Begin your launch &rarr;</a>
+  </div>
+</nav>
+
+<!-- =============== COVER HERO =============== -->
+<section class="cover">
+  <div class="cover-inner">
+    <div>
+      <div class="issue-mark">The Launch Issue · No. 03</div>
+      <h1 class="cover-headline">Launch your brand, one beautiful <em>story</em> at a time.</h1>
+      <p class="cover-deck">A platform for influencers, culinary creators, and brand launchers who believe that <em>how</em> a product enters the world matters as much as the product itself.</p>
+      <div class="cover-meta">
+        <div>Featuring<strong>1,247 launches</strong></div>
+        <div>Across<strong>8 niches</strong></div>
+        <div>In<strong>312 partner studios</strong></div>
+      </div>
+    </div>
+    <div>
+      <div class="cover-photo parallax"></div>
+      <div class="cover-photo-caption">Heritage Roasters' Colombian single-origin, photographed by Anna Velez for iLaunchify Journal</div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== EDITOR'S LETTER =============== -->
+<section class="letter">
+  <div class="letter-inner">
+    <div class="reveal">
+      <div class="letter-photo parallax"></div>
+      <div class="letter-photo-caption">From the studio of an early creator, Brooklyn, 2026</div>
+    </div>
+    <div class="letter-body reveal">
+      <div class="letter-byline">From the editor · Pavel Georgiev</div>
+      <h2 class="letter-headline">A platform built for the moment <em>before</em> the launch.</h2>
+      <p class="letter-text">Most platforms meet you on the day your brand goes live. iLaunchify meets you on the day you decide it should exist. We built the connective tissue — manufacturers, label printers, co-packers, warehouses — into a single surface so creators can spend less time coordinating and more time imagining.</p>
+      <p class="letter-text">This issue features three creators who took an idea from notebook to shelf in under thirty days. Their stories share one thread: a refusal to wait for an industry that wasn't built for them.</p>
+      <div class="letter-sig">
+        <span class="name">Pavel Georgiev</span>
+        <span class="role">Founder &amp; Editor</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== FEATURED LAUNCHES =============== -->
+<section class="features">
+  <div class="features-inner">
+    <div class="features-head reveal">
+      <div class="section-mark">In this issue</div>
+      <h2 class="section-title">Three creators, three launches, <em>thirty days.</em></h2>
+      <p class="section-deck">Each story below began as an idea in a notebook. Each one is now on a shelf or in a fulfillment center, ready to ship.</p>
+    </div>
+
+    <!-- FEATURE 01 -->
+    <article class="feature">
+      <div class="reveal">
+        <div class="feature-photo f1 parallax"></div>
+      </div>
+      <div class="feature-body reveal">
+        <div class="feature-number">01</div>
+        <div class="feature-niche">Wellness · Adaptogens</div>
+        <h3 class="feature-title">Sarah Chen's <em>quiet morning</em> ritual.</h3>
+        <p class="feature-story">A clinical psychologist by training, Sarah spent two years formulating an adaptogenic blend designed for the half-hour before her patients arrived. The result — three SKUs, FDA-compliant labels, partnership with a Vermont co-packer — went from spreadsheet to first batch in twenty-six days.</p>
+        <div class="feature-byline">
+          <span class="name">Sarah Chen</span>
+          <span class="sep">·</span>
+          <span>Founder, Hush Wellness</span>
+          <span class="sep">·</span>
+          <span>240k followers</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 02 (reversed) -->
+    <article class="feature reverse">
+      <div class="feature-photo f2 reveal parallax"></div>
+      <div class="feature-body reveal">
+        <div class="feature-number">02</div>
+        <div class="feature-niche">Culinary · Cold-pressed</div>
+        <h3 class="feature-title">Maya Reyes is <em>rewriting</em> the condiment aisle.</h3>
+        <p class="feature-story">A line of three sauces — coconut-lime, mango-habanero, smoked carrot — designed for the kind of dinner you take a picture of. Maya's launch hit a 4,000-unit pre-order ceiling in eighteen days. Her partner network now spans three regions.</p>
+        <div class="feature-byline">
+          <span class="name">Maya Reyes</span>
+          <span class="sep">·</span>
+          <span>Founder, Reyes Pantry</span>
+          <span class="sep">·</span>
+          <span>480k followers</span>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 03 -->
+    <article class="feature">
+      <div class="reveal">
+        <div class="feature-photo f3 parallax"></div>
+      </div>
+      <div class="feature-body reveal">
+        <div class="feature-number">03</div>
+        <div class="feature-niche">Beverage · Functional</div>
+        <h3 class="feature-title">Devon Aoki on what <em>after-hours</em> actually means.</h3>
+        <p class="feature-story">An RTD botanical aperitif designed for the people who want the ritual without the alcohol. Devon built the brand alongside her fitness platform, launching across three states with a single click in iLaunchify's marketplace.</p>
+        <div class="feature-byline">
+          <span class="name">Devon Aoki</span>
+          <span class="sep">·</span>
+          <span>Founder, Hour &amp; Half</span>
+          <span class="sep">·</span>
+          <span>1.1m followers</span>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- =============== PULL QUOTE =============== -->
+<section class="pull">
+  <div class="pull-inner reveal">
+    <div class="pull-mark">Marginalia</div>
+    <p class="pull-quote"><span class="pull-quote-mark">"</span>iLaunchify replaced an entire operations team for me. I went from spreadsheet to shipped product in less time than my last brand collaboration took to sign a contract.<span class="pull-quote-mark">"</span></p>
+    <p class="pull-attribution">
+      <strong>Maya Reyes</strong>
+      <span class="dot"></span>
+      <span>Culinary creator</span>
+      <span class="dot"></span>
+      <span>480k followers</span>
+    </p>
+  </div>
+</section>
+
+<!-- =============== PROCESS GUIDE =============== -->
+<section class="guide">
+  <div class="guide-inner">
+    <div class="guide-head reveal">
+      <div class="section-mark">An editor's guide</div>
+      <h2 class="section-title">How to launch a brand <em>in three months</em> (or less).</h2>
+      <p class="section-deck">A short guide to what happens between "I have an idea" and "my product is on its way to my first warehouse."</p>
+    </div>
+    <div class="guide-grid">
+      <div class="guide-step reveal">
+        <span class="step-num">I.</span>
+        <h3 class="step-title">Choose a starting template.</h3>
+        <p class="step-text">Browse a curated marketplace of product templates — protein powders, cold-pressed coffees, adaptogenic blends — each pre-vetted with our partner network. Pick what fits your brand's voice.</p>
+        <div class="step-meta">Marketplace · Avg. 12 min</div>
+      </div>
+      <div class="guide-step reveal">
+        <span class="step-num">II.</span>
+        <h3 class="step-title">Customize your label.</h3>
+        <p class="step-text">Open the Design Studio canvas. Bring your brand assets — logos, typography, colors — and design your label inside a structured frame that prevents print-time mistakes before they happen.</p>
+        <div class="step-meta">Design Studio · Avg. 45 min</div>
+      </div>
+      <div class="guide-step reveal">
+        <span class="step-num">III.</span>
+        <h3 class="step-title">Launch with one click.</h3>
+        <p class="step-text">When you're ready, one approval routes your order across manufacturer, printer, co-packer, and warehouse. You see one timeline, one invoice, one progress thread. We handle the rest.</p>
+        <div class="step-meta">One approval · Avg. 8-day lead</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== PARTNER FEATURE =============== -->
+<section class="partner-feature">
+  <div class="partner-inner">
+    <div class="reveal">
+      <div class="partner-photo parallax"></div>
+      <div class="letter-photo-caption">Marcus Vellan's print floor, Long Island City</div>
+    </div>
+    <div class="partner-body reveal">
+      <div class="section-mark">From the production floor</div>
+      <h2 class="section-title">A printer's case for <em>fewer middlemen.</em></h2>
+      <p class="section-deck" style="margin-bottom: 32px;">"Twenty years ago, taking on a small creator launch meant six emails, three sample reviews, and a calendar of phone tag. iLaunchify replaces all of that with a queue I can actually run my floor against."</p>
+      <p class="letter-text" style="font-size: 17px;">Marcus Vellan runs a flexographic label print operation in Long Island City. His floor now produces labels for creators across four niches — wellness, culinary, beverage, pet — without his team writing a single coordination email. The platform's queue tells his pressmen what's next; the platform's payment terms tell his bookkeeping when to expect funds.</p>
+      <div class="feature-byline" style="margin-top: 32px;">
+        <span class="name">Marcus Vellan</span>
+        <span class="sep">·</span>
+        <span>Director of Operations, Vellan Labels</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== FINAL CTA =============== -->
+<section class="final">
+  <div class="final-inner reveal">
+    <div class="final-mark">Begin your launch</div>
+    <h2 class="final-headline">The next issue is <em>yours</em> to write.</h2>
+    <p class="final-deck">Free to start. No commitment. Pick a template, design your label, and launch your brand.</p>
+    <a href="#" class="final-cta">
+      Start your story
+      <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </a>
+  </div>
+</section>
+
+<!-- =============== FOOTER (masthead style) =============== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="masthead">iLaunchify <em>Journal</em></div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <div class="footer-col-title">Marketplace</div>
+        <ul>
+          <li><a href="#">Browse all categories</a></li>
+          <li><a href="#">Coffee &amp; Tea</a></li>
+          <li><a href="#">Supplements</a></li>
+          <li><a href="#">Cosmetics</a></li>
+          <li><a href="#">Pet wellness</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Journal</div>
+        <ul>
+          <li><a href="#">Current issue</a></li>
+          <li><a href="#">Past issues</a></li>
+          <li><a href="#">Launch guides</a></li>
+          <li><a href="#">Certification primer</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Platform</div>
+        <ul>
+          <li><a href="#">For creators</a></li>
+          <li><a href="#">For partners</a></li>
+          <li><a href="#">Pricing</a></li>
+          <li><a href="#">How it works</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Masthead</div>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 iLaunchify Journal · Vol. 01 / Issue 03</span>
+      <span>Set in DM Serif Display &amp; Cormorant Garamond</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -80px 0px' });
+  reveals.forEach(el => obs.observe(el));
+
+  // Subtle parallax on .parallax elements
+  const parallaxEls = document.querySelectorAll('.parallax');
+  let scrollY = window.scrollY;
+  let ticking = false;
+  const update = () => {
+    parallaxEls.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const winH = window.innerHeight;
+      if (rect.top < winH && rect.bottom > 0) {
+        const offset = (rect.top - winH / 2) * 0.04;
+        el.style.transform = `translateY(${offset}px)`;
+      }
+    });
+    ticking = false;
+  };
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(update);
+      ticking = true;
+    }
+  }, { passive: true });
+</script>
+
+</body>
+</html>
