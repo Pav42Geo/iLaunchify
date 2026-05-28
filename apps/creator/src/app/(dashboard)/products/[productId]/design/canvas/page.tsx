@@ -14,6 +14,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
+import { loadDesignJson } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,12 +110,17 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
     tagline: product.brand.tagline,
   }
 
+  // Hydrate the canvas with any previously-saved Fabric state. Null → fresh
+  // empty canvas (first time editing this product).
+  const initialDesignJson = (await loadDesignJson(product.id)) as object | null
+
   return (
     <CanvasLayoutShell
       productId={product.id}
       productName={product.name}
       dieCut={dieCut}
       brandAssets={brandAssets}
+      initialDesignJson={initialDesignJson}
     />
   )
 }

@@ -18,6 +18,7 @@
 // state — they get wired in Phase D one at a time per
 // docs/DESIGN_STUDIO_REBUILD.md §5 build sequence.
 
+import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -32,6 +33,7 @@ import {
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useSelectedObject, isTextObject } from './useSelectedObject'
+import { useAutoSave, type SaveStatus } from './useAutoSave'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -77,6 +79,8 @@ interface Props {
   productName: string
   dieCut: DieCutSpec
   brandAssets: BrandCanvasAssets
+  /** Existing Fabric JSON to hydrate the canvas with on mount. */
+  initialDesignJson: object | null
 }
 
 type ToolKey =
@@ -106,7 +110,13 @@ const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolea
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
 ]
 
-export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets }: Props) {
+export function CanvasLayoutShell({
+  productId,
+  productName,
+  dieCut,
+  brandAssets,
+  initialDesignJson,
+}: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
@@ -117,6 +127,7 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
   const history = useCanvasHistory(canvas)
   const selected = useSelectedObject(canvas)
   const showTextToolbar = isTextObject(selected)
+  const autosave = useAutoSave(canvas, productId)
 
   function toggleTool(key: ToolKey) {
     setActiveTool((prev) => (prev === key ? null : key))
@@ -151,6 +162,9 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
         canRedo={history.canRedo}
         onUndo={history.undo}
         onRedo={history.redo}
+        saveStatus={autosave.status}
+        lastSavedAt={autosave.lastSavedAt}
+        saveError={autosave.error}
       />
 
       {/* Body */}
@@ -178,6 +192,7 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
               dieCut={dieCut}
               pxPerMm={pxPerMm}
               guides={guides}
+              initialDesignJson={initialDesignJson}
               onReady={setCanvas}
             />
           </div>
@@ -218,6 +233,9 @@ function TopBar({
   canRedo,
   onUndo,
   onRedo,
+  saveStatus,
+  lastSavedAt,
+  saveError,
 }: {
   productName: string
   brandName: string
@@ -226,6 +244,9 @@ function TopBar({
   canRedo: boolean
   onUndo: () => void
   onRedo: () => void
+  saveStatus: SaveStatus
+  lastSavedAt: Date | null
+  saveError: string | null
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -245,10 +266,11 @@ function TopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="mr-2 flex items-center gap-1 text-xs text-ink-500">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-500" />
-          Saved
-        </span>
+        <SaveStatusIndicator
+          status={saveStatus}
+          lastSavedAt={lastSavedAt}
+          error={saveError}
+        />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>
@@ -521,11 +543,13 @@ function CanvasStageWithFrame({
   dieCut,
   pxPerMm,
   guides,
+  initialDesignJson,
   onReady,
 }: {
   dieCut: DieCutSpec
   pxPerMm: number
   guides: GuideVisibility
+  initialDesignJson: object | null
   onReady: (canvas: FabricCanvas) => void
 }) {
   const fullWidthMm = dieCut.widthMm + 2 * dieCut.bleedMm
@@ -542,6 +566,7 @@ function CanvasStageWithFrame({
         dieCut={dieCut}
         pxPerMm={pxPerMm}
         surfaceColor="#ffffff"
+        initialDesignJson={initialDesignJson ?? undefined}
         onReady={onReady}
       />
       <DieCutFrame dieCut={dieCut} pxPerMm={pxPerMm} guides={guides} />
@@ -615,6 +640,77 @@ function BottomToolbar({
 // ============================================================================
 // Shared
 // ============================================================================
+
+function SaveStatusIndicator({
+  status,
+  lastSavedAt,
+  error,
+}: {
+  status: SaveStatus
+  lastSavedAt: Date | null
+  error: string | null
+}) {
+  // Tick every 15s so "Saved 12s ago" stays approximately fresh.
+  const [, force] = React.useReducer((n: number) => n + 1, 0)
+  React.useEffect(() => {
+    const id = setInterval(force, 15_000)
+    return () => clearInterval(id)
+  }, [])
+
+  let dotColor = 'bg-ink-300'
+  let label: React.ReactNode = 'Not saved yet'
+  let title: string | undefined
+
+  switch (status) {
+    case 'saving':
+      dotColor = 'bg-pink-500 animate-pulse'
+      label = 'Saving…'
+      break
+    case 'saved':
+      dotColor = 'bg-emerald-500'
+      label = lastSavedAt
+        ? `Saved ${relativeTime(lastSavedAt)}`
+        : 'Saved'
+      title = lastSavedAt?.toLocaleString()
+      break
+    case 'dirty':
+      dotColor = 'bg-amber-500'
+      label = 'Unsaved changes'
+      break
+    case 'error':
+      dotColor = 'bg-red-500'
+      label = 'Save failed'
+      title = error ?? undefined
+      break
+    case 'idle':
+    default:
+      label = lastSavedAt
+        ? `Saved ${relativeTime(lastSavedAt)}`
+        : 'Ready'
+      title = lastSavedAt?.toLocaleString()
+      break
+  }
+
+  return (
+    <span
+      className="mr-2 flex items-center gap-1.5 text-xs text-ink-600 tabular-nums"
+      title={title}
+    >
+      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
+      {label}
+    </span>
+  )
+}
+
+function relativeTime(d: Date): string {
+  const secs = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000))
+  if (secs < 5) return 'just now'
+  if (secs < 60) return `${secs}s ago`
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  return `${hrs}h ago`
+}
 
 function IconButton({
   children,
