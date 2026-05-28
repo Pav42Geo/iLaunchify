@@ -2,20 +2,70 @@ import Link from 'next/link'
 import { ProductCard, HeroBanner, Button, Chip } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { MarketplaceFilters } from '@/components/MarketplaceFilters'
-import { CATEGORY_ROWS, templateToCardProps } from '@/lib/sample-templates'
+import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
+import { FeaturedCollection } from '@/components/FeaturedCollection'
+import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 
 /**
  * /marketplace — the creator marketplace.
  *
- * Built from real @ilaunchify/ui components. Composition follows the locked
- * MARKETPLACE_DESIGN.md layout: white header + niche subnav + filter sidebar +
- * dark HeroBanner island + active-filter chip row + category rows of
- * ProductCards.
+ * Composition (top → bottom):
+ *   1. Header + breadcrumb
+ *   2. HeroBanner island ("Find your product. Make it yours. Launch it.")
+ *   3. Controls bar — result count + sort dropdown
+ *   4. Active filter chips
+ *   5. Featured "Trending this week" row (richer cards)
+ *   6. Category rows (Coffee & Tea, Functional Beverages, …) with metadata
+ *   7. "Quick to launch" curated row (lowest lead-time templates)
+ *   8. Newsletter signup CTA
+ *
+ * Filter sidebar locked to filters-only per MARKETPLACE_DESIGN.md.
  */
-export default function MarketplacePage() {
+export default async function MarketplacePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string }>
+}) {
+  const { as } = await searchParams
+  const isAuthenticated = as === 'user'
+  const demoUser = isAuthenticated
+    ? {
+        name: 'Alex Chen',
+        email: 'alex@kindredwellness.co',
+        tier: 'maker' as const,
+        activeBrandName: 'Kindred Wellness',
+      }
+    : null
+  const demoBrands = isAuthenticated
+    ? [
+        { id: 'kindred', name: 'Kindred Wellness', colorHex: '#FF2E63' },
+        { id: 'lumen', name: 'Lumen Daily', colorHex: '#7BA05B' },
+        { id: 'after-hours', name: 'After Hours Coffee', colorHex: '#5A3825' },
+      ]
+    : []
+
+  // Flatten all templates for cross-category curated rows.
+  const allTemplates = CATEGORY_ROWS.flatMap((r) => r.templates)
+  const totalCount = allTemplates.length
+
+  // Trending = highest-status templates (bestseller / top-rated / popular).
+  const trending = allTemplates
+    .filter((t) => ['bestseller', 'top-rated', 'popular'].includes(t.status ?? ''))
+    .slice(0, 4)
+
+  // Quick to launch = lowest lead time.
+  const quickLaunch = [...allTemplates]
+    .sort((a, b) => a.leadTimeDays - b.leadTimeDays)
+    .slice(0, 4)
+
   return (
     <>
-      <MarketplaceHeader />
+      <MarketplaceHeader
+        user={demoUser}
+        hasUnreadNotifications
+        brands={demoBrands}
+        activeBrandId="kindred"
+      />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">
         <div className="text-[13px] text-ink-500 md:col-span-2">
@@ -37,47 +87,160 @@ export default function MarketplacePage() {
               </>
             }
             deck="Browse curated, production-ready templates across 8 niches. Customize the label — we handle manufacturing, printing, and fulfillment."
-            className="mb-9"
+            className="mb-7"
           >
             <Button variant="secondary" asChild>
-              <Link href="/products/new">Start launching →</Link>
+              <Link href="/how-it-works">See how it works →</Link>
             </Button>
           </HeroBanner>
 
-          <div className="flex items-center gap-2 flex-wrap mb-6">
+          {/* Controls + active filters */}
+          <MarketplaceControlsBar
+            resultCount={totalCount}
+            totalCount={totalCount}
+          />
+
+          <div className="flex items-center gap-2 flex-wrap mb-8">
+            <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-ink-500 mr-1">
+              Filters:
+            </span>
             <Chip active removable>
               Vegan
             </Chip>
             <Chip active removable>
               Powder
             </Chip>
-            <button className="text-[13px] text-ink-500 hover:text-ink-900">
+            <button className="text-[13px] font-semibold text-pink-700 hover:text-pink-600 ml-1">
               Clear all
             </button>
           </div>
 
+          {/* Featured — Trending this week */}
+          {trending.length > 0 && (
+            <FeaturedCollection
+              variant="trending"
+              headline={
+                <>
+                  What everyone&apos;s{' '}
+                  <span className="font-serif italic font-medium text-pink-500">
+                    launching
+                  </span>{' '}
+                  this week.
+                </>
+              }
+              templates={trending}
+            />
+          )}
+
+          {/* Category rows */}
           {CATEGORY_ROWS.map((row) => (
-            <section key={row.slug} className="mb-11">
-              <div className="flex items-baseline justify-between mb-4">
-                <h2 className="font-display text-2xl font-bold tracking-[-0.02em]">
-                  {row.title}
-                </h2>
-                <Link
-                  href={`/marketplace/${row.slug}`}
-                  className="text-[13px] font-semibold text-pink-700 hover:text-pink-600"
-                >
-                  See all →
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                {row.templates.map((t) => (
-                  <ProductCard key={t.slug} {...templateToCardProps(t)} />
-                ))}
-              </div>
-            </section>
+            <CategorySection key={row.slug} row={row} />
           ))}
+
+          {/* Quick to launch curated row */}
+          <FeaturedCollection
+            variant="quick-launch"
+            headline={
+              <>
+                Ship a product in{' '}
+                <span className="font-serif italic font-medium text-pink-500">
+                  under 10 days.
+                </span>
+              </>
+            }
+            templates={quickLaunch}
+            seeAllHref="/marketplace?sort=lead-time"
+            className="mt-2"
+          />
+
+          {/* Newsletter signup */}
+          <NewsletterCta />
         </main>
       </div>
     </>
+  )
+}
+
+/* ============ subcomponents ============ */
+
+function CategorySection({
+  row,
+}: {
+  row: (typeof CATEGORY_ROWS)[number]
+}) {
+  const avgLead = Math.round(
+    row.templates.reduce((sum, t) => sum + t.leadTimeDays, 0) / row.templates.length,
+  )
+
+  return (
+    <section className="mb-12">
+      <div className="flex items-baseline justify-between mb-4">
+        <div>
+          <h2 className="font-display text-2xl font-bold tracking-[-0.02em] mb-1">
+            {row.title}
+          </h2>
+          <div className="text-[12px] text-ink-500 tabular-nums">
+            {row.templates.length} templates · avg lead {avgLead}d
+          </div>
+        </div>
+        <Link
+          href={`/marketplace/${row.slug}`}
+          className="text-[13px] font-semibold text-pink-700 hover:text-pink-600 whitespace-nowrap"
+        >
+          See all →
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+        {row.templates.map((t: SampleTemplate) => (
+          <ProductCard key={t.slug} {...templateToCardProps(t)} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function NewsletterCta() {
+  return (
+    <section
+      data-surface="dark"
+      className="bg-ink-900 text-white rounded-2xl px-7 py-10 sm:px-10 sm:py-12 my-6 relative overflow-hidden"
+    >
+      <div
+        className="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-30 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle, var(--color-pink-500) 0%, transparent 60%)',
+        }}
+      />
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-center">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-2">
+            Drop · weekly
+          </div>
+          <h2 className="font-display text-2xl sm:text-3xl font-extrabold leading-[1.1] tracking-[-0.025em] mb-2 max-w-[26ch] [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
+            New templates, every <em>Tuesday</em>.
+          </h2>
+          <p className="text-ink-300 text-[14px] max-w-[44ch] leading-[1.55]">
+            A short email when fresh templates land — bestsellers, new niches,
+            limited-edition packaging drops.
+          </p>
+        </div>
+        <form className="flex items-center gap-2" action="/api/newsletter">
+          <input
+            type="email"
+            required
+            placeholder="you@yourbrand.co"
+            className="h-11 px-4 w-full sm:w-72 rounded-pill bg-white/10 border border-white/20 text-white text-[14px] placeholder:text-white/40 focus:outline-none focus:border-neon-500 focus:bg-white/15 transition-colors"
+            aria-label="Email address"
+          />
+          <button
+            type="submit"
+            className="h-11 px-5 rounded-pill bg-neon-500 text-ink-900 text-[14px] font-bold hover:bg-neon-400 transition-colors whitespace-nowrap"
+          >
+            Subscribe
+          </button>
+        </form>
+      </div>
+    </section>
   )
 }
