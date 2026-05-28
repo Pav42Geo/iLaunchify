@@ -61,13 +61,24 @@ export function getCustomType(
   return ct ?? null
 }
 
-/** True for any image-shaped object (uploads, logos, generated QR/barcodes). */
+/**
+ * True for plain image-shaped objects (uploads, brand logos). Codes
+ * (qr-code / barcode / internal-sku) are intentionally EXCLUDED — they get
+ * their own CodeToolbar that can also regenerate the encoded data.
+ *
+ * Use this together with [[isCodeCustomType]] in the shell to route
+ * selections to exactly one toolbar.
+ */
 export function isImageLikeCustomType(ct: CanvasCustomType | null): boolean {
-  return (
-    ct === 'image' ||
-    ct === 'brand-logo' ||
-    ct === 'qr-code' ||
-    ct === 'barcode' ||
-    ct === 'internal-sku'
-  )
+  return ct === 'image' || ct === 'brand-logo'
+}
+
+/**
+ * True for generated code images (QR / 1D barcode / internal-SKU). These
+ * are still fabric.Image objects under the hood but carry a typed
+ * customData payload that lets CodeToolbar re-encode in place via
+ * regenerateCodeImage (see packages/ui canvas/codes.ts).
+ */
+export function isCodeCustomType(ct: CanvasCustomType | null): boolean {
+  return ct === 'qr-code' || ct === 'barcode' || ct === 'internal-sku'
 }

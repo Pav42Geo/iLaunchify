@@ -13,6 +13,16 @@ import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
 import type { CanvasCustomType } from './objects'
 
+/**
+ * customData payload stamped on each generated code so the CodeToolbar can
+ * re-encode in place. Round-trips through save/load via
+ * CANVAS_PROPERTIES_TO_INCLUDE (DS-53a/54).
+ */
+export type CodeCustomData =
+  | { kind: 'qr'; text: string; dark: string; light: string }
+  | { kind: 'barcode'; text: string; format: BarcodeFormat }
+  | { kind: 'internal-sku'; sku: string }
+
 /** Supported 1D barcode formats. Names match jsbarcode internals. */
 export type BarcodeFormat =
   | 'CODE128'
@@ -112,7 +122,10 @@ export async function addInternalSkuBarcode(
     lineColor: opts.lineColor,
   })
   if (!dataUrl) return null
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'internal-sku')
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'internal-sku', {
+    kind: 'internal-sku',
+    sku,
+  })
 }
 
 /** Generate + drop a QR code on the canvas at viewport center. */
@@ -122,11 +135,15 @@ export async function addQrCode(
   opts: { dark?: string; light?: string; maxFraction?: number } = {},
 ): Promise<FabricObject | null> {
   if (!text.trim()) return null
-  const dataUrl = await generateQrCodeDataUrl(text, {
-    dark: opts.dark,
-    light: opts.light,
+  const dark = opts.dark ?? '#000000'
+  const light = opts.light ?? '#FFFFFF'
+  const dataUrl = await generateQrCodeDataUrl(text, { dark, light })
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.25, 'qr-code', {
+    kind: 'qr',
+    text,
+    dark,
+    light,
   })
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.25, 'qr-code')
 }
 
 /**
@@ -175,7 +192,54 @@ export async function addBarcode(
     lineColor: opts.lineColor,
   })
   if (!dataUrl) return null
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'barcode')
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'barcode', {
+    kind: 'barcode',
+    text,
+    format,
+  })
+}
+
+/**
+ * Re-encode the code in place (DS-54). Used by the CodeToolbar when the
+ * creator edits the data / format / colors of an already-dropped QR /
+ * Barcode / Internal-SKU. Preserves position, scale, rotation, opacity —
+ * only the image source bitmap changes.
+ *
+ * Returns true on success, false if the new data is invalid (e.g. letters
+ * in a UPC).
+ */
+export async function regenerateCodeImage(
+  canvas: FabricCanvas,
+  image: FabricObject,
+  data: CodeCustomData,
+): Promise<boolean> {
+  let dataUrl: string | null = null
+  if (data.kind === 'qr') {
+    if (!data.text.trim()) return false
+    dataUrl = await generateQrCodeDataUrl(data.text, {
+      dark: data.dark,
+      light: data.light,
+    })
+  } else if (data.kind === 'barcode') {
+    if (!data.text.trim()) return false
+    dataUrl = generateBarcodeDataUrl(data.text, data.format)
+  } else if (data.kind === 'internal-sku') {
+    if (!data.sku.trim()) return false
+    dataUrl = generateInternalSkuBarcodeDataUrl(data.sku)
+  }
+  if (!dataUrl) return false
+
+  const img = image as unknown as {
+    setSrc: (
+      url: string,
+      opts?: { crossOrigin?: string },
+    ) => Promise<unknown> | void
+  }
+  await img.setSrc(dataUrl, { crossOrigin: 'anonymous' })
+  image.set('customData', data)
+  canvas.fire('object:modified', { target: image })
+  canvas.requestRenderAll()
+  return true
 }
 
 async function dropDataUrl(
@@ -183,6 +247,7 @@ async function dropDataUrl(
   dataUrl: string,
   maxFraction: number,
   customType?: CanvasCustomType,
+  customData?: CodeCustomData,
 ): Promise<FabricObject | null> {
   try {
     const img = await fabric.FabricImage.fromURL(dataUrl, {
@@ -210,6 +275,9 @@ async function dropDataUrl(
     })
     if (customType) {
       img.set('customType', customType)
+    }
+    if (customData) {
+      img.set('customData', customData)
     }
     canvas.add(img)
     canvas.setActiveObject(img)

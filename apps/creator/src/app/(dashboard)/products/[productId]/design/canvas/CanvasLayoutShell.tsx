@@ -37,6 +37,7 @@ import {
   isTextObject,
   getCustomType,
   isImageLikeCustomType,
+  isCodeCustomType,
 } from './useSelectedObject'
 import { useAutoSave, type SaveStatus } from './useAutoSave'
 import {
@@ -48,6 +49,7 @@ import { usePanMode } from './usePanMode'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
+import { CodeToolbar } from './CodeToolbar'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -145,6 +147,7 @@ export function CanvasLayoutShell({
   const selectedCustomType = getCustomType(selected)
   const showTextToolbar = isTextObject(selected)
   const showNutritionToolbar = selectedCustomType === 'nutrition-panel'
+  const showCodeToolbar = isCodeCustomType(selectedCustomType)
   const showImageToolbar = isImageLikeCustomType(selectedCustomType)
   const autosave = useAutoSave(canvas, productId)
   const { panMode, togglePan } = usePanMode(canvas)
@@ -235,6 +238,9 @@ export function CanvasLayoutShell({
               active={selected}
               brandAssets={brandAssets}
             />
+          )}
+          {showCodeToolbar && selected && (
+            <CodeToolbar canvas={canvas} active={selected} />
           )}
           {showImageToolbar && selected && (
             <ImageToolbar canvas={canvas} active={selected} />

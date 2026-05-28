@@ -84,8 +84,10 @@ export {
   addQrCode,
   addBarcode,
   addInternalSkuBarcode,
+  regenerateCodeImage,
   BARCODE_FORMATS,
   type BarcodeFormat,
+  type CodeCustomData,
 } from './canvas/codes'
 export {
   addNutritionFactsPanel,

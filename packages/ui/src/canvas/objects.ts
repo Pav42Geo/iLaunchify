@@ -25,7 +25,7 @@ export type CanvasCustomType =
   | 'nutrition-panel'
 
 /** Properties to round-trip through canvas.toJSON. */
-export const CANVAS_PROPERTIES_TO_INCLUDE = ['customType'] as const
+export const CANVAS_PROPERTIES_TO_INCLUDE = ['customType', 'customData'] as const
 
 /** Add an editable text object at the canvas viewport center + select it. */
 export function addText(
