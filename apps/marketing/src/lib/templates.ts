@@ -28,6 +28,9 @@ export interface MarketplaceFilters {
   moqMax?: number
   /** Niche slug (mapped to category for now). */
   niche?: string
+  /** Tag labels (Diet/Cert) — template must carry ALL tags listed.
+   *  V1: applied at sample-data level. DB path needs certifications join. */
+  tags?: string[]
 }
 
 /** Sort keys supported by the marketplace controls bar. */
@@ -88,6 +91,25 @@ export async function getMarketplaceTemplates(
     // generated, etc.) fall back so dev keeps working.
     console.warn('[marketplace] DB query failed, using sample data:', (err as Error).message)
     return fallbackToSample(args)
+  }
+}
+
+/**
+ * Total published templates across the catalog — unfiltered. Used as the
+ * denominator in the "Showing X of Y templates" display so the user sees
+ * how much of the catalog the active filters narrowed down to.
+ */
+export async function getCatalogCount(): Promise<number> {
+  try {
+    const count = await prisma.productTemplate.count({
+      where: { status: 'PUBLISHED' },
+    })
+    if (count === 0) {
+      return CATEGORY_ROWS.reduce((sum, r) => sum + r.templates.length, 0)
+    }
+    return count
+  } catch {
+    return CATEGORY_ROWS.reduce((sum, r) => sum + r.templates.length, 0)
   }
 }
 
@@ -222,6 +244,13 @@ function fallbackToSample(args: GetTemplatesArgs): GetTemplatesResult {
   }
   if (args.niche) {
     filtered = filtered.filter((t) => t.niche === args.niche)
+  }
+  if (args.tags?.length) {
+    const wanted = args.tags.map((s) => s.toLowerCase())
+    filtered = filtered.filter((t) => {
+      const labels = (t.tags ?? []).map((tag) => tag.label.toLowerCase())
+      return wanted.every((w) => labels.includes(w))
+    })
   }
 
   // Apply sort in JS for the sample-data path.

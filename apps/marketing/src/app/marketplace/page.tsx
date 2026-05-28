@@ -1,14 +1,16 @@
 import Link from 'next/link'
-import { ProductCard, HeroBanner, Button, Chip } from '@ilaunchify/ui'
+import { ProductCard, HeroBanner, Button } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
+import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import {
   getMarketplaceTemplates,
   getTrendingTemplates,
   getQuickLaunchTemplates,
+  getCatalogCount,
   type MarketplaceSortKey,
 } from '@/lib/templates'
 
@@ -44,11 +46,26 @@ function parseSort(v: string | undefined): MarketplaceSortKey {
 export default async function MarketplacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string; sort?: string }>
+  searchParams: Promise<{
+    as?: string
+    sort?: string
+    diet?: string
+    moq?: string
+    q?: string
+  }>
 }) {
-  const { as, sort: sortParam } = await searchParams
+  const sp = await searchParams
+  const { as, sort: sortParam, diet, moq, q } = sp
   const isAuthenticated = as === 'user'
   const sort = parseSort(sortParam)
+  const tags = diet
+    ? diet
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined
+  const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
+  const hasActiveFilters = Boolean(tags?.length || moqMax !== undefined || q)
   const demoUser = isAuthenticated
     ? {
         name: 'Alex Chen',
@@ -69,13 +86,15 @@ export default async function MarketplacePage({
   // empty (fresh dev install), each call gracefully falls back to the
   // sample dataset so the page still renders.
   const [
-    { totalCount, fromSample },
+    { templates, totalCount, fromSample },
     trending,
     quickLaunch,
+    catalogTotal,
   ] = await Promise.all([
-    getMarketplaceTemplates({ sort, take: 60 }),
+    getMarketplaceTemplates({ sort, tags, moqMax, q, take: 60 }),
     getTrendingTemplates(4),
     getQuickLaunchTemplates(4),
+    getCatalogCount(),
   ])
 
   return (
@@ -136,61 +155,54 @@ export default async function MarketplacePage({
           {/* Controls + active filters */}
           <MarketplaceControlsBar
             resultCount={totalCount}
-            totalCount={totalCount}
+            totalCount={catalogTotal}
           />
 
-          <div className="flex items-center gap-2 flex-wrap mb-8">
-            <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-ink-500 mr-1">
-              Filters:
-            </span>
-            <Chip active removable>
-              Vegan
-            </Chip>
-            <Chip active removable>
-              Powder
-            </Chip>
-            <button className="text-[13px] font-semibold text-pink-700 hover:text-pink-600 ml-1">
-              Clear all
-            </button>
-          </div>
+          <ActiveFilterChips />
 
-          {/* Featured — Trending this week */}
-          {trending.length > 0 && (
-            <FeaturedCollection
-              variant="trending"
-              headline={
-                <>
-                  What everyone&apos;s{' '}
-                  <span className="font-serif italic font-medium text-pink-500">
-                    launching
-                  </span>{' '}
-                  this week.
-                </>
-              }
-              templates={trending}
-            />
+          {hasActiveFilters || sort !== 'popular' ? (
+            <ResultsGrid templates={templates} resultCount={totalCount} />
+          ) : (
+            <>
+              {/* Featured — Trending this week */}
+              {trending.length > 0 && (
+                <FeaturedCollection
+                  variant="trending"
+                  headline={
+                    <>
+                      What everyone&apos;s{' '}
+                      <span className="font-serif italic font-medium text-pink-500">
+                        launching
+                      </span>{' '}
+                      this week.
+                    </>
+                  }
+                  templates={trending}
+                />
+              )}
+
+              {/* Category rows */}
+              {CATEGORY_ROWS.map((row) => (
+                <CategorySection key={row.slug} row={row} />
+              ))}
+
+              {/* Quick to launch curated row */}
+              <FeaturedCollection
+                variant="quick-launch"
+                headline={
+                  <>
+                    Ship a product in{' '}
+                    <span className="font-serif italic font-medium text-pink-500">
+                      under 10 days.
+                    </span>
+                  </>
+                }
+                templates={quickLaunch}
+                seeAllHref="/marketplace?sort=lead-time"
+                className="mt-2"
+              />
+            </>
           )}
-
-          {/* Category rows */}
-          {CATEGORY_ROWS.map((row) => (
-            <CategorySection key={row.slug} row={row} />
-          ))}
-
-          {/* Quick to launch curated row */}
-          <FeaturedCollection
-            variant="quick-launch"
-            headline={
-              <>
-                Ship a product in{' '}
-                <span className="font-serif italic font-medium text-pink-500">
-                  under 10 days.
-                </span>
-              </>
-            }
-            templates={quickLaunch}
-            seeAllHref="/marketplace?sort=lead-time"
-            className="mt-2"
-          />
 
           {/* Newsletter signup */}
           <NewsletterCta />
@@ -201,6 +213,38 @@ export default async function MarketplacePage({
 }
 
 /* ============ subcomponents ============ */
+
+function ResultsGrid({
+  templates,
+  resultCount,
+}: {
+  templates: SampleTemplate[]
+  resultCount: number
+}) {
+  if (resultCount === 0) {
+    return (
+      <section className="mb-12 border border-dashed border-ink-200 rounded-2xl p-10 text-center">
+        <div className="font-display text-2xl font-bold tracking-[-0.02em] mb-2">
+          No templates match these filters.
+        </div>
+        <p className="text-[14px] text-ink-500 mb-4 max-w-[42ch] mx-auto">
+          Try removing a filter from the sidebar, or clear all to browse the
+          full catalog.
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+        {templates.map((t) => (
+          <ProductCard key={t.slug} {...templateToCardProps(t)} />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 function CategorySection({
   row,
