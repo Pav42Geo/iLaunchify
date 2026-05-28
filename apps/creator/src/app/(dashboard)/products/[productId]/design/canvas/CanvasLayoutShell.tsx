@@ -31,6 +31,8 @@ import {
   DEFAULT_GUIDES,
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
+import { useSelectedObject, isTextObject } from './useSelectedObject'
+import { TextFormatToolbar } from './TextFormatToolbar'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -113,6 +115,8 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
   const pxPerMm = basePxPerMm * zoom
 
   const history = useCanvasHistory(canvas)
+  const selected = useSelectedObject(canvas)
+  const showTextToolbar = isTextObject(selected)
 
   function toggleTool(key: ToolKey) {
     setActiveTool((prev) => (prev === key ? null : key))
@@ -177,6 +181,15 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
               onReady={setCanvas}
             />
           </div>
+
+          {/* Top floating text-format toolbar (only when a text is selected) */}
+          {showTextToolbar && selected && (
+            <TextFormatToolbar
+              canvas={canvas}
+              active={selected}
+              brandAssets={brandAssets}
+            />
+          )}
 
           {/* Bottom floating controls */}
           <BottomToolbar
