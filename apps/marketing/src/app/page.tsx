@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
+import { LandingFooter } from '@/components/LandingFooter'
 import { NICHES } from '@/lib/niches'
 
 /**
@@ -292,47 +293,7 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* ============ FOOTER ============ */}
-      <footer
-        data-surface="dark"
-        className="bg-ink-900 text-white px-6 sm:px-8 py-16 sm:py-20"
-      >
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-wrap items-center gap-3 mb-12">
-            <span className="w-7 h-7 rounded-md bg-pink-500" />
-            <span className="font-display text-2xl font-extrabold tracking-[-0.04em]">
-              iLaunchify
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
-            <FooterCol title="Platform">
-              <FooterLink href="/marketplace">Marketplace</FooterLink>
-              <FooterLink href="/how-it-works">How it works</FooterLink>
-              <FooterLink href="/pricing">Pricing</FooterLink>
-            </FooterCol>
-            <FooterCol title="Partners">
-              <FooterLink href="/business">For partners</FooterLink>
-              <FooterLink href="/contact-sales">Talk to sales</FooterLink>
-            </FooterCol>
-            <FooterCol title="Niches">
-              {NICHES.slice(0, 4).map((n) => (
-                <FooterLink key={n.slug} href={`/launch/${n.slug}`}>
-                  {n.shortName}
-                </FooterLink>
-              ))}
-            </FooterCol>
-            <FooterCol title="Company">
-              <FooterLink href="/terms">Terms</FooterLink>
-              <FooterLink href="/privacy">Privacy</FooterLink>
-            </FooterCol>
-          </div>
-
-          <div className="pt-8 border-t border-white/[0.08] text-[13px] text-white/50">
-            © 2026 iLaunchify · Built on the locked design system
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </>
   )
 }
@@ -493,35 +454,3 @@ function NicheCard({
   )
 }
 
-function FooterCol({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-4">
-        {title}
-      </div>
-      <ul className="space-y-2.5 text-[14px] text-white/80">{children}</ul>
-    </div>
-  )
-}
-
-function FooterLink({
-  href,
-  children,
-}: {
-  href: string
-  children: React.ReactNode
-}) {
-  return (
-    <li>
-      <Link href={href} className="hover:text-white transition-colors">
-        {children}
-      </Link>
-    </li>
-  )
-}

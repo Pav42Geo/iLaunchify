@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Crown, CheckCircle2 } from 'lucide-react'
 import { LandingHeader } from '@/components/LandingHeader'
+import { LandingFooter } from '@/components/LandingFooter'
 import { ContactSalesForm } from '@/components/ContactSalesForm'
 import { creatorUrl } from '@/lib/app-urls'
 
@@ -136,21 +137,7 @@ export default async function ContactSalesPage({
         </div>
       </div>
 
-      <footer className="max-w-[1200px] mx-auto px-6 py-10 flex flex-wrap items-center justify-between gap-4 text-[13px] text-ink-500">
-        <Link href="/" className="flex items-center gap-[7px]">
-          <span className="w-[22px] h-[22px] rounded-md bg-pink-500" />
-          <span className="font-display text-[15px] font-extrabold tracking-[-0.04em] text-ink-900">
-            iLaunchify
-          </span>
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link href="/marketplace" className="hover:text-ink-900">Marketplace</Link>
-          <Link href="/how-it-works" className="hover:text-ink-900">How it works</Link>
-          <Link href="/pricing" className="hover:text-ink-900">Pricing</Link>
-          <Link href="/business" className="hover:text-ink-900">For partners</Link>
-          <span>© 2026 iLaunchify</span>
-        </div>
-      </footer>
+      <LandingFooter />
     </>
   )
 }
