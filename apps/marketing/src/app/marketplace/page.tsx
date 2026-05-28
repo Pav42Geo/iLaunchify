@@ -5,6 +5,11 @@ import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
+import {
+  getMarketplaceTemplates,
+  getTrendingTemplates,
+  getQuickLaunchTemplates,
+} from '@/lib/templates'
 
 /**
  * /marketplace — the creator marketplace.
@@ -44,19 +49,18 @@ export default async function MarketplacePage({
       ]
     : []
 
-  // Flatten all templates for cross-category curated rows.
-  const allTemplates = CATEGORY_ROWS.flatMap((r) => r.templates)
-  const totalCount = allTemplates.length
-
-  // Trending = highest-status templates (bestseller / top-rated / popular).
-  const trending = allTemplates
-    .filter((t) => ['bestseller', 'top-rated', 'popular'].includes(t.status ?? ''))
-    .slice(0, 4)
-
-  // Quick to launch = lowest lead time.
-  const quickLaunch = [...allTemplates]
-    .sort((a, b) => a.leadTimeDays - b.leadTimeDays)
-    .slice(0, 4)
+  // Pull data through the new Prisma-backed data layer. When the DB is
+  // empty (fresh dev install), each call gracefully falls back to the
+  // sample dataset so the page still renders.
+  const [
+    { totalCount, fromSample },
+    trending,
+    quickLaunch,
+  ] = await Promise.all([
+    getMarketplaceTemplates({ take: 60 }),
+    getTrendingTemplates(4),
+    getQuickLaunchTemplates(4),
+  ])
 
   return (
     <>
@@ -93,6 +97,25 @@ export default async function MarketplacePage({
               <Link href="/how-it-works">See how it works →</Link>
             </Button>
           </HeroBanner>
+
+          {/* Dev-only banner when no DB rows exist yet */}
+          {fromSample && process.env.NODE_ENV !== 'production' && (
+            <div className="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-[12.5px] text-pink-900 flex items-start gap-2.5">
+              <span className="text-pink-700 font-bold mt-0.5">·</span>
+              <div>
+                <strong className="font-bold">Showing sample templates</strong>
+                <span className="text-pink-900/70">
+                  {' '}
+                  · the Prisma data layer is wired but the
+                  ProductTemplate table is empty. Run{' '}
+                  <code className="font-mono bg-white px-1 py-0.5 rounded text-pink-700">
+                    pnpm --filter @ilaunchify/db seed
+                  </code>{' '}
+                  to load real rows.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Controls + active filters */}
           <MarketplaceControlsBar

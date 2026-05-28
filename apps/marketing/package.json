@@ -11,6 +11,7 @@
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
+    "@ilaunchify/db": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",
     "clsx": "^2.1.1",
