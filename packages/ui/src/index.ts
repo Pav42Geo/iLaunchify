@@ -81,4 +81,12 @@ export {
   BARCODE_FORMATS,
   type BarcodeFormat,
 } from './canvas/codes'
+export {
+  addNutritionFactsPanel,
+  SAMPLE_NUTRITION_DATA,
+  type NutritionPanelStyle,
+  type NutritionPanelData,
+  type NutritionRow,
+  type NutritionPanelOpts,
+} from './canvas/nutritionPanel'
 

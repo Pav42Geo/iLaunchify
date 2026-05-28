@@ -41,6 +41,7 @@ import { ImagesDrawer } from './drawers/ImagesDrawer'
 import { BackgroundDrawer } from './drawers/BackgroundDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
+import { LabelDrawer } from './drawers/LabelDrawer'
 import {
   Inbox,
   Tag,
@@ -100,7 +101,7 @@ type ToolKey =
 
 const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolean }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
-  { key: 'label', label: 'Label', icon: Tag, v1: false },
+  { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   { key: 'images', label: 'Images', icon: ImageIcon, v1: true },
   { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: false },
@@ -407,6 +408,7 @@ function ToolDrawer({
         {tool === 'product' && (
           <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
         )}
+        {tool === 'label' && <LabelDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'images' && <ImagesDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'background' && (
@@ -416,6 +418,7 @@ function ToolDrawer({
         {tool === 'barcode' && <BarcodeDrawer canvas={canvas} />}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool !== 'product' &&
+          tool !== 'label' &&
           tool !== 'text' &&
           tool !== 'images' &&
           tool !== 'background' &&
