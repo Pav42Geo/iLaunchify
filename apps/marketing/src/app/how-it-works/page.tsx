@@ -311,6 +311,7 @@ export default async function HowItWorksPage({
           <Link href="/marketplace" className="hover:text-ink-900">Marketplace</Link>
           <Link href="/how-it-works" className="hover:text-ink-900">How it works</Link>
           <Link href="/pricing" className="hover:text-ink-900">Pricing</Link>
+          <Link href="/contact-sales" className="hover:text-ink-900">Talk to sales</Link>
           <Link href="/business" className="hover:text-ink-900">For partners</Link>
           <span>© 2026 iLaunchify</span>
         </div>
