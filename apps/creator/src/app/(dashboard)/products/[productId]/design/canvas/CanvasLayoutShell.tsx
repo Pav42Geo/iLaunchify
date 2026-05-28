@@ -34,6 +34,12 @@ import {
 import { useCanvasHistory } from './useCanvasHistory'
 import { useSelectedObject, isTextObject } from './useSelectedObject'
 import { useAutoSave, type SaveStatus } from './useAutoSave'
+import {
+  useCanvasShortcuts,
+  rotateActive,
+  resetRotation,
+} from './useCanvasShortcuts'
+import { usePanMode } from './usePanMode'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -131,6 +137,8 @@ export function CanvasLayoutShell({
   const selected = useSelectedObject(canvas)
   const showTextToolbar = isTextObject(selected)
   const autosave = useAutoSave(canvas, productId)
+  const { panMode, togglePan } = usePanMode(canvas)
+  useCanvasShortcuts(canvas)
 
   function toggleTool(key: ToolKey) {
     setActiveTool((prev) => (prev === key ? null : key))
@@ -217,6 +225,12 @@ export function CanvasLayoutShell({
             canRedo={history.canRedo}
             onUndo={history.undo}
             onRedo={history.redo}
+            canRotate={selected !== null}
+            onRotateLeft={() => canvas && rotateActive(canvas, -15)}
+            onRotateRight={() => canvas && rotateActive(canvas, 15)}
+            onResetRotation={() => canvas && resetRotation(canvas)}
+            panMode={panMode}
+            onTogglePan={togglePan}
           />
         </div>
       </div>
@@ -594,6 +608,12 @@ function BottomToolbar({
   canRedo,
   onUndo,
   onRedo,
+  canRotate,
+  onRotateLeft,
+  onRotateRight,
+  onResetRotation,
+  panMode,
+  onTogglePan,
 }: {
   zoom: number
   setZoom: (z: number) => void
@@ -601,6 +621,12 @@ function BottomToolbar({
   canRedo: boolean
   onUndo: () => void
   onRedo: () => void
+  canRotate: boolean
+  onRotateLeft: () => void
+  onRotateRight: () => void
+  onResetRotation: () => void
+  panMode: boolean
+  onTogglePan: () => void
 }) {
   const display = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom])
   return (
@@ -625,15 +651,28 @@ function BottomToolbar({
           <Maximize className="h-4 w-4" />
         </IconButton>
         <div className="mx-1 h-5 w-px bg-ink-200" />
-        <IconButton ariaLabel="Rotate left">
+        <IconButton
+          ariaLabel="Rotate left 15°"
+          onClick={onRotateLeft}
+          disabled={!canRotate}
+        >
           <RotateCcw className="h-4 w-4" />
         </IconButton>
-        <IconButton ariaLabel="Rotate right">
+        <IconButton
+          ariaLabel="Rotate right 15°"
+          onClick={onRotateRight}
+          disabled={!canRotate}
+        >
           <RotateCw className="h-4 w-4" />
         </IconButton>
-        <IconButton ariaLabel="Pan mode">
-          <Hand className="h-4 w-4" />
+        <IconButton
+          ariaLabel="Reset rotation"
+          onClick={onResetRotation}
+          disabled={!canRotate}
+        >
+          <span className="text-[10px] font-bold">0°</span>
         </IconButton>
+        <PanToggleButton active={panMode} onClick={onTogglePan} />
         <div className="mx-1 h-5 w-px bg-ink-200" />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
@@ -649,6 +688,32 @@ function BottomToolbar({
 // ============================================================================
 // Shared
 // ============================================================================
+
+function PanToggleButton({
+  active,
+  onClick,
+}: {
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={active ? 'Exit pan mode' : 'Pan mode'}
+      title={active ? 'Click to exit pan mode' : 'Drag the canvas to pan'}
+      className={
+        'rounded p-1.5 transition-colors ' +
+        (active
+          ? 'bg-ink-900 text-white hover:bg-black'
+          : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900')
+      }
+    >
+      <Hand className="h-4 w-4" />
+    </button>
+  )
+}
 
 function SaveStatusIndicator({
   status,

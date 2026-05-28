@@ -72,6 +72,8 @@ export {
   addTextCombo,
   addImageFromUrl,
   setCanvasBackground,
+  selectAllObjects,
+  objectsFromSelection,
 } from './canvas/objects'
 export {
   generateQrCodeDataUrl,

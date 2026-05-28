@@ -134,6 +134,21 @@ export function setCanvasBackground(canvas: FabricCanvas, color: string): void {
   canvas.requestRenderAll()
 }
 
+/** Wrap every object on the canvas in an ActiveSelection so they move/scale together. */
+export function selectAllObjects(canvas: FabricCanvas): void {
+  const objects = canvas.getObjects()
+  if (objects.length === 0) return
+  const sel = new fabric.ActiveSelection(objects, { canvas })
+  canvas.setActiveObject(sel)
+  canvas.requestRenderAll()
+}
+
+/** Get the underlying objects of an ActiveSelection (or [obj] for a single selection). */
+export function objectsFromSelection(obj: FabricObject): FabricObject[] {
+  const sel = obj as unknown as { _objects?: FabricObject[] }
+  return sel._objects ?? [obj]
+}
+
 /**
  * Compute the center of the canvas in its current coordinate space.
  * Respects the active viewport zoom + pan transform so newly-added objects
