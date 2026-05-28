@@ -39,6 +39,8 @@ import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
 import { BackgroundDrawer } from './drawers/BackgroundDrawer'
+import { QrCodeDrawer } from './drawers/QrCodeDrawer'
+import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import {
   Inbox,
   Tag,
@@ -105,8 +107,8 @@ const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolea
   { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
   { key: 'background', label: 'Background', icon: ImageDown, v1: true },
   { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: false },
-  { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: false },
-  { key: 'barcode', label: 'Barcode', icon: Barcode, v1: false },
+  { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
+  { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
 ]
 
@@ -410,11 +412,15 @@ function ToolDrawer({
         {tool === 'background' && (
           <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
         )}
+        {tool === 'qrcode' && <QrCodeDrawer canvas={canvas} />}
+        {tool === 'barcode' && <BarcodeDrawer canvas={canvas} />}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool !== 'product' &&
           tool !== 'text' &&
           tool !== 'images' &&
           tool !== 'background' &&
+          tool !== 'qrcode' &&
+          tool !== 'barcode' &&
           tool !== 'layers' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>

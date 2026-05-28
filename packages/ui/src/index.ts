@@ -73,4 +73,12 @@ export {
   addImageFromUrl,
   setCanvasBackground,
 } from './canvas/objects'
+export {
+  generateQrCodeDataUrl,
+  generateBarcodeDataUrl,
+  addQrCode,
+  addBarcode,
+  BARCODE_FORMATS,
+  type BarcodeFormat,
+} from './canvas/codes'
 
