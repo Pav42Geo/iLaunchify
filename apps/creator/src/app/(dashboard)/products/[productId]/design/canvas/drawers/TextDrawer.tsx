@@ -57,7 +57,7 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
     <div className="space-y-6">
       {/* New Text Field */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Add custom text
         </div>
         <div className="flex gap-1.5">
@@ -72,27 +72,27 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
               }
             }}
             placeholder="Type your text…"
-            className="flex-1 h-9 px-3 text-sm border border-zinc-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15 transition-colors"
+            className="flex-1 h-9 px-3 text-sm border border-ink-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15 transition-colors"
             disabled={!canvas}
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={!canvas || !value.trim()}
-            className="h-9 px-3 inline-flex items-center gap-1 text-sm font-semibold bg-zinc-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-zinc-900 transition-colors"
+            className="h-9 px-3 inline-flex items-center gap-1 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             Add
           </button>
         </div>
-        <p className="mt-1.5 text-[11px] text-zinc-500">
+        <p className="mt-1.5 text-[11px] text-ink-500">
           Lands at canvas center · double-click to edit
         </p>
       </section>
 
       {/* Font Combinations */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Font Combinations
           {brandAssets.fonts.length > 0 && (
             <span className="ml-2 inline-block text-pink-700 normal-case font-normal tracking-normal">
@@ -107,16 +107,16 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
               type="button"
               onClick={() => handleAddCombo(combo)}
               disabled={!canvas}
-              className="text-left rounded-md border border-zinc-200 hover:border-pink-300 hover:shadow-sm bg-white p-3 transition-all disabled:opacity-50"
+              className="text-left rounded-md border border-ink-200 hover:border-pink-300 hover:shadow-sm bg-white p-3 transition-all disabled:opacity-50"
             >
               <div
-                className="font-bold text-[15px] text-zinc-900 leading-tight"
+                className="font-bold text-[15px] text-ink-900 leading-tight"
                 style={{ fontFamily: brandHeadingFont }}
               >
                 {combo.heading}
               </div>
               <div
-                className="text-[11px] text-zinc-500 mt-0.5"
+                className="text-[11px] text-ink-500 mt-0.5"
                 style={{ fontFamily: brandBodyFont }}
               >
                 {combo.sub}
@@ -128,7 +128,7 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
 
       {/* Ready-to-Use chip library */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Ready-to-Use
         </div>
         <div className="flex gap-1 overflow-x-auto pb-2 mb-2.5 -mx-4 px-4">
@@ -142,8 +142,8 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
                 className={
                   'h-7 px-2.5 text-[11px] font-semibold rounded-full whitespace-nowrap transition-colors ' +
                   (isActive
-                    ? 'bg-zinc-900 text-white'
-                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200')
+                    ? 'bg-ink-900 text-white'
+                    : 'bg-ink-100 text-ink-700 hover:bg-ink-200')
                 }
               >
                 {CHIP_LIBRARY[key].label}
@@ -159,13 +159,13 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
               type="button"
               onClick={() => handleAddChip(item)}
               disabled={!canvas}
-              className="text-[12px] px-2.5 py-1.5 rounded-md border border-zinc-200 bg-white text-zinc-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 transition-colors disabled:opacity-50 disabled:hover:border-zinc-200 disabled:hover:bg-white disabled:hover:text-zinc-700"
+              className="text-[12px] px-2.5 py-1.5 rounded-md border border-ink-200 bg-white text-ink-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 transition-colors disabled:opacity-50 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-700"
             >
               {item}
             </button>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-zinc-500">
+        <p className="mt-3 text-[11px] text-ink-500">
           Click any chip to drop it on the canvas. Edit in place by
           double-clicking the text.
         </p>

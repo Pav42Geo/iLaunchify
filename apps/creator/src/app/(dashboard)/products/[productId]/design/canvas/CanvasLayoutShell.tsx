@@ -32,6 +32,7 @@ import {
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
 import { TextDrawer } from './drawers/TextDrawer'
+import { LayersDrawer } from './drawers/LayersDrawer'
 import {
   Inbox,
   Tag,
@@ -61,7 +62,7 @@ import {
 const Stage = dynamic(() => import('@ilaunchify/ui').then((m) => ({ default: m.Stage })), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-sm text-zinc-500">
+    <div className="flex h-full w-full items-center justify-center bg-ink-100 text-sm text-ink-500">
       Loading canvas…
     </div>
   ),
@@ -98,7 +99,7 @@ const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolea
   { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: false },
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: false },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: false },
-  { key: 'layers', label: 'Layers', icon: Layers, v1: false },
+  { key: 'layers', label: 'Layers', icon: Layers, v1: true },
 ]
 
 export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets }: Props) {
@@ -134,7 +135,7 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
   }, [history])
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-zinc-50">
+    <div className="fixed inset-0 flex flex-col bg-ink-50">
       {/* Top bar */}
       <TopBar
         productName={productName}
@@ -165,7 +166,7 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
         )}
 
         {/* Canvas viewport */}
-        <div className="relative flex-1 overflow-auto bg-zinc-100">
+        <div className="relative flex-1 overflow-auto bg-ink-100">
           <div className="flex min-h-full items-center justify-center p-12">
             <CanvasStageWithFrame
               dieCut={dieCut}
@@ -212,23 +213,25 @@ function TopBar({
   onRedo: () => void
 }) {
   return (
-    <header className="flex h-[73px] items-center justify-between border-b border-zinc-200 bg-white px-4">
+    <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
       <div className="flex items-center gap-4">
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-emerald-600 text-sm font-bold text-white">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">
             iL
           </div>
-          <span className="text-lg font-bold tracking-tight">iLaunchify</span>
+          <span className="font-display text-[18px] font-extrabold tracking-[-0.03em] text-ink-900">
+            iLaunchify
+          </span>
         </Link>
-        <div className="ml-2 border-l border-zinc-200 pl-4">
-          <div className="text-xs text-zinc-500">{brandName}</div>
-          <div className="text-sm font-medium text-zinc-900">{productName}</div>
+        <div className="ml-2 border-l border-ink-200 pl-4">
+          <div className="text-xs text-ink-500">{brandName}</div>
+          <div className="text-sm font-medium text-ink-900">{productName}</div>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="mr-2 flex items-center gap-1 text-xs text-zinc-500">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="mr-2 flex items-center gap-1 text-xs text-ink-500">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-pink-500" />
           Saved
         </span>
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
@@ -237,24 +240,24 @@ function TopBar({
         <IconButton ariaLabel="Redo (⇧⌘Z)" onClick={onRedo} disabled={!canRedo}>
           <Redo2 className="h-4 w-4" />
         </IconButton>
-        <div className="mx-1 h-6 w-px bg-zinc-200" />
+        <div className="mx-1 h-6 w-px bg-ink-200" />
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-700 hover:bg-ink-50"
         >
           <ShieldCheck className="h-3.5 w-3.5" />
           Compliance
         </button>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-700 hover:bg-ink-50"
         >
           <Eye className="h-3.5 w-3.5" />
           Mockup
         </button>
         <Link
           href={`/products/${productId}`}
-          className="ml-1 inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+          className="ml-1 inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-100"
         >
           Exit Studio
         </Link>
@@ -276,7 +279,7 @@ function LeftRail({
 }) {
   return (
     <nav
-      className="flex w-20 flex-col gap-0.5 border-r border-zinc-200 bg-white py-2"
+      className="flex w-20 flex-col gap-0.5 border-r border-ink-200 bg-white py-2"
       role="toolbar"
       aria-label="Design tools"
     >
@@ -289,8 +292,8 @@ function LeftRail({
             onClick={() => onToggle(key)}
             className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
               isActive
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                ? 'bg-pink-50 text-pink-700'
+                : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
             }`}
             aria-pressed={isActive}
           >
@@ -298,7 +301,7 @@ function LeftRail({
             <span className="text-center leading-tight">{label}</span>
             {!v1 && (
               <span
-                className="rounded bg-zinc-100 px-1 text-[8px] font-semibold uppercase tracking-wider text-zinc-500"
+                className="rounded bg-ink-100 px-1 text-[8px] font-semibold uppercase tracking-wider text-ink-500"
                 title="Coming next"
               >
                 soon
@@ -349,14 +352,14 @@ function ToolDrawer({
   }
 
   return (
-    <aside className="flex w-[400px] flex-col border-r border-zinc-200 bg-white">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-        <h2 className="text-base font-semibold text-zinc-900">{titles[tool]}</h2>
+    <aside className="flex w-[400px] flex-col border-r border-ink-200 bg-white">
+      <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
+        <h2 className="text-base font-semibold text-ink-900">{titles[tool]}</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close drawer"
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-100"
+          className="rounded p-1 text-ink-500 hover:bg-ink-100"
         >
           <X className="h-4 w-4" />
         </button>
@@ -366,7 +369,10 @@ function ToolDrawer({
           <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
         )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
-        {tool !== 'product' && tool !== 'text' && <ComingSoonStub label={titles[tool]} />}
+        {tool === 'layers' && <LayersDrawer canvas={canvas} />}
+        {tool !== 'product' && tool !== 'text' && tool !== 'layers' && (
+          <ComingSoonStub label={titles[tool]} />
+        )}
       </div>
     </aside>
   )
@@ -386,11 +392,11 @@ function ProductDrawer({
   return (
     <div className="space-y-5">
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
           Product details
         </div>
-        <h3 className="mt-1 text-sm font-semibold text-zinc-900">{dieCut.name}</h3>
-        <p className="mt-1 text-xs text-zinc-500">
+        <h3 className="mt-1 text-sm font-semibold text-ink-900">{dieCut.name}</h3>
+        <p className="mt-1 text-xs text-ink-500">
           {dieCut.widthMm.toFixed(1)} × {dieCut.heightMm.toFixed(1)} mm · {dieCut.category.replace('_', ' ')}
           <br />
           Bleed {dieCut.bleedMm}mm · Safe area {dieCut.safeAreaMm}mm
@@ -398,7 +404,7 @@ function ProductDrawer({
       </section>
 
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
           Die-cut guides
         </div>
         <div className="space-y-1.5">
@@ -428,11 +434,11 @@ function ProductDrawer({
         </div>
       </section>
 
-      <section className="rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+      <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-700">
           Brand assets loaded
         </div>
-        <p className="mt-1 text-xs text-emerald-900">
+        <p className="mt-1 text-xs text-ink-700">
           {brandAssets.fonts.length} font{brandAssets.fonts.length === 1 ? '' : 's'} ·{' '}
           {[brandAssets.colorPrimary, brandAssets.colorSecondary, brandAssets.colorAccent].filter(Boolean).length +
             brandAssets.extraSwatches.length}{' '}
@@ -440,9 +446,9 @@ function ProductDrawer({
           {brandAssets.extraSwatches.length === 0 ? '' : 'es'} ·{' '}
           {brandAssets.logos.length} logo variant{brandAssets.logos.length === 1 ? '' : 's'}
         </p>
-        <p className="mt-1 text-[10px] text-emerald-800">
-          These will pin to the top of the Text, color picker, and Images drawers once those
-          tools wire up in Phase D.
+        <p className="mt-1 text-[10px] text-ink-600">
+          These pin to the top of the Text drawer&apos;s font row when the Text
+          tool is open. Images + color pickers wire up next.
         </p>
       </section>
     </div>
@@ -459,12 +465,12 @@ function GuideToggle({
   onChange: (v: boolean) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded accent-emerald-500"
+        className="h-4 w-4 rounded accent-pink-500"
       />
       {label}
     </label>
@@ -473,13 +479,13 @@ function GuideToggle({
 
 function ComingSoonStub({ label }: { label: string }) {
   return (
-    <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
-      <Sparkles className="mx-auto h-6 w-6 text-emerald-500" />
-      <h3 className="mt-3 text-sm font-semibold text-zinc-900">{label} — coming next</h3>
-      <p className="mx-auto mt-2 max-w-xs text-xs text-zinc-500">
+    <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-8 text-center">
+      <Sparkles className="mx-auto h-6 w-6 text-pink-500" />
+      <h3 className="mt-3 text-sm font-semibold text-ink-900">{label} — coming next</h3>
+      <p className="mx-auto mt-2 max-w-xs text-xs text-ink-500">
         Phase C ships the canvas foundation. Each tool drawer (Text, Label, Images, Layers,
         QR&nbsp;/&nbsp;Barcode, etc.) wires up in Phase D — see
-        <code className="mx-1 rounded bg-zinc-200 px-1 py-0.5 text-[10px]">docs/DESIGN_STUDIO_REBUILD.md §5</code>
+        <code className="mx-1 rounded bg-ink-200 px-1 py-0.5 text-[10px]">docs/DESIGN_STUDIO_REBUILD.md §5</code>
         for the order.
       </p>
     </div>
@@ -544,7 +550,7 @@ function BottomToolbar({
   const display = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom])
   return (
     <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1.5 shadow-md">
+      <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-1.5 shadow-md">
         <IconButton
           ariaLabel="Zoom out"
           onClick={() => setZoom(Math.max(0.3, +(zoom - 0.1).toFixed(2)))}
@@ -552,7 +558,7 @@ function BottomToolbar({
         >
           <ZoomOut className="h-4 w-4" />
         </IconButton>
-        <span className="min-w-[44px] text-center text-xs font-mono text-zinc-600">{display}</span>
+        <span className="min-w-[44px] text-center text-xs font-mono text-ink-600">{display}</span>
         <IconButton
           ariaLabel="Zoom in"
           onClick={() => setZoom(Math.min(3, +(zoom + 0.1).toFixed(2)))}
@@ -563,7 +569,7 @@ function BottomToolbar({
         <IconButton ariaLabel="Fit to screen" onClick={() => setZoom(1)}>
           <Maximize className="h-4 w-4" />
         </IconButton>
-        <div className="mx-1 h-5 w-px bg-zinc-200" />
+        <div className="mx-1 h-5 w-px bg-ink-200" />
         <IconButton ariaLabel="Rotate left">
           <RotateCcw className="h-4 w-4" />
         </IconButton>
@@ -573,7 +579,7 @@ function BottomToolbar({
         <IconButton ariaLabel="Pan mode">
           <Hand className="h-4 w-4" />
         </IconButton>
-        <div className="mx-1 h-5 w-px bg-zinc-200" />
+        <div className="mx-1 h-5 w-px bg-ink-200" />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>
@@ -606,7 +612,7 @@ function IconButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className="rounded p-1.5 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
+      className="rounded p-1.5 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40 disabled:hover:bg-transparent"
     >
       {children}
     </button>
