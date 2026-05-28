@@ -72,7 +72,7 @@ export default async function HomePage({
             <Link href="/marketplace">Browse the marketplace →</Link>
           </Button>
           <Button variant="ghost" size="lg" asChild>
-            <Link href="/business">For partners →</Link>
+            <Link href="/how-it-works">See how it works →</Link>
           </Button>
         </div>
       </section>
@@ -180,6 +180,9 @@ export default async function HomePage({
         <div className="flex items-center gap-6 text-[13px] text-ink-500">
           <Link href="/marketplace" className="hover:text-ink-900">
             Marketplace
+          </Link>
+          <Link href="/how-it-works" className="hover:text-ink-900">
+            How it works
           </Link>
           <Link href="/pricing" className="hover:text-ink-900">
             Pricing

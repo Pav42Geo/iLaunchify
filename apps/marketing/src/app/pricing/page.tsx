@@ -213,6 +213,9 @@ export default async function PricingPage({
           <Link href="/marketplace" className="hover:text-ink-900">
             Marketplace
           </Link>
+          <Link href="/how-it-works" className="hover:text-ink-900">
+            How it works
+          </Link>
           <Link href="/pricing" className="hover:text-ink-900">
             Pricing
           </Link>
