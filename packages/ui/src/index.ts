@@ -78,8 +78,10 @@ export {
 export {
   generateQrCodeDataUrl,
   generateBarcodeDataUrl,
+  generateInternalSkuBarcodeDataUrl,
   addQrCode,
   addBarcode,
+  addInternalSkuBarcode,
   BARCODE_FORMATS,
   type BarcodeFormat,
 } from './canvas/codes'

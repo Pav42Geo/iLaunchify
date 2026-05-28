@@ -96,6 +96,24 @@ export function generateBarcodeDataUrl(
 
 /* ============ canvas drop helpers ============ */
 
+/**
+ * Generate + drop an internal-SKU Code 128 with INTERNAL caption.
+ * Wider default maxFraction since the barcode + caption is taller.
+ */
+export async function addInternalSkuBarcode(
+  canvas: FabricCanvas,
+  sku: string,
+  opts: { background?: string; lineColor?: string; maxFraction?: number } = {},
+): Promise<FabricObject | null> {
+  if (!sku.trim()) return null
+  const dataUrl = generateInternalSkuBarcodeDataUrl(sku, {
+    background: opts.background,
+    lineColor: opts.lineColor,
+  })
+  if (!dataUrl) return null
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5)
+}
+
 /** Generate + drop a QR code on the canvas at viewport center. */
 export async function addQrCode(
   canvas: FabricCanvas,
@@ -108,6 +126,39 @@ export async function addQrCode(
     light: opts.light,
   })
   return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.25)
+}
+
+/**
+ * Generate a CODE128 barcode of an internal SKU with an "INTERNAL" caption
+ * baked into the rendered image. For pre-launch / sample runs where a real
+ * GS1 UPC isn't in hand yet — scans for warehouse routing but doesn't
+ * impersonate a retail UPC.
+ */
+export function generateInternalSkuBarcodeDataUrl(
+  sku: string,
+  opts: { background?: string; lineColor?: string } = {},
+): string | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const canvas = document.createElement('canvas')
+    JsBarcode(canvas, sku, {
+      format: 'CODE128',
+      width: 2,
+      height: 80,
+      displayValue: true,
+      background: opts.background ?? '#FFFFFF',
+      lineColor: opts.lineColor ?? '#000000',
+      margin: 6,
+      fontOptions: 'bold',
+      font: 'monospace',
+      fontSize: 16,
+      text: `INTERNAL · ${sku}`,
+      textMargin: 2,
+    })
+    return canvas.toDataURL('image/png')
+  } catch {
+    return null
+  }
 }
 
 /** Generate + drop a 1D barcode on the canvas. */
