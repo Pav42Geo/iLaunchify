@@ -192,6 +192,7 @@ export function CanvasLayoutShell({
             setGuides={setGuides}
             brandAssets={brandAssets}
             canvas={canvas}
+            productId={productId}
             onClose={() => setActiveTool(null)}
           />
         )}
@@ -379,6 +380,7 @@ function ToolDrawer({
   setGuides,
   brandAssets,
   canvas,
+  productId,
   onClose,
 }: {
   tool: ToolKey
@@ -387,6 +389,7 @@ function ToolDrawer({
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
   canvas: FabricCanvas | null
+  productId: string
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -424,7 +427,13 @@ function ToolDrawer({
         )}
         {tool === 'label' && <LabelDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
-        {tool === 'images' && <ImagesDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {tool === 'images' && (
+          <ImagesDrawer
+            canvas={canvas}
+            brandAssets={brandAssets}
+            productId={productId}
+          />
+        )}
         {tool === 'background' && (
           <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
         )}

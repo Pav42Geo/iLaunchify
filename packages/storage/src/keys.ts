@@ -74,6 +74,22 @@ export function certificateThumbnailKey(params: {
   return `platform/certificate-types/${params.slug}/${id}-${safe}`
 }
 
+// Creator-uploaded canvas assets (Design Studio image uploads).
+// Path convention:
+//   brands/{brandId}/canvas/{productId}/{cuid}-{filename}
+// Per-product namespacing so we can list a creator's previous uploads for
+// the active product, and per-brand prefix lets us delete-all-by-brand on
+// brand teardown along with the rest of the brand assets.
+export function canvasAssetKey(params: {
+  brandId: string
+  productId: string
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `brands/${params.brandId}/canvas/${params.productId}/${id}-${safe}`
+}
+
 // Partner packaging assets (die-lines + reference photos). Path convention:
 //   partners/{partnerId}/packaging/{packagingSystemId}/{kind}/{cuid}-{filename}
 // Lets us delete-all-by-packaging-system on archival + delete-all-by-partner

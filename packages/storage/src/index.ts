@@ -22,6 +22,7 @@ export { getSignedReadUrl } from './signed-url'
 export {
   partnerFileKey,
   brandAssetKey,
+  canvasAssetKey,
   packagingAssetKey,
   certPdfKey,
   certificateThumbnailKey,
