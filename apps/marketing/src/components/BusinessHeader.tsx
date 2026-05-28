@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
+import { partnerUrl } from '@/lib/app-urls'
 
 /**
  * BusinessHeader — solid dark header for the partner-landing surface.
@@ -7,6 +8,11 @@ import { Button } from '@ilaunchify/ui'
  * Locked rule (DESIGN_SYSTEM.md §1): partner surfaces get a DARK header. The
  * wordmark gets "iLaunchify" (white) + " Business" (neon-500). The CTA is the
  * neon-pill (Business inverse of the creator's black pill).
+ *
+ * "Partner login" and "Apply now" cross-app into apps/partner via
+ * partnerUrl() — they used to point at /business/login + /business/apply
+ * which don't exist (those were stub paths). Now they hit the real
+ * /signup and /login on port 3002 (apps/partner).
  */
 export function BusinessHeader() {
   return (
@@ -36,15 +42,15 @@ export function BusinessHeader() {
 
         <div className="flex-1" />
 
-        <Link
-          href="/business/login"
+        <a
+          href={partnerUrl('/login')}
           className="text-sm font-medium text-ink-300 hover:text-white"
         >
           Partner login
-        </Link>
+        </a>
 
         <Button variant="neon" asChild>
-          <Link href="/business/apply">Apply now</Link>
+          <a href={partnerUrl('/signup')}>Apply now</a>
         </Button>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button, HeroBanner, PartnerTypeCard } from '@ilaunchify/ui'
 import { BusinessHeader } from '@/components/BusinessHeader'
+import { partnerUrl } from '@/lib/app-urls'
 
 /**
  * /business — iLaunchify Business partner landing.
@@ -28,7 +29,7 @@ export default function BusinessLandingPage() {
         deck="Join 312 verified manufacturers, co-packers, label printers, and 3PL partners building with iLaunchify's network of creator brands. Steady orders, structured workflow, fast payment."
       >
         <Button variant="neon" size="lg" asChild>
-          <Link href="/business/apply">Apply to join →</Link>
+          <a href={partnerUrl('/signup')}>Apply to join →</a>
         </Button>
         <Link
           href="#how"
@@ -112,7 +113,7 @@ function PartnerTypes() {
               name={p.name}
               description={p.desc}
               activeCount={p.active}
-              href="/business/apply"
+              href={partnerUrl('/signup')}
             />
           ))}
         </div>
@@ -240,7 +241,7 @@ function FinalCta() {
           activation.
         </p>
         <Button variant="neon" size="lg" asChild>
-          <Link href="/business/apply">Apply to join →</Link>
+          <a href={partnerUrl('/signup')}>Apply to join →</a>
         </Button>
       </div>
     </section>
