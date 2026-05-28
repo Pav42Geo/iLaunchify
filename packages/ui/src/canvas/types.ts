@@ -2,6 +2,18 @@
 // components + the schema layer can use them.
 // Per docs/DESIGN_STUDIO_REBUILD.md §3 canvas inventory.
 
+import type * as Fabric from 'fabric'
+
+/**
+ * The live Fabric.Canvas instance the Stage emits via onReady().
+ *
+ * Re-exported through this package so consuming apps (apps/creator, etc.)
+ * can type their tool drawers (Text / Layers / Images / etc.) against the
+ * canvas without needing a direct `fabric` dependency in their package.json.
+ */
+export type FabricCanvas = Fabric.Canvas
+export type FabricObject = Fabric.FabricObject
+
 /**
  * DieCutSpec — what the Design Studio canvas needs to render the frame.
  * Sourced from DieCutTemplate rows in the database.

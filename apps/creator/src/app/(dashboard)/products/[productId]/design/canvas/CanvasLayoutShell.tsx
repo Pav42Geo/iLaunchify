@@ -18,7 +18,7 @@
 // state — they get wired in Phase D one at a time per
 // docs/DESIGN_STUDIO_REBUILD.md §5 build sequence.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
@@ -26,9 +26,11 @@ import {
   DieCutLegend,
   type BrandCanvasAssets,
   type DieCutSpec,
+  type FabricCanvas,
   type GuideVisibility,
   DEFAULT_GUIDES,
 } from '@ilaunchify/ui'
+import { useCanvasHistory } from './useCanvasHistory'
 import {
   Inbox,
   Tag,
@@ -102,19 +104,46 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
+  const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
   const basePxPerMm = 3.0
   const pxPerMm = basePxPerMm * zoom
 
-  const drawerWidth = activeTool ? 400 : 0
+  const history = useCanvasHistory(canvas)
 
   function toggleTool(key: ToolKey) {
     setActiveTool((prev) => (prev === key ? null : key))
   }
 
+  // Keyboard shortcuts: Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z (or Y) for redo.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod) return
+      const key = e.key.toLowerCase()
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        history.undo()
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault()
+        history.redo()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [history])
+
   return (
     <div className="fixed inset-0 flex flex-col bg-zinc-50">
       {/* Top bar */}
-      <TopBar productName={productName} brandName={brandAssets.brandName} productId={productId} />
+      <TopBar
+        productName={productName}
+        brandName={brandAssets.brandName}
+        productId={productId}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
+      />
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
@@ -129,22 +158,31 @@ export function CanvasLayoutShell({ productId, productName, dieCut, brandAssets 
             guides={guides}
             setGuides={setGuides}
             brandAssets={brandAssets}
+            canvas={canvas}
             onClose={() => setActiveTool(null)}
           />
         )}
 
         {/* Canvas viewport */}
-        <div className="relative flex-1 overflow-auto bg-zinc-100" style={{ marginLeft: 0 }}>
+        <div className="relative flex-1 overflow-auto bg-zinc-100">
           <div className="flex min-h-full items-center justify-center p-12">
             <CanvasStageWithFrame
               dieCut={dieCut}
               pxPerMm={pxPerMm}
               guides={guides}
+              onReady={setCanvas}
             />
           </div>
 
           {/* Bottom floating controls */}
-          <BottomToolbar zoom={zoom} setZoom={setZoom} />
+          <BottomToolbar
+            zoom={zoom}
+            setZoom={setZoom}
+            canUndo={history.canUndo}
+            canRedo={history.canRedo}
+            onUndo={history.undo}
+            onRedo={history.redo}
+          />
         </div>
       </div>
     </div>
@@ -159,10 +197,18 @@ function TopBar({
   productName,
   brandName,
   productId,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: {
   productName: string
   brandName: string
   productId: string
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-zinc-200 bg-white px-4">
@@ -184,10 +230,10 @@ function TopBar({
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
           Saved
         </span>
-        <IconButton ariaLabel="Undo">
+        <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>
-        <IconButton ariaLabel="Redo">
+        <IconButton ariaLabel="Redo (⇧⌘Z)" onClick={onRedo} disabled={!canRedo}>
           <Redo2 className="h-4 w-4" />
         </IconButton>
         <div className="mx-1 h-6 w-px bg-zinc-200" />
@@ -274,6 +320,7 @@ function ToolDrawer({
   guides,
   setGuides,
   brandAssets,
+  canvas,
   onClose,
 }: {
   tool: ToolKey
@@ -281,8 +328,13 @@ function ToolDrawer({
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
+  canvas: FabricCanvas | null
   onClose: () => void
 }) {
+  // canvas is the live Fabric instance — passed down so tool drawers (Text,
+  // Images, Layers, etc.) can add/select objects on the same surface. For
+  // V1 only the Product drawer is built; rest are coming-soon stubs.
+  void canvas
   const titles: Record<ToolKey, string> = {
     product: 'Product',
     label: 'Label',
@@ -442,10 +494,12 @@ function CanvasStageWithFrame({
   dieCut,
   pxPerMm,
   guides,
+  onReady,
 }: {
   dieCut: DieCutSpec
   pxPerMm: number
   guides: GuideVisibility
+  onReady: (canvas: FabricCanvas) => void
 }) {
   const fullWidthMm = dieCut.widthMm + 2 * dieCut.bleedMm
   const fullHeightMm = dieCut.heightMm + 2 * dieCut.bleedMm
@@ -457,7 +511,12 @@ function CanvasStageWithFrame({
       className="relative shadow-2xl"
       style={{ width: pixelWidth, height: pixelHeight }}
     >
-      <Stage dieCut={dieCut} pxPerMm={pxPerMm} surfaceColor="#ffffff" />
+      <Stage
+        dieCut={dieCut}
+        pxPerMm={pxPerMm}
+        surfaceColor="#ffffff"
+        onReady={onReady}
+      />
       <DieCutFrame dieCut={dieCut} pxPerMm={pxPerMm} guides={guides} />
     </div>
   )
@@ -470,9 +529,17 @@ function CanvasStageWithFrame({
 function BottomToolbar({
   zoom,
   setZoom,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: {
   zoom: number
   setZoom: (z: number) => void
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
 }) {
   const display = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom])
   return (
@@ -507,10 +574,10 @@ function BottomToolbar({
           <Hand className="h-4 w-4" />
         </IconButton>
         <div className="mx-1 h-5 w-px bg-zinc-200" />
-        <IconButton ariaLabel="Undo">
+        <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>
-        <IconButton ariaLabel="Redo">
+        <IconButton ariaLabel="Redo (⇧⌘Z)" onClick={onRedo} disabled={!canRedo}>
           <Redo2 className="h-4 w-4" />
         </IconButton>
       </div>

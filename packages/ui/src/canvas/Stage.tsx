@@ -20,7 +20,10 @@ interface StageProps {
   pxPerMm?: number
   /** Background color INSIDE the bleed area (i.e. the printable surface color). */
   surfaceColor?: string
-  /** Called once when the Fabric.Canvas is ready. Parent uses it to add tools / listen / etc. */
+  /** Called once when the Fabric.Canvas is ready. Parent uses it to add
+   *  tools, register handlers, snapshot for history, etc. The canvas
+   *  outlives this prop — it lives until Stage unmounts, at which point
+   *  it's disposed. Consumers should null out their ref on unmount. */
   onReady?: (canvas: fabric.Canvas) => void
   /** Optional initial design state (Fabric JSON). Loaded after canvas instantiation. */
   initialDesignJson?: object | null
