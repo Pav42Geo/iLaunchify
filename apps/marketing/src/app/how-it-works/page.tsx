@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
-import { MarketplaceHeader } from '@/components/MarketplaceHeader'
+import { LandingHeader } from '@/components/LandingHeader'
 
 /**
  * /how-it-works — the trust-building page between home and signup.
@@ -52,7 +52,7 @@ export default async function HowItWorksPage({
 
   return (
     <>
-      <MarketplaceHeader user={demoUser} hasUnreadNotifications={false} />
+      <LandingHeader user={demoUser} hasUnreadNotifications={false} />
 
       {/* HERO */}
       <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">

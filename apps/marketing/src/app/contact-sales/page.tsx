@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Crown, CheckCircle2 } from 'lucide-react'
-import { MarketplaceHeader } from '@/components/MarketplaceHeader'
+import { LandingHeader } from '@/components/LandingHeader'
 import { ContactSalesForm } from '@/components/ContactSalesForm'
 import { creatorUrl } from '@/lib/app-urls'
 
@@ -33,7 +33,7 @@ export default async function ContactSalesPage({
 
   return (
     <>
-      <MarketplaceHeader user={demoUser} hasUnreadNotifications={false} />
+      <LandingHeader user={demoUser} hasUnreadNotifications={false} />
 
       <div className="bg-cream">
         <div className="max-w-[1200px] mx-auto px-6 pt-14 pb-20 sm:pt-16">

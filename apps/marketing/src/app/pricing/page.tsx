@@ -2,7 +2,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { Check, X, ArrowRight } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
-import { MarketplaceHeader } from '@/components/MarketplaceHeader'
+import { LandingHeader } from '@/components/LandingHeader'
 import { PricingCards } from '@/components/PricingCards'
 import { creatorUrl } from '@/lib/app-urls'
 
@@ -39,7 +39,7 @@ export default async function PricingPage({
 
   return (
     <>
-      <MarketplaceHeader user={demoUser} hasUnreadNotifications={false} />
+      <LandingHeader user={demoUser} hasUnreadNotifications={false} />
 
       {/* HERO + TIER CARDS */}
       <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">
