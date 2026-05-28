@@ -84,23 +84,36 @@ export function LandingNavDropdown({ label, href, items }: LandingNavDropdownPro
           onMouseLeave={closeSoon}
         >
           <div className="w-72 bg-white border border-ink-200 rounded-xl shadow-xl py-2 origin-top-left">
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                className="block px-4 py-2.5 hover:bg-ink-50 transition-colors group"
-              >
-                <div className="text-[14px] font-semibold text-ink-900 group-hover:text-pink-700 transition-colors">
-                  {item.label}
-                </div>
-                {item.description && (
-                  <div className="text-[12px] text-ink-500 mt-0.5 leading-snug">
-                    {item.description}
+            {items.map((item) => {
+              // Cross-origin URLs (apps/creator, apps/partner) get a raw
+              // <a> so the browser does a hard nav instead of Next trying
+              // to client-side route across origins.
+              const isExternal =
+                item.href.startsWith('http://') || item.href.startsWith('https://')
+              const linkClass =
+                'block px-4 py-2.5 hover:bg-ink-50 transition-colors group'
+              const inner = (
+                <>
+                  <div className="text-[14px] font-semibold text-ink-900 group-hover:text-pink-700 transition-colors">
+                    {item.label}
                   </div>
-                )}
-              </Link>
-            ))}
+                  {item.description && (
+                    <div className="text-[12px] text-ink-500 mt-0.5 leading-snug">
+                      {item.description}
+                    </div>
+                  )}
+                </>
+              )
+              return isExternal ? (
+                <a key={item.href} href={item.href} role="menuitem" className={linkClass}>
+                  {inner}
+                </a>
+              ) : (
+                <Link key={item.href} href={item.href} role="menuitem" className={linkClass}>
+                  {inner}
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}
