@@ -13,6 +13,7 @@ import {
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * ProductDetailConfigurator — the right-column variant + pricing + CTA stack
@@ -206,16 +207,26 @@ export function ProductDetailConfigurator({
        *     quantity). The studio uses these to pre-fill the canvas + pricing.
        */}
       {(() => {
-        const selectionParams = `template=${template.slug}&flavor=${flavorId}&size=${encodeURIComponent(sizeKey)}&packaging=${packagingId}&quantity=${quantity}`
+        const selection = {
+          template: template.slug,
+          flavor: flavorId,
+          size: sizeKey,
+          packaging: packagingId,
+          quantity,
+        }
+        // Both targets are in apps/creator (different port in dev, same
+        // domain in prod). Use raw <a> for hard cross-app navigation.
+        //   Authenticated → Design Studio with selection pre-loaded
+        //   Guest         → Signup with selection carried into Step 5
         const launchHref = isAuthenticated
-          ? `/creator/design-studio?${selectionParams}`
-          : `/start?${selectionParams}`
+          ? creatorUrl('/design-studio', selection)
+          : creatorUrl('/signup/creator', selection)
         return (
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <Button asChild variant="primary" size="md">
-              <Link href={launchHref}>
+              <a href={launchHref}>
                 {isAuthenticated ? 'Open in Design Studio' : 'Start launching'}
-              </Link>
+              </a>
             </Button>
             <Button asChild variant="secondary" size="md">
               <Link href={`/products/sample?template=${template.slug}`}>

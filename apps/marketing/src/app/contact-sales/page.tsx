@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Crown, CheckCircle2 } from 'lucide-react'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ContactSalesForm } from '@/components/ContactSalesForm'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * /contact-sales — Agency-tier lead capture.

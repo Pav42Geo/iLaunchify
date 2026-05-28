@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Search, Heart, Bell } from 'lucide-react'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * MarketplaceHeader — the white-header Option C Hybrid for creator surfaces.
@@ -72,18 +73,18 @@ export function MarketplaceHeader({
         <div className="flex items-center gap-2 flex-shrink-0">
           {isGuest ? (
             <>
-              <Link
-                href="/login"
+              <a
+                href={creatorUrl('/login')}
                 className="text-sm font-semibold text-ink-700 hover:text-ink-900 px-3 py-2 transition-colors"
               >
                 Sign in
-              </Link>
-              <Link
-                href="/signup/creator"
+              </a>
+              <a
+                href={creatorUrl('/signup/creator')}
                 className="inline-flex items-center gap-[7px] bg-ink-900 text-white font-semibold text-sm px-[22px] py-[11px] rounded-pill transition-all hover:bg-black hover:-translate-y-px"
               >
                 Start launching
-              </Link>
+              </a>
             </>
           ) : (
             <>

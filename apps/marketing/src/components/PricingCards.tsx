@@ -4,6 +4,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { Check, X, Crown, ArrowRight, Sparkles } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
+import { creatorUrl } from '@/lib/app-urls'
 
 /**
  * PricingCards — three-tier card row + monthly/annual toggle for the public
@@ -154,10 +155,13 @@ function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
       ? `$${(tier.annual as number).toLocaleString()} billed annually`
       : null
 
+  // Agency stays on this domain (lead form). Maker/Builder cross over to
+  // apps/creator's signup with plan + billing carryover.
+  const isCrossApp = tier.id !== 'agency'
   const ctaHref =
     tier.id === 'agency'
       ? '/contact-sales?plan=agency'
-      : `/signup/creator?plan=${tier.id}&billing=${billing}`
+      : creatorUrl('/signup/creator', { plan: tier.id, billing })
 
   return (
     <div
@@ -217,10 +221,17 @@ function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
           variant={tier.recommended ? 'primary' : 'secondary'}
           size="md"
         >
-          <Link href={ctaHref}>
-            {tier.cta}
-            <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
-          </Link>
+          {isCrossApp ? (
+            <a href={ctaHref}>
+              {tier.cta}
+              <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
+            </a>
+          ) : (
+            <Link href={ctaHref}>
+              {tier.cta}
+              <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
+            </Link>
+          )}
         </Button>
       </div>
 
