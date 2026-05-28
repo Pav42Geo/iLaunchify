@@ -266,9 +266,9 @@ function gradientForSlug(slug: string): ProductGradient {
     'lime',
     'yellow',
     'cyan',
-    'lavender',
-    'peach',
-    'mocha',
+    'purple',
+    'blush',
+    'sky',
   ]
   const hash = Array.from(slug).reduce((a, c) => a + c.charCodeAt(0), 0)
   return palette[hash % palette.length]!

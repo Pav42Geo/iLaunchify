@@ -2,13 +2,15 @@
 
 import * as React from 'react'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 /**
  * MarketplaceControlsBar — result-count + sort dropdown bar at the top of
  * the marketplace grid. Sits between the hero and the active-filter chips.
  *
- * V1 demo: sort changes update local state only. Real wiring routes
- * through the Prisma query when the marketplace gets DB-backed.
+ * URL-driven (DS-40.B): sort key reads from `?sort=` and writes back via
+ * router.push so the server page can pick it up and pass to Prisma. Keeps
+ * the URL shareable / back-button friendly.
  */
 
 export type SortKey =
@@ -34,15 +36,15 @@ const SORT_OPTIONS: SortKey[] = [
   'newest',
 ]
 
+function isSortKey(v: string | null): v is SortKey {
+  return v !== null && (SORT_OPTIONS as string[]).includes(v)
+}
+
 export interface MarketplaceControlsBarProps {
   /** Total result count after current filters. */
   resultCount: number
   /** Total available templates (denominator for "of 200" display). */
   totalCount: number
-  /** Initial sort key — defaults to "popular". */
-  defaultSort?: SortKey
-  /** Optional callback when sort changes. */
-  onSortChange?: (key: SortKey) => void
   /** Optional callback when "Open filters" is clicked on mobile. */
   onOpenFilters?: () => void
 }
@@ -50,11 +52,14 @@ export interface MarketplaceControlsBarProps {
 export function MarketplaceControlsBar({
   resultCount,
   totalCount,
-  defaultSort = 'popular',
-  onSortChange,
   onOpenFilters,
 }: MarketplaceControlsBarProps) {
-  const [sort, setSort] = React.useState<SortKey>(defaultSort)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const urlSort = searchParams.get('sort')
+  const sort: SortKey = isSortKey(urlSort) ? urlSort : 'popular'
+
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
 
@@ -73,6 +78,19 @@ export function MarketplaceControlsBar({
       document.removeEventListener('keydown', handleEscape)
     }
   }, [open])
+
+  function handleSelect(key: SortKey) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (key === 'popular') {
+      // Default — keep URL clean.
+      params.delete('sort')
+    } else {
+      params.set('sort', key)
+    }
+    const qs = params.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    setOpen(false)
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-5 border-b border-ink-200">
@@ -125,11 +143,7 @@ export function MarketplaceControlsBar({
                   key={key}
                   type="button"
                   role="menuitem"
-                  onClick={() => {
-                    setSort(key)
-                    onSortChange?.(key)
-                    setOpen(false)
-                  }}
+                  onClick={() => handleSelect(key)}
                   className={
                     'w-full text-left px-3.5 py-2 text-[13px] transition-colors ' +
                     (isActive

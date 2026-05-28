@@ -235,6 +235,9 @@ importers:
 
   apps/marketing:
     dependencies:
+      '@ilaunchify/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types

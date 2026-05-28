@@ -9,7 +9,22 @@ import {
   getMarketplaceTemplates,
   getTrendingTemplates,
   getQuickLaunchTemplates,
+  type MarketplaceSortKey,
 } from '@/lib/templates'
+
+const VALID_SORTS: MarketplaceSortKey[] = [
+  'popular',
+  'lead-time',
+  'moq-low',
+  'price-low',
+  'newest',
+]
+
+function parseSort(v: string | undefined): MarketplaceSortKey {
+  return v && (VALID_SORTS as string[]).includes(v)
+    ? (v as MarketplaceSortKey)
+    : 'popular'
+}
 
 /**
  * /marketplace — the creator marketplace.
@@ -29,10 +44,11 @@ import {
 export default async function MarketplacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>
+  searchParams: Promise<{ as?: string; sort?: string }>
 }) {
-  const { as } = await searchParams
+  const { as, sort: sortParam } = await searchParams
   const isAuthenticated = as === 'user'
+  const sort = parseSort(sortParam)
   const demoUser = isAuthenticated
     ? {
         name: 'Alex Chen',
@@ -57,7 +73,7 @@ export default async function MarketplacePage({
     trending,
     quickLaunch,
   ] = await Promise.all([
-    getMarketplaceTemplates({ take: 60 }),
+    getMarketplaceTemplates({ sort, take: 60 }),
     getTrendingTemplates(4),
     getQuickLaunchTemplates(4),
   ])
