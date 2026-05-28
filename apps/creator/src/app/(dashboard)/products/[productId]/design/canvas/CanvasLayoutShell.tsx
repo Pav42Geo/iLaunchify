@@ -33,6 +33,8 @@ import {
 import { useCanvasHistory } from './useCanvasHistory'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
+import { ImagesDrawer } from './drawers/ImagesDrawer'
+import { BackgroundDrawer } from './drawers/BackgroundDrawer'
 import {
   Inbox,
   Tag,
@@ -92,10 +94,10 @@ const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolea
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: false },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
-  { key: 'images', label: 'Images', icon: ImageIcon, v1: false },
+  { key: 'images', label: 'Images', icon: ImageIcon, v1: true },
   { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: false },
   { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
-  { key: 'background', label: 'Background', icon: ImageDown, v1: false },
+  { key: 'background', label: 'Background', icon: ImageDown, v1: true },
   { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: false },
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: false },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: false },
@@ -369,10 +371,16 @@ function ToolDrawer({
           <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
         )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
-        {tool === 'layers' && <LayersDrawer canvas={canvas} />}
-        {tool !== 'product' && tool !== 'text' && tool !== 'layers' && (
-          <ComingSoonStub label={titles[tool]} />
+        {tool === 'images' && <ImagesDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {tool === 'background' && (
+          <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
         )}
+        {tool === 'layers' && <LayersDrawer canvas={canvas} />}
+        {tool !== 'product' &&
+          tool !== 'text' &&
+          tool !== 'images' &&
+          tool !== 'background' &&
+          tool !== 'layers' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )

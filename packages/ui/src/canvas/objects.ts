@@ -82,6 +82,59 @@ export function addTextCombo(
 }
 
 /**
+ * Drop an image at the canvas viewport center.
+ *
+ * Auto-scales the image so its longest edge is at most 60% of the canvas's
+ * shortest edge — keeps newly-added logos from blanketing the whole label
+ * by default. Honors viewport zoom so it lands where the user is looking.
+ *
+ * Uses crossOrigin: 'anonymous' so the image can be exported on toDataURL
+ * later (CORS must be permitted by the asset host).
+ */
+export async function addImageFromUrl(
+  canvas: FabricCanvas,
+  url: string,
+  opts: { maxFraction?: number; centerX?: number; centerY?: number } = {},
+): Promise<FabricObject | null> {
+  const maxFraction = opts.maxFraction ?? 0.6
+  try {
+    const img = await fabric.FabricImage.fromURL(url, { crossOrigin: 'anonymous' })
+    const center = {
+      x: opts.centerX ?? getCanvasCenter(canvas).x,
+      y: opts.centerY ?? getCanvasCenter(canvas).y,
+    }
+    const cw = canvas.getWidth()
+    const ch = canvas.getHeight()
+    const maxEdge = Math.min(cw, ch) * maxFraction
+    const iw = img.width ?? 1
+    const ih = img.height ?? 1
+    const longest = Math.max(iw, ih)
+    const scale = longest > maxEdge ? maxEdge / longest : 1
+    img.set({
+      left: center.x,
+      top: center.y,
+      originX: 'center',
+      originY: 'center',
+      scaleX: scale,
+      scaleY: scale,
+    })
+    canvas.add(img)
+    canvas.setActiveObject(img)
+    canvas.requestRenderAll()
+    return img
+  } catch (err) {
+    console.warn('[canvas/objects] addImageFromUrl failed:', err)
+    return null
+  }
+}
+
+/** Set the canvas background color and re-render. */
+export function setCanvasBackground(canvas: FabricCanvas, color: string): void {
+  canvas.backgroundColor = color
+  canvas.requestRenderAll()
+}
+
+/**
  * Compute the center of the canvas in its current coordinate space.
  * Respects the active viewport zoom + pan transform so newly-added objects
  * always land in the visible area.
