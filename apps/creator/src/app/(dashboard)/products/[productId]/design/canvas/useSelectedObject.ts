@@ -1,7 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import type { FabricCanvas, FabricObject } from '@ilaunchify/ui'
+import type {
+  CanvasCustomType,
+  FabricCanvas,
+  FabricObject,
+} from '@ilaunchify/ui'
 
 /**
  * useSelectedObject — exposes the currently-active fabric object as React
@@ -46,4 +50,24 @@ export function isTextObject(obj: FabricObject | null): boolean {
   if (!obj) return false
   const type = (obj as { type?: string }).type
   return type === 'i-text' || type === 'text' || type === 'textbox'
+}
+
+/** Read the customType tag we stamped on the object at add time (DS-53). */
+export function getCustomType(
+  obj: FabricObject | null,
+): CanvasCustomType | null {
+  if (!obj) return null
+  const ct = (obj as { customType?: CanvasCustomType }).customType
+  return ct ?? null
+}
+
+/** True for any image-shaped object (uploads, logos, generated QR/barcodes). */
+export function isImageLikeCustomType(ct: CanvasCustomType | null): boolean {
+  return (
+    ct === 'image' ||
+    ct === 'brand-logo' ||
+    ct === 'qr-code' ||
+    ct === 'barcode' ||
+    ct === 'internal-sku'
+  )
 }

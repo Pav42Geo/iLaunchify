@@ -32,7 +32,12 @@ import {
   DEFAULT_GUIDES,
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
-import { useSelectedObject, isTextObject } from './useSelectedObject'
+import {
+  useSelectedObject,
+  isTextObject,
+  getCustomType,
+  isImageLikeCustomType,
+} from './useSelectedObject'
 import { useAutoSave, type SaveStatus } from './useAutoSave'
 import {
   useCanvasShortcuts,
@@ -41,6 +46,8 @@ import {
 } from './useCanvasShortcuts'
 import { usePanMode } from './usePanMode'
 import { TextFormatToolbar } from './TextFormatToolbar'
+import { NutritionFactsToolbar } from './NutritionFactsToolbar'
+import { ImageToolbar } from './ImageToolbar'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -135,7 +142,10 @@ export function CanvasLayoutShell({
 
   const history = useCanvasHistory(canvas)
   const selected = useSelectedObject(canvas)
+  const selectedCustomType = getCustomType(selected)
   const showTextToolbar = isTextObject(selected)
+  const showNutritionToolbar = selectedCustomType === 'nutrition-panel'
+  const showImageToolbar = isImageLikeCustomType(selectedCustomType)
   const autosave = useAutoSave(canvas, productId)
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
@@ -209,13 +219,25 @@ export function CanvasLayoutShell({
             />
           </div>
 
-          {/* Top floating text-format toolbar (only when a text is selected) */}
+          {/* Top floating selection-aware toolbars — exactly one renders
+              at a time based on the active object's customType. Drawers
+              add new things; these toolbars edit selected things. */}
           {showTextToolbar && selected && (
             <TextFormatToolbar
               canvas={canvas}
               active={selected}
               brandAssets={brandAssets}
             />
+          )}
+          {showNutritionToolbar && selected && (
+            <NutritionFactsToolbar
+              canvas={canvas}
+              active={selected}
+              brandAssets={brandAssets}
+            />
+          )}
+          {showImageToolbar && selected && (
+            <ImageToolbar canvas={canvas} active={selected} />
           )}
 
           {/* Bottom floating controls */}
