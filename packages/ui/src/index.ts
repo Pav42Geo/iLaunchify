@@ -74,6 +74,8 @@ export {
   setCanvasBackground,
   selectAllObjects,
   objectsFromSelection,
+  CANVAS_PROPERTIES_TO_INCLUDE,
+  type CanvasCustomType,
 } from './canvas/objects'
 export {
   generateQrCodeDataUrl,
@@ -87,9 +89,12 @@ export {
 } from './canvas/codes'
 export {
   addNutritionFactsPanel,
+  readNutritionPanelProps,
+  updateNutritionPanel,
   SAMPLE_NUTRITION_DATA,
   type NutritionPanelStyle,
   type NutritionPanelData,
+  type NutritionPanelProps,
   type NutritionRow,
   type NutritionPanelOpts,
 } from './canvas/nutritionPanel'

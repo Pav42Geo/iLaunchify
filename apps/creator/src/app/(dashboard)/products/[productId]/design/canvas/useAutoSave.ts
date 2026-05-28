@@ -1,7 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import type { FabricCanvas } from '@ilaunchify/ui'
+import {
+  CANVAS_PROPERTIES_TO_INCLUDE,
+  type FabricCanvas,
+} from '@ilaunchify/ui'
 import { saveDesignJson } from './actions'
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -55,7 +58,18 @@ export function useAutoSave(
     setStatus('saving')
     setError(null)
     try {
-      const json = canvasRef.current.toJSON()
+      // Pass our custom properties so customType / customRole round-trip
+      // through save/load (DS-53). Without this, on reload selection-aware
+      // toolbars wouldn't know what object type they were dealing with.
+      // Fabric v6 accepts an extra args array at runtime; the types ship as
+      // () so we cast through here.
+      const toJson = canvasRef.current.toJSON as (
+        propertiesToInclude?: string[],
+      ) => object
+      const json = toJson.call(
+        canvasRef.current,
+        Array.from(CANVAS_PROPERTIES_TO_INCLUDE),
+      )
       const result = await saveDesignJson(productId, json)
       if (result.ok) {
         setLastSavedAt(new Date(result.savedAt))

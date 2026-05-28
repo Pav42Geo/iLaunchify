@@ -11,6 +11,7 @@ import QRCode from 'qrcode'
 import JsBarcode from 'jsbarcode'
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
+import type { CanvasCustomType } from './objects'
 
 /** Supported 1D barcode formats. Names match jsbarcode internals. */
 export type BarcodeFormat =
@@ -111,7 +112,7 @@ export async function addInternalSkuBarcode(
     lineColor: opts.lineColor,
   })
   if (!dataUrl) return null
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5)
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'internal-sku')
 }
 
 /** Generate + drop a QR code on the canvas at viewport center. */
@@ -125,7 +126,7 @@ export async function addQrCode(
     dark: opts.dark,
     light: opts.light,
   })
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.25)
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.25, 'qr-code')
 }
 
 /**
@@ -174,13 +175,14 @@ export async function addBarcode(
     lineColor: opts.lineColor,
   })
   if (!dataUrl) return null
-  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5)
+  return dropDataUrl(canvas, dataUrl, opts.maxFraction ?? 0.5, 'barcode')
 }
 
 async function dropDataUrl(
   canvas: FabricCanvas,
   dataUrl: string,
   maxFraction: number,
+  customType?: CanvasCustomType,
 ): Promise<FabricObject | null> {
   try {
     const img = await fabric.FabricImage.fromURL(dataUrl, {
@@ -206,6 +208,9 @@ async function dropDataUrl(
       scaleX: scale,
       scaleY: scale,
     })
+    if (customType) {
+      img.set('customType', customType)
+    }
     canvas.add(img)
     canvas.setActiveObject(img)
     canvas.requestRenderAll()

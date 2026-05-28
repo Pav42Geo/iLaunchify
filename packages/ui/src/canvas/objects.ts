@@ -8,6 +8,25 @@
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
 
+/**
+ * Custom-type discriminator stamped onto every object we add so the
+ * canvas shell can route the selected object to the right floating
+ * editor toolbar (DS-53). useAutoSave's toJSON propertiesToInclude
+ * preserves these across save/load.
+ */
+export type CanvasCustomType =
+  | 'text'
+  | 'text-combo'
+  | 'image'
+  | 'brand-logo'
+  | 'qr-code'
+  | 'barcode'
+  | 'internal-sku'
+  | 'nutrition-panel'
+
+/** Properties to round-trip through canvas.toJSON. */
+export const CANVAS_PROPERTIES_TO_INCLUDE = ['customType'] as const
+
 /** Add an editable text object at the canvas viewport center + select it. */
 export function addText(
   canvas: FabricCanvas,
@@ -35,6 +54,7 @@ export function addText(
   if (opts.width) {
     obj.set('width', opts.width)
   }
+  obj.set('customType', 'text' satisfies CanvasCustomType)
   canvas.add(obj)
   canvas.setActiveObject(obj)
   canvas.requestRenderAll()
@@ -73,6 +93,8 @@ export function addTextCombo(
     fontWeight: 400,
     fill: opts.fill ?? '#0F1116',
   })
+  headingObj.set('customType', 'text-combo' satisfies CanvasCustomType)
+  subObj.set('customType', 'text-combo' satisfies CanvasCustomType)
   canvas.add(headingObj, subObj)
   // Group selection so they move together when user drags.
   const sel = new fabric.ActiveSelection([headingObj, subObj], { canvas })
@@ -94,7 +116,12 @@ export function addTextCombo(
 export async function addImageFromUrl(
   canvas: FabricCanvas,
   url: string,
-  opts: { maxFraction?: number; centerX?: number; centerY?: number } = {},
+  opts: {
+    maxFraction?: number
+    centerX?: number
+    centerY?: number
+    customType?: CanvasCustomType
+  } = {},
 ): Promise<FabricObject | null> {
   const maxFraction = opts.maxFraction ?? 0.6
   try {
@@ -118,6 +145,7 @@ export async function addImageFromUrl(
       scaleX: scale,
       scaleY: scale,
     })
+    img.set('customType', (opts.customType ?? 'image') satisfies CanvasCustomType)
     canvas.add(img)
     canvas.setActiveObject(img)
     canvas.requestRenderAll()

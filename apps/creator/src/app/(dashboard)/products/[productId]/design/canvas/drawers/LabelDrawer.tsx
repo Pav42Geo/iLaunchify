@@ -33,7 +33,9 @@ type StyleKey = 'standard' | 'tabular'
 export function LabelDrawer({ canvas, brandAssets }: Props) {
   const [style, setStyle] = React.useState<StyleKey>('standard')
   const [ink, setInk] = React.useState('#000000')
-  const [bg, setBg] = React.useState('#FFFFFF')
+  /** null sentinel for transparent. */
+  const [bg, setBg] = React.useState<string | null>('#FFFFFF')
+  const [border, setBorder] = React.useState(true)
   const [width, setWidth] = React.useState(220)
   const [adding, setAdding] = React.useState(false)
 
@@ -57,6 +59,7 @@ export function LabelDrawer({ canvas, brandAssets }: Props) {
         style,
         ink,
         bg,
+        border,
         widthPx: width,
       })
     } finally {
@@ -96,13 +99,112 @@ export function LabelDrawer({ canvas, brandAssets }: Props) {
         brandSwatches={brandSwatches}
       />
 
-      {/* Background color */}
-      <ColorRow
-        label="Background"
-        value={bg}
-        onChange={setBg}
-        brandSwatches={brandSwatches}
-      />
+      {/* Background color (with transparent option) */}
+      <section>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+          Background
+        </div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <button
+            type="button"
+            onClick={() => setBg(null)}
+            aria-pressed={bg === null}
+            className={
+              'h-9 px-3 rounded-md border text-[12px] font-semibold transition-colors relative overflow-hidden ' +
+              (bg === null
+                ? 'border-pink-500 bg-pink-50 text-pink-700 ring-2 ring-pink-500/20'
+                : 'border-ink-300 bg-white text-ink-700 hover:border-ink-500')
+            }
+            style={{
+              backgroundImage:
+                bg === null
+                  ? undefined
+                  : 'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%)',
+              backgroundSize: '12px 12px',
+            }}
+          >
+            <span className="relative bg-white/80 px-1 rounded">Transparent</span>
+          </button>
+          {bg !== null && (
+            <>
+              <label className="relative w-9 h-9 rounded-md border border-ink-300 overflow-hidden cursor-pointer flex-shrink-0">
+                <input
+                  type="color"
+                  value={bg}
+                  onChange={(e) => setBg(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <span className="absolute inset-1 rounded" style={{ backgroundColor: bg }} />
+              </label>
+              <input
+                type="text"
+                value={bg}
+                onChange={(e) => setBg(e.target.value)}
+                className="flex-1 h-9 px-2 text-[12px] font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500"
+              />
+            </>
+          )}
+          {bg === null && (
+            <button
+              type="button"
+              onClick={() => setBg('#FFFFFF')}
+              className="h-9 px-3 text-[12px] font-semibold text-ink-700 hover:text-ink-900 hover:bg-ink-100 rounded-md transition-colors"
+            >
+              Set color →
+            </button>
+          )}
+        </div>
+        {bg !== null && brandSwatches.length > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-pink-700 font-semibold mr-1">
+              Brand
+            </span>
+            {brandSwatches.slice(0, 5).map((hex) => {
+              const active = hex.toUpperCase() === (bg ?? '').toUpperCase()
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => setBg(hex)}
+                  title={hex}
+                  className={
+                    'h-6 w-6 rounded border transition-all ' +
+                    (active
+                      ? 'border-pink-500 ring-2 ring-pink-500/20 scale-105'
+                      : 'border-ink-200 hover:border-ink-400')
+                  }
+                  style={{ backgroundColor: hex }}
+                />
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Border */}
+      <section>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+          Border
+        </div>
+        <label className="flex items-center gap-2.5 text-[13px] cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setBorder((v) => !v)}
+            aria-pressed={border}
+            className={
+              'w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
+              (border ? 'bg-pink-500 border-pink-500' : 'border-ink-300 hover:border-ink-500')
+            }
+          >
+            {border && (
+              <span className="absolute inset-0 flex items-center justify-center text-white text-[11px] font-bold">
+                ✓
+              </span>
+            )}
+          </button>
+          <span className="text-ink-700">Draw outer border (1px in ink color)</span>
+        </label>
+      </section>
 
       {/* Width slider */}
       <section>

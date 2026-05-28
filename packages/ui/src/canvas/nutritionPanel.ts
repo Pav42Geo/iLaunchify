@@ -14,6 +14,7 @@
 
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
+import type { CanvasCustomType } from './objects'
 
 export type NutritionPanelStyle = 'standard' | 'tabular'
 
@@ -44,7 +45,10 @@ export interface NutritionRow {
 export interface NutritionPanelOpts {
   style?: NutritionPanelStyle
   ink?: string
-  bg?: string
+  /** null or 'transparent' → no fill; the bg rect renders with stroke only if border is on. */
+  bg?: string | null
+  /** Whether to render the outer border (the bg rect's stroke). Default true. */
+  border?: boolean
   /** Width in canvas units. NFR is naturally narrow (~160-220px on label). */
   widthPx?: number
   centerX?: number
@@ -82,7 +86,8 @@ export async function addNutritionFactsPanel(
   opts: NutritionPanelOpts = {},
 ): Promise<FabricObject> {
   const ink = opts.ink ?? '#000000'
-  const bg = opts.bg ?? '#FFFFFF'
+  const bg = opts.bg === undefined ? '#FFFFFF' : opts.bg // null = transparent
+  const border = opts.border ?? true
   const width = opts.widthPx ?? 220
 
   // Build children. Coordinates are local to the group; positioning happens
@@ -229,15 +234,28 @@ export async function addNutritionFactsPanel(
   y += estimateLines(data.footnote, width - 2 * pad, 7) * 9 + pad
 
   // ===== Background rect =====
+  // bg: null → fully transparent. We still draw the rect so the group has
+  // a click target + bounds, but with no fill and optional stroke.
   const bgRect = new fabric.Rect({
     left: 0,
     top: 0,
     width,
     height: y,
-    fill: bg,
-    stroke: ink,
-    strokeWidth: 1,
+    fill: bg ?? undefined,
+    stroke: border ? ink : undefined,
+    strokeWidth: border ? 1 : 0,
   })
+  bgRect.set('customRole', 'nfr-bg')
+
+  // Tag every text child so updateNutritionPanel() can recolor on demand.
+  for (const c of children) {
+    if ((c as { type?: string }).type === 'textbox' || (c as { type?: string }).type === 'text' || (c as { type?: string }).type === 'i-text') {
+      c.set('customRole', 'nfr-text')
+    } else if ((c as { type?: string }).type === 'rect') {
+      // Inline rules (hairlines, thick separators) — recolor with ink.
+      c.set('customRole', 'nfr-rule')
+    }
+  }
 
   // ===== Compose group =====
   const group = new fabric.Group([bgRect, ...children], {
@@ -245,6 +263,7 @@ export async function addNutritionFactsPanel(
     originY: 'center',
     subTargetCheck: false,
   })
+  group.set('customType', 'nutrition-panel' satisfies CanvasCustomType)
 
   // Position at viewport center.
   const vpt = canvas.viewportTransform
@@ -316,4 +335,61 @@ function rule(x1: number, y: number, x2: number, thickness: number, color: strin
 function estimateLines(s: string, widthPx: number, fontSizePx: number): number {
   const charsPerLine = Math.max(20, Math.floor(widthPx / (fontSizePx * 0.5)))
   return Math.ceil(s.length / charsPerLine)
+}
+
+/* ============ Live-edit helpers ============ */
+
+/**
+ * Read the current display props off an existing nutrition-panel group,
+ * by inspecting the tagged children. Used by NutritionFactsToolbar to
+ * hydrate its initial state when a panel is selected.
+ */
+export interface NutritionPanelProps {
+  bg: string | null
+  ink: string
+  border: boolean
+}
+
+export function readNutritionPanelProps(group: FabricObject): NutritionPanelProps {
+  const objs = (group as unknown as { _objects?: FabricObject[] })._objects ?? []
+  const bgRect = objs.find((o) => (o as { customRole?: string }).customRole === 'nfr-bg')
+  const inkSource = objs.find(
+    (o) => (o as { customRole?: string }).customRole === 'nfr-text',
+  )
+  const fill = (bgRect as { fill?: string } | undefined)?.fill ?? null
+  const strokeWidth = (bgRect as { strokeWidth?: number } | undefined)?.strokeWidth ?? 0
+  return {
+    bg: fill || null,
+    ink: ((inkSource as { fill?: string } | undefined)?.fill as string) ?? '#000000',
+    border: strokeWidth > 0,
+  }
+}
+
+/**
+ * Recolor the panel in place. bg: null → transparent, string → fill.
+ * border: false → strokeWidth 0. ink propagates to all tagged text and rule
+ * children, and to the bg rect's stroke when border is on.
+ */
+export function updateNutritionPanel(
+  canvas: FabricCanvas,
+  group: FabricObject,
+  patch: Partial<NutritionPanelProps>,
+): void {
+  const current = readNutritionPanelProps(group)
+  const next: NutritionPanelProps = { ...current, ...patch }
+  const objs = (group as unknown as { _objects?: FabricObject[] })._objects ?? []
+  for (const o of objs) {
+    const role = (o as { customRole?: string }).customRole
+    if (role === 'nfr-bg') {
+      o.set('fill', next.bg ?? undefined)
+      o.set('stroke', next.border ? next.ink : undefined)
+      o.set('strokeWidth', next.border ? 1 : 0)
+    } else if (role === 'nfr-text' || role === 'nfr-rule') {
+      o.set('fill', next.ink)
+    }
+  }
+  // Force the cached group bitmap to refresh.
+  ;(group as unknown as { dirty?: boolean }).dirty = true
+  canvas.fire('object:modified', { target: group })
+  canvas.requestRenderAll()
 }

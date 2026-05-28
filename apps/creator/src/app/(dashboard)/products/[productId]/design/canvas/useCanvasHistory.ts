@@ -1,7 +1,17 @@
 'use client'
 
 import * as React from 'react'
-import type { FabricCanvas } from '@ilaunchify/ui'
+import {
+  CANVAS_PROPERTIES_TO_INCLUDE,
+  type FabricCanvas,
+} from '@ilaunchify/ui'
+
+// Fabric v6 toJSON accepts an array of extra props at runtime; the types
+// ship as () so we cast through a helper.
+function toJsonWithProps(canvas: FabricCanvas): object {
+  const fn = canvas.toJSON as (propertiesToInclude?: string[]) => object
+  return fn.call(canvas, Array.from(CANVAS_PROPERTIES_TO_INCLUDE))
+}
 
 /**
  * useCanvasHistory — simple undo / redo stack for a Fabric.Canvas.
@@ -26,13 +36,13 @@ export function useCanvasHistory(canvas: FabricCanvas | null, opts?: { max?: num
     if (!canvas) return
 
     // Snapshot the initial empty state so the first undo doesn't break.
-    pastRef.current = [canvas.toJSON()]
+    pastRef.current = [toJsonWithProps(canvas)]
     futureRef.current = []
     force()
 
     const snapshot = () => {
       if (suppressRef.current) return
-      const json = canvas.toJSON()
+      const json = toJsonWithProps(canvas)
       pastRef.current = [...pastRef.current.slice(-max + 1), json]
       futureRef.current = []
       force()
