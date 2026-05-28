@@ -114,7 +114,7 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
         />
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-zinc-600">
+      <label className="flex items-start gap-2 text-sm text-ink-600">
         <input
           type="checkbox"
           checked={agreedToTerms}
