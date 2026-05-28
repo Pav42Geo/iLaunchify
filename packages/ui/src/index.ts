@@ -91,4 +91,11 @@ export {
   type NutritionRow,
   type NutritionPanelOpts,
 } from './canvas/nutritionPanel'
+export {
+  validateGtin,
+  prettyPrintGtin,
+  GTIN_FORMAT_LABEL,
+  type GtinFormat,
+  type GtinValidation,
+} from './canvas/gtin'
 

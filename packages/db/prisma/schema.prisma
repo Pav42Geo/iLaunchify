@@ -124,6 +124,24 @@ enum ProductStatus {
   ARCHIVED
 }
 
+// How a creator's UPC/EAN got onto the product. V1 only writes USER_PROVIDED;
+// PLATFORM_ASSIGNED reserves space for a future managed-UPC service, and
+// GS1_VALIDATED reserves space for an integration against GS1's GEPIR lookup.
+enum GtinSource {
+  USER_PROVIDED       // creator pasted their own (default)
+  GS1_VALIDATED       // future: confirmed against gs1.org via API
+  PLATFORM_ASSIGNED   // future: iLaunchify-managed UPC service (V2+)
+}
+
+// How the product's packaging displays a barcode. V1 ships NONE / RETAIL_UPC /
+// INTERNAL_SKU; INTERNAL_SKU prints a Code 128 of the SKU for warehouse
+// routing without claiming to be a real UPC (per Pavel's pre-launch case).
+enum BarcodeMode {
+  NONE                // no barcode rendered
+  RETAIL_UPC          // render gtin as the chosen format on packaging
+  INTERNAL_SKU        // render internalSku as Code 128 with "INTERNAL" caption
+}
+
 enum RecipeStatus {
   DRAFT
   CALCULATED
@@ -790,6 +808,18 @@ model Product {
   // Inventory-vs-storefront publishing — creators can do either or both
   publishedToStorefront Boolean @default(false)
   inventoryOrderQty Int?                                    // if creator pre-bought their own stock
+
+  // ---- Retail identity (GTIN / UPC) ----
+  // Optional GTIN — UPC-A (12), EAN-13 (13), EAN-8 (8), or ITF-14 (14).
+  // Required only when the creator intends to sell on Amazon / Walmart /
+  // Target etc. Empty for DTC-only launches. See [[ilaunchify-gtin-model]].
+  gtin            String?         @unique
+  gtinSource      GtinSource      @default(USER_PROVIDED)
+  // Free-form internal SKU — printed as Code 128 when barcodeMode = INTERNAL_SKU,
+  // so creators can ship pre-launch samples / beta batches before their GS1
+  // registration completes. Distinct from gtin: SKUs are not retail-safe.
+  internalSku     String?
+  barcodeMode     BarcodeMode     @default(NONE)
   // Relations
   brand           Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
   market          Market            @relation(fields: [marketId], references: [id])
