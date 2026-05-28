@@ -31,6 +31,7 @@ import {
   DEFAULT_GUIDES,
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
+import { TextDrawer } from './drawers/TextDrawer'
 import {
   Inbox,
   Tag,
@@ -89,7 +90,7 @@ type ToolKey =
 const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolean }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: false },
-  { key: 'text', label: 'Text', icon: TypeIcon, v1: false },
+  { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   { key: 'images', label: 'Images', icon: ImageIcon, v1: false },
   { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: false },
   { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
@@ -331,10 +332,8 @@ function ToolDrawer({
   canvas: FabricCanvas | null
   onClose: () => void
 }) {
-  // canvas is the live Fabric instance — passed down so tool drawers (Text,
-  // Images, Layers, etc.) can add/select objects on the same surface. For
-  // V1 only the Product drawer is built; rest are coming-soon stubs.
-  void canvas
+  // canvas is the live Fabric instance — drawers that need it (Text /
+  // Images / Layers / etc.) receive it through this prop.
   const titles: Record<ToolKey, string> = {
     product: 'Product',
     label: 'Label',
@@ -366,7 +365,8 @@ function ToolDrawer({
         {tool === 'product' && (
           <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
         )}
-        {tool !== 'product' && <ComingSoonStub label={titles[tool]} />}
+        {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {tool !== 'product' && tool !== 'text' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )

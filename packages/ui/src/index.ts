@@ -67,4 +67,5 @@ export * from './nutrition/NutritionFactsRenderer'
 export * from './canvas/types'
 export { Stage } from './canvas/Stage'
 export { DieCutFrame, DieCutLegend } from './canvas/DieCutFrame'
+export { addText, addTextCombo } from './canvas/objects'
 
