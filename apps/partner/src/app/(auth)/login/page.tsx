@@ -23,14 +23,12 @@ export default async function LoginPage({
       <header className="px-6 py-5">
         <a
           href={marketingUrl('/business')}
-          className="flex items-center gap-[7px] w-fit"
+          className="flex items-center gap-[9px] w-fit"
         >
           <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-          <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-ink-900">
+          <span className="font-display text-[22px] font-extrabold tracking-[-0.04em] text-ink-900">
             iLaunchify
-          </span>
-          <span className="ml-1 text-[10px] font-bold uppercase tracking-[0.1em] text-pink-700 border border-pink-200 rounded-pill px-2 py-0.5">
-            Partners
+            <span className="text-pink-700 font-bold ml-0.5"> Business</span>
           </span>
         </a>
       </header>

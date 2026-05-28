@@ -43,14 +43,12 @@ export default async function SignupPage({
         <div className="relative">
           <a
             href={marketingUrl('/business')}
-            className="flex items-center gap-[7px] mb-12"
+            className="flex items-center gap-[9px] mb-12"
           >
             <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-            <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-white">
+            <span className="font-display text-[22px] font-extrabold tracking-[-0.04em] text-white">
               iLaunchify
-            </span>
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-[0.12em] text-neon-500 border border-neon-500/40 rounded-pill px-2 py-0.5">
-              Partners
+              <span className="text-neon-500 font-bold ml-0.5"> Business</span>
             </span>
           </a>
 
@@ -83,14 +81,12 @@ export default async function SignupPage({
           {/* Mobile-only logo */}
           <a
             href={marketingUrl('/business')}
-            className="md:hidden flex items-center gap-[7px] mb-7"
+            className="md:hidden flex items-center gap-[8px] mb-7"
           >
             <span className="w-[24px] h-[24px] rounded-md bg-pink-500" />
-            <span className="font-display text-[18px] font-extrabold tracking-[-0.04em] text-ink-900">
+            <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-ink-900">
               iLaunchify
-            </span>
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-[0.1em] text-pink-700 border border-pink-200 rounded-pill px-2 py-0.5">
-              Partners
+              <span className="text-pink-700 font-bold ml-0.5"> Business</span>
             </span>
           </a>
 
