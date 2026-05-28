@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
-import { MarketplaceHeader } from '@/components/MarketplaceHeader'
+import { LandingHeader } from '@/components/LandingHeader'
 import { NICHES } from '@/lib/niches'
 
 /**
@@ -51,7 +51,7 @@ export default async function HomePage({
 
   return (
     <>
-      <MarketplaceHeader
+      <LandingHeader
         user={demoUser}
         hasUnreadNotifications
         brands={demoBrands}
