@@ -75,7 +75,7 @@ export default async function ProductDetailPage({
   const detail = findTemplateDetail(template.slug)
   const related = row.templates.filter((t) => t.slug !== slug).slice(0, 4)
 
-  const certs = template.tags.map((tag) => ({
+  const certs = (template.tags ?? []).map((tag) => ({
     name: tag.label,
     qualifier: tag.organic ? 'Certified Organic' : 'Independent verification',
     icon: certIconForLabel(tag.label),

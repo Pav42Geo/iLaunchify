@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { Search, Heart, Bell } from 'lucide-react'
+import { Heart, Bell } from 'lucide-react'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
+import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { creatorUrl } from '@/lib/app-urls'
 
 /**
@@ -58,17 +59,7 @@ export function MarketplaceHeader({
           All Categories <span className="text-[11px] text-ink-500">▼</span>
         </button>
 
-        <div className="flex-1 relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-ink-400"
-            strokeWidth={2}
-          />
-          <input
-            type="search"
-            placeholder="Search recipes, templates, niches…"
-            className="w-full h-[42px] pl-10 pr-4 text-sm bg-white border border-ink-300 rounded-pill text-ink-900 placeholder:text-ink-500 focus:outline-none focus:border-pink-500 focus:ring-[3px] focus:ring-pink-500/15 transition-[border-color,box-shadow]"
-          />
-        </div>
+        <MarketplaceSearchBar />
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {isGuest ? (
