@@ -16,6 +16,9 @@ interface Props {
   sizeKey: string
   packagingId: string
   quantity: number
+  /** Unused by the visible label — kept for analytics + future tier
+   *  variants. Both guests and authed creators see "Start Launching"
+   *  on the CTA per Pavel. */
   isAuthenticated: boolean
 }
 
@@ -25,7 +28,7 @@ export function LaunchCtaCluster({
   sizeKey,
   packagingId,
   quantity,
-  isAuthenticated,
+  isAuthenticated: _isAuthenticated,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -73,11 +76,7 @@ export function LaunchCtaCluster({
           onClick={onLaunchClick}
           disabled={isPending}
         >
-          {isPending
-            ? 'Setting up your design…'
-            : isAuthenticated
-              ? 'Open in Design Studio'
-              : 'Start launching'}
+          {isPending ? 'Setting up your design…' : 'Start Launching'}
         </Button>
         <Button asChild variant="secondary" size="md">
           <Link href={`/products/sample?template=${templateSlug}`}>
