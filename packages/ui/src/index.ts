@@ -121,6 +121,12 @@ export {
   type ScanSeverity,
 } from './canvas/compliance'
 export {
+  autoDetectLabelSections,
+  findDetectedByRole,
+  type AutoDetection,
+  type AutoDetectContext,
+} from './canvas/autoDetect'
+export {
   formatNetQuantity,
   validateNetQuantityFormat,
   inferNetQuantityKind,

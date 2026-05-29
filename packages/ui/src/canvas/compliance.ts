@@ -32,6 +32,7 @@ import {
   validateNetQuantityFormat,
   type NetQuantityKind,
 } from './netQuantity'
+import { autoDetectLabelSections } from './autoDetect'
 
 /**
  * Productlinked context the scan compares against. Pulled from the
@@ -72,6 +73,12 @@ export interface ScanFinding {
   objectRef?: string
   /** Suggested fix line, when applicable. */
   suggestedFix?: string
+  /**
+   * True when this finding came from autoDetectLabelSections (DS-72) —
+   * the section wasn't explicitly dropped via the Label drawer but the
+   * system recognized it by text content. UI surfaces a different badge.
+   */
+  autoDetected?: boolean
 }
 
 export interface LabelScanResult {
@@ -126,6 +133,21 @@ export function scanLabelCompliance(
   ctx: LabelScanContext,
 ): LabelScanResult {
   const findings: ScanFinding[] = []
+
+  // DS-72 — Auto-detect required sections by text content BEFORE the
+  // rule check. Stamps customRole on any text that matches a known
+  // FDA-section pattern (INGREDIENTS:, CONTAINS:, NET WT, etc.), so
+  // the missing-section blockings below recognize them as present.
+  // Creators who type the content directly (instead of dropping pre-
+  // tagged sections via the Label drawer) no longer get punished.
+  const autoDetectedSet = new Set<LabelSectionRole>()
+  if (canvas) {
+    const detections = autoDetectLabelSections(canvas, {
+      productName: ctx.productName,
+    })
+    for (const d of detections) autoDetectedSet.add(d.role)
+  }
+
   const objects: FabricObject[] = canvas?.getObjects() ?? []
 
   // Index objects by role / type for fast lookup.
@@ -139,7 +161,8 @@ export function scanLabelCompliance(
   }
 
   // --------------------------------------------------------------------
-  // Required sections — one BLOCKING per missing section.
+  // Required sections — one BLOCKING per missing section. Auto-detected
+  // sections (DS-72) get an INFO acknowledgement instead.
   // --------------------------------------------------------------------
   for (const req of REQUIRED_SECTIONS) {
     const obj = byRole.get(req.role)
@@ -151,6 +174,19 @@ export function scanLabelCompliance(
         detail: `FDA requires every consumer food label to display ${req.label.toLowerCase()}.`,
         citation: req.citation,
         suggestedFix: `Open the Label drawer → Required sections → Add ${req.label}.`,
+      })
+    } else if (autoDetectedSet.has(req.role)) {
+      // Auto-detected — surface as INFO so the user sees the system
+      // recognized it on its own. No blocking, no warning, no ack
+      // needed at export.
+      findings.push({
+        id: `auto-detected-${req.role}`,
+        severity: 'INFO',
+        title: `Auto-detected: ${req.label}`,
+        detail: `Recognized in your design by content pattern. No tagging required.`,
+        citation: req.citation,
+        objectRef: getObjectRef(obj),
+        autoDetected: true,
       })
     }
   }

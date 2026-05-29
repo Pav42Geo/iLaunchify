@@ -296,22 +296,28 @@ function FindingCard({
   severity: ScanSeverity
   canvas: FabricCanvas | null
 }) {
-  const accent =
-    severity === 'BLOCKING'
+  // DS-72c — auto-detected INFO findings get a distinct emerald accent +
+  // sparkle icon so the creator immediately sees "the system found this
+  // on its own; nothing to do".
+  const accent = finding.autoDetected
+    ? 'border-emerald-300 bg-emerald-50/50'
+    : severity === 'BLOCKING'
       ? 'border-red-200 bg-red-50/40'
       : severity === 'WARNING'
         ? 'border-amber-200 bg-amber-50/40'
         : 'border-sky-200 bg-sky-50/40'
 
-  const Icon =
-    severity === 'BLOCKING'
+  const Icon = finding.autoDetected
+    ? Sparkles
+    : severity === 'BLOCKING'
       ? AlertOctagon
       : severity === 'WARNING'
         ? AlertTriangle
         : Info
 
-  const iconColor =
-    severity === 'BLOCKING'
+  const iconColor = finding.autoDetected
+    ? 'text-emerald-600'
+    : severity === 'BLOCKING'
       ? 'text-red-600'
       : severity === 'WARNING'
         ? 'text-amber-600'

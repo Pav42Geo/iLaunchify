@@ -398,6 +398,12 @@ export function ExportModal({
               className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
+              {/* DS-72d forward-pointer — when the order-checkout flow
+                  (Phase G) reuses this ack pattern, the verb switches to
+                  'Proceed at my risk' because the user is committing to
+                  production, not just exporting a file. The ExportAck
+                  payload itself is generic — only the button copy +
+                  onExported handler change. See AUTO_RECOGNITION_PLAN.md. */}
               {generating
                 ? 'Generating…'
                 : hasBlockings && acknowledged
