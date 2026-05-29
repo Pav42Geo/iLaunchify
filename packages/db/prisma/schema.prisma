@@ -445,6 +445,10 @@ model User {
   channelConnections  ChannelConnection[]              @relation("CreatorChannelConnections")
   // Phase G1 — in-progress checkout wizard drafts
   creatorCheckoutDrafts CheckoutDraft[]                @relation("CreatorCheckoutDrafts")
+  // Phase G4 — addresses creators reuse across orders. Keyed off User
+  // (not CreatorProfile) so partner users can have shipping addresses
+  // for sample requests later without a schema change.
+  creatorSavedAddresses CreatorSavedAddress[]          @relation("CreatorSavedAddresses")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -1365,6 +1369,32 @@ model PartnerServicePackagingMaterial {
 
   @@unique([partnerServiceId, packagingMaterialId])
   @@index([partnerServiceId, status])
+}
+
+// Phase G4 — addresses creators save for reuse across production orders.
+// Surfaced in the wizard's Fulfillment step as the SAVED_ADDRESS picker.
+// Soft-delete pattern is overkill at V1 scale; a hard delete cascades from
+// the User row.
+model CreatorSavedAddress {
+  id              String   @id @default(cuid())
+  creatorUserId   String
+  label           String                                 // "Home", "Studio", "Lower-East 3PL", etc.
+  contactName     String
+  contactPhone    String?
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String?
+  postalCode      String
+  country         String   @default("US")
+  // The first address the creator saves becomes the default automatically.
+  // Switching the default toggles the prior one's flag in the same txn.
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  creator         User     @relation("CreatorSavedAddresses", fields: [creatorUserId], references: [id], onDelete: Cascade)
+
+  @@index([creatorUserId, isDefault])
 }
 
 // Phase G1 — pre-Order wizard state. The 7-step checkout wizard at

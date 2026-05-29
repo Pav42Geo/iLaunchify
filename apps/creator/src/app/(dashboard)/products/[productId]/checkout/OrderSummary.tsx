@@ -15,11 +15,17 @@ import type { CostBreakdown } from './production-actions'
 interface Props {
   state: CheckoutDraftState
   estimate: CostBreakdown | null
+  // G4d — shipping cents from the wizard's lifted estimateShipping state.
+  // Null until the user has picked a ship-to mode.
+  shipping: { shippingCents: number; leadTimeBusinessDays: number } | null
 }
 
-export function OrderSummary({ state, estimate }: Props) {
+export function OrderSummary({ state, estimate, shipping }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
+  const hasShipping = !!shipping && shipping.shippingCents > 0
+  const grandTotalCents =
+    (estimate?.totalBeforeShippingAndTaxCents ?? 0) + (shipping?.shippingCents ?? 0)
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
       <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
@@ -65,7 +71,11 @@ export function OrderSummary({ state, estimate }: Props) {
           value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
           dimmed={!hasEstimate}
         />
-        <Row label="Shipping" value="$—.——" dimmed={!state.fulfillment.shipToType} />
+        <Row
+          label="Shipping"
+          value={hasShipping ? formatCents(shipping.shippingCents) : '$—.——'}
+          dimmed={!hasShipping}
+        />
         <Row label="Tax" value="$—.——" dimmed />
       </dl>
 
@@ -73,19 +83,19 @@ export function OrderSummary({ state, estimate }: Props) {
 
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-ink-900">
-          {hasEstimate ? 'Before ship + tax' : 'Total'}
+          {hasShipping ? 'Before tax' : hasEstimate ? 'Before ship + tax' : 'Total'}
         </span>
         <span className="text-lg font-bold text-ink-900 tabular-nums">
-          {hasEstimate
-            ? formatCents(estimate.totalBeforeShippingAndTaxCents)
-            : '$—.——'}
+          {hasEstimate ? formatCents(grandTotalCents) : '$—.——'}
         </span>
       </div>
 
       <p className="mt-3 text-[11px] text-ink-500">
-        {hasEstimate
-          ? 'Shipping + tax calculate in step 4 + step 7.'
-          : 'Live cost lights up once you pick a quantity in step 2.'}
+        {hasShipping && shipping.leadTimeBusinessDays > 0
+          ? `Lead time: ~${shipping.leadTimeBusinessDays} business days. Tax calculates at My cart.`
+          : hasEstimate
+            ? 'Pick a ship-to in step 4 to add shipping. Tax calculates at My cart.'
+            : 'Live cost lights up once you pick a quantity in step 2.'}
       </p>
     </div>
   )

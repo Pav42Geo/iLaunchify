@@ -60,6 +60,12 @@ export function CheckoutWizard({
   // render real cents instead of placeholders. Null until the user has
   // entered a quantity (or while the estimate is in-flight).
   const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
+  // G4d — same idea for shipping. Null until the user has picked a
+  // ship-to mode in step 4.
+  const [shipping, setShipping] = useState<{
+    shippingCents: number
+    leadTimeBusinessDays: number
+  } | null>(null)
   const [isSaving, startSaving] = useTransition()
 
   function patchState<K extends keyof CheckoutDraftState>(
@@ -224,8 +230,11 @@ export function CheckoutWizard({
           )}
           {currentStep === 4 && (
             <FulfillmentStep
+              productId={productId}
               state={state.fulfillment}
               onChange={(patch) => patchState('fulfillment', patch)}
+              quantity={state.production.quantity ?? 0}
+              onShippingEstimate={setShipping}
             />
           )}
           {currentStep === 5 && (
@@ -294,7 +303,7 @@ export function CheckoutWizard({
 
         {/* Sticky right rail */}
         <aside className="lg:sticky lg:top-[136px] lg:self-start">
-          <OrderSummary state={state} estimate={estimate} />
+          <OrderSummary state={state} estimate={estimate} shipping={shipping} />
         </aside>
       </main>
     </div>
