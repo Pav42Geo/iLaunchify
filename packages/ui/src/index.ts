@@ -129,4 +129,14 @@ export {
   type FormatNetQuantityOpts,
   type NetQuantityProblem,
 } from './canvas/netQuantity'
+export {
+  LABEL_SECTION_MIN_FONT_SIZE,
+  LABEL_SECTION_CITATIONS,
+  REQUIRED_LABEL_SECTIONS,
+  NUTRITION_FACTS_MIN_TYPE_SIZE,
+  NUTRITION_FACTS_BASE_TITLE_SIZE,
+  NUTRITION_FACTS_MIN_SCALE,
+  clampFontSize,
+  clampNutritionFactsScale,
+} from './canvas/labelRules'
 

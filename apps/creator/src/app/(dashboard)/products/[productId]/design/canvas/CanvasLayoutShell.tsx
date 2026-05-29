@@ -46,6 +46,7 @@ import {
   resetRotation,
 } from './useCanvasShortcuts'
 import { usePanMode } from './usePanMode'
+import { useLabelMinSize } from './useLabelMinSize'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
@@ -191,6 +192,7 @@ export function CanvasLayoutShell({
   const autosave = useAutoSave(canvas, productId)
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
+  useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
 
   function toggleTool(key: ToolKey) {
     setActiveTool((prev) => (prev === key ? null : key))

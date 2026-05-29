@@ -15,7 +15,7 @@
 // snapped to the bound recipe on PDF generation.
 
 import * as React from 'react'
-import { Plus, Tag } from 'lucide-react'
+import { Plus, Tag, Check, Target } from 'lucide-react'
 import {
   addNutritionFactsPanel,
   addLabelSection,
@@ -25,6 +25,7 @@ import {
   type FabricCanvas,
   type LabelSectionRole,
 } from '@ilaunchify/ui'
+import { useCanvasRoles } from '../useCanvasRoles'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -45,6 +46,8 @@ interface Props {
 type StyleKey = 'standard' | 'tabular'
 
 export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
+  const canvasRoles = useCanvasRoles(canvas)
+
   const [style, setStyle] = React.useState<StyleKey>('standard')
   const [ink, setInk] = React.useState('#000000')
   /** null sentinel for transparent. */
@@ -107,6 +110,22 @@ export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
     addLabelSection(canvas, role, { text: presetTextFor(role) })
   }
 
+  function handleFindSection(role: LabelSectionRole) {
+    if (!canvas) return
+    const obj = canvasRoles.findByRole(role)
+    if (!obj) return
+    canvas.setActiveObject(obj)
+    canvas.requestRenderAll()
+  }
+
+  function handleFindNutritionPanel() {
+    if (!canvas) return
+    const obj = canvasRoles.findNutritionPanel()
+    if (!obj) return
+    canvas.setActiveObject(obj)
+    canvas.requestRenderAll()
+  }
+
   return (
     <div className="space-y-5">
       {/* Required sections — DS-55. */}
@@ -128,20 +147,49 @@ export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
               'allergens',
               'manufacturer-info',
             ] as LabelSectionRole[]
-          ).map((role) => (
-            <button
-              key={role}
-              type="button"
-              onClick={() => handleAddSection(role)}
-              disabled={!canvas}
-              className="w-full flex items-center justify-between gap-2 text-left rounded-md border border-ink-200 px-3 py-2 hover:border-pink-500 hover:bg-pink-50/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <span className="text-[12.5px] font-semibold text-ink-900">
-                {LABEL_SECTION_LABELS[role]}
-              </span>
-              <Plus className="h-3.5 w-3.5 text-ink-500" />
-            </button>
-          ))}
+          ).map((role) => {
+            const present = canvasRoles.roles.has(role)
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() =>
+                  present ? handleFindSection(role) : handleAddSection(role)
+                }
+                disabled={!canvas}
+                title={
+                  present
+                    ? 'Already on canvas — click to select'
+                    : 'Drop a tagged text block on the canvas'
+                }
+                className={
+                  'w-full flex items-center justify-between gap-2 text-left rounded-md border px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ' +
+                  (present
+                    ? 'border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50'
+                    : 'border-ink-200 hover:border-pink-500 hover:bg-pink-50/40')
+                }
+              >
+                <span className="flex items-center gap-1.5">
+                  {present && (
+                    <Check className="h-3 w-3 text-emerald-700 flex-shrink-0" />
+                  )}
+                  <span
+                    className={
+                      'text-[12.5px] font-semibold ' +
+                      (present ? 'text-emerald-900' : 'text-ink-900')
+                    }
+                  >
+                    {LABEL_SECTION_LABELS[role]}
+                  </span>
+                </span>
+                {present ? (
+                  <Target className="h-3.5 w-3.5 text-emerald-700" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5 text-ink-500" />
+                )}
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -309,16 +357,29 @@ export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
         </p>
       </section>
 
-      {/* Add */}
-      <button
-        type="button"
-        onClick={handleAdd}
-        disabled={!canvas || adding}
-        className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        {adding ? 'Adding…' : 'Add Nutrition Facts'}
-      </button>
+      {/* Add Nutrition Facts — converts to "Find on canvas" when one is present
+          to prevent duplicates (21 CFR 101.9 — one panel per package). */}
+      {canvasRoles.nutritionPanelPresent ? (
+        <button
+          type="button"
+          onClick={handleFindNutritionPanel}
+          disabled={!canvas}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-emerald-300 bg-emerald-50 text-emerald-900 rounded-md hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+        >
+          <Target className="h-3.5 w-3.5" />
+          Nutrition Facts on canvas — click to select
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Nutrition Facts'}
+        </button>
+      )}
 
       {/* Disclosure */}
       <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">

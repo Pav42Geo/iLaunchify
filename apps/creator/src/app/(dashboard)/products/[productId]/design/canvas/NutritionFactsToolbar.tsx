@@ -8,10 +8,11 @@
 // color (text + rules), outer border toggle, deselect.
 
 import * as React from 'react'
-import { X, Square, Eye } from 'lucide-react'
+import { X, Square, Lock, Eye } from 'lucide-react'
 import {
   updateNutritionPanel,
   readNutritionPanelProps,
+  NUTRITION_FACTS_MIN_SCALE,
   type BrandCanvasAssets,
   type FabricCanvas,
   type FabricObject,
@@ -29,6 +30,41 @@ const STAPLE_INK = ['#000000', '#FFFFFF', '#33343C', '#FF2E63']
 export function NutritionFactsToolbar({ canvas, active, brandAssets }: Props) {
   // Initial hydration from the selected group's existing tagged children.
   const initial = React.useMemo(() => readNutritionPanelProps(active), [active])
+
+  // Live scale of the NFR group — driven by the width slider below.
+  // Reading scaleX off the fabric group, falling back to 1. Bumps when
+  // the user drags scale handles too, so the slider stays in sync.
+  const groupAccess = active as unknown as {
+    scaleX?: number
+    scaleY?: number
+    set: (k: string | object, v?: unknown) => void
+  }
+  const [scale, setScale] = React.useState(groupAccess.scaleX ?? 1)
+  React.useEffect(() => {
+    function refresh() {
+      setScale(groupAccess.scaleX ?? 1)
+    }
+    refresh()
+    if (!canvas) return
+    canvas.on('object:scaling', refresh)
+    canvas.on('object:modified', refresh)
+    return () => {
+      canvas.off('object:scaling', refresh)
+      canvas.off('object:modified', refresh)
+    }
+  }, [canvas, groupAccess])
+
+  function applyScale(next: number) {
+    if (!canvas) return
+    const clamped = Math.max(NUTRITION_FACTS_MIN_SCALE, Math.min(3, next))
+    setScale(clamped)
+    groupAccess.set({ scaleX: clamped, scaleY: clamped })
+    canvas.fire('object:modified', { target: active })
+    canvas.requestRenderAll()
+  }
+
+  const atMinScale = scale <= NUTRITION_FACTS_MIN_SCALE + 0.001
+  const scalePct = Math.round(scale * 100)
 
   const brandSwatches = Array.from(
     new Set(
@@ -69,6 +105,38 @@ export function NutritionFactsToolbar({ canvas, active, brandAssets }: Props) {
           staples={STAPLE_INK}
           onChange={(v) => patch({ ink: v ?? '#000000' })}
         />
+
+        <div className="mx-0.5 h-5 w-px bg-ink-200" />
+
+        {/* Width — live scales the NFR group. Floor enforced by
+            NUTRITION_FACTS_MIN_SCALE so the "Nutrition Facts" title
+            stays ≥ 13pt per 21 CFR 101.9(d)(1)(i)(B). */}
+        <div className="flex items-center gap-1.5 px-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            W
+          </span>
+          <input
+            type="range"
+            min={NUTRITION_FACTS_MIN_SCALE * 100}
+            max={300}
+            step={5}
+            value={Math.round(scale * 100)}
+            onChange={(e) => applyScale(Number(e.target.value) / 100)}
+            className="w-20 accent-pink-500"
+            aria-label="Panel width"
+            title={
+              atMinScale
+                ? '"Nutrition Facts" title must be ≥ 13pt (21 CFR 101.9(d))'
+                : 'Resize panel'
+            }
+          />
+          <span className="text-[11px] font-mono tabular-nums text-ink-700 min-w-[32px] text-right">
+            {scalePct}%
+          </span>
+          {atMinScale && (
+            <Lock className="h-3 w-3 text-pink-600" aria-label="FDA minimum size" />
+          )}
+        </div>
 
         <div className="mx-0.5 h-5 w-px bg-ink-200" />
 
