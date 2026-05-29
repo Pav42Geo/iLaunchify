@@ -51,10 +51,12 @@ import {
 import { usePanMode } from './usePanMode'
 import { useLabelMinSize } from './useLabelMinSize'
 import { useWheelZoom } from './useWheelZoom'
+import { useDeselectOnOutsideClick } from './useDeselectOnOutsideClick'
 import { useObjectClipboard } from './useObjectClipboard'
 import { ObjectActions } from './ObjectActions'
 import { ObjectContextMenu } from './ObjectContextMenu'
-import type { FabricObject } from '@ilaunchify/ui'
+import { UpgradeOverlay } from './UpgradeOverlay'
+import type { FabricObject, TierKey } from '@ilaunchify/ui'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
@@ -135,6 +137,14 @@ interface Props {
    * Resolution lives in page.tsx — keeps the shell agnostic.
    */
   partnerOffersFinishes?: boolean
+  /**
+   * DS-73d — current creator subscription tier. Drives the EXPORT
+   * upgrade gate: Maker creators get the UpgradeOverlay instead of the
+   * print-ready ExportModal. V1 default is 'maker' until the
+   * subscription model is wired into CreatorProfile (forward-pointer
+   * in page.tsx).
+   */
+  creatorTier?: TierKey
 }
 
 type ToolKey =
@@ -193,6 +203,7 @@ export function CanvasLayoutShell({
   initialDesignJson,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
+  creatorTier = 'maker',
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -201,6 +212,9 @@ export function CanvasLayoutShell({
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [mockupOpen, setMockupOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  // DS-73d — Maker tier creators see the UpgradeOverlay instead of ExportModal.
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const isMakerLocked = creatorTier === 'maker'
   // DS-66f — Canva-style font drawer. Toggled by clicking the font
   // field in TextFormatToolbar; replaces whichever rail-tool drawer
   // is currently mounted in the drawer slot.
@@ -228,7 +242,11 @@ export function CanvasLayoutShell({
     y: number | null
   }>({ target: null, x: null, y: null })
   const clipboard = useObjectClipboard(canvas)
-  useWheelZoom(scrollRef.current, zoom, setZoom)
+  // DS-73b — useWheelZoom now also freezes objects during the wheel burst
+  // so creators don't see them drifting relative to the die-line mid-zoom.
+  useWheelZoom(scrollRef.current, zoom, setZoom, canvas)
+  // DS-73a — click anywhere outside the canvas container clears selection.
+  useDeselectOnOutsideClick(scrollRef.current, canvasContainerRef.current, canvas)
 
   // Right-click on a canvas object → open ObjectContextMenu at mouse pos.
   // Fabric routes pointer events through its own pipeline, so we hook the
@@ -441,7 +459,16 @@ export function CanvasLayoutShell({
         mockupOpen={mockupOpen}
         onToggleMockup={() => setMockupOpen((v) => !v)}
         exportOpen={exportOpen}
-        onToggleExport={() => setExportOpen((v) => !v)}
+        onToggleExport={() => {
+          // DS-73d — Maker tier can't actually export. Show the upgrade
+          // overlay instead of the print-ready ExportModal.
+          if (isMakerLocked) {
+            setUpgradeOpen(true)
+            return
+          }
+          setExportOpen((v) => !v)
+        }}
+        exportLocked={isMakerLocked}
       />
 
       {/* Body */}
@@ -618,6 +645,15 @@ export function CanvasLayoutShell({
           await recordDesignExport(productId, ack)
         }}
       />
+
+      {/* DS-73d — Maker-tier upgrade overlay. Slides down from under the
+          top header when a Maker creator clicks Export. */}
+      <UpgradeOverlay
+        currentTier={creatorTier}
+        blockedAction="export"
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </div>
   )
 }
@@ -643,6 +679,7 @@ function TopBar({
   onToggleMockup,
   exportOpen,
   onToggleExport,
+  exportLocked,
 }: {
   productName: string
   brandName: string
@@ -660,6 +697,9 @@ function TopBar({
   onToggleMockup: () => void
   exportOpen: boolean
   onToggleExport: () => void
+  /** DS-73d — true when the creator's tier blocks export. Renders a
+      lock cue but keeps the click-to-upgrade behaviour. */
+  exportLocked: boolean
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -724,6 +764,11 @@ function TopBar({
           <Eye className="h-3.5 w-3.5" />
           Preview
         </button>
+        {/* DS-73d — Export sits in the same white-pill chrome as Preview
+            but renders a small lock badge when the creator's tier blocks
+            the action. Click handler in the shell routes Maker creators
+            to the UpgradeOverlay; Builder/Agency open the print-ready
+            ExportModal as before. */}
         <button
           type="button"
           onClick={onToggleExport}
@@ -733,17 +778,25 @@ function TopBar({
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (exportOpen
               ? 'border-pink-500 bg-pink-50 text-pink-700'
-              : 'border-ink-900 bg-ink-900 text-white hover:bg-black')
+              : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
           }
         >
           <Download className="h-3.5 w-3.5" />
           Export
+          {exportLocked && (
+            <span className="-mr-0.5 ml-0.5 inline-flex items-center rounded-sm bg-pink-100 px-1 py-px text-[9px] font-bold tracking-wider text-pink-700">
+              PRO
+            </span>
+          )}
         </button>
+        {/* DS-73e — "Exit Studio" → "Next" (black pill). This is the
+            entry point to the post-canvas checkout stepper (Phase G),
+            so the verb matches the flow direction. */}
         <Link
           href={`/products/${productId}`}
-          className="ml-1 inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-100"
+          className="ml-2 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
         >
-          Exit Studio
+          Next
         </Link>
       </div>
     </header>

@@ -24,6 +24,8 @@ import {
   Lock,
   Unlock,
   MessageSquare,
+  Group as GroupIcon,
+  Ungroup as UngroupIcon,
 } from 'lucide-react'
 import {
   duplicateObject,
@@ -32,6 +34,10 @@ import {
   sendBackwards,
   toggleLock,
   isLocked,
+  canGroupSelection,
+  canUngroupSelection,
+  groupActiveSelection,
+  ungroupActiveGroup,
   type FabricCanvas,
   type FabricObject,
 } from '@ilaunchify/ui'
@@ -73,10 +79,12 @@ export function ObjectContextMenu({ canvas, target, x, y, clipboard, onClose }: 
   if (!open || !target || !canvas) return null
 
   const locked = isLocked(target)
+  const groupable = canGroupSelection(canvas)
+  const ungroupable = canUngroupSelection(canvas)
 
-  // Clamp to viewport — keeps a 220x340 menu fully visible.
+  // Clamp to viewport — keeps a 220x380 menu fully visible.
   const menuW = 240
-  const menuH = 340
+  const menuH = 380
   const left = Math.min(x!, window.innerWidth - menuW - 8)
   const top = Math.min(y!, window.innerHeight - menuH - 8)
 
@@ -135,6 +143,21 @@ export function ObjectContextMenu({ canvas, target, x, y, clipboard, onClose }: 
         label="Send backward"
         hotkey="⌘["
         onClick={() => run(() => sendBackwards(canvas, target))}
+      />
+      <Divider />
+      <MenuItem
+        icon={GroupIcon}
+        label="Group"
+        hotkey="⌘G"
+        disabled={!groupable}
+        onClick={() => run(() => groupActiveSelection(canvas))}
+      />
+      <MenuItem
+        icon={UngroupIcon}
+        label="Ungroup"
+        hotkey="⇧⌘G"
+        disabled={!ungroupable}
+        onClick={() => run(() => ungroupActiveGroup(canvas))}
       />
       <Divider />
       <MenuItem

@@ -155,6 +155,10 @@ export {
   sendToBack,
   toggleLock,
   isLocked,
+  canGroupSelection,
+  canUngroupSelection,
+  groupActiveSelection,
+  ungroupActiveGroup,
 } from './canvas/objectActions'
 export {
   snapshotCanvasAsPng,

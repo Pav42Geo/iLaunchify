@@ -107,3 +107,66 @@ export function isLocked(obj: FabricObject): boolean {
   const o = obj as unknown as { lockMovementX?: boolean }
   return !!o.lockMovementX
 }
+
+// -----------------------------------------------------------------------------
+// Grouping (DS-73c)
+// -----------------------------------------------------------------------------
+//
+// Fabric v6 represents a multi-selection as an `ActiveSelection` — a
+// transient container the user can drag/scale as one but whose children
+// are still independently editable. `.toGroup()` converts it to a real
+// persistent `Group` (saved into JSON, behaves as one object).
+//
+// `.toActiveSelection()` reverses the process on a Group, dropping it
+// back into an ActiveSelection — the children are added back to the
+// canvas as standalone objects, and the user can keep editing them
+// individually.
+
+/** True if the active object is a multi-object ActiveSelection. */
+export function canGroupSelection(canvas: FabricCanvas): boolean {
+  const active = canvas.getActiveObject() as unknown as {
+    type?: string
+    _objects?: unknown[]
+  } | null
+  if (!active) return false
+  return active.type === 'activeSelection' && (active._objects?.length ?? 0) >= 2
+}
+
+/** True if the active object is a Group that can be ungrouped. */
+export function canUngroupSelection(canvas: FabricCanvas): boolean {
+  const active = canvas.getActiveObject() as unknown as { type?: string } | null
+  return !!active && active.type === 'group'
+}
+
+/**
+ * Convert the current ActiveSelection into a persistent Group. The new
+ * group becomes the active object. No-ops if the active object isn't a
+ * multi-selection.
+ */
+export function groupActiveSelection(canvas: FabricCanvas): FabricObject | null {
+  const active = canvas.getActiveObject() as unknown as {
+    type?: string
+    toGroup?: () => FabricObject
+  } | null
+  if (!active || active.type !== 'activeSelection' || !active.toGroup) return null
+  const group = active.toGroup()
+  canvas.fire('object:modified', { target: group })
+  canvas.requestRenderAll()
+  return group
+}
+
+/**
+ * Expand a Group back into an ActiveSelection of its children. The
+ * children become individually editable again.
+ */
+export function ungroupActiveGroup(canvas: FabricCanvas): FabricObject | null {
+  const active = canvas.getActiveObject() as unknown as {
+    type?: string
+    toActiveSelection?: () => FabricObject
+  } | null
+  if (!active || active.type !== 'group' || !active.toActiveSelection) return null
+  const selection = active.toActiveSelection()
+  canvas.fire('object:modified', { target: selection })
+  canvas.requestRenderAll()
+  return selection
+}
