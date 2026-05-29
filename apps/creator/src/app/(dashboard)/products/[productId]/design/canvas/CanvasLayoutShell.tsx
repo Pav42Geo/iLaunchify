@@ -764,7 +764,7 @@ function BottomToolbar({
 }) {
   const display = useMemo(() => `${Math.round(zoom * 100)}%`, [zoom])
   return (
-    <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2">
+    <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
       <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-1.5 shadow-md">
         <IconButton
           ariaLabel="Zoom out"
