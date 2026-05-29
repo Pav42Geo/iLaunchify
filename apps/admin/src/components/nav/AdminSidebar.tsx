@@ -21,11 +21,7 @@ export function AdminSidebar() {
   const pathname = usePathname()
   return (
     <aside className="hidden w-56 shrink-0 border-r border-zinc-200 bg-white p-4 lg:block">
-      <div className="mb-8 px-2">
-        <Link href="/leads" className="text-lg font-bold tracking-tight">
-          iLaunchify Admin
-        </Link>
-      </div>
+      <div className="mb-6 px-2 text-xs font-medium text-zinc-500">Admin console</div>
       <nav className="space-y-1">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)

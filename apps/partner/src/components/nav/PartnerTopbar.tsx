@@ -19,6 +19,7 @@ export function PartnerTopbar({
   return (
     <AppHeader
       brandHref="/dashboard"
+      flushLeft
       right={
         <PartnerTopbarRight
           email={user.email}

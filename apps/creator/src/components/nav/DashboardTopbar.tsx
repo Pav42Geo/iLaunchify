@@ -48,6 +48,7 @@ export async function DashboardTopbar({ user }: { user: User }) {
   return (
     <AppHeader
       brandHref="/dashboard"
+      flushLeft
       right={
         <TopbarRight
           email={user.email}

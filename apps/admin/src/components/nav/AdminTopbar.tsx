@@ -12,6 +12,7 @@ export function AdminTopbar({ user }: { user: User }) {
   return (
     <AppHeader
       brandHref="/dashboard"
+      flushLeft
       right={<AdminTopbarRight email={user.email} name={user.name ?? null} />}
     />
   )

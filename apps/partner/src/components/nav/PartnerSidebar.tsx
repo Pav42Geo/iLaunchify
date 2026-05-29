@@ -61,12 +61,9 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
   return (
     <aside className="hidden w-56 shrink-0 border-r border-zinc-200 bg-white p-4 lg:block">
       <div className="mb-6 px-2">
-        <Link href={restricted ? '/my-application' : '/dashboard'} className="text-lg font-bold tracking-tight">
-          iLaunchify
-        </Link>
-        <div className="text-xs text-zinc-500">Partner portal</div>
+        <div className="text-xs font-medium text-zinc-500">Partner portal</div>
         <span
-          className={`mt-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
+          className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
         >
           {badge.label}
         </span>

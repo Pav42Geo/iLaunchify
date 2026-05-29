@@ -51,6 +51,13 @@ export interface AppHeaderProps {
    * Renders as a 2nd row inside the same <header> tag.
    */
   subnav?: React.ReactNode
+  /**
+   * When true, the inner container drops the 1400px max-width centering
+   * and the logo sits flush against the viewport's left edge (aligned
+   * with the dashboard sidebar column). Used by creator / partner /
+   * admin dashboard topbars; marketing surfaces keep the centred mode.
+   */
+  flushLeft?: boolean
   /** Optional extra classes on the outer header. */
   className?: string
 }
@@ -61,6 +68,7 @@ export function AppHeader({
   center,
   right,
   subnav,
+  flushLeft = false,
   className,
 }: AppHeaderProps) {
   return (
@@ -70,7 +78,18 @@ export function AppHeader({
         className,
       )}
     >
-      <div className="mx-auto flex max-w-[1400px] items-center gap-5 px-6 py-3">
+      <div
+        className={cn(
+          'flex items-center gap-5 py-3',
+          flushLeft
+            ? // Sidebar uses p-4 then each nav item has its own px-3 —
+              // so the nav icons sit ~28px from viewport-left. pl-7
+              // aligns the topbar's pink-square logo to the same column,
+              // pr-6 keeps the right cluster comfortable.
+              'pl-7 pr-6'
+            : 'mx-auto max-w-[1400px] px-6',
+        )}
+      >
         <a
           href={brandHref}
           className="flex flex-shrink-0 items-center gap-[7px]"
