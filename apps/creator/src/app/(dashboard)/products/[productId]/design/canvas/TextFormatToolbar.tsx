@@ -19,7 +19,6 @@ import {
   AlignCenter,
   AlignRight,
   X,
-  ChevronDown,
   Lock,
 } from 'lucide-react'
 import {
@@ -31,26 +30,24 @@ import {
   type FabricObject,
   type LabelSectionRole,
 } from '@ilaunchify/ui'
+import { FontPicker } from './FontPicker'
 
 interface Props {
   canvas: FabricCanvas | null
   active: FabricObject
   brandAssets: BrandCanvasAssets
+  /** Open the rich font drawer (DS-66f). The toolbar's font field
+   *  triggers this; the parent shell mounts TextFontDrawer in the
+   *  left rail slot when toggled on. */
+  onOpenFontDrawer?: () => void
 }
 
-/** Curated catalog when the brand hasn't picked fonts yet. */
-const CATALOG_FONTS = [
-  'Inter',
-  'Bricolage Grotesque',
-  'Fraunces',
-  'Georgia',
-  'Helvetica',
-  'Times New Roman',
-  'Courier New',
-  'Arial',
-]
-
-export function TextFormatToolbar({ canvas, active, brandAssets }: Props) {
+export function TextFormatToolbar({
+  canvas,
+  active,
+  brandAssets,
+  onOpenFontDrawer,
+}: Props) {
   // Cast to a loose shape — fabric IText/Text/Textbox share these.
   const text = active as unknown as {
     fontFamily?: string
@@ -106,12 +103,13 @@ export function TextFormatToolbar({ canvas, active, brandAssets }: Props) {
   return (
     <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20">
       <div className="pointer-events-auto flex items-center gap-1 rounded-lg border border-ink-200 bg-white px-2 py-1.5 shadow-lg">
-        {/* Font family */}
-        <FontDropdown
+        {/* Font family — DS-66f Canva-style. The trigger button opens
+            the full TextFontDrawer in the left rail; the shell owns the
+            drawer-open state so it can replace whichever rail drawer
+            is currently mounted. */}
+        <FontPicker
           value={fontFamily}
-          brandFonts={brandFontNames}
-          catalog={CATALOG_FONTS}
-          onChange={(v) => commit({ fontFamily: v })}
+          onClick={() => onOpenFontDrawer?.()}
         />
 
         <div className="mx-0.5 h-5 w-px bg-ink-200" />
@@ -208,108 +206,9 @@ export function TextFormatToolbar({ canvas, active, brandAssets }: Props) {
 // Sub-controls
 // ============================================================================
 
-function FontDropdown({
-  value,
-  brandFonts,
-  catalog,
-  onChange,
-}: {
-  value: string
-  brandFonts: string[]
-  catalog: string[]
-  onChange: (v: string) => void
-}) {
-  const [open, setOpen] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    if (!open) return
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 h-8 px-2.5 text-[12.5px] font-medium text-ink-900 hover:bg-ink-100 rounded transition-colors min-w-[140px] justify-between"
-        style={{ fontFamily: value }}
-      >
-        <span className="truncate">{value}</span>
-        <ChevronDown className="h-3 w-3 flex-shrink-0 text-ink-500" />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-full mt-1.5 w-56 max-h-72 overflow-y-auto bg-white border border-ink-200 rounded-lg shadow-xl py-1.5 z-30"
-        >
-          {brandFonts.length > 0 && (
-            <>
-              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-pink-700">
-                Brand fonts
-              </div>
-              {brandFonts.map((f) => (
-                <FontRow
-                  key={`brand:${f}`}
-                  family={f}
-                  active={f === value}
-                  onClick={() => {
-                    onChange(f)
-                    setOpen(false)
-                  }}
-                />
-              ))}
-              <div className="my-1.5 border-t border-ink-100" />
-            </>
-          )}
-          <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-            Catalog
-          </div>
-          {catalog.map((f) => (
-            <FontRow
-              key={`catalog:${f}`}
-              family={f}
-              active={f === value}
-              onClick={() => {
-                onChange(f)
-                setOpen(false)
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function FontRow({
-  family,
-  active,
-  onClick,
-}: {
-  family: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={
-        'w-full text-left px-3 py-1.5 text-[13px] transition-colors truncate ' +
-        (active ? 'bg-pink-50 text-pink-700 font-semibold' : 'text-ink-900 hover:bg-ink-50')
-      }
-      style={{ fontFamily: family }}
-    >
-      {family}
-    </button>
-  )
-}
+// FontDropdown + FontRow removed in DS-66 — replaced by the dedicated
+// FontPicker component (./FontPicker.tsx) which surfaces the full Bunny
+// Fonts catalog with search + categories + lazy load.
 
 function SizeControl({
   value,

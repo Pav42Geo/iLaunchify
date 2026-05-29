@@ -61,6 +61,7 @@ import { MockupModal } from './MockupModal'
 import { ExportModal } from './ExportModal'
 import { recordDesignExport } from './actions'
 import { TextDrawer } from './drawers/TextDrawer'
+import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
 import { BackgroundDrawer } from './drawers/BackgroundDrawer'
@@ -166,6 +167,23 @@ export function CanvasLayoutShell({
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [mockupOpen, setMockupOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  // DS-66f — Canva-style font drawer. Toggled by clicking the font
+  // field in TextFormatToolbar; replaces whichever rail-tool drawer
+  // is currently mounted in the drawer slot.
+  const [fontDrawerOpen, setFontDrawerOpen] = useState(false)
+
+  function openFontDrawer() {
+    clearTimers()
+    setActiveTool(null)
+    setPinned(false)
+    setFontDrawerOpen(true)
+  }
+
+  function closeFontDrawer() {
+    setFontDrawerOpen(false)
+  }
+  // Selection-aware auto-close lives below useSelectedObject() — see the
+  // useEffect there.
 
   // DS-60 — refs + state for object actions, context menu, wheel zoom.
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
@@ -241,6 +259,16 @@ export function CanvasLayoutShell({
   const showNutritionToolbar = selectedCustomType === 'nutrition-panel'
   const showCodeToolbar = isCodeCustomType(selectedCustomType)
   const showImageToolbar = isImageLikeCustomType(selectedCustomType)
+
+  // DS-66f — auto-close the font drawer when selection moves off the text
+  // object that opened it (the trigger button is no longer visible, and
+  // the user expects the rail tools to come back).
+  React.useEffect(() => {
+    if (fontDrawerOpen && !showTextToolbar) {
+      setFontDrawerOpen(false)
+    }
+  }, [fontDrawerOpen, showTextToolbar])
+
   const autosave = useAutoSave(canvas, productId)
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
@@ -321,6 +349,8 @@ export function CanvasLayoutShell({
   function toggleTool(key: ToolKey) {
     // Click is decisive — cancel any pending hover schedules first.
     clearTimers()
+    // Always defer to the rail tool over the font drawer (DS-66f).
+    setFontDrawerOpen(false)
     // Click the same icon while pinned → unpin + close.
     if (pinned && activeTool === key) {
       setPinned(false)
@@ -337,6 +367,7 @@ export function CanvasLayoutShell({
     clearTimers()
     setPinned(false)
     setActiveTool(null)
+    setFontDrawerOpen(false)
   }
 
   // Keyboard shortcuts: Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z (or Y) for redo.
@@ -397,8 +428,16 @@ export function CanvasLayoutShell({
             onHover={scheduleOpen}
           />
 
-          {/* Drawer slot */}
-          {activeTool && (
+          {/* Drawer slot — font drawer (DS-66f) takes precedence over the
+              rail tool drawer when open. Only one drawer ever mounts. */}
+          {fontDrawerOpen && selected && isTextObject(selected) ? (
+            <TextFontDrawer
+              canvas={canvas}
+              active={selected}
+              brandAssets={brandAssets}
+              onClose={closeFontDrawer}
+            />
+          ) : activeTool ? (
             <ToolDrawer
               tool={activeTool}
               dieCut={dieCut}
@@ -411,7 +450,7 @@ export function CanvasLayoutShell({
               productCtx={productCtx}
               onClose={closeDrawer}
             />
-          )}
+          ) : null}
         </div>
 
         {/* Canvas viewport — DS-59 fix.
@@ -448,6 +487,7 @@ export function CanvasLayoutShell({
               canvas={canvas}
               active={selected}
               brandAssets={brandAssets}
+              onOpenFontDrawer={openFontDrawer}
             />
           )}
           {showNutritionToolbar && selected && (

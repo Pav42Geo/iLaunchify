@@ -24,6 +24,7 @@
 
 export { cn } from './lib/utils'
 export { brandThemeToCssVars } from './brand-theme'
+export * from './fonts'
 
 // Tokens — re-exported from the main entry for convenience.
 // `import { pink, neon, productGradient } from '@ilaunchify/ui'` also works.
