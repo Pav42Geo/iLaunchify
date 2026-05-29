@@ -569,7 +569,9 @@ export function CanvasLayoutShell({
         onClose={() => setMockupOpen(false)}
       />
 
-      {/* Export modal (DS-64) — generates print-ready PDF / PNG. */}
+      {/* Export modal (DS-64) — generates print-ready PDF / PNG. DS-69
+          surfaces a blocking compliance scan + at-your-own-risk
+          override gate; the ack persists through recordDesignExport. */}
       <ExportModal
         canvas={canvas}
         dieCut={dieCut}
@@ -578,8 +580,10 @@ export function CanvasLayoutShell({
         brandName={brandAssets.brandName}
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        onExported={async () => {
-          await recordDesignExport(productId)
+        productCtx={productCtx}
+        onOpenCompliance={() => setComplianceOpen(true)}
+        onExported={async (ack) => {
+          await recordDesignExport(productId, ack)
         }}
       />
     </div>

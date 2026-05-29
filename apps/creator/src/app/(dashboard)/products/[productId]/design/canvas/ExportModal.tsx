@@ -14,14 +14,26 @@
 // (designer usually wants the trim view).
 
 import * as React from 'react'
-import { X, Download, FileText, Image as ImageIcon, AlertTriangle } from 'lucide-react'
+import {
+  X,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  AlertTriangle,
+  AlertOctagon,
+  ShieldCheck,
+} from 'lucide-react'
 import {
   generatePrintReadyPdf,
+  scanLabelCompliance,
   snapshotCanvasAsPng,
   snapshotCanvasTrimmed,
   suggestedPdfFilename,
   type DieCutSpec,
   type FabricCanvas,
+  type LabelScanContext,
+  type LabelScanResult,
+  type ScanFinding,
 } from '@ilaunchify/ui'
 
 interface Props {
@@ -32,8 +44,39 @@ interface Props {
   productName: string
   open: boolean
   onClose: () => void
-  /** Called after a successful download so the shell can stamp DesignVersion.exportedAt. */
-  onExported?: () => Promise<void> | void
+  /**
+   * Called after a successful download. Receives an optional
+   * acknowledgement payload when the user clicked through a blocking
+   * compliance scan — the shell persists it onto DesignVersion so
+   * admin / legal can see who acked which findings.
+   */
+  onExported?: (ack: ExportAck) => Promise<void> | void
+  /**
+   * Compliance scan context (recipe → allergens / BE / netQty). DS-69
+   * runs the scan inside the modal so the user has to acknowledge any
+   * blocking issues before downloading.
+   */
+  productCtx: LabelScanContext
+  /** Switch the right-side panel to Compliance so the user can review. */
+  onOpenCompliance?: () => void
+}
+
+/**
+ * Acknowledgement payload — surfaces back to the server action via
+ * recordDesignExport so we can persist who clicked through what.
+ */
+export interface ExportAck {
+  /** True when the creator explicitly acked blocking findings. */
+  acknowledged: boolean
+  /** Per-finding receipt — id + title + severity. Stored verbatim. */
+  ackedFindings?: Array<{
+    id: string
+    title: string
+    severity: 'BLOCKING' | 'WARNING' | 'INFO'
+    citation?: string
+  }>
+  /** ISO timestamp of when the user ticked the box. */
+  ackedAt?: string
 }
 
 type Format = 'pdf' | 'png'
@@ -53,12 +96,40 @@ export function ExportModal({
   open,
   onClose,
   onExported,
+  productCtx,
+  onOpenCompliance,
 }: Props) {
   const [format, setFormat] = React.useState<Format>('pdf')
   const [includeBleed, setIncludeBleed] = React.useState(true)
   const [dpi, setDpi] = React.useState<150 | 300 | 600>(300)
   const [generating, setGenerating] = React.useState(false)
   const [lastExportedAt, setLastExportedAt] = React.useState<Date | null>(null)
+  const [acknowledged, setAcknowledged] = React.useState(false)
+
+  // DS-69a — fresh scan every time the modal opens so the user always
+  // sees the current state, not a cached count from a prior open.
+  const [scan, setScan] = React.useState<LabelScanResult | null>(null)
+  React.useEffect(() => {
+    if (!open || !canvas) {
+      setScan(null)
+      setAcknowledged(false)
+      return
+    }
+    try {
+      setScan(scanLabelCompliance(canvas, productCtx))
+    } catch (err) {
+      console.warn('[ExportModal] scan failed:', err)
+      setScan(null)
+    }
+  }, [open, canvas, productCtx])
+
+  const blockingFindings: ScanFinding[] = scan
+    ? scan.findings.filter((f) => f.severity === 'BLOCKING')
+    : []
+  const hasBlockings = blockingFindings.length > 0
+  // Generate is gated only when there ARE blockings AND the user
+  // hasn't acked yet. Clean designs proceed instantly.
+  const generateBlocked = hasBlockings && !acknowledged
 
   // When the user flips format, reset bleed to the format-typical default.
   React.useEffect(() => {
@@ -107,7 +178,23 @@ export function ExportModal({
         downloadBlob(blob, filename)
       }
       setLastExportedAt(new Date())
-      if (onExported) await onExported()
+      if (onExported) {
+        // Build the ack payload — server action persists it on
+        // DesignVersion.generationMeta for audit trail.
+        const ack: ExportAck = hasBlockings
+          ? {
+              acknowledged: true,
+              ackedAt: new Date().toISOString(),
+              ackedFindings: blockingFindings.map((f) => ({
+                id: f.id,
+                title: f.title,
+                severity: f.severity,
+                citation: f.citation,
+              })),
+            }
+          : { acknowledged: false }
+        await onExported(ack)
+      }
     } catch (err) {
       console.warn('[ExportModal] generate failed:', err)
     } finally {
@@ -147,6 +234,23 @@ export function ExportModal({
         </header>
 
         <div className="space-y-5 p-5">
+          {/* DS-69b — Blocking compliance findings warning. Only renders
+              when scan returns ≥1 blocking finding. Generate button is
+              gated until the user explicitly acknowledges. */}
+          {hasBlockings && (
+            <BlockingWarning
+              findings={blockingFindings}
+              acknowledged={acknowledged}
+              onToggleAck={() => setAcknowledged((v) => !v)}
+              onReviewIssues={() => {
+                if (onOpenCompliance) {
+                  onClose()
+                  onOpenCompliance()
+                }
+              }}
+            />
+          )}
+
           {/* Format */}
           <section>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
@@ -285,11 +389,20 @@ export function ExportModal({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={!canvas || generating}
-              className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black disabled:opacity-40 transition-colors"
+              disabled={!canvas || generating || generateBlocked}
+              title={
+                generateBlocked
+                  ? 'Tick the acknowledgement above to proceed at your own risk.'
+                  : undefined
+              }
+              className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
-              {generating ? 'Generating…' : 'Generate + Download'}
+              {generating
+                ? 'Generating…'
+                : hasBlockings && acknowledged
+                  ? 'Export at my risk'
+                  : 'Generate + Download'}
             </button>
           </div>
         </footer>
@@ -301,6 +414,120 @@ export function ExportModal({
 // ============================================================================
 // Sub-controls
 // ============================================================================
+
+// ============================================================================
+// BlockingWarning — DS-69b "you have unresolved issues" override gate
+// ============================================================================
+
+function BlockingWarning({
+  findings,
+  acknowledged,
+  onToggleAck,
+  onReviewIssues,
+}: {
+  findings: ScanFinding[]
+  acknowledged: boolean
+  onToggleAck: () => void
+  onReviewIssues: () => void
+}) {
+  const count = findings.length
+  return (
+    <section
+      className={
+        'rounded-md border p-3.5 ' +
+        (acknowledged
+          ? 'border-amber-300 bg-amber-50/60'
+          : 'border-pink-500 bg-pink-50')
+      }
+      role="alert"
+    >
+      <div className="flex items-start gap-2.5">
+        <AlertOctagon
+          className={
+            'h-4 w-4 flex-shrink-0 mt-0.5 ' +
+            (acknowledged ? 'text-amber-700' : 'text-pink-700')
+          }
+        />
+        <div className="flex-1">
+          <div className="text-[12.5px] font-bold text-ink-900">
+            {count} unresolved compliance {count === 1 ? 'issue' : 'issues'}
+          </div>
+          <p className="mt-1 text-[11.5px] text-ink-700 leading-[1.5]">
+            Required FDA-label elements are missing or malformed. If a
+            professional designer prepared this artwork and you&apos;ve
+            reviewed it offline, you can proceed at your own risk —
+            otherwise fix the issues first and re-run the scan.
+          </p>
+
+          {/* Top 3 findings as a list — gives the user enough context to
+              decide without leaving the modal. */}
+          <ul className="mt-2 space-y-0.5 text-[11px] text-ink-700">
+            {findings.slice(0, 3).map((f) => (
+              <li key={f.id} className="flex gap-1.5">
+                <span className="text-pink-700 font-bold">•</span>
+                <span>
+                  <span className="font-semibold">{f.title}</span>
+                  {f.citation && (
+                    <span className="text-ink-500 font-mono ml-1.5 text-[10.5px]">
+                      {f.citation}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+            {findings.length > 3 && (
+              <li className="text-ink-500 italic pl-3">
+                + {findings.length - 3} more
+              </li>
+            )}
+          </ul>
+
+          <div className="mt-2.5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onReviewIssues}
+              className="inline-flex items-center gap-1 rounded-md border border-pink-500 bg-white px-2.5 py-1 text-[11px] font-semibold text-pink-700 hover:bg-pink-50 transition-colors"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Review in Compliance
+            </button>
+          </div>
+
+          {/* Acknowledge checkbox */}
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <button
+              type="button"
+              onClick={onToggleAck}
+              aria-pressed={acknowledged}
+              className={
+                'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
+                (acknowledged
+                  ? 'bg-amber-500 border-amber-500'
+                  : 'border-pink-500 bg-white hover:border-pink-700')
+              }
+            >
+              {acknowledged && (
+                <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold">
+                  ✓
+                </span>
+              )}
+            </button>
+            <span className="text-[11.5px] text-ink-900 leading-[1.45]">
+              <span className="font-semibold">
+                I&apos;ve reviewed the issues and accept responsibility
+                for label compliance.
+              </span>{' '}
+              <span className="text-ink-600">
+                iLaunchify will record this acknowledgement on the design
+                version.
+              </span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 function FormatTile({
   active,

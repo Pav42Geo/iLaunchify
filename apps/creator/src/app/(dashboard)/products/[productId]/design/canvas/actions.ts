@@ -272,14 +272,36 @@ export async function listCanvasUploads(
 }
 
 /**
+ * Acknowledgement payload from ExportModal — when the creator clicked
+ * through a blocking compliance scan, we persist who acked which
+ * findings for audit. Stored verbatim on DesignVersion.generationMeta
+ * so admin / legal can reconstruct the export-time state.
+ */
+export interface ExportAckPayload {
+  acknowledged: boolean
+  ackedAt?: string
+  ackedFindings?: Array<{
+    id: string
+    title: string
+    severity: 'BLOCKING' | 'WARNING' | 'INFO'
+    citation?: string
+  }>
+}
+
+/**
  * Stamp DesignVersion.exportedAt = now() after a client-side export
- * completes (DS-64c). V1 doesn't round-trip the PDF through the server —
- * the partner gets it via the order pipeline — but we still record that
- * the creator generated an export so the dashboard + order-readiness
- * checks can show "design ready for production" state.
+ * completes (DS-64c + DS-69c). V1 doesn't round-trip the PDF through
+ * the server — the partner gets it via the order pipeline — but we
+ * record that the creator generated an export so the dashboard +
+ * order-readiness checks can show "design ready for production" state.
+ *
+ * When the creator overrode a blocking compliance scan (DS-69), the
+ * ack payload is merged into DesignVersion.generationMeta under the
+ * `complianceAck` key for audit.
  */
 export async function recordDesignExport(
   productId: string,
+  ack?: ExportAckPayload,
 ): Promise<{ ok: true; exportedAt: string } | { ok: false; error: string }> {
   try {
     const user = await requireUser()
@@ -291,7 +313,7 @@ export async function recordDesignExport(
           product: { brand: { creatorProfile: { userId: user.id } } },
         },
       },
-      select: { id: true },
+      select: { id: true, generationMeta: true },
     })
     if (!designVersion) {
       return {
@@ -300,9 +322,32 @@ export async function recordDesignExport(
       }
     }
     const now = new Date()
+
+    // Merge the ack into generationMeta. We deliberately APPEND to a
+    // complianceAck history list rather than overwriting so repeated
+    // exports of the same design retain the full audit trail.
+    const existing =
+      (designVersion.generationMeta as Record<string, unknown> | null) ?? {}
+    const history = Array.isArray(existing.complianceAckHistory)
+      ? (existing.complianceAckHistory as unknown[])
+      : []
+    const nextMeta: Record<string, unknown> = { ...existing }
+    if (ack?.acknowledged) {
+      history.push({
+        ackedAt: ack.ackedAt ?? now.toISOString(),
+        ackedByUserId: user.id,
+        findings: ack.ackedFindings ?? [],
+      })
+      nextMeta.complianceAckHistory = history
+      nextMeta.lastComplianceAckAt = ack.ackedAt ?? now.toISOString()
+    }
+
     await prisma.designVersion.update({
       where: { id: designVersion.id },
-      data: { exportedAt: now },
+      data: {
+        exportedAt: now,
+        generationMeta: nextMeta as never,
+      },
     })
     revalidatePath(`/products/${productId}`)
     return { ok: true, exportedAt: now.toISOString() }
