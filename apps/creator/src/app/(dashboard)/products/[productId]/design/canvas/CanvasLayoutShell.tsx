@@ -71,6 +71,7 @@ import { BackgroundDrawer } from './drawers/BackgroundDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
+import { FinishesDrawer } from './drawers/FinishesDrawer'
 import {
   Inbox,
   Tag,
@@ -94,6 +95,7 @@ import {
   ShieldCheck,
   Eye,
   Download,
+  Wand2,
   X,
 } from 'lucide-react'
 
@@ -126,6 +128,13 @@ interface Props {
     netQuantity: string | null
     netQuantityKind: 'solid' | 'liquid' | 'count'
   }
+  /**
+   * DS-70b — when the bound print partner has ≥ 1 ACTIVE PartnerFinish
+   * compatible with the chosen substrate, the Finishes rail icon
+   * appears. V1 always false (no partner data + drawer is placeholder).
+   * Resolution lives in page.tsx — keeps the shell agnostic.
+   */
+  partnerOffersFinishes?: boolean
 }
 
 type ToolKey =
@@ -140,8 +149,21 @@ type ToolKey =
   | 'qrcode'
   | 'barcode'
   | 'layers'
+  | 'finishes'
 
-const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolean }> = [
+/**
+ * `conditional` tools (DS-70b) only appear in the rail when the runtime
+ * passes their gate. Finishes is the first: it shows only when the
+ * bound partner has ≥1 active PartnerFinish — V1 always false. See
+ * `partnerOffersFinishes` prop + the rail filter below.
+ */
+const TOOLS: Array<{
+  key: ToolKey
+  label: string
+  icon: typeof Inbox
+  v1: boolean
+  conditional?: 'finishes'
+}> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
@@ -153,6 +175,14 @@ const TOOLS: Array<{ key: ToolKey; label: string; icon: typeof Inbox; v1: boolea
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
+  // Conditional — only renders when partnerOffersFinishes flag is true.
+  {
+    key: 'finishes',
+    label: 'Finishes',
+    icon: Wand2,
+    v1: true,
+    conditional: 'finishes',
+  },
 ]
 
 export function CanvasLayoutShell({
@@ -162,6 +192,7 @@ export function CanvasLayoutShell({
   brandAssets,
   initialDesignJson,
   productCtx: serverProductCtx,
+  partnerOffersFinishes = false,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -429,6 +460,7 @@ export function CanvasLayoutShell({
             activeTool={activeTool}
             onToggle={toggleTool}
             onHover={scheduleOpen}
+            partnerOffersFinishes={partnerOffersFinishes}
           />
 
           {/* Drawer slot — font drawer (DS-66f) takes precedence over the
@@ -726,19 +758,28 @@ function LeftRail({
   activeTool,
   onToggle,
   onHover,
+  partnerOffersFinishes,
 }: {
   activeTool: ToolKey | null
   onToggle: (k: ToolKey) => void
   /** Schedule a hover-open with intent delay (DS-61). */
   onHover: (k: ToolKey) => void
+  /** DS-70b — controls whether the Finishes icon renders. */
+  partnerOffersFinishes: boolean
 }) {
+  // Filter out conditional tools whose gates aren't met. V1 always
+  // hides Finishes; later phases flip the gate per-product.
+  const visibleTools = TOOLS.filter((t) => {
+    if (t.conditional === 'finishes') return partnerOffersFinishes
+    return true
+  })
   return (
     <nav
       className="flex w-20 flex-col gap-0.5 border-r border-ink-200 bg-white py-2"
       role="toolbar"
       aria-label="Design tools"
     >
-      {TOOLS.map(({ key, label, icon: Icon, v1 }) => {
+      {visibleTools.map(({ key, label, icon: Icon, v1 }) => {
         const isActive = activeTool === key
         return (
           <button
@@ -818,6 +859,7 @@ function ToolDrawer({
     qrcode: 'QR Code',
     barcode: 'Barcode',
     layers: 'Layers',
+    finishes: 'Finishes',
   }
 
   return (
@@ -869,6 +911,7 @@ function ToolDrawer({
         {tool === 'qrcode' && <QrCodeDrawer canvas={canvas} />}
         {tool === 'barcode' && <BarcodeDrawer canvas={canvas} />}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
+        {tool === 'finishes' && <FinishesDrawer />}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&
@@ -876,7 +919,8 @@ function ToolDrawer({
           tool !== 'background' &&
           tool !== 'qrcode' &&
           tool !== 'barcode' &&
-          tool !== 'layers' && <ComingSoonStub label={titles[tool]} />}
+          tool !== 'layers' &&
+          tool !== 'finishes' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )
