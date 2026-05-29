@@ -30,16 +30,26 @@ export interface SnapshotOpts {
 
 /**
  * Full-canvas PNG including bleed. Returns a data URL.
+ *
+ * Returns an empty string when the canvas is in a disposed state —
+ * fabric.toDataURL internally calls clear() and would otherwise
+ * crash on a contextContainer that's been nulled.
  */
 export function snapshotCanvasAsPng(
   canvas: FabricCanvas,
   opts: SnapshotOpts = {},
 ): string {
-  return canvas.toDataURL({
-    format: 'png',
-    multiplier: opts.multiplier ?? 1,
-    quality: opts.quality ?? 1,
-  })
+  if (isCanvasDisposed(canvas)) return ''
+  try {
+    return canvas.toDataURL({
+      format: 'png',
+      multiplier: opts.multiplier ?? 1,
+      quality: opts.quality ?? 1,
+    })
+  } catch (err) {
+    console.warn('[snapshot] toDataURL failed:', err)
+    return ''
+  }
 }
 
 /**
@@ -57,17 +67,36 @@ export function snapshotCanvasTrimmed(args: {
   multiplier?: number
 }): string {
   const { canvas, dieCut, pxPerMm } = args
+  if (isCanvasDisposed(canvas)) return ''
   const multiplier = args.multiplier ?? 1
   const bleedPx = dieCut.bleedMm * pxPerMm
   const widthPx = dieCut.widthMm * pxPerMm
   const heightPx = dieCut.heightMm * pxPerMm
-  return canvas.toDataURL({
-    format: 'png',
-    multiplier,
-    quality: 1,
-    left: bleedPx,
-    top: bleedPx,
-    width: widthPx,
-    height: heightPx,
-  })
+  try {
+    return canvas.toDataURL({
+      format: 'png',
+      multiplier,
+      quality: 1,
+      left: bleedPx,
+      top: bleedPx,
+      width: widthPx,
+      height: heightPx,
+    })
+  } catch (err) {
+    console.warn('[snapshot] toDataURL failed:', err)
+    return ''
+  }
+}
+
+/**
+ * True if the fabric canvas is in a disposed state. Reads the v6
+ * `disposed` flag and falls back to checking `contextContainer`, which
+ * is what fabric's clear() depends on.
+ */
+function isCanvasDisposed(canvas: FabricCanvas): boolean {
+  const c = canvas as unknown as {
+    disposed?: boolean
+    contextContainer?: unknown
+  }
+  return !!c.disposed || c.contextContainer == null
 }

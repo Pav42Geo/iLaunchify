@@ -109,6 +109,16 @@ export async function generatePrintReadyPdf(
   const multiplier = targetPxPerMm / pxPerMm
 
   // ---- Snapshot the right area ----
+  // Bail early if the canvas was disposed between the user's click and
+  // the dynamic-import resolving (race window during HMR / strict mode).
+  const c = canvas as unknown as {
+    disposed?: boolean
+    contextContainer?: unknown
+  }
+  if (c.disposed || c.contextContainer == null) {
+    throw new Error('Canvas is no longer available — try exporting again.')
+  }
+
   let dataUrl: string
   if (includeBleed) {
     dataUrl = canvas.toDataURL({

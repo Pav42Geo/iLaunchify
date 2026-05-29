@@ -64,34 +64,67 @@ export function Stage({
 
     fabricRef.current = canvas
 
-    // Load initial design state if present
+    // Strict mode mounts/unmounts/remounts the effect. The async
+    // loadFromJSON().then(renderAll) from the FIRST mount can resolve
+    // AFTER the strict-mode dispose, at which point renderAll() runs
+    // against a disposed canvas and crashes inside fabric's clearRect
+    // call. This flag short-circuits the async callback when the
+    // cleanup has already fired.
+    let cancelled = false
+
     if (initialDesignJson) {
-      canvas.loadFromJSON(initialDesignJson).then(() => {
-        canvas.renderAll()
-      })
+      canvas
+        .loadFromJSON(initialDesignJson)
+        .then(() => {
+          if (cancelled) return
+          canvas.renderAll()
+        })
+        .catch(() => {
+          // Swallow — usually fires when dispose raced ahead of the
+          // load promise. Same defensive intent as the cancelled flag.
+        })
     }
 
     onReady?.(canvas)
 
     return () => {
-      // Async dispose so React's strict-mode double-mount doesn't blow up
-      canvas.dispose().catch(() => {
-        // already disposed; safe to ignore
-      })
+      cancelled = true
+      // Null the ref FIRST so any concurrent effect that reads
+      // fabricRef.current sees the disposed state.
       fabricRef.current = null
+      // Async dispose so React's strict-mode double-mount doesn't blow up.
+      try {
+        const result = canvas.dispose() as unknown
+        if (result && typeof (result as Promise<unknown>).catch === 'function') {
+          ;(result as Promise<unknown>).catch(() => {})
+        }
+      } catch {
+        // already disposed; safe to ignore
+      }
     }
     // We deliberately only re-init when the die-cut identity changes — pxPerMm /
     // surfaceColor changes are applied via the canvas API in their own effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dieCut.id])
 
-  // React to pxPerMm / surfaceColor changes without re-creating the canvas
+  // React to pxPerMm / surfaceColor changes without re-creating the canvas.
+  // Wrapped in try/catch because canvas.setDimensions + renderAll go
+  // through the same clearRect path that crashes on a disposed canvas —
+  // we don't want a stale effect run (e.g. one queued before strict-mode
+  // dispose) to take down the page.
   useEffect(() => {
     const canvas = fabricRef.current
     if (!canvas) return
-    canvas.setDimensions({ width: pixelWidth, height: pixelHeight })
-    canvas.backgroundColor = surfaceColor
-    canvas.renderAll()
+    // fabric v6 sets a `disposed` flag during cleanup; bail before we
+    // touch the canvas context.
+    if ((canvas as unknown as { disposed?: boolean }).disposed) return
+    try {
+      canvas.setDimensions({ width: pixelWidth, height: pixelHeight })
+      canvas.backgroundColor = surfaceColor
+      canvas.renderAll()
+    } catch (err) {
+      console.warn('[Stage] resize/render skipped — canvas not ready:', err)
+    }
   }, [pixelWidth, pixelHeight, surfaceColor])
 
   return (
