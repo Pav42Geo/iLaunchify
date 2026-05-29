@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilau
 import Link from 'next/link'
 import { DispatchActions } from './DispatchActions'
 import { ProductionManifestCard } from './ProductionManifestCard'
+import { ChangeRequestCard } from './ChangeRequestCard'
 import type { ProductionManifest } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
@@ -110,6 +111,14 @@ export default async function DispatchDetailPage({
               <Row label="Status" value={STATUS_LABELS[dispatch.status] ?? dispatch.status} />
             </CardContent>
           </Card>
+
+          {/* Phase H2 — change request the partner filed (shown only when
+              status is CHANGES_REQUESTED). Renders before the manifest so
+              the partner sees what they're awaiting. */}
+          <ChangeRequestCard
+            changeRequest={dispatch.changeRequest as unknown as never}
+            status={dispatch.status}
+          />
 
           {/* Phase G8 — production manifest. Replaces the V0 'print spec'
               placeholder for LABEL dispatches and also shows on PRODUCT

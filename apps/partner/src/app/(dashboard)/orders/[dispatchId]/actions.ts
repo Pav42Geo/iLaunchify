@@ -418,3 +418,189 @@ export async function markDelivered({ dispatchId }: { dispatchId: string }): Pro
   revalidatePath('/orders')
   return { ok: true }
 }
+
+// =============================================================================
+// Phase H2 — request changes / withdraw
+// =============================================================================
+
+/** Manifest fields a partner can flag in a CHANGES_REQUESTED action. */
+export type FlaggedField =
+  | 'quantity'
+  | 'substrate'
+  | 'packagingMaterial'
+  | 'finishes'
+  | 'shipTo'
+  | 'leadTime'
+  | 'other'
+
+const ALLOWED_FLAGGED_FIELDS: FlaggedField[] = [
+  'quantity',
+  'substrate',
+  'packagingMaterial',
+  'finishes',
+  'shipTo',
+  'leadTime',
+  'other',
+]
+
+export async function requestDispatchChanges({
+  dispatchId,
+  flaggedFields,
+  partnerNote,
+  suggestedAlternatives,
+}: {
+  dispatchId: string
+  flaggedFields: FlaggedField[]
+  partnerNote: string
+  suggestedAlternatives?: Record<string, string>
+}): Promise<Result> {
+  const user = await requireUser()
+  const dispatch = await loadOwnedDispatch(user.id, dispatchId)
+  if (!dispatch) return { ok: false, error: 'Dispatch not found' }
+  if (dispatch.status !== 'PENDING_ACCEPT') {
+    return {
+      ok: false,
+      error: `Cannot request changes from ${dispatch.status}`,
+    }
+  }
+  const sanitised = flaggedFields.filter((f) => ALLOWED_FLAGGED_FIELDS.includes(f))
+  if (sanitised.length === 0) {
+    return { ok: false, error: 'Pick at least one field to flag.' }
+  }
+  if (!partnerNote.trim()) {
+    return {
+      ok: false,
+      error: 'Partner note is required so the creator knows what needs changing.',
+    }
+  }
+  if (partnerNote.length > 1000) {
+    return { ok: false, error: 'Partner note must be 1000 characters or fewer.' }
+  }
+
+  const changeRequest = {
+    flaggedFields: sanitised,
+    partnerNote: partnerNote.trim(),
+    suggestedAlternatives: suggestedAlternatives ?? {},
+    requestedAt: new Date().toISOString(),
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.orderDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: 'CHANGES_REQUESTED',
+        changeRequest: changeRequest as unknown as object,
+      },
+    })
+    await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
+  })
+
+  await logAuditAs(user, {
+    entityType: 'OrderDispatch',
+    entityId: dispatch.id,
+    action: 'DISPATCH_CHANGES_REQUESTED',
+    fromValue: 'PENDING_ACCEPT',
+    toValue: 'CHANGES_REQUESTED',
+    payload: {
+      orderId: dispatch.orderId,
+      type: dispatch.type,
+      flaggedFields: sanitised,
+      partnerNote: partnerNote.trim(),
+    },
+  })
+
+  revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}
+
+/**
+ * Withdraw after acceptance — partner accepted but can't deliver
+ * (capacity surprise, machine breakdown, supplier issue). Distinct
+ * from decline because the lifecycle stage is different.
+ *
+ * V1: parks the order at ON_HOLD for admin manual reroute (mirroring
+ * decline behaviour). V1.5 marketplace matching (#153) auto-reroutes
+ * non-manufacturer withdrawals.
+ */
+export async function withdrawDispatch({
+  dispatchId,
+  reason,
+}: {
+  dispatchId: string
+  reason: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const dispatch = await loadOwnedDispatch(user.id, dispatchId)
+  if (!dispatch) return { ok: false, error: 'Dispatch not found' }
+  const withdrawableStates = ['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK']
+  if (!withdrawableStates.includes(dispatch.status)) {
+    return {
+      ok: false,
+      error: `Cannot withdraw from ${dispatch.status}. Contact iLaunchify support.`,
+    }
+  }
+  if (!reason.trim()) {
+    return {
+      ok: false,
+      error: 'Reason is required so admin + creator know what happened.',
+    }
+  }
+  if (reason.length > 1000) {
+    return { ok: false, error: 'Reason must be 1000 characters or fewer.' }
+  }
+
+  const fromStatus = dispatch.status
+  const isManufacturer = dispatch.type === 'PRODUCT'
+
+  await prisma.$transaction(async (tx) => {
+    await tx.orderDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: 'WITHDRAWN',
+        withdrawnAt: new Date(),
+        withdrawReason: reason.trim(),
+      },
+    })
+    if (isManufacturer) {
+      await tx.order.update({
+        where: { id: dispatch.orderId },
+        data: {
+          status: 'CANCELLED',
+          aggregateApprovalStatus: 'CANCELLED',
+          internalNotes: `Manufacturer withdrew (${reason
+            .trim()
+            .slice(0, 200)}) — admin: handle cost recovery`,
+        },
+      })
+    } else {
+      await tx.order.update({
+        where: { id: dispatch.orderId },
+        data: {
+          status: 'ON_HOLD',
+          internalNotes: `Dispatch ${dispatch.type} withdrawn: ${reason
+            .trim()
+            .slice(0, 200)} — needs reroute`,
+        },
+      })
+      await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
+    }
+  })
+
+  await logAuditAs(user, {
+    entityType: 'OrderDispatch',
+    entityId: dispatch.id,
+    action: 'DISPATCH_WITHDRAWN',
+    fromValue: fromStatus,
+    toValue: 'WITHDRAWN',
+    payload: {
+      orderId: dispatch.orderId,
+      type: dispatch.type,
+      reason: reason.trim(),
+    },
+  })
+
+  revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}
