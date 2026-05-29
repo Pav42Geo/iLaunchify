@@ -166,6 +166,17 @@ export async function placeOrderFromCheckoutDraft(
     dispatchSubtotal,
   })
 
+  // Phase G8 — lock the exact DesignVersion sold so the partner-side
+  // production bundle is deterministic. Null when the product has no
+  // saved design yet (legacy edge — order goes through with the bundle
+  // marked FAILED for admin to follow up).
+  const lockedDesign = await prisma.design.findFirst({
+    where: { productId: product.id },
+    orderBy: { updatedAt: 'desc' },
+    include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
+  })
+  const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
@@ -198,6 +209,7 @@ export async function placeOrderFromCheckoutDraft(
         quantity: qty,
         unitPriceCents: Math.round(productionTotalCents / qty),
         totalCents: productionTotalCents,
+        designVersionId: lockedDesignVersionId,
       },
     })
 

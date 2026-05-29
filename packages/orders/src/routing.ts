@@ -12,6 +12,7 @@
 // if no match — order is flagged for admin manual routing).
 
 import { prisma } from '@ilaunchify/db'
+import { generateOrderManifest } from './manifest'
 
 export interface RoutingResult {
   ok: true
@@ -210,6 +211,40 @@ export async function createDispatches(params: {
         printProviderServiceId: routing.labelPrintingServiceId,
       },
     })
+    // Phase G8 — stamp the production manifest on each dispatch row so
+    // the partner sees the spec the moment they open the dispatch. The
+    // actual PDF + die-line render is V1.5 worker territory (reads
+    // OrderItem.designVersionId and renders the Fabric JSON).
+    const dispatches = await tx.orderDispatch.findMany({
+      where: { orderId: order.id },
+      select: { id: true },
+    })
+    for (const d of dispatches) {
+      try {
+        const manifest = await generateOrderManifest(tx, {
+          orderId: order.id,
+          orderDispatchId: d.id,
+        })
+        await tx.orderDispatch.update({
+          where: { id: d.id },
+          data: {
+            finishManifestJson: manifest as unknown as object,
+            bundleStatus: 'PENDING_GENERATION',
+          },
+        })
+      } catch (err) {
+        // Don't fail the whole transaction — the dispatch is still valid,
+        // the manifest is just absent. Admin can regenerate.
+        await tx.orderDispatch.update({
+          where: { id: d.id },
+          data: { bundleStatus: 'FAILED' },
+        })
+        console.warn(
+          `[orders/manifest] generateOrderManifest failed for dispatch ${d.id}:`,
+          err,
+        )
+      }
+    }
   })
 
   // Notify both partners that a new dispatch is waiting for them. Imported

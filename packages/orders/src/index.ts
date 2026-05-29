@@ -19,3 +19,9 @@ export {
 export type { RoutingResult, RoutingFailure } from './routing'
 export { runAutoCancel } from './auto-cancel'
 export type { AutoCancelResult } from './auto-cancel'
+export {
+  generateOrderManifest,
+  parseInternalNotesLookups,
+  MANIFEST_VERSION,
+} from './manifest'
+export type { ProductionManifest } from './manifest'

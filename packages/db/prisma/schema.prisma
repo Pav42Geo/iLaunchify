@@ -272,6 +272,15 @@ enum DispatchDeclineReason {
   OTHER
 }
 
+// Phase G8 — production bundle generation status. Manifest is built at
+// order placement (synchronous); print-ready PDF + die-line SVG render
+// is V1.5 worker territory.
+enum BundleStatus {
+  PENDING_GENERATION    // manifest done, files not yet rendered
+  READY                 // bundleAssetId populated, ready for the partner
+  FAILED                // generator hit an error — admin alert
+}
+
 // =============================================================================
 // ENUMS — PAYMENTS
 // =============================================================================
@@ -983,6 +992,9 @@ model DesignVersion {
   design          Design       @relation(fields: [designId], references: [id], onDelete: Cascade)
   // V1.5+ Phase F — print finishes the creator applied to this design version.
   finishApplications DesignFinishApplication[]
+  // Phase G8 — OrderItems that locked in this version. Lets us refuse
+  // delete on a version with a paid order against it.
+  orderItems      OrderItem[]
   createdAt       DateTime     @default(now())
   @@unique([designId, version])
 }
@@ -1487,8 +1499,14 @@ model OrderItem {
   quantity        Int
   unitPriceCents  Int                              // snapshot at order time
   totalCents      Int
+  // Phase G8 — locks the exact DesignVersion sold so the production
+  // bundle can be regenerated deterministically even after the creator
+  // makes further canvas edits. Nullable for legacy orders placed
+  // before G8 shipped.
+  designVersionId String?
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [productId], references: [id])
+  designVersion   DesignVersion? @relation(fields: [designVersionId], references: [id])
 }
 
 // OrderDispatch — one of N dispatches per Order. Per the dual-dispatch model:
@@ -1522,6 +1540,16 @@ model OrderDispatch {
   deliveredAt       DateTime?
   // Costs (for transfer reference)
   costCents         Int
+  // Phase G8 — production bundle. Manifest is generated synchronously at
+  // order placement (substrate / packaging / finishes / die-cut / ship-to
+  // — no canvas needed). The actual print-ready PDF + die-line SVG land
+  // in V1.5 (a headless-browser worker reads designVersionId on the
+  // OrderItem and renders the Fabric JSON). bundleStatus tracks that
+  // future workflow.
+  bundleStatus       BundleStatus     @default(PENDING_GENERATION)
+  finishManifestJson Json?
+  bundleAssetId      String?
+  bundleGeneratedAt  DateTime?
   // Relations
   order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   partnerService    PartnerService   @relation(fields: [partnerServiceId], references: [id])

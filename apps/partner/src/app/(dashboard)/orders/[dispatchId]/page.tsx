@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { DispatchActions } from './DispatchActions'
+import { ProductionManifestCard } from './ProductionManifestCard'
+import type { ProductionManifest } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,17 +111,17 @@ export default async function DispatchDetailPage({
             </CardContent>
           </Card>
 
-          {dispatch.type === 'LABEL' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Print spec</CardTitle>
-                <CardDescription>
-                  PDF/X-1a + your ICC profile delivered as part of the order packet. Download
-                  available after acceptance.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
+          {/* Phase G8 — production manifest. Replaces the V0 'print spec'
+              placeholder for LABEL dispatches and also shows on PRODUCT
+              dispatches (the manufacturer needs the substrate / packaging
+              / ship-to spec too). The actual PDF + die-line render ships
+              V1.5. */}
+          <ProductionManifestCard
+            manifest={
+              (dispatch.finishManifestJson as unknown as ProductionManifest | null) ?? null
+            }
+            status={dispatch.bundleStatus}
+          />
         </div>
 
         <div>
