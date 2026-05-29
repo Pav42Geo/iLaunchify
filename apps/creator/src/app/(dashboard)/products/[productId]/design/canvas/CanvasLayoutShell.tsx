@@ -240,7 +240,61 @@ export function CanvasLayoutShell({
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
 
+  // DS-61 — hover-to-open left rail. Two debounced timers manage the
+  // intent gestalt:
+  //   openTimer  = small delay on mouseenter so quick traverses across
+  //                icons don't flicker drawers in and out.
+  //   closeTimer = longer delay on mouseleave so the user can move from
+  //                a rail icon INTO the drawer area without losing it.
+  const openTimerRef = React.useRef<number | null>(null)
+  const closeTimerRef = React.useRef<number | null>(null)
+
+  const clearTimers = React.useCallback(() => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const cancelClose = React.useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleOpen = React.useCallback((key: ToolKey) => {
+    cancelClose()
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current)
+    }
+    openTimerRef.current = window.setTimeout(() => {
+      setActiveTool(key)
+      openTimerRef.current = null
+    }, 60)
+  }, [cancelClose])
+
+  const scheduleClose = React.useCallback(() => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    closeTimerRef.current = window.setTimeout(() => {
+      setActiveTool(null)
+      closeTimerRef.current = null
+    }, 200)
+  }, [])
+
+  // Cleanup on unmount so no stray setState fires.
+  React.useEffect(() => clearTimers, [clearTimers])
+
   function toggleTool(key: ToolKey) {
+    // Click decisively — cancel any pending hover-open/close.
+    clearTimers()
     setActiveTool((prev) => (prev === key ? null : key))
   }
 
@@ -282,24 +336,38 @@ export function CanvasLayoutShell({
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left rail */}
-        <LeftRail activeTool={activeTool} onToggle={toggleTool} />
-
-        {/* Drawer slot */}
-        {activeTool && (
-          <ToolDrawer
-            tool={activeTool}
-            dieCut={dieCut}
-            guides={guides}
-            setGuides={setGuides}
-            brandAssets={brandAssets}
-            canvas={canvas}
-            productId={productId}
-            productName={productName}
-            productCtx={productCtx}
-            onClose={() => setActiveTool(null)}
+        {/* Rail + drawer wrap. Cursor moving anywhere inside this group
+            cancels the pending close so the drawer doesn't disappear
+            while the user reaches for it. Mouseleave schedules the
+            close (DS-61). */}
+        <div
+          className="flex"
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        >
+          {/* Left rail */}
+          <LeftRail
+            activeTool={activeTool}
+            onToggle={toggleTool}
+            onHover={scheduleOpen}
           />
-        )}
+
+          {/* Drawer slot */}
+          {activeTool && (
+            <ToolDrawer
+              tool={activeTool}
+              dieCut={dieCut}
+              guides={guides}
+              setGuides={setGuides}
+              brandAssets={brandAssets}
+              canvas={canvas}
+              productId={productId}
+              productName={productName}
+              productCtx={productCtx}
+              onClose={() => setActiveTool(null)}
+            />
+          )}
+        </div>
 
         {/* Canvas viewport — DS-59 fix.
             The outer container is non-scrolling (overflow-hidden). The
@@ -505,9 +573,12 @@ function TopBar({
 function LeftRail({
   activeTool,
   onToggle,
+  onHover,
 }: {
   activeTool: ToolKey | null
   onToggle: (k: ToolKey) => void
+  /** Schedule a hover-open with intent delay (DS-61). */
+  onHover: (k: ToolKey) => void
 }) {
   return (
     <nav
@@ -522,6 +593,7 @@ function LeftRail({
             key={key}
             type="button"
             onClick={() => onToggle(key)}
+            onMouseEnter={() => onHover(key)}
             className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
               isActive
                 ? 'bg-pink-50 text-pink-700'
