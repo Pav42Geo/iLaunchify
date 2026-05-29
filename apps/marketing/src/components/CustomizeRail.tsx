@@ -102,7 +102,7 @@ export function CustomizeRail({
             addOns={ingredientAddOns}
             replacements={replacements}
             selectedAddOnIds={addOnIds}
-            onReplacementChange={(id, replacementId) =>
+            onReplace={(id, replacementId) =>
               setReplacements((prev) => {
                 const next = { ...prev }
                 if (replacementId) next[id] = replacementId
@@ -110,9 +110,9 @@ export function CustomizeRail({
                 return next
               })
             }
-            onAddOnToggle={(id) =>
+            onAddOnToggle={(id, on) =>
               setAddOnIds((prev) =>
-                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                on ? [...prev, id] : prev.filter((x) => x !== id),
               )
             }
           />
