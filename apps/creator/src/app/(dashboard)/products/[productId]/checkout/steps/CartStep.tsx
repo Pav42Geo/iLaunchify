@@ -15,11 +15,13 @@
 // + collect the explicit acknowledgement when the creator is overriding.
 
 import { useTransition } from 'react'
-import { AlertOctagon, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { AlertOctagon, Loader2, RefreshCcw, ShieldCheck, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { StepShell } from './_StepShell'
 import type { CartState, CheckoutDraftState } from '../types'
 import { placeOrderFromCheckoutDraft } from '../cart-actions'
+import { applyOrderAdjustment } from '../adjust-actions'
 
 interface Props {
   productId: string
@@ -29,7 +31,9 @@ interface Props {
 }
 
 export function CartStep({ productId, state, draft, onChange }: Props) {
+  const router = useRouter()
   const [isPaying, startPaying] = useTransition()
+  const isAdjustment = Boolean(draft.isAdjustmentForOrderId)
 
   // For now, the wizard trusts the canvas's blocking state via a count we
   // could persist on the draft (G2 will fill this in). V1 surfaces the
@@ -66,6 +70,27 @@ export function CartStep({ productId, state, draft, onChange }: Props) {
       return
     }
     startPaying(async () => {
+      if (isAdjustment) {
+        // H3.1 — resubmit instead of pay. No Stripe handoff; the order
+        // is already paid. We only revoke acceptances on impacted
+        // dispatches and bump manifestVersion.
+        const result = await applyOrderAdjustment({
+          productId,
+          draft,
+        })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+        toast.success(
+          `Adjustment submitted — ${result.data.adjustedDispatchCount} partner gate${
+            result.data.adjustedDispatchCount === 1 ? '' : 's'
+          } notified.`,
+        )
+        router.push(`/orders/${draft.isAdjustmentForOrderId}`)
+        return
+      }
+
       const result = await placeOrderFromCheckoutDraft(productId, {
         complianceAck: state.complianceAck,
       })
@@ -122,19 +147,35 @@ export function CartStep({ productId, state, draft, onChange }: Props) {
           />
         )}
 
-        {/* Pay button + readiness messaging */}
-        <div className="rounded-xl border border-pink-200 bg-pink-50/40 p-5">
+        {/* Pay / Resubmit button + readiness messaging */}
+        <div
+          className={
+            'rounded-xl border p-5 ' +
+            (isAdjustment
+              ? 'border-amber-300 bg-amber-50/40'
+              : 'border-pink-200 bg-pink-50/40')
+          }
+        >
           <div className="mb-2 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-pink-600" />
-            <p className="text-[10.5px] font-semibold uppercase tracking-widest text-pink-700">
-              Ready to ship
+            {isAdjustment ? (
+              <RefreshCcw className="h-4 w-4 text-amber-700" />
+            ) : (
+              <Sparkles className="h-4 w-4 text-pink-600" />
+            )}
+            <p
+              className={
+                'text-[10.5px] font-semibold uppercase tracking-widest ' +
+                (isAdjustment ? 'text-amber-800' : 'text-pink-700')
+              }
+            >
+              {isAdjustment ? 'Resubmit for re-acceptance' : 'Ready to ship'}
             </p>
           </div>
           {ready.ok ? (
             <p className="text-sm text-ink-700">
-              Stripe will collect payment and we&apos;ll route the order to your
-              chosen partners. You can track progress from{' '}
-              <strong>My orders</strong>.
+              {isAdjustment
+                ? 'No additional charge. Only the partner gates whose terms you changed will need to re-accept the new spec.'
+                : "Stripe will collect payment and we'll route the order to your chosen partners. You can track progress from My orders."}
             </p>
           ) : (
             <p className="text-sm text-pink-700">{ready.error}</p>
@@ -148,8 +189,10 @@ export function CartStep({ productId, state, draft, onChange }: Props) {
             {isPaying ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Handing off to Stripe…
+                {isAdjustment ? 'Resubmitting…' : 'Handing off to Stripe…'}
               </>
+            ) : isAdjustment ? (
+              'Resubmit adjustment'
             ) : hasBlockings && acknowledged ? (
               'Proceed at my risk + pay'
             ) : (

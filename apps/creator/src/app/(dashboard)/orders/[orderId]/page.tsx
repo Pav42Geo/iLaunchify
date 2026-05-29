@@ -14,6 +14,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
 import { AlertOctagon, Building2, CheckCircle2, Clock, Truck, Warehouse } from 'lucide-react'
+import { AdjustOrderButton } from './AdjustOrderButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -192,19 +193,7 @@ export default async function OrderDetailPage({
                   </div>
                 )
               })}
-              <Link
-                href={`/products/${product.id}/checkout`}
-                className="mt-4 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-black"
-              >
-                Adjust order
-              </Link>
-              <p className="mt-2 text-[10.5px] text-red-700">
-                {/* H3 forward-marker — full adjust flow with wizard pre-fill +
-                    manifest-version-aware acceptance revoke lands when the
-                    wizard supports an 'adjust existing order' mode. */}
-                V1: opens the checkout wizard. Full re-acceptance flow with
-                manifest versioning ships next.
-              </p>
+              <AdjustOrderButton productId={product.id} orderId={order.id} />
             </div>
           </div>
         </div>

@@ -124,6 +124,11 @@ export interface CheckoutDraftState {
   // changes after the draft is created, G2's review step asks the
   // creator to re-confirm.
   designVersionId: string | null
+  // Phase H3.1 — when set, this draft is editing an existing Order's
+  // manifest in response to a partner's CHANGES_REQUESTED filing. The
+  // Pay button changes to "Resubmit for re-acceptance" and routes to
+  // applyOrderAdjustment instead of placeOrderFromCheckoutDraft.
+  isAdjustmentForOrderId: string | null
   // ISO when the wizard was last touched. Mirrors CheckoutDraft.updatedAt
   // for client-side comparisons.
   updatedAt: string
@@ -150,6 +155,7 @@ export function emptyDraftState(): CheckoutDraftState {
     viral: { requests: [] },
     cart: { promoCode: null, complianceAck: null },
     designVersionId: null,
+    isAdjustmentForOrderId: null,
     updatedAt: new Date().toISOString(),
   }
 }

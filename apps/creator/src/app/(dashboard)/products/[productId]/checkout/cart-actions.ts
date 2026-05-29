@@ -71,6 +71,17 @@ export async function placeOrderFromCheckoutDraft(
   }
   const state = draft.state as unknown as CheckoutDraftState
 
+  // H3.1 guard — drafts in adjust mode must use applyOrderAdjustment, not
+  // this Stripe-handoff path. Belt + suspenders since the CartStep button
+  // already branches on the same flag.
+  if (state.isAdjustmentForOrderId) {
+    return {
+      ok: false,
+      error:
+        'This draft is an order adjustment, not a new order. Use the Resubmit button instead.',
+    }
+  }
+
   // --- 2. Validate the draft has what we need to place an order --------------
   const qty = state.production.quantity ?? 0
   if (qty <= 0) {

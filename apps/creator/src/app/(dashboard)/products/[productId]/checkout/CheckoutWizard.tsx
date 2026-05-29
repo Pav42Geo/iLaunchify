@@ -12,7 +12,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, RefreshCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   WIZARD_STEPS,
@@ -128,8 +128,32 @@ export function CheckoutWizard({
     })
   }
 
+  const isAdjustment = Boolean(state.isAdjustmentForOrderId)
+
   return (
     <div className="min-h-screen bg-ink-50">
+      {/* H3.1 — adjust-mode banner */}
+      {isAdjustment && (
+        <div className="border-b border-amber-300 bg-amber-50 px-6 py-2.5">
+          <div className="mx-auto flex max-w-6xl items-start gap-2.5">
+            <RefreshCcw className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-800" />
+            <div className="flex-1 text-[12.5px] text-amber-900">
+              <span className="font-semibold">
+                Adjusting order #{state.isAdjustmentForOrderId?.slice(-8)}
+              </span>{' '}
+              — only partner gates affected by your changes will need to
+              re-accept. Acceptances that aren&apos;t affected stay valid.
+            </div>
+            <Link
+              href={`/orders/${state.isAdjustmentForOrderId}`}
+              className="text-[11px] font-medium text-amber-900 underline hover:text-amber-700"
+            >
+              Cancel adjustment
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-200 bg-white px-6 py-3">
         <div className="flex items-center gap-3">
