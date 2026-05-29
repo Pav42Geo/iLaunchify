@@ -18,6 +18,20 @@ interface StageProps {
   dieCut: DieCutSpec
   /** Pixels per millimeter. Lets parent control zoom. Default 3.0 = roughly 76 DPI. */
   pxPerMm?: number
+  /**
+   * View-zoom multiplier. When set, Fabric's internal setZoom(viewZoom)
+   * is applied so that object coordinates (stored in BASE-pixel space —
+   * i.e. as if viewZoom were 1) render scaled in lockstep with the
+   * resized canvas DOM. Without this, the canvas dimensions grow but
+   * objects keep their original pixel positions, causing them to appear
+   * to drift relative to the die-cut frame during ctrl-wheel zoom
+   * (DS-73.1).
+   *
+   * CanvasLayoutShell drives this via its own `zoom` state, while
+   * `pxPerMm` is left at `basePxPerMm * viewZoom` so dimensions still
+   * scale correctly.
+   */
+  viewZoom?: number
   /** Background color INSIDE the bleed area (i.e. the printable surface color). */
   surfaceColor?: string
   /** Called once when the Fabric.Canvas is ready. Parent uses it to add
@@ -34,6 +48,7 @@ interface StageProps {
 export function Stage({
   dieCut,
   pxPerMm = 3.0,
+  viewZoom = 1,
   surfaceColor = '#ffffff',
   onReady,
   initialDesignJson,
@@ -61,6 +76,10 @@ export function Stage({
       stopContextMenu: true,
       fireRightClick: true,
     })
+    // DS-73.1 — apply the initial view zoom so the canvas mounts at
+    // the right scale when the parent state is non-1 (e.g. an
+    // out-of-band navigation that restored a zoom level).
+    canvas.setZoom(viewZoom)
 
     fabricRef.current = canvas
 
@@ -121,11 +140,17 @@ export function Stage({
     try {
       canvas.setDimensions({ width: pixelWidth, height: pixelHeight })
       canvas.backgroundColor = surfaceColor
+      // DS-73.1 — viewport zoom. Object coordinates are stored in BASE
+      // pixel space (i.e. as if viewZoom were 1). Fabric's setZoom
+      // multiplies all rendered positions by viewZoom, so objects scale
+      // in lockstep with the resized canvas DOM and stay anchored to
+      // the die-cut frame.
+      canvas.setZoom(viewZoom)
       canvas.renderAll()
     } catch (err) {
       console.warn('[Stage] resize/render skipped — canvas not ready:', err)
     }
-  }, [pixelWidth, pixelHeight, surfaceColor])
+  }, [pixelWidth, pixelHeight, surfaceColor, viewZoom])
 
   return (
     <div className={className} style={{ width: pixelWidth, height: pixelHeight, position: 'relative' }}>

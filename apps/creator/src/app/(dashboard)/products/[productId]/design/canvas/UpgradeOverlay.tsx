@@ -98,6 +98,22 @@ export function UpgradeOverlay({
   open,
   onClose,
 }: Props) {
+  // Two-phase mount so the slide-in animation runs on open. When `open`
+  // flips to true, we render the panel at translate-y-full FIRST, then
+  // flip the local `animateIn` flag on the next frame so the CSS
+  // transition can interpolate to translate-y-0. When `open` is false
+  // we render nothing at all — that's what prevents the panel leaking
+  // into the workspace (no measured height = no transform escape).
+  const [animateIn, setAnimateIn] = React.useState(false)
+  React.useEffect(() => {
+    if (!open) {
+      setAnimateIn(false)
+      return
+    }
+    const id = requestAnimationFrame(() => setAnimateIn(true))
+    return () => cancelAnimationFrame(id)
+  }, [open])
+
   // Close on Escape.
   React.useEffect(() => {
     if (!open) return
@@ -107,6 +123,8 @@ export function UpgradeOverlay({
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  if (!open) return null
 
   const headline =
     blockedAction === 'export'
@@ -118,11 +136,10 @@ export function UpgradeOverlay({
       {/* Backdrop — click to close. Sits below the header so the bar stays
           interactive throughout. */}
       <div
-        aria-hidden={!open}
         onClick={onClose}
         className={
-          'pointer-events-none fixed inset-x-0 bottom-0 z-40 bg-black/40 transition-opacity duration-200 ' +
-          (open ? 'pointer-events-auto opacity-100' : 'opacity-0')
+          'fixed inset-x-0 bottom-0 z-40 bg-black/40 transition-opacity duration-200 ' +
+          (animateIn ? 'opacity-100' : 'opacity-0')
         }
         // Backdrop starts directly under the 73px header.
         style={{ top: 73 }}
@@ -132,10 +149,9 @@ export function UpgradeOverlay({
       <div
         role="dialog"
         aria-modal="true"
-        aria-hidden={!open}
         className={
           'fixed inset-x-0 z-50 transform border-b border-ink-200 bg-white shadow-2xl transition-transform duration-300 ease-out ' +
-          (open ? 'translate-y-0' : '-translate-y-full')
+          (animateIn ? 'translate-y-0' : '-translate-y-full')
         }
         style={{ top: 73 }}
       >

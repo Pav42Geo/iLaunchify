@@ -533,6 +533,7 @@ export function CanvasLayoutShell({
                 <CanvasStageWithFrame
                   dieCut={dieCut}
                   pxPerMm={pxPerMm}
+                  viewZoom={zoom}
                   guides={guides}
                   initialDesignJson={initialDesignJson}
                   onReady={setCanvas}
@@ -1334,12 +1335,16 @@ function CanvasStageWithFrame({
   guides,
   initialDesignJson,
   onReady,
+  viewZoom,
 }: {
   dieCut: DieCutSpec
   pxPerMm: number
   guides: GuideVisibility
   initialDesignJson: object | null
   onReady: (canvas: FabricCanvas) => void
+  /** DS-73.1 — forwarded to Stage so fabric setZoom keeps object coords
+      anchored to the resizing canvas. */
+  viewZoom: number
 }) {
   const fullWidthMm = dieCut.widthMm + 2 * dieCut.bleedMm
   const fullHeightMm = dieCut.heightMm + 2 * dieCut.bleedMm
@@ -1354,6 +1359,7 @@ function CanvasStageWithFrame({
       <Stage
         dieCut={dieCut}
         pxPerMm={pxPerMm}
+        viewZoom={viewZoom}
         surfaceColor="#ffffff"
         initialDesignJson={initialDesignJson ?? undefined}
         onReady={onReady}
