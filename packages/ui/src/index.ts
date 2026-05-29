@@ -154,4 +154,9 @@ export {
   snapshotCanvasTrimmed,
   type SnapshotOpts,
 } from './canvas/snapshot'
+export {
+  generatePrintReadyPdf,
+  suggestedPdfFilename,
+  type GeneratePdfOpts,
+} from './canvas/exportPdf'
 

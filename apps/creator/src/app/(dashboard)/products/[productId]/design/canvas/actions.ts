@@ -271,6 +271,50 @@ export async function listCanvasUploads(
     }))
 }
 
+/**
+ * Stamp DesignVersion.exportedAt = now() after a client-side export
+ * completes (DS-64c). V1 doesn't round-trip the PDF through the server —
+ * the partner gets it via the order pipeline — but we still record that
+ * the creator generated an export so the dashboard + order-readiness
+ * checks can show "design ready for production" state.
+ */
+export async function recordDesignExport(
+  productId: string,
+): Promise<{ ok: true; exportedAt: string } | { ok: false; error: string }> {
+  try {
+    const user = await requireUser()
+    const designVersion = await prisma.designVersion.findFirst({
+      where: {
+        version: WORKING_VERSION,
+        design: {
+          productId,
+          product: { brand: { creatorProfile: { userId: user.id } } },
+        },
+      },
+      select: { id: true },
+    })
+    if (!designVersion) {
+      return {
+        ok: false,
+        error: 'No saved design found — generate happened before the first autosave?',
+      }
+    }
+    const now = new Date()
+    await prisma.designVersion.update({
+      where: { id: designVersion.id },
+      data: { exportedAt: now },
+    })
+    revalidatePath(`/products/${productId}`)
+    return { ok: true, exportedAt: now.toISOString() }
+  } catch (err) {
+    console.warn('[design/recordDesignExport] failed:', err)
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to record export',
+    }
+  }
+}
+
 /** Server-only fetch — returns the latest working-version JSON or null. */
 export async function loadDesignJson(productId: string): Promise<unknown | null> {
   const user = await requireUser()

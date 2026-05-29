@@ -31,6 +31,7 @@
     "clsx": "^2.1.1",
     "fabric": "^6.5.1",
     "jsbarcode": "^3.11.6",
+    "jspdf": "^2.5.2",
     "lucide-react": "^0.453.0",
     "qrcode": "^1.5.4",
     "tailwind-merge": "^2.5.4"

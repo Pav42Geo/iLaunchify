@@ -58,6 +58,8 @@ import { ImageToolbar } from './ImageToolbar'
 import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
 import { MockupModal } from './MockupModal'
+import { ExportModal } from './ExportModal'
+import { recordDesignExport } from './actions'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -87,6 +89,7 @@ import {
   Redo2,
   ShieldCheck,
   Eye,
+  Download,
   X,
 } from 'lucide-react'
 
@@ -162,6 +165,7 @@ export function CanvasLayoutShell({
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [mockupOpen, setMockupOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   // DS-60 — refs + state for object actions, context menu, wheel zoom.
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
@@ -371,6 +375,8 @@ export function CanvasLayoutShell({
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
         onToggleMockup={() => setMockupOpen((v) => !v)}
+        exportOpen={exportOpen}
+        onToggleExport={() => setExportOpen((v) => !v)}
       />
 
       {/* Body */}
@@ -519,6 +525,20 @@ export function CanvasLayoutShell({
         open={mockupOpen}
         onClose={() => setMockupOpen(false)}
       />
+
+      {/* Export modal (DS-64) — generates print-ready PDF / PNG. */}
+      <ExportModal
+        canvas={canvas}
+        dieCut={dieCut}
+        pxPerMm={pxPerMm}
+        productName={productName}
+        brandName={brandAssets.brandName}
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        onExported={async () => {
+          await recordDesignExport(productId)
+        }}
+      />
     </div>
   )
 }
@@ -542,6 +562,8 @@ function TopBar({
   onToggleCompliance,
   mockupOpen,
   onToggleMockup,
+  exportOpen,
+  onToggleExport,
 }: {
   productName: string
   brandName: string
@@ -557,6 +579,8 @@ function TopBar({
   onToggleCompliance: () => void
   mockupOpen: boolean
   onToggleMockup: () => void
+  exportOpen: boolean
+  onToggleExport: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -617,6 +641,21 @@ function TopBar({
         >
           <Eye className="h-3.5 w-3.5" />
           Mockup
+        </button>
+        <button
+          type="button"
+          onClick={onToggleExport}
+          aria-pressed={exportOpen}
+          aria-label={exportOpen ? 'Close export' : 'Open export'}
+          className={
+            'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
+            (exportOpen
+              ? 'border-pink-500 bg-pink-50 text-pink-700'
+              : 'border-ink-900 bg-ink-900 text-white hover:bg-black')
+          }
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export
         </button>
         <Link
           href={`/products/${productId}`}
