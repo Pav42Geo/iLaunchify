@@ -2097,10 +2097,20 @@ enum NotificationEvent {
   PARTNER_ACTIVATED           // welcome / fully approved
   DISPATCH_RECEIVED           // new order dispatch needs partner action
   DISPATCH_ACCEPT_REMINDER    // accept window is closing soon (defer to V1.1)
+  // Phase H4 — creator-facing workflow events
+  CREATOR_DISPATCH_ACCEPTED       // a partner accepted one of the creator's dispatches
+  CREATOR_DISPATCH_CHANGES_REQUESTED // partner filed structured change request
+  CREATOR_DISPATCH_DECLINED       // partner declined (auto-reroute in progress for non-manufacturer)
+  CREATOR_DISPATCH_WITHDRAWN      // partner withdrew after acceptance
+  CREATOR_ORDER_FULLY_ACCEPTED    // all partners signed off → production starting
+  CREATOR_ORDER_CANCELLED_BY_MANUFACTURER // manufacturer reject = order killed
   // Admin-facing
   PARTNER_APPLIED             // new lead arrived
   PARTNER_SUBMITTED           // partner finished onboarding, ready for review
   ORDER_NEEDS_ATTENTION       // order moved to ON_HOLD / DISPUTED (defer to V1.1)
+  // Phase H4 — admin needs visibility on manufacturer-cancel + withdrawal
+  ADMIN_ORDER_CANCELLED_BY_MANUFACTURER
+  ADMIN_DISPATCH_WITHDRAWN
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

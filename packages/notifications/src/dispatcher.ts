@@ -13,8 +13,9 @@ export interface DispatchInput {
   // Free-form data passed to the template; shape depends on event.
   data: Record<string, unknown>
   // Optional override — by default we infer this from the user's role.
-  // Affects which app-host the email links point to.
-  audience?: 'admin' | 'partner'
+  // Affects which app-host the email links point to. Phase H4 added
+  // 'creator' so workflow events route to the creator app (3000).
+  audience?: 'admin' | 'partner' | 'creator'
 }
 
 let resendClient: Resend | null = null
@@ -46,7 +47,13 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     }
 
     const template = renderTemplate(input.event, input.data as never)
-    const audience = input.audience ?? (user.role === 'ADMIN' ? 'admin' : 'partner')
+    const audience =
+      input.audience ??
+      (user.role === 'ADMIN'
+        ? 'admin'
+        : user.role === 'CREATOR'
+          ? 'creator'
+          : 'partner')
 
     const tasks: Promise<unknown>[] = []
 

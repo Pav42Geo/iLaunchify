@@ -13,6 +13,12 @@ import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recomputeAggregateApprovalStatus } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
+import {
+  notifyDispatchAccepted,
+  notifyChangesRequested,
+  notifyDeclined,
+  notifyWithdrawn,
+} from './workflow-notifications'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -31,6 +37,7 @@ export async function acceptDispatch({ dispatchId }: { dispatchId: string }): Pr
     return { ok: false, error: `Cannot accept from ${dispatch.status}` }
   }
 
+  let aggregate: string = 'AWAITING_PARTNERS'
   await prisma.$transaction(async (tx) => {
     await tx.orderDispatch.update({
       where: { id: dispatch.id },
@@ -46,13 +53,19 @@ export async function acceptDispatch({ dispatchId }: { dispatchId: string }): Pr
     // helper flips Order.aggregateApprovalStatus to FULLY_ACCEPTED;
     // here we mirror that into Order.status → IN_FULFILLMENT so the
     // existing fulfillment pipeline picks it up.
-    const aggregate = await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
+    aggregate = await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
     if (aggregate === 'FULLY_ACCEPTED') {
       await tx.order.update({
         where: { id: dispatch.orderId },
         data: { status: 'IN_FULFILLMENT' },
       })
     }
+  })
+
+  // Phase H4 — notify creator. Best-effort; failures swallow.
+  await notifyDispatchAccepted({
+    dispatchId: dispatch.id,
+    wasFinalGate: aggregate === 'FULLY_ACCEPTED',
   })
 
   await logAuditAs(user, {
@@ -128,6 +141,13 @@ export async function declineDispatch({
     fromValue: 'PENDING_ACCEPT',
     toValue: 'DECLINED',
     payload: { orderId: dispatch.orderId, type: dispatch.type, reason, notes },
+  })
+
+  // Phase H4 — notify creator (+ admin if manufacturer).
+  await notifyDeclined({
+    dispatchId: dispatch.id,
+    reason: notes,
+    isManufacturer: isManufacturerReject,
   })
 
   revalidatePath(`/orders/${dispatchId}`)
@@ -509,6 +529,13 @@ export async function requestDispatchChanges({
     },
   })
 
+  // Phase H4 — notify creator with the flagged-field count so the email
+  // subject conveys the urgency.
+  await notifyChangesRequested({
+    dispatchId: dispatch.id,
+    flaggedFieldCount: sanitised.length,
+  })
+
   revalidatePath(`/orders/${dispatchId}`)
   revalidatePath('/orders')
   return { ok: true }
@@ -598,6 +625,13 @@ export async function withdrawDispatch({
       type: dispatch.type,
       reason: reason.trim(),
     },
+  })
+
+  // Phase H4 — notify creator (+ admin always for withdrawals).
+  await notifyWithdrawn({
+    dispatchId: dispatch.id,
+    reason: reason.trim(),
+    isManufacturer,
   })
 
   revalidatePath(`/orders/${dispatchId}`)
