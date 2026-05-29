@@ -443,6 +443,8 @@ model User {
   notificationPreferences NotificationPreference[]
   creatorOrders       Order[]                          @relation("CreatorOrders")
   channelConnections  ChannelConnection[]              @relation("CreatorChannelConnections")
+  // Phase G1 — in-progress checkout wizard drafts
+  creatorCheckoutDrafts CheckoutDraft[]                @relation("CreatorCheckoutDrafts")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -834,6 +836,8 @@ model Product {
   designs         Design[]
   orderItems      OrderItem[]
   channelLinks    ChannelProductLink[]
+  // Phase G1 — in-progress checkout drafts
+  checkoutDrafts  CheckoutDraft[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -1232,6 +1236,40 @@ model Asset {
 // the goods ship to either the creator's own address or a connected
 // WAREHOUSE partner. End-consumer purchases happen on the creator's external
 // channels (Shopify, Amazon, etc.) and never touch iLaunchify.
+// Phase G1 — pre-Order wizard state. The 7-step checkout wizard at
+// /products/[id]/checkout persists into this table between steps so the
+// creator can leave and resume. On final "Pay" the draft converts into a
+// real Order row + Stripe Checkout session (G5).
+//
+// One in-progress draft per (creator, product) — picking up where you left
+// off is the default UX; starting fresh just overwrites the row.
+model CheckoutDraft {
+  id              String   @id @default(cuid())
+  creatorUserId   String
+  productId       String
+  // The wizard's working state — schema lives in apps/creator's wizard
+  // types. Shape is roughly:
+  //   { step, quantity, substrateSlug, packagingMaterialSlug,
+  //     finishApplications[], shipTo: { type, savedAddressId?, address? },
+  //     accessoryItemIds[], viralAssetRequests[], promoCode,
+  //     designVersionId, updatedAt }
+  state           Json
+  // Which step the creator was on last (1-7). Drives the stepper's
+  // resume-from highlight.
+  currentStep     Int      @default(1)
+  // Highest step completed so far. Lets the stepper render check-marks
+  // for the steps behind the current cursor.
+  completedSteps  Int[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  // Relations
+  creator         User     @relation("CreatorCheckoutDrafts", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorUserId, productId])
+  @@index([creatorUserId, updatedAt(sort: Desc)])
+}
+
 model Order {
   id                     String         @id @default(cuid())
   brandId                String                                // which brand this batch is produced under

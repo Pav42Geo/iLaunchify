@@ -91,7 +91,10 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
           n={4}
           title="Order production"
           description="Pay iLaunchify · routes to manufacturing + print partners"
-          href={`/products/${product.id}/order`}
+          // Phase G1 — points at the new 7-step wizard. The old /order form
+          // stays live until G5 ships full payment in the wizard; both
+          // share the same final Order row schema.
+          href={`/products/${product.id}/checkout`}
           ctaLabel="Order"
           disabled={!customizeComplete}
         />
