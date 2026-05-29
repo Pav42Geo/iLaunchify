@@ -21,6 +21,7 @@ import { seedCertificateTypes } from './seed-certificate-types'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDesignLibrary } from './seed-design-library'
+import { seedFinishTypes } from './seed-finish-types'
 
 const prisma = new PrismaClient()
 
@@ -53,6 +54,15 @@ async function main() {
   // docs/MANUFACTURER_PRODUCT_BUILDER.md §7.2. Admin uploads branded
   // thumbnails via /admin/certificates after launch (task #129).
   await seedCertificateTypes(prisma)
+
+  // --- Print finishes catalog (Phase F1) ---
+  // 31 starter FinishType rows across 5 active categories — surface, foil,
+  // emboss, cut, ink, special. Substrate is intentionally excluded (material
+  // selection lives in the post-canvas checkout stepper). Per
+  // docs/PRINT_FINISHES_PLAN.md §1. Partners light these up via
+  // PartnerFinish rows (Phase F2); creators only see the rail icon when
+  // their bound partner has ≥1 ACTIVE PartnerFinish.
+  await seedFinishTypes(prisma)
 
   // --- Ingredient governance dictionaries ---
   // ~30 banned + ~40 controversial ingredients per

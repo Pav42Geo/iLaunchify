@@ -583,6 +583,9 @@ model PartnerService {
   warehouseOrders    Order[]               @relation("WarehouseShipToOrders")
   // Catalog — ProductTemplates this manufacturer service offers (V1.1+)
   productTemplates   ProductTemplate[]
+  // V1.5+ Phase F — print finishes this service offers (printer/label-printing
+  // services only; hidden on the creator side until ≥1 ACTIVE row exists).
+  partnerFinishes    PartnerFinish[]
   partner            Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
@@ -965,8 +968,147 @@ model DesignVersion {
   exportedAt      DateTime?
   // Relations
   design          Design       @relation(fields: [designId], references: [id], onDelete: Cascade)
+  // V1.5+ Phase F — print finishes the creator applied to this design version.
+  finishApplications DesignFinishApplication[]
   createdAt       DateTime     @default(now())
   @@unique([designId, version])
+}
+
+// =============================================================================
+// PRINT FINISHES — admin-curated FinishType catalog, partner-offered
+// PartnerFinish rows, per-design DesignFinishApplication. Per
+// docs/PRINT_FINISHES_PLAN.md Phase F1.
+// =============================================================================
+
+model FinishType {
+  id            String              @id @default(cuid())
+  slug          String              @unique
+  name          String
+  category      FinishCategory
+  description   String              @db.Text
+  // Default application modes this finish CAN support — partners can restrict
+  // to a subset when they add their offering.
+  applicationModes ApplicationMode[]
+  // Reference / "what it looks like" sample (admin-uploaded)
+  exampleAssetId String?
+  // Printer-facing default spec text — used as a starting template when
+  // partner doesn't override.
+  defaultPrinterSpec String?        @db.Text
+  status        BrandLibraryStatus  @default(ACTIVE) // DRAFT | ACTIVE | DEPRECATED
+  // Relations
+  partnerFinishes PartnerFinish[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model PartnerFinish {
+  id                String        @id @default(cuid())
+  partnerServiceId  String                          // Scoped to a specific service
+  finishTypeId      String
+  // Partner-friendly overrides
+  name              String?                         // "Premium Spot UV" instead of "Spot UV Gloss"
+  description       String?       @db.Text          // Sales copy + technical notes for the creator
+  // Pricing model — see PRINT_FINISHES_PLAN.md §3
+  pricingMode       FinishPricingMode
+  basePriceCents    Int           @default(0)       // Setup fee per order
+  perUnitPriceCents Int           @default(0)       // Per printed unit
+  pricePerSqInCents Int?                            // For PER_AREA mode
+  pricePerObjectCents Int?                          // For PER_OBJECT mode
+  pricePerColorCents Int?                           // For PER_COLOR mode
+  pricingTiers      Json?                           // For TIERED — [{ minQty, perUnitCents }]
+  // Lead-time + MOQ impact
+  leadTimeDays      Int           @default(0)       // Added to base lead time
+  moqMin            Int           @default(0)       // Min order qty for this finish
+  // Application
+  availableModes    ApplicationMode[]               // Subset of FinishType.applicationModes
+  // Substrate compatibility — slugs of substrates this finish works on. Per
+  // Pavel's correction substrate selection lives in the post-canvas checkout
+  // stepper (Phase G); this list is read by the Finishes drawer to hide
+  // incompatible finishes once the creator has picked a substrate.
+  compatibleSubstrates String[]
+  maxCoveragePct    Float?                          // % of total area; e.g. some finishes max at 30% area
+  // Sample assets — what this looks like on a real product
+  sampleAssetIds    String[]
+  // Status
+  status            FinishStatus  @default(DRAFT)
+  // Relations
+  partnerService    PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  finishType        FinishType     @relation(fields: [finishTypeId], references: [id])
+  applications      DesignFinishApplication[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([partnerServiceId, status])
+  @@index([finishTypeId])
+}
+
+model DesignFinishApplication {
+  id              String          @id @default(cuid())
+  designVersionId String
+  partnerFinishId String
+  // Application detail
+  applicationMode ApplicationMode
+  // For OBJECT_SELECTION — fabric customId stamps the creator picked.
+  objectRefs      String[]
+  // For COLOR_BASED — hex colors the creator picked.
+  colorFilters    String[]
+  // For REGION_MASK — polygon points in mm, relative to trim box origin.
+  regionPolygons  Json?           // [[{x,y}, ...], ...]
+  // For UPLOADED_MASK — asset id of the mask layer (PDF / PNG with alpha).
+  maskAssetId     String?
+  // Creator note to the printer (free text)
+  creatorNotes    String?         @db.Text
+  // Cached cost at last save — re-computed on every change so the Studio
+  // shows a live cost without re-pricing on every render.
+  estimatedPerUnitCents Int       @default(0)
+  estimatedSetupCents   Int       @default(0)
+  coverageSqIn    Float?
+  objectCount     Int?
+  spotColorCount  Int?
+  // Relations
+  designVersion   DesignVersion   @relation(fields: [designVersionId], references: [id], onDelete: Cascade)
+  partnerFinish   PartnerFinish   @relation(fields: [partnerFinishId], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([designVersionId])
+}
+
+enum FinishCategory {
+  SURFACE
+  FOIL_METALLIC
+  EMBOSS_TEXTURE
+  CUT
+  INK
+  SPECIAL
+  // SUBSTRATE intentionally absent — material selection lives in the
+  // post-canvas checkout stepper (Phase G), not the Design Studio.
+}
+
+enum ApplicationMode {
+  WHOLE_DESIGN          // Whole label/whole panel
+  TEXT_ONLY             // All text objects
+  IMAGE_ONLY            // All image objects
+  TEXT_AND_IMAGES       // All non-NFR objects
+  OBJECT_SELECTION      // Creator picks specific objects (most powerful)
+  REGION_MASK           // Creator draws a polygon mask
+  COLOR_BASED           // Apply wherever specific colors appear
+  UPLOADED_MASK         // Creator uploads a separate mask layer PDF/PNG
+}
+
+enum FinishPricingMode {
+  FLAT_PER_ORDER     // One-time setup fee, no per-unit
+  PER_UNIT           // Same cost per printed unit
+  PER_AREA           // Per square inch (or square mm) of coverage
+  PER_OBJECT         // Per object selected
+  PER_COLOR          // Per spot color used
+  TIERED             // Volume tiers
+}
+
+enum FinishStatus {
+  DRAFT
+  ACTIVE
+  DISCONTINUED
 }
 
 // =============================================================================
