@@ -57,6 +57,7 @@ import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
 import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
+import { MockupModal } from './MockupModal'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -160,6 +161,7 @@ export function CanvasLayoutShell({
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
   const [complianceOpen, setComplianceOpen] = useState(false)
+  const [mockupOpen, setMockupOpen] = useState(false)
 
   // DS-60 — refs + state for object actions, context menu, wheel zoom.
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
@@ -367,6 +369,8 @@ export function CanvasLayoutShell({
         saveError={autosave.error}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
+        mockupOpen={mockupOpen}
+        onToggleMockup={() => setMockupOpen((v) => !v)}
       />
 
       {/* Body */}
@@ -503,6 +507,18 @@ export function CanvasLayoutShell({
           />
         </div>
       </div>
+
+      {/* Mockup viewer (DS-63) — full-screen overlay opened from the
+          MOCKUP top-bar button. */}
+      <MockupModal
+        canvas={canvas}
+        dieCut={dieCut}
+        pxPerMm={pxPerMm}
+        productName={productName}
+        brandName={brandAssets.brandName}
+        open={mockupOpen}
+        onClose={() => setMockupOpen(false)}
+      />
     </div>
   )
 }
@@ -524,6 +540,8 @@ function TopBar({
   saveError,
   complianceOpen,
   onToggleCompliance,
+  mockupOpen,
+  onToggleMockup,
 }: {
   productName: string
   brandName: string
@@ -537,6 +555,8 @@ function TopBar({
   saveError: string | null
   complianceOpen: boolean
   onToggleCompliance: () => void
+  mockupOpen: boolean
+  onToggleMockup: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -585,7 +605,15 @@ function TopBar({
         </button>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-700 hover:bg-ink-50"
+          onClick={onToggleMockup}
+          aria-pressed={mockupOpen}
+          aria-label={mockupOpen ? 'Close mockup' : 'Open mockup'}
+          className={
+            'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
+            (mockupOpen
+              ? 'border-pink-500 bg-pink-50 text-pink-700'
+              : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
+          }
         >
           <Eye className="h-3.5 w-3.5" />
           Mockup

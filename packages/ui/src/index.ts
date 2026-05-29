@@ -149,4 +149,9 @@ export {
   toggleLock,
   isLocked,
 } from './canvas/objectActions'
+export {
+  snapshotCanvasAsPng,
+  snapshotCanvasTrimmed,
+  type SnapshotOpts,
+} from './canvas/snapshot'
 
