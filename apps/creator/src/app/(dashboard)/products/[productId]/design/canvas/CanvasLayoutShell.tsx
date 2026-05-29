@@ -255,16 +255,26 @@ export function CanvasLayoutShell({
           />
         )}
 
-        {/* Canvas viewport */}
-        <div className="relative flex-1 overflow-auto bg-ink-100">
-          <div className="flex min-h-full items-center justify-center p-12">
-            <CanvasStageWithFrame
-              dieCut={dieCut}
-              pxPerMm={pxPerMm}
-              guides={guides}
-              initialDesignJson={initialDesignJson}
-              onReady={setCanvas}
-            />
+        {/* Canvas viewport — DS-59 fix.
+            The outer container is non-scrolling (overflow-hidden). The
+            inner abs+inset-0 div is the scroller for the canvas content
+            only; all floating UI (toolbars, CompliancePanel, BottomToolbar)
+            sits as a SIBLING of that scroller, so its absolute positions
+            are relative to the fixed outer box and never move with scroll.
+            Drawers in the left rail + CompliancePanel internals already
+            scroll internally for tall content. */}
+        <div className="relative flex-1 overflow-hidden bg-ink-100">
+          {/* Scrolling canvas content layer */}
+          <div className="absolute inset-0 overflow-auto">
+            <div className="flex min-h-full items-center justify-center p-12">
+              <CanvasStageWithFrame
+                dieCut={dieCut}
+                pxPerMm={pxPerMm}
+                guides={guides}
+                initialDesignJson={initialDesignJson}
+                onReady={setCanvas}
+              />
+            </div>
           </div>
 
           {/* Top floating selection-aware toolbars — exactly one renders
@@ -291,7 +301,7 @@ export function CanvasLayoutShell({
             <ImageToolbar canvas={canvas} active={selected} />
           )}
 
-          {/* Compliance scan panel (DS-55) */}
+          {/* Compliance scan panel (DS-55) — fixed to the right edge. */}
           <CompliancePanel
             canvas={canvas}
             open={complianceOpen}
