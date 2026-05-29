@@ -240,14 +240,31 @@ export function CanvasLayoutShell({
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
 
-  // DS-61 — hover-to-open left rail. Two debounced timers manage the
-  // intent gestalt:
+  // DS-61 / DS-62 — hover-to-open left rail with click-to-pin.
+  //
+  // Two timers manage the hover intent gestalt; a separate `pinned`
+  // boolean overrides the close timer when the user has committed to a
+  // tool by clicking it.
+  //
   //   openTimer  = small delay on mouseenter so quick traverses across
-  //                icons don't flicker drawers in and out.
-  //   closeTimer = longer delay on mouseleave so the user can move from
-  //                a rail icon INTO the drawer area without losing it.
+  //                icons don't flicker drawers in and out (60ms).
+  //   closeTimer = longer delay on mouseleave so the user can move
+  //                from a rail icon INTO the drawer area without
+  //                losing it (200ms).
+  //   pinned     = true when the user clicked the icon. Pinned drawer
+  //                ignores closeTimer; only an explicit menu action
+  //                (click same icon, click different icon, click drawer
+  //                X) closes it.
   const openTimerRef = React.useRef<number | null>(null)
   const closeTimerRef = React.useRef<number | null>(null)
+  const [pinned, setPinned] = useState(false)
+  // Mirror pinned into a ref so the timer callbacks always read the
+  // latest value without needing pinned in their useCallback deps
+  // (which would re-create them and orphan the timers).
+  const pinnedRef = React.useRef(pinned)
+  React.useEffect(() => {
+    pinnedRef.current = pinned
+  }, [pinned])
 
   const clearTimers = React.useCallback(() => {
     if (openTimerRef.current !== null) {
@@ -279,6 +296,9 @@ export function CanvasLayoutShell({
   }, [cancelClose])
 
   const scheduleClose = React.useCallback(() => {
+    // Pinned drawer doesn't auto-close on mouseleave — only explicit
+    // menu actions close a pinned drawer.
+    if (pinnedRef.current) return
     if (openTimerRef.current !== null) {
       window.clearTimeout(openTimerRef.current)
       openTimerRef.current = null
@@ -293,9 +313,24 @@ export function CanvasLayoutShell({
   React.useEffect(() => clearTimers, [clearTimers])
 
   function toggleTool(key: ToolKey) {
-    // Click decisively — cancel any pending hover-open/close.
+    // Click is decisive — cancel any pending hover schedules first.
     clearTimers()
-    setActiveTool((prev) => (prev === key ? null : key))
+    // Click the same icon while pinned → unpin + close.
+    if (pinned && activeTool === key) {
+      setPinned(false)
+      setActiveTool(null)
+      return
+    }
+    // Otherwise: open + pin to this tool. Switching tools via click
+    // stays pinned to the new one.
+    setPinned(true)
+    setActiveTool(key)
+  }
+
+  function closeDrawer() {
+    clearTimers()
+    setPinned(false)
+    setActiveTool(null)
   }
 
   // Keyboard shortcuts: Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z (or Y) for redo.
@@ -364,7 +399,7 @@ export function CanvasLayoutShell({
               productId={productId}
               productName={productName}
               productCtx={productCtx}
-              onClose={() => setActiveTool(null)}
+              onClose={closeDrawer}
             />
           )}
         </div>
