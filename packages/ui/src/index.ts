@@ -139,4 +139,14 @@ export {
   clampFontSize,
   clampNutritionFactsScale,
 } from './canvas/labelRules'
+export {
+  duplicateObject,
+  removeObject,
+  bringForward,
+  sendBackwards,
+  bringToFront,
+  sendToBack,
+  toggleLock,
+  isLocked,
+} from './canvas/objectActions'
 

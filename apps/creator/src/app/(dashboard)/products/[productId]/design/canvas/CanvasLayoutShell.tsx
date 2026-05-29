@@ -47,6 +47,11 @@ import {
 } from './useCanvasShortcuts'
 import { usePanMode } from './usePanMode'
 import { useLabelMinSize } from './useLabelMinSize'
+import { useWheelZoom } from './useWheelZoom'
+import { useObjectClipboard } from './useObjectClipboard'
+import { ObjectActions } from './ObjectActions'
+import { ObjectContextMenu } from './ObjectContextMenu'
+import type { FabricObject } from '@ilaunchify/ui'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
@@ -156,6 +161,47 @@ export function CanvasLayoutShell({
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
   const [complianceOpen, setComplianceOpen] = useState(false)
 
+  // DS-60 — refs + state for object actions, context menu, wheel zoom.
+  const scrollRef = React.useRef<HTMLDivElement | null>(null)
+  const canvasContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const [contextMenu, setContextMenu] = React.useState<{
+    target: FabricObject | null
+    x: number | null
+    y: number | null
+  }>({ target: null, x: null, y: null })
+  const clipboard = useObjectClipboard(canvas)
+  useWheelZoom(scrollRef.current, zoom, setZoom)
+
+  // Right-click on a canvas object → open ObjectContextMenu at mouse pos.
+  // Fabric routes pointer events through its own pipeline, so we hook the
+  // upper DOM canvas's contextmenu directly and ask Fabric for the object
+  // under the cursor.
+  React.useEffect(() => {
+    if (!canvas) return
+    // Fabric v6 exposes the upper canvas element via .upperCanvasEl.
+    const el = (canvas as unknown as { upperCanvasEl?: HTMLCanvasElement })
+      .upperCanvasEl
+    if (!el) return
+
+    function onCtx(e: MouseEvent) {
+      if (!canvas) return
+      // Pick the topmost object under the mouse — null if user right-clicked
+      // empty canvas.
+      const fcanvas = canvas as unknown as {
+        findTarget: (e: MouseEvent) => FabricObject | undefined
+      }
+      const target = fcanvas.findTarget?.(e) ?? null
+      if (target) {
+        e.preventDefault()
+        canvas.setActiveObject(target)
+        canvas.requestRenderAll()
+        setContextMenu({ target, x: e.clientX, y: e.clientY })
+      }
+    }
+    el.addEventListener('contextmenu', onCtx)
+    return () => el.removeEventListener('contextmenu', onCtx)
+  }, [canvas])
+
   // productCtx for the compliance scan + Label drawer pre-fill. productName
   // + brandName come from the shell props; allergens / bioengineered /
   // netQuantity / netQuantityKind are derived server-side in
@@ -264,16 +310,20 @@ export function CanvasLayoutShell({
             Drawers in the left rail + CompliancePanel internals already
             scroll internally for tall content. */}
         <div className="relative flex-1 overflow-hidden bg-ink-100">
-          {/* Scrolling canvas content layer */}
-          <div className="absolute inset-0 overflow-auto">
+          {/* Scrolling canvas content layer. Ref captured for the
+              ctrl+wheel zoom hook + the ObjectActions screen-space
+              translation. */}
+          <div ref={scrollRef} className="absolute inset-0 overflow-auto">
             <div className="flex min-h-full items-center justify-center p-12">
-              <CanvasStageWithFrame
-                dieCut={dieCut}
-                pxPerMm={pxPerMm}
-                guides={guides}
-                initialDesignJson={initialDesignJson}
-                onReady={setCanvas}
-              />
+              <div ref={canvasContainerRef}>
+                <CanvasStageWithFrame
+                  dieCut={dieCut}
+                  pxPerMm={pxPerMm}
+                  guides={guides}
+                  initialDesignJson={initialDesignJson}
+                  onReady={setCanvas}
+                />
+              </div>
             </div>
           </div>
 
@@ -300,6 +350,30 @@ export function CanvasLayoutShell({
           {showImageToolbar && selected && (
             <ImageToolbar canvas={canvas} active={selected} />
           )}
+
+          {/* Per-object action chrome (DS-60d). Renders for any selected
+              object that isn't currently in text-editing mode. Hides during
+              drag/scale to avoid lag. */}
+          {selected && (
+            <ObjectActions
+              canvas={canvas}
+              active={selected}
+              canvasContainer={canvasContainerRef.current}
+              onShowMore={(x, y) =>
+                setContextMenu({ target: selected, x, y })
+              }
+            />
+          )}
+
+          {/* Right-click + More-button context menu (DS-60c). */}
+          <ObjectContextMenu
+            canvas={canvas}
+            target={contextMenu.target}
+            x={contextMenu.x}
+            y={contextMenu.y}
+            clipboard={clipboard}
+            onClose={() => setContextMenu({ target: null, x: null, y: null })}
+          />
 
           {/* Compliance scan panel (DS-55) — fixed to the right edge. */}
           <CompliancePanel
