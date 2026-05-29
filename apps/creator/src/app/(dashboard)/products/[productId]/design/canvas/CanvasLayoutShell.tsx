@@ -30,6 +30,9 @@ import {
   type FabricCanvas,
   type GuideVisibility,
   DEFAULT_GUIDES,
+  generateBlankPdfSpec,
+  generateBlankSvgSpec,
+  mmToInchesStr,
 } from '@ilaunchify/ui'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
@@ -671,7 +674,7 @@ function TopBar({
           type="button"
           onClick={onToggleMockup}
           aria-pressed={mockupOpen}
-          aria-label={mockupOpen ? 'Close mockup' : 'Open mockup'}
+          aria-label={mockupOpen ? 'Close preview' : 'Open preview'}
           className={
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (mockupOpen
@@ -680,7 +683,7 @@ function TopBar({
           }
         >
           <Eye className="h-3.5 w-3.5" />
-          Mockup
+          Preview
         </button>
         <button
           type="button"
@@ -825,7 +828,13 @@ function ToolDrawer({
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         {tool === 'product' && (
-          <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
+          <ProductDrawer
+            dieCut={dieCut}
+            guides={guides}
+            setGuides={setGuides}
+            brandAssets={brandAssets}
+            productId={productId}
+          />
         )}
         {tool === 'label' && (
           <LabelDrawer
@@ -871,29 +880,48 @@ function ProductDrawer({
   guides,
   setGuides,
   brandAssets,
+  productId,
 }: {
   dieCut: DieCutSpec
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
+  productId: string
 }) {
   return (
     <div className="space-y-5">
-      <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-          Product details
-        </div>
-        <h3 className="mt-1 text-sm font-semibold text-ink-900">{dieCut.name}</h3>
-        <p className="mt-1 text-xs text-ink-500">
-          {dieCut.widthMm.toFixed(1)} × {dieCut.heightMm.toFixed(1)} mm · {dieCut.category.replace('_', ' ')}
-          <br />
-          Bleed {dieCut.bleedMm}mm · Safe area {dieCut.safeAreaMm}mm
-        </p>
-      </section>
+      {/* Vistaprint-style spec card (DS-67b) */}
+      <ProductSpecCard dieCut={dieCut} />
 
+      {/* Surfaces — V1 single-surface, V1.5+ adds back / multi-panel.
+          See docs/MULTI_SURFACE_PLAN.md (DS-67c). */}
+      <SurfacesSection dieCut={dieCut} />
+
+      {/* Templates entry-point — back to the Design Studio gallery. */}
       <section>
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-          Die-cut guides
+          Templates
+        </div>
+        <Link
+          href={`/products/${productId}/design`}
+          className="flex items-center justify-between gap-2 rounded-md border border-ink-200 px-3 py-2.5 hover:border-pink-500 hover:bg-pink-50/40 transition-colors"
+        >
+          <div>
+            <div className="text-[12.5px] font-semibold text-ink-900">
+              Browse templates
+            </div>
+            <div className="text-[10.5px] text-ink-500 mt-0.5">
+              Start from a curated label design
+            </div>
+          </div>
+          <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+        </Link>
+      </section>
+
+      {/* Die-cut guides toggles */}
+      <section>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          Guides
         </div>
         <div className="space-y-1.5">
           <GuideToggle
@@ -922,6 +950,7 @@ function ProductDrawer({
         </div>
       </section>
 
+      {/* Brand assets snapshot */}
       <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-700">
           Brand assets loaded
@@ -934,13 +963,224 @@ function ProductDrawer({
           {brandAssets.extraSwatches.length === 0 ? '' : 'es'} ·{' '}
           {brandAssets.logos.length} logo variant{brandAssets.logos.length === 1 ? '' : 's'}
         </p>
-        <p className="mt-1 text-[10px] text-ink-600">
-          These pin to the top of the Text drawer&apos;s font row when the Text
-          tool is open. Images + color pickers wire up next.
-        </p>
       </section>
     </div>
   )
+}
+
+// ============================================================================
+// ProductSpecCard — Vistaprint-style with dimension table + downloads
+// ============================================================================
+
+function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false)
+
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true)
+    try {
+      const blob = await generateBlankPdfSpec(dieCut)
+      downloadBlobLocal(blob, `${slugify(dieCut.name)}-blank.pdf`)
+    } catch (err) {
+      console.warn('[ProductSpecCard] PDF spec failed:', err)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  function handleDownloadSvg() {
+    try {
+      const blob = generateBlankSvgSpec(dieCut)
+      downloadBlobLocal(blob, `${slugify(dieCut.name)}-blank.svg`)
+    } catch (err) {
+      console.warn('[ProductSpecCard] SVG spec failed:', err)
+    }
+  }
+
+  return (
+    <section>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        Product specs
+      </div>
+
+      {/* Safe-area diagram */}
+      <div className="rounded-md border border-ink-200 bg-ink-50/60 p-4 flex items-center justify-center">
+        <div className="relative">
+          {/* Bleed */}
+          <div className="border border-dashed border-red-500/80 rounded-md p-2">
+            {/* Trim */}
+            <div className="bg-white rounded-sm w-[120px] h-[68px] flex items-center justify-center relative">
+              {/* Safe */}
+              <div className="absolute inset-1.5 border border-dotted border-blue-500/70 rounded-sm flex items-center justify-center">
+                <span className="text-[8px] uppercase tracking-wider text-ink-400">
+                  Safe area
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="mt-3 text-sm font-semibold text-ink-900">{dieCut.name}</h3>
+      <p className="mt-1 text-[11px] text-ink-500 leading-[1.5]">
+        To avoid white edges, extend your design to the bleed line — keep
+        text and logos inside the safety area.
+      </p>
+
+      {/* Dimensions table */}
+      <table className="mt-3 w-full text-[11px] tabular-nums">
+        <thead>
+          <tr className="border-b border-ink-100 text-ink-500">
+            <th className="text-left font-semibold py-1.5"></th>
+            <th className="text-left font-semibold py-1.5">Width</th>
+            <th className="text-left font-semibold py-1.5">Height</th>
+          </tr>
+        </thead>
+        <tbody className="text-ink-700">
+          <SpecRow
+            color="red"
+            label="Bleed"
+            wMm={dieCut.widthMm + 2 * dieCut.bleedMm}
+            hMm={dieCut.heightMm + 2 * dieCut.bleedMm}
+          />
+          <SpecRow
+            color="ink"
+            label="Trim"
+            wMm={dieCut.widthMm}
+            hMm={dieCut.heightMm}
+          />
+          <SpecRow
+            color="blue"
+            label="Safety"
+            wMm={dieCut.widthMm - 2 * dieCut.safeAreaMm}
+            hMm={dieCut.heightMm - 2 * dieCut.safeAreaMm}
+          />
+        </tbody>
+      </table>
+
+      {/* Blank downloads */}
+      <div className="mt-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1.5">
+          Download a blank design file
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1.5 text-[11px] font-semibold text-ink-900 hover:border-ink-500 disabled:opacity-50 transition-colors"
+          >
+            <Download className="h-3 w-3" />
+            {downloadingPdf ? 'PDF…' : 'PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadSvg}
+            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1.5 text-[11px] font-semibold text-ink-900 hover:border-ink-500 transition-colors"
+          >
+            <Download className="h-3 w-3" />
+            SVG
+          </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SpecRow({
+  color,
+  label,
+  wMm,
+  hMm,
+}: {
+  color: 'red' | 'ink' | 'blue'
+  label: string
+  wMm: number
+  hMm: number
+}) {
+  const dotClass =
+    color === 'red'
+      ? 'bg-red-500'
+      : color === 'blue'
+        ? 'bg-blue-500'
+        : 'bg-ink-700'
+  return (
+    <tr className="border-b border-ink-50 last:border-0">
+      <td className="py-1.5 flex items-center gap-1.5">
+        <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+        <span className="font-semibold text-ink-900">{label}</span>
+      </td>
+      <td className="py-1.5">
+        <span>{mmToInchesStr(wMm)}</span>
+        <span className="text-ink-400 ml-1">/ {wMm.toFixed(2)}mm</span>
+      </td>
+      <td className="py-1.5">
+        <span>{mmToInchesStr(hMm)}</span>
+        <span className="text-ink-400 ml-1">/ {hMm.toFixed(2)}mm</span>
+      </td>
+    </tr>
+  )
+}
+
+// ============================================================================
+// SurfacesSection — V1 single, V1.5+ multi (DS-67c forward-marker)
+// ============================================================================
+
+function SurfacesSection({ dieCut }: { dieCut: DieCutSpec }) {
+  return (
+    <section>
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500 flex items-center justify-between">
+        <span>Surfaces</span>
+        <span className="text-[9px] font-mono text-ink-400">1 of 1</span>
+      </div>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-pink-300 bg-pink-50/40 px-3 py-2">
+          <div>
+            <div className="text-[12.5px] font-semibold text-ink-900">
+              {dieCut.name}
+            </div>
+            <div className="text-[10.5px] text-ink-500 mt-0.5">
+              {dieCut.category.replace('_', ' ').toLowerCase()}
+            </div>
+          </div>
+          <span className="text-[9.5px] font-bold uppercase tracking-wider text-pink-700">
+            Active
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled
+          aria-disabled
+          title="Multi-surface products (front + back, box panels) ship in V1.5 — see docs/MULTI_SURFACE_PLAN.md"
+          className="flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-ink-300 px-3 py-2 text-ink-400 cursor-not-allowed"
+        >
+          <span className="text-[12px] font-medium">Add another surface</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-wider">
+            Soon
+          </span>
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// Slugify helper for download filenames.
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+}
+
+function downloadBlobLocal(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
 function GuideToggle({

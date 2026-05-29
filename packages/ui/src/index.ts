@@ -160,4 +160,9 @@ export {
   suggestedPdfFilename,
   type GeneratePdfOpts,
 } from './canvas/exportPdf'
+export {
+  generateBlankPdfSpec,
+  generateBlankSvgSpec,
+  mmToInchesStr,
+} from './canvas/blankSpec'
 

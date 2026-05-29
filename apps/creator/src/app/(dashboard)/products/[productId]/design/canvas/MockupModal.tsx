@@ -91,7 +91,7 @@ export function MockupModal({
       className="fixed inset-0 z-40 flex flex-col bg-ink-900/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label="Mockup preview"
+      aria-label="Preview"
       onClick={onClose}
     >
       <Header
@@ -176,7 +176,7 @@ function Header({
     >
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-wider text-white/60">
-          Mockup preview
+          Preview
         </div>
         <div className="mt-0.5 text-sm font-medium text-white">
           {brandName} · {productName}
