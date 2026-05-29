@@ -989,7 +989,7 @@ model FinishType {
   slug          String              @unique
   name          String
   category      FinishCategory
-  description   String              @db.Text
+  description   String
   // Default application modes this finish CAN support — partners can restrict
   // to a subset when they add their offering.
   applicationModes ApplicationMode[]
@@ -997,7 +997,7 @@ model FinishType {
   exampleAssetId String?
   // Printer-facing default spec text — used as a starting template when
   // partner doesn't override.
-  defaultPrinterSpec String?        @db.Text
+  defaultPrinterSpec String?
   status        BrandLibraryStatus  @default(ACTIVE) // DRAFT | ACTIVE | DEPRECATED
   // Relations
   partnerFinishes PartnerFinish[]
@@ -1011,7 +1011,7 @@ model PartnerFinish {
   finishTypeId      String
   // Partner-friendly overrides
   name              String?                         // "Premium Spot UV" instead of "Spot UV Gloss"
-  description       String?       @db.Text          // Sales copy + technical notes for the creator
+  description       String?                         // Sales copy + technical notes for the creator
   // Pricing model — see PRINT_FINISHES_PLAN.md §3
   pricingMode       FinishPricingMode
   basePriceCents    Int           @default(0)       // Setup fee per order
@@ -1061,7 +1061,7 @@ model DesignFinishApplication {
   // For UPLOADED_MASK — asset id of the mask layer (PDF / PNG with alpha).
   maskAssetId     String?
   // Creator note to the printer (free text)
-  creatorNotes    String?         @db.Text
+  creatorNotes    String?
   // Cached cost at last save — re-computed on every change so the Studio
   // shows a live cost without re-pricing on every render.
   estimatedPerUnitCents Int       @default(0)
