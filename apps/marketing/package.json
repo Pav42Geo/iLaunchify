@@ -3,20 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3010",
-    "build": "next build",
-    "start": "next start -p 3010",
+    "dev": "pnpm exec dotenv -e ../../.env.local -- next dev -p 3010",
+    "build": "pnpm exec dotenv -e ../../.env.local -- next build",
+    "start": "pnpm exec dotenv -e ../../.env.local -- next start -p 3010",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
+    "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
     "next": "15.0.2",
+    "next-auth": "5.0.0-beta.31",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.4"

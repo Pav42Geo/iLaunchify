@@ -6,6 +6,7 @@ import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { PricingCards } from '@/components/PricingCards'
 import { creatorUrl } from '@/lib/app-urls'
+import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
  * /pricing — public-facing tier comparison.
@@ -25,22 +26,20 @@ import { creatorUrl } from '@/lib/app-urls'
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>
+  searchParams: Promise<Record<string, never>>
 }) {
-  const { as } = await searchParams
-  const isAuthenticated = as === 'user'
-  const demoUser = isAuthenticated
-    ? {
-        name: 'Alex Chen',
-        email: 'alex@kindredwellness.co',
-        tier: 'maker' as const,
-        activeBrandName: 'Kindred Wellness',
-      }
-    : null
+  await searchParams
+  const session = await getMarketingSession()
+  const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
   return (
     <>
-      <LandingHeader user={demoUser} hasUnreadNotifications={false} />
+      <LandingHeader
+        user={user}
+        brands={brands}
+        activeBrandId={activeBrandId}
+        hasUnreadNotifications={false}
+      />
 
       {/* HERO + TIER CARDS */}
       <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">

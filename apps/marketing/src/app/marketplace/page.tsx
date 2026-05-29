@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ProductCard, HeroBanner, Button } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
+import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
@@ -55,8 +56,7 @@ export default async function MarketplacePage({
   }>
 }) {
   const sp = await searchParams
-  const { as, sort: sortParam, diet, moq, q } = sp
-  const isAuthenticated = as === 'user'
+  const { sort: sortParam, diet, moq, q } = sp
   const sort = parseSort(sortParam)
   const tags = diet
     ? diet
@@ -66,21 +66,8 @@ export default async function MarketplacePage({
     : undefined
   const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
   const hasActiveFilters = Boolean(tags?.length || moqMax !== undefined || q)
-  const demoUser = isAuthenticated
-    ? {
-        name: 'Alex Chen',
-        email: 'alex@kindredwellness.co',
-        tier: 'maker' as const,
-        activeBrandName: 'Kindred Wellness',
-      }
-    : null
-  const demoBrands = isAuthenticated
-    ? [
-        { id: 'kindred', name: 'Kindred Wellness', colorHex: '#FF2E63' },
-        { id: 'lumen', name: 'Lumen Daily', colorHex: '#7BA05B' },
-        { id: 'after-hours', name: 'After Hours Coffee', colorHex: '#5A3825' },
-      ]
-    : []
+  const session = await getMarketingSession()
+  const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
   // Pull data through the new Prisma-backed data layer. When the DB is
   // empty (fresh dev install), each call gracefully falls back to the
@@ -100,10 +87,10 @@ export default async function MarketplacePage({
   return (
     <>
       <MarketplaceHeader
-        user={demoUser}
-        hasUnreadNotifications
-        brands={demoBrands}
-        activeBrandId="kindred"
+        user={user}
+        brands={brands}
+        activeBrandId={activeBrandId}
+        hasUnreadNotifications={false}
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">

@@ -23,6 +23,7 @@ import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurato
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
+import { getMarketingSession } from '@/lib/session'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -46,26 +47,30 @@ export default async function ProductDetailPage({
   searchParams: Promise<{ as?: string }>
 }) {
   const { category, slug } = await params
-  const { as } = await searchParams
-  // V1 demo: `?as=user` previews the logged-in experience. Real session
-  // reading lands when @ilaunchify/auth is wired into apps/marketing.
-  const isAuthenticated = as === 'user'
-  const demoUser = isAuthenticated
+  await searchParams
+  // REBUILD R2 — real auth-aware reading. The marketing app now shares the
+  // Auth.js cookie with apps/creator on localhost (browsers don't include
+  // port in cookie scope) and verifies via the same AUTH_SECRET.
+  const session = await getMarketingSession()
+  const isAuthenticated = Boolean(session?.user)
+  const headerUser = session?.user
     ? {
-        name: 'Alex Chen',
-        email: 'alex@kindredwellness.co',
-        tier: 'maker' as const,
-        activeBrandName: 'Kindred Wellness',
+        name: session.user.name,
+        email: session.user.email,
+        // Tier + active-brand label are V1.5+ (require reading
+        // CreatorProfile.subscriptionTier + the active brand row).
       }
     : null
-  const demoBrands = isAuthenticated
-    ? [
-        { id: 'kindred', name: 'Kindred Wellness', colorHex: '#FF2E63' },
-        { id: 'lumen', name: 'Lumen Daily', colorHex: '#7BA05B' },
-        { id: 'after-hours', name: 'After Hours Coffee', colorHex: '#5A3825' },
-      ]
-    : []
-  const activeBrandId = 'kindred'
+  // BrandSwitcher takes {id, name, colorHex}. Marketing's version
+  // doesn't fetch colors yet — colorless brand entries still let the
+  // dropdown render.
+  const headerBrands =
+    session?.brands.map((b) => ({
+      id: b.id,
+      name: b.name,
+      colorHex: '#FF2E63',
+    })) ?? []
+  const activeBrandId = session?.activeBrandId ?? ''
 
   const row = CATEGORY_ROWS.find((r) => r.slug === category)
   if (!row) notFound()
@@ -85,9 +90,9 @@ export default async function ProductDetailPage({
   return (
     <>
       <MarketplaceHeader
-        user={demoUser}
-        hasUnreadNotifications
-        brands={demoBrands}
+        user={headerUser}
+        hasUnreadNotifications={false}
+        brands={headerBrands}
         activeBrandId={activeBrandId}
       />
 

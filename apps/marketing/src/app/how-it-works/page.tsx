@@ -16,6 +16,7 @@ import {
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
  * /how-it-works — the trust-building page between home and signup.
@@ -38,22 +39,20 @@ import { LandingFooter } from '@/components/LandingFooter'
 export default async function HowItWorksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>
+  searchParams: Promise<Record<string, never>>
 }) {
-  const { as } = await searchParams
-  const isAuthenticated = as === 'user'
-  const demoUser = isAuthenticated
-    ? {
-        name: 'Alex Chen',
-        email: 'alex@kindredwellness.co',
-        tier: 'maker' as const,
-        activeBrandName: 'Kindred Wellness',
-      }
-    : null
+  await searchParams
+  const session = await getMarketingSession()
+  const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
   return (
     <>
-      <LandingHeader user={demoUser} hasUnreadNotifications={false} />
+      <LandingHeader
+        user={user}
+        brands={brands}
+        activeBrandId={activeBrandId}
+        hasUnreadNotifications={false}
+      />
 
       {/* HERO */}
       <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">

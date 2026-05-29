@@ -3,6 +3,7 @@ import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { NICHES } from '@/lib/niches'
+import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
  * Home — the iLaunchify front door.
@@ -27,25 +28,11 @@ import { NICHES } from '@/lib/niches'
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string }>
+  searchParams: Promise<Record<string, never>>
 }) {
-  const { as } = await searchParams
-  const isAuthenticated = as === 'user'
-  const demoUser = isAuthenticated
-    ? {
-        name: 'Alex Chen',
-        email: 'alex@kindredwellness.co',
-        tier: 'maker' as const,
-        activeBrandName: 'Kindred Wellness',
-      }
-    : null
-  const demoBrands = isAuthenticated
-    ? [
-        { id: 'kindred', name: 'Kindred Wellness', colorHex: '#FF2E63' },
-        { id: 'lumen', name: 'Lumen Daily', colorHex: '#7BA05B' },
-        { id: 'after-hours', name: 'After Hours Coffee', colorHex: '#5A3825' },
-      ]
-    : []
+  await searchParams
+  const session = await getMarketingSession()
+  const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
   // Take the first 4 niches for the dark niche-card section.
   const featuredNiches = NICHES.slice(0, 4)
@@ -53,10 +40,10 @@ export default async function HomePage({
   return (
     <>
       <LandingHeader
-        user={demoUser}
-        hasUnreadNotifications
-        brands={demoBrands}
-        activeBrandId="kindred"
+        user={user}
+        brands={brands}
+        activeBrandId={activeBrandId}
+        hasUnreadNotifications={false}
       />
 
       {/* ============ HERO ============ */}
