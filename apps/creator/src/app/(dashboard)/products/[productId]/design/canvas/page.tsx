@@ -13,6 +13,12 @@ import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
+import {
+  formatNetQuantity,
+  inferNetQuantityKind,
+  extractCount,
+  extractCountUnit,
+} from '@ilaunchify/ui'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
 import { loadDesignJson } from './actions'
 
@@ -140,6 +146,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
 
   // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
   const productCtx = deriveProductCtx({
+    category: product.category,
     recipe: product.recipe,
     variant: product.variant,
   })
@@ -166,6 +173,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
  *                   when present, else `${containerSizeG}g`, else null.
  */
 function deriveProductCtx(product: {
+  category: 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT'
   recipe: {
     ingredients: Array<{
       ingredient: {
@@ -182,6 +190,7 @@ function deriveProductCtx(product: {
   allergens: string[]
   bioengineered: boolean
   netQuantity: string | null
+  netQuantityKind: 'solid' | 'liquid' | 'count'
 } {
   const allergenSet = new Set<string>()
   let bioengineered = false
@@ -195,17 +204,40 @@ function deriveProductCtx(product: {
     }
   }
 
+  // ---- DS-57 FDA-compliant net quantity (21 CFR 101.105) ----
+  // Pick the format kind from containerFormat hints + product category, then
+  // hand grams/count to the formatter. Returns "NET WT 12 OZ (340g)" /
+  // "NET 16 FL OZ (473 mL)" / "60 CAPSULES" depending on the kind.
+  const containerFormat = product.variant?.containerFormat ?? null
+  const grams =
+    product.variant?.containerSizeG != null
+      ? Number(String(product.variant.containerSizeG))
+      : null
+  const kind = inferNetQuantityKind(containerFormat, product.category)
   let netQuantity: string | null = null
-  if (product.variant?.containerFormat) {
-    netQuantity = product.variant.containerFormat
-  } else if (product.variant?.containerSizeG) {
-    netQuantity = `${String(product.variant.containerSizeG)}g`
+  if (kind === 'count') {
+    const count = extractCount(containerFormat)
+    const unit = extractCountUnit(containerFormat) ?? 'COUNT'
+    netQuantity = formatNetQuantity({ kind, count, countUnit: unit })
+  } else if (kind === 'liquid') {
+    // V1: when only grams are stored, treat as water-equivalent volume
+    // (1g ≈ 1mL). Per-product density support lands when the variant gains
+    // a milliliters column — leaving a forward marker here.
+    netQuantity = formatNetQuantity({ kind, milliliters: grams })
+  } else {
+    netQuantity = formatNetQuantity({ kind, grams })
+  }
+  // Last-resort fallback so the LabelDrawer still has a placeholder when the
+  // variant is bare. Marks it with a question mark so the creator notices.
+  if (!netQuantity && containerFormat) {
+    netQuantity = `NET WT ${containerFormat} (?g)`
   }
 
   return {
     allergens: Array.from(allergenSet).sort(),
     bioengineered,
     netQuantity,
+    netQuantityKind: kind,
   }
 }
 

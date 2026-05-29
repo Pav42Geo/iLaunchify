@@ -28,6 +28,10 @@
 
 import type { FabricCanvas, FabricObject } from './types'
 import type { CanvasCustomType, LabelSectionRole } from './objects'
+import {
+  validateNetQuantityFormat,
+  type NetQuantityKind,
+} from './netQuantity'
 
 /**
  * Productlinked context the scan compares against. Pulled from the
@@ -45,6 +49,12 @@ export interface LabelScanContext {
   bioengineered: boolean
   /** Net quantity string from the product record, if set. */
   netQuantity: string | null
+  /**
+   * Format kind for the net-quantity scan check. Defaults to 'solid' when
+   * omitted. Derived from product category + variant.containerFormat — see
+   * inferNetQuantityKind in netQuantity.ts.
+   */
+  netQuantityKind?: NetQuantityKind
 }
 
 export type ScanSeverity = 'BLOCKING' | 'WARNING' | 'INFO'
@@ -239,25 +249,47 @@ export function scanLabelCompliance(
   }
 
   // --------------------------------------------------------------------
-  // Net-weight cross-check (soft) — if productCtx has a stored
-  // net-quantity string, surface a hint when the canvas text is empty
-  // or wildly different.
+  // Net-quantity FORMAT check (DS-57) — 21 CFR 101.105 mandates a
+  // specific shape: "NET WT" prefix for solids, US customary first,
+  // metric in parentheses. We run validateNetQuantityFormat against the
+  // on-canvas text and surface one WARNING per problem.
   // --------------------------------------------------------------------
   const netObj = byRole.get('net-weight')
-  if (netObj && ctx.netQuantity) {
+  if (netObj) {
     const text = ((netObj as { text?: string }).text ?? '').trim()
-    if (
-      text.length > 0 &&
-      !text.toLowerCase().includes(ctx.netQuantity.toLowerCase())
-    ) {
-      findings.push({
-        id: 'net-weight-mismatch',
-        severity: 'INFO',
-        title: 'Net quantity may differ from product record',
-        detail: `Canvas: "${text}". Product record: "${ctx.netQuantity}".`,
-        citation: '21 CFR 101.105',
-        objectRef: getObjectRef(netObj),
-      })
+    if (text.length > 0) {
+      const kind = ctx.netQuantityKind ?? 'solid'
+      const validation = validateNetQuantityFormat(text, kind)
+      for (const problem of validation.problems) {
+        findings.push({
+          id: `net-quantity-format-${problem.code}`,
+          severity: 'WARNING',
+          title: 'Net quantity format does not meet 21 CFR 101.105',
+          detail: problem.message,
+          citation: '21 CFR 101.105',
+          objectRef: getObjectRef(netObj),
+          suggestedFix: ctx.netQuantity
+            ? `Use the FDA-formatted string: "${ctx.netQuantity}".`
+            : 'Update to "NET WT X OZ (Y g)" (solids) or "NET X FL OZ (Y mL)" (liquids).',
+        })
+      }
+      // Mismatch INFO — only if the format passed but the text doesn't
+      // match the product record. Avoids double-warning on a malformed
+      // string that's also wrong.
+      if (
+        validation.ok &&
+        ctx.netQuantity &&
+        !text.toLowerCase().includes(stripFdaPrefix(ctx.netQuantity).toLowerCase())
+      ) {
+        findings.push({
+          id: 'net-weight-mismatch',
+          severity: 'INFO',
+          title: 'Net quantity may differ from product record',
+          detail: `Canvas: "${text}". Product record: "${ctx.netQuantity}".`,
+          citation: '21 CFR 101.105',
+          objectRef: getObjectRef(netObj),
+        })
+      }
     }
   }
 
@@ -304,6 +336,15 @@ export function scanLabelCompliance(
 function getObjectRef(obj: FabricObject): string {
   const cr = (obj as { customRole?: LabelSectionRole }).customRole
   return cr ?? ''
+}
+
+/**
+ * Strip the "NET WT" / "NET" prefix so the mismatch check compares the
+ * numeric portion only — keeps the cross-check from misfiring just
+ * because the creator wrote "NET" and the record had "NET WT".
+ */
+function stripFdaPrefix(s: string): string {
+  return s.replace(/^\s*NET(\s*WT)?\s*/i, '').trim()
 }
 
 /**

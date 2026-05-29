@@ -282,6 +282,10 @@ const LABEL_SECTION_PRESETS: Record<
     fontWeight: 700,
     textAlign: 'left',
   },
+  // FDA 21 CFR 101.105 placeholder: solids must use "NET WT" + US
+  // customary unit + metric in parentheses. Replaced at drop time when
+  // the product's variant has containerSizeG / containerFormat — see
+  // page.tsx#deriveProductCtx → LabelDrawer presetTextFor.
   'net-weight': {
     placeholder: 'NET WT 12 OZ (340g)',
     fontFamily: 'Inter, sans-serif',

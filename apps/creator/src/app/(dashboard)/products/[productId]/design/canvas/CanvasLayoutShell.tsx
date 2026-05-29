@@ -103,12 +103,14 @@ interface Props {
   /**
    * Server-derived product context used by the compliance scan + label
    * drawer pre-fill. allergens / bioengineered come from the recipe;
-   * netQuantity from the bound variant. See page.tsx#deriveProductCtx.
+   * netQuantity + netQuantityKind from the bound variant. See
+   * page.tsx#deriveProductCtx.
    */
   productCtx: {
     allergens: string[]
     bioengineered: boolean
     netQuantity: string | null
+    netQuantityKind: 'solid' | 'liquid' | 'count'
   }
 }
 
@@ -155,8 +157,9 @@ export function CanvasLayoutShell({
 
   // productCtx for the compliance scan + Label drawer pre-fill. productName
   // + brandName come from the shell props; allergens / bioengineered /
-  // netQuantity are derived server-side in page.tsx#deriveProductCtx and
-  // arrive via the productCtx prop (DS-56).
+  // netQuantity / netQuantityKind are derived server-side in
+  // page.tsx#deriveProductCtx and arrive via the productCtx prop
+  // (DS-56 + DS-57).
   const productCtx = useMemo(
     () => ({
       productName,
@@ -164,6 +167,7 @@ export function CanvasLayoutShell({
       allergens: serverProductCtx.allergens,
       bioengineered: serverProductCtx.bioengineered,
       netQuantity: serverProductCtx.netQuantity,
+      netQuantityKind: serverProductCtx.netQuantityKind,
     }),
     [
       productName,
@@ -171,6 +175,7 @@ export function CanvasLayoutShell({
       serverProductCtx.allergens,
       serverProductCtx.bioengineered,
       serverProductCtx.netQuantity,
+      serverProductCtx.netQuantityKind,
     ],
   )
   const basePxPerMm = 3.0
@@ -485,6 +490,7 @@ function ToolDrawer({
     allergens: string[]
     bioengineered: boolean
     netQuantity: string | null
+    netQuantityKind: 'solid' | 'liquid' | 'count'
   }
   onClose: () => void
 }) {

@@ -119,4 +119,14 @@ export {
   type ScanFinding,
   type ScanSeverity,
 } from './canvas/compliance'
+export {
+  formatNetQuantity,
+  validateNetQuantityFormat,
+  inferNetQuantityKind,
+  extractCount,
+  extractCountUnit,
+  type NetQuantityKind,
+  type FormatNetQuantityOpts,
+  type NetQuantityProblem,
+} from './canvas/netQuantity'
 
