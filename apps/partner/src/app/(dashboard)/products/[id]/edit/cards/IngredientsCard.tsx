@@ -9,11 +9,11 @@
 //   the creator can swap in (e.g., monk fruit replacing sugar). Per-slot lock
 //   (allowReplacement=false) prevents structural ingredients from being swapped.
 //
-// V1 IngredientPicker (USDA + Library + Partner-private unified search) is #138.
-// For now this card creates partner-private Ingredient rows on the fly with
-// SELF_ATTESTED verification — same pattern as the stepper.
+// V1 IngredientPicker (USDA + Library + Partner-private unified search) is
+// wired in here as of W2-IP5 — the AddSlotForm + AddReplacementForm bring up
+// the picker, and "Create new" inside the picker opens the metadata modal.
 
-import { useRef, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
@@ -33,6 +33,8 @@ import {
   addReplacement,
   removeReplacement,
 } from '../card-actions'
+import { IngredientPicker } from './IngredientPicker'
+import type { IngredientResult } from '../ingredient-actions'
 
 export interface ReplacementRow {
   id: string
@@ -386,17 +388,17 @@ function AddReplacementForm({
   onCancel: () => void
   onAdded: () => void
 }) {
-  const [name, setName] = useState('')
+  const [picked, setPicked] = useState<IngredientResult | null>(null)
   const [weightOverride, setWeightOverride] = useState('')
   const [callout, setCallout] = useState('')
   const [isPending, startTransition] = useTransition()
 
   function add() {
-    if (!name.trim()) return
+    if (!picked) return
     startTransition(async () => {
       const result = await addReplacement({
         slotId: slot.id,
-        ingredientName: name.trim(),
+        ingredientId: picked.id,
         weightGOverride: weightOverride ? parseFloat(weightOverride) : null,
         calloutText: callout.trim() || null,
       })
@@ -410,18 +412,37 @@ function AddReplacementForm({
 
   return (
     <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50/40 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr,90px]">
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">
-            Replacement ingredient
-          </Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+      <div className="space-y-1">
+        <Label className="text-xs uppercase tracking-wider text-zinc-500">
+          Replacement ingredient
+        </Label>
+        {picked ? (
+          <div className="flex items-center justify-between gap-2 rounded border border-emerald-200 bg-white px-2.5 py-1.5 text-sm">
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-medium">{picked.internalName}</span>
+              {picked.labelDeclarationName !== picked.internalName && (
+                <span className="ml-1.5 text-xs text-zinc-500">
+                  → label: {picked.labelDeclarationName}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPicked(null)}
+              className="text-xs text-zinc-500 hover:text-zinc-700"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <IngredientPicker
             placeholder={`Alternative to ${slot.name}`}
-            disabled={isPending}
+            onPick={(ing) => setPicked(ing)}
+            autoFocus
           />
-        </div>
+        )}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[1fr,1fr]">
         <div className="space-y-1">
           <Label className="text-xs uppercase tracking-wider text-zinc-500">
             Weight override (g)
@@ -436,17 +457,17 @@ function AddReplacementForm({
             disabled={isPending}
           />
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-xs uppercase tracking-wider text-zinc-500">
-          Callout (optional)
-        </Label>
-        <Input
-          value={callout}
-          onChange={(e) => setCallout(e.target.value)}
-          placeholder='e.g. "Lower glycemic alternative"'
-          disabled={isPending}
-        />
+        <div className="space-y-1">
+          <Label className="text-xs uppercase tracking-wider text-zinc-500">
+            Callout (optional)
+          </Label>
+          <Input
+            value={callout}
+            onChange={(e) => setCallout(e.target.value)}
+            placeholder='e.g. "Lower glycemic alternative"'
+            disabled={isPending}
+          />
+        </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
@@ -455,7 +476,7 @@ function AddReplacementForm({
         <Button
           size="sm"
           onClick={add}
-          disabled={isPending || !name.trim()}
+          disabled={isPending || !picked}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           {isPending ? 'Adding…' : 'Add'}
@@ -478,18 +499,17 @@ function AddSlotForm({
   onCancel: () => void
   onAdded: () => void
 }) {
-  const nameRef = useRef<HTMLInputElement>(null)
-  const [name, setName] = useState('')
+  const [picked, setPicked] = useState<IngredientResult | null>(null)
   const [weightG, setWeightG] = useState('')
   const [isPending, startTransition] = useTransition()
 
   function add() {
     const w = parseFloat(weightG)
-    if (!name.trim() || !Number.isFinite(w) || w <= 0) return
+    if (!picked || !Number.isFinite(w) || w <= 0) return
     startTransition(async () => {
       const result = await addIngredientSlot({
         productTemplateId,
-        name: name.trim(),
+        ingredientId: picked.id,
         weightG: w,
       })
       if (!result.ok) {
@@ -497,33 +517,50 @@ function AddSlotForm({
         return
       }
       onAdded()
-      setName('')
+      setPicked(null)
       setWeightG('')
-      nameRef.current?.focus()
     })
   }
 
   return (
     <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50/40 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr,90px]">
-        <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">
-            Ingredient name
-          </Label>
-          <Input
-            ref={nameRef}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+      <div className="space-y-1">
+        <Label className="text-xs uppercase tracking-wider text-zinc-500">
+          Ingredient
+        </Label>
+        {picked ? (
+          <div className="flex items-center justify-between gap-2 rounded border border-emerald-200 bg-white px-2.5 py-1.5 text-sm">
+            <div className="min-w-0 flex-1 truncate">
+              <span className="font-medium">{picked.internalName}</span>
+              {picked.labelDeclarationName !== picked.internalName && (
+                <span className="ml-1.5 text-xs text-zinc-500">
+                  → label: {picked.labelDeclarationName}
+                </span>
+              )}
+              {picked.allergenFlags.length > 0 && (
+                <span className="ml-1.5 text-xs text-amber-700">
+                  ⚠ {picked.allergenFlags.join(', ')}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPicked(null)}
+              className="text-xs text-zinc-500 hover:text-zinc-700"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <IngredientPicker
             placeholder="e.g. Whey Protein Concentrate"
-            disabled={isPending}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                add()
-              }
-            }}
+            onPick={(ing) => setPicked(ing)}
+            autoFocus
           />
-        </div>
+        )}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[1fr,90px]">
+        <div />
         <div className="space-y-1">
           <Label className="text-xs uppercase tracking-wider text-zinc-500">Grams</Label>
           <Input
@@ -549,7 +586,7 @@ function AddSlotForm({
         <Button
           size="sm"
           onClick={add}
-          disabled={isPending || !name.trim() || !weightG}
+          disabled={isPending || !picked || !weightG}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           {isPending ? 'Adding…' : 'Add slot'}

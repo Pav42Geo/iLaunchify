@@ -57,43 +57,71 @@ async function authorize(productTemplateId: string) {
 
 export async function addIngredientSlot(input: {
   productTemplateId: string
-  name: string
+  // NEW (W2-IP) — use the picker's selected Ingredient.id.
+  ingredientId?: string
+  // Legacy name-based path — kept for back-compat (always creates SELF_ATTESTED
+  // partner-private row with no allergens). New UI should NOT use this branch.
+  name?: string
   weightG: number
 }): Promise<Result<{ slotId: string }>> {
   const { user, partner, template, error } = await authorize(input.productTemplateId)
   if (error) return { ok: false, error }
 
-  if (!input.name.trim()) return { ok: false, error: 'Ingredient name is required.' }
   if (input.weightG <= 0) return { ok: false, error: 'Weight must be greater than 0 grams.' }
+  if (!input.ingredientId && !input.name?.trim()) {
+    return { ok: false, error: 'Pick an ingredient or provide a name.' }
+  }
 
-  // Create a partner-private Ingredient row + the slot in one txn
   const slot = await prisma.$transaction(async (tx) => {
-    const ing = await tx.ingredient.create({
-      data: {
-        name: input.name.trim(),
-        internalName: input.name.trim(),
-        labelDeclarationName: input.name.trim(),
-        nutritionPer100g: {},
-        source: 'PARTNER_PRIVATE',
-        ownerPartnerId: partner.id,
-        verificationStatus: 'SELF_ATTESTED',
-        createdById: user.id,
-        allergenFlags: [],
-      },
-    })
+    let ingredientId = input.ingredientId
+    if (!ingredientId) {
+      // Legacy path — bare name -> SELF_ATTESTED PARTNER_PRIVATE row.
+      const ing = await tx.ingredient.create({
+        data: {
+          name: input.name!.trim(),
+          internalName: input.name!.trim(),
+          labelDeclarationName: input.name!.trim(),
+          nutritionPer100g: {},
+          source: 'PARTNER_PRIVATE',
+          ownerPartnerId: partner.id,
+          verificationStatus: 'SELF_ATTESTED',
+          createdById: user.id,
+          allergenFlags: [],
+        },
+      })
+      ingredientId = ing.id
+    } else {
+      // Picker path — guard that the partner is allowed to use this ingredient.
+      // USDA + LIBRARY are open to everyone; PARTNER_PRIVATE is scoped.
+      const ing = await tx.ingredient.findUnique({
+        where: { id: ingredientId },
+        select: { id: true, source: true, ownerPartnerId: true },
+      })
+      if (!ing) throw new Error('INGREDIENT_NOT_FOUND')
+      if (ing.source === 'PARTNER_PRIVATE' && ing.ownerPartnerId !== partner.id) {
+        throw new Error('NOT_YOUR_INGREDIENT')
+      }
+    }
     const lastSlot = await tx.templateIngredientSlot.findFirst({
       where: { productTemplateId: template.id },
       orderBy: { displayOrder: 'desc' },
       select: { displayOrder: true },
     })
-    return await tx.templateIngredientSlot.create({
+    const created = await tx.templateIngredientSlot.create({
       data: {
         productTemplateId: template.id,
-        baseIngredientId: ing.id,
+        baseIngredientId: ingredientId,
         weightG: input.weightG,
         displayOrder: (lastSlot?.displayOrder ?? -1) + 1,
       },
     })
+    // Bump usage so the picker ranks this ingredient higher next time.
+    await tx.ingredientUsage.upsert({
+      where: { partnerId_ingredientId: { partnerId: partner.id, ingredientId } },
+      create: { partnerId: partner.id, ingredientId, useCount: 1 },
+      update: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+    })
+    return created
   })
 
   revalidatePath(`/products/${template.id}/edit`)
@@ -152,7 +180,10 @@ export async function removeIngredientSlot(slotId: string): Promise<Result> {
 
 export async function addReplacement(input: {
   slotId: string
-  ingredientName: string
+  // NEW (W2-IP) — picker's selected Ingredient.id.
+  ingredientId?: string
+  // Legacy free-text path — kept for back-compat.
+  ingredientName?: string
   weightGOverride: number | null
   calloutText: string | null
 }): Promise<Result<{ replacementId: string }>> {
@@ -173,38 +204,57 @@ export async function addReplacement(input: {
   const { error } = await authorize(slot.productTemplate.id)
   if (error) return { ok: false, error }
 
-  if (!input.ingredientName.trim()) {
-    return { ok: false, error: 'Replacement ingredient name is required.' }
+  if (!input.ingredientId && !input.ingredientName?.trim()) {
+    return { ok: false, error: 'Pick a replacement ingredient or provide a name.' }
   }
 
   const replacement = await prisma.$transaction(async (tx) => {
-    const ing = await tx.ingredient.create({
-      data: {
-        name: input.ingredientName.trim(),
-        internalName: input.ingredientName.trim(),
-        labelDeclarationName: input.ingredientName.trim(),
-        nutritionPer100g: {},
-        source: 'PARTNER_PRIVATE',
-        ownerPartnerId: partner.id,
-        verificationStatus: 'SELF_ATTESTED',
-        createdById: user.id,
-        allergenFlags: [],
-      },
-    })
+    let ingredientId = input.ingredientId
+    if (!ingredientId) {
+      const ing = await tx.ingredient.create({
+        data: {
+          name: input.ingredientName!.trim(),
+          internalName: input.ingredientName!.trim(),
+          labelDeclarationName: input.ingredientName!.trim(),
+          nutritionPer100g: {},
+          source: 'PARTNER_PRIVATE',
+          ownerPartnerId: partner.id,
+          verificationStatus: 'SELF_ATTESTED',
+          createdById: user.id,
+          allergenFlags: [],
+        },
+      })
+      ingredientId = ing.id
+    } else {
+      const ing = await tx.ingredient.findUnique({
+        where: { id: ingredientId },
+        select: { id: true, source: true, ownerPartnerId: true },
+      })
+      if (!ing) throw new Error('INGREDIENT_NOT_FOUND')
+      if (ing.source === 'PARTNER_PRIVATE' && ing.ownerPartnerId !== partner.id) {
+        throw new Error('NOT_YOUR_INGREDIENT')
+      }
+    }
     const lastReplacement = await tx.templateIngredientReplacement.findFirst({
       where: { slotId: input.slotId },
       orderBy: { displayOrder: 'desc' },
       select: { displayOrder: true },
     })
-    return await tx.templateIngredientReplacement.create({
+    const created = await tx.templateIngredientReplacement.create({
       data: {
         slotId: input.slotId,
-        ingredientId: ing.id,
+        ingredientId,
         weightGOverride: input.weightGOverride,
         calloutText: input.calloutText?.trim() || null,
         displayOrder: (lastReplacement?.displayOrder ?? -1) + 1,
       },
     })
+    await tx.ingredientUsage.upsert({
+      where: { partnerId_ingredientId: { partnerId: partner.id, ingredientId } },
+      create: { partnerId: partner.id, ingredientId, useCount: 1 },
+      update: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+    })
+    return created
   })
 
   revalidatePath(`/products/${slot.productTemplate.id}/edit`)
