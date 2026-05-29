@@ -62,6 +62,17 @@ export function useLabelMinSize(canvas: FabricCanvas | null) {
     /**
      * Resolve the rule for a given object — returns null if the object
      * isn't a rule-bearing required-label section or NFR.
+     *
+     * Structural fallback (DS-71 patch): fabric.Group.fromObject in v6
+     * doesn't reliably restore arbitrary custom properties on the
+     * group instance, so after loadFromJSON the NFR group can lose its
+     * `customType: 'nutrition-panel'` stamp even though child
+     * customRoles ('nfr-bg' / 'nfr-text' / 'nfr-rule') round-trip
+     * fine. We detect the NFR by sniffing its children, and re-stamp
+     * customType on the group so future saves preserve it cleanly.
+     *
+     * Text sections (IText.fromObject) appear to preserve customRole
+     * reliably; no structural fallback needed there.
      */
     function ruleFor(obj: FabricObject): Rule {
       const ct = (obj as { customType?: CanvasCustomType }).customType
@@ -71,10 +82,41 @@ export function useLabelMinSize(canvas: FabricCanvas | null) {
         const base = (obj as { fontSize?: number }).fontSize ?? 12
         return { kind: 'text-section', minScale: min / base }
       }
-      if (ct === 'nutrition-panel') {
+      if (ct === 'nutrition-panel' || isNutritionPanelByStructure(obj)) {
+        // Re-stamp so the next autosave snapshot carries the explicit
+        // customType — the structural check is a fallback, not a
+        // permanent identity.
+        if (ct !== 'nutrition-panel') {
+          ;(obj as unknown as { set: (k: string, v: unknown) => void }).set(
+            'customType',
+            'nutrition-panel',
+          )
+        }
         return { kind: 'nutrition-panel', minScale: NUTRITION_FACTS_MIN_SCALE }
       }
       return { kind: null, minScale: 0 }
+    }
+
+    /**
+     * Sniff for an NFR group by looking at its children. Returns true
+     * when the object is a fabric.Group whose children carry the
+     * customRole stamps the NFR composer applied at create time.
+     */
+    function isNutritionPanelByStructure(obj: FabricObject): boolean {
+      const o = obj as unknown as {
+        type?: string
+        _objects?: Array<{ customRole?: string }>
+      }
+      if (o.type !== 'group') return false
+      const kids = o._objects
+      if (!kids || kids.length === 0) return false
+      for (const c of kids) {
+        const role = c.customRole
+        if (role === 'nfr-bg' || role === 'nfr-text' || role === 'nfr-rule') {
+          return true
+        }
+      }
+      return false
     }
 
     function readTransform(obj: FabricObject): ValidTransform {
@@ -140,6 +182,11 @@ export function useLabelMinSize(canvas: FabricCanvas | null) {
           const clamped = Math.max(scaleX, scaleY, rule.minScale)
           o.set({ scaleX: clamped, scaleY: clamped })
         }
+        // Tell fabric to recompute the corner cache + re-render so the
+        // user only ever sees the clamped state, not the intermediate
+        // sub-min frame.
+        ;(obj as unknown as { setCoords: () => void }).setCoords()
+        if (canvas) canvas.requestRenderAll()
         return
       }
 
@@ -186,14 +233,27 @@ export function useLabelMinSize(canvas: FabricCanvas | null) {
       for (const obj of e.selected ?? []) enforceOn(obj)
     }
 
+    /**
+     * Final-clamp backstop. object:modified fires after every gesture
+     * completes (mouse:up after a successful transform). If anything
+     * below min slipped past the live object:scaling enforcement, this
+     * forces it back at autosave time so the persisted state is always
+     * valid.
+     */
+    function handleModified(e: { target?: FabricObject }) {
+      if (e.target) enforceOn(e.target)
+    }
+
     canvas.on('mouse:down', handleMouseDown)
     canvas.on('object:scaling', handleScaling)
     canvas.on('mouse:up', handleMouseUp)
     canvas.on('object:added', handleAdded)
     canvas.on('selection:created', handleSelectionCreated)
+    canvas.on('object:modified', handleModified)
 
     // Sweep any objects already on the canvas at mount-time — covers
-    // the loadFromJSON-then-attach race after refresh.
+    // the loadFromJSON-then-attach race after refresh. Also re-stamps
+    // customType on NFR groups detected by structure (see ruleFor).
     for (const obj of canvas.getObjects()) enforceOn(obj)
 
     return () => {
@@ -202,6 +262,7 @@ export function useLabelMinSize(canvas: FabricCanvas | null) {
       canvas.off('mouse:up', handleMouseUp)
       canvas.off('object:added', handleAdded)
       canvas.off('selection:created', handleSelectionCreated)
+      canvas.off('object:modified', handleModified)
     }
   }, [canvas])
 }
