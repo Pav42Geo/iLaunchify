@@ -38,8 +38,18 @@ export interface MarketingSession {
 /**
  * Read the current session. Returns null when there's no signed-in user
  * (guest path) or when reading the session fails for any reason.
+ *
+ * We short-circuit when AUTH_SECRET isn't in env — Auth.js would
+ * otherwise log a noisy MissingSecret error before our try/catch
+ * could swallow it. That state usually means the marketing dev server
+ * was started without the dotenv wrapper (pre-R2 dev script); the fix
+ * is to restart the dev server. Production deploys must have
+ * AUTH_SECRET set or auth integration is broken anyway.
  */
 export async function getMarketingSession(): Promise<MarketingSession | null> {
+  if (!process.env.AUTH_SECRET) {
+    return null
+  }
   try {
     const session = await auth()
     if (!session?.user?.id) return null
