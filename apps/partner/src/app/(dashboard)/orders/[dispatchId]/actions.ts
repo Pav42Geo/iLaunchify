@@ -11,6 +11,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { recomputeAggregateApprovalStatus } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -33,14 +34,20 @@ export async function acceptDispatch({ dispatchId }: { dispatchId: string }): Pr
   await prisma.$transaction(async (tx) => {
     await tx.orderDispatch.update({
       where: { id: dispatch.id },
-      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedManifestVersion: dispatch.manifestVersion,
+      },
     })
 
-    // If both dispatches for this order are now accepted, advance Order → IN_FULFILLMENT
-    const remaining = await tx.orderDispatch.count({
-      where: { orderId: dispatch.orderId, status: 'PENDING_ACCEPT' },
-    })
-    if (remaining === 0) {
+    // Phase H — recompute aggregate approval gate. When all dispatches
+    // have flowed past PENDING_ACCEPT into ACCEPTED-or-further, the
+    // helper flips Order.aggregateApprovalStatus to FULLY_ACCEPTED;
+    // here we mirror that into Order.status → IN_FULFILLMENT so the
+    // existing fulfillment pipeline picks it up.
+    const aggregate = await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
+    if (aggregate === 'FULLY_ACCEPTED') {
       await tx.order.update({
         where: { id: dispatch.orderId },
         data: { status: 'IN_FULFILLMENT' },
@@ -78,23 +85,40 @@ export async function declineDispatch({
     return { ok: false, error: `Cannot decline from ${dispatch.status}` }
   }
 
-  await prisma.orderDispatch.update({
-    where: { id: dispatch.id },
-    data: {
-      status: 'DECLINED',
-      declinedAt: new Date(),
-      declineReason: reason,
-      declineNotes: notes ?? null,
-    },
-  })
-
-  // V1: park the order on ON_HOLD for admin manual reroute.
-  await prisma.order.update({
-    where: { id: dispatch.orderId },
-    data: {
-      status: 'ON_HOLD',
-      internalNotes: `Dispatch ${dispatch.type} declined by partner: ${reason} — needs reroute`,
-    },
+  // Phase H — manufacturer decline = order CANCELLED (recipe owner can't
+  // be rerouted, per [[ilaunchify-orchestration-thesis]]). Other partner
+  // types still go to ON_HOLD for admin manual reroute until #153 lands
+  // marketplace auto-rerouting.
+  const isManufacturerReject = dispatch.type === 'PRODUCT'
+  await prisma.$transaction(async (tx) => {
+    await tx.orderDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: 'DECLINED',
+        declinedAt: new Date(),
+        declineReason: reason,
+        declineNotes: notes ?? null,
+      },
+    })
+    if (isManufacturerReject) {
+      await tx.order.update({
+        where: { id: dispatch.orderId },
+        data: {
+          status: 'CANCELLED',
+          aggregateApprovalStatus: 'CANCELLED',
+          internalNotes: `Manufacturer declined (${reason}): ${notes ?? ''} — order cancelled, refund needed`,
+        },
+      })
+    } else {
+      await tx.order.update({
+        where: { id: dispatch.orderId },
+        data: {
+          status: 'ON_HOLD',
+          internalNotes: `Dispatch ${dispatch.type} declined by partner: ${reason} — needs reroute`,
+        },
+      })
+      await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
+    }
   })
 
   await logAuditAs(user, {

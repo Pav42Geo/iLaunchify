@@ -253,6 +253,9 @@ enum DispatchType {
 enum DispatchStatus {
   PENDING_ACCEPT
   ACCEPTED
+  // Phase H — partner needs the creator to adjust the manifest before
+  // accepting. Sits here until the creator submits an adjustment.
+  CHANGES_REQUESTED
   PRODUCING
   QUALITY_CHECK    // partner is QC'ing the batch before flipping to READY
   FAILED_QC        // QC failed; needs admin attention (manual reroute or remake)
@@ -262,6 +265,10 @@ enum DispatchStatus {
   DELIVERED
   DECLINED
   TIMED_OUT
+  // Phase H — partner accepted but later can't deliver (capacity
+  // surprise, machine breakdown). Triggers auto-reroute for fungible
+  // service types.
+  WITHDRAWN
   CANCELLED
 }
 
@@ -270,6 +277,18 @@ enum DispatchDeclineReason {
   CANNOT_FULFILL_SPEC
   PRICING_DISPUTE
   OTHER
+}
+
+// Phase H — derived from per-dispatch acceptance state. Drives the
+// creator's order detail banner + holds Order.status at ROUTING until
+// FULLY_ACCEPTED (at which point Order flips to IN_FULFILLMENT and
+// Stripe transfers fire).
+enum AggregateApprovalStatus {
+  AWAITING_PARTNERS         // ≥1 dispatch still PENDING_ACCEPT, none ACCEPTED
+  PARTIALLY_ACCEPTED        // some ACCEPTED, some still PENDING_ACCEPT
+  CHANGES_REQUESTED         // ≥1 dispatch CHANGES_REQUESTED — creator must adjust
+  FULLY_ACCEPTED            // every dispatch ACCEPTED → Order ready for fulfillment
+  CANCELLED                 // order killed (manufacturer reject or admin cancel)
 }
 
 // Phase G8 — production bundle generation status. Manifest is built at
@@ -1470,6 +1489,11 @@ model Order {
   // Timestamps
   paidAt                 DateTime?
   deliveredAt            DateTime?
+  // Phase H — aggregate approval gate across all OrderDispatch rows.
+  // Computed by the FSM on every dispatch transition. Drives the
+  // creator's "what's happening" banner + holds Order.status at ROUTING
+  // until FULLY_ACCEPTED.
+  aggregateApprovalStatus AggregateApprovalStatus @default(AWAITING_PARTNERS)
   // Notes
   internalNotes          String?
   // Relations
@@ -1550,6 +1574,22 @@ model OrderDispatch {
   finishManifestJson Json?
   bundleAssetId      String?
   bundleGeneratedAt  DateTime?
+  // Phase H — manifest version this dispatch is bound to. Starts at 1.
+  // Increments when a CHANGES_REQUESTED adjustment ships a new snapshot.
+  // The partner's ACCEPTED row records the version they accepted; if it
+  // doesn't match the current row, the partner sees a 're-review' banner.
+  manifestVersion    Int              @default(1)
+  acceptedManifestVersion Int?
+  // Phase H — when status is CHANGES_REQUESTED, carries the structured
+  // payload partners filed. Shape:
+  //   { flaggedFields: string[], partnerNote: string,
+  //     suggestedAlternatives: Record<string, string|null>,
+  //     requestedAt: ISO }
+  changeRequest      Json?
+  // Phase H — Partner withdrew after acceptance — reason + ISO. Distinct
+  // from declineReason because the lifecycle stage is different.
+  withdrawnAt        DateTime?
+  withdrawReason     String?
   // Relations
   order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   partnerService    PartnerService   @relation(fields: [partnerServiceId], references: [id])

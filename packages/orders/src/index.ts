@@ -25,3 +25,4 @@ export {
   MANIFEST_VERSION,
 } from './manifest'
 export type { ProductionManifest } from './manifest'
+export { recomputeAggregateApprovalStatus } from './aggregate-approval'
