@@ -89,10 +89,10 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   const restricted = !['ACTIVE', 'INTEGRATION_ENHANCED'].includes(partner.status)
 
   return (
-    <div className="flex min-h-screen">
-      <PartnerSidebar status={partner.status} restricted={restricted} />
-      <div className="flex flex-1 flex-col">
-        <PartnerTopbar user={user} companyName={partner.companyName} />
+    <div className="flex min-h-screen flex-col">
+      <PartnerTopbar user={user} companyName={partner.companyName} />
+      <div className="flex flex-1">
+        <PartnerSidebar status={partner.status} restricted={restricted} />
         <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>

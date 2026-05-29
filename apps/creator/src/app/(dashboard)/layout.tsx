@@ -59,10 +59,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <LaunchChecklistProvider initialSnapshot={snapshot} meta={{ shouldAutoOpen }}>
-      <div className="flex min-h-screen">
-        <DashboardSidebar />
-        <div className="flex flex-1 flex-col">
-          <DashboardTopbar user={user} />
+      <div className="flex min-h-screen flex-col">
+        <DashboardTopbar user={user} />
+        <div className="flex flex-1">
+          <DashboardSidebar />
           <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">
             <div className="mx-auto max-w-6xl">{children}</div>
           </main>

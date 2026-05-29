@@ -1,20 +1,18 @@
-'use client'
+// Admin dashboard topbar (REBUILD R1).
+//
+// Same shared chrome as creator + partner dashboards via the AppHeader
+// primitive in @ilaunchify/ui. Admin-specific bits: no Heart, no
+// BrandSwitcher, ink-900 avatar.
 
-import { Button } from '@ilaunchify/ui'
-import { signOut } from 'next-auth/react'
 import type { User } from '@ilaunchify/auth'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { AppHeader } from '@ilaunchify/ui'
+import { AdminTopbarRight } from './AdminTopbarRight'
 
 export function AdminTopbar({ user }: { user: User }) {
   return (
-    <header className="flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-6">
-      <div className="text-sm text-zinc-500">{user.email}</div>
-      <div className="flex items-center gap-2">
-        <NotificationBell />
-        <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/login' })}>
-          Sign out
-        </Button>
-      </div>
-    </header>
+    <AppHeader
+      brandHref="/dashboard"
+      right={<AdminTopbarRight email={user.email} name={user.name ?? null} />}
+    />
   )
 }
