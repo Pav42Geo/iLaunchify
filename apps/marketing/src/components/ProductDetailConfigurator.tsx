@@ -13,7 +13,7 @@ import {
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
-import { creatorUrl } from '@/lib/app-urls'
+import { LaunchCtaCluster } from './LaunchCtaCluster'
 
 /**
  * ProductDetailConfigurator — the right-column variant + pricing + CTA stack
@@ -200,46 +200,20 @@ export function ProductDetailConfigurator({
         leadTimeLabel={`${leadTimeDays}–${leadTimeDays + 4} days door-to-door`}
       />
 
-      {/* Primary CTAs — auth-aware routing.
-       *   - Guest         → /start (conversion landing → signup → Design Studio)
-       *   - Authenticated → Design Studio directly with the full selection
-       *     carried as query params (template + flavor + size + packaging +
-       *     quantity). The studio uses these to pre-fill the canvas + pricing.
+      {/* Primary CTAs — REBUILD R5 wires Open in Design Studio to a
+       * server action that materialises the Product row + redirects
+       * cross-app to /products/{id}/design/canvas. Guests get bounced
+       * to /signup with the selection preserved (R4 polishes with a
+       * modal).
        */}
-      {(() => {
-        const selection = {
-          template: template.slug,
-          flavor: flavorId,
-          size: sizeKey,
-          packaging: packagingId,
-          quantity,
-        }
-        // Both targets are in apps/creator (different port in dev, same
-        // domain in prod). Use raw <a> for hard cross-app navigation.
-        //   Authenticated → Design Studio with selection pre-loaded
-        //   Guest         → Signup with selection carried into Step 5
-        // Authenticated → New product flow (the existing entry point to
-        // the canvas; productId-scoped /products/{id}/design/canvas can't
-        // be deep-linked without picking a product first).
-        // Guest → Signup, which apps/creator may read for carryover.
-        const launchHref = isAuthenticated
-          ? creatorUrl('/products/new', selection)
-          : creatorUrl('/signup', selection)
-        return (
-          <div className="flex flex-wrap items-center gap-3 mt-1">
-            <Button asChild variant="primary" size="md">
-              <a href={launchHref}>
-                {isAuthenticated ? 'Open in Design Studio' : 'Start launching'}
-              </a>
-            </Button>
-            <Button asChild variant="secondary" size="md">
-              <Link href={`/products/sample?template=${template.slug}`}>
-                Order sample
-              </Link>
-            </Button>
-          </div>
-        )
-      })()}
+      <LaunchCtaCluster
+        templateSlug={template.slug}
+        flavorId={flavorId}
+        sizeKey={sizeKey}
+        packagingId={packagingId}
+        quantity={quantity}
+        isAuthenticated={isAuthenticated}
+      />
     </div>
   )
 }
