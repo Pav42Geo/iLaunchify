@@ -82,7 +82,7 @@ export default async function PublishStubPage({
               ) : (
                 <>
                   No production order placed yet.{' '}
-                  <Link href={`/products/${product.id}/order`} className="underline">
+                  <Link href={`/products/${product.id}/checkout`} className="underline">
                     Place one
                   </Link>{' '}
                   first.

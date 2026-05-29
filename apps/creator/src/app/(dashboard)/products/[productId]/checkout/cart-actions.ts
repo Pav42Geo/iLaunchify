@@ -139,9 +139,9 @@ export async function placeOrderFromCheckoutDraft(
   const productionUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents
   const productionSubtotalCents = productionUnitCents * qty + finishSetupCents
 
-  // Cost-basis estimate for partner transfers (existing @ilaunchify/orders
+  // Cost-basis estimate for partner transfers (@ilaunchify/orders
   // returns a per-dispatch breakdown — V1 reuses to keep the manifest
-  // consistent with the legacy /order pipeline).
+  // same cost basis the partner-side dispatch routing uses).
   const referenceUnit = Math.max(1, Math.round(productionUnitCents))
   const dispatchCosts = estimateDispatchCosts({
     productId: product.id,
@@ -284,7 +284,7 @@ export async function placeOrderFromCheckoutDraft(
 
   // --- 12. Stripe Checkout Session ------------------------------------------
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const successUrl = `${baseUrl}/products/${product.id}/order/success?session_id={CHECKOUT_SESSION_ID}`
+  const successUrl = `${baseUrl}/products/${product.id}/checkout/success?session_id={CHECKOUT_SESSION_ID}`
   const cancelUrl = `${baseUrl}/products/${product.id}/checkout`
 
   let session

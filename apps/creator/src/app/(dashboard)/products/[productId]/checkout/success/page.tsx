@@ -2,6 +2,9 @@
 // At this point Stripe has redirected back with a session_id, but our
 // payment_intent.succeeded webhook may not have fired yet. We show a friendly
 // "we got your order" message and let the user click through to track it.
+//
+// Phase G9 — moved from /order/success to /checkout/success so the live URL
+// matches the wizard route. cart-actions.successUrl points here.
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
 import Link from 'next/link'
@@ -48,8 +51,8 @@ export default async function OrderSuccessPage({
           <div>
             <CardTitle>Production order placed</CardTitle>
             <CardDescription>
-              Stripe has confirmed your payment. We're routing to a manufacturer + print partner
-              now. You'll get an email when each partner accepts.
+              Stripe has confirmed your payment. We&apos;re routing to your partners now.
+              You&apos;ll get an email when each partner accepts.
             </CardDescription>
           </div>
         </CardHeader>
@@ -63,7 +66,7 @@ export default async function OrderSuccessPage({
             )}
           </p>
           <p className="text-zinc-500">
-            Production typically takes 4–6 weeks. We'll update you at each milestone. After
+            Production typically takes 4–6 weeks. We&apos;ll update you at each milestone. After
             delivery, you can push the finished SKU to your sales channels.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -72,7 +75,7 @@ export default async function OrderSuccessPage({
                 <Link href={`/orders/${latestOrder.id}`}>Track this order →</Link>
               </Button>
             )}
-            <Button asChild variant="outline">
+            <Button asChild variant="ghost">
               <Link href={`/products/${product.id}`}>Back to product</Link>
             </Button>
           </div>
