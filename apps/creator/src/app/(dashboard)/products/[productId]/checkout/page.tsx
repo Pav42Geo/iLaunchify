@@ -11,6 +11,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { CheckoutWizard } from './CheckoutWizard'
 import { loadCheckoutDraft } from './actions'
+import { loadReviewSnapshot } from './review-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,10 @@ export default async function CheckoutPage({ params }: PageProps) {
   })
   if (!product) notFound()
 
-  const draftResult = await loadCheckoutDraft(productId)
+  const [draftResult, reviewSnapshot] = await Promise.all([
+    loadCheckoutDraft(productId),
+    loadReviewSnapshot(productId),
+  ])
   if (!draftResult.ok) {
     // The auth + ownership guard inside loadCheckoutDraft mirrors the
     // server-side fetch above, so reaching this branch means something
@@ -52,6 +56,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       initialStep={draftResult.data.currentStep}
       initialCompletedSteps={draftResult.data.completedSteps}
       hadExistingDraft={draftResult.data.existed}
+      reviewSnapshot={reviewSnapshot}
     />
   )
 }

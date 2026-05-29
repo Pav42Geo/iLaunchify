@@ -29,6 +29,7 @@ import { ViralStep } from './steps/ViralStep'
 import { CartStep } from './steps/CartStep'
 import { OrderSummary } from './OrderSummary'
 import type { CostBreakdown } from './production-actions'
+import type { ReviewSnapshot } from './review-actions'
 
 interface Props {
   productId: string
@@ -39,6 +40,8 @@ interface Props {
   initialStep: WizardStepIndex
   initialCompletedSteps: WizardStepIndex[]
   hadExistingDraft: boolean
+  // G2 — server-loaded snapshot of the latest DesignVersion + checklist scan.
+  reviewSnapshot: ReviewSnapshot
 }
 
 export function CheckoutWizard({
@@ -49,6 +52,7 @@ export function CheckoutWizard({
   initialStep,
   initialCompletedSteps,
   hadExistingDraft,
+  reviewSnapshot,
 }: Props) {
   const router = useRouter()
   const [state, setState] = useState<CheckoutDraftState>(initialState)
@@ -129,6 +133,16 @@ export function CheckoutWizard({
   }
 
   const isAdjustment = Boolean(state.isAdjustmentForOrderId)
+
+  // G2 — step 1 Next is gated on all three reviewer sign-offs. Other
+  // steps don't have an inline gate (validation lives in step content +
+  // the final placeOrder server action).
+  const reviewAcksComplete =
+    state.review.ackDesignFinal &&
+    state.review.ackProductionReady &&
+    state.review.ackComplianceReviewed
+  const isNextDisabled =
+    isSaving || (currentStep === 1 && !reviewAcksComplete)
 
   return (
     <div className="min-h-screen bg-ink-50">
@@ -236,6 +250,7 @@ export function CheckoutWizard({
               productId={productId}
               state={state.review}
               onChange={(patch) => patchState('review', patch)}
+              snapshot={reviewSnapshot}
             />
           )}
           {currentStep === 2 && (
@@ -307,15 +322,22 @@ export function CheckoutWizard({
                 Back
               </button>
               {currentStep < 7 ? (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-black"
-                >
-                  Next
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {currentStep === 1 && !reviewAcksComplete && (
+                    <span className="text-[11px] text-ink-500">
+                      Tick all three boxes to continue
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    disabled={isNextDisabled}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-black disabled:opacity-40"
+                  >
+                    Next
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ) : (
                 <span className="rounded-full bg-ink-100 px-4 py-2 text-xs font-medium text-ink-500">
                   Payment ships in G5

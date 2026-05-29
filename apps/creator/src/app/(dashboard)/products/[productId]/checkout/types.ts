@@ -27,9 +27,12 @@ export type WizardStepIndex = (typeof WIZARD_STEPS)[number]['index']
 // -----------------------------------------------------------------------------
 
 export interface ReviewState {
-  // Acknowledged checklist items the creator ticked manually. G2 fills
-  // this in with a real scan.
-  acknowledged: string[]
+  // G2 — three explicit sign-offs the creator ticks before they can
+  // proceed past step 1. The wizard's Next button is disabled when any
+  // is false. Names are stable so we can audit-log the decision.
+  ackDesignFinal: boolean
+  ackProductionReady: boolean
+  ackComplianceReviewed: boolean
   // Did the creator click "edit design" and bounce back to canvas at
   // least once? Quality signal for analytics.
   bouncedToCanvas?: boolean
@@ -136,7 +139,11 @@ export interface CheckoutDraftState {
 
 export function emptyDraftState(): CheckoutDraftState {
   return {
-    review: { acknowledged: [] },
+    review: {
+      ackDesignFinal: false,
+      ackProductionReady: false,
+      ackComplianceReviewed: false,
+    },
     production: {
       quantity: null,
       substrateSlug: null,
