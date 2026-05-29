@@ -1,28 +1,34 @@
+// MarketplaceHeader — thin composition over the shared AppHeader primitive
+// (REBUILD R1). Adds the marketplace-specific bits:
+//   - "All Categories" button + MarketplaceSearchBar in the centre
+//   - Niche tab strip as bottom subnav
+//   - Heart / Bell / BrandSwitcher / UserMenu in the right cluster
+//
+// Auth-aware:
+//   - Guest  → "Sign in" link + "Start launching" CTA. No bell/heart.
+//   - User   → bell + heart + UserMenu dropdown. CTA hidden (the dropdown's
+//              Dashboard / My products links replace it for logged-in users).
+//
+// The cart icon was removed — this is a B2B production marketplace, not a
+// consumer storefront (per [[ilaunchify-business-model]]). End-buyer carts
+// live on each brand's own DTC/wholesale channel, never on iLaunchify.
+//
+// V1: `user` is passed as a prop. Real session reading lands when
+// @ilaunchify/auth is wired into apps/marketing (REBUILD R2).
+
 import Link from 'next/link'
 import { Heart, Bell } from 'lucide-react'
+import {
+  AppHeader,
+  AppHeaderGuestCta,
+  AppHeaderIconButton,
+  AppHeaderSubnavStrip,
+} from '@ilaunchify/ui'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { creatorUrl } from '@/lib/app-urls'
 
-/**
- * MarketplaceHeader — the white-header Option C Hybrid for creator surfaces.
- *
- * Locked rule (DESIGN_SYSTEM.md §1): the header color is the audience-signal.
- * Creator marketplace = WHITE. Never put a dark header on a creator surface.
- *
- * Auth-aware:
- *   - Guest  → "Sign in" link + "Start launching" CTA. No bell/heart.
- *   - User   → bell + heart + UserMenu dropdown. CTA hidden (the dropdown's
- *              Dashboard / My products links replace it for logged-in users).
- *
- * The cart icon was removed — this is a B2B production marketplace, not a
- * consumer storefront (per [[ilaunchify-business-model]]). End-buyer carts
- * live on each brand's own DTC/wholesale channel, never on iLaunchify.
- *
- * V1: `user` is passed as a prop. Real session reading lands when
- * @ilaunchify/auth is wired into apps/marketing (next pass).
- */
 export interface MarketplaceHeaderProps {
   /** When omitted/null, the header renders the guest variant. */
   user?: UserMenuProps['user'] | null
@@ -43,95 +49,61 @@ export function MarketplaceHeader({
   const isGuest = !user
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl backdrop-saturate-150 border-b border-ink-200">
-      <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center gap-5">
-        <Link href="/" className="flex items-center gap-[7px] flex-shrink-0">
-          <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-          <span className="font-display text-[23px] font-extrabold tracking-[-0.04em] text-ink-900">
-            iLaunchify
-          </span>
-        </Link>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-[7px] font-semibold text-sm px-3.5 py-2.5 rounded-md bg-ink-100 text-ink-900 hover:bg-ink-200 transition-colors flex-shrink-0"
-        >
-          All Categories <span className="text-[11px] text-ink-500">▼</span>
-        </button>
-
-        <MarketplaceSearchBar />
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {isGuest ? (
-            <>
-              <a
-                href={creatorUrl('/login')}
-                className="text-sm font-semibold text-ink-700 hover:text-ink-900 px-3 py-2 transition-colors"
-              >
-                Sign in
-              </a>
-              <a
-                href={creatorUrl('/signup')}
-                className="inline-flex items-center gap-[7px] bg-ink-900 text-white font-semibold text-sm px-[22px] py-[11px] rounded-pill transition-all hover:bg-black hover:-translate-y-px"
-              >
-                Start launching
-              </a>
-            </>
-          ) : (
-            <>
-              <IconButton aria-label="Favorites">
-                <Heart strokeWidth={2} className="w-5 h-5" />
-              </IconButton>
-              <IconButton aria-label="Notifications" hasDot={hasUnreadNotifications}>
-                <Bell strokeWidth={2} className="w-5 h-5" />
-              </IconButton>
-              {brands.length > 1 && activeBrandId && (
-                <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />
-              )}
-              <UserMenu user={user!} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <nav className="border-t border-ink-100 bg-white/60">
-        <div className="max-w-[1400px] mx-auto px-6 flex gap-1 overflow-x-auto">
+    <AppHeader
+      center={
+        <>
+          <button
+            type="button"
+            className="inline-flex flex-shrink-0 items-center gap-[7px] rounded-md bg-ink-100 px-3.5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-200"
+          >
+            All Categories <span className="text-[11px] text-ink-500">▼</span>
+          </button>
+          <MarketplaceSearchBar />
+        </>
+      }
+      right={
+        isGuest ? (
+          <AppHeaderGuestCta
+            signInHref={creatorUrl('/login')}
+            signUpHref={creatorUrl('/signup')}
+          />
+        ) : (
+          <>
+            <AppHeaderIconButton aria-label="Favorites">
+              <Heart strokeWidth={2} className="h-5 w-5" />
+            </AppHeaderIconButton>
+            <AppHeaderIconButton
+              aria-label="Notifications"
+              hasDot={hasUnreadNotifications}
+            >
+              <Bell strokeWidth={2} className="h-5 w-5" />
+            </AppHeaderIconButton>
+            {brands.length > 1 && activeBrandId && (
+              <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />
+            )}
+            <UserMenu user={user!} />
+          </>
+        )
+      }
+      subnav={
+        <AppHeaderSubnavStrip>
           {NICHES.map((n) => (
             <Link
               key={n.slug}
               href={`/launch/${n.slug}`}
               className={
-                'px-3 py-[11px] text-[13px] font-medium whitespace-nowrap border-b-2 transition-colors ' +
+                'whitespace-nowrap border-b-2 px-3 py-[11px] text-[13px] font-medium transition-colors ' +
                 (n.active
-                  ? 'text-pink-700 border-pink-500 font-semibold'
-                  : 'text-ink-600 border-transparent hover:text-ink-900')
+                  ? 'border-pink-500 font-semibold text-pink-700'
+                  : 'border-transparent text-ink-600 hover:text-ink-900')
               }
             >
               {n.name}
             </Link>
           ))}
-        </div>
-      </nav>
-    </header>
-  )
-}
-
-function IconButton({
-  children,
-  hasDot,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { hasDot?: boolean }) {
-  return (
-    <button
-      type="button"
-      className="relative w-10 h-10 rounded-md flex items-center justify-center text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition-colors"
-      {...props}
-    >
-      {children}
-      {hasDot && (
-        <span className="absolute top-2 right-[9px] w-[7px] h-[7px] rounded-full bg-pink-500 border-[1.5px] border-white" />
-      )}
-    </button>
+        </AppHeaderSubnavStrip>
+      }
+    />
   )
 }
 

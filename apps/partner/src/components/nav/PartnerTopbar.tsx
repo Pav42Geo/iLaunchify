@@ -1,23 +1,31 @@
-'use client'
+// Partner dashboard topbar (REBUILD R1).
+//
+// Visually identical to the marketplace + creator dashboard headers: white
+// sticky bar, pink-square logo on the left, notification bell + user
+// dropdown on the right. Partner-specific touches: ink-900 avatar (vs the
+// creator's pink), companyName as the dropdown headline.
 
-import { Button } from '@ilaunchify/ui'
-import { signOut } from 'next-auth/react'
 import type { User } from '@ilaunchify/auth'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { AppHeader } from '@ilaunchify/ui'
+import { PartnerTopbarRight } from './PartnerTopbarRight'
 
-export function PartnerTopbar({ user, companyName }: { user: User; companyName: string }) {
+export function PartnerTopbar({
+  user,
+  companyName,
+}: {
+  user: User
+  companyName: string
+}) {
   return (
-    <header className="flex h-14 items-center justify-between border-b border-zinc-200 bg-white px-6">
-      <div className="text-sm">
-        <span className="font-medium">{companyName}</span>
-        <span className="ml-2 text-zinc-500">· {user.email}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <NotificationBell />
-        <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: '/login' })}>
-          Sign out
-        </Button>
-      </div>
-    </header>
+    <AppHeader
+      brandHref="/dashboard"
+      right={
+        <PartnerTopbarRight
+          email={user.email}
+          name={user.name ?? null}
+          companyName={companyName}
+        />
+      }
+    />
   )
 }
