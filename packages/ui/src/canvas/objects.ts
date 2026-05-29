@@ -24,8 +24,26 @@ export type CanvasCustomType =
   | 'internal-sku'
   | 'nutrition-panel'
 
+/**
+ * Required-label-section discriminator (DS-55).
+ *
+ * Stamped on text objects added via the Label drawer's "Required sections"
+ * helpers so the compliance scan can confirm each required FDA section
+ * (21 CFR §101) is present on the canvas. Free-typed text remains untagged.
+ */
+export type LabelSectionRole =
+  | 'statement-of-identity'
+  | 'ingredients'
+  | 'allergens'
+  | 'net-weight'
+  | 'manufacturer-info'
+
 /** Properties to round-trip through canvas.toJSON. */
-export const CANVAS_PROPERTIES_TO_INCLUDE = ['customType', 'customData'] as const
+export const CANVAS_PROPERTIES_TO_INCLUDE = [
+  'customType',
+  'customData',
+  'customRole',
+] as const
 
 /** Add an editable text object at the canvas viewport center + select it. */
 export function addText(
@@ -175,6 +193,140 @@ export function selectAllObjects(canvas: FabricCanvas): void {
 export function objectsFromSelection(obj: FabricObject): FabricObject[] {
   const sel = obj as unknown as { _objects?: FabricObject[] }
   return sel._objects ?? [obj]
+}
+
+/**
+ * Drop a pre-tagged "required label section" text block for the FDA scan
+ * (DS-55). Each role gets sensible defaults — type size, weight, and a
+ * placeholder string — that match what a creator would actually type for
+ * that section. The customRole stamp is what the compliance scanner
+ * looks for; without it the scanner can't reliably tell which free-typed
+ * text is the ingredient statement vs. a tagline.
+ *
+ * Returns the new IText so callers can chain further customization.
+ */
+export function addLabelSection(
+  canvas: FabricCanvas,
+  role: LabelSectionRole,
+  opts: {
+    /** Initial text. Defaults vary per role. */
+    text?: string
+    /** Override fill (default ink-900). */
+    fill?: string
+    /** Override max-width in px so long ingredient lists wrap. */
+    width?: number
+  } = {},
+): FabricObject {
+  const presets = LABEL_SECTION_PRESETS[role]
+  const center = getCanvasCenter(canvas)
+  const obj = new fabric.IText(opts.text ?? presets.placeholder, {
+    left: center.x,
+    top: center.y,
+    originX: 'center',
+    originY: 'center',
+    fontFamily: presets.fontFamily,
+    fontSize: presets.fontSize,
+    fontWeight: presets.fontWeight,
+    fill: opts.fill ?? '#0F1116',
+    editable: true,
+    textAlign: presets.textAlign,
+  })
+  if (opts.width ?? presets.width) {
+    obj.set('width', opts.width ?? presets.width)
+  }
+  obj.set('customType', 'text' satisfies CanvasCustomType)
+  obj.set('customRole', role satisfies LabelSectionRole)
+  canvas.add(obj)
+  canvas.setActiveObject(obj)
+  canvas.requestRenderAll()
+  return obj
+}
+
+/**
+ * Per-section defaults. Tuned so the dropped object looks plausibly like
+ * the section it represents — statement of identity reads big and bold,
+ * ingredient list reads small and dense, manufacturer info reads small
+ * and fine.
+ */
+const LABEL_SECTION_PRESETS: Record<
+  LabelSectionRole,
+  {
+    placeholder: string
+    fontFamily: string
+    fontSize: number
+    fontWeight: number | string
+    textAlign: 'left' | 'center' | 'right'
+    width?: number
+  }
+> = {
+  'statement-of-identity': {
+    placeholder: 'Product Name',
+    fontFamily: 'Bricolage Grotesque, sans-serif',
+    fontSize: 36,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  ingredients: {
+    placeholder:
+      'INGREDIENTS: Water, sugar, natural flavor, citric acid.',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 11,
+    fontWeight: 400,
+    textAlign: 'left',
+    width: 320,
+  },
+  allergens: {
+    placeholder: 'CONTAINS: Milk, Soy.',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 12,
+    fontWeight: 700,
+    textAlign: 'left',
+  },
+  'net-weight': {
+    placeholder: 'NET WT 12 OZ (340g)',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 16,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  'manufacturer-info': {
+    placeholder: 'Manufactured for Your Brand · 123 Main St · City, ST 00000',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 10,
+    fontWeight: 400,
+    textAlign: 'left',
+    width: 280,
+  },
+}
+
+/** Human label for each section role — used in drawers + the scan panel. */
+export const LABEL_SECTION_LABELS: Record<LabelSectionRole, string> = {
+  'statement-of-identity': 'Statement of identity',
+  ingredients: 'Ingredient statement',
+  allergens: 'Allergen statement',
+  'net-weight': 'Net quantity',
+  'manufacturer-info': 'Manufacturer / Distributor',
+}
+
+/**
+ * Read the customRole stamp off an object. Returns null for untagged
+ * free-typed text or non-text objects.
+ */
+export function getLabelSectionRole(
+  obj: FabricObject | null | undefined,
+): LabelSectionRole | null {
+  if (!obj) return null
+  const role = (obj as { customRole?: LabelSectionRole }).customRole
+  if (
+    role === 'statement-of-identity' ||
+    role === 'ingredients' ||
+    role === 'allergens' ||
+    role === 'net-weight' ||
+    role === 'manufacturer-info'
+  ) {
+    return role
+  }
+  return null
 }
 
 /**

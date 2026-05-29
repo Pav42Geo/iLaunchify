@@ -18,19 +18,33 @@ import * as React from 'react'
 import { Plus, Tag } from 'lucide-react'
 import {
   addNutritionFactsPanel,
+  addLabelSection,
+  LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
   type BrandCanvasAssets,
   type FabricCanvas,
+  type LabelSectionRole,
 } from '@ilaunchify/ui'
 
 interface Props {
   canvas: FabricCanvas | null
   brandAssets: BrandCanvasAssets
+  /**
+   * Optional product context used to pre-fill required-section text. When
+   * available, "Add Statement of identity" drops the actual product name
+   * instead of "Product Name", etc.
+   */
+  productCtx?: {
+    productName?: string
+    brandName?: string
+    netQuantity?: string | null
+    allergens?: string[]
+  }
 }
 
 type StyleKey = 'standard' | 'tabular'
 
-export function LabelDrawer({ canvas, brandAssets }: Props) {
+export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
   const [style, setStyle] = React.useState<StyleKey>('standard')
   const [ink, setInk] = React.useState('#000000')
   /** null sentinel for transparent. */
@@ -67,8 +81,72 @@ export function LabelDrawer({ canvas, brandAssets }: Props) {
     }
   }
 
+  // Per-section pre-fill text from product context. Falls back to the
+  // generic placeholders baked into addLabelSection.
+  function presetTextFor(role: LabelSectionRole): string | undefined {
+    if (role === 'statement-of-identity' && productCtx?.productName) {
+      return productCtx.productName
+    }
+    if (role === 'net-weight' && productCtx?.netQuantity) {
+      return productCtx.netQuantity
+    }
+    if (role === 'allergens' && productCtx?.allergens?.length) {
+      const list = productCtx.allergens
+        .map((a) => a.charAt(0).toUpperCase() + a.slice(1))
+        .join(', ')
+      return `CONTAINS: ${list}.`
+    }
+    if (role === 'manufacturer-info' && productCtx?.brandName) {
+      return `Manufactured for ${productCtx.brandName}`
+    }
+    return undefined
+  }
+
+  function handleAddSection(role: LabelSectionRole) {
+    if (!canvas) return
+    addLabelSection(canvas, role, { text: presetTextFor(role) })
+  }
+
   return (
     <div className="space-y-5">
+      {/* Required sections — DS-55. */}
+      <section>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+          Required sections
+        </div>
+        <p className="text-[11px] text-ink-500 mb-2.5 leading-[1.45]">
+          Tap to drop a pre-tagged text block. The compliance scanner
+          looks for these stamps to confirm each FDA-required section
+          is on your label.
+        </p>
+        <div className="space-y-1">
+          {(
+            [
+              'statement-of-identity',
+              'net-weight',
+              'ingredients',
+              'allergens',
+              'manufacturer-info',
+            ] as LabelSectionRole[]
+          ).map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleAddSection(role)}
+              disabled={!canvas}
+              className="w-full flex items-center justify-between gap-2 text-left rounded-md border border-ink-200 px-3 py-2 hover:border-pink-500 hover:bg-pink-50/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span className="text-[12.5px] font-semibold text-ink-900">
+                {LABEL_SECTION_LABELS[role]}
+              </span>
+              <Plus className="h-3.5 w-3.5 text-ink-500" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="h-px bg-ink-200" />
+
       {/* Style */}
       <section>
         <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">

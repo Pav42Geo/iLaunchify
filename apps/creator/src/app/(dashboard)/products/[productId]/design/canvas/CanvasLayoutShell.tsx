@@ -50,6 +50,7 @@ import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
 import { CodeToolbar } from './CodeToolbar'
+import { CompliancePanel } from './CompliancePanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
 import { ImagesDrawer } from './drawers/ImagesDrawer'
@@ -139,6 +140,21 @@ export function CanvasLayoutShell({
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
+  const [complianceOpen, setComplianceOpen] = useState(false)
+
+  // V1 productCtx for the compliance scan — productName + brandName are
+  // load-bearing; allergens / bioengineered / netQuantity stay empty until
+  // we plumb the recipe + variant data through (deferred to the next chunk).
+  const productCtx = useMemo(
+    () => ({
+      productName,
+      brandName: brandAssets.brandName,
+      allergens: [] as string[],
+      bioengineered: false,
+      netQuantity: null as string | null,
+    }),
+    [productName, brandAssets.brandName],
+  )
   const basePxPerMm = 3.0
   const pxPerMm = basePxPerMm * zoom
 
@@ -189,6 +205,8 @@ export function CanvasLayoutShell({
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
         saveError={autosave.error}
+        complianceOpen={complianceOpen}
+        onToggleCompliance={() => setComplianceOpen((v) => !v)}
       />
 
       {/* Body */}
@@ -206,6 +224,7 @@ export function CanvasLayoutShell({
             brandAssets={brandAssets}
             canvas={canvas}
             productId={productId}
+            productName={productName}
             onClose={() => setActiveTool(null)}
           />
         )}
@@ -246,6 +265,14 @@ export function CanvasLayoutShell({
             <ImageToolbar canvas={canvas} active={selected} />
           )}
 
+          {/* Compliance scan panel (DS-55) */}
+          <CompliancePanel
+            canvas={canvas}
+            open={complianceOpen}
+            onClose={() => setComplianceOpen(false)}
+            productCtx={productCtx}
+          />
+
           {/* Bottom floating controls */}
           <BottomToolbar
             zoom={zoom}
@@ -282,6 +309,8 @@ function TopBar({
   saveStatus,
   lastSavedAt,
   saveError,
+  complianceOpen,
+  onToggleCompliance,
 }: {
   productName: string
   brandName: string
@@ -293,6 +322,8 @@ function TopBar({
   saveStatus: SaveStatus
   lastSavedAt: Date | null
   saveError: string | null
+  complianceOpen: boolean
+  onToggleCompliance: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -326,7 +357,15 @@ function TopBar({
         <div className="mx-1 h-6 w-px bg-ink-200" />
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-700 hover:bg-ink-50"
+          onClick={onToggleCompliance}
+          aria-pressed={complianceOpen}
+          aria-label={complianceOpen ? 'Close compliance panel' : 'Open compliance panel'}
+          className={
+            'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
+            (complianceOpen
+              ? 'border-pink-500 bg-pink-50 text-pink-700'
+              : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
+          }
         >
           <ShieldCheck className="h-3.5 w-3.5" />
           Compliance
@@ -409,6 +448,7 @@ function ToolDrawer({
   brandAssets,
   canvas,
   productId,
+  productName,
   onClose,
 }: {
   tool: ToolKey
@@ -418,6 +458,7 @@ function ToolDrawer({
   brandAssets: BrandCanvasAssets
   canvas: FabricCanvas | null
   productId: string
+  productName: string
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -453,7 +494,16 @@ function ToolDrawer({
         {tool === 'product' && (
           <ProductDrawer dieCut={dieCut} guides={guides} setGuides={setGuides} brandAssets={brandAssets} />
         )}
-        {tool === 'label' && <LabelDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {tool === 'label' && (
+          <LabelDrawer
+            canvas={canvas}
+            brandAssets={brandAssets}
+            productCtx={{
+              productName,
+              brandName: brandAssets.brandName,
+            }}
+          />
+        )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'images' && (
           <ImagesDrawer

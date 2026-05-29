@@ -71,11 +71,15 @@ export {
   addText,
   addTextCombo,
   addImageFromUrl,
+  addLabelSection,
+  getLabelSectionRole,
   setCanvasBackground,
   selectAllObjects,
   objectsFromSelection,
   CANVAS_PROPERTIES_TO_INCLUDE,
+  LABEL_SECTION_LABELS,
   type CanvasCustomType,
+  type LabelSectionRole,
 } from './canvas/objects'
 export {
   generateQrCodeDataUrl,
@@ -107,4 +111,12 @@ export {
   type GtinFormat,
   type GtinValidation,
 } from './canvas/gtin'
+export {
+  scanLabelCompliance,
+  findObjectByRef,
+  type LabelScanContext,
+  type LabelScanResult,
+  type ScanFinding,
+  type ScanSeverity,
+} from './canvas/compliance'
 
