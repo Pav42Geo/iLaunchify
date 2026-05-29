@@ -21,6 +21,7 @@ import {
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurator'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
+import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getMarketingSession } from '@/lib/session'
@@ -99,20 +100,20 @@ export default async function ProductDetailPage({
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         <Breadcrumb category={category} categoryTitle={row.title} title={template.title} />
 
-        {/* HERO — gallery + spec grid + configurator */}
-        <section className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 mb-12">
+        {/* HERO — 3-column: gallery (smaller) / configurator / customize rail (R3) */}
+        <section className="grid grid-cols-1 lg:grid-cols-[0.8fr_1fr_0.9fr] gap-8 lg:gap-10 mb-12">
           <DetailGallery template={template} />
 
           <div className="flex flex-col">
             <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500 mb-2">
               {template.niche}
             </div>
-            <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-[-0.02em] text-ink-900 mb-3">
+            <h1 className="font-display text-[28px] lg:text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-ink-900 mb-3">
               {template.title}
             </h1>
             <div className="text-[13px] text-ink-500 mb-5 flex items-center gap-2">
               <span className="text-warning-500">★★★★★</span>
-              <span>Premier-tier production · {template.leadTimeDays}-day average lead</span>
+              <span>Premier-tier · {template.leadTimeDays}-day lead</span>
             </div>
 
             <ProductSpecGrid
@@ -121,10 +122,10 @@ export default async function ProductDetailPage({
                 { label: 'Production', value: detail.productionMethod },
                 { label: 'Net weight', value: detail.netWeight },
               ]}
-              className="mb-7 rounded-lg overflow-hidden"
+              className="mb-6 rounded-lg overflow-hidden"
             />
 
-            <p className="text-[14px] text-ink-700 leading-relaxed mb-7">{detail.about}</p>
+            <p className="text-[14px] text-ink-700 leading-relaxed mb-6">{detail.about}</p>
 
             {/* Client-side configurator handles all variant picking + pricing math */}
             <ProductDetailConfigurator
@@ -141,6 +142,15 @@ export default async function ProductDetailPage({
               <button className="hover:text-ink-900">Share</button>
             </div>
           </div>
+
+          {/* REBUILD R3 — customize right-rail. Sticky inside its column,
+              ingredient swaps + live Nutrition Facts pinned for the
+              duration of the page. */}
+          <CustomizeRail
+            ingredients={detail.ingredients}
+            ingredientAddOns={detail.ingredientAddOns}
+            nutrition={detail.nutrition}
+          />
         </section>
       </div>
 
