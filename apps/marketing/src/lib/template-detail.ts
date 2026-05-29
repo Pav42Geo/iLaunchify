@@ -363,6 +363,35 @@ const GENERIC_DETAIL: TemplateDetail = {
       priceDelta: 0.95,
     },
   ],
+  // REBUILD R3 — generic fallback nutrition panel so the Customize rail's
+  // live Supplement Facts preview always renders (matches the creator
+  // /products/[id]/customize live preview Pavel demoed). Templates that
+  // ship their own nutrition data override this; everything else gets
+  // this neutral placeholder so the rail is never empty.
+  nutrition: {
+    format: 'SUPPLEMENT_FACTS',
+    servingSize: '1 scoop (10 g)',
+    servingsPerContainer: '30',
+    rows: [
+      { id: 'calories', label: 'Calories', amount: 30, indent: 0 },
+      { id: 'fat', label: 'Total Fat', amount: '0.5', unit: 'g', percentDailyValue: 1, indent: 0 },
+      { id: 'sat-fat', label: 'Saturated Fat', amount: 0, unit: 'g', percentDailyValue: 0, indent: 1 },
+      { id: 'trans-fat', label: 'Trans Fat', amount: 0, unit: 'g', indent: 1 },
+      { id: 'cholesterol', label: 'Cholesterol', amount: 0, unit: 'mg', percentDailyValue: 0, indent: 0 },
+      { id: 'sodium', label: 'Sodium', amount: 55, unit: 'mg', percentDailyValue: 2, indent: 0 },
+      { id: 'carbs', label: 'Total Carbohydrate', amount: 5, unit: 'g', percentDailyValue: 2, indent: 0 },
+      { id: 'fiber', label: 'Dietary Fiber', amount: 1, unit: 'g', percentDailyValue: 4, indent: 1 },
+      { id: 'sugars', label: 'Total Sugars', amount: 2, unit: 'g', indent: 1 },
+      { id: 'added-sugars', label: 'Includes Added Sugars', amount: 0, unit: 'g', percentDailyValue: 0, indent: 2 },
+      { id: 'protein', label: 'Protein', amount: 3, unit: 'g', percentDailyValue: 6, indent: 0 },
+      { id: 'vit-d', label: 'Vitamin D', amount: 10, unit: 'mcg', percentDailyValue: 50, indent: 0 },
+      { id: 'calcium', label: 'Calcium', amount: 50, unit: 'mg', percentDailyValue: 4, indent: 0 },
+      { id: 'iron', label: 'Iron', amount: 1.5, unit: 'mg', percentDailyValue: 8, indent: 0 },
+      { id: 'potassium', label: 'Potassium', amount: 200, unit: 'mg', percentDailyValue: 4, indent: 0 },
+    ],
+    requiredFooter: '* % Daily Value based on a 2,000 calorie diet.',
+    requiredWarnings: [],
+  } as PanelData,
   about:
     'A production-ready template across iLaunchify\'s verified partner network. Customize the recipe and label, and we handle manufacturing, printing, and fulfillment.',
   designReminder:

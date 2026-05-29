@@ -93,25 +93,30 @@ export function CustomizeRail({
           </p>
         </header>
 
-        <IngredientsList
-          base={ingredients}
-          addOns={ingredientAddOns}
-          replacements={replacements}
-          selectedAddOnIds={addOnIds}
-          onReplacementChange={(id, replacementId) =>
-            setReplacements((prev) => {
-              const next = { ...prev }
-              if (replacementId) next[id] = replacementId
-              else delete next[id]
-              return next
-            })
-          }
-          onAddOnToggle={(id) =>
-            setAddOnIds((prev) =>
-              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-            )
-          }
-        />
+        {/* Cap the ingredient card's body so taller slot lists don't push
+            the live Nutrition Facts panel below the fold. Internal scroll
+            keeps it self-contained; the rail itself stays sticky as a unit. */}
+        <div className="max-h-[42vh] overflow-y-auto pr-1">
+          <IngredientsList
+            base={ingredients}
+            addOns={ingredientAddOns}
+            replacements={replacements}
+            selectedAddOnIds={addOnIds}
+            onReplacementChange={(id, replacementId) =>
+              setReplacements((prev) => {
+                const next = { ...prev }
+                if (replacementId) next[id] = replacementId
+                else delete next[id]
+                return next
+              })
+            }
+            onAddOnToggle={(id) =>
+              setAddOnIds((prev) =>
+                prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+              )
+            }
+          />
+        </div>
 
         {hasChanges && (
           <div className="mt-4 flex items-center justify-between border-t border-ink-100 pt-3">
