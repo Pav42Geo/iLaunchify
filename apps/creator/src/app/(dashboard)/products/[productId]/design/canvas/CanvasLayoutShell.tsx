@@ -655,6 +655,9 @@ function TopBar({
           <Redo2 className="h-4 w-4" />
         </IconButton>
         <div className="mx-1 h-6 w-px bg-ink-200" />
+        {/* Compliance — DS-68 styled as a primary pink CTA so creators
+            don't ship un-checked. When the panel is open we switch to a
+            quieter outline state to signal "engaged." */}
         <button
           type="button"
           onClick={onToggleCompliance}
@@ -663,8 +666,8 @@ function TopBar({
           className={
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (complianceOpen
-              ? 'border-pink-500 bg-pink-50 text-pink-700'
-              : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
+              ? 'border-pink-500 bg-white text-pink-700 hover:bg-pink-50'
+              : 'border-pink-500 bg-pink-500 text-white shadow-sm hover:bg-pink-600 hover:border-pink-600')
           }
         >
           <ShieldCheck className="h-3.5 w-3.5" />
