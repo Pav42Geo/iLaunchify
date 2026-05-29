@@ -28,6 +28,7 @@ import { AccessoriesStep } from './steps/AccessoriesStep'
 import { ViralStep } from './steps/ViralStep'
 import { CartStep } from './steps/CartStep'
 import { OrderSummary } from './OrderSummary'
+import type { CostBreakdown } from './production-actions'
 
 interface Props {
   productId: string
@@ -55,6 +56,10 @@ export function CheckoutWizard({
   const [completedSteps, setCompletedSteps] = useState<WizardStepIndex[]>(
     initialCompletedSteps,
   )
+  // G3 — lifted from ProductionStep so the right-rail OrderSummary can
+  // render real cents instead of placeholders. Null until the user has
+  // entered a quantity (or while the estimate is in-flight).
+  const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
   const [isSaving, startSaving] = useTransition()
 
   function patchState<K extends keyof CheckoutDraftState>(
@@ -205,8 +210,10 @@ export function CheckoutWizard({
           )}
           {currentStep === 2 && (
             <ProductionStep
+              productId={productId}
               state={state.production}
               onChange={(patch) => patchState('production', patch)}
+              onEstimate={setEstimate}
             />
           )}
           {currentStep === 3 && (
@@ -287,7 +294,7 @@ export function CheckoutWizard({
 
         {/* Sticky right rail */}
         <aside className="lg:sticky lg:top-[136px] lg:self-start">
-          <OrderSummary state={state} />
+          <OrderSummary state={state} estimate={estimate} />
         </aside>
       </main>
     </div>

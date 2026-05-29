@@ -588,6 +588,11 @@ model PartnerService {
   // V1.5+ Phase F — print finishes this service offers (printer/label-printing
   // services only; hidden on the creator side until ≥1 ACTIVE row exists).
   partnerFinishes    PartnerFinish[]
+  // Phase G3 — typed substrate + packaging-material declarations. Drives
+  // the creator-side ProductionStep pickers + marketplace partner
+  // matching (#153). Empty arrays mean "uses platform defaults."
+  partnerServiceSubstrates         PartnerServiceSubstrate[]
+  partnerServicePackagingMaterials PartnerServicePackagingMaterial[]
   partner            Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
@@ -1236,6 +1241,132 @@ model Asset {
 // the goods ship to either the creator's own address or a connected
 // WAREHOUSE partner. End-consumer purchases happen on the creator's external
 // channels (Shopify, Amazon, etc.) and never touch iLaunchify.
+// =============================================================================
+// PRODUCTION OPTIONS — typed catalog for the Phase G3 checkout wizard.
+//
+// Per the G3 standardisation commitment (memory:
+// [[ilaunchify-g3-standardize-capabilities]]), substrate and packaging
+// material are first-class admin-curated tables, NOT freeform JSON inside
+// PartnerService.capabilities. This drives:
+//
+//   * the creator-side ProductionStep pickers in the checkout wizard,
+//   * partner-matching for marketplace routing (#153),
+//   * cost estimation in OrderSummary,
+//   * the manifest emitted alongside the production-order export bundle.
+//
+// Per-partner pricing + lead-time overrides land on the junction tables.
+// =============================================================================
+
+model Substrate {
+  id                String            @id @default(cuid())
+  slug              String            @unique
+  name              String
+  category          SubstrateCategory
+  description       String
+  // Base per-unit cost surcharge (cents) when no partner override applies.
+  // Compared against the cheapest option in the same category — keeps the
+  // wizard's "this choice +$0.04" microcopy honest.
+  baseUnitCostCents Int               @default(0)
+  // Sustainability indicator — surfaces a leaf icon in the picker.
+  sustainabilityTier SustainabilityTier @default(STANDARD)
+  // Hints which finish categories work on this substrate. Compared
+  // against PartnerFinish.compatibleSubstrates[] when the Finishes drawer
+  // grays out incompatible picks. Empty = no known incompatibilities.
+  finishCompatibility String[]
+  // Admin lifecycle state — DRAFT hidden from pickers, ACTIVE shown,
+  // DEPRECATED grayed out with replacement hint in V1.5+.
+  status            BrandLibraryStatus @default(ACTIVE)
+  // Relations
+  partnerServiceSubstrates PartnerServiceSubstrate[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model PackagingMaterial {
+  id                String                @id @default(cuid())
+  slug              String                @unique
+  name              String
+  topology          PackagingTopology     // BOTTLE → glass/plastic, JAR → glass/PP, etc.
+  description       String
+  baseUnitCostCents Int                   @default(0)
+  // FDA / FSANZ / EFSA food-contact-safe flag. Required true for any
+  // product where category=FOOD or BEVERAGE_FUNCTIONAL.
+  foodSafe          Boolean               @default(true)
+  sustainabilityTier SustainabilityTier   @default(STANDARD)
+  status            BrandLibraryStatus    @default(ACTIVE)
+  // Relations
+  partnerServicePackagingMaterials PartnerServicePackagingMaterial[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([topology, status])
+}
+
+enum SubstrateCategory {
+  PAPER_COATED          // matte / gloss coated paper labels
+  PAPER_UNCOATED        // natural / textured uncoated paper
+  KRAFT_RECYCLED        // recycled brown kraft (eco-friendly)
+  FILM_BOPP             // synthetic film (durable, water-resistant)
+  FILM_CLEAR            // transparent film (no-label look)
+  FILM_METALLIC         // foil-finish substrate
+  SPECIALTY             // textured / fabric / wood-grain / etc.
+}
+
+enum SustainabilityTier {
+  STANDARD              // baseline
+  RECYCLED              // post-consumer recycled content
+  COMPOSTABLE           // certified compostable
+  BIODEGRADABLE         // biodegradable but not compostable
+}
+
+// Junction — which substrates a LABEL_PRINTING partner service supports,
+// with optional per-partner price + lead-time overrides.
+model PartnerServiceSubstrate {
+  id                  String        @id @default(cuid())
+  partnerServiceId    String
+  substrateId         String
+  // Override the substrate's baseUnitCostCents for this partner. NULL
+  // means use the substrate default. Surfaces in the wizard as the
+  // partner's actual quoted price.
+  perUnitCostCents    Int?
+  // Additional lead-time days when this substrate is chosen (some
+  // substrates take longer to print on).
+  extraLeadTimeDays   Int           @default(0)
+  // MOQ specific to this substrate (e.g., foil-finish substrates need a
+  // larger run to amortise setup). NULL = use service default.
+  moqMin              Int?
+  // Status — DRAFT means partner is testing internally, ACTIVE shows
+  // it in the picker, DISCONTINUED hides without breaking historical
+  // OrderItem references.
+  status              FinishStatus  @default(ACTIVE)
+  partnerService      PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  substrate           Substrate     @relation(fields: [substrateId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@unique([partnerServiceId, substrateId])
+  @@index([partnerServiceId, status])
+}
+
+// Junction — which packaging materials a MANUFACTURING partner service
+// supports. Same shape as PartnerServiceSubstrate.
+model PartnerServicePackagingMaterial {
+  id                  String        @id @default(cuid())
+  partnerServiceId    String
+  packagingMaterialId String
+  perUnitCostCents    Int?
+  extraLeadTimeDays   Int           @default(0)
+  moqMin              Int?
+  status              FinishStatus  @default(ACTIVE)
+  partnerService      PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  packagingMaterial   PackagingMaterial @relation(fields: [packagingMaterialId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@unique([partnerServiceId, packagingMaterialId])
+  @@index([partnerServiceId, status])
+}
+
 // Phase G1 — pre-Order wizard state. The 7-step checkout wizard at
 // /products/[id]/checkout persists into this table between steps so the
 // creator can leave and resume. On final "Pay" the draft converts into a

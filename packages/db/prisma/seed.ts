@@ -22,6 +22,7 @@ import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
+import { seedProductionOptions } from './seed-production-options'
 
 const prisma = new PrismaClient()
 
@@ -63,6 +64,15 @@ async function main() {
   // PartnerFinish rows (Phase F2); creators only see the rail icon when
   // their bound partner has ≥1 ACTIVE PartnerFinish.
   await seedFinishTypes(prisma)
+
+  // --- Production-options catalogs (Phase G3) ---
+  // Typed Substrate + PackagingMaterial rows that the checkout wizard's
+  // Production step reads. Per the G3 standardisation commitment
+  // ([[ilaunchify-g3-standardize-capabilities]]), these are first-class
+  // admin-curated tables, NOT freeform JSON. Partners declare their
+  // offered subset via PartnerServiceSubstrate +
+  // PartnerServicePackagingMaterial junctions.
+  await seedProductionOptions(prisma)
 
   // --- Ingredient governance dictionaries ---
   // ~30 banned + ~40 controversial ingredients per
