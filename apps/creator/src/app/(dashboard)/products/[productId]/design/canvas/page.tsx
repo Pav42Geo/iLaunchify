@@ -50,6 +50,30 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
           logoHorizontalAssetId: true,
         },
       },
+      // ---- DS-56 productCtx inputs ----
+      // Recipe ingredients → derives allergens + bioengineered flag.
+      // Variant → derives net-quantity string.
+      recipe: {
+        select: {
+          ingredients: {
+            select: {
+              ingredient: {
+                select: {
+                  allergenFlags: true,
+                  allergens: true, // legacy field, fall back when allergenFlags empty
+                  bioengineeredStatus: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      variant: {
+        select: {
+          containerFormat: true,
+          containerSizeG: true,
+        },
+      },
     },
   })
   if (!product) notFound()
@@ -114,6 +138,12 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // empty canvas (first time editing this product).
   const initialDesignJson = (await loadDesignJson(product.id)) as object | null
 
+  // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
+  const productCtx = deriveProductCtx({
+    recipe: product.recipe,
+    variant: product.variant,
+  })
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -121,8 +151,62 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       dieCut={dieCut}
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
+      productCtx={productCtx}
     />
   )
+}
+
+/**
+ * Derive the LabelScanContext from the loaded product + recipe + variant.
+ *
+ *   allergens     = unique union of every recipe ingredient's allergenFlags
+ *                   (legacy 'allergens' as fallback for pre-2026-05-24 rows).
+ *   bioengineered = true if any ingredient has bioengineeredStatus = BIOENGINEERED.
+ *   netQuantity   = variant.containerFormat (human-readable, e.g. "12oz can")
+ *                   when present, else `${containerSizeG}g`, else null.
+ */
+function deriveProductCtx(product: {
+  recipe: {
+    ingredients: Array<{
+      ingredient: {
+        allergenFlags: string[]
+        allergens: string[]
+        // Prisma's enum type is structural-equivalent to this string union, so
+        // we use string here to avoid importing the Prisma enum into the page.
+        bioengineeredStatus: string
+      }
+    }>
+  } | null
+  variant: { containerFormat: string; containerSizeG: unknown } | null
+}): {
+  allergens: string[]
+  bioengineered: boolean
+  netQuantity: string | null
+} {
+  const allergenSet = new Set<string>()
+  let bioengineered = false
+  for (const ri of product.recipe?.ingredients ?? []) {
+    const flags = ri.ingredient.allergenFlags.length
+      ? ri.ingredient.allergenFlags
+      : ri.ingredient.allergens
+    for (const a of flags) allergenSet.add(a.toLowerCase())
+    if (ri.ingredient.bioengineeredStatus === 'BIOENGINEERED') {
+      bioengineered = true
+    }
+  }
+
+  let netQuantity: string | null = null
+  if (product.variant?.containerFormat) {
+    netQuantity = product.variant.containerFormat
+  } else if (product.variant?.containerSizeG) {
+    netQuantity = `${String(product.variant.containerSizeG)}g`
+  }
+
+  return {
+    allergens: Array.from(allergenSet).sort(),
+    bioengineered,
+    netQuantity,
+  }
 }
 
 function mkLogo(

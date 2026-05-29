@@ -100,6 +100,16 @@ interface Props {
   brandAssets: BrandCanvasAssets
   /** Existing Fabric JSON to hydrate the canvas with on mount. */
   initialDesignJson: object | null
+  /**
+   * Server-derived product context used by the compliance scan + label
+   * drawer pre-fill. allergens / bioengineered come from the recipe;
+   * netQuantity from the bound variant. See page.tsx#deriveProductCtx.
+   */
+  productCtx: {
+    allergens: string[]
+    bioengineered: boolean
+    netQuantity: string | null
+  }
 }
 
 type ToolKey =
@@ -135,6 +145,7 @@ export function CanvasLayoutShell({
   dieCut,
   brandAssets,
   initialDesignJson,
+  productCtx: serverProductCtx,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -142,18 +153,25 @@ export function CanvasLayoutShell({
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
   const [complianceOpen, setComplianceOpen] = useState(false)
 
-  // V1 productCtx for the compliance scan — productName + brandName are
-  // load-bearing; allergens / bioengineered / netQuantity stay empty until
-  // we plumb the recipe + variant data through (deferred to the next chunk).
+  // productCtx for the compliance scan + Label drawer pre-fill. productName
+  // + brandName come from the shell props; allergens / bioengineered /
+  // netQuantity are derived server-side in page.tsx#deriveProductCtx and
+  // arrive via the productCtx prop (DS-56).
   const productCtx = useMemo(
     () => ({
       productName,
       brandName: brandAssets.brandName,
-      allergens: [] as string[],
-      bioengineered: false,
-      netQuantity: null as string | null,
+      allergens: serverProductCtx.allergens,
+      bioengineered: serverProductCtx.bioengineered,
+      netQuantity: serverProductCtx.netQuantity,
     }),
-    [productName, brandAssets.brandName],
+    [
+      productName,
+      brandAssets.brandName,
+      serverProductCtx.allergens,
+      serverProductCtx.bioengineered,
+      serverProductCtx.netQuantity,
+    ],
   )
   const basePxPerMm = 3.0
   const pxPerMm = basePxPerMm * zoom
@@ -225,6 +243,7 @@ export function CanvasLayoutShell({
             canvas={canvas}
             productId={productId}
             productName={productName}
+            productCtx={productCtx}
             onClose={() => setActiveTool(null)}
           />
         )}
@@ -449,6 +468,7 @@ function ToolDrawer({
   canvas,
   productId,
   productName,
+  productCtx,
   onClose,
 }: {
   tool: ToolKey
@@ -459,6 +479,13 @@ function ToolDrawer({
   canvas: FabricCanvas | null
   productId: string
   productName: string
+  productCtx: {
+    productName: string
+    brandName: string
+    allergens: string[]
+    bioengineered: boolean
+    netQuantity: string | null
+  }
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -501,6 +528,8 @@ function ToolDrawer({
             productCtx={{
               productName,
               brandName: brandAssets.brandName,
+              netQuantity: productCtx.netQuantity,
+              allergens: productCtx.allergens,
             }}
           />
         )}
