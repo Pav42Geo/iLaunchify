@@ -320,8 +320,8 @@ export function CustomizeRail({
             </p>
           </header>
           <div className="overflow-hidden rounded-md">
-            {/* Fits inside the locked 220px rail column (≈196px usable inside p-3). */}
-            <NutritionFactsRenderer data={nutrition} widthPx={196} />
+            {/* Fits inside the locked 250px rail column (≈226px usable inside p-3). */}
+            <NutritionFactsRenderer data={nutrition} widthPx={220} />
           </div>
           {hasChanges && (
             <p className="mt-2 text-[11px] leading-snug text-ink-500">
