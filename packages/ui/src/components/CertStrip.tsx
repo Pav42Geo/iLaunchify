@@ -60,7 +60,7 @@ export function CertStrip({
         <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
           {resolvedHeading}
         </div>
-        <ul className="flex flex-wrap items-start gap-3">
+        <ul className="flex flex-wrap items-start gap-4">
           {items.map((item) => (
             <li key={item.name}>
               <CertBadge {...item} compact />
@@ -104,28 +104,36 @@ function CertBadge({
 }: CertStripItem & { compact?: boolean }) {
   const Wrapper = onClick ? 'button' : 'div'
   if (compact) {
+    // Same vertical layout as the default badge — just scaled down for
+    // the col-1 placement on the detail page. Icon: 56px → 40px, body
+    // text steps down a notch each.
     return (
       <Wrapper
         type={onClick ? 'button' : undefined}
         onClick={onClick}
         className={cn(
-          'flex items-center gap-1.5 text-left transition-colors',
-          onClick && 'hover:opacity-80 cursor-pointer',
+          'flex flex-col items-center gap-1.5 text-center px-2 py-1 rounded-md transition-colors',
+          onClick && 'hover:bg-ink-50 cursor-pointer',
+          !unconditional && 'border border-dashed border-ink-300',
         )}
-        title={qualifier}
       >
         <span
           className={cn(
-            'w-7 h-7 rounded-full bg-white border border-ink-200 flex items-center justify-center text-base flex-shrink-0',
+            'w-10 h-10 rounded-full bg-white border border-ink-200 flex items-center justify-center text-xl',
             !unconditional && 'border-dashed',
           )}
           aria-hidden="true"
         >
           {icon ?? '✓'}
         </span>
-        <span className="text-[12px] font-semibold text-ink-900 leading-tight max-w-[14ch]">
+        <span className="text-[12px] font-semibold text-ink-900 leading-tight max-w-[12ch]">
           {name}
         </span>
+        {qualifier && (
+          <span className="text-[10.5px] text-ink-500 leading-tight max-w-[14ch]">
+            {qualifier}
+          </span>
+        )}
       </Wrapper>
     )
   }

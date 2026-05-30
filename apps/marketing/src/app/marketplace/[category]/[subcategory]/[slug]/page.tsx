@@ -306,10 +306,15 @@ function DetailGallery({ template, certs = [] }: DetailGalleryProps) {
         </div>
       </div>
 
-      {/* Certificate badges below the image (still inside col 1) — compact
-          mode + shortened heading per Pavel. No card chrome. */}
+      {/* Certificate badges below the image (still inside col 1) —
+          compact icons in a soft bordered card per Pavel. */}
       {certs.length > 0 && (
-        <CertStrip items={certs} heading="Product certificates" compact />
+        <CertStrip
+          items={certs}
+          heading="Product certificates"
+          compact
+          className="rounded-xl border border-ink-200 bg-white p-5"
+        />
       )}
     </div>
   )
