@@ -1,25 +1,29 @@
 'use client'
 
 // REBUILD R3 — Customize right-rail on the marketplace product detail
-// page. Slot-per-card pattern (matching the creator /customize page).
+// page. Compact one-row-per-ingredient list (no bulky cards).
 //
-// Each base ingredient renders as an IngredientSlotCard:
-//   - Locked slots (no replacements available) show a "Locked" pill
-//   - Swappable slots show a dropdown of the default + alternatives,
-//     with the currently-selected one highlighted and price delta
-//     displayed inline.
+// Visual rules (per Pavel):
+//   - Each base ingredient is ONE row in a single list (not a card).
+//   - Non-replaceable ingredients render as static text — no "Locked"
+//     chip. Locked is the default visual state.
+//   - Replaceable ingredients render with a ▼ chevron; click expands
+//     an inline picker of {default, alternatives} with selection
+//     highlight + price delta per option.
+//   - No max-height scroll on the ingredients list — it flows
+//     naturally.
 //
-// Add-ons render as a separate "Optional add-ons" section with
-// toggleable cards (price delta + description).
+// Title copy:
+//   - "Build Your Recipe" when the product is Private Label
+//     (has replaceable or optional add-on ingredients).
+//   - "Recipe Ingredients" when the product is White Label
+//     (only base ingredients, nothing swappable).
 //
-// State is purely client-side until Start Launching commits — guests
-// can play freely with the live preview, only the CTA hits the auth
-// wall. V1.1 will hook the recipe diff into the launch action so the
-// canvas opens pre-customised.
+// State is purely client-side until Start Launching commits.
 
 import * as React from 'react'
+import { ChevronDown, Check } from 'lucide-react'
 import {
-  IngredientSlotCard,
   NutritionFactsRenderer,
   Badge,
   type IngredientRow,
@@ -28,11 +32,8 @@ import {
 import type { PanelData } from '@ilaunchify/types'
 
 export interface CustomizeRailProps {
-  /** Base recipe ingredients. */
   ingredients: IngredientRow[]
-  /** Optional add-ons the creator can layer on top of the base recipe. */
   ingredientAddOns?: IngredientAddOn[]
-  /** Static base-recipe nutrition data. V1.1 swaps for recalculated panel. */
   nutrition?: PanelData
 }
 
@@ -42,12 +43,19 @@ export function CustomizeRail({
   nutrition,
 }: CustomizeRailProps) {
   // Per-ingredient swap state. Key = base ingredient id, value = picked
-  // replacement id (or '__default' when on default).
-  const [replacements, setReplacements] = React.useState<Record<string, string>>(
-    {},
-  )
+  // option id ('__default' means on the default).
+  const [replacements, setReplacements] = React.useState<Record<string, string>>({})
   // Optional add-on selection.
   const [addOnIds, setAddOnIds] = React.useState<string[]>([])
+  // Which row's picker is open (only one at a time).
+  const [openRowId, setOpenRowId] = React.useState<string | null>(null)
+
+  // Private Label = at least one slot can be swapped or an add-on
+  // exists. White Label = pure base recipe, nothing to customise.
+  const isPrivateLabel =
+    ingredients.some((i) => (i.replacements?.length ?? 0) > 0) ||
+    ingredientAddOns.length > 0
+  const title = isPrivateLabel ? 'Build Your Recipe' : 'Recipe Ingredients'
 
   // Running price delta vs. base. Informational in V1.
   const replacementDelta = React.useMemo(() => {
@@ -75,28 +83,21 @@ export function CustomizeRail({
 
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
-      {/* --- Ingredients (slot-per-card) ----------------------------- */}
+      {/* --- Ingredients (compact list, no per-row cards) ------------ */}
       <div className="rounded-xl border border-ink-200 bg-white p-5">
-        <header className="mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-pink-700">
-            Customize
-          </p>
-          <h3 className="mt-1 font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
-            Recipe ingredients
+        <header className="mb-3">
+          <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
+            {title}
           </h3>
-          <p className="mt-1 text-[12.5px] leading-snug text-ink-500">
-            Locked ingredients stay as-is. Replaceable slots show
-            alternatives in the dropdown.
-          </p>
         </header>
 
-        {/* Cap the slot list height so taller recipes don't push the
-            live Nutrition Facts panel below the fold. */}
-        <div className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1">
+        <ul className="divide-y divide-ink-100 border-y border-ink-100">
           {ingredients.map((ing) => {
             const swappable = (ing.replacements?.length ?? 0) > 0
-            // First option = default (the base ingredient itself). Then
-            // alternatives. Selected id stored locally.
+            const currentId = replacements[ing.id] ?? '__default'
+            const isOpen = openRowId === ing.id
+
+            // Compose the option list (default first, then alternates).
             const options = [
               {
                 id: '__default',
@@ -111,27 +112,123 @@ export function CustomizeRail({
                 allergens: r.allergens,
               })),
             ]
-            const currentId = replacements[ing.id] ?? '__default'
+            const current = options.find((o) => o.id === currentId) ?? options[0]
+
             return (
-              <IngredientSlotCard
-                key={ing.id}
-                label={ing.name}
-                meta={`${ing.percent.toFixed(1)}%`}
-                isLocked={!swappable}
-                options={options}
-                currentOptionId={currentId}
-                onChange={(optId) =>
-                  setReplacements((prev) => ({ ...prev, [ing.id]: optId }))
-                }
-              />
+              <li key={ing.id} className="py-2">
+                <button
+                  type="button"
+                  disabled={!swappable}
+                  onClick={() => setOpenRowId(isOpen ? null : ing.id)}
+                  aria-haspopup={swappable ? 'listbox' : undefined}
+                  aria-expanded={swappable ? isOpen : undefined}
+                  className={
+                    'flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ' +
+                    (swappable
+                      ? 'cursor-pointer hover:bg-ink-50'
+                      : 'cursor-default')
+                  }
+                >
+                  <span className="min-w-0 flex-1 truncate text-ink-900">
+                    {current?.name ?? ing.name}
+                    {currentId !== '__default' && (
+                      <span className="ml-1.5 text-[11px] font-semibold text-pink-700">
+                        (swapped)
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex flex-shrink-0 items-center gap-2 text-[11.5px] text-ink-500 tabular-nums">
+                    {ing.percent.toFixed(1)}%
+                    {swappable && (
+                      <ChevronDown
+                        className={
+                          'h-3.5 w-3.5 text-ink-500 transition-transform ' +
+                          (isOpen ? 'rotate-180' : '')
+                        }
+                      />
+                    )}
+                  </span>
+                </button>
+
+                {swappable && isOpen && (
+                  <ul
+                    role="listbox"
+                    className="mt-1.5 overflow-hidden rounded-md border border-ink-200 bg-white"
+                  >
+                    {options.map((opt, idx) => {
+                      const isDefault = idx === 0
+                      const isCurrent = opt.id === currentId
+                      return (
+                        <li key={opt.id}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={isCurrent}
+                            onClick={() => {
+                              setReplacements((prev) => ({
+                                ...prev,
+                                [ing.id]: opt.id,
+                              }))
+                              setOpenRowId(null)
+                            }}
+                            className={
+                              'flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors ' +
+                              (isCurrent
+                                ? 'bg-pink-50 text-pink-900'
+                                : 'bg-white text-ink-800 hover:bg-ink-50')
+                            }
+                          >
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate">
+                                {opt.name}
+                                {isDefault && (
+                                  <span className="ml-1 text-[10.5px] font-normal text-ink-500">
+                                    (default)
+                                  </span>
+                                )}
+                              </span>
+                              {isCurrent && (
+                                <Check className="h-3 w-3 flex-shrink-0 text-pink-700" />
+                              )}
+                            </span>
+                            {opt.priceDelta !== 0 && (
+                              <span
+                                className={
+                                  'flex-shrink-0 text-[11px] font-semibold tabular-nums ' +
+                                  (opt.priceDelta > 0
+                                    ? 'text-ink-700'
+                                    : 'text-emerald-700')
+                                }
+                              >
+                                {opt.priceDelta > 0 ? '+' : ''}$
+                                {Math.abs(opt.priceDelta).toFixed(2)}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+
+                {(current?.allergens ?? []).length > 0 && !isOpen && (
+                  <div className="mt-1 flex flex-wrap gap-1 px-2">
+                    {current!.allergens!.map((a) => (
+                      <Badge key={a} variant="warning">
+                        {a}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </li>
             )
           })}
-        </div>
+        </ul>
 
-        {/* Add-ons */}
+        {/* Add-ons (Private Label only) */}
         {ingredientAddOns.length > 0 && (
-          <section className="mt-5 border-t border-ink-100 pt-4">
-            <header className="mb-2 flex items-baseline justify-between">
+          <section className="mt-4">
+            <header className="mb-1.5 flex items-baseline justify-between">
               <h4 className="text-[12.5px] font-semibold text-ink-900">
                 Optional add-ons
               </h4>
@@ -139,7 +236,7 @@ export function CustomizeRail({
                 {addOnIds.length} on
               </span>
             </header>
-            <ul className="grid gap-2">
+            <ul className="divide-y divide-ink-100 border-y border-ink-100">
               {ingredientAddOns.map((ao) => {
                 const on = addOnIds.includes(ao.id)
                 return (
@@ -152,41 +249,38 @@ export function CustomizeRail({
                         )
                       }
                       className={
-                        'w-full rounded-md border px-3 py-2 text-left text-[12.5px] transition-colors ' +
-                        (on
-                          ? 'border-pink-500 bg-pink-50'
-                          : 'border-ink-200 bg-white hover:border-ink-400')
+                        'flex w-full items-center justify-between gap-3 px-2 py-2 text-left text-[13px] transition-colors ' +
+                        (on ? 'bg-pink-50' : 'hover:bg-ink-50')
                       }
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-semibold text-ink-900">{ao.name}</div>
-                          {ao.description && (
-                            <div className="mt-0.5 text-[11.5px] leading-snug text-ink-600">
-                              {ao.description}
-                            </div>
-                          )}
-                          {(ao.allergens ?? []).length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                              {ao.allergens!.map((a) => (
-                                <Badge key={a} variant="warning">
-                                  {a}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      <span className="flex min-w-0 items-center gap-2">
                         <span
                           className={
-                            'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
-                            (ao.priceDelta > 0
-                              ? 'text-ink-700'
-                              : 'text-emerald-700')
+                            'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-sm border ' +
+                            (on
+                              ? 'border-pink-500 bg-pink-500'
+                              : 'border-ink-300 bg-white')
                           }
                         >
-                          {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
+                          {on && <Check className="h-2.5 w-2.5 text-white" />}
                         </span>
-                      </div>
+                        <span className="min-w-0 truncate text-ink-900">
+                          {ao.name}
+                          {ao.description && (
+                            <span className="ml-1.5 text-[11.5px] text-ink-500">
+                              · {ao.description}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <span
+                        className={
+                          'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
+                          (ao.priceDelta > 0 ? 'text-ink-700' : 'text-emerald-700')
+                        }
+                      >
+                        {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
+                      </span>
                     </button>
                   </li>
                 )
@@ -196,7 +290,7 @@ export function CustomizeRail({
         )}
 
         {hasChanges && (
-          <div className="mt-4 flex items-center justify-between border-t border-ink-100 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-ink-100 pt-3">
             <span className="text-[12px] font-medium text-ink-600">
               Recipe delta vs. base
             </span>
@@ -217,10 +311,7 @@ export function CustomizeRail({
       {nutrition && (
         <div className="rounded-xl border border-ink-200 bg-white p-5">
           <header className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-pink-700">
-              Live preview
-            </p>
-            <h3 className="mt-1 font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
+            <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
               Nutrition Facts
             </h3>
             <p className="mt-1 text-[12px] leading-snug text-ink-500">
