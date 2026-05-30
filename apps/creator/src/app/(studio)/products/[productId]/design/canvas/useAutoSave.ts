@@ -99,6 +99,17 @@ export function useAutoSave(
     }, debounceMs)
   }, [flush, debounceMs])
 
+  // Persist a v1 row on first mount so the checkout's review step
+  // always finds a DesignVersion — even if the creator opens the
+  // Studio and goes straight to checkout without editing anything.
+  // Guarded so it only fires once per canvas instance.
+  const mountSavedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!canvas || mountSavedRef.current) return
+    mountSavedRef.current = true
+    flush()
+  }, [canvas, flush])
+
   React.useEffect(() => {
     if (!canvas) return
     function onChange() {
