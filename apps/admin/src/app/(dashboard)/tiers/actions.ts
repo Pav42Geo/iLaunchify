@@ -121,6 +121,74 @@ export async function setCreatorFeeOverride(input: {
   return { ok: true }
 }
 
+// REBUILD R16.b — bulk variant. Loops the per-row changeCreatorTier
+// logic so each row still gets its own audit-log entry (admin-friendly
+// because the log reads as N discrete decisions, not one opaque "bulk"
+// event). Partial success is allowed — we skip same-tier rows + missing
+// rows, return both counts. Reason is required and applied to every row.
+export async function bulkChangeCreatorTier(input: {
+  creatorProfileIds: string[]
+  newTier: 'MAKER' | 'BUILDER' | 'AGENCY'
+  reason: string
+}): Promise<
+  { ok: true; changedCount: number; skipped: number } | { ok: false; error: string }
+> {
+  const user = await requireRole(['ADMIN'])
+  if (!input.reason.trim()) {
+    return { ok: false, error: 'A reason is required for tier changes.' }
+  }
+  if (input.creatorProfileIds.length === 0) {
+    return { ok: false, error: 'No creators selected.' }
+  }
+  if (input.creatorProfileIds.length > 100) {
+    return { ok: false, error: 'Up to 100 creators per bulk action.' }
+  }
+
+  const existing = await prisma.creatorProfile.findMany({
+    where: { id: { in: input.creatorProfileIds } },
+    select: { id: true, subscriptionTier: true, userId: true, displayName: true },
+  })
+
+  let changedCount = 0
+  let skipped = 0
+
+  for (const row of existing) {
+    if (row.subscriptionTier === input.newTier) {
+      skipped += 1
+      continue
+    }
+    await prisma.creatorProfile.update({
+      where: { id: row.id },
+      data: {
+        subscriptionTier: input.newTier,
+        tierChangedAt: new Date(),
+        tierChangedById: user.id,
+      },
+    })
+    await logAuditAs(user, {
+      entityType: 'CreatorProfile',
+      entityId: row.id,
+      action: 'CREATOR_TIER_CHANGE',
+      fromValue: row.subscriptionTier,
+      toValue: input.newTier,
+      payload: {
+        reason: input.reason.trim(),
+        creatorDisplayName: row.displayName,
+        creatorUserId: row.userId,
+        bulk: true,
+        bulkSize: input.creatorProfileIds.length,
+      },
+    })
+    changedCount += 1
+  }
+
+  // Account for IDs that the admin selected but no longer exist.
+  skipped += input.creatorProfileIds.length - existing.length
+
+  revalidatePath('/tiers')
+  return { ok: true, changedCount, skipped }
+}
+
 // =============================================================================
 // Partner tier + fee-override actions
 // =============================================================================
@@ -214,6 +282,73 @@ export async function setPartnerFeeOverride(input: {
   revalidatePath('/tiers')
   revalidatePath(`/tiers/partner/${existing.id}`)
   return { ok: true }
+}
+
+// REBUILD R16.b — bulk variant for partners. Same rules as creator
+// bulk: per-row audit entry, partial success allowed, same-tier rows
+// skipped. Verified-pending warning is not enforced here — admins can
+// still bulk-promote a not-yet-ACTIVE partner; the lock badge in the
+// table is the surface that flags the ambiguity.
+export async function bulkChangePartnerTier(input: {
+  partnerIds: string[]
+  newTier: 'VERIFIED' | 'TRUSTED' | 'PREMIER'
+  reason: string
+}): Promise<
+  { ok: true; changedCount: number; skipped: number } | { ok: false; error: string }
+> {
+  const user = await requireRole(['ADMIN'])
+  if (!input.reason.trim()) {
+    return { ok: false, error: 'A reason is required for tier changes.' }
+  }
+  if (input.partnerIds.length === 0) {
+    return { ok: false, error: 'No partners selected.' }
+  }
+  if (input.partnerIds.length > 100) {
+    return { ok: false, error: 'Up to 100 partners per bulk action.' }
+  }
+
+  const existing = await prisma.partner.findMany({
+    where: { id: { in: input.partnerIds } },
+    select: { id: true, tier: true, status: true, companyName: true },
+  })
+
+  let changedCount = 0
+  let skipped = 0
+
+  for (const row of existing) {
+    if (row.tier === input.newTier) {
+      skipped += 1
+      continue
+    }
+    await prisma.partner.update({
+      where: { id: row.id },
+      data: {
+        tier: input.newTier,
+        tierChangedAt: new Date(),
+        tierChangedById: user.id,
+      },
+    })
+    await logAuditAs(user, {
+      entityType: 'Partner',
+      entityId: row.id,
+      action: 'PARTNER_TIER_CHANGE',
+      fromValue: row.tier,
+      toValue: input.newTier,
+      payload: {
+        reason: input.reason.trim(),
+        partnerStatus: row.status,
+        companyName: row.companyName,
+        bulk: true,
+        bulkSize: input.partnerIds.length,
+      },
+    })
+    changedCount += 1
+  }
+
+  skipped += input.partnerIds.length - existing.length
+
+  revalidatePath('/tiers')
+  return { ok: true, changedCount, skipped }
 }
 
 // =============================================================================

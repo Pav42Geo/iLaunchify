@@ -1,13 +1,15 @@
-// REBUILD R15.c — Creators tab in admin Tiers module.
+// REBUILD R15.c + R16.b — Creators tab in admin Tiers module.
 //
-// Read-only list in R15.c. The per-row "Edit" link points at a drawer
-// route that R15.d implements (server action + audit-logged write).
+// R15.c shipped a read-only list. R16.b lifts the table body into a
+// client component (CreatorsBulkTable) that owns selection state +
+// renders the BulkTierActions bar. This file stays a server component:
+// it loads the rows, flattens them into the table-row shape, and hands
+// off to the client wrapper.
 
-import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { Input } from '@ilaunchify/ui'
-import { Search, AlertTriangle } from 'lucide-react'
-import { CREATOR_TIER_STYLE, tierPillStyle } from './tier-style'
+import { Search } from 'lucide-react'
+import { CreatorsBulkTable } from './CreatorsBulkTable'
 
 interface Props {
   q: string
@@ -46,12 +48,36 @@ export async function CreatorsTab({ q, tier }: Props) {
     },
   } as Parameters<typeof prisma.creatorProfile.findMany>[0]
 
-  const rows = await prisma.creatorProfile.findMany(where as never)
+  const rows = (await prisma.creatorProfile.findMany(where as never)) as unknown as Array<{
+    id: string
+    displayName: string
+    handle: string
+    subscriptionTier: 'MAKER' | 'BUILDER' | 'AGENCY'
+    tierChangedAt: Date | null
+    feeRateOverrideBp: number | null
+    feeRateOverrideReason: string | null
+    user: { email: string; name: string | null }
+    _count: { brands: number }
+  }>
+
+  // Flatten Prisma's nested user/_count into the row shape the client
+  // table expects. Keeps the client component free of Prisma typings.
+  const tableRows = rows.map((r) => ({
+    id: r.id,
+    displayName: r.displayName,
+    handle: r.handle,
+    subscriptionTier: r.subscriptionTier,
+    tierChangedAt: r.tierChangedAt,
+    feeRateOverrideBp: r.feeRateOverrideBp,
+    feeRateOverrideReason: r.feeRateOverrideReason,
+    email: r.user.email,
+    brandCount: r._count.brands,
+  }))
 
   return (
     <section className="space-y-3">
       <FilterBar q={q} activeTier={tier} />
-      <CreatorsTable rows={rows as never[]} />
+      <CreatorsBulkTable rows={tableRows} />
       {rows.length === 0 && <EmptyHint />}
     </section>
   )
@@ -92,93 +118,6 @@ function FilterBar({ q, activeTier }: { q: string; activeTier: string }) {
         })}
       </div>
     </form>
-  )
-}
-
-interface CreatorRow {
-  id: string
-  userId: string
-  displayName: string
-  handle: string
-  subscriptionTier: 'MAKER' | 'BUILDER' | 'AGENCY'
-  tierChangedAt: Date | null
-  feeRateOverrideBp: number | null
-  feeRateOverrideReason: string | null
-  user: { email: string; name: string | null }
-  _count: { brands: number }
-  createdAt: Date
-}
-
-function CreatorsTable({ rows }: { rows: CreatorRow[] }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-      <table className="w-full text-[13px]">
-        <thead className="bg-zinc-50 text-left text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
-          <tr>
-            <th className="px-4 py-2.5">Creator</th>
-            <th className="px-4 py-2.5">Email</th>
-            <th className="px-4 py-2.5">Tier</th>
-            <th className="px-4 py-2.5">Fee override</th>
-            <th className="px-4 py-2.5">Brands</th>
-            <th className="px-4 py-2.5">Last change</th>
-            <th className="px-4 py-2.5" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-100">
-          {rows.map((r) => {
-            const palette = CREATOR_TIER_STYLE[r.subscriptionTier]
-            return (
-              <tr key={r.id} className="hover:bg-zinc-50/60">
-                <td className="px-4 py-2.5">
-                  <div className="font-medium text-zinc-900">{r.displayName}</div>
-                  <div className="text-[11.5px] text-zinc-500">@{r.handle}</div>
-                </td>
-                <td className="px-4 py-2.5 text-zinc-700">{r.user.email}</td>
-                <td className="px-4 py-2.5">
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
-                    style={tierPillStyle(palette)}
-                  >
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: palette.dot }}
-                    />
-                    {palette.label}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5">
-                  {r.feeRateOverrideBp != null ? (
-                    <span
-                      className="inline-flex items-center gap-1 text-[12px] text-amber-800"
-                      title={r.feeRateOverrideReason ?? ''}
-                    >
-                      <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                      {(r.feeRateOverrideBp / 100).toFixed(2)}%
-                    </span>
-                  ) : (
-                    <span className="text-zinc-400">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5 text-zinc-700">{r._count.brands}</td>
-                <td className="px-4 py-2.5 text-[11.5px] text-zinc-500">
-                  {r.tierChangedAt
-                    ? new Date(r.tierChangedAt).toLocaleDateString()
-                    : 'Never changed'}
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <Link
-                    href={`/tiers/creator/${r.id}`}
-                    className="text-[11.5px] font-medium text-pink-700 hover:text-pink-900"
-                  >
-                    Edit
-                  </Link>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
   )
 }
 
