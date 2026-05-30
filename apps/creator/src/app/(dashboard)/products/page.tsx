@@ -79,7 +79,18 @@ export default async function ProductsListPage() {
           products: {
             orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
             include: {
-              productTemplate: { select: { name: true, slug: true } },
+              productTemplate: {
+                select: {
+                  name: true,
+                  slug: true,
+                  subcategory: {
+                    select: {
+                      slug: true,
+                      category: { select: { slug: true } },
+                    },
+                  },
+                },
+              },
               variant: { select: { flavor: true, containerFormat: true, servingsPerContainer: true } },
               recipe: {
                 select: {
@@ -150,7 +161,11 @@ type Row = {
   status: ProductStatus
   updatedAt: Date
   brandName: string
-  productTemplate: { name: string; slug: string } | null
+  productTemplate: {
+    name: string
+    slug: string
+    subcategory: { slug: string; category: { slug: string } }
+  } | null
   variant: { flavor: string | null; containerFormat: string | null; servingsPerContainer: number | null } | null
   recipe: { complianceChecks: { outcome: ComplianceOutcome }[] } | null
   _count: { orderItems: number }
@@ -210,6 +225,14 @@ function ProductCard({ row: r }: { row: Row }) {
     r.variant?.containerFormat,
     r.variant?.servingsPerContainer ? `${r.variant.servingsPerContainer} servings` : null,
   ].filter(Boolean)
+  // Marketplace detail page on apps/marketing — the source-of-truth page
+  // for the template this product was cloned from. Image + title link
+  // there so the creator can review/adjust their source choice.
+  const templateUrl = r.productTemplate
+    ? marketingUrl(
+        `/marketplace/${r.productTemplate.subcategory.category.slug}/${r.productTemplate.subcategory.slug}/${r.productTemplate.slug}`,
+      )
+    : null
 
   return (
     <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
@@ -238,12 +261,32 @@ function ProductCard({ row: r }: { row: Row }) {
       </header>
 
       <div className="flex items-stretch gap-5 px-5 py-4">
-        <Thumbnail name={r.name} />
+        {templateUrl ? (
+          <a
+            href={templateUrl}
+            className="flex-shrink-0"
+            title="Review or adjust this template in the marketplace"
+          >
+            <Thumbnail name={r.name} />
+          </a>
+        ) : (
+          <Thumbnail name={r.name} />
+        )}
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-medium leading-tight text-zinc-900">
-            {r.name}
-          </div>
+          {templateUrl ? (
+            <a
+              href={templateUrl}
+              className="block truncate text-[15px] font-medium leading-tight text-zinc-900 transition-colors hover:text-pink-700"
+              title="Review or adjust this template in the marketplace"
+            >
+              {r.name}
+            </a>
+          ) : (
+            <div className="truncate text-[15px] font-medium leading-tight text-zinc-900">
+              {r.name}
+            </div>
+          )}
           {variantBits.length > 0 && (
             <div className="mt-0.5 text-[12.5px] text-zinc-500">
               {variantBits.join(' · ')}
