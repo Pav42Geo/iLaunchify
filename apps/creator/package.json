@@ -18,6 +18,7 @@
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/orders": "workspace:*",
     "@ilaunchify/payments": "workspace:*",
+    "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/storage": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",

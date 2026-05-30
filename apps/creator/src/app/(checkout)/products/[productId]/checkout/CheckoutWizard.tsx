@@ -71,9 +71,11 @@ interface Props {
   headerBrands: BrandOption[]
   headerActiveBrandId: string
   headerHasUnreadNotifications: boolean
-  // R14.d — creator subscription tier drives the Subscribe & save gate
-  // on the right-rail OrderSummary.
+  // R14.d — creator subscription tier drives the header tier label.
   creatorTier: TierKey
+  // R16.a — server-resolved Subscribe & save gate via @ilaunchify/plans'
+  // hasFeature() lookup, so the toggle is data-driven and admin-editable.
+  subscribeAndSaveEnabled: boolean
 }
 
 export function CheckoutWizard({
@@ -90,6 +92,7 @@ export function CheckoutWizard({
   headerActiveBrandId,
   headerHasUnreadNotifications,
   creatorTier,
+  subscribeAndSaveEnabled,
 }: Props) {
   const router = useRouter()
   const [state, setState] = useState<CheckoutDraftState>(initialState)
@@ -383,7 +386,7 @@ export function CheckoutWizard({
             estimate={estimate}
             shipping={shipping}
             currentStep={currentStep}
-            creatorTier={creatorTier}
+            subscribeAndSaveEnabled={subscribeAndSaveEnabled}
           />
         </aside>
       </main>

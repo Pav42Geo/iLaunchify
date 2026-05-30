@@ -12,7 +12,6 @@
 
 import Link from 'next/link'
 import { Lock, Repeat } from 'lucide-react'
-import { hasTier, type TierKey } from '@ilaunchify/auth'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 
@@ -25,9 +24,10 @@ interface Props {
   // R8.c — which step are we on? Drives whether the Subscribe & save
   // upsell stub renders above the totals (Step 2 only).
   currentStep?: WizardStepIndex
-  // R14.d — creator tier drives the Subscribe & save gate. Builder+ gets
-  // the live waitlist CTA; Maker sees a locked upgrade prompt.
-  creatorTier?: TierKey
+  // R16.a — pre-resolved feature flag via @ilaunchify/plans' hasFeature()
+  // lookup on the server. true = Builder+ (or whatever the plan editor
+  // currently grants); false = locked → upgrade prompt.
+  subscribeAndSaveEnabled?: boolean
 }
 
 export function OrderSummary({
@@ -35,7 +35,7 @@ export function OrderSummary({
   estimate,
   shipping,
   currentStep,
-  creatorTier = 'maker',
+  subscribeAndSaveEnabled = false,
 }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
@@ -47,7 +47,7 @@ export function OrderSummary({
       {/* R8.c — Subscribe & save (Coming soon) upsell. V1 = visual stub
           only; V1.5 hooks Stripe Subscription. Step 2 only because that's
           where the creator is committing to a recurring run cadence. */}
-      {currentStep === 2 && <SubscribeAndSaveStub creatorTier={creatorTier} />}
+      {currentStep === 2 && <SubscribeAndSaveStub unlocked={subscribeAndSaveEnabled} />}
 
       <div
         className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm"
@@ -136,13 +136,13 @@ export function OrderSummary({
 // SubscribeAndSaveStub — Step 2 right-rail "Coming soon" upsell (R8.c)
 // =============================================================================
 
-function SubscribeAndSaveStub({ creatorTier }: { creatorTier: TierKey }) {
-  // R14.d — Subscribe & save is a Builder+ feature (volume pricing /
-  // recurring cadence flow). Maker sees a soft upgrade prompt with a
-  // pink lock badge; Builder/Agency get the live (still-coming-soon)
-  // waitlist card. The wiring is identical either way — we change copy
-  // and the CTA target.
-  const unlocked = hasTier(creatorTier, 'builder')
+function SubscribeAndSaveStub({ unlocked }: { unlocked: boolean }) {
+  // R16.a — Subscribe & save now reads its unlock state from the
+  // data-driven @ilaunchify/plans layer (resolved server-side in the
+  // page loader via hasFeature). Locked = upgrade prompt; unlocked =
+  // live (still-coming-soon) waitlist card. Copy and CTA target swap
+  // accordingly. Admin can toggle the feature row in /admin/tiers
+  // without a redeploy.
   return (
     <div className="rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50/80 to-white p-4 shadow-sm">
       <div className="flex items-start gap-3">

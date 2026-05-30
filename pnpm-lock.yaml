@@ -44,6 +44,9 @@ importers:
       '@ilaunchify/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
+      '@ilaunchify/plans':
+        specifier: workspace:*
+        version: link:../../packages/plans
       '@ilaunchify/storage':
         specifier: workspace:*
         version: link:../../packages/storage

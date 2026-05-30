@@ -15,7 +15,8 @@
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
-import { getCreatorTier, hasTier, requireUser, type TierKey } from '@ilaunchify/auth'
+import { getCreatorTier, requireUser } from '@ilaunchify/auth'
+import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { notFound } from 'next/navigation'
 import {
   AlertOctagon,
@@ -157,8 +158,14 @@ export default async function OrderDetailPage({
 }) {
   const { orderId } = await params
   const user = await requireUser()
-  // R14.d — drives the Builder+ gate on the right-rail Get product support link.
+  // R16.a — resolve the Get-product-support gate through the data-driven
+  // @ilaunchify/plans layer. Tier → plan code → feature lookup. Admin
+  // can flip the row in /admin/tiers without a redeploy.
   const creatorTier = await getCreatorTier(user.id)
+  const supportUnlocked = await hasFeature(
+    creatorTierToPlanCode(creatorTier),
+    CREATOR_FEATURES.PRODUCT_SUPPORT,
+  )
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, creatorUserId: user.id },
@@ -289,7 +296,7 @@ export default async function OrderDetailPage({
             orderId={order.id}
             needsAdjust={needsAdjust}
             isDelivered={isDelivered}
-            creatorTier={creatorTier}
+            supportUnlocked={supportUnlocked}
           />
           <TotalsCard
             order={{
@@ -545,19 +552,18 @@ function ActionsCard({
   orderId,
   needsAdjust,
   isDelivered,
-  creatorTier,
+  supportUnlocked,
 }: {
   productId: string | null
   orderId: string
   needsAdjust: boolean
   isDelivered: boolean
-  creatorTier: TierKey
+  supportUnlocked: boolean
 }) {
-  // R14.d — concierge-style "Get product support" is a Builder+ perk
-  // (the Maker tier doesn't include human-loop support per PLATFORM_SPEC
-  // Tier 1 matrix). Maker sees the row with a Builder lock badge and an
-  // upgrade CTA target; Builder/Agency get the real /help link.
-  const supportUnlocked = hasTier(creatorTier, 'builder')
+  // R16.a — supportUnlocked is now resolved server-side through
+  // @ilaunchify/plans' hasFeature(PRODUCT_SUPPORT) lookup, not a hardcoded
+  // hasTier(creatorTier, 'builder') call. Admin flips the row in
+  // /admin/tiers and this card honours it on the next reload.
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       {/* Adjust takes top spot when needed — that's the only action that

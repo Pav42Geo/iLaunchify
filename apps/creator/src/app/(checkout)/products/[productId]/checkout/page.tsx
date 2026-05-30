@@ -14,6 +14,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
+import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { CheckoutWizard } from './CheckoutWizard'
 import { loadCheckoutDraft } from './actions'
 import { loadReviewSnapshot } from './review-actions'
@@ -75,9 +76,17 @@ export default async function CheckoutPage({ params }: PageProps) {
       where: { userId: user.id, channel: 'IN_APP', readAt: null },
     }),
     cookies(),
-    // R14.d — drives the Subscribe & save gate on the right rail.
+    // R14.d — drives header tier label + legacy gates.
     getCreatorTier(user.id),
   ])
+
+  // R16.a — Subscribe & save now resolves through the data-driven plans
+  // layer. The plan code is derived from the creator's tier; if no plan
+  // row exists (seed hasn't run) the feature fails-closed.
+  const subscribeAndSaveEnabled = await hasFeature(
+    creatorTierToPlanCode(creatorTier),
+    CREATOR_FEATURES.SUBSCRIBE_AND_SAVE,
+  )
   if (!draftResult.ok) notFound()
 
   const activeBrandCookie = cookieStore.get(BRAND_COOKIE)?.value ?? ''
@@ -111,6 +120,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       headerActiveBrandId={activeBrandId}
       headerHasUnreadNotifications={unreadCount > 0}
       creatorTier={creatorTier}
+      subscribeAndSaveEnabled={subscribeAndSaveEnabled}
     />
   )
 }
