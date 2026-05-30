@@ -21,12 +21,11 @@ interface Props {
   // G4d — shipping cents from the wizard's lifted estimateShipping state.
   // Null until the user has picked a ship-to mode.
   shipping: { shippingCents: number; leadTimeBusinessDays: number } | null
-  // R8.c — which step are we on? Drives whether the Subscribe & save
-  // upsell stub renders above the totals (Step 2 only).
+  // R8.c — which step are we on? Drives the contextual hints rendered
+  // above the totals (Subscribe stub on Step 2, summary on Step 3, etc.).
   currentStep?: WizardStepIndex
   // R16.a — pre-resolved feature flag via @ilaunchify/plans' hasFeature()
-  // lookup on the server. true = Builder+ (or whatever the plan editor
-  // currently grants); false = locked → upgrade prompt.
+  // lookup on the server. true = Builder+; false = locked → upgrade hint.
   subscribeAndSaveEnabled?: boolean
 }
 
@@ -42,12 +41,33 @@ export function OrderSummary({
   const hasShipping = !!shipping && shipping.shippingCents > 0
   const grandTotalCents =
     (estimate?.totalBeforeShippingAndTaxCents ?? 0) + (shipping?.shippingCents ?? 0)
+  // G6.c — once the creator accepts the Subscribe & save offer on
+  // Step 2, the right-rail flips from upsell-stub to confirmation-readout
+  // so the choice stays visible all the way through Step 3 / Pay.
+  const subAccepted = state.subscription?.offerAccepted === true
+
   return (
     <div className="space-y-3">
-      {/* R8.c — Subscribe & save (Coming soon) upsell. V1 = visual stub
-          only; V1.5 hooks Stripe Subscription. Step 2 only because that's
-          where the creator is committing to a recurring run cadence. */}
-      {currentStep === 2 && <SubscribeAndSaveStub unlocked={subscribeAndSaveEnabled} />}
+      {/* Subscribe & save right-rail surfaces:
+            - Step 2, not accepted yet → the old "this rail used to live
+              here" stub is gone now that we have the full picker in the
+              step body. We still render a tiny lock badge for Maker so
+              the upgrade affordance shows even when the picker isn't yet
+              visible (no qty entered).
+            - Any step, accepted → confirmation summary so the creator's
+              choice persists into Step 3 visual state. */}
+      {subAccepted && state.subscription?.cadence ? (
+        <SubscribedSummary
+          cadence={state.subscription.cadence}
+          runCount={state.subscription.runCount ?? null}
+          discountBp={state.subscription.discountBp ?? 0}
+        />
+      ) : (
+        currentStep === 2 &&
+        !subscribeAndSaveEnabled && (
+          <SubscribeAndSaveStub unlocked={false} />
+        )
+      )}
 
       <div
         className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm"
@@ -189,6 +209,53 @@ function SubscribeAndSaveStub({ unlocked }: { unlocked: boolean }) {
               Upgrade to Builder
             </Link>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// SubscribedSummary — confirmation readout once the offer is accepted (G6.c)
+// =============================================================================
+
+function SubscribedSummary({
+  cadence,
+  runCount,
+  discountBp,
+}: {
+  cadence: 'MONTHLY' | 'QUARTERLY'
+  runCount: number | null
+  discountBp: number
+}) {
+  const cadenceLabel = cadence === 'QUARTERLY' ? 'every 3 months' : 'every month'
+  const runsLabel = runCount ? `${runCount} runs` : 'open-ended'
+  const pctOff = (discountBp / 100).toFixed(0)
+  return (
+    <div className="rounded-xl border border-pink-300 bg-gradient-to-br from-pink-50/80 to-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-pink-500 text-white"
+        >
+          <Repeat className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-[12.5px] font-semibold text-ink-900">
+              Subscribed
+            </p>
+            <span className="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-emerald-700">
+              {pctOff}% off
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-700">
+            {cadenceLabel} · {runsLabel}
+          </p>
+          <p className="mt-2 text-[11px] text-ink-500">
+            First charge with this order. Recurring billing begins after this
+            run lands. Manage from your account anytime.
+          </p>
         </div>
       </div>
     </div>

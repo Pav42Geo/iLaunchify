@@ -27,7 +27,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { StepShell } from './_StepShell'
-import type { ProductionState } from '../types'
+import type { ProductionState, SubscriptionState } from '../types'
 import {
   getProductionOptions,
   estimateProductionCost,
@@ -35,6 +35,7 @@ import {
   type PackagingMaterialOption,
   type SubstrateOption,
 } from '../production-actions'
+import { SubscribeAndSavePicker } from '../SubscribeAndSavePicker'
 
 interface Props {
   productId: string
@@ -46,6 +47,13 @@ interface Props {
   // we don't refetch from this client component.
   productName: string
   brandName: string
+  // Phase G6.c — Subscribe & save picker lives at the bottom of this
+  // step. Subscription state + change handler get wired up by the
+  // wizard; unlocked is the server-resolved hasFeature() result so
+  // Maker tier gets the upgrade prompt path.
+  subscriptionState: SubscriptionState
+  onSubscriptionChange: (patch: Partial<SubscriptionState>) => void
+  subscribeAndSaveEnabled: boolean
 }
 
 // V1 defaults — see `ilaunchify-orchestration-thesis` memory. Real MOQs
@@ -61,6 +69,9 @@ export function ProductionStep({
   onEstimate,
   productName,
   brandName,
+  subscriptionState,
+  onSubscriptionChange,
+  subscribeAndSaveEnabled,
 }: Props) {
   const [substrates, setSubstrates] = useState<SubstrateOption[]>([])
   const [packagings, setPackagings] = useState<PackagingMaterialOption[]>([])
@@ -276,6 +287,18 @@ export function ProductionStep({
             </div>
           </div>
         </article>
+
+        {/* G6.c — Subscribe & save picker. Visible only once the cart
+            line has a real price to compare against; otherwise the
+            "save X" math is meaningless. */}
+        {lineTotalCents > 0 && (
+          <SubscribeAndSavePicker
+            state={subscriptionState}
+            onChange={onSubscriptionChange}
+            unlocked={subscribeAndSaveEnabled}
+            perRunTotalCents={lineTotalCents}
+          />
+        )}
 
         {/* Three small reassurance cards — kept lightweight so the cart
             line stays the visual anchor. */}

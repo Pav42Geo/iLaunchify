@@ -339,6 +339,9 @@ export function CheckoutWizard({
               onEstimate={setEstimate}
               productName={productName}
               brandName={brandName}
+              subscriptionState={state.subscription}
+              onSubscriptionChange={(patch) => patchState('subscription', patch)}
+              subscribeAndSaveEnabled={subscribeAndSaveEnabled}
             />
           )}
           {currentStep === 3 && (
