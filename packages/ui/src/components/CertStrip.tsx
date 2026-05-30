@@ -31,11 +31,45 @@ export interface CertStripItem {
 
 export interface CertStripProps {
   items: CertStripItem[]
+  /** Override the heading text. Default: original full-bleed copy. */
+  heading?: string
+  /**
+   * Compact mode (R3.1) — smaller badges (32px icon), tighter spacing,
+   * no borders / no bg. Used in the marketplace detail page's gallery
+   * column. Default false preserves the original full-bleed strip
+   * styling elsewhere.
+   */
+  compact?: boolean
   className?: string
 }
 
-export function CertStrip({ items, className }: CertStripProps) {
+export function CertStrip({
+  items,
+  heading,
+  compact = false,
+  className,
+}: CertStripProps) {
   if (items.length === 0) return null
+
+  const resolvedHeading =
+    heading ?? 'This product can be produced with the following certifications'
+
+  if (compact) {
+    return (
+      <section className={cn('', className)}>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+          {resolvedHeading}
+        </div>
+        <ul className="flex flex-wrap items-start gap-3">
+          {items.map((item) => (
+            <li key={item.name}>
+              <CertBadge {...item} compact />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
 
   return (
     <section
@@ -46,7 +80,7 @@ export function CertStrip({ items, className }: CertStripProps) {
     >
       <div className="max-w-[1100px] mx-auto px-6">
         <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 text-center mb-5">
-          This product can be produced with the following certifications
+          {resolvedHeading}
         </div>
         <ul className="flex flex-wrap items-center justify-center gap-6 sm:gap-8">
           {items.map((item) => (
@@ -60,8 +94,41 @@ export function CertStrip({ items, className }: CertStripProps) {
   )
 }
 
-function CertBadge({ name, qualifier, icon, unconditional = true, onClick }: CertStripItem) {
+function CertBadge({
+  name,
+  qualifier,
+  icon,
+  unconditional = true,
+  onClick,
+  compact = false,
+}: CertStripItem & { compact?: boolean }) {
   const Wrapper = onClick ? 'button' : 'div'
+  if (compact) {
+    return (
+      <Wrapper
+        type={onClick ? 'button' : undefined}
+        onClick={onClick}
+        className={cn(
+          'flex items-center gap-1.5 text-left transition-colors',
+          onClick && 'hover:opacity-80 cursor-pointer',
+        )}
+        title={qualifier}
+      >
+        <span
+          className={cn(
+            'w-7 h-7 rounded-full bg-white border border-ink-200 flex items-center justify-center text-base flex-shrink-0',
+            !unconditional && 'border-dashed',
+          )}
+          aria-hidden="true"
+        >
+          {icon ?? '✓'}
+        </span>
+        <span className="text-[12px] font-semibold text-ink-900 leading-tight max-w-[14ch]">
+          {name}
+        </span>
+      </Wrapper>
+    )
+  }
   return (
     <Wrapper
       type={onClick ? 'button' : undefined}
