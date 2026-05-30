@@ -105,7 +105,8 @@ export default async function ProductDetailPage({
 
         {/* HERO — 3-column: gallery (bigger, sticky w/ thumbs + certs) /
             configurator (col 2) / customize rail (col 3, R3) */}
-        <section className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr_0.9fr] gap-8 lg:gap-10 mb-12 items-start">
+        {/* Hero proportions: left gallery wider, middle body, right rail narrower. */}
+        <section className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr_0.75fr] gap-8 lg:gap-10 mb-12 items-start">
           <DetailGallery template={template} certs={certs} />
 
           <div className="flex flex-col">
