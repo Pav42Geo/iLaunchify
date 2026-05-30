@@ -105,11 +105,11 @@ export default async function ProductDetailPage({
 
         {/* HERO — 3-column: gallery (bigger, sticky w/ thumbs + certs) /
             configurator (col 2) / customize rail (col 3, R3) */}
-        {/* Hero proportions: dominant gallery / body / tiny rail.
-            Third track uses min-content so it stays as narrow as its
-            content (recipe list + readable Nutrition Facts panel),
-            while col 1 + 2 split the remaining width 1.4 : 1. */}
-        <section className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_min-content] gap-6 lg:gap-8 mb-12 items-start">
+        {/* Hero proportions: dominant gallery / body / narrow fixed
+            rail. The third track is locked to 220px so the whole
+            rail (recipe list + Nutrition Facts card) stays compact
+            regardless of viewport width. */}
+        <section className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_220px] gap-6 lg:gap-8 mb-12 items-start">
           <DetailGallery template={template} certs={certs} />
 
           <div className="flex flex-col">
