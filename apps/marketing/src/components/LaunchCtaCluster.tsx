@@ -1,17 +1,24 @@
 'use client'
 
-// REBUILD R5 — primary CTA cluster on the marketplace product detail
-// page. Calls the launch server action with the current selection,
-// shows a quick error inline if anything goes wrong, otherwise hard-
-// navigates to the cross-app Design Studio URL.
+// REBUILD R5 + R4 — primary CTA cluster on the marketplace product
+// detail page. Calls the launch server action with the current
+// selection; on success hard-navigates to the cross-app Design
+// Studio URL.
+//
+// R4: when the action reports `GUEST`, we open the inline
+// GuestGateModal instead of bouncing to /signup. The modal collects
+// the minimum signup fields and runs the signup → sign-in → create
+// product → canvas chain in one round-trip.
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
 import { startLaunchFromTemplate } from '@/lib/launch-actions'
+import { GuestGateModal } from './GuestGateModal'
 
 interface Props {
   templateSlug: string
+  templateName: string
   flavorId: string
   sizeKey: string
   packagingId: string
@@ -24,6 +31,7 @@ interface Props {
 
 export function LaunchCtaCluster({
   templateSlug,
+  templateName,
   flavorId,
   sizeKey,
   packagingId,
@@ -32,6 +40,7 @@ export function LaunchCtaCluster({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [guestGateOpen, setGuestGateOpen] = useState(false)
 
   function onLaunchClick() {
     setError(null)
@@ -48,7 +57,9 @@ export function LaunchCtaCluster({
         return
       }
       if (result.reason === 'GUEST') {
-        window.location.href = result.signupUrl
+        // R4: open inline modal instead of bouncing to /signup so
+        // the selection sticks through account creation.
+        setGuestGateOpen(true)
         return
       }
       if (result.reason === 'NO_BRAND') {
@@ -87,6 +98,19 @@ export function LaunchCtaCluster({
       {error && (
         <p className="text-[12px] font-medium text-pink-700">{error}</p>
       )}
+
+      <GuestGateModal
+        open={guestGateOpen}
+        onClose={() => setGuestGateOpen(false)}
+        templateName={templateName}
+        launch={{
+          templateSlug,
+          flavor: flavorId,
+          size: sizeKey,
+          packaging: packagingId,
+          quantity,
+        }}
+      />
     </div>
   )
 }

@@ -200,14 +200,15 @@ export function ProductDetailConfigurator({
         leadTimeLabel={`${leadTimeDays}–${leadTimeDays + 4} days door-to-door`}
       />
 
-      {/* Primary CTAs — REBUILD R5 wires Open in Design Studio to a
-       * server action that materialises the Product row + redirects
-       * cross-app to /products/{id}/design/canvas. Guests get bounced
-       * to /signup with the selection preserved (R4 polishes with a
-       * modal).
+      {/* Primary CTAs — R5 wires Start Launching to a server action
+       * that materialises the Product row + redirects cross-app to
+       * /products/{id}/design/canvas. R4 opens an inline guest-gate
+       * modal when the visitor isn't signed in so the selection
+       * survives signup.
        */}
       <LaunchCtaCluster
         templateSlug={template.slug}
+        templateName={template.title}
         flavorId={flavorId}
         sizeKey={sizeKey}
         packagingId={packagingId}
