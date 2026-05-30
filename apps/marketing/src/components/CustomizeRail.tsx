@@ -84,7 +84,7 @@ export function CustomizeRail({
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
       {/* --- Ingredients (compact list, no per-row cards) ------------ */}
-      <div className="rounded-xl border border-ink-200 bg-white p-5">
+      <div className="rounded-xl border border-ink-200 bg-white p-4">
         <header className="mb-3">
           <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
             {title}
@@ -309,7 +309,7 @@ export function CustomizeRail({
 
       {/* --- Live nutrition card ------------------------------------- */}
       {nutrition && (
-        <div className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="rounded-xl border border-ink-200 bg-white p-4">
           <header className="mb-3">
             <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
               Nutrition Facts
@@ -320,8 +320,8 @@ export function CustomizeRail({
             </p>
           </header>
           <div className="overflow-hidden rounded-md">
-            {/* Sized to fit the narrowed right rail (~273px usable inside p-5). */}
-            <NutritionFactsRenderer data={nutrition} widthPx={260} />
+            {/* Sized to fit the tight right rail (~245px usable inside p-4). */}
+            <NutritionFactsRenderer data={nutrition} widthPx={230} />
           </div>
           {hasChanges && (
             <p className="mt-2 text-[11px] leading-snug text-ink-500">
