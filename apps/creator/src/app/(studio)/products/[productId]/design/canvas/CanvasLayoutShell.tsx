@@ -790,11 +790,13 @@ function TopBar({
             </span>
           )}
         </button>
-        {/* DS-73e — "Exit Studio" → "Next" (black pill). This is the
-            entry point to the post-canvas checkout stepper (Phase G),
-            so the verb matches the flow direction. */}
+        {/* DS-73e + R8 — "Next" (black pill) takes the creator directly
+            into the 3-step checkout wizard. The Studio is the only
+            entry point to checkout (we removed the dashboard
+            shortcut), so this button is the seam between design and
+            order placement. */}
         <Link
-          href={`/products/${productId}`}
+          href={`/products/${productId}/checkout`}
           className="ml-2 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
         >
           Next

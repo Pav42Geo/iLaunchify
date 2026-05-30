@@ -81,11 +81,15 @@ export default async function PublishStubPage({
                 </>
               ) : (
                 <>
-                  No production order placed yet.{' '}
-                  <Link href={`/products/${product.id}/checkout`} className="underline">
-                    Place one
+                  No production order placed yet. Open the Design Studio
+                  and use its <em>Next</em> button to start checkout.{' '}
+                  <Link
+                    href={`/products/${product.id}/design/canvas`}
+                    className="underline"
+                  >
+                    Open Studio
                   </Link>{' '}
-                  first.
+                  to begin.
                 </>
               )}
             </CardDescription>

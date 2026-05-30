@@ -94,12 +94,13 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
         <StepCard
           n={4}
           title="Order production"
-          description="Pay iLaunchify · routes to manufacturing + print partners"
-          // Phase G1 — points at the new 7-step wizard. The old /order form
-          // stays live until G5 ships full payment in the wizard; both
-          // share the same final Order row schema.
-          href={`/products/${product.id}/checkout`}
-          ctaLabel="Order"
+          description="Open the Design Studio, then click Next to begin checkout"
+          // R8 — direct dashboard → checkout shortcut removed. The
+          // Studio's Next button is the only path into the wizard so
+          // creators always pass through a final design review before
+          // committing.
+          href={`/products/${product.id}/design/canvas`}
+          ctaLabel="Open Studio"
           disabled={!customizeComplete}
         />
       </div>

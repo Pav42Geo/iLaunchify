@@ -322,13 +322,9 @@ function ProductCard({ row: r }: { row: Row }) {
           >
             Open in Studio <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-          <Link
-            href={`/products/${r.id}/checkout`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-[7px] text-[12px] font-medium text-zinc-900 hover:bg-zinc-50"
-          >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            Order this product
-          </Link>
+          {/* R8 — direct 'Order this product' shortcut removed. Checkout
+              is only reachable via the Studio's Next button so creators
+              always pass through design review first. */}
           <Link
             href={`/products/${r.id}`}
             className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] font-medium text-zinc-500 hover:text-zinc-900"
