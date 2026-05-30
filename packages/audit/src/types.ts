@@ -28,6 +28,11 @@ export const AUDIT_ENTITY_TYPES = [
   'CertificateType',
   'PartnerCertificateInstance',
   'RulePack',
+  // R15.c — admin tier management module
+  'CreatorProfile',
+  'SubscriptionPlan',
+  'PlanFeature',
+  'FeeRule',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -83,6 +88,14 @@ export const AUDIT_ACTIONS = [
   'TRANSFER_QUEUED',
   'TRANSFER_PAID',
   'REFUND_ISSUED',
+  // R15.c — admin tier management module
+  'CREATOR_TIER_CHANGE',
+  'PARTNER_TIER_CHANGE',
+  'FEE_OVERRIDE_SET',
+  'FEE_OVERRIDE_CLEAR',
+  'PLAN_UPDATE',
+  'PLAN_FEATURE_UPDATE',
+  'FEE_RULE_UPDATE',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

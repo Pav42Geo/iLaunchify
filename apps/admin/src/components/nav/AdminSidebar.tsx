@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug, Award } from 'lucide-react'
+import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug, Award, Crown } from 'lucide-react'
 
 const NAV = [
   { href: '/leads',             label: 'Leads',             icon: Inbox },
@@ -11,6 +11,7 @@ const NAV = [
   { href: '/creators',          label: 'Creators',          icon: Users },
   { href: '/products',          label: 'Products',          icon: Package },
   { href: '/orders',            label: 'Orders',            icon: ShoppingBag },
+  { href: '/tiers',             label: 'Tiers & plans',     icon: Crown },
   { href: '/channels',          label: 'Channels',          icon: Plug },
   { href: '/compliance',        label: 'Compliance',        icon: ShieldCheck },
   { href: '/certificate-types', label: 'Cert library',      icon: Award },
