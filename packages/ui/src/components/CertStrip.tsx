@@ -112,15 +112,17 @@ function CertBadge({
         type={onClick ? 'button' : undefined}
         onClick={onClick}
         className={cn(
+          // No per-badge border — the wrapping CertStrip card already
+          // gives the group its chrome. Per Pavel: clean badges, one
+          // outer card.
           'flex flex-col items-center gap-1.5 text-center px-2 py-1 rounded-md transition-colors',
           onClick && 'hover:bg-ink-50 cursor-pointer',
-          !unconditional && 'border border-dashed border-ink-300',
         )}
       >
         <span
           className={cn(
-            'w-12 h-12 rounded-full bg-white border border-ink-200 flex items-center justify-center text-[28px] leading-none',
-            !unconditional && 'border-dashed',
+            'w-12 h-12 rounded-full bg-white flex items-center justify-center text-[28px] leading-none',
+            !unconditional && 'border border-dashed border-ink-300',
           )}
           aria-hidden="true"
         >
