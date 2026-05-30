@@ -86,7 +86,7 @@ export function CustomizeRail({
       {/* --- Ingredients (compact list, no per-row cards) ------------ */}
       <div className="rounded-xl border border-ink-200 bg-white p-3">
         <header className="mb-3">
-          <h3 className="font-display text-[16px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
+          <h3 className="font-display text-[18px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
             {title}
           </h3>
         </header>
@@ -320,8 +320,8 @@ export function CustomizeRail({
             </p>
           </header>
           <div className="overflow-hidden rounded-md">
-            {/* Sized to fit the tiny right rail (~190px usable inside p-3). */}
-            <NutritionFactsRenderer data={nutrition} widthPx={180} />
+            {/* Readable NFR width — column auto-grows to fit. */}
+            <NutritionFactsRenderer data={nutrition} widthPx={240} />
           </div>
           {hasChanges && (
             <p className="mt-2 text-[11px] leading-snug text-ink-500">
