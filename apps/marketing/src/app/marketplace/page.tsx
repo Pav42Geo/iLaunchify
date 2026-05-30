@@ -53,10 +53,19 @@ export default async function MarketplacePage({
     diet?: string
     moq?: string
     q?: string
+    /**
+     * Niche slug from the /launch/[niche] landings (SEO funnel).
+     * Recognised as an active filter chip; real niche → template
+     * scoring lands when CreatorNiche schema arrives (M1 in
+     * MARKETPLACE_DESIGN.md §13). Until then it's an
+     * informational pill that preserves user context after the
+     * landing-page jump.
+     */
+    niche?: string
   }>
 }) {
   const sp = await searchParams
-  const { sort: sortParam, diet, moq, q } = sp
+  const { sort: sortParam, diet, moq, q, niche } = sp
   const sort = parseSort(sortParam)
   const tags = diet
     ? diet
@@ -65,7 +74,7 @@ export default async function MarketplacePage({
         .filter(Boolean)
     : undefined
   const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
-  const hasActiveFilters = Boolean(tags?.length || moqMax !== undefined || q)
+  const hasActiveFilters = Boolean(tags?.length || moqMax !== undefined || q || niche)
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
 

@@ -65,8 +65,11 @@ export default async function NicheLandingPage({
             <p className="text-[15px] text-ink-700 leading-relaxed max-w-[56ch] mb-8">
               {niche.description}
             </p>
+            {/* Carry niche through so the marketplace context is preserved. */}
             <Button variant="primary" size="lg" asChild>
-              <Link href="/marketplace">Browse the marketplace →</Link>
+              <Link href={`/marketplace?niche=${niche.slug}`}>
+                Browse {niche.shortName.toLowerCase()} on the marketplace →
+              </Link>
             </Button>
           </div>
         </section>
@@ -96,7 +99,7 @@ export default async function NicheLandingPage({
               Curated for {niche.shortName.toLowerCase()}
             </h2>
             <Link
-              href="/marketplace"
+              href={`/marketplace?niche=${niche.slug}`}
               className="text-[13px] font-semibold text-pink-700 hover:text-pink-600"
             >
               See all →
