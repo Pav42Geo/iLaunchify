@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { RetailIdentityCard } from './RetailIdentityCard'
 import type { BarcodeMode } from './identity-actions'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,15 +41,18 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
           {product.productTemplate && (
             <>
               {' · '}
-              <Link
-                href={`/marketplace/${product.productTemplate.slug}`}
+              {/* Category breadcrumb deep-links to the public marketplace detail page. */}
+              <a
+                href={marketingUrl(
+                  `/marketplace/${product.productTemplate.subcategory.category.slug}/${product.productTemplate.subcategory.slug}/${product.productTemplate.slug}`,
+                )}
                 className="hover:underline"
               >
                 {product.productTemplate.subcategory.category.icon}{' '}
                 {product.productTemplate.subcategory.category.name}
                 {' › '}
                 {product.productTemplate.subcategory.name}
-              </Link>
+              </a>
             </>
           )}
           {' · '}

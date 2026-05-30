@@ -28,12 +28,15 @@ import {
   useLaunchChecklist,
   pendingChecklistCount,
 } from './LaunchChecklistProvider'
+import { marketingUrl } from '@/lib/marketing-url'
 
 interface ChecklistItem {
   id: 1 | 2 | 3 | 4 | 5
   title: string
   description: string
   href: string
+  /** Cross-app links (e.g., the public marketplace on apps/marketing) render as <a>, not next/link. */
+  external?: boolean
   icon: ComponentType<{ className?: string }>
   ctaLabel: string
 }
@@ -75,7 +78,9 @@ const ITEMS: ChecklistItem[] = [
     id: 5,
     title: 'Pick your first product',
     description: 'Browse our marketplace and customize a product.',
-    href: '/marketplace',
+    // Marketplace lives on apps/marketing — cross-origin jump to port 3010 in dev.
+    href: marketingUrl('/marketplace'),
+    external: true,
     icon: ShoppingBag,
     ctaLabel: 'Browse',
   },
@@ -180,47 +185,58 @@ function ChecklistRow({
 }) {
   const Icon = item.icon
 
-  return (
-    <li>
-      <Link
-        href={item.href}
-        onClick={onNavigate}
-        className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
-          isDone
-            ? 'border-emerald-200 bg-emerald-50/50'
-            : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+  const rowClassName = `flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+    isDone
+      ? 'border-emerald-200 bg-emerald-50/50'
+      : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+  }`
+
+  const body = (
+    <>
+      <span
+        className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
+          isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
         }`}
       >
-        <span
-          className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-            isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+        {isDone ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div
+          className={`font-semibold ${
+            isDone ? 'text-zinc-500 line-through' : 'text-zinc-900'
           }`}
         >
-          {isDone ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div
-            className={`font-semibold ${
-              isDone ? 'text-zinc-500 line-through' : 'text-zinc-900'
-            }`}
-          >
-            {item.title}
-          </div>
-          <p
-            className={`mt-0.5 text-xs ${isDone ? 'text-zinc-400 line-through' : 'text-zinc-500'}`}
-          >
-            {item.description}
-          </p>
+          {item.title}
         </div>
-        {!isDone && (
-          <span
-            className="ml-2 mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500"
-            aria-hidden
-          >
-            <ArrowRight className="h-3.5 w-3.5" />
-          </span>
-        )}
-      </Link>
+        <p
+          className={`mt-0.5 text-xs ${isDone ? 'text-zinc-400 line-through' : 'text-zinc-500'}`}
+        >
+          {item.description}
+        </p>
+      </div>
+      {!isDone && (
+        <span
+          className="ml-2 mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500"
+          aria-hidden
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      )}
+    </>
+  )
+
+  return (
+    <li>
+      {item.external ? (
+        // eslint-disable-next-line @next/next/no-html-link-for-pages
+        <a href={item.href} onClick={onNavigate} className={rowClassName}>
+          {body}
+        </a>
+      ) : (
+        <Link href={item.href} onClick={onNavigate} className={rowClassName}>
+          {body}
+        </Link>
+      )}
     </li>
   )
 }

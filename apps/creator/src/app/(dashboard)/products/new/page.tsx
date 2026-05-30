@@ -2,13 +2,16 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { redirect, notFound } from 'next/navigation'
 import { VariantPicker } from './VariantPicker'
-import Link from 'next/link'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * Step 1 of the catalog-driven creator flow: pick a variant.
- * Entry is from /marketplace/[slug] → "Customize this product" CTA with ?templateId=X.
+ * Entry is from apps/marketing's /marketplace/[category]/[subcategory]/[slug]
+ * "Start Launching" CTA with ?templateId=X. (REBUILD R7 — the creator app no
+ * longer hosts a marketplace; we hand visitors back to the public surface for
+ * any browse/discovery flow.)
  *
  * On variant pick, a draft Product + Recipe is created (seeded with BASE slot
  * ingredients) and the creator is redirected to /products/[id]/customize.
@@ -18,9 +21,9 @@ export default async function NewProductPage({
 }: { searchParams: Promise<{ templateId?: string }> }) {
   const user = await requireUser()
   if (user.role !== 'CREATOR' && user.role !== 'ADMIN') {
-    redirect('/marketplace?error=creator-only')
+    redirect(marketingUrl('/marketplace?error=creator-only'))
   }
-  if (!(await searchParams).templateId) redirect('/marketplace')
+  if (!(await searchParams).templateId) redirect(marketingUrl('/marketplace'))
 
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
@@ -46,9 +49,13 @@ export default async function NewProductPage({
     <div className="space-y-6">
       <div>
         <nav className="mb-2 text-xs text-zinc-500">
-          <Link href={`/marketplace/${template.slug}`} className="hover:underline">
+          {/* Back to the public marketplace detail page on apps/marketing. */}
+          <a
+            href={marketingUrl(`/marketplace/${template.subcategory.category.slug}/${template.subcategory.slug}/${template.slug}`)}
+            className="hover:underline"
+          >
             ← Back to {template.name}
-          </Link>
+          </a>
         </nav>
         <h1 className="text-2xl font-semibold tracking-tight">
           Pick a variant of {template.name}
