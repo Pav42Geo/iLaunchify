@@ -8,18 +8,27 @@
 // Step content lives in apps/creator/.../checkout/steps/. G1 ships stub
 // content for every step except the navigation chrome.
 
+// REBUILD R8.a · Checkout collapsed from 7 → 3 steps. Subscription,
+// Accessories, Viral, and Fulfillment are no longer standalone steps:
+//   - Subscription → small "Coming soon" upsell card on the Order
+//     Summary right rail (R8.c)
+//   - Accessories, Viral → cut for V1 (re-evaluate post-launch)
+//   - Fulfillment → merged into Step 3 (Checkout) with payment (R8.d)
+//
+// The state shapes for the dropped steps stay in this file so the
+// CheckoutDraft.state JSON loader doesn't break on existing drafts —
+// they're just not rendered. Future migration can prune them.
 export const WIZARD_STEPS = [
   { key: 'review', label: 'Review design', index: 1 },
   { key: 'production', label: 'Production', index: 2 },
-  { key: 'subscription', label: 'Subscribe + save', index: 3 },
-  { key: 'fulfillment', label: 'Fulfillment', index: 4 },
-  { key: 'accessories', label: 'Accessories', index: 5 },
-  { key: 'viral', label: 'Make it viral', index: 6 },
-  { key: 'cart', label: 'My cart', index: 7 },
+  { key: 'checkout', label: 'Checkout', index: 3 },
 ] as const
 
 export type WizardStepKey = (typeof WIZARD_STEPS)[number]['key']
 export type WizardStepIndex = (typeof WIZARD_STEPS)[number]['index']
+
+/** Last step index — driven off WIZARD_STEPS so future additions are safe. */
+export const LAST_STEP_INDEX = WIZARD_STEPS[WIZARD_STEPS.length - 1]!.index
 
 // -----------------------------------------------------------------------------
 // State shapes per step. All fields nullable so the draft can save partial

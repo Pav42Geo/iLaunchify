@@ -47,16 +47,31 @@ export default async function CheckoutPage({ params }: PageProps) {
     notFound()
   }
 
+  // R8.a — clamp draft step/completed values into the new 3-step
+  // index range. Older drafts persisted indices up to 7; mapping them
+  // forward keeps a returning creator on a valid screen instead of
+  // a blank one.
+  const initialStep = clampStep(draftResult.data.currentStep)
+  const initialCompletedSteps = Array.from(
+    new Set(draftResult.data.completedSteps.map(clampStep)),
+  ).sort((a, b) => a - b)
+
   return (
     <CheckoutWizard
       productId={product.id}
       productName={product.name}
       brandName={product.brand.name}
       initialState={draftResult.data.state}
-      initialStep={draftResult.data.currentStep}
-      initialCompletedSteps={draftResult.data.completedSteps}
+      initialStep={initialStep}
+      initialCompletedSteps={initialCompletedSteps}
       hadExistingDraft={draftResult.data.existed}
       reviewSnapshot={reviewSnapshot}
     />
   )
+}
+
+function clampStep(n: number): 1 | 2 | 3 {
+  if (n <= 1) return 1
+  if (n === 2) return 2
+  return 3
 }

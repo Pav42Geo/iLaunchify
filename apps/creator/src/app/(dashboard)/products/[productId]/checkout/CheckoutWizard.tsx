@@ -16,17 +16,17 @@ import { ArrowLeft, ArrowRight, Check, RefreshCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   WIZARD_STEPS,
+  LAST_STEP_INDEX,
   type CheckoutDraftState,
   type WizardStepIndex,
 } from './types'
 import { saveCheckoutDraft, discardCheckoutDraft } from './actions'
 import { ReviewStep } from './steps/ReviewStep'
 import { ProductionStep } from './steps/ProductionStep'
-import { SubscriptionStep } from './steps/SubscriptionStep'
-import { FulfillmentStep } from './steps/FulfillmentStep'
-import { AccessoriesStep } from './steps/AccessoriesStep'
-import { ViralStep } from './steps/ViralStep'
-import { CartStep } from './steps/CartStep'
+// R8.a · CheckoutStep is the merged Fulfillment + Cart for the new
+// final step. R8.d will fill in the full Amazon-style merge; for now
+// the existing CartStep stands in.
+import { CartStep as CheckoutStep } from './steps/CartStep'
 import { OrderSummary } from './OrderSummary'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
@@ -95,7 +95,7 @@ export function CheckoutWizard({
   }
 
   function goNext() {
-    const next = Math.min(7, currentStep + 1) as WizardStepIndex
+    const next = Math.min(LAST_STEP_INDEX, currentStep + 1) as WizardStepIndex
     const nextCompleted = completedSteps.includes(currentStep)
       ? completedSteps
       : [...completedSteps, currentStep].sort((a, b) => a - b)
@@ -168,78 +168,85 @@ export function CheckoutWizard({
         </div>
       )}
 
-      {/* Top bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-ink-200 bg-white px-6 py-3">
-        <div className="flex items-center gap-3">
+      {/* Sticky checkout header — brand + product on the left, stepper
+          centered, save-state on the right. Replaces the older two-row
+          stack so the body owns more of the viewport. */}
+      <header className="sticky top-0 z-20 border-b border-ink-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
           <Link
             href={`/products/${productId}`}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-ink-600 hover:bg-ink-100"
+            className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm text-ink-600 hover:bg-ink-100"
           >
             <X className="h-3.5 w-3.5" />
             Cancel
           </Link>
-          <div className="ml-2 border-l border-ink-200 pl-3">
-            <div className="text-xs text-ink-500">{brandName}</div>
-            <div className="text-sm font-medium text-ink-900">{productName}</div>
+          <div className="min-w-0 flex-shrink-0 border-l border-ink-200 pl-3">
+            <div className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+              {brandName}
+            </div>
+            <div className="truncate text-sm font-medium text-ink-900">
+              {productName}
+            </div>
+          </div>
+
+          {/* In-header stepper. With 3 steps we have room to anchor it
+              in the middle of the chrome row rather than below it. */}
+          <ol
+            aria-label="Checkout progress"
+            className="hidden flex-1 items-center justify-center gap-1.5 md:flex"
+          >
+            {WIZARD_STEPS.map((step, i) => {
+              const isCurrent = step.index === currentStep
+              const isComplete = completedSteps.includes(step.index)
+              const isClickable = isComplete || step.index <= currentStep
+              return (
+                <li key={step.key} className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => jumpTo(step.index)}
+                    disabled={!isClickable}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={
+                      'inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors ' +
+                      (isCurrent
+                        ? 'bg-pink-50 text-pink-700'
+                        : isClickable
+                          ? 'text-ink-700 hover:bg-ink-100'
+                          : 'cursor-not-allowed text-ink-400')
+                    }
+                  >
+                    <span
+                      className={
+                        'inline-flex h-5 w-5 items-center justify-center rounded-full text-[10.5px] font-semibold ' +
+                        (isCurrent
+                          ? 'bg-pink-500 text-white'
+                          : isComplete
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-ink-100 text-ink-500')
+                      }
+                    >
+                      {isComplete ? <Check className="h-3 w-3" /> : step.index}
+                    </span>
+                    {step.label}
+                  </button>
+                  {i < WIZARD_STEPS.length - 1 && (
+                    <span className="h-px w-6 bg-ink-200" aria-hidden="true" />
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+
+          {/* Mobile fallback — show current/total instead of all chips. */}
+          <div className="flex flex-1 justify-center text-[12px] text-ink-500 md:hidden">
+            Step {currentStep} of {LAST_STEP_INDEX}
+          </div>
+
+          <div className="flex-shrink-0 text-[11.5px] text-ink-500">
+            {isSaving ? 'Saving…' : hadExistingDraft ? 'Draft restored' : 'New checkout'}
           </div>
         </div>
-
-        <div className="text-xs text-ink-500">
-          {isSaving ? 'Saving…' : hadExistingDraft ? 'Draft restored' : 'New checkout'}
-        </div>
       </header>
-
-      {/* Stepper */}
-      <div className="border-b border-ink-200 bg-white px-6 py-4">
-        <ol className="mx-auto flex max-w-6xl items-center gap-2">
-          {WIZARD_STEPS.map((step, i) => {
-            const isCurrent = step.index === currentStep
-            const isComplete = completedSteps.includes(step.index)
-            const isClickable = isComplete || step.index <= currentStep
-            return (
-              <li key={step.key} className="flex flex-1 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => jumpTo(step.index)}
-                  disabled={!isClickable}
-                  className={
-                    'group flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors ' +
-                    (isCurrent
-                      ? 'bg-pink-50'
-                      : isClickable
-                        ? 'hover:bg-ink-50'
-                        : 'opacity-50')
-                  }
-                >
-                  <span
-                    className={
-                      'inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ' +
-                      (isCurrent
-                        ? 'bg-pink-500 text-white'
-                        : isComplete
-                          ? 'bg-ink-900 text-white'
-                          : 'bg-ink-100 text-ink-500')
-                    }
-                  >
-                    {isComplete ? <Check className="h-3 w-3" /> : step.index}
-                  </span>
-                  <span
-                    className={
-                      'min-w-0 truncate text-[12.5px] font-medium ' +
-                      (isCurrent ? 'text-pink-700' : 'text-ink-700')
-                    }
-                  >
-                    {step.label}
-                  </span>
-                </button>
-                {i < WIZARD_STEPS.length - 1 && (
-                  <span className="h-px w-3 flex-shrink-0 bg-ink-200" />
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </div>
 
       {/* Body */}
       <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1fr,360px]">
@@ -262,34 +269,10 @@ export function CheckoutWizard({
             />
           )}
           {currentStep === 3 && (
-            <SubscriptionStep
-              state={state.subscription}
-              onChange={(patch) => patchState('subscription', patch)}
-            />
-          )}
-          {currentStep === 4 && (
-            <FulfillmentStep
-              productId={productId}
-              state={state.fulfillment}
-              onChange={(patch) => patchState('fulfillment', patch)}
-              quantity={state.production.quantity ?? 0}
-              onShippingEstimate={setShipping}
-            />
-          )}
-          {currentStep === 5 && (
-            <AccessoriesStep
-              state={state.accessories}
-              onChange={(patch) => patchState('accessories', patch)}
-            />
-          )}
-          {currentStep === 6 && (
-            <ViralStep
-              state={state.viral}
-              onChange={(patch) => patchState('viral', patch)}
-            />
-          )}
-          {currentStep === 7 && (
-            <CartStep
+            // R8.a — last step. R8.d will swap this for a merged
+            // Fulfillment + Cart Amazon-style layout; for now CartStep
+            // (aliased above) stands in.
+            <CheckoutStep
               productId={productId}
               state={state.cart}
               draft={state}
@@ -321,11 +304,11 @@ export function CheckoutWizard({
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Back
               </button>
-              {currentStep < 7 ? (
+              {currentStep < LAST_STEP_INDEX ? (
                 <div className="flex items-center gap-2">
                   {currentStep === 1 && !reviewAcksComplete && (
                     <span className="text-[11px] text-ink-500">
-                      Tick all three boxes to continue
+                      Approve the design to continue
                     </span>
                   )}
                   <button
@@ -334,21 +317,24 @@ export function CheckoutWizard({
                     disabled={isNextDisabled}
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-black disabled:opacity-40"
                   >
-                    Next
+                    {currentStep === 1 ? 'Continue to production' : 'Continue to checkout'}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ) : (
-                <span className="rounded-full bg-ink-100 px-4 py-2 text-xs font-medium text-ink-500">
-                  Payment ships in G5
+                // Step 3 owns its own Place-order CTA (CheckoutStep
+                // renders the Stripe button). No wizard-level next here.
+                <span className="text-[11px] text-ink-500">
+                  Use the Place order button below
                 </span>
               )}
             </div>
           </div>
         </section>
 
-        {/* Sticky right rail */}
-        <aside className="lg:sticky lg:top-[136px] lg:self-start">
+        {/* Sticky right rail — top offset matches the single-row
+            checkout header height (R8.a). */}
+        <aside className="lg:sticky lg:top-[80px] lg:self-start">
           <OrderSummary state={state} estimate={estimate} shipping={shipping} />
         </aside>
       </main>
