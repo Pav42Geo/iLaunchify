@@ -100,6 +100,7 @@ export default async function MarketplacePage({
         brands={brands}
         activeBrandId={activeBrandId}
         hasUnreadNotifications={false}
+        activeNiche={niche}
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">

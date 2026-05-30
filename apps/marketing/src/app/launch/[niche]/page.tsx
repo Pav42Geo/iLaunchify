@@ -27,7 +27,7 @@ export default async function NicheLandingPage({
 
   return (
     <>
-      <MarketplaceHeader />
+      <MarketplaceHeader activeNiche={niche.slug} />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         <div className="text-[13px] text-ink-500 mb-4">

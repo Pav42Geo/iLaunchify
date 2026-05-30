@@ -28,6 +28,7 @@ import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { creatorUrl } from '@/lib/app-urls'
+import { NICHES } from '@/lib/niches'
 
 export interface MarketplaceHeaderProps {
   /** When omitted/null, the header renders the guest variant. */
@@ -38,6 +39,15 @@ export interface MarketplaceHeaderProps {
   brands?: Brand[]
   /** Currently-active brand id (must match one of `brands[*].id`). */
   activeBrandId?: string
+  /**
+   * Slug of the niche the visitor is currently in — drives the pink
+   * underline on the subnav tab. Pass from the consuming page:
+   *   - /launch/[niche]       → params.niche
+   *   - /marketplace?niche=X  → searchParams.niche
+   * Anywhere else (browse landing, category, template detail) leave
+   * undefined so no tab is highlighted.
+   */
+  activeNiche?: string
 }
 
 export function MarketplaceHeader({
@@ -45,6 +55,7 @@ export function MarketplaceHeader({
   hasUnreadNotifications = false,
   brands = [],
   activeBrandId,
+  activeNiche,
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
 
@@ -87,33 +98,26 @@ export function MarketplaceHeader({
       }
       subnav={
         <AppHeaderSubnavStrip>
-          {NICHES.map((n) => (
-            <Link
-              key={n.slug}
-              href={`/launch/${n.slug}`}
-              className={
-                'whitespace-nowrap border-b-2 px-3 py-[11px] text-[13px] font-medium transition-colors ' +
-                (n.active
-                  ? 'border-pink-500 font-semibold text-pink-700'
-                  : 'border-transparent text-ink-600 hover:text-ink-900')
-              }
-            >
-              {n.name}
-            </Link>
-          ))}
+          {NICHES.map((n) => {
+            const isActive = activeNiche === n.slug
+            return (
+              <Link
+                key={n.slug}
+                href={`/launch/${n.slug}`}
+                aria-current={isActive ? 'page' : undefined}
+                className={
+                  'whitespace-nowrap border-b-2 px-3 py-[11px] text-[13px] font-medium transition-colors ' +
+                  (isActive
+                    ? 'border-pink-500 font-semibold text-pink-700'
+                    : 'border-transparent text-ink-600 hover:text-ink-900')
+                }
+              >
+                {n.name}
+              </Link>
+            )
+          })}
         </AppHeaderSubnavStrip>
       }
     />
   )
 }
-
-const NICHES = [
-  { slug: 'energy-performance', name: 'Energy & Performance', active: true },
-  { slug: 'wellness', name: 'Wellness & Holistic Health', active: false },
-  { slug: 'beauty', name: 'Beauty & Self-Care', active: false },
-  { slug: 'healthy-lifestyle', name: 'Healthy Lifestyle', active: false },
-  { slug: 'gourmet', name: 'Gourmet & Culinary', active: false },
-  { slug: 'family-kids', name: 'Family & Kids', active: false },
-  { slug: 'pet-wellness', name: 'Pet Wellness', active: false },
-  { slug: 'social-lifestyle', name: 'Social & Lifestyle', active: false },
-]
