@@ -27,6 +27,7 @@ import {
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
+import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { creatorUrl } from '@/lib/app-urls'
 import { NICHES } from '@/lib/niches'
 
@@ -62,15 +63,10 @@ export function MarketplaceHeader({
   return (
     <AppHeader
       center={
-        <>
-          <button
-            type="button"
-            className="inline-flex flex-shrink-0 items-center gap-[7px] rounded-md bg-ink-100 px-3.5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-ink-200"
-          >
-            All Categories <span className="text-[11px] text-ink-500">▼</span>
-          </button>
-          <MarketplaceSearchBar />
-        </>
+        // The 'All Categories' button moved out of the header centre into
+        // the niche subnav (as a hamburger trigger that opens the mega
+        // menu). The centre slot now holds the search bar alone.
+        <MarketplaceSearchBar />
       }
       right={
         isGuest ? (
@@ -97,7 +93,11 @@ export function MarketplaceHeader({
         )
       }
       subnav={
+        // Hamburger mega-menu trigger sits flush-left, followed by the
+        // niche tab strip. Both share the same horizontal track inside
+        // AppHeaderSubnavStrip's scroll container.
         <AppHeaderSubnavStrip>
+          <CategoriesMegaMenu />
           {NICHES.map((n) => {
             const isActive = activeNiche === n.slug
             return (
