@@ -9,6 +9,11 @@ import { listEntityHistory } from '@ilaunchify/audit'
 import { AccountTierEditor } from '../../AccountTierEditor'
 import { PARTNER_TIER_STYLE, tierPillStyle } from '../../tier-style'
 import { changePartnerTier, setPartnerFeeOverride } from '../../actions'
+// R16.c — decision-support card showing how close the partner is to the
+// next tier. Pure computation against today's schema; final promotion is
+// still a human call via the AccountTierEditor below.
+import { PromotionCriteriaCard } from '../../PromotionCriteriaCard'
+import { computePartnerPromotionCriteria } from '../../promotion-criteria'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +42,14 @@ export default async function PartnerTierEditPage({ params }: PageProps) {
   })
   if (!partner) notFound()
 
-  const history = await listEntityHistory('Partner', partner.id, 20)
+  const [history, promotionCriteria] = await Promise.all([
+    listEntityHistory('Partner', partner.id, 20),
+    computePartnerPromotionCriteria(
+      partner.id,
+      partner.tier,
+      partner.tierChangedAt,
+    ),
+  ])
   const palette = PARTNER_TIER_STYLE[partner.tier]
   const tierPending = partner.tier === 'VERIFIED' && partner.status !== 'ACTIVE'
   const serviceLabels = partner.services
@@ -91,6 +103,8 @@ export default async function PartnerTierEditPage({ params }: PageProps) {
           verification clears.
         </div>
       )}
+
+      <PromotionCriteriaCard result={promotionCriteria} />
 
       <AccountTierEditor
         audience="PARTNER"
