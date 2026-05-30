@@ -74,11 +74,8 @@ export default async function CategoryPage({
       <MarketplaceHeader />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">
+        {/* No Home crumb — Marketplace is the root for this funnel. */}
         <div className="text-[13px] text-ink-500 md:col-span-2">
-          <Link href="/" className="hover:text-ink-900">
-            Home
-          </Link>{' '}
-          ›{' '}
           <Link href="/marketplace" className="hover:text-ink-900">
             Marketplace
           </Link>{' '}

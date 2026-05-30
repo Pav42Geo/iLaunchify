@@ -30,11 +30,8 @@ export default async function NicheLandingPage({
       <MarketplaceHeader activeNiche={niche.slug} />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
+        {/* No Home crumb — Marketplace is the root for this funnel. */}
         <div className="text-[13px] text-ink-500 mb-4">
-          <Link href="/" className="hover:text-ink-900">
-            Home
-          </Link>{' '}
-          ›{' '}
           <Link href="/marketplace" className="hover:text-ink-900">
             Marketplace
           </Link>{' '}

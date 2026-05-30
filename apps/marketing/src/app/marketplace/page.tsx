@@ -104,11 +104,9 @@ export default async function MarketplacePage({
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">
+        {/* Marketplace is its own root — no Home crumb so visitors stay in the shop. */}
         <div className="text-[13px] text-ink-500 md:col-span-2">
-          <Link href="/" className="hover:text-ink-900">
-            Home
-          </Link>{' '}
-          › <span>Marketplace</span>
+          <span className="font-medium text-ink-900">Marketplace</span>
         </div>
 
         <MarketplaceFilters />

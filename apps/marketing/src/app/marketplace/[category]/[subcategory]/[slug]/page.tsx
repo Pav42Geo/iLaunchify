@@ -252,11 +252,8 @@ function Breadcrumb({
   title: string
 }) {
   return (
+    // No Home crumb — Marketplace is the root for this funnel.
     <div className="text-[13px] text-ink-500 mb-4">
-      <Link href="/" className="hover:text-ink-900">
-        Home
-      </Link>{' '}
-      ›{' '}
       <Link href="/marketplace" className="hover:text-ink-900">
         Marketplace
       </Link>{' '}
