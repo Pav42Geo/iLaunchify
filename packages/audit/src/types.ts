@@ -33,6 +33,8 @@ export const AUDIT_ENTITY_TYPES = [
   'SubscriptionPlan',
   'PlanFeature',
   'FeeRule',
+  // G6.b — recurring production subscriptions
+  'ProductionSubscription',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -96,6 +98,10 @@ export const AUDIT_ACTIONS = [
   'PLAN_UPDATE',
   'PLAN_FEATURE_UPDATE',
   'FEE_RULE_UPDATE',
+  // G6 — recurring production subscriptions
+  'PRODUCTION_SUBSCRIPTION_CREATED',
+  'PRODUCTION_SUBSCRIPTION_CANCELLED',
+  'PRODUCTION_SUBSCRIPTION_CYCLE',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

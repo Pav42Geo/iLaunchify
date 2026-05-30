@@ -60,10 +60,19 @@ export interface ProductionState {
 }
 
 export interface SubscriptionState {
-  // G6 V1 stub — just whether the upsell card was seen.
+  // Did the creator see the Step 3 offer card? Quality signal for analytics.
   seenOffer: boolean
-  // Did the creator click "Subscribe & save" from the wizard? In V1 this
-  // lands them on a waitlist; V1.5 hooks Stripe Subscription.
+  // G6.b — Subscribe & save acceptance. When true, placeOrderFromCheckoutDraft
+  // also creates a ProductionSubscription + Stripe Subscription alongside
+  // the day-1 Order. cadence + runCount are required when true.
+  offerAccepted: boolean
+  cadence: 'MONTHLY' | 'QUARTERLY' | null
+  // null = open-ended (cancel anytime). Otherwise stop after N cycles.
+  runCount: number | null
+  // Discount basis-points the creator locked in (e.g. 1000 = 10% off
+  // every recurring run). Pulled from the offered card at accept time.
+  discountBp: number
+  // Legacy V1 stub field kept for back-compat with older drafts.
   joinedWaitlist?: boolean
 }
 
@@ -159,7 +168,13 @@ export function emptyDraftState(): CheckoutDraftState {
       packagingMaterialSlug: null,
       finishPartnerFinishIds: [],
     },
-    subscription: { seenOffer: false },
+    subscription: {
+      seenOffer: false,
+      offerAccepted: false,
+      cadence: null,
+      runCount: null,
+      discountBp: 0,
+    },
     fulfillment: {
       shipToType: null,
       warehousePartnerServiceId: null,

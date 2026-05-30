@@ -20,7 +20,11 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { findRouting, estimateDispatchCosts } from '@ilaunchify/orders'
-import { createCheckoutSession } from '@ilaunchify/payments'
+import {
+  createCheckoutSession,
+  createProductionSubscription,
+  getOrCreateCreatorCustomer,
+} from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { CheckoutDraftState } from './types'
 
@@ -281,6 +285,110 @@ export async function placeOrderFromCheckoutDraft(
       surface: 'checkout-wizard',
     },
   })
+
+  // --- 11.b G6.b — create the recurring ProductionSubscription if the ----
+  //          creator accepted Subscribe & save at Step 3. Fails soft:
+  //          if Stripe Subscription creation throws, we keep the day-1
+  //          Order intact (the creator still pays for that one-time
+  //          run) and surface the subscription error in internalNotes.
+  //          The creator can resubscribe later from their dashboard.
+  const sub = state.subscription
+  if (sub.offerAccepted && sub.cadence) {
+    const discountBp = Math.max(0, Math.min(10_000, sub.discountBp))
+    const perRunUnitCents = Math.max(
+      0,
+      Math.round(totalCents * (10_000 - discountBp) / 10_000),
+    )
+    try {
+      const customerId = await getOrCreateCreatorCustomer({
+        userId: user.id,
+        email: user.email,
+        name: user.name ?? null,
+      })
+
+      const created = await prisma.productionSubscription.create({
+        data: {
+          creatorUserId: user.id,
+          brandId: product.brandId,
+          productId: product.id,
+          designVersionId: lockedDesignVersionId,
+          cadence: sub.cadence,
+          totalRuns: sub.runCount,
+          discountBp,
+          // Filled in below after Stripe call; using temp placeholders that
+          // we overwrite in the second update so the row exists for the
+          // logAudit FK before we hit Stripe.
+          stripeSubscriptionId: `pending_${order.id}`,
+          stripePriceId: `pending_${order.id}`,
+          status: 'ACTIVE',
+          manifestSnapshot: {
+            quantity: qty,
+            substrateSlug: state.production.substrateSlug,
+            packagingMaterialSlug: state.production.packagingMaterialSlug,
+            finishPartnerFinishIds: state.production.finishPartnerFinishIds,
+            shipTo: shipTo.data,
+          } as unknown as object,
+          subtotalCentsAtCreation: totalCents,
+        },
+      })
+
+      const stripeResult = await createProductionSubscription({
+        customerId,
+        productName: product.name,
+        brandId: product.brandId,
+        brandName: product.brand.name,
+        productId: product.id,
+        cadence: sub.cadence,
+        perRunUnitAmountCents: perRunUnitCents,
+        totalRuns: sub.runCount,
+        productionSubscriptionId: created.id,
+      })
+
+      await prisma.productionSubscription.update({
+        where: { id: created.id },
+        data: {
+          stripeSubscriptionId: stripeResult.stripeSubscriptionId,
+          stripePriceId: stripeResult.stripePriceId,
+          nextRunAt: new Date(stripeResult.firstInvoiceAt * 1000),
+        },
+      })
+
+      await logAuditAs(user, {
+        entityType: 'ProductionSubscription',
+        entityId: created.id,
+        action: 'PRODUCTION_SUBSCRIPTION_CREATED',
+        toValue: 'ACTIVE',
+        payload: {
+          orderId: order.id,
+          productId: product.id,
+          cadence: sub.cadence,
+          totalRuns: sub.runCount,
+          discountBp,
+          perRunUnitAmountCents: perRunUnitCents,
+        },
+      })
+    } catch (err) {
+      // Don't fail the whole checkout — the creator already designed,
+      // priced, and clicked Pay. Note the failure on the Order so support
+      // can offer to recreate the subscription manually.
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          internalNotes: `${internalNotes}\n\nG6 subscription create failed (day-1 order intact): ${(err as Error).message}`,
+        },
+      })
+      // And clean up the placeholder row so an admin doesn't see a
+      // permanently-pending subscription with no Stripe handle.
+      await prisma.productionSubscription
+        .deleteMany({
+          where: {
+            creatorUserId: user.id,
+            stripeSubscriptionId: `pending_${order.id}`,
+          },
+        })
+        .catch(() => {/* ignore */})
+    }
+  }
 
   // --- 12. Stripe Checkout Session ------------------------------------------
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

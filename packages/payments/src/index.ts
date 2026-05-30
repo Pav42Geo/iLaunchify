@@ -17,3 +17,14 @@ export {
   APPLICATION_FEE_FLOOR_CENTS,
   computeApplicationFee,
 } from './fees'
+// Phase G6.b — production-run subscription helpers.
+export {
+  getOrCreateCreatorCustomer,
+  createProductionSubscription,
+  cancelProductionSubscription,
+} from './subscriptions'
+export type {
+  ProductionCadence,
+  CreateProductionSubscriptionInput,
+  CreateProductionSubscriptionResult,
+} from './subscriptions'

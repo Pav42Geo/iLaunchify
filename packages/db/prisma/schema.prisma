@@ -442,9 +442,14 @@ model User {
   name                String?
   image               String?
   role                UserRole
-  // Stripe Connect
+  // Stripe Connect (used for partner payouts — partners only)
   stripeAccountId     String?          @unique
   stripeAccountStatus StripeAccountStatus @default(NONE)
+  // Phase G6 — Stripe Customer for billing recurring production-run
+  // subscriptions (creators only). Resolved on-demand by
+  // createProductionSubscription() and cached here for reuse on
+  // subsequent subscribe-and-save flows.
+  stripeCustomerId    String?          @unique
   // Auth.js v5 standard
   accounts            Account[]
   sessions            Session[]
