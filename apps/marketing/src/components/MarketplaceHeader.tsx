@@ -109,7 +109,10 @@ export function MarketplaceHeader({
                   'whitespace-nowrap border-b-2 px-3 py-[11px] text-[13px] font-medium transition-colors ' +
                   (isActive
                     ? 'border-pink-500 font-semibold text-pink-700'
-                    : 'border-transparent text-ink-600 hover:text-ink-900')
+                    : // Hover: lighter pink underline so it's clearly a "click
+                      // to activate" affordance without competing with the
+                      // pink-500 underline used for the truly active tab.
+                      'border-transparent text-ink-600 hover:border-pink-300 hover:text-pink-700')
                 }
               >
                 {n.name}
