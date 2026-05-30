@@ -279,11 +279,12 @@ function DetailGallery({ template, certs = [] }: DetailGalleryProps) {
   const thumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
   return (
     // REBUILD R3.1 — sticky inside col 1. As the page scrolls the
-    // gallery stays pinned at the viewport's top-24 until the parent
-    // hero section ends (then it releases naturally with col 2 / col 3
-    // content). Self-start keeps the column from stretching to match
-    // the taller middle column.
-    <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
+    // gallery stays pinned below the sticky AppHeader (top bar +
+    // niche subnav ≈ 108px) with a little breathing room above the
+    // image, until the parent hero section ends and the column
+    // releases naturally. Self-start keeps col 1 from stretching to
+    // match the taller middle column.
+    <div className="lg:sticky lg:top-32 lg:self-start space-y-4">
       <div className="flex gap-3">
         {/* Vertical thumbnail strip on the LEFT */}
         <div className="flex flex-col gap-2 flex-shrink-0">
