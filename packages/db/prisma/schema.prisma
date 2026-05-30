@@ -477,6 +477,8 @@ model User {
   // (not CreatorProfile) so partner users can have shipping addresses
   // for sample requests later without a schema change.
   creatorSavedAddresses CreatorSavedAddress[]          @relation("CreatorSavedAddresses")
+  // Phase G6 — Subscribe & save recurring production runs.
+  productionSubscriptions ProductionSubscription[]    @relation("CreatorProductionSubscriptions")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -833,6 +835,8 @@ model Brand {
   templates               Template[]
   designs                 Design[]
   orders                  Order[]
+  // Phase G6 — Subscribe & save recurring production runs.
+  productionSubscriptions ProductionSubscription[]
   operatingRegion         Region?        @relation("BrandOperatingRegion", fields: [operatingRegionId], references: [id])
   targetMarkets           BrandTargetMarket[]
   onboardingState         CreatorOnboardingProgress?
@@ -1007,6 +1011,8 @@ model Product {
   channelLinks    ChannelProductLink[]
   // Phase G1 — in-progress checkout drafts
   checkoutDrafts  CheckoutDraft[]
+  // Phase G6 — Subscribe & save recurring production runs.
+  productionSubscriptions ProductionSubscription[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -1594,6 +1600,89 @@ model CheckoutDraft {
   @@index([creatorUserId, updatedAt(sort: Desc)])
 }
 
+// =============================================================================
+// Phase G6 — Production Subscriptions
+// =============================================================================
+//
+// When a creator accepts the Subscribe & save offer at checkout Step 3, we
+// create a ProductionSubscription that owns the recurring cadence: every
+// MONTHLY or QUARTERLY cycle, Stripe fires `invoice.payment_succeeded` and
+// our webhook spawns a new Order using the locked manifestSnapshot below.
+//
+// The first Order on signup still flows through the normal one-time
+// placeOrderFromCheckoutDraft path — the subscription only governs the
+// SECOND order onwards. That keeps day-1 UX identical and avoids a
+// double-charge if the recurring schedule fires too early.
+//
+// manifestSnapshot is the frozen production picks (quantity / substrate /
+// packagingMaterial / finishes / shipTo) — when the cycle generates an
+// Order, we read this snapshot, NOT the latest CheckoutDraft. If the
+// creator wants to change the recurring spec they cancel + re-subscribe.
+// That gives partners the guarantee that the manifest they accepted
+// originally is what they'll see every cycle.
+//
+// stripeSubscriptionId is the canonical Stripe ID — used for cancel,
+// update, and webhook routing. stripePriceId is the snapshot of the
+// Stripe Price the subscription bills against (the discount is baked
+// into that Price at creation time).
+
+model ProductionSubscription {
+  id              String                       @id @default(cuid())
+  creatorUserId   String
+  brandId         String
+  productId       String
+  // Locked at subscription creation. Spawned Orders reference this — if
+  // the design changes later we keep producing the version the
+  // partners accepted.
+  designVersionId String?
+  cadence         SubscriptionCadence
+  // null = open-ended (cancels on explicit cancel). Otherwise the
+  // schedule stops after runsCompleted hits totalRuns.
+  totalRuns       Int?
+  runsCompleted   Int                          @default(0)
+  // When the next Stripe invoice will fire — kept in our DB for the
+  // /account/subscriptions surface so we don't round-trip Stripe.
+  nextRunAt       DateTime?
+  // Basis points off the per-run subtotal. 1000 = 10%.
+  discountBp      Int                          @default(0)
+  // Stripe handles
+  stripeSubscriptionId String                  @unique
+  stripePriceId        String
+  // FSM
+  status          ProductionSubscriptionStatus @default(ACTIVE)
+  cancelledAt     DateTime?
+  cancelledReason String?
+  // The frozen production picks (typed in apps/creator wizard).
+  // Shape: { quantity, substrateSlug, packagingMaterialSlug,
+  //          finishPartnerFinishIds[], shipTo: {...} }
+  manifestSnapshot Json
+  // Reference subtotal at sign-up — useful for "you locked in $X / run".
+  subtotalCentsAtCreation Int
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+  // Relations
+  creator         User                         @relation("CreatorProductionSubscriptions", fields: [creatorUserId], references: [id])
+  brand           Brand                        @relation(fields: [brandId], references: [id])
+  product         Product                      @relation(fields: [productId], references: [id])
+  // Orders the subscription has spawned. Each cycle creates one.
+  orders          Order[]                      @relation("OrdersFromSubscription")
+
+  @@index([creatorUserId, status])
+  @@index([nextRunAt])
+}
+
+enum SubscriptionCadence {
+  MONTHLY
+  QUARTERLY
+}
+
+enum ProductionSubscriptionStatus {
+  ACTIVE       // recurring; next cycle will fire
+  PAUSED       // creator paused; no charges until resumed (V1.5)
+  CANCELLED    // creator cancelled or Stripe ended billing
+  COMPLETED    // hit totalRuns without cancel
+}
+
 model Order {
   id                     String         @id @default(cuid())
   brandId                String                                // which brand this batch is produced under
@@ -1626,12 +1715,20 @@ model Order {
   // creator's "what's happening" banner + holds Order.status at ROUTING
   // until FULLY_ACCEPTED.
   aggregateApprovalStatus AggregateApprovalStatus @default(AWAITING_PARTNERS)
+  // Phase G6 — when this Order was spawned by a recurring subscription
+  // cycle, link back to the parent. Null for ordinary one-time orders.
+  // The cycle index (which run #N this is) is computed at spawn time
+  // and stored separately so the customer-facing surfaces can show
+  // "Run 3 of 12" without re-counting siblings.
+  productionSubscriptionId String?
+  subscriptionCycleNumber  Int?
   // Notes
   internalNotes          String?
   // Relations
   brand                  Brand          @relation(fields: [brandId], references: [id])
   creator                User           @relation("CreatorOrders", fields: [creatorUserId], references: [id])
   shipToPartnerService   PartnerService? @relation("WarehouseShipToOrders", fields: [shipToPartnerServiceId], references: [id])
+  productionSubscription ProductionSubscription? @relation("OrdersFromSubscription", fields: [productionSubscriptionId], references: [id])
   items                  OrderItem[]
   dispatches             OrderDispatch[]
   charge                 Charge?
