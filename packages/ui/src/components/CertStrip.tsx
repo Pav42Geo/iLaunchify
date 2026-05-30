@@ -119,7 +119,7 @@ function CertBadge({
       >
         <span
           className={cn(
-            'w-10 h-10 rounded-full bg-white border border-ink-200 flex items-center justify-center text-xl',
+            'w-12 h-12 rounded-full bg-white border border-ink-200 flex items-center justify-center text-[28px] leading-none',
             !unconditional && 'border-dashed',
           )}
           aria-hidden="true"

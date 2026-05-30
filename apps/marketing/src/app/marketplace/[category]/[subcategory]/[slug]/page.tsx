@@ -81,9 +81,12 @@ export default async function ProductDetailPage({
   const detail = findTemplateDetail(template.slug)
   const related = row.templates.filter((t) => t.slug !== slug).slice(0, 4)
 
+  // Per Pavel: only surface a qualifier line for organic certs. The
+  // generic 'Independent verification' label was noise — let the cert
+  // name speak for itself.
   const certs = (template.tags ?? []).map((tag) => ({
     name: tag.label,
-    qualifier: tag.organic ? 'Certified Organic' : 'Independent verification',
+    qualifier: tag.organic ? 'Certified Organic' : undefined,
     icon: certIconForLabel(tag.label),
     unconditional: tag.organic ?? false,
   }))
@@ -161,7 +164,7 @@ export default async function ProductDetailPage({
       {/* CUSTOMIZATION + MATERIAL/PROPERTIES BENTO */}
       <section className="max-w-[1400px] mx-auto px-6 mb-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="bg-cream border border-ink-200 rounded-xl p-7">
+          <div className="bg-white border border-ink-200 rounded-xl p-7">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
               Customization options
             </div>
@@ -170,7 +173,7 @@ export default async function ProductDetailPage({
               {detail.customizationDescription}
             </p>
           </div>
-          <div className="bg-cream border border-ink-200 rounded-xl p-7">
+          <div className="bg-white border border-ink-200 rounded-xl p-7">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
               Material &amp; performance
             </div>
@@ -345,7 +348,7 @@ function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDeta
       </div>
 
       <aside>
-        <div className="border border-ink-200 rounded-lg p-5 bg-cream">
+        <div className="border border-ink-200 rounded-lg p-5 bg-white">
           <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
             Size chart
           </div>
