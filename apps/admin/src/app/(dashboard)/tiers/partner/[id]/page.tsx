@@ -8,7 +8,6 @@ import { requireRole } from '@ilaunchify/auth'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { AccountTierEditor } from '../../AccountTierEditor'
 import { PARTNER_TIER_STYLE, tierPillStyle } from '../../tier-style'
-import { changePartnerTier, setPartnerFeeOverride } from '../../actions'
 // R16.c — decision-support card showing how close the partner is to the
 // next tier. Pure computation against today's schema; final promotion is
 // still a human call via the AccountTierEditor below.
@@ -108,23 +107,10 @@ export default async function PartnerTierEditPage({ params }: PageProps) {
 
       <AccountTierEditor
         audience="PARTNER"
+        entityId={partner.id}
         currentTier={partner.tier}
         currentFeeOverrideBp={partner.feeRateOverrideBp}
         currentFeeOverrideReason={partner.feeRateOverrideReason}
-        onChangeTier={async (newTier, reason) =>
-          changePartnerTier({
-            partnerId: partner.id,
-            newTier: newTier as 'VERIFIED' | 'TRUSTED' | 'PREMIER',
-            reason,
-          })
-        }
-        onSaveOverride={async (overrideBp, reason) =>
-          setPartnerFeeOverride({
-            partnerId: partner.id,
-            overrideBp,
-            reason,
-          })
-        }
         backHref="/tiers?tab=partners"
       />
 

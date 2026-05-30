@@ -8,7 +8,6 @@ import { requireRole } from '@ilaunchify/auth'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { AccountTierEditor } from '../../AccountTierEditor'
 import { CREATOR_TIER_STYLE, tierPillStyle } from '../../tier-style'
-import { changeCreatorTier, setCreatorFeeOverride } from '../../actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,23 +67,10 @@ export default async function CreatorTierEditPage({ params }: PageProps) {
 
       <AccountTierEditor
         audience="CREATOR"
+        entityId={profile.id}
         currentTier={profile.subscriptionTier}
         currentFeeOverrideBp={profile.feeRateOverrideBp}
         currentFeeOverrideReason={profile.feeRateOverrideReason}
-        onChangeTier={async (newTier, reason) =>
-          changeCreatorTier({
-            creatorProfileId: profile.id,
-            newTier: newTier as 'MAKER' | 'BUILDER' | 'AGENCY',
-            reason,
-          })
-        }
-        onSaveOverride={async (overrideBp, reason) =>
-          setCreatorFeeOverride({
-            creatorProfileId: profile.id,
-            overrideBp,
-            reason,
-          })
-        }
         backHref="/tiers"
       />
 

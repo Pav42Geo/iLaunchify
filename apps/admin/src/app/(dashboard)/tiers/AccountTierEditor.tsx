@@ -1,13 +1,16 @@
 'use client'
 
-// REBUILD R15.d — reusable per-account tier + fee-override edit form.
+// REBUILD R15.d + R16.c-fix — reusable per-account tier + fee-override
+// edit form.
 //
-// Used by both /tiers/creator/[id] and /tiers/partner/[id]. The two
-// surfaces wrap this component with their respective server actions so
-// the form doesn't have to know whether it's editing a creator or partner.
-//
-// All writes flow through the parent's server action; this component
-// only owns local form state.
+// Used by both /tiers/creator/[id] and /tiers/partner/[id]. R15.d
+// shipped this with `onChangeTier` / `onSaveOverride` closure props,
+// but Next 15 rejects non-action functions across the server→client
+// boundary (the closures themselves aren't `'use server'` marked even
+// though they wrap server actions). The fix: import the four server
+// actions directly here and branch on `audience` + `entityId`. Server
+// actions can be imported from a client component because actions.ts
+// is `'use server'` — Next stubs them as RPC calls.
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -19,16 +22,20 @@ import {
   tierPillStyle,
   type TierPalette,
 } from './tier-style'
-
-type Result = { ok: true } | { ok: false; error: string }
+import {
+  changeCreatorTier,
+  changePartnerTier,
+  setCreatorFeeOverride,
+  setPartnerFeeOverride,
+} from './actions'
 
 interface Props {
   audience: 'CREATOR' | 'PARTNER'
+  /** CreatorProfile.id when audience='CREATOR'; Partner.id otherwise. */
+  entityId: string
   currentTier: string
   currentFeeOverrideBp: number | null
   currentFeeOverrideReason: string | null
-  onChangeTier: (newTier: string, reason: string) => Promise<Result>
-  onSaveOverride: (overrideBp: number | null, reason: string) => Promise<Result>
   /** Where to send the user after they finish (typically back to the list). */
   backHref?: string
 }
@@ -38,11 +45,10 @@ const PARTNER_TIERS = ['VERIFIED', 'TRUSTED', 'PREMIER'] as const
 
 export function AccountTierEditor({
   audience,
+  entityId,
   currentTier,
   currentFeeOverrideBp,
   currentFeeOverrideReason,
-  onChangeTier,
-  onSaveOverride,
   backHref,
 }: Props) {
   const router = useRouter()
@@ -73,7 +79,18 @@ export function AccountTierEditor({
       return
     }
     startTierSave(async () => {
-      const r = await onChangeTier(selectedTier, tierReason.trim())
+      const r =
+        audience === 'CREATOR'
+          ? await changeCreatorTier({
+              creatorProfileId: entityId,
+              newTier: selectedTier as 'MAKER' | 'BUILDER' | 'AGENCY',
+              reason: tierReason.trim(),
+            })
+          : await changePartnerTier({
+              partnerId: entityId,
+              newTier: selectedTier as 'VERIFIED' | 'TRUSTED' | 'PREMIER',
+              reason: tierReason.trim(),
+            })
       if (!r.ok) {
         toast.error(r.error)
         return
@@ -96,7 +113,18 @@ export function AccountTierEditor({
       return
     }
     startOverrideSave(async () => {
-      const r = await onSaveOverride(bp, overrideReason.trim())
+      const r =
+        audience === 'CREATOR'
+          ? await setCreatorFeeOverride({
+              creatorProfileId: entityId,
+              overrideBp: bp,
+              reason: overrideReason.trim(),
+            })
+          : await setPartnerFeeOverride({
+              partnerId: entityId,
+              overrideBp: bp,
+              reason: overrideReason.trim(),
+            })
       if (!r.ok) {
         toast.error(r.error)
         return
