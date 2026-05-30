@@ -6,7 +6,9 @@
 
 import { useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { startOrderAdjustment } from '../../products/[productId]/checkout/adjust-actions'
+// R12.a — checkout now lives in the (checkout) route group, not (dashboard).
+// The relative climb is the same for any sibling app route under (dashboard).
+import { startOrderAdjustment } from '../../../(checkout)/products/[productId]/checkout/adjust-actions'
 
 interface Props {
   productId: string

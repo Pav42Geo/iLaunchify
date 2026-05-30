@@ -1,14 +1,19 @@
-// REBUILD R6.1 — Creator products list, wide-card layout.
+// REBUILD R11 — Creator products list with status TABS + Resume Checkout chip.
 //
-// Pattern matches R10 /orders: one card per product instead of a
-// dense table row, grouped by status into bands. Each card has:
-//   - Cream header bar: status pill + brand + template + updated + PRD-id
-//   - Body: thumbnail + product name + variant subtitle + 4 meta chips
-//     (recipe state, certs/tags, MOQ/lead-time placeholder, last order)
-//   - Right rail: Open in Studio (primary) + Order this product (secondary)
+// Pavel's design decision (2026-05-30): products are durable creator assets,
+// not cart items, and they live on /products forever. We split them into four
+// workflow-aligned tabs and surface in-progress CheckoutDrafts as a "Resume
+// checkout" chip on the product card itself — not as a separate "Carts"
+// tab — so the cart stays attached to the asset that owns it.
 //
-// Replaces the partner-style sectioned table shipped in R6 — same data,
-// richer visual identity that scales past handful-of-products lists.
+// Tabs:
+//   in_progress (default) — DRAFT + IN_REVIEW + COMPLIANT, no active order
+//   in_production          — has an Order in production/transit states
+//   live                   — PUBLISHED or has a DELIVERED / COMPLETED order
+//   archived               — PAUSED / ARCHIVED products
+//
+// Tab is URL-driven (?tab=…) so tabs can be linked / bookmarked / refreshed
+// without losing state.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
@@ -26,11 +31,19 @@ import {
   Plus,
   MoreHorizontal,
   ShoppingBag,
+  ShoppingCart,
+  Factory,
+  Radio,
+  Archive,
 } from 'lucide-react'
 import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Products — iLaunchify' }
+
+// -----------------------------------------------------------------------------
+// Status palettes + tabs
+// -----------------------------------------------------------------------------
 
 type ProductStatus =
   | 'DRAFT'
@@ -69,8 +82,105 @@ const RECIPE_BADGE: Record<ComplianceOutcome | 'NONE', {
   FAILED: { label: 'Compliance failed', icon: CircleAlert, cls: 'text-pink-700' },
 }
 
-export default async function ProductsListPage() {
+type TabKey = 'in_progress' | 'in_production' | 'live' | 'archived'
+
+const TABS: Array<{
+  key: TabKey
+  label: string
+  icon: typeof Package
+  blurb: string
+  emptyCopy: string
+  emptyCta?: { href: string; label: string }
+}> = [
+  {
+    key: 'in_progress',
+    label: 'In progress',
+    icon: ShoppingCart,
+    blurb: 'Drafts, in-review, and ready-to-order products you’re still building.',
+    emptyCopy:
+      'Nothing in progress yet. Pick a template from the marketplace to start a new product.',
+    emptyCta: { href: marketingUrl('/marketplace'), label: 'Browse the marketplace' },
+  },
+  {
+    key: 'in_production',
+    label: 'In production',
+    icon: Factory,
+    blurb: 'Orders placed, partners producing, goods on the way back to you.',
+    emptyCopy:
+      'No active production runs. Once you place an order it shows up here with live status.',
+  },
+  {
+    key: 'live',
+    label: 'Live',
+    icon: Radio,
+    blurb: 'Delivered batches and products listed on at least one channel.',
+    emptyCopy:
+      'Nothing live yet. Delivered orders and channel-listed products will appear here.',
+  },
+  {
+    key: 'archived',
+    label: 'Archived',
+    icon: Archive,
+    blurb: 'Paused or retired products. Restore from a product page when you’re ready.',
+    emptyCopy: 'Nothing archived. Anything you pause or retire lands here.',
+  },
+]
+
+// -----------------------------------------------------------------------------
+// Order-state → bucket
+// -----------------------------------------------------------------------------
+
+// V1 categorisation. A product can have many orders; we look at the most
+// recent NON-cancelled / NON-refunded one to decide whether it belongs in
+// "In production" (mid-flight) or "Live" (delivered/completed). Cancelled /
+// refunded orders don't move the product out of "In progress" — the creator
+// can still go re-order.
+type OrderState = 'NONE' | 'ACTIVE' | 'DELIVERED'
+
+const IN_FLIGHT = new Set([
+  'PAID',
+  'ROUTING',
+  'IN_FULFILLMENT',
+  'READY_TO_SHIP',
+  'SHIPPED',
+  'IN_TRANSIT',
+  'ON_HOLD',
+  'DISPUTED',
+])
+const DONE = new Set(['DELIVERED', 'COMPLETED'])
+
+function deriveOrderState(statuses: string[]): OrderState {
+  for (const s of statuses) {
+    if (IN_FLIGHT.has(s)) return 'ACTIVE'
+  }
+  for (const s of statuses) {
+    if (DONE.has(s)) return 'DELIVERED'
+  }
+  return 'NONE'
+}
+
+function bucketProduct(r: Row): TabKey {
+  if (r.status === 'PAUSED' || r.status === 'ARCHIVED') return 'archived'
+  if (r.orderState === 'ACTIVE') return 'in_production'
+  if (r.orderState === 'DELIVERED' || r.status === 'PUBLISHED') return 'live'
+  return 'in_progress'
+}
+
+// -----------------------------------------------------------------------------
+// Page
+// -----------------------------------------------------------------------------
+
+export default async function ProductsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
   const user = await requireUser()
+  const sp = await searchParams
+  const activeTab: TabKey = TABS.some((t) => t.key === sp.tab)
+    ? (sp.tab as TabKey)
+    : 'in_progress'
+
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
     include: {
@@ -101,6 +211,24 @@ export default async function ProductsListPage() {
                   },
                 },
               },
+              // R11 — checkoutDrafts scoped to this creator only (the
+              // junction is also keyed by creatorUserId so the relation
+              // returns 0..1 row in practice). Drives the Resume chip.
+              checkoutDrafts: {
+                where: { creatorUserId: user.id },
+                select: { id: true, currentStep: true, updatedAt: true },
+                take: 1,
+              },
+              // R11 — derive order state for bucketing. Pull the latest
+              // non-cancelled order statuses; deriveOrderState() picks the
+              // most-active one.
+              orderItems: {
+                select: {
+                  order: { select: { status: true, createdAt: true } },
+                },
+                orderBy: { id: 'desc' },
+                take: 10,
+              },
               _count: { select: { orderItems: true } },
             },
           },
@@ -109,14 +237,45 @@ export default async function ProductsListPage() {
     },
   })
 
-  // Cast through unknown — Prisma's nested-select inferred shape lines
-  // up with the Row alias declared below, but TS can't unify them
-  // automatically (Decimal vs Date scalar wrapping). Same pattern as R6.
-  const products: Row[] = (profile?.brands.flatMap((b) =>
-    b.products.map((p) => ({ ...p, brandName: b.name })),
+  // Flatten + decorate.
+  const rows: Row[] = (profile?.brands.flatMap((b) =>
+    b.products.map((p) => {
+      const draft = p.checkoutDrafts[0] ?? null
+      const orderStatuses: string[] = p.orderItems
+        .map((oi) => oi.order?.status)
+        .filter(Boolean)
+        .map(String)
+      return {
+        ...p,
+        brandName: b.name,
+        draft,
+        orderState: deriveOrderState(orderStatuses),
+      }
+    }),
   ) ?? []) as unknown as Row[]
 
-  const grouped = groupByStatus(products)
+  // Bucket once so the tab counts are accurate AND the active-tab filter
+  // is cheap.
+  const counts: Record<TabKey, number> = {
+    in_progress: 0,
+    in_production: 0,
+    live: 0,
+    archived: 0,
+  }
+  const buckets: Record<TabKey, Row[]> = {
+    in_progress: [],
+    in_production: [],
+    live: [],
+    archived: [],
+  }
+  for (const r of rows) {
+    const tab = bucketProduct(r)
+    counts[tab] += 1
+    buckets[tab].push(r)
+  }
+
+  const visible = buckets[activeTab]
+  const tabMeta = TABS.find((t) => t.key === activeTab)!
 
   return (
     <div className="space-y-6">
@@ -125,25 +284,26 @@ export default async function ProductsListPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
             My products
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Every product you&apos;ve started, grouped by status. Drafts and
-            in-review rows surface first so you can finish what you began.
-          </p>
+          <p className="mt-1 text-sm text-zinc-500">{tabMeta.blurb}</p>
         </div>
         <Link
           href={marketingUrl('/marketplace')}
-          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800"
+          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
         >
-          <Plus className="h-4 w-4" /> New product
+          <Plus className="h-4 w-4" aria-hidden="true" /> New product
         </Link>
       </header>
 
-      {products.length === 0 ? (
-        <EmptyState />
+      <TabBar active={activeTab} counts={counts} />
+
+      {rows.length === 0 ? (
+        <FirstRunEmpty />
+      ) : visible.length === 0 ? (
+        <TabEmpty meta={tabMeta} />
       ) : (
-        <div className="space-y-7">
-          {grouped.map(({ status, rows }) => (
-            <ProductSection key={status} status={status} rows={rows} />
+        <div className="space-y-3">
+          {visible.map((r) => (
+            <ProductCard key={r.id} row={r} />
           ))}
         </div>
       )}
@@ -152,8 +312,64 @@ export default async function ProductsListPage() {
 }
 
 // -----------------------------------------------------------------------------
-// Section + Card
+// TabBar
 // -----------------------------------------------------------------------------
+
+function TabBar({
+  active,
+  counts,
+}: {
+  active: TabKey
+  counts: Record<TabKey, number>
+}) {
+  return (
+    <nav
+      aria-label="Product status"
+      className="flex flex-wrap items-center gap-1 border-b border-zinc-200"
+    >
+      {TABS.map((t) => {
+        const isActive = t.key === active
+        const Icon = t.icon
+        return (
+          <Link
+            key={t.key}
+            href={`/products${t.key === 'in_progress' ? '' : `?tab=${t.key}`}`}
+            aria-current={isActive ? 'page' : undefined}
+            className={
+              '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 ' +
+              (isActive
+                ? 'border-zinc-900 text-zinc-900'
+                : 'border-transparent text-zinc-500 hover:text-zinc-800')
+            }
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {t.label}
+            <span
+              className={
+                'inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold ' +
+                (isActive
+                  ? 'bg-zinc-900 text-white'
+                  : 'bg-zinc-100 text-zinc-600')
+              }
+            >
+              {counts[t.key]}
+            </span>
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Card
+// -----------------------------------------------------------------------------
+
+type DraftSummary = {
+  id: string
+  currentStep: number
+  updatedAt: Date
+}
 
 type Row = {
   id: string
@@ -168,50 +384,9 @@ type Row = {
   } | null
   variant: { flavor: string | null; containerFormat: string | null; servingsPerContainer: number | null } | null
   recipe: { complianceChecks: { outcome: ComplianceOutcome }[] } | null
+  draft: DraftSummary | null
+  orderState: OrderState
   _count: { orderItems: number }
-}
-
-function groupByStatus(rows: Row[]): Array<{ status: ProductStatus; rows: Row[] }> {
-  const order: ProductStatus[] = [
-    'DRAFT',
-    'IN_REVIEW',
-    'COMPLIANT',
-    'PUBLISHED',
-    'PAUSED',
-    'ARCHIVED',
-  ]
-  const buckets = new Map<ProductStatus, Row[]>()
-  for (const r of rows) {
-    const arr = buckets.get(r.status) ?? []
-    arr.push(r)
-    buckets.set(r.status, arr)
-  }
-  return order
-    .filter((s) => (buckets.get(s)?.length ?? 0) > 0)
-    .map((status) => ({ status, rows: buckets.get(status)! }))
-}
-
-function ProductSection({ status, rows }: { status: ProductStatus; rows: Row[] }) {
-  const palette = STATUS[status]
-  return (
-    <section className="space-y-2.5">
-      <h2 className="flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-        <span
-          className="inline-flex h-1.5 w-1.5 rounded-full"
-          style={{ background: palette.dot }}
-        />
-        {palette.label}
-        <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-400">
-          · {rows.length} {rows.length === 1 ? 'product' : 'products'}
-        </span>
-      </h2>
-      <div className="space-y-3">
-        {rows.map((r) => (
-          <ProductCard key={r.id} row={r} />
-        ))}
-      </div>
-    </section>
-  )
 }
 
 function ProductCard({ row: r }: { row: Row }) {
@@ -225,9 +400,6 @@ function ProductCard({ row: r }: { row: Row }) {
     r.variant?.containerFormat,
     r.variant?.servingsPerContainer ? `${r.variant.servingsPerContainer} servings` : null,
   ].filter(Boolean)
-  // Marketplace detail page on apps/marketing — the source-of-truth page
-  // for the template this product was cloned from. Image + title link
-  // there so the creator can review/adjust their source choice.
   const templateUrl = r.productTemplate
     ? marketingUrl(
         `/marketplace/${r.productTemplate.subcategory.category.slug}/${r.productTemplate.subcategory.slug}/${r.productTemplate.slug}`,
@@ -274,19 +446,26 @@ function ProductCard({ row: r }: { row: Row }) {
         )}
 
         <div className="min-w-0 flex-1">
-          {templateUrl ? (
-            <a
-              href={templateUrl}
-              className="block truncate text-[15px] font-medium leading-tight text-zinc-900 transition-colors hover:text-pink-700"
-              title="Review or adjust this template in the marketplace"
-            >
-              {r.name}
-            </a>
-          ) : (
-            <div className="truncate text-[15px] font-medium leading-tight text-zinc-900">
-              {r.name}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {templateUrl ? (
+              <a
+                href={templateUrl}
+                className="truncate text-[15px] font-medium leading-tight text-zinc-900 transition-colors hover:text-pink-700"
+                title="Review or adjust this template in the marketplace"
+              >
+                {r.name}
+              </a>
+            ) : (
+              <span className="truncate text-[15px] font-medium leading-tight text-zinc-900">
+                {r.name}
+              </span>
+            )}
+            {/* R11 — Resume Checkout chip sits inline with the title so it
+                rides with the product across whichever tab the creator
+                opens (most often In progress). */}
+            {r.draft && <ResumeChip productId={r.id} draft={r.draft} />}
+          </div>
+
           {variantBits.length > 0 && (
             <div className="mt-0.5 text-[12.5px] text-zinc-500">
               {variantBits.join(' · ')}
@@ -295,19 +474,19 @@ function ProductCard({ row: r }: { row: Row }) {
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-zinc-700">
             <span className={`inline-flex items-center gap-1.5 ${recipeBadge.cls}`}>
-              <RecipeIcon className="h-3.5 w-3.5" />
+              <RecipeIcon className="h-3.5 w-3.5" aria-hidden="true" />
               {recipeBadge.label}
             </span>
             <span className="inline-flex items-center gap-1.5 text-zinc-600">
-              <ShieldCheck className="h-3.5 w-3.5" />
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
               FDA · USDA Organic
             </span>
             <span className="inline-flex items-center gap-1.5 text-zinc-600">
-              <Package className="h-3.5 w-3.5" />
+              <Package className="h-3.5 w-3.5" aria-hidden="true" />
               MOQ 250 · 10-day lead
             </span>
             <span className="inline-flex items-center gap-1.5 text-zinc-500">
-              <Truck className="h-3.5 w-3.5" />
+              <Truck className="h-3.5 w-3.5" aria-hidden="true" />
               {orderCount === 0
                 ? 'Never ordered'
                 : `${orderCount} order${orderCount === 1 ? '' : 's'} placed`}
@@ -318,18 +497,15 @@ function ProductCard({ row: r }: { row: Row }) {
         <div className="flex flex-shrink-0 flex-col items-end justify-center gap-2">
           <Link
             href={`/products/${r.id}/design/canvas`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800"
+            className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
           >
-            Open in Studio <ArrowRight className="h-3.5 w-3.5" />
+            Open in Studio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
-          {/* R8 — direct 'Order this product' shortcut removed. Checkout
-              is only reachable via the Studio's Next button so creators
-              always pass through design review first. */}
           <Link
             href={`/products/${r.id}`}
-            className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] font-medium text-zinc-500 hover:text-zinc-900"
+            className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] font-medium text-zinc-500 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
           >
-            <MoreHorizontal className="h-3.5 w-3.5" /> More
+            <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /> More
           </Link>
         </div>
       </div>
@@ -337,11 +513,38 @@ function ProductCard({ row: r }: { row: Row }) {
   )
 }
 
-function EmptyState() {
+// -----------------------------------------------------------------------------
+// Resume Checkout chip — surfaces an in-progress CheckoutDraft
+// -----------------------------------------------------------------------------
+
+function ResumeChip({
+  productId,
+  draft,
+}: {
+  productId: string
+  draft: DraftSummary
+}) {
+  return (
+    <Link
+      href={`/products/${productId}/checkout`}
+      className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-[3px] text-[11px] font-medium text-pink-700 transition-colors hover:bg-pink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
+      title={`Resume checkout from step ${draft.currentStep}`}
+    >
+      <ShoppingCart className="h-3 w-3" aria-hidden="true" />
+      Resume checkout · saved {formatRelative(draft.updatedAt)}
+    </Link>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Empty states
+// -----------------------------------------------------------------------------
+
+function FirstRunEmpty() {
   return (
     <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 p-12 text-center">
       <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
-        <Package className="h-6 w-6 text-pink-600" />
+        <Package className="h-6 w-6 text-pink-600" aria-hidden="true" />
       </div>
       <p className="mt-3 text-sm font-medium text-zinc-900">No products yet</p>
       <p className="mt-1 text-sm text-zinc-500">
@@ -350,10 +553,34 @@ function EmptyState() {
       </p>
       <Link
         href={marketingUrl('/marketplace')}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
       >
-        <Plus className="h-4 w-4" /> Browse the marketplace
+        <Plus className="h-4 w-4" aria-hidden="true" /> Browse the marketplace
       </Link>
+    </div>
+  )
+}
+
+function TabEmpty({
+  meta,
+}: {
+  meta: (typeof TABS)[number]
+}) {
+  const Icon = meta.icon
+  return (
+    <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 p-10 text-center">
+      <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100">
+        <Icon className="h-5 w-5 text-zinc-500" aria-hidden="true" />
+      </div>
+      <p className="mt-3 text-[13px] text-zinc-600">{meta.emptyCopy}</p>
+      {meta.emptyCta && (
+        <Link
+          href={meta.emptyCta.href}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" /> {meta.emptyCta.label}
+        </Link>
+      )}
     </div>
   )
 }
@@ -377,7 +604,7 @@ function Thumbnail({ name }: { name: string }) {
       className="flex h-[72px] w-[72px] flex-shrink-0 items-center justify-center rounded-xl"
       style={{ background: gradients[h % gradients.length] }}
     >
-      <Icon className="h-7 w-7 text-white" />
+      <Icon className="h-7 w-7 text-white" aria-hidden="true" />
     </div>
   )
 }

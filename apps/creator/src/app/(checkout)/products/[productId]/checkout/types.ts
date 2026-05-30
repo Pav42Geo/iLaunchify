@@ -19,8 +19,8 @@
 // CheckoutDraft.state JSON loader doesn't break on existing drafts —
 // they're just not rendered. Future migration can prune them.
 export const WIZARD_STEPS = [
-  { key: 'review', label: 'Review design', index: 1 },
-  { key: 'production', label: 'Production', index: 2 },
+  { key: 'review', label: 'Review Design', index: 1 },
+  { key: 'production', label: 'Review Production', index: 2 },
   { key: 'checkout', label: 'Checkout', index: 3 },
 ] as const
 
