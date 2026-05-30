@@ -524,6 +524,16 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/plans:
+    dependencies:
+      '@ilaunchify/db':
+        specifier: workspace:*
+        version: link:../db
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/storage:
     dependencies:
       '@aws-sdk/client-s3':

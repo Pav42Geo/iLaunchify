@@ -535,6 +535,11 @@ model CreatorProfile {
   // support). Defaults to MAKER so existing creators stay on the free
   // tier; flips up via Stripe Subscription webhooks once V1.1 lands.
   subscriptionTier    SubscriptionTier @default(MAKER)
+  // R15.a — change tracking for the admin Tier Management module.
+  // Whose hand last touched the tier + when. Null on creation so we
+  // know "always been MAKER" vs "promoted on YYYY-MM-DD by admin X".
+  tierChangedAt       DateTime?
+  tierChangedById     String?
   // Fee overrides
   feeRateOverrideBp   Int?
   feeRateOverrideReason String?
@@ -554,6 +559,104 @@ enum SubscriptionTier {
   MAKER
   BUILDER
   AGENCY
+}
+
+// R15.a — three partner subscription tiers per PLATFORM_SPEC §Tier 1
+// "Production partner tiers". Naming locked. Ordered low → high so the
+// same rank-comparison pattern (hasTier()) works for partner gates.
+// Applies to every PartnerService.type (MANUFACTURING / LABEL_PRINTING /
+// COPACKING / WAREHOUSE / ACCESSORY) — the ladder is uniform; the
+// per-type promotion criteria differ and are encoded outside the enum.
+enum PartnerTier {
+  VERIFIED
+  TRUSTED
+  PREMIER
+}
+
+// R15.a — admin-editable subscription plan rows. Source-of-truth for
+// every numeric value the platform used to hardcode (price, fee %,
+// feature limits). One row per (audience, tier) combo: 3 creator plans
+// + 3 partner plans in V1. Code field is the stable string identifier
+// callers reference (e.g. lookupPlanFeature('creator_maker', 'max_brands')).
+//
+// Per Pavel 2026-05-30: tier remains the canonical column on profile
+// rows; this table describes what each tier means. No FK from profile
+// → plan — the (audience, tier) key is enough.
+model SubscriptionPlan {
+  id                String        @id @default(cuid())
+  code              String        @unique           // "creator_maker", "partner_verified", etc.
+  audience          PlanAudience
+  // Display tier name (matches the enum value but lowercased for UI).
+  tierName          String
+  // Rank within audience for sort order. 0 = lowest, 2 = highest.
+  tierOrder         Int
+  // Public-facing pricing. 0 for free tiers (Maker, Verified).
+  monthlyPriceCents Int           @default(0)
+  annualPriceCents  Int           @default(0)
+  active            Boolean       @default(true)
+  description       String?
+  // Relations
+  features          PlanFeature[]
+  feeRules          FeeRule[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([audience, tierOrder])
+}
+
+// R15.a — flexible per-plan feature row. intValue / boolValue /
+// stringValue is a tagged-union pattern — exactly one is populated
+// based on the feature's nature. Callers know the right type at the
+// code-constant level. Null intValue + boolValue + stringValue means
+// "unlimited" / "no cap" for limit-style features.
+model PlanFeature {
+  id          String           @id @default(cuid())
+  planId      String
+  // Stable identifier referenced at the call site (e.g. 'max_brands',
+  // 'subscribe_and_save', 'support_sla_hours'). Owned by the module
+  // that ships the gate.
+  code        String
+  intValue    Int?
+  stringValue String?
+  boolValue   Boolean?
+  // Human-readable label / description shown in the admin editor.
+  label       String
+  description String?
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, code])
+  @@index([code])
+}
+
+// R15.a — pluggable fee-rate row. Keyed by (planId, triggerEvent) so a
+// future "warehouse_referral" or "sample_order" event can hang its own
+// rate off a plan without a schema change. Null planId = global default
+// fallback. Either ratePercent or flatCents is set; both null = no fee
+// (used to express "Premier gets zero platform fee on sample orders").
+model FeeRule {
+  id           String            @id @default(cuid())
+  planId       String?
+  triggerEvent String                                 // "production_order_subtotal", "sample_order", "warehouse_referral"
+  ratePercent  Decimal?          @db.Decimal(5, 2)   // 15.00 = 15%
+  flatCents    Int?
+  minCents     Int?                                   // Floor (e.g. $1 minimum platform fee per order)
+  maxCents     Int?                                   // Cap (rare, but supports "$500 max fee per order")
+  active       Boolean           @default(true)
+  notes        String?
+  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([planId, triggerEvent])
+  @@index([triggerEvent])
+}
+
+// R15.a — which side of the marketplace a SubscriptionPlan applies to.
+// Drives the audience tab in the admin Plans editor and keeps creator
+// vs partner feature codes from colliding.
+enum PlanAudience {
+  CREATOR
+  PARTNER
 }
 
 // =============================================================================
@@ -590,6 +693,21 @@ model Partner {
   statusChangedAt       DateTime?
   statusChangedById     String?                                    // User who triggered the last status change (null for SYSTEM)
   statusChangeReason    String?
+  // R15.a — Production-partner subscription tier (Verified → Trusted →
+  // Premier per PLATFORM_SPEC §Tier 1). Default VERIFIED but only
+  // meaningful once `status` flips to ACTIVE — every gate at the call
+  // site should also check status. Promotion is admin-manual in V1
+  // (audit-logged via AuditLog); cron-driven auto-promotion lands V1.1.
+  tier                  PartnerTier      @default(VERIFIED)
+  tierChangedAt         DateTime?
+  tierChangedById       String?                                    // Admin who last changed the tier (null for SYSTEM auto-promote in V1.1+)
+  // R15.a — Per-partner commission-rate override (basis points). Mirrors
+  // CreatorProfile.feeRateOverrideBp. When non-null, the platform fee
+  // pipeline uses this instead of the plan-level FeeRule for this
+  // partner's orders. Reason is required at the admin UI so the audit
+  // trail records why a partner got special treatment.
+  feeRateOverrideBp     Int?
+  feeRateOverrideReason String?
   // Relations
   user                  User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   services              PartnerService[]

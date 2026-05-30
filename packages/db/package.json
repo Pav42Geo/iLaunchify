@@ -13,6 +13,7 @@
     "studio":         "pnpm exec dotenv -e ../../.env.local -- prisma studio",
     "seed":           "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
     "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
+    "seed:subscription-plans": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-subscription-plans.ts",
     "format":         "prisma format",
     "type-check":     "tsc --noEmit",
     "clean":          "rm -rf node_modules .turbo dist"
