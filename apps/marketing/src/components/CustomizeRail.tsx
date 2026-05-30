@@ -1,34 +1,27 @@
 'use client'
 
 // REBUILD R3 — Customize right-rail on the marketplace product detail
-// page.
+// page. Slot-per-card pattern (matching the creator /customize page).
 //
-// Layout: the detail page now uses a 3-column hero (gallery / configurator
-// / customize). This rail is the third column: sticky to the viewport so
-// it stays visible while the creator scrolls through the configurator +
-// tabs, with two stacked cards:
+// Each base ingredient renders as an IngredientSlotCard:
+//   - Locked slots (no replacements available) show a "Locked" pill
+//   - Swappable slots show a dropdown of the default + alternatives,
+//     with the currently-selected one highlighted and price delta
+//     displayed inline.
 //
-//   1. Ingredient chip card — wraps the existing IngredientsList. Lets
-//      the creator swap base ingredients via the slot model and add
-//      optional add-ons. State is purely client-side (ephemeral) — it
-//      only commits when the creator clicks Start Launching, at which
-//      point R5's createProductFromMarketplaceSelection materialises the
-//      Product. R3 ships with informational price delta only.
+// Add-ons render as a separate "Optional add-ons" section with
+// toggleable cards (price delta + description).
 //
-//   2. Live Nutrition Facts — pinned NutritionFactsRenderer showing the
-//      base recipe's nutrition. V1 doesn't yet recompute on ingredient
-//      swaps (that requires the compliance microservice, which lives in
-//      packages/compliance-client). V1.1 will hook into a debounced
-//      recompute action; for now we show a small "Updates after launch"
-//      caveat under the panel.
-//
-// The price delta from ingredient swaps flows into a footer so the
-// creator can see the impact alongside the LaunchCtaCluster price.
+// State is purely client-side until Start Launching commits — guests
+// can play freely with the live preview, only the CTA hits the auth
+// wall. V1.1 will hook the recipe diff into the launch action so the
+// canvas opens pre-customised.
 
 import * as React from 'react'
 import {
-  IngredientsList,
+  IngredientSlotCard,
   NutritionFactsRenderer,
+  Badge,
   type IngredientRow,
   type IngredientAddOn,
 } from '@ilaunchify/ui'
@@ -48,15 +41,19 @@ export function CustomizeRail({
   ingredientAddOns = [],
   nutrition,
 }: CustomizeRailProps) {
-  // Ingredient swap state — `{ baseIngredientId → replacementId }`.
-  const [replacements, setReplacements] = React.useState<Record<string, string>>({})
+  // Per-ingredient swap state. Key = base ingredient id, value = picked
+  // replacement id (or '__default' when on default).
+  const [replacements, setReplacements] = React.useState<Record<string, string>>(
+    {},
+  )
   // Optional add-on selection.
   const [addOnIds, setAddOnIds] = React.useState<string[]>([])
 
-  // Running price delta vs. base recipe. Informational only in V1.
+  // Running price delta vs. base. Informational in V1.
   const replacementDelta = React.useMemo(() => {
     let sum = 0
     for (const [ingredientId, replacementId] of Object.entries(replacements)) {
+      if (replacementId === '__default') continue
       const ing = ingredients.find((i) => i.id === ingredientId)
       const rep = ing?.replacements?.find((r) => r.id === replacementId)
       if (rep?.priceDelta) sum += rep.priceDelta
@@ -78,45 +75,125 @@ export function CustomizeRail({
 
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
-      {/* --- Ingredients card ---------------------------------------- */}
+      {/* --- Ingredients (slot-per-card) ----------------------------- */}
       <div className="rounded-xl border border-ink-200 bg-white p-5">
         <header className="mb-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-pink-700">
             Customize
           </p>
           <h3 className="mt-1 font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
-            Ingredients &amp; recipe
+            Recipe ingredients
           </h3>
           <p className="mt-1 text-[12.5px] leading-snug text-ink-500">
-            Swap any base ingredient for a curated alternative, or layer
-            in add-ons. Changes are saved when you Start Launching.
+            Locked ingredients stay as-is. Replaceable slots show
+            alternatives in the dropdown.
           </p>
         </header>
 
-        {/* Cap the ingredient card's body so taller slot lists don't push
-            the live Nutrition Facts panel below the fold. Internal scroll
-            keeps it self-contained; the rail itself stays sticky as a unit. */}
-        <div className="max-h-[42vh] overflow-y-auto pr-1">
-          <IngredientsList
-            base={ingredients}
-            addOns={ingredientAddOns}
-            replacements={replacements}
-            selectedAddOnIds={addOnIds}
-            onReplace={(id, replacementId) =>
-              setReplacements((prev) => {
-                const next = { ...prev }
-                if (replacementId) next[id] = replacementId
-                else delete next[id]
-                return next
-              })
-            }
-            onAddOnToggle={(id, on) =>
-              setAddOnIds((prev) =>
-                on ? [...prev, id] : prev.filter((x) => x !== id),
-              )
-            }
-          />
+        {/* Cap the slot list height so taller recipes don't push the
+            live Nutrition Facts panel below the fold. */}
+        <div className="max-h-[44vh] space-y-2.5 overflow-y-auto pr-1">
+          {ingredients.map((ing) => {
+            const swappable = (ing.replacements?.length ?? 0) > 0
+            // First option = default (the base ingredient itself). Then
+            // alternatives. Selected id stored locally.
+            const options = [
+              {
+                id: '__default',
+                name: ing.name,
+                priceDelta: 0,
+                allergens: ing.allergens,
+              },
+              ...(ing.replacements ?? []).map((r) => ({
+                id: r.id,
+                name: r.name,
+                priceDelta: r.priceDelta ?? 0,
+                allergens: r.allergens,
+              })),
+            ]
+            const currentId = replacements[ing.id] ?? '__default'
+            return (
+              <IngredientSlotCard
+                key={ing.id}
+                label={ing.name}
+                meta={`${ing.percent.toFixed(1)}%`}
+                isLocked={!swappable}
+                options={options}
+                currentOptionId={currentId}
+                onChange={(optId) =>
+                  setReplacements((prev) => ({ ...prev, [ing.id]: optId }))
+                }
+              />
+            )
+          })}
         </div>
+
+        {/* Add-ons */}
+        {ingredientAddOns.length > 0 && (
+          <section className="mt-5 border-t border-ink-100 pt-4">
+            <header className="mb-2 flex items-baseline justify-between">
+              <h4 className="text-[12.5px] font-semibold text-ink-900">
+                Optional add-ons
+              </h4>
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+                {addOnIds.length} on
+              </span>
+            </header>
+            <ul className="grid gap-2">
+              {ingredientAddOns.map((ao) => {
+                const on = addOnIds.includes(ao.id)
+                return (
+                  <li key={ao.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAddOnIds((prev) =>
+                          on ? prev.filter((x) => x !== ao.id) : [...prev, ao.id],
+                        )
+                      }
+                      className={
+                        'w-full rounded-md border px-3 py-2 text-left text-[12.5px] transition-colors ' +
+                        (on
+                          ? 'border-pink-500 bg-pink-50'
+                          : 'border-ink-200 bg-white hover:border-ink-400')
+                      }
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-ink-900">{ao.name}</div>
+                          {ao.description && (
+                            <div className="mt-0.5 text-[11.5px] leading-snug text-ink-600">
+                              {ao.description}
+                            </div>
+                          )}
+                          {(ao.allergens ?? []).length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {ao.allergens!.map((a) => (
+                                <Badge key={a} variant="warning">
+                                  {a}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          className={
+                            'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
+                            (ao.priceDelta > 0
+                              ? 'text-ink-700'
+                              : 'text-emerald-700')
+                          }
+                        >
+                          {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
         {hasChanges && (
           <div className="mt-4 flex items-center justify-between border-t border-ink-100 pt-3">
@@ -146,6 +223,10 @@ export function CustomizeRail({
             <h3 className="mt-1 font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
               Nutrition Facts
             </h3>
+            <p className="mt-1 text-[12px] leading-snug text-ink-500">
+              Updates as you customize. Final values come from the
+              compliance check.
+            </p>
           </header>
           <div className="overflow-hidden rounded-md">
             <NutritionFactsRenderer data={nutrition} widthPx={300} />
