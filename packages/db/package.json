@@ -12,6 +12,7 @@
     "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",
     "studio":         "pnpm exec dotenv -e ../../.env.local -- prisma studio",
     "seed":           "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
     "format":         "prisma format",
     "type-check":     "tsc --noEmit",
     "clean":          "rm -rf node_modules .turbo dist"
