@@ -15,7 +15,7 @@
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { getCreatorTier, hasTier, requireUser, type TierKey } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
 import {
   AlertOctagon,
@@ -31,6 +31,7 @@ import {
   RefreshCcw,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Truck,
 } from 'lucide-react'
 import { AdjustOrderButton } from './AdjustOrderButton'
@@ -156,6 +157,8 @@ export default async function OrderDetailPage({
 }) {
   const { orderId } = await params
   const user = await requireUser()
+  // R14.d — drives the Builder+ gate on the right-rail Get product support link.
+  const creatorTier = await getCreatorTier(user.id)
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, creatorUserId: user.id },
@@ -286,6 +289,7 @@ export default async function OrderDetailPage({
             orderId={order.id}
             needsAdjust={needsAdjust}
             isDelivered={isDelivered}
+            creatorTier={creatorTier}
           />
           <TotalsCard
             order={{
@@ -541,12 +545,19 @@ function ActionsCard({
   orderId,
   needsAdjust,
   isDelivered,
+  creatorTier,
 }: {
   productId: string | null
   orderId: string
   needsAdjust: boolean
   isDelivered: boolean
+  creatorTier: TierKey
 }) {
+  // R14.d — concierge-style "Get product support" is a Builder+ perk
+  // (the Maker tier doesn't include human-loop support per PLATFORM_SPEC
+  // Tier 1 matrix). Maker sees the row with a Builder lock badge and an
+  // upgrade CTA target; Builder/Agency get the real /help link.
+  const supportUnlocked = hasTier(creatorTier, 'builder')
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       {/* Adjust takes top spot when needed — that's the only action that
@@ -590,13 +601,30 @@ function ActionsCard({
           </button>
         </li>
         <li>
-          <Link
-            href="/help"
-            className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-          >
-            <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            Get product support
-          </Link>
+          {supportUnlocked ? (
+            <Link
+              href="/help"
+              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+            >
+              <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              Get product support
+            </Link>
+          ) : (
+            <Link
+              href="/pricing?tier=builder"
+              className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50/50 px-2 py-1.5 text-zinc-700 hover:bg-pink-50 hover:text-zinc-900"
+              title="Concierge product support is included with Builder + Agency plans"
+            >
+              <span className="inline-flex items-center gap-2">
+                <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                Get product support
+              </span>
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-pink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-pink-700">
+                <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
+                Builder
+              </span>
+            </Link>
+          )}
         </li>
         {productId && (
           <li>

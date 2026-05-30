@@ -530,6 +530,11 @@ model CreatorProfile {
   //         step1CompletedAt, step2CompletedAt, ... } — mirrors the Partner pattern.
   // Cleared (or kept frozen) once all 5 steps are complete.
   onboardingProgress  Json?
+  // R14.b — subscription tier drives feature gates across Studio (Export
+  // PDF), Checkout (Subscribe & save), and Order detail (Get product
+  // support). Defaults to MAKER so existing creators stay on the free
+  // tier; flips up via Stripe Subscription webhooks once V1.1 lands.
+  subscriptionTier    SubscriptionTier @default(MAKER)
   // Fee overrides
   feeRateOverrideBp   Int?
   feeRateOverrideReason String?
@@ -540,6 +545,15 @@ model CreatorProfile {
   brands              Brand[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+// R14.b — three creator subscription tiers. Ordered low → high so we can
+// derive rank in TypeScript without a lookup map. New tiers must be
+// appended at the bottom to preserve rank ordering.
+enum SubscriptionTier {
+  MAKER
+  BUILDER
+  AGENCY
 }
 
 // =============================================================================

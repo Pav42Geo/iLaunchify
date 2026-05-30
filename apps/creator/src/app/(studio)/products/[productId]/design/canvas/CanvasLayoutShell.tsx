@@ -56,7 +56,11 @@ import { useObjectClipboard } from './useObjectClipboard'
 import { ObjectActions } from './ObjectActions'
 import { ObjectContextMenu } from './ObjectContextMenu'
 import { UpgradeOverlay } from './UpgradeOverlay'
-import type { FabricObject, TierKey } from '@ilaunchify/ui'
+// R14.d — single tier helper now lives in @ilaunchify/auth. The TierKey
+// re-export here is structurally identical to @ilaunchify/ui's so the
+// UpgradeOverlay (which still imports from ui) continues to type-check.
+import type { FabricObject } from '@ilaunchify/ui'
+import { hasTier, type TierKey } from '@ilaunchify/auth'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
@@ -213,8 +217,10 @@ export function CanvasLayoutShell({
   const [mockupOpen, setMockupOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   // DS-73d — Maker tier creators see the UpgradeOverlay instead of ExportModal.
+  // R14.d — gate uses the shared hasTier() helper so Studio + checkout +
+  // order detail all agree on what "Builder+" means.
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const isMakerLocked = creatorTier === 'maker'
+  const isMakerLocked = !hasTier(creatorTier, 'builder')
   // DS-66f — Canva-style font drawer. Toggled by clicking the font
   // field in TextFormatToolbar; replaces whichever rail-tool drawer
   // is currently mounted in the drawer slot.

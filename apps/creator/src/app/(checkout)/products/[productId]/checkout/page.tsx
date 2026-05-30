@@ -13,7 +13,7 @@
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { CheckoutWizard } from './CheckoutWizard'
 import { loadCheckoutDraft } from './actions'
 import { loadReviewSnapshot } from './review-actions'
@@ -46,30 +46,38 @@ export default async function CheckoutPage({ params }: PageProps) {
   // Header data — mirrors DashboardTopbar so the header right-cluster
   // (Heart / Bell / Brand switcher / Account / Cart) looks identical to
   // the rest of the creator app. Reuses the same active-brand cookie.
-  const [draftResult, reviewSnapshot, brandsRows, unreadCount, cookieStore] =
-    await Promise.all([
-      loadCheckoutDraft(productId),
-      loadReviewSnapshot(productId),
-      user.role === 'CREATOR'
-        ? prisma.creatorProfile
-            .findUnique({
-              where: { userId: user.id },
-              select: {
-                brands: {
-                  select: { id: true, name: true, handle: true },
-                  orderBy: { createdAt: 'asc' },
-                },
+  const [
+    draftResult,
+    reviewSnapshot,
+    brandsRows,
+    unreadCount,
+    cookieStore,
+    creatorTier,
+  ] = await Promise.all([
+    loadCheckoutDraft(productId),
+    loadReviewSnapshot(productId),
+    user.role === 'CREATOR'
+      ? prisma.creatorProfile
+          .findUnique({
+            where: { userId: user.id },
+            select: {
+              brands: {
+                select: { id: true, name: true, handle: true },
+                orderBy: { createdAt: 'asc' },
               },
-            })
-            .then((p) => p?.brands ?? [])
-        : Promise.resolve(
-            [] as Array<{ id: string; name: string; handle: string }>,
-          ),
-      prisma.notification.count({
-        where: { userId: user.id, channel: 'IN_APP', readAt: null },
-      }),
-      cookies(),
-    ])
+            },
+          })
+          .then((p) => p?.brands ?? [])
+      : Promise.resolve(
+          [] as Array<{ id: string; name: string; handle: string }>,
+        ),
+    prisma.notification.count({
+      where: { userId: user.id, channel: 'IN_APP', readAt: null },
+    }),
+    cookies(),
+    // R14.d — drives the Subscribe & save gate on the right rail.
+    getCreatorTier(user.id),
+  ])
   if (!draftResult.ok) notFound()
 
   const activeBrandCookie = cookieStore.get(BRAND_COOKIE)?.value ?? ''
@@ -102,6 +110,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       headerBrands={brandsRows}
       headerActiveBrandId={activeBrandId}
       headerHasUnreadNotifications={unreadCount > 0}
+      creatorTier={creatorTier}
     />
   )
 }

@@ -11,7 +11,7 @@
 
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
 import {
   formatNetQuantity,
@@ -144,6 +144,10 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // empty canvas (first time editing this product).
   const initialDesignJson = (await loadDesignJson(product.id)) as object | null
 
+  // R14.d — real subscription tier from the DB (defaults to 'maker' for
+  // anyone without a CreatorProfile row, e.g. admin impersonation).
+  const creatorTier = await getCreatorTier(user.id)
+
   // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
   const productCtx = deriveProductCtx({
     category: product.category,
@@ -159,6 +163,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
       productCtx={productCtx}
+      creatorTier={creatorTier}
     />
   )
 }

@@ -41,6 +41,7 @@ import {
   AppHeaderIconButton,
   AppHeaderUserMenu,
 } from '@ilaunchify/ui'
+import type { TierKey } from '@ilaunchify/auth'
 import {
   WIZARD_STEPS,
   LAST_STEP_INDEX,
@@ -70,6 +71,9 @@ interface Props {
   headerBrands: BrandOption[]
   headerActiveBrandId: string
   headerHasUnreadNotifications: boolean
+  // R14.d — creator subscription tier drives the Subscribe & save gate
+  // on the right-rail OrderSummary.
+  creatorTier: TierKey
 }
 
 export function CheckoutWizard({
@@ -85,6 +89,7 @@ export function CheckoutWizard({
   headerBrands,
   headerActiveBrandId,
   headerHasUnreadNotifications,
+  creatorTier,
 }: Props) {
   const router = useRouter()
   const [state, setState] = useState<CheckoutDraftState>(initialState)
@@ -378,6 +383,7 @@ export function CheckoutWizard({
             estimate={estimate}
             shipping={shipping}
             currentStep={currentStep}
+            creatorTier={creatorTier}
           />
         </aside>
       </main>
