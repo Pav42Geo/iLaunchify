@@ -100,9 +100,10 @@ export default async function ProductDetailPage({
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         <Breadcrumb category={category} categoryTitle={row.title} title={template.title} />
 
-        {/* HERO — 3-column: gallery (smaller) / configurator / customize rail (R3) */}
-        <section className="grid grid-cols-1 lg:grid-cols-[0.8fr_1fr_0.9fr] gap-8 lg:gap-10 mb-12">
-          <DetailGallery template={template} />
+        {/* HERO — 3-column: gallery (bigger, sticky w/ thumbs + certs) /
+            configurator (col 2) / customize rail (col 3, R3) */}
+        <section className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr_0.9fr] gap-8 lg:gap-10 mb-12 items-start">
+          <DetailGallery template={template} certs={certs} />
 
           <div className="flex flex-col">
             <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500 mb-2">
@@ -154,8 +155,8 @@ export default async function ProductDetailPage({
         </section>
       </div>
 
-      {/* CERT STRIP — full bleed */}
-      <CertStrip items={certs} className="mb-14" />
+      {/* CertStrip moved into the gallery column under the image (R3.1).
+          Full-bleed strip removed to avoid duplication. */}
 
       {/* CUSTOMIZATION + MATERIAL/PROPERTIES BENTO */}
       <section className="max-w-[1400px] mx-auto px-6 mb-16">
@@ -262,32 +263,53 @@ function Breadcrumb({
   )
 }
 
-function DetailGallery({ template }: { template: SampleTemplate }) {
+interface DetailGalleryProps {
+  template: SampleTemplate
+  certs?: Array<{ name: string; qualifier?: string; unconditional?: boolean }>
+}
+
+function DetailGallery({ template, certs = [] }: DetailGalleryProps) {
   const mainGradient = (template.gradient ?? 'mint') as ProductGradient
+  const thumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        className="aspect-square rounded-xl flex items-center justify-center"
-        style={{ background: productGradient[mainGradient] }}
-      >
-        <span
-          className="text-[140px] leading-none"
-          style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
-          aria-hidden="true"
-        >
-          {template.icon}
-        </span>
-      </div>
+    // REBUILD R3.1 — sticky inside col 1. As the page scrolls the
+    // gallery stays pinned at the viewport's top-24 until the parent
+    // hero section ends (then it releases naturally with col 2 / col 3
+    // content). Self-start keeps the column from stretching to match
+    // the taller middle column.
+    <div className="lg:sticky lg:top-24 lg:self-start space-y-4">
       <div className="flex gap-3">
-        {(['lime', 'pink', 'cyan', 'yellow'] as ProductGradient[]).map((g) => (
-          <button
-            key={g}
-            className="w-20 h-20 rounded-lg border border-ink-200 hover:border-pink-500 transition-colors"
-            style={{ background: productGradient[g] }}
-            aria-label={`Color variant ${g}`}
-          />
-        ))}
+        {/* Vertical thumbnail strip on the LEFT */}
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          {thumbs.map((g) => (
+            <button
+              key={g}
+              className="w-14 h-14 rounded-md border border-ink-200 hover:border-pink-500 transition-colors"
+              style={{ background: productGradient[g] }}
+              aria-label={`Color variant ${g}`}
+            />
+          ))}
+        </div>
+
+        {/* Main image */}
+        <div
+          className="flex-1 aspect-square rounded-xl flex items-center justify-center"
+          style={{ background: productGradient[mainGradient] }}
+        >
+          <span
+            className="text-[140px] leading-none"
+            style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
+            aria-hidden="true"
+          >
+            {template.icon}
+          </span>
+        </div>
       </div>
+
+      {/* Certificate badges below the image (still inside col 1) */}
+      {certs.length > 0 && (
+        <CertStrip items={certs} className="border border-ink-200 rounded-xl" />
+      )}
     </div>
   )
 }
