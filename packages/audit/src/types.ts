@@ -35,6 +35,8 @@ export const AUDIT_ENTITY_TYPES = [
   'FeeRule',
   // G6.b — recurring production subscriptions
   'ProductionSubscription',
+  // #140 — admin ingredient verification queue + library promotion
+  'Ingredient',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -102,6 +104,9 @@ export const AUDIT_ACTIONS = [
   'PRODUCTION_SUBSCRIPTION_CREATED',
   'PRODUCTION_SUBSCRIPTION_CANCELLED',
   'PRODUCTION_SUBSCRIPTION_CYCLE',
+  // #140 — admin ingredient verification queue + library promotion
+  'INGREDIENT_VERIFY',
+  'INGREDIENT_LIBRARY_PROMOTE',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

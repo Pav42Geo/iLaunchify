@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug, Award, Crown } from 'lucide-react'
+import { Inbox, Building2, Users, Package, ShieldCheck, ShoppingBag, History, Plug, Award, Crown, FlaskConical } from 'lucide-react'
 
 const NAV = [
   { href: '/leads',             label: 'Leads',             icon: Inbox },
@@ -15,6 +15,9 @@ const NAV = [
   { href: '/channels',          label: 'Channels',          icon: Plug },
   { href: '/compliance',        label: 'Compliance',        icon: ShieldCheck },
   { href: '/certificate-types', label: 'Cert library',      icon: Award },
+  // #140 — SELF_ATTESTED partner-private ingredients queue + library
+  // promotion. Sits near other library-curation entries.
+  { href: '/ingredients',       label: 'Ingredient queue',  icon: FlaskConical },
   { href: '/audit',             label: 'Audit log',         icon: History },
 ]
 
