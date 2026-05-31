@@ -88,7 +88,17 @@ const TIERS: Tier[] = [
   },
 ]
 
-export function PricingCards() {
+export interface PricingCardsProps {
+  /**
+   * Set by the server-rendered /pricing page when there's a session.
+   * When true, the Builder card CTA deep-links to /settings/plan?upgrade=
+   * in the creator app (V1.5-T6) instead of /signup — logged-in creators
+   * shouldn't have to re-onboard to upgrade.
+   */
+  isLoggedIn?: boolean
+}
+
+export function PricingCards({ isLoggedIn = false }: PricingCardsProps) {
   const [billing, setBilling] = React.useState<Billing>('annual')
 
   return (
@@ -134,14 +144,27 @@ export function PricingCards() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {TIERS.map((tier) => (
-          <PricingCard key={tier.id} tier={tier} billing={billing} />
+          <PricingCard
+            key={tier.id}
+            tier={tier}
+            billing={billing}
+            isLoggedIn={isLoggedIn}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
+function PricingCard({
+  tier,
+  billing,
+  isLoggedIn,
+}: {
+  tier: Tier
+  billing: Billing
+  isLoggedIn: boolean
+}) {
   const isFree = tier.monthly === 'free'
   const displayedMonthly =
     isFree
@@ -155,13 +178,28 @@ function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
       ? `$${(tier.annual as number).toLocaleString()} billed annually`
       : null
 
-  // Agency stays on this domain (lead form). Maker/Builder cross over to
-  // apps/creator's signup with plan + billing carryover.
+  // V1.5-T6 — auth-aware CTAs.
+  //
+  // Anonymous (default): Maker/Builder cross to /signup, Agency stays
+  //   here on /contact-sales.
+  // Logged-in: Maker is the default tier (so route to /settings/plan to
+  //   manage current state), Builder deep-links to /settings/plan?upgrade=
+  //   so the creator can finish the upgrade in one click instead of
+  //   re-onboarding. Agency unchanged — sales-touched.
   const isCrossApp = tier.id !== 'agency'
-  const ctaHref =
-    tier.id === 'agency'
-      ? '/contact-sales?plan=agency'
-      : creatorUrl('/signup', { plan: tier.id, billing })
+  let ctaLabel = tier.cta
+  let ctaHref: string
+  if (tier.id === 'agency') {
+    ctaHref = '/contact-sales?plan=agency'
+  } else if (isLoggedIn) {
+    ctaHref =
+      tier.id === 'maker'
+        ? creatorUrl('/settings/plan')
+        : creatorUrl('/settings/plan', { upgrade: tier.id })
+    ctaLabel = tier.id === 'maker' ? 'Manage plan' : `Upgrade to ${tier.name}`
+  } else {
+    ctaHref = creatorUrl('/signup', { plan: tier.id, billing })
+  }
 
   return (
     <div
@@ -223,12 +261,12 @@ function PricingCard({ tier, billing }: { tier: Tier; billing: Billing }) {
         >
           {isCrossApp ? (
             <a href={ctaHref}>
-              {tier.cta}
+              {ctaLabel}
               <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
             </a>
           ) : (
             <Link href={ctaHref}>
-              {tier.cta}
+              {ctaLabel}
               <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
             </Link>
           )}

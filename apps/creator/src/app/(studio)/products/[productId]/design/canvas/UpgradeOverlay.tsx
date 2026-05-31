@@ -11,17 +11,23 @@
 //     from -100% to 0 on open, 0 to -100% on close.
 //   * Click on the dim backdrop closes the overlay.
 //   * Esc closes.
-//   * "Upgrade" buttons send the creator to /pricing?tier=<key> — which
-//     is the same pricing page the marketing site shows.
+//   * Builder upgrade => /settings/plan?upgrade=builder (V1.5-T6 — this
+//     is the canonical paid-tier surface in the creator app; from there
+//     the creator clicks the pink Upgrade button which calls T3's
+//     createTierCheckoutSession server action and round-trips through
+//     Stripe Checkout).
+//   * Agency upgrade => /contact-sales on marketing (Agency is a sales-
+//     touched plan, no self-serve Checkout in V1.5).
 //
 // Tier source-of-truth comes from @ilaunchify/ui's pricing-tier-data so
 // the labels + ordering stay in sync with the marketing pricing page.
 
 import * as React from 'react'
+import Link from 'next/link'
 import { X, Sparkles, Zap, Crown, Check } from 'lucide-react'
 import type { TierKey } from '@ilaunchify/ui'
-// /pricing lives in apps/marketing (port 3010 in dev). Cross-app links
-// must use marketingUrl(); plain <Link href="/pricing"> 404s here.
+// /contact-sales lives in apps/marketing (port 3010 in dev). Cross-app
+// links must use marketingUrl(); plain <Link href="/contact-sales"> 404s.
 import { marketingUrl } from '@/lib/marketing-url'
 
 interface Props {
@@ -263,9 +269,33 @@ function TierCardView({
         >
           Your current plan
         </button>
-      ) : (
+      ) : tier.key === 'maker' ? (
+        // Maker is free + the implicit default. From a paid tier the
+        // "Switch to Maker" path is a cancel — point at the manage page
+        // rather than an action button here.
+        <Link
+          href="/settings/plan"
+          className="rounded-full bg-ink-900 px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-white hover:bg-black"
+        >
+          Manage plan
+        </Link>
+      ) : tier.key === 'agency' ? (
+        // V1.5: Agency stays sales-touched (Pavel decision — no in-app
+        // checkout for the top tier; concierge route only).
         <a
-          href={marketingUrl(`/pricing?tier=${tier.key}`)}
+          href={marketingUrl('/contact-sales')}
+          className="rounded-full bg-ink-900 px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-white hover:bg-black"
+        >
+          Talk to sales
+        </a>
+      ) : (
+        // V1.5-T6: Builder upgrade lands on /settings/plan (creator-app
+        // canonical surface), pre-selected. The page's UpgradeButton
+        // calls T3's startTierUpgrade server action which round-trips
+        // through Stripe Checkout. ?upgrade= is a soft hint the page
+        // can use later to auto-scroll or open the Builder card.
+        <Link
+          href={`/settings/plan?upgrade=${tier.key}`}
           className={
             'rounded-full px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (tier.highlight
@@ -273,8 +303,8 @@ function TierCardView({
               : 'bg-ink-900 text-white hover:bg-black')
           }
         >
-          {tier.key === 'agency' ? 'Talk to sales' : `Upgrade to ${tier.name}`}
-        </a>
+          Upgrade to {tier.name}
+        </Link>
       )}
     </div>
   )

@@ -619,8 +619,12 @@ function ActionsCard({
               Get product support
             </Link>
           ) : (
-            <a
-              href={marketingUrl('/pricing?tier=builder')}
+            // V1.5-T6 — was: cross-app link to marketing /pricing?tier=builder.
+            // Now: in-app /settings/plan where the upgrade actually happens
+            // (one click → Stripe Checkout). marketingUrl() no longer needed
+            // for this CTA.
+            <Link
+              href="/settings/plan?upgrade=builder"
               className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50/50 px-2 py-1.5 text-zinc-700 hover:bg-pink-50 hover:text-zinc-900"
               title="Concierge product support is included with Builder + Agency plans"
             >
@@ -632,7 +636,7 @@ function ActionsCard({
                 <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
                 Builder
               </span>
-            </a>
+            </Link>
           )}
         </li>
         {productId && (

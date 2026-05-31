@@ -59,7 +59,11 @@ export default async function PricingPage({
           </p>
         </div>
 
-        <PricingCards />
+        {/* V1.5-T6 — logged-in creators see "Manage plan" / "Upgrade to
+            Builder" CTAs that deep-link straight to /settings/plan in the
+            creator app, bypassing /signup. Anonymous visitors still get
+            the marketing /signup funnel. */}
+        <PricingCards isLoggedIn={Boolean(session?.user)} />
 
         {/* "First sample" perk pip */}
         <div className="mt-12 max-w-[640px] mx-auto bg-cream border border-ink-200 rounded-xl p-5 flex items-start gap-3">
