@@ -11,11 +11,19 @@
 //   - charge.refunded → record Refund + queue clawbacks (placeholder for V1.5)
 //   - invoice.payment_succeeded (G6.d) → spawn cycle-N Order for a
 //     ProductionSubscription from its locked manifestSnapshot
-//   - customer.subscription.deleted (G6.d) → mark our row as CANCELLED
-//     when Stripe ends the schedule for any reason
+//   - customer.subscription.deleted (G6.d / V1.5-T4) →
+//       * ProductionSubscription path: mark row as CANCELLED
+//       * tier subscription path: flip CreatorProfile back to MAKER
+//   - checkout.session.completed (V1.5-T4) → tier subscription onboarding:
+//       capture stripeTierSubscriptionId + flip CreatorProfile.subscriptionTier
+//       via the shared setCreatorTierWithAudit helper (SYSTEM actor)
+//   - customer.subscription.updated (V1.5-T4) → mirror Stripe's
+//       cancel_at_period_end + current_period_end onto CreatorProfile so
+//       the /settings/plan UI reflects pending cancellations
 
 import { prisma } from '@ilaunchify/db'
 import { createDispatches } from '@ilaunchify/orders'
+import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import type Stripe from 'stripe'
 import { stripe } from './client'
 import { cancelProductionSubscription } from './subscriptions'
@@ -36,6 +44,21 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<{ handled:
 
     case 'invoice.payment_succeeded':
       await onInvoicePaid(event.data.object as Stripe.Invoice)
+      return { handled: true }
+
+    // V1.5-T4 — tier subscription onboarding. The Customer pays via
+    // Stripe-hosted Checkout (mode='subscription'), Stripe creates the
+    // Subscription, and fires this event. We capture the subscription
+    // id + flip the creator's tier in one place.
+    case 'checkout.session.completed':
+      await onCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session)
+      return { handled: true }
+
+    // V1.5-T4 — tier subscription state mirror. Covers cancel_at_period_end
+    // toggles + plan changes. For ProductionSubscriptions we ignore
+    // (no parallel mirror needed — those have their own webhook path).
+    case 'customer.subscription.updated':
+      await onSubscriptionUpdated(event.data.object as Stripe.Subscription)
       return { handled: true }
 
     case 'customer.subscription.deleted':
@@ -314,25 +337,186 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
 }
 
 async function onSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const ours = await prisma.productionSubscription.findUnique({
+  // First, the ProductionSubscription path (G6.d).
+  const productionSub = await prisma.productionSubscription.findUnique({
     where: { stripeSubscriptionId: subscription.id },
     select: { id: true, status: true },
   })
-  if (!ours) return
-  if (ours.status === 'CANCELLED' || ours.status === 'COMPLETED') return
+  if (productionSub) {
+    if (
+      productionSub.status === 'CANCELLED' ||
+      productionSub.status === 'COMPLETED'
+    ) {
+      return
+    }
+    await prisma.productionSubscription.update({
+      where: { id: productionSub.id },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: subscription.canceled_at
+          ? new Date(subscription.canceled_at * 1000)
+          : new Date(),
+        cancelledReason:
+          subscription.cancellation_details?.reason ??
+          subscription.cancellation_details?.comment ??
+          'stripe_subscription_deleted',
+        nextRunAt: null,
+      },
+    })
+    return
+  }
 
-  await prisma.productionSubscription.update({
-    where: { id: ours.id },
-    data: {
-      status: 'CANCELLED',
-      cancelledAt: subscription.canceled_at
-        ? new Date(subscription.canceled_at * 1000)
-        : new Date(),
-      cancelledReason:
+  // V1.5-T4 — tier subscription path. Stripe ends the schedule (either
+  // because cancel_at_period_end finally fired OR because we hit a
+  // failed payment retry cap). Flip the creator back to MAKER + clear
+  // the Stripe handles so a future re-upgrade goes through Checkout
+  // cleanly. We DO NOT keep stripeCustomerId — that lives on User and
+  // is reusable across re-subscribes.
+  const tierProfile = await prisma.creatorProfile.findUnique({
+    where: { stripeTierSubscriptionId: subscription.id },
+    select: { id: true, subscriptionTier: true },
+  })
+  if (!tierProfile) return
+
+  await setCreatorTierWithAudit({
+    creatorProfileId: tierProfile.id,
+    newTier: 'MAKER',
+    actor: { kind: 'system', label: 'stripe_subscription_deleted' },
+    payload: {
+      stripeSubscriptionId: subscription.id,
+      cancellationReason:
         subscription.cancellation_details?.reason ??
         subscription.cancellation_details?.comment ??
         'stripe_subscription_deleted',
-      nextRunAt: null,
+    },
+  })
+
+  await prisma.creatorProfile.update({
+    where: { id: tierProfile.id },
+    data: {
+      stripeTierSubscriptionId: null,
+      tierCurrentPeriodEnd: null,
+      tierCancelAtPeriodEnd: false,
+    },
+  })
+}
+
+// =============================================================================
+// V1.5-T4 — tier subscription handlers (checkout.session.completed +
+// customer.subscription.updated). Companion to onSubscriptionDeleted's
+// tier path above.
+// =============================================================================
+
+/**
+ * Fires after the creator finishes paying for a tier upgrade via the
+ * Stripe-hosted Checkout flow (mode='subscription').
+ *
+ * We only act when this is a tier session (metadata.ilaunchify_kind ===
+ * 'tier'). For production subscriptions we use a different path —
+ * placeOrderFromCheckoutDraft creates the row pre-checkout and ties the
+ * Stripe handles via createProductionSubscription before redirecting to
+ * Checkout, so we don't need a callback here for those.
+ *
+ * Idempotent: if the creator's stripeTierSubscriptionId is already set
+ * to this subscription, skip (Stripe retries webhooks; we may see this
+ * event twice).
+ */
+async function onCheckoutSessionCompleted(
+  session: Stripe.Checkout.Session,
+) {
+  const kind = session.metadata?.ilaunchify_kind
+  if (kind !== 'tier') return // production-order checkout — handled by PI path
+  if (session.mode !== 'subscription') return // defensive
+  if (session.payment_status !== 'paid') return // unpaid sessions don't grant tier
+
+  const creatorProfileId = session.metadata?.ilaunchify_creator_profile_id
+  const newTier = session.metadata?.ilaunchify_tier as
+    | 'BUILDER'
+    | 'AGENCY'
+    | undefined
+  if (!creatorProfileId || !newTier) {
+    // Hard mismatch — Stripe shouldn't fire this without our metadata
+    // because createTierCheckoutSession always pins both. Log & bail
+    // rather than partially apply.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[webhook] checkout.session.completed tier session missing metadata',
+      { sessionId: session.id, metadata: session.metadata },
+    )
+    return
+  }
+
+  const stripeSubscriptionId =
+    typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription?.id
+  if (!stripeSubscriptionId) return
+
+  // Idempotency: re-delivered webhook for an already-flipped creator.
+  const existing = await prisma.creatorProfile.findUnique({
+    where: { id: creatorProfileId },
+    select: { id: true, stripeTierSubscriptionId: true },
+  })
+  if (!existing) return
+  if (existing.stripeTierSubscriptionId === stripeSubscriptionId) return
+
+  // Pull the subscription so we can stamp current_period_end on the
+  // profile in this same write (saves a round-trip vs waiting for
+  // customer.subscription.updated to do it).
+  const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId)
+
+  // Step 1: persist the Stripe handles + period end on the profile.
+  await prisma.creatorProfile.update({
+    where: { id: creatorProfileId },
+    data: {
+      stripeTierSubscriptionId: stripeSubscriptionId,
+      tierCurrentPeriodEnd: new Date(sub.current_period_end * 1000),
+      tierCancelAtPeriodEnd: sub.cancel_at_period_end,
+    },
+  })
+
+  // Step 2: flip the tier through the shared helper so the audit row
+  // matches admin-initiated tier changes (action='CREATOR_TIER_CHANGE',
+  // actorRole='SYSTEM'). Re-entrant: same-tier short-circuits inside
+  // the helper, so a stray double-delivery doesn't double-audit.
+  await setCreatorTierWithAudit({
+    creatorProfileId,
+    newTier,
+    actor: { kind: 'system', label: 'stripe_checkout_completed' },
+    payload: {
+      stripeSubscriptionId,
+      stripeSessionId: session.id,
+      planCode: session.metadata?.ilaunchify_plan_code ?? null,
+      amountTotal: session.amount_total ?? null,
+      currency: session.currency ?? null,
+    },
+  })
+}
+
+/**
+ * Mirror Stripe's cancel_at_period_end + current_period_end onto our
+ * row whenever they change. Driven by:
+ *   - creator pressing Cancel on /settings/plan (we set the flag in
+ *     cancelTierSubscription + persist locally, but the webhook is
+ *     authoritative for the period-end timestamp)
+ *   - creator pressing Resume (cancel_at_period_end flips back to false)
+ *   - any future plan-swap action we add
+ *
+ * We DON'T flip the tier here — that only happens on
+ * customer.subscription.deleted once the cycle actually ends.
+ */
+async function onSubscriptionUpdated(subscription: Stripe.Subscription) {
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { stripeTierSubscriptionId: subscription.id },
+    select: { id: true },
+  })
+  if (!profile) return // not a tier sub (likely a ProductionSubscription) — ignore
+
+  await prisma.creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      tierCancelAtPeriodEnd: subscription.cancel_at_period_end,
+      tierCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
     },
   })
 }

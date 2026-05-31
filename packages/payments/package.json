@@ -9,6 +9,7 @@
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
+    "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/types": "workspace:*",
