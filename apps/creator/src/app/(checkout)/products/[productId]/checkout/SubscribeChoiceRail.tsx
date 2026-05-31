@@ -17,9 +17,16 @@
 // configuration panel.
 
 import { useState } from 'react'
-import { Check, ChevronDown, Lock, Repeat, ShieldCheck } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  Info,
+  Lock,
+  Repeat,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import type { SubscriptionState } from './types'
-import { marketingUrl } from '@/lib/marketing-url'
 
 const CADENCE_OPTIONS = [
   { value: 'MONTHLY' as const, label: 'Every month' },
@@ -64,6 +71,11 @@ export function SubscribeChoiceRail({
   // committing — matches Amazon's behaviour where the panel slides
   // open under the radio.
   const [subExpanded, setSubExpanded] = useState(subscribeSelected)
+  // Click-to-toggle info popover that explains the Builder-tier
+  // benefits (per Pavel 2026-05-31 — replaces the "Upgrade to Builder"
+  // CTA we used to render in the locked branch). Anchored to the (i)
+  // icon next to the "Subscribe & Save" label.
+  const [showInfo, setShowInfo] = useState(false)
 
   const pickedRun =
     RUN_COUNT_OPTIONS.find((o) => o.value === state.runCount) ??
@@ -187,7 +199,7 @@ export function SubscribeChoiceRail({
           className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-ink-50/40 focus:outline-none focus-visible:bg-ink-50"
         >
           <RadioDot selected={subscribeSelected} tone="pink" />
-          <div className="min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <Repeat
                 className={
@@ -199,6 +211,21 @@ export function SubscribeChoiceRail({
               <p className="text-[13px] font-semibold text-ink-900">
                 Subscribe &amp; Save
               </p>
+              {/* Info icon — opens the Builder-tier benefits popover.
+                  Stops propagation so opening the popup doesn't also
+                  toggle the Subscribe row's expand state. */}
+              <button
+                type="button"
+                aria-label="What's included with Subscribe & Save"
+                aria-expanded={showInfo}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowInfo((v) => !v)
+                }}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-400 transition-colors hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1"
+              >
+                <Info className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
               {unlocked
                 ? perRunTotalCents > 0 && savingsCents > 0 && (
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
@@ -206,35 +233,35 @@ export function SubscribeChoiceRail({
                     </span>
                   )
                 : (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-pink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-pink-700">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-ink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-600">
                     <Lock className="h-2.5 w-2.5" aria-hidden="true" />
                     Builder
                   </span>
                 )}
             </div>
-            {unlocked ? (
-              <div className="mt-1 flex items-baseline gap-2">
-                <p className="font-display text-lg font-bold tabular-nums text-pink-700">
-                  {perRunTotalCents > 0
-                    ? formatCents(previewPerRunCents)
-                    : '$—.——'}
+            {/* Always render the discounted price — per Pavel
+                2026-05-31, the price is "decision-making driven" data
+                even for Maker (it tells them what they'd pay if they
+                were on Builder, so they can decide whether to upgrade).
+                For locked users we still hide the strikethrough +
+                savings chip to keep the row readable. */}
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className="font-display text-lg font-bold tabular-nums text-pink-700">
+                {perRunTotalCents > 0
+                  ? formatCents(previewPerRunCents)
+                  : '$—.——'}
+              </p>
+              {perRunTotalCents > 0 && savingsCents > 0 && (
+                <p className="text-[11.5px] tabular-nums text-ink-400 line-through">
+                  {formatCents(perRunTotalCents)}
                 </p>
-                {perRunTotalCents > 0 && savingsCents > 0 && (
-                  <p className="text-[11.5px] tabular-nums text-ink-400 line-through">
-                    {formatCents(perRunTotalCents)}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="mt-1 text-[11.5px] leading-snug text-ink-600">
-                Upgrade to lock in a recurring cadence and save up to 12%.
-              </p>
-            )}
-            {unlocked && (
-              <p className="mt-0.5 text-[10.5px] leading-snug text-ink-500">
-                First charge with this order. Cancel anytime.
-              </p>
-            )}
+              )}
+            </div>
+            <p className="mt-0.5 text-[10.5px] leading-snug text-ink-500">
+              {unlocked
+                ? 'First charge with this order. Cancel anytime.'
+                : `Builder plan · ${pctOff}% off every run`}
+            </p>
           </div>
           <ChevronDown
             aria-hidden="true"
@@ -245,20 +272,75 @@ export function SubscribeChoiceRail({
           />
         </button>
 
+        {/* INFO POPOVER — toggled by the (i) icon next to the label.
+            Replaces the old "Upgrade to Builder" CTA: it tells the
+            creator what's included with Subscribe & Save (i.e. the
+            Builder-plan benefits) so they can decide on their own
+            without us pushing them. Shown regardless of tier so even
+            unlocked creators get a quick refresher. */}
+        {showInfo && (
+          <div className="relative mx-3 mb-3 rounded-lg border border-ink-200 bg-white p-3 shadow-md">
+            <button
+              type="button"
+              aria-label="Close info"
+              onClick={() => setShowInfo(false)}
+              className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />
+            </button>
+            <p className="pr-5 text-[12px] font-semibold text-ink-900">
+              What you get with Subscribe &amp; Save
+            </p>
+            <ul className="mt-2 space-y-1.5 text-[11.5px] text-ink-700">
+              <li className="flex items-start gap-1.5">
+                <Check
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  aria-hidden="true"
+                />
+                <span>Save up to 12% on every run</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <Check
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  aria-hidden="true"
+                />
+                <span>Choose how often it&rsquo;s produced</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <Check
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  aria-hidden="true"
+                />
+                <span>Skip or cancel anytime</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <Check
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  aria-hidden="true"
+                />
+                <span>Same partners, same locked manifest every cycle</span>
+              </li>
+            </ul>
+          </div>
+        )}
+
         {/* EXPANDED PANEL — bullets + foldable cadence/runs + commit
-            CTA (unlocked) OR upgrade prompt (locked). Slides under the
-            teaser; only renders when the user has expanded it. */}
+            CTA (unlocked) OR neutral "available on Builder" copy
+            (locked). Slides under the teaser; only renders when the
+            user has expanded it. */}
         {subExpanded &&
           (unlocked ? (
             <div className="space-y-3 border-t border-pink-100 px-4 pb-4 pt-3">
-              {/* Bullets */}
+              {/* Short benefit bullets per Pavel — no redundant savings
+                  line here (OrderSummary already shows "Subscription
+                  savings (X%)" as a recalculated breakdown row). */}
               <ul className="space-y-1 text-[11.5px] text-ink-700">
                 <li className="flex items-center gap-1.5">
                   <Check
                     className="h-3 w-3 flex-shrink-0 text-emerald-700"
                     aria-hidden="true"
                   />
-                  No fees
+                  Low fees
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check
@@ -267,15 +349,6 @@ export function SubscribeChoiceRail({
                   />
                   Cancel anytime
                 </li>
-                {perRunTotalCents > 0 && savingsCents > 0 && (
-                  <li className="flex items-center gap-1.5">
-                    <Check
-                      className="h-3 w-3 flex-shrink-0 text-emerald-700"
-                      aria-hidden="true"
-                    />
-                    Save {formatCents(savingsCents)} every cycle
-                  </li>
-                )}
               </ul>
 
               {/* Foldable cadence + runs */}
@@ -295,10 +368,26 @@ export function SubscribeChoiceRail({
                   label="Total runs"
                   value={String(state.runCount ?? 6)}
                   onChange={(v) => setRunCount(v === 'null' ? null : Number(v))}
-                  options={RUN_COUNT_OPTIONS.map((o) => ({
-                    value: o.value === null ? 'null' : String(o.value),
-                    label: `${o.label} · save ${(o.discountBp / 100).toFixed(0)}%`,
-                  }))}
+                  /* Each option shows its REAL per-run price (per
+                     Pavel 2026-05-31, "decision-making driven model"
+                     — the creator can compare actual dollar amounts
+                     across plans before committing). */
+                  options={RUN_COUNT_OPTIONS.map((o) => {
+                    const optPerRunCents = Math.max(
+                      0,
+                      Math.round(
+                        (perRunTotalCents * (10_000 - o.discountBp)) / 10_000,
+                      ),
+                    )
+                    const pricePart =
+                      perRunTotalCents > 0
+                        ? ` · ${formatCents(optPerRunCents)}/run`
+                        : ''
+                    return {
+                      value: o.value === null ? 'null' : String(o.value),
+                      label: `${o.label} · save ${(o.discountBp / 100).toFixed(0)}%${pricePart}`,
+                    }
+                  })}
                 />
               </div>
 
@@ -309,17 +398,16 @@ export function SubscribeChoiceRail({
               </p>
             </div>
           ) : (
-            <div className="border-t border-pink-100 px-4 pb-4 pt-3">
+            // Locked branch (Maker tier). No "Upgrade to Builder" CTA
+            // per Pavel — the info popover next to the label is the only
+            // surface that explains what Builder includes. Keep the
+            // expanded body intentionally minimal so the row reads as
+            // "available with Builder" rather than "buy this now."
+            <div className="border-t border-ink-100 px-4 pb-4 pt-3">
               <p className="text-[11.5px] leading-snug text-ink-600">
-                Builder tier and above can lock in a recurring cadence with
-                a discount on every run. Manage runs and pause anytime.
+                Subscribe &amp; Save is included with the Builder plan.
+                Tap the info icon above to see what&rsquo;s included.
               </p>
-              <a
-                href={marketingUrl('/pricing?tier=builder')}
-                className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-pink-500 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
-              >
-                Upgrade to Builder
-              </a>
             </div>
           ))}
       </div>
@@ -348,9 +436,11 @@ export function SubscribeChoiceRail({
           disabled={isSaving}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
         >
-          {subscribeSelected && unlocked
-            ? 'Add subscription to cart'
-            : 'Add to cart'}
+          {/* Per Pavel 2026-05-31 — single fixed label regardless of
+              mode. Drives the creator toward the subscription path
+              even when One-time is currently selected; the radio still
+              decides which mode actually gets committed on click. */}
+          Add subscription to cart
         </button>
       </div>
     </section>
