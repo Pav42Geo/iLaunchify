@@ -211,21 +211,6 @@ export function SubscribeChoiceRail({
               <p className="text-[13px] font-semibold text-ink-900">
                 Subscribe &amp; Save
               </p>
-              {/* Info icon — opens the Builder-tier benefits popover.
-                  Stops propagation so opening the popup doesn't also
-                  toggle the Subscribe row's expand state. */}
-              <button
-                type="button"
-                aria-label="What's included with Subscribe & Save"
-                aria-expanded={showInfo}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowInfo((v) => !v)
-                }}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-ink-400 transition-colors hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1"
-              >
-                <Info className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
               {unlocked
                 ? perRunTotalCents > 0 && savingsCents > 0 && (
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
@@ -262,6 +247,25 @@ export function SubscribeChoiceRail({
                 ? 'First charge with this order. Cancel anytime.'
                 : `Builder plan · ${pctOff}% off every run`}
             </p>
+            {/* "What's included?" trigger — a visible inline link with
+                icon, in pink so it reads as a discoverable action
+                instead of the tiny grey (i) it replaced. Stops
+                propagation so the popover open doesn't also toggle
+                the row's expand state. Anchored under the price
+                caption so it sits in the user's natural read path. */}
+            <button
+              type="button"
+              aria-label="See what's included with Subscribe & Save"
+              aria-expanded={showInfo}
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowInfo((v) => !v)
+              }}
+              className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold text-pink-700 underline decoration-pink-300 decoration-1 underline-offset-2 transition-colors hover:bg-pink-50 hover:decoration-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1"
+            >
+              <Info className="h-3 w-3" aria-hidden="true" />
+              What&rsquo;s included?
+            </button>
           </div>
           <ChevronDown
             aria-hidden="true"
