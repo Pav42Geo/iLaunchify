@@ -8,8 +8,12 @@ import {
   acceptDispatch,
   declineDispatch,
   markProducing,
+  enterQualityCheck,
+  failQualityCheck,
   markReady,
   shipDispatch,
+  markInTransit,
+  markDelivered,
   requestDispatchChanges,
   withdrawDispatch,
   type FlaggedField,
@@ -82,28 +86,112 @@ export function DispatchActions({ dispatchId, status, type }: Props) {
     )
   }
 
+  // B6 — PRODUCING gives the partner two paths:
+  //   1. Skip QC → mark ready directly (low-risk batches, the existing
+  //      default since R8/H1 shipped)
+  //   2. Start QC → moves the dispatch to QUALITY_CHECK so the partner can
+  //      formally pass/fail the batch before flipping to READY. Captures
+  //      qualityCheckStartedAt so the creator-side timeline reads
+  //      "Quality check ran for 6h" not just "Production took 5d".
   if (status === 'PRODUCING') {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Action</CardTitle>
-          <CardDescription>Mark ready when packed and waiting for pickup.</CardDescription>
+          <CardDescription>
+            Either start a quality check or, for low-risk batches, mark ready
+            directly.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <Button
+            className="w-full"
+            onClick={wrap(
+              () => enterQualityCheck({ dispatchId }),
+              'Quality check started',
+            )}
+            disabled={busy}
+          >
+            Start quality check
+          </Button>
+          <Button
+            variant="ghost"
             className="w-full"
             onClick={wrap(() => markReady({ dispatchId }), 'Marked ready')}
             disabled={busy}
           >
-            Mark ready to ship
+            Skip QC · mark ready to ship
           </Button>
         </CardContent>
       </Card>
     )
   }
 
+  if (status === 'QUALITY_CHECK') {
+    return <QualityCheckPanel dispatchId={dispatchId} />
+  }
+
   if (status === 'READY') {
     return <ShipPanel dispatchId={dispatchId} />
+  }
+
+  // B6 — Tracking carriers usually flip a SHIPPED parcel through an
+  // IN_TRANSIT pulse before delivery (USPS "Out for delivery", UPS
+  // "In transit"). Partner can either reflect that beat manually OR
+  // skip straight to DELIVERED if they get a delivery confirmation
+  // without the in-transit ping.
+  if (status === 'SHIPPED') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Update fulfillment</CardTitle>
+          <CardDescription>
+            Reflect the carrier&rsquo;s status. You can skip to delivered if
+            you already have a confirmation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Button
+            className="w-full"
+            onClick={wrap(() => markInTransit({ dispatchId }), 'Marked in transit')}
+            disabled={busy}
+          >
+            Mark in transit
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={wrap(() => markDelivered({ dispatchId }), 'Marked delivered')}
+            disabled={busy}
+          >
+            Mark delivered
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (status === 'IN_TRANSIT') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Confirm delivery</CardTitle>
+          <CardDescription>
+            Mark delivered when the carrier confirms drop-off. Closes the
+            order on the creator&rsquo;s side.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            className="w-full"
+            onClick={wrap(() => markDelivered({ dispatchId }), 'Marked delivered')}
+            disabled={busy}
+          >
+            Mark delivered
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -112,6 +200,115 @@ export function DispatchActions({ dispatchId, status, type }: Props) {
         <CardTitle className="text-base">Status: {status}</CardTitle>
         <CardDescription>No further action required from you.</CardDescription>
       </CardHeader>
+    </Card>
+  )
+}
+
+// =============================================================================
+// QualityCheckPanel — Pass-to-READY / Fail-with-notes
+// =============================================================================
+//
+// B6 — failQualityCheck requires notes (server enforces; client also
+// blocks the submit when textarea is empty so the creator never wonders
+// why the request bounced). Failing parks the order at ON_HOLD for admin
+// reroute, same pattern as decline + withdraw.
+
+function QualityCheckPanel({ dispatchId }: { dispatchId: string }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [failExpanded, setFailExpanded] = useState(false)
+  const [notes, setNotes] = useState('')
+
+  async function pass() {
+    setBusy(true)
+    try {
+      const r = await markReady({ dispatchId })
+      if (!r.ok) {
+        toast.error(r.error ?? 'Failed')
+        return
+      }
+      toast.success('QC passed · marked ready')
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function fail() {
+    if (!notes.trim()) {
+      toast.error('Add a note so admin + creator know what failed.')
+      return
+    }
+    setBusy(true)
+    try {
+      const r = await failQualityCheck({ dispatchId, notes: notes.trim() })
+      if (!r.ok) {
+        toast.error(r.error ?? 'Failed')
+        return
+      }
+      toast.success('QC failed · admin notified')
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Quality check</CardTitle>
+        <CardDescription>
+          Pass to advance to READY. Fail to park the order for admin reroute.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Button className="w-full" onClick={pass} disabled={busy}>
+          QC passed · mark ready to ship
+        </Button>
+        {!failExpanded ? (
+          <Button
+            variant="ghost"
+            className="w-full text-red-700 hover:text-red-800"
+            onClick={() => setFailExpanded(true)}
+            disabled={busy}
+          >
+            QC failed
+          </Button>
+        ) : (
+          <div className="space-y-2 rounded-md border border-red-200 bg-red-50/40 p-3">
+            <Label htmlFor="qc-notes">Failure notes (required)</Label>
+            <textarea
+              id="qc-notes"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={1000}
+              placeholder="What failed? e.g. color drift on 8% of units, label adhesion poor in batch."
+              className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onClick={() => {
+                  setFailExpanded(false)
+                  setNotes('')
+                }}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-red-700 hover:bg-red-800"
+                onClick={fail}
+                disabled={busy || !notes.trim()}
+              >
+                Confirm failure
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
     </Card>
   )
 }
