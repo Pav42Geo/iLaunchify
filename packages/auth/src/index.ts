@@ -14,3 +14,12 @@ export {
   normalizeTier,
 } from './tiers'
 export type { TierKey } from './tiers'
+
+// V1.5-T2 — single write path for CreatorProfile.subscriptionTier
+// (admin Tier Management + Stripe-webhook tier-flip handlers).
+export { setCreatorTierWithAudit } from './tier-writes'
+export type {
+  SetCreatorTierInput,
+  SetCreatorTierResult,
+  TierWriteActor,
+} from './tier-writes'

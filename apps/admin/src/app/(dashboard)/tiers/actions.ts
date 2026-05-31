@@ -14,7 +14,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { invalidatePlansCache } from '@ilaunchify/plans'
 
@@ -34,44 +34,27 @@ export async function changeCreatorTier(input: {
     return { ok: false, error: 'A reason is required for tier changes.' }
   }
 
-  const existing = await prisma.creatorProfile.findUnique({
-    where: { id: input.creatorProfileId },
-    select: {
-      id: true,
-      subscriptionTier: true,
-      userId: true,
-      displayName: true,
-    },
-  })
-  if (!existing) return { ok: false, error: 'Creator profile not found.' }
-  if (existing.subscriptionTier === input.newTier) {
+  // V1.5-T2 — shared helper handles read + write + audit. We keep the
+  // admin-specific "already on this tier" UX message by inspecting the
+  // `changed` flag (helper short-circuits same-tier as a no-op).
+  let result
+  try {
+    result = await setCreatorTierWithAudit({
+      creatorProfileId: input.creatorProfileId,
+      newTier: input.newTier,
+      actor: { kind: 'admin', userId: user.id },
+      payload: { reason: input.reason.trim() },
+    })
+  } catch {
+    return { ok: false, error: 'Creator profile not found.' }
+  }
+
+  if (!result.changed) {
     return { ok: false, error: 'Creator is already on this tier.' }
   }
 
-  await prisma.creatorProfile.update({
-    where: { id: input.creatorProfileId },
-    data: {
-      subscriptionTier: input.newTier,
-      tierChangedAt: new Date(),
-      tierChangedById: user.id,
-    },
-  })
-
-  await logAuditAs(user, {
-    entityType: 'CreatorProfile',
-    entityId: existing.id,
-    action: 'CREATOR_TIER_CHANGE',
-    fromValue: existing.subscriptionTier,
-    toValue: input.newTier,
-    payload: {
-      reason: input.reason.trim(),
-      creatorDisplayName: existing.displayName,
-      creatorUserId: existing.userId,
-    },
-  })
-
   revalidatePath('/tiers')
-  revalidatePath(`/tiers/creator/${existing.id}`)
+  revalidatePath(`/tiers/creator/${input.creatorProfileId}`)
   return { ok: true }
 }
 
@@ -121,11 +104,14 @@ export async function setCreatorFeeOverride(input: {
   return { ok: true }
 }
 
-// REBUILD R16.b — bulk variant. Loops the per-row changeCreatorTier
-// logic so each row still gets its own audit-log entry (admin-friendly
+// REBUILD R16.b — bulk variant. Loops the per-row setCreatorTierWithAudit
+// helper so each row still gets its own audit-log entry (admin-friendly
 // because the log reads as N discrete decisions, not one opaque "bulk"
 // event). Partial success is allowed — we skip same-tier rows + missing
 // rows, return both counts. Reason is required and applied to every row.
+//
+// V1.5-T2 — was: inline prisma.update + logAuditAs per row. Now: shared
+// helper used by both the single-creator action and the webhook handler.
 export async function bulkChangeCreatorTier(input: {
   creatorProfileIds: string[]
   newTier: 'MAKER' | 'BUILDER' | 'AGENCY'
@@ -144,46 +130,28 @@ export async function bulkChangeCreatorTier(input: {
     return { ok: false, error: 'Up to 100 creators per bulk action.' }
   }
 
-  const existing = await prisma.creatorProfile.findMany({
-    where: { id: { in: input.creatorProfileIds } },
-    select: { id: true, subscriptionTier: true, userId: true, displayName: true },
-  })
+  const reason = input.reason.trim()
+  const bulkSize = input.creatorProfileIds.length
 
   let changedCount = 0
   let skipped = 0
 
-  for (const row of existing) {
-    if (row.subscriptionTier === input.newTier) {
+  for (const profileId of input.creatorProfileIds) {
+    try {
+      const res = await setCreatorTierWithAudit({
+        creatorProfileId: profileId,
+        newTier: input.newTier,
+        actor: { kind: 'admin', userId: user.id },
+        payload: { reason, bulk: true, bulkSize },
+      })
+      if (res.changed) changedCount += 1
+      else skipped += 1
+    } catch {
+      // Missing CreatorProfile — count as skipped rather than abort the
+      // whole batch. Admin gets `skipped` summary in the toast.
       skipped += 1
-      continue
     }
-    await prisma.creatorProfile.update({
-      where: { id: row.id },
-      data: {
-        subscriptionTier: input.newTier,
-        tierChangedAt: new Date(),
-        tierChangedById: user.id,
-      },
-    })
-    await logAuditAs(user, {
-      entityType: 'CreatorProfile',
-      entityId: row.id,
-      action: 'CREATOR_TIER_CHANGE',
-      fromValue: row.subscriptionTier,
-      toValue: input.newTier,
-      payload: {
-        reason: input.reason.trim(),
-        creatorDisplayName: row.displayName,
-        creatorUserId: row.userId,
-        bulk: true,
-        bulkSize: input.creatorProfileIds.length,
-      },
-    })
-    changedCount += 1
   }
-
-  // Account for IDs that the admin selected but no longer exist.
-  skipped += input.creatorProfileIds.length - existing.length
 
   revalidatePath('/tiers')
   return { ok: true, changedCount, skipped }
