@@ -389,7 +389,6 @@ export function CheckoutWizard({
             estimate={estimate}
             shipping={shipping}
             currentStep={currentStep}
-            subscribeAndSaveEnabled={subscribeAndSaveEnabled}
           />
         </aside>
       </main>

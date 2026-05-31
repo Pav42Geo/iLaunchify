@@ -1,18 +1,23 @@
 'use client'
 
-// Phase G1 + G3 + R8.c — sticky Order Summary, right-rail of the wizard.
+// Phase G1 + G3 + G6.c-cleanup — sticky Order Summary, right-rail of
+// the wizard.
 //
 // G1 shipped the layout with $—.—— placeholders. G3 wires in the live
 // CostBreakdown from estimateProductionCost so the totals are real cents
-// the moment a quantity is entered. R8.c adds the Subscribe & save
-// "Coming soon" stub that renders only on Step 2 per Pavel's spec.
+// the moment a quantity is entered.
+//
+// History — R8.c added a "Subscribe & save" upsell stub here when the
+// picker was still a placeholder. Now that G6.c ships the full picker
+// inline in Step 2's body, the right-rail stub was redundant
+// (lock-badge dupe under the cards) and was removed on 2026-05-30 per
+// Pavel. The SubscribedSummary readout still renders here once the
+// offer is accepted, so the creator's choice stays visible into Step 3.
 //
 // Shipping + tax remain placeholders here — they land in G4 (fulfillment
 // + carrier rates) and G5 (tax computation at My cart).
 
-import { Lock, Repeat } from 'lucide-react'
-// /pricing lives in apps/marketing — cross-app links use marketingUrl().
-import { marketingUrl } from '@/lib/marketing-url'
+import { Repeat } from 'lucide-react'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 
@@ -22,20 +27,17 @@ interface Props {
   // G4d — shipping cents from the wizard's lifted estimateShipping state.
   // Null until the user has picked a ship-to mode.
   shipping: { shippingCents: number; leadTimeBusinessDays: number } | null
-  // R8.c — which step are we on? Drives the contextual hints rendered
-  // above the totals (Subscribe stub on Step 2, summary on Step 3, etc.).
+  // Reserved for future step-specific hints in the right rail. Kept on
+  // the API even after the Subscribe stub was removed so wizard callers
+  // don't need a follow-up patch.
   currentStep?: WizardStepIndex
-  // R16.a — pre-resolved feature flag via @ilaunchify/plans' hasFeature()
-  // lookup on the server. true = Builder+; false = locked → upgrade hint.
-  subscribeAndSaveEnabled?: boolean
 }
 
 export function OrderSummary({
   state,
   estimate,
   shipping,
-  currentStep,
-  subscribeAndSaveEnabled = false,
+  currentStep: _currentStep,
 }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
@@ -43,31 +45,18 @@ export function OrderSummary({
   const grandTotalCents =
     (estimate?.totalBeforeShippingAndTaxCents ?? 0) + (shipping?.shippingCents ?? 0)
   // G6.c — once the creator accepts the Subscribe & save offer on
-  // Step 2, the right-rail flips from upsell-stub to confirmation-readout
-  // so the choice stays visible all the way through Step 3 / Pay.
+  // Step 2, the right-rail surfaces a confirmation-readout so the
+  // choice stays visible all the way through Step 3 / Pay.
   const subAccepted = state.subscription?.offerAccepted === true
 
   return (
     <div className="space-y-3">
-      {/* Subscribe & save right-rail surfaces:
-            - Step 2, not accepted yet → the old "this rail used to live
-              here" stub is gone now that we have the full picker in the
-              step body. We still render a tiny lock badge for Maker so
-              the upgrade affordance shows even when the picker isn't yet
-              visible (no qty entered).
-            - Any step, accepted → confirmation summary so the creator's
-              choice persists into Step 3 visual state. */}
-      {subAccepted && state.subscription?.cadence ? (
+      {subAccepted && state.subscription?.cadence && (
         <SubscribedSummary
           cadence={state.subscription.cadence}
           runCount={state.subscription.runCount ?? null}
           discountBp={state.subscription.discountBp ?? 0}
         />
-      ) : (
-        currentStep === 2 &&
-        !subscribeAndSaveEnabled && (
-          <SubscribeAndSaveStub unlocked={false} />
-        )
       )}
 
       <div
@@ -154,70 +143,14 @@ export function OrderSummary({
 }
 
 // =============================================================================
-// SubscribeAndSaveStub — Step 2 right-rail "Coming soon" upsell (R8.c)
-// =============================================================================
-
-function SubscribeAndSaveStub({ unlocked }: { unlocked: boolean }) {
-  // R16.a — Subscribe & save now reads its unlock state from the
-  // data-driven @ilaunchify/plans layer (resolved server-side in the
-  // page loader via hasFeature). Locked = upgrade prompt; unlocked =
-  // live (still-coming-soon) waitlist card. Copy and CTA target swap
-  // accordingly. Admin can toggle the feature row in /admin/tiers
-  // without a redeploy.
-  return (
-    <div className="rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50/80 to-white p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-700"
-        >
-          <Repeat className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="text-[12.5px] font-semibold text-ink-900">
-              Subscribe &amp; save
-            </p>
-            {unlocked ? (
-              <span className="rounded-full bg-ink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-600">
-                Soon
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-pink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-pink-700">
-                <Lock className="h-2.5 w-2.5" aria-hidden="true" />
-                Builder
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-600">
-            {unlocked
-              ? "Lock in a recurring production cadence and save up to 12% on every run. We'll re-route automatically as your forecast grows."
-              : 'Upgrade to Builder to lock in a recurring cadence and save up to 12% on every run.'}
-          </p>
-          {unlocked ? (
-            <button
-              type="button"
-              disabled
-              className="mt-2.5 inline-flex cursor-not-allowed items-center rounded-full border border-ink-200 bg-white px-3 py-1 text-[11px] font-medium text-ink-400"
-            >
-              Join the waitlist
-            </button>
-          ) : (
-            <a
-              href={marketingUrl('/pricing?tier=builder')}
-              className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-pink-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
-            >
-              Upgrade to Builder
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
 // SubscribedSummary — confirmation readout once the offer is accepted (G6.c)
+//
+// Note: an earlier `SubscribeAndSaveStub` upsell-card used to sit above
+// this block. It was removed on 2026-05-30 because the G6.c picker in
+// Step 2's body already shows the unlock state — keeping a second
+// lock-card here just duplicated the message. Re-introduce a right-rail
+// surface only if we have something genuinely additive to say (e.g.
+// once we ship a "tier upgrade" inline modal).
 // =============================================================================
 
 function SubscribedSummary({
