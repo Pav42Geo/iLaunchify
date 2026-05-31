@@ -27,22 +27,30 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import {
+  SUBSCRIPTION_DISCOUNT_LADDER,
+  getMaxDiscountBp,
+  getTierByRunCount,
+  formatDiscountPct,
+} from '@ilaunchify/plans'
 import type { SubscriptionState } from './types'
 
 const CADENCE_OPTIONS = [
   { value: 'MONTHLY' as const, label: 'Every month' },
   { value: 'QUARTERLY' as const, label: 'Every 3 months' },
 ]
-const RUN_COUNT_OPTIONS: Array<{
-  value: number | null
-  label: string
-  discountBp: number
-}> = [
-  { value: 3, label: '3 runs', discountBp: 500 },
-  { value: 6, label: '6 runs', discountBp: 800 },
-  { value: 12, label: '12 runs', discountBp: 1200 },
-  { value: null, label: 'Open-ended', discountBp: 1000 },
-]
+
+// Discount ladder is the SINGLE source of truth (packages/plans).
+// Per Pavel 2026-05-31 — every percentage shown in this rail must
+// derive from it. V1.5 will swap the import to an admin-editable
+// DB lookup; signatures stay the same.
+const RUN_COUNT_OPTIONS = SUBSCRIPTION_DISCOUNT_LADDER.map((tier) => ({
+  value: tier.runCount,
+  label: tier.runCount === null ? 'Open-ended' : `${tier.runCount} runs`,
+  discountBp: tier.discountBp,
+}))
+const MAX_DISCOUNT_BP = getMaxDiscountBp()
+const MAX_DISCOUNT_PCT = formatDiscountPct(MAX_DISCOUNT_BP)
 
 interface Props {
   state: SubscriptionState
@@ -78,16 +86,14 @@ export function SubscribeChoiceRail({
   // icon next to the "Subscribe & Save" label.
   const [showInfo, setShowInfo] = useState(false)
 
-  const pickedRun =
-    RUN_COUNT_OPTIONS.find((o) => o.value === state.runCount) ??
-    RUN_COUNT_OPTIONS[1]!
-  const discountBp = pickedRun.discountBp
+  const pickedTier = getTierByRunCount(state.runCount)
+  const discountBp = pickedTier.discountBp
   const previewPerRunCents = Math.max(
     0,
     Math.round((perRunTotalCents * (10_000 - discountBp)) / 10_000),
   )
   const savingsCents = perRunTotalCents - previewPerRunCents
-  const pctOff = (discountBp / 100).toFixed(0)
+  const pctOff = formatDiscountPct(discountBp)
 
   // Mark the offer as seen the first render — fuels future analytics on
   // impression vs accept rates.
@@ -112,22 +118,21 @@ export function SubscribeChoiceRail({
     // Per Pavel 2026-05-31 — the moment the creator commits to
     // Subscribe (or even peeks at it via the row header), auto-open
     // the benefits popup so they see what they're agreeing to without
-    // having to hunt for the "What's included?" link. They can dismiss
-    // with the X.
+    // having to hunt for the "What's included?" link.
     setShowInfo(true)
-    if (!unlocked) {
-      // For Maker we still let the row expand so the popup has
-      // breathing room, but don't flip the offer flag (the offer
-      // doesn't exist for them).
-      setSubExpanded(true)
-      return
-    }
     setSubExpanded(true)
+    // The radio flips for everyone (Pavel: "I want to trigger the
+    // radio button and activate the subscription plan"). Tier-gating
+    // happens downstream in placeOrderFromCheckoutDraft — Maker's
+    // soft-fail path keeps the day-1 order intact and skips the
+    // Stripe subscription creation, so flipping the radio here is
+    // safe. The Builder lock badge still tells the user what tier
+    // unlocks the discount.
     onChange({
       offerAccepted: true,
       cadence: state.cadence ?? 'MONTHLY',
       runCount: state.runCount ?? 6,
-      discountBp: pickedRun.discountBp,
+      discountBp: pickedTier.discountBp,
     })
   }
 
@@ -290,7 +295,7 @@ export function SubscribeChoiceRail({
             <p className="mt-0.5 text-[10.5px] leading-snug text-ink-500">
               {unlocked
                 ? 'First charge with this order. Cancel anytime.'
-                : `Builder plan · ${pctOff}% off every run`}
+                : `Builder plan · up to ${MAX_DISCOUNT_PCT}% off every run`}
             </p>
             {/* "What's included?" trigger — a visible inline link with
                 icon, in pink so it reads as a discoverable action
@@ -346,7 +351,7 @@ export function SubscribeChoiceRail({
                   className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                   aria-hidden="true"
                 />
-                <span>Save up to 12% on every run</span>
+                <span>Save up to {MAX_DISCOUNT_PCT}% on every run</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
@@ -621,7 +626,7 @@ function BuilderLockBadgeWithHoverCard() {
                 className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                 aria-hidden="true"
               />
-              <span>Subscribe &amp; Save (up to 12% off every run)</span>
+              <span>Subscribe &amp; Save (up to {MAX_DISCOUNT_PCT}% off every run)</span>
             </li>
             <li className="flex items-start gap-1.5">
               <Check
@@ -642,7 +647,7 @@ function BuilderLockBadgeWithHoverCard() {
                 className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                 aria-hidden="true"
               />
-              <span>Volume pricing (~12% off catalog)</span>
+              <span>Volume pricing (~{MAX_DISCOUNT_PCT}% off catalog)</span>
             </li>
           </ul>
         </div>
