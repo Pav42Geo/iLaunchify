@@ -190,7 +190,9 @@ export function SubscribeChoiceRail({
           "Add subscription to cart". The button MOVES between the
           two slots based on the selected radio. */}
       {!subscribeSelected && (
-        <div className="border-t border-ink-100 bg-ink-50/40 p-3">
+        // No border-top — the button reads as part of the One-time
+        // card, not a separate action (Pavel 2026-06-01).
+        <div className="bg-white px-4 pb-4">
           <button
             type="button"
             onClick={() => {
@@ -296,10 +298,16 @@ export function SubscribeChoiceRail({
                 </p>
               )}
             </div>
+            {/* Per Pavel 2026-06-01 — caption is two lines for both
+                tiers: first line is the savings promise, second line
+                is the reassurance. The Builder-plan prefix moves into
+                the popup ("What's included?") so it doesn't clutter
+                the teaser. */}
             <p className="mt-0.5 text-[10.5px] leading-snug text-ink-500">
-              {unlocked
-                ? 'First charge with this order. Cancel anytime.'
-                : `Builder plan · up to ${MAX_DISCOUNT_PCT}% off every run`}
+              Save up to {MAX_DISCOUNT_PCT}% off every run
+            </p>
+            <p className="text-[10.5px] leading-snug text-ink-500">
+              Cancel anytime
             </p>
             {/* "What's included?" trigger — a visible inline link with
                 icon, in pink so it reads as a discoverable action
@@ -490,7 +498,11 @@ export function SubscribeChoiceRail({
           placeOrderFromCheckoutDraft handles Maker tier-gating —
           here in the UI the button is the advance affordance. */}
       {subscribeSelected && (
-        <div className="border-t border-pink-100 bg-pink-50/40 p-3">
+        // No border-top + gray bg matching the Subscribe row above
+        // (bg-ink-50). Per Pavel 2026-06-01 — the divider line + pink
+        // tint made the button feel like a separate action; now it
+        // reads as part of the same card.
+        <div className="bg-ink-50 px-4 pb-4">
           <button
             type="button"
             onClick={() => {
