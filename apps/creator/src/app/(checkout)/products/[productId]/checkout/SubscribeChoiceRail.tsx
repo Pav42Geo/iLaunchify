@@ -25,6 +25,7 @@ import {
   Repeat,
   ShieldCheck,
   X,
+  Zap,
 } from 'lucide-react'
 import type { SubscriptionState } from './types'
 
@@ -143,7 +144,10 @@ export function SubscribeChoiceRail({
   return (
     <section
       aria-labelledby="subscribe-choice-heading"
-      className="overflow-hidden rounded-xl border border-ink-200 bg-white"
+      /* overflow-visible (was -hidden) so the Builder-tier hover card
+         can float past the section's rounded edge. The card's z-index
+         layers it above OrderSummary below. */
+      className="rounded-xl border border-ink-200 bg-white"
     >
       <h3 id="subscribe-choice-heading" className="sr-only">
         Purchase frequency
@@ -229,10 +233,7 @@ export function SubscribeChoiceRail({
                     </span>
                   )
                 : (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-ink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-600">
-                    <Lock className="h-2.5 w-2.5" aria-hidden="true" />
-                    Builder
-                  </span>
+                  <BuilderLockBadgeWithHoverCard />
                 )}
             </div>
             {/* Always render the discounted price — per Pavel
@@ -535,4 +536,101 @@ function RadioDot({
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
+}
+
+// =============================================================================
+// BuilderLockBadgeWithHoverCard — Lock chip + hover-revealed tier card
+//
+// Per Pavel 2026-05-31 — when a Maker hovers (or focuses, for a11y) the
+// 'Builder' lock badge on the Subscribe row, surface a compact pricing
+// card popup that mirrors the Studio UpgradeOverlay card pattern.
+// Information-only, no CTA — Pavel's rule: inform, don't sell.
+// =============================================================================
+
+function BuilderLockBadgeWithHoverCard() {
+  const [open, setOpen] = useState(false)
+  return (
+    <span
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      <span
+        tabIndex={0}
+        aria-describedby="builder-tier-hover-card"
+        className="inline-flex cursor-help items-center gap-0.5 rounded-full bg-ink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-600 transition-colors hover:bg-pink-100 hover:text-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1"
+      >
+        <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+        Builder
+      </span>
+
+      {/* Hover card — anchored to the bottom-left of the badge so it
+          opens INTO the rail (avoids overflowing the viewport's right
+          edge). z-30 puts it above the OrderSummary card stacked below. */}
+      {open && (
+        <div
+          id="builder-tier-hover-card"
+          role="tooltip"
+          className="absolute left-0 top-full z-30 mt-2 w-64 rounded-xl border-2 border-pink-200 bg-white p-4 text-left shadow-xl"
+        >
+          {/* Tier header — same pattern as Studio's UpgradeOverlay */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-pink-100">
+              <Zap className="h-3.5 w-3.5 text-pink-700" aria-hidden="true" />
+            </span>
+            <span className="text-[13px] font-bold text-ink-900">Builder</span>
+            <span className="ml-auto rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
+              Recommended
+            </span>
+          </div>
+
+          {/* Price */}
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="font-display text-xl font-bold tabular-nums text-ink-900">
+              $29
+            </span>
+            <span className="text-[10.5px] text-ink-500">/ month</span>
+          </div>
+          <p className="mt-0.5 text-[10.5px] text-ink-600">
+            For creators ready to ship orders.
+          </p>
+
+          {/* Feature list — keeps parity with the Studio overlay's
+              Builder card but trimmed for the rail's narrower width. */}
+          <ul className="mt-3 space-y-1 text-[11px] text-ink-700">
+            <li className="flex items-start gap-1.5">
+              <Check
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                aria-hidden="true"
+              />
+              <span>Subscribe &amp; Save (up to 12% off every run)</span>
+            </li>
+            <li className="flex items-start gap-1.5">
+              <Check
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                aria-hidden="true"
+              />
+              <span>Print-ready PDF + PNG export</span>
+            </li>
+            <li className="flex items-start gap-1.5">
+              <Check
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                aria-hidden="true"
+              />
+              <span>Multi-channel push (Shopify, Etsy…)</span>
+            </li>
+            <li className="flex items-start gap-1.5">
+              <Check
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                aria-hidden="true"
+              />
+              <span>Volume pricing (~12% off catalog)</span>
+            </li>
+          </ul>
+        </div>
+      )}
+    </span>
+  )
 }
