@@ -28,3 +28,16 @@ export type {
   CreateProductionSubscriptionInput,
   CreateProductionSubscriptionResult,
 } from './subscriptions'
+// V1.5-T3 — creator tier (Maker → Builder/Agency) self-serve helpers.
+export {
+  createTierCheckoutSession,
+  cancelTierSubscription,
+  resumeTierSubscription,
+} from './tier-subscriptions'
+export type {
+  UpgradeableTier,
+  CreateTierCheckoutSessionInput,
+  CreateTierCheckoutSessionResult,
+  CancelTierSubscriptionInput,
+  CancelTierSubscriptionResult,
+} from './tier-subscriptions'
