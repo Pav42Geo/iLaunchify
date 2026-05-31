@@ -230,24 +230,13 @@ export function SubscribeChoiceRail({
         <div
           role="button"
           tabIndex={0}
-          onClick={() => {
-            if (subExpanded && unlocked) {
-              setSubExpanded(false)
-            } else {
-              pickSubscribe()
-            }
-          }}
+          onClick={pickSubscribe}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
-              if (subExpanded && unlocked) {
-                setSubExpanded(false)
-              } else {
-                pickSubscribe()
-              }
+              pickSubscribe()
             }
           }}
-          aria-expanded={subExpanded}
           aria-pressed={subscribeSelected}
           className="flex w-full cursor-pointer items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-ink-50/40 focus:outline-none focus-visible:bg-ink-50"
         >
@@ -329,13 +318,10 @@ export function SubscribeChoiceRail({
               What&rsquo;s included?
             </button>
           </div>
-          <ChevronDown
-            aria-hidden="true"
-            className={
-              'mt-1 h-4 w-4 flex-shrink-0 text-ink-500 transition-transform ' +
-              (subExpanded ? 'rotate-180' : '')
-            }
-          />
+          {/* Chevron removed 2026-06-01 per Pavel — wasn't doing
+              visible work (configuration panel is hidden by default
+              and pickSubscribe no longer auto-expands it), so the
+              affordance was misleading. */}
         </div>
 
         {/* INFO POPOVER — toggled by the "What's included?" link
