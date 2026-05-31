@@ -310,18 +310,15 @@ export function SubscribeChoiceRail({
             <p className="text-[10.5px] leading-snug text-ink-500">
               Cancel anytime
             </p>
-            {/* "What's included?" trigger — hover opens the tier-card
-                popup (Pavel 2026-06-01). Click also toggles for touch
-                and keyboard users. Mouse-leave closes; the popup has
-                its own X for click-pinned users. */}
+            {/* "What's included?" trigger — click-toggle only.
+                Reverted hover behavior (v3.10) per Pavel 2026-06-01 —
+                he didn't like the popup firing on mouse-over. Stops
+                propagation so the popover toggle doesn't also bubble
+                to the row's expand handler. */}
             <button
               type="button"
               aria-label="See what's included with Subscribe & Save"
               aria-expanded={showInfo}
-              onMouseEnter={() => setShowInfo(true)}
-              onMouseLeave={() => setShowInfo(false)}
-              onFocus={() => setShowInfo(true)}
-              onBlur={() => setShowInfo(false)}
               onClick={(e) => {
                 e.stopPropagation()
                 setShowInfo((v) => !v)
