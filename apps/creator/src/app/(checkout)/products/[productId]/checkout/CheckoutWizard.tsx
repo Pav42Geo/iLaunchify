@@ -53,6 +53,7 @@ import { ReviewStep } from './steps/ReviewStep'
 import { ProductionStep } from './steps/ProductionStep'
 import { CheckoutStep } from './steps/CheckoutStep'
 import { OrderSummary } from './OrderSummary'
+import { SubscribeChoiceRail } from './SubscribeChoiceRail'
 import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
@@ -339,9 +340,6 @@ export function CheckoutWizard({
               onEstimate={setEstimate}
               productName={productName}
               brandName={brandName}
-              subscriptionState={state.subscription}
-              onSubscriptionChange={(patch) => patchState('subscription', patch)}
-              subscribeAndSaveEnabled={subscribeAndSaveEnabled}
             />
           )}
           {currentStep === 3 && (
@@ -384,6 +382,22 @@ export function CheckoutWizard({
             onBack={goBack}
             onNext={goNext}
           />
+          {/* G6.c-rail (2026-05-30) — Amazon-style Subscribe & Save sits
+              between the Next/Back actions and the Order Summary, only
+              on Step 2 and only once we have a real per-run total to
+              show savings against. Replaces the in-body picker that
+              shipped with the original G6.c slice. */}
+          {currentStep === 2 &&
+            (estimate?.totalBeforeShippingAndTaxCents ?? 0) > 0 && (
+              <SubscribeChoiceRail
+                state={state.subscription}
+                onChange={(patch) => patchState('subscription', patch)}
+                unlocked={subscribeAndSaveEnabled}
+                perRunTotalCents={
+                  estimate?.totalBeforeShippingAndTaxCents ?? 0
+                }
+              />
+            )}
           <OrderSummary
             state={state}
             estimate={estimate}

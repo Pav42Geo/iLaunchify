@@ -27,7 +27,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { StepShell } from './_StepShell'
-import type { ProductionState, SubscriptionState } from '../types'
+import type { ProductionState } from '../types'
 import {
   getProductionOptions,
   estimateProductionCost,
@@ -35,7 +35,14 @@ import {
   type PackagingMaterialOption,
   type SubstrateOption,
 } from '../production-actions'
-import { SubscribeAndSavePicker } from '../SubscribeAndSavePicker'
+
+// G6.c-rail (2026-05-30): the Subscribe & Save picker moved out of the
+// step body into the right rail (SubscribeChoiceRail rendered by
+// CheckoutWizard). This step is now strictly the production-spec view —
+// cart line, quantity, materials, reassurance. The subscription choice
+// lives in the rail because Pavel wanted the Amazon stacked-card
+// pattern: collapsed teaser above the Order Summary, not buried at the
+// bottom of the step.
 
 interface Props {
   productId: string
@@ -47,13 +54,6 @@ interface Props {
   // we don't refetch from this client component.
   productName: string
   brandName: string
-  // Phase G6.c — Subscribe & save picker lives at the bottom of this
-  // step. Subscription state + change handler get wired up by the
-  // wizard; unlocked is the server-resolved hasFeature() result so
-  // Maker tier gets the upgrade prompt path.
-  subscriptionState: SubscriptionState
-  onSubscriptionChange: (patch: Partial<SubscriptionState>) => void
-  subscribeAndSaveEnabled: boolean
 }
 
 // V1 defaults — see `ilaunchify-orchestration-thesis` memory. Real MOQs
@@ -69,9 +69,6 @@ export function ProductionStep({
   onEstimate,
   productName,
   brandName,
-  subscriptionState,
-  onSubscriptionChange,
-  subscribeAndSaveEnabled,
 }: Props) {
   const [substrates, setSubstrates] = useState<SubstrateOption[]>([])
   const [packagings, setPackagings] = useState<PackagingMaterialOption[]>([])
@@ -288,20 +285,9 @@ export function ProductionStep({
           </div>
         </article>
 
-        {/* G6.c — Subscribe & save picker. Visible only once the cart
-            line has a real price to compare against; otherwise the
-            "save X" math is meaningless. */}
-        {lineTotalCents > 0 && (
-          <SubscribeAndSavePicker
-            state={subscriptionState}
-            onChange={onSubscriptionChange}
-            unlocked={subscribeAndSaveEnabled}
-            perRunTotalCents={lineTotalCents}
-          />
-        )}
-
         {/* Three small reassurance cards — kept lightweight so the cart
-            line stays the visual anchor. */}
+            line stays the visual anchor. The Subscribe & Save picker
+            lives in the right rail (SubscribeChoiceRail) on this step. */}
         <div className="grid gap-3 sm:grid-cols-3">
           <Reassurance
             icon={<ShieldCheck className="h-4 w-4" />}
