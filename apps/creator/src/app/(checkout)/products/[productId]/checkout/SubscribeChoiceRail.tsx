@@ -183,11 +183,11 @@ export function SubscribeChoiceRail({
         </div>
       </button>
 
-      {/* CTA slot for One-time mode — anchored UNDER the One-time row
-          per Pavel 2026-05-31. The button visually belongs to whichever
-          card is currently selected, so the creator sees the action
-          attached to the plan they're committing to. Label stays
-          "Add subscription to cart" regardless of mode (Pavel's call). */}
+      {/* CTA slot for One-time mode — anchored UNDER the One-time row.
+          Per Pavel 2026-05-31: label here is "Add to cart" (no
+          subscription); the Subscribe-mode slot below uses
+          "Add subscription to cart". The button MOVES between the
+          two slots based on the selected radio. */}
       {!subscribeSelected && (
         <div className="border-t border-ink-100 bg-ink-50/40 p-3">
           <button
@@ -199,7 +199,7 @@ export function SubscribeChoiceRail({
             disabled={isSaving}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
           >
-            Add subscription to cart
+            Add to cart
           </button>
         </div>
       )}
@@ -214,25 +214,37 @@ export function SubscribeChoiceRail({
           (subscribeSelected ? 'bg-pink-50/40' : 'bg-white')
         }
       >
-        {/* TEASER (always visible) — radio + label + price + chevron */}
-        <button
-          type="button"
+        {/* TEASER (always visible) — radio + label + price + chevron.
+            Must NOT be a <button> — it contains nested interactive
+            elements (the 'What's included?' link button + the
+            BuilderLockBadgeWithHoverCard's tabbable badge), and a
+            <button> inside another <button> is an HTML hydration
+            error. Using a div with role="button" + tabIndex +
+            keyboard handler preserves the click-to-toggle UX without
+            the invalid nesting. */}
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => {
-            // Tap the teaser → commit Subscribe (unlocked) or expand
-            // upgrade prompt (locked). Either way, expand visually.
             if (subExpanded && unlocked) {
-              // Allow collapsing if already expanded + already selected
-              // (so the user can hide the configuration without dropping
-              // the choice). If they tap collapse and Subscribe is NOT
-              // selected (i.e. they were just peeking), collapse cleanly.
               setSubExpanded(false)
             } else {
               pickSubscribe()
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              if (subExpanded && unlocked) {
+                setSubExpanded(false)
+              } else {
+                pickSubscribe()
+              }
+            }
+          }}
           aria-expanded={subExpanded}
           aria-pressed={subscribeSelected}
-          className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-ink-50/40 focus:outline-none focus-visible:bg-ink-50"
+          className="flex w-full cursor-pointer items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-ink-50/40 focus:outline-none focus-visible:bg-ink-50"
         >
           <RadioDot selected={subscribeSelected} tone="pink" />
           <div className="relative min-w-0 flex-1">
@@ -307,7 +319,7 @@ export function SubscribeChoiceRail({
               (subExpanded ? 'rotate-180' : '')
             }
           />
-        </button>
+        </div>
 
         {/* INFO POPOVER — toggled by the (i) icon next to the label.
             Replaces the old "Upgrade to Builder" CTA: it tells the
