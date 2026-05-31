@@ -42,12 +42,27 @@ export function OrderSummary({
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
   const hasShipping = !!shipping && shipping.shippingCents > 0
-  const grandTotalCents =
-    (estimate?.totalBeforeShippingAndTaxCents ?? 0) + (shipping?.shippingCents ?? 0)
   // G6.c — once the creator accepts the Subscribe & save offer on
-  // Step 2, the right-rail surfaces a confirmation-readout so the
-  // choice stays visible all the way through Step 3 / Pay.
+  // Step 2, the right-rail surfaces both a savings line and a
+  // confirmation readout so the choice stays visible into Step 3.
   const subAccepted = state.subscription?.offerAccepted === true
+  // Per Pavel 2026-05-30 — the subscription savings appears as a
+  // negative line item in the breakdown and the Builder/platform fee
+  // line recalculates against the discounted subtotal. Discount is
+  // basis points (e.g. 800 = 8%), applied to the pre-ship subtotal.
+  const subscriptionDiscountBp =
+    subAccepted ? state.subscription?.discountBp ?? 0 : 0
+  const subscriptionSavingsCents =
+    hasEstimate && subscriptionDiscountBp > 0
+      ? Math.round(
+          (estimate.totalBeforeShippingAndTaxCents * subscriptionDiscountBp) /
+            10_000,
+        )
+      : 0
+  const subtotalAfterSavingsCents =
+    (estimate?.totalBeforeShippingAndTaxCents ?? 0) - subscriptionSavingsCents
+  const grandTotalCents =
+    subtotalAfterSavingsCents + (shipping?.shippingCents ?? 0)
 
   return (
     <div className="space-y-3">
@@ -111,6 +126,13 @@ export function OrderSummary({
           value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
           dimmed={!hasEstimate}
         />
+        {subAccepted && subscriptionSavingsCents > 0 && (
+          <Row
+            label={`Subscription savings (${(subscriptionDiscountBp / 100).toFixed(0)}%)`}
+            value={`−${formatCents(subscriptionSavingsCents)}`}
+            tone="savings"
+          />
+        )}
         <Row
           label="Shipping"
           value={hasShipping ? formatCents(shipping.shippingCents) : '$—.——'}
@@ -200,18 +222,22 @@ function Row({
   label,
   value,
   dimmed,
+  tone,
 }: {
   label: string
   value: string
   dimmed?: boolean
+  /** Optional emphasis. 'savings' = emerald green for negative discount lines. */
+  tone?: 'savings'
 }) {
+  const colorClass =
+    tone === 'savings'
+      ? 'text-emerald-700 font-semibold'
+      : dimmed
+        ? 'text-ink-400'
+        : 'text-ink-700'
   return (
-    <div
-      className={
-        'flex items-center justify-between gap-2 ' +
-        (dimmed ? 'text-ink-400' : 'text-ink-700')
-      }
-    >
+    <div className={'flex items-center justify-between gap-2 ' + colorClass}>
       <dt className="truncate">{label}</dt>
       <dd className="font-medium tabular-nums">{value}</dd>
     </div>

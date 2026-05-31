@@ -43,6 +43,11 @@ interface Props {
   unlocked: boolean
   /** Per-run total in cents (label + packaging + finishes + platform fee). */
   perRunTotalCents: number
+  /** Fired when the bottom primary button is clicked. Commits the
+   *  current choice and advances the wizard to the next step. */
+  onAdvance: () => void
+  /** Wizard's autosave state — disables the button while persisting. */
+  isSaving?: boolean
 }
 
 export function SubscribeChoiceRail({
@@ -50,6 +55,8 @@ export function SubscribeChoiceRail({
   onChange,
   unlocked,
   perRunTotalCents,
+  onAdvance,
+  isSaving,
 }: Props) {
   const subscribeSelected = state.offerAccepted
   // Local "expanded" state for the Subscribe row. Auto-expands when
@@ -295,27 +302,6 @@ export function SubscribeChoiceRail({
                 />
               </div>
 
-              {/* Primary CTA — Amazon's "Add subscription to cart" */}
-              <button
-                type="button"
-                onClick={pickSubscribe}
-                className={
-                  'inline-flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 ' +
-                  (subscribeSelected
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-pink-500 text-white hover:bg-pink-600')
-                }
-              >
-                {subscribeSelected ? (
-                  <>
-                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    Subscribed
-                  </>
-                ) : (
-                  'Add subscription to cart'
-                )}
-              </button>
-
               <p className="text-[10.5px] leading-snug text-ink-500">
                 Recurring billing starts{' '}
                 {state.cadence === 'QUARTERLY' ? '3 months' : '30 days'} from
@@ -336,6 +322,36 @@ export function SubscribeChoiceRail({
               </a>
             </div>
           ))}
+      </div>
+
+      {/* --- Single primary advance CTA ------------------------------- */
+      /* Replaces the old ActionsCard "Continue to Checkout" button.
+         Per Pavel 2026-05-30, the wizard advance lives HERE in the
+         subscription rail so the creator has one decisive action that
+         both (a) commits whichever mode is currently selected and
+         (b) moves them to Step 3. Label flips with the mode so it
+         mirrors Amazon's "Add to cart" vs "Add subscription to cart". */}
+      <div className="border-t border-ink-100 bg-ink-50/40 p-3">
+        <button
+          type="button"
+          onClick={() => {
+            // Commit-if-needed before advancing so the autosave at the
+            // wizard layer picks up the choice. Safe to re-call
+            // pickOneTime/pickSubscribe — they're idempotent.
+            if (subscribeSelected && unlocked) {
+              pickSubscribe() // re-confirms current cadence/runs
+            } else if (!subscribeSelected) {
+              pickOneTime()
+            }
+            onAdvance()
+          }}
+          disabled={isSaving}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+        >
+          {subscribeSelected && unlocked
+            ? 'Add subscription to cart'
+            : 'Add to cart'}
+        </button>
       </div>
     </section>
   )

@@ -373,20 +373,26 @@ export function CheckoutWizard({
             and both ride the viewport together on scroll. The aside is
             the sticky element so the whole column stays visible. */}
         <aside className="space-y-3 lg:sticky lg:top-[89px] lg:self-start">
-          <ActionsCard
-            currentStep={currentStep}
-            isAdjustment={isAdjustment}
-            isSaving={isSaving}
-            reviewAcksComplete={reviewAcksComplete}
-            isNextDisabled={isNextDisabled}
-            onBack={goBack}
-            onNext={goNext}
-          />
+          {/* ActionsCard hides on Step 2 — the SubscribeChoiceRail owns
+              the advance action there ("Add to cart" / "Add subscription
+              to cart"). Step 1 still uses ActionsCard since ReviewStep
+              doesn't have its own primary CTA yet. Step 3 has its own
+              Place-order button inside CheckoutStep. */}
+          {currentStep !== 2 && (
+            <ActionsCard
+              currentStep={currentStep}
+              isAdjustment={isAdjustment}
+              isSaving={isSaving}
+              reviewAcksComplete={reviewAcksComplete}
+              isNextDisabled={isNextDisabled}
+              onBack={goBack}
+              onNext={goNext}
+            />
+          )}
           {/* G6.c-rail (2026-05-30) — Amazon-style Subscribe & Save sits
-              between the Next/Back actions and the Order Summary, only
-              on Step 2 and only once we have a real per-run total to
-              show savings against. Replaces the in-body picker that
-              shipped with the original G6.c slice. */}
+              at the top of the Step 2 rail and owns the advance action
+              via its own primary button. Only renders once we have a
+              real per-run total to show savings against. */}
           {currentStep === 2 &&
             (estimate?.totalBeforeShippingAndTaxCents ?? 0) > 0 && (
               <SubscribeChoiceRail
@@ -396,6 +402,8 @@ export function CheckoutWizard({
                 perRunTotalCents={
                   estimate?.totalBeforeShippingAndTaxCents ?? 0
                 }
+                onAdvance={goNext}
+                isSaving={isSaving}
               />
             )}
           <OrderSummary
