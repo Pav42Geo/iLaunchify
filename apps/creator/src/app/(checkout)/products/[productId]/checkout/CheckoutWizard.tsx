@@ -396,8 +396,6 @@ export function CheckoutWizard({
               onChange={(patch) => patchState('cart', patch)}
               onFulfillmentChange={(patch) => patchState('fulfillment', patch)}
               onShippingEstimate={setShipping}
-              productName={productName}
-              brandName={brandName}
             />
           )}
 

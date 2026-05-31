@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   CreditCard,
   Home,
-  ImageOff,
   Loader2,
   Lock,
   Plus,
@@ -53,11 +52,6 @@ interface Props {
   onShippingEstimate?: (
     estimate: { shippingCents: number; leadTimeBusinessDays: number } | null,
   ) => void
-  // R8.d-rail-fix #2 — product context for the OrderItemsList card
-  // at the top of Step 3 (Pavel 2026-06-01: visual reference of what
-  // the creator is paying for).
-  productName: string
-  brandName: string
 }
 
 export function CheckoutStep({
@@ -67,8 +61,6 @@ export function CheckoutStep({
   onChange,
   onFulfillmentChange,
   onShippingEstimate,
-  productName,
-  brandName,
 }: Props) {
   const [options, setOptions] = useState<FulfillmentOptions | null>(null)
   const [loadingOptions, setLoadingOptions] = useState(true)
@@ -143,17 +135,6 @@ export function CheckoutStep({
       subtitle="Confirm shipping and payment, then place your order."
     >
       <div className="space-y-5">
-        {/* 0 · Order items reference (Pavel 2026-06-01) — visual
-            reminder of what the creator is paying for. V1 ships
-            single-product orders so we render one card here. V1.5
-            (multi-product baskets) will list additional items below
-            the Promo code section per Pavel's framing. */}
-        <OrderItemsList
-          productName={productName}
-          brandName={brandName}
-          quantity={draft.production.quantity ?? 0}
-        />
-
         {/* 1 · Delivery address */}
         <Section title="Delivery address" stepNumber={1}>
           <ShipToPicker
@@ -212,75 +193,6 @@ export function CheckoutStep({
         </Section>
       </div>
     </StepShell>
-  )
-}
-
-// =============================================================================
-// OrderItemsList — top-of-checkout reference of what's being ordered
-// =============================================================================
-//
-// Pavel 2026-06-01 — "I want to have product card in the last step as
-// a reference what the user orders. If there is couple products they
-// should be listed all below the promo code card."
-//
-// V1 (now) — single product per order, so one card renders at the
-// top of Step 3, before Delivery. The card shows brand + product
-// name + quantity (read-only).
-//
-// V1.5+ (multi-product) — additional items render in a separate
-// list section after the Promo code, per Pavel's framing. The
-// `items` array shape below is the seam: when multi-product lands,
-// callers pass an array and the wrapper renders the extras in the
-// secondary slot. For now we render only the primary item.
-
-function OrderItemsList({
-  productName,
-  brandName,
-  quantity,
-}: {
-  productName: string
-  brandName: string
-  quantity: number
-}) {
-  return (
-    <div>
-      <OrderItemCard
-        productName={productName}
-        brandName={brandName}
-        quantity={quantity}
-      />
-    </div>
-  )
-}
-
-function OrderItemCard({
-  productName,
-  brandName,
-  quantity,
-}: {
-  productName: string
-  brandName: string
-  quantity: number
-}) {
-  return (
-    <article className="flex items-center gap-4 rounded-xl border border-ink-200 bg-white p-4">
-      {/* Thumbnail placeholder — real product imagery hook lands when
-          the design snapshot endpoint ships (V1.1). */}
-      <div className="flex h-[72px] w-[72px] flex-shrink-0 items-center justify-center rounded-lg border border-dashed border-ink-200 bg-ink-50/40 text-ink-400">
-        <ImageOff className="h-5 w-5" aria-hidden="true" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[11px] uppercase tracking-[0.06em] text-ink-500">
-          {brandName}
-        </p>
-        <h3 className="mt-0.5 truncate font-display text-[15px] font-semibold leading-tight text-ink-900">
-          {productName}
-        </h3>
-        <p className="mt-1 text-[12px] text-ink-600">
-          Qty <span className="font-semibold text-ink-900 tabular-nums">{quantity.toLocaleString()}</span>
-        </p>
-      </div>
-    </article>
   )
 }
 
