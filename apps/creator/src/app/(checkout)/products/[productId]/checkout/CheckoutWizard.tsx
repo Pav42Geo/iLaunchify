@@ -23,6 +23,7 @@ import {
   Heart,
   Bell,
   Loader2,
+  Lock,
   RefreshCcw,
   ShoppingCart,
   LayoutDashboard,
@@ -55,6 +56,8 @@ import { CheckoutStep } from './steps/CheckoutStep'
 import { OrderSummary } from './OrderSummary'
 import { SubscribeChoiceRail } from './SubscribeChoiceRail'
 import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
+import { placeOrderFromCheckoutDraft } from './cart-actions'
+import { applyOrderAdjustment } from './adjust-actions'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
 
@@ -107,6 +110,49 @@ export function CheckoutWizard({
     leadTimeBusinessDays: number
   } | null>(null)
   const [isSaving, startSaving] = useTransition()
+  // R8.d-rail-fix — place-order state lifted from CheckoutStep so the
+  // pink Place-your-order button can live in the right rail (top of
+  // the column on Step 3, matching Amazon's checkout pattern). The
+  // CheckoutStep body no longer carries the "Ready to place" panel.
+  const [isPaying, startPaying] = useTransition()
+
+  function placeOrder() {
+    const ready = isReadyToPay(state)
+    if (!ready.ok) {
+      toast.error(ready.error)
+      return
+    }
+    const ack = state.cart.complianceAck
+    const blockingCount = ack?.blockingFindingIds.length ?? 0
+    if (blockingCount > 0 && !ack?.acknowledged) {
+      toast.error('Tick the compliance acknowledgement before paying.')
+      return
+    }
+    startPaying(async () => {
+      if (state.isAdjustmentForOrderId) {
+        const result = await applyOrderAdjustment({ productId, draft: state })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+        toast.success(
+          `Adjustment submitted — ${result.data.adjustedDispatchCount} partner gate${
+            result.data.adjustedDispatchCount === 1 ? '' : 's'
+          } notified.`,
+        )
+        router.push(`/orders/${state.isAdjustmentForOrderId}`)
+        return
+      }
+      const result = await placeOrderFromCheckoutDraft(productId, {
+        complianceAck: ack,
+      })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      window.location.href = result.data.checkoutUrl
+    })
+  }
 
   function patchState<K extends keyof CheckoutDraftState>(
     key: K,
@@ -373,12 +419,11 @@ export function CheckoutWizard({
             and both ride the viewport together on scroll. The aside is
             the sticky element so the whole column stays visible. */}
         <aside className="space-y-3 lg:sticky lg:top-[89px] lg:self-start">
-          {/* ActionsCard hides on Step 2 — the SubscribeChoiceRail owns
-              the advance action there ("Add to cart" / "Add subscription
-              to cart"). Step 1 still uses ActionsCard since ReviewStep
-              doesn't have its own primary CTA yet. Step 3 has its own
-              Place-order button inside CheckoutStep. */}
-          {currentStep !== 2 && (
+          {/* ActionsCard rules per step:
+              - Step 1 → use ActionsCard (Review has no inline CTA)
+              - Step 2 → hidden (SubscribeChoiceRail owns advance)
+              - Step 3 → hidden (PlaceOrderCard below owns advance) */}
+          {currentStep === 1 && (
             <ActionsCard
               currentStep={currentStep}
               isAdjustment={isAdjustment}
@@ -387,6 +432,18 @@ export function CheckoutWizard({
               isNextDisabled={isNextDisabled}
               onBack={goBack}
               onNext={goNext}
+            />
+          )}
+          {/* R8.d-rail-fix — Step 3 pink Place-your-order button anchored
+              at the top of the right rail (Amazon checkout pattern, per
+              Pavel 2026-06-01). Sits above the OrderSummary so the action
+              is the first thing the eye lands on. The Terms line stays
+              below the button. */}
+          {currentStep === 3 && (
+            <PlaceOrderCard
+              isPaying={isPaying}
+              isAdjustment={isAdjustment}
+              onPlaceOrder={placeOrder}
             />
           )}
           {/* G6.c-rail (2026-05-30) — Amazon-style Subscribe & Save sits
@@ -602,4 +659,85 @@ function ActionsCard({
       </button>
     </div>
   )
+}
+
+// =============================================================================
+// PlaceOrderCard — Step 3 right-rail pink CTA (Amazon checkout pattern)
+// =============================================================================
+//
+// Pavel 2026-06-01: pink "Place your order" pinned to the top-right of
+// the rail, above the OrderSummary. No reassurance copy ("Ready to
+// place / Stripe collects payment / Pick a delivery destination above")
+// — just the button + a small Terms line beneath. Mirrors Amazon's
+// Secure Checkout layout where the action is the first thing the eye
+// lands on.
+
+function PlaceOrderCard({
+  isPaying,
+  isAdjustment,
+  onPlaceOrder,
+}: {
+  isPaying: boolean
+  isAdjustment: boolean
+  onPlaceOrder: () => void
+}) {
+  return (
+    <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
+      <button
+        type="button"
+        onClick={onPlaceOrder}
+        disabled={isPaying}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+      >
+        {isPaying ? (
+          <>
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            {isAdjustment ? 'Resubmitting…' : 'Handing off to Stripe…'}
+          </>
+        ) : isAdjustment ? (
+          'Resubmit adjustment'
+        ) : (
+          'Place your order'
+        )}
+      </button>
+      <p className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-ink-500">
+        <Lock className="h-3 w-3" aria-hidden="true" />
+        By placing this order you agree to our Terms &amp; Privacy.
+      </p>
+    </div>
+  )
+}
+
+// =============================================================================
+// isReadyToPay — server-mirrors the validation in placeOrderFromCheckoutDraft
+// =============================================================================
+
+function isReadyToPay(
+  draft: CheckoutDraftState,
+): { ok: true } | { ok: false; error: string } {
+  if (!draft.production.quantity || draft.production.quantity <= 0) {
+    return { ok: false, error: 'Set a quantity in Production first.' }
+  }
+  if (!draft.fulfillment.shipToType) {
+    return { ok: false, error: 'Pick a delivery destination above.' }
+  }
+  if (
+    draft.fulfillment.shipToType === 'SPECIFIC_WAREHOUSE' &&
+    !draft.fulfillment.warehousePartnerServiceId
+  ) {
+    return { ok: false, error: 'Choose a specific warehouse from the list.' }
+  }
+  if (
+    draft.fulfillment.shipToType === 'SAVED_ADDRESS' &&
+    !draft.fulfillment.savedAddressId
+  ) {
+    return { ok: false, error: 'Pick a saved address from your list.' }
+  }
+  if (draft.fulfillment.shipToType === 'NEW_ADDRESS') {
+    const a = draft.fulfillment.newAddress
+    if (!a || !a.contactName || !a.addressLine1 || !a.city || !a.postalCode) {
+      return { ok: false, error: 'Fill in the new address details above.' }
+    }
+  }
+  return { ok: true }
 }

@@ -13,7 +13,7 @@
 // in Stripe Checkout after the creator clicks Place order.
 
 import { useEffect, useId, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+// useTransition kept for the NewAddressBlock "Save address" sub-flow.
 import {
   AlertOctagon,
   CheckCircle2,
@@ -22,8 +22,6 @@ import {
   Loader2,
   Lock,
   Plus,
-  RefreshCcw,
-  Sparkles,
   Star,
   Truck,
   Warehouse,
@@ -44,8 +42,6 @@ import {
   type SavedAddressOption,
   type WarehouseOption,
 } from '../fulfillment-actions'
-import { placeOrderFromCheckoutDraft } from '../cart-actions'
-import { applyOrderAdjustment } from '../adjust-actions'
 
 interface Props {
   productId: string
@@ -66,12 +62,9 @@ export function CheckoutStep({
   onFulfillmentChange,
   onShippingEstimate,
 }: Props) {
-  const router = useRouter()
   const [options, setOptions] = useState<FulfillmentOptions | null>(null)
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
-  const [isPaying, startPaying] = useTransition()
-  const isAdjustment = Boolean(draft.isAdjustmentForOrderId)
 
   useEffect(() => {
     let cancelled = false
@@ -116,7 +109,6 @@ export function CheckoutStep({
   const blockingCount = state.complianceAck?.blockingFindingIds.length ?? 0
   const hasBlockings = blockingCount > 0
   const acknowledged = !!state.complianceAck?.acknowledged
-  const ready = isReadyToPay(draft)
 
   function toggleAck() {
     if (acknowledged) {
@@ -132,40 +124,9 @@ export function CheckoutStep({
     })
   }
 
-  function placeOrder() {
-    if (!ready.ok) {
-      toast.error(ready.error)
-      return
-    }
-    if (hasBlockings && !acknowledged) {
-      toast.error('Tick the compliance acknowledgement before paying.')
-      return
-    }
-    startPaying(async () => {
-      if (isAdjustment) {
-        const result = await applyOrderAdjustment({ productId, draft })
-        if (!result.ok) {
-          toast.error(result.error)
-          return
-        }
-        toast.success(
-          `Adjustment submitted — ${result.data.adjustedDispatchCount} partner gate${
-            result.data.adjustedDispatchCount === 1 ? '' : 's'
-          } notified.`,
-        )
-        router.push(`/orders/${draft.isAdjustmentForOrderId}`)
-        return
-      }
-      const result = await placeOrderFromCheckoutDraft(productId, {
-        complianceAck: state.complianceAck,
-      })
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      window.location.href = result.data.checkoutUrl
-    })
-  }
+  // Place-order action moved to CheckoutWizard's PlaceOrderCard on
+  // 2026-06-01 (Pavel: pink button + Terms line in the right rail,
+  // top of the column, Amazon style).
 
   return (
     <StepShell
@@ -229,63 +190,6 @@ export function CheckoutStep({
               onToggle={toggleAck}
             />
           )}
-
-          <div
-            className={
-              'rounded-xl border p-5 ' +
-              (isAdjustment
-                ? 'border-amber-300 bg-amber-50/40'
-                : 'border-pink-200 bg-pink-50/40')
-            }
-          >
-            <div className="mb-2 flex items-center gap-2">
-              {isAdjustment ? (
-                <RefreshCcw className="h-4 w-4 text-amber-700" />
-              ) : (
-                <Sparkles className="h-4 w-4 text-pink-600" />
-              )}
-              <p
-                className={
-                  'text-[10.5px] font-semibold uppercase tracking-widest ' +
-                  (isAdjustment ? 'text-amber-800' : 'text-pink-700')
-                }
-              >
-                {isAdjustment ? 'Resubmit for re-acceptance' : 'Ready to place'}
-              </p>
-            </div>
-            {ready.ok ? (
-              <p className="text-sm text-ink-700">
-                {isAdjustment
-                  ? 'No additional charge. Only the partner gates whose terms you changed will need to re-accept the new spec.'
-                  : "Stripe collects payment and we route the order to your chosen partners. Track progress in My orders."}
-              </p>
-            ) : (
-              <p className="text-sm text-pink-700">{ready.error}</p>
-            )}
-            <button
-              type="button"
-              onClick={placeOrder}
-              disabled={isPaying || !ready.ok || (hasBlockings && !acknowledged)}
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink-900 px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-black disabled:opacity-50"
-            >
-              {isPaying ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {isAdjustment ? 'Resubmitting…' : 'Handing off to Stripe…'}
-                </>
-              ) : isAdjustment ? (
-                'Resubmit adjustment'
-              ) : hasBlockings && acknowledged ? (
-                'Proceed at my risk · Place order'
-              ) : (
-                'Place your order'
-              )}
-            </button>
-            <p className="mt-2 inline-flex items-center gap-1 text-[10.5px] text-ink-500">
-              <Lock className="h-3 w-3" />
-              By placing this order you agree to our Terms &amp; Privacy.
-            </p>
-          </div>
         </Section>
       </div>
     </StepShell>
@@ -884,40 +788,6 @@ function Field({
       {children}
     </div>
   )
-}
-
-// =============================================================================
-// Readiness gate — same checks the server enforces, surfaced inline
-// =============================================================================
-
-function isReadyToPay(
-  draft: CheckoutDraftState,
-): { ok: true } | { ok: false; error: string } {
-  if (!draft.production.quantity || draft.production.quantity <= 0) {
-    return { ok: false, error: 'Set a quantity in Production first.' }
-  }
-  if (!draft.fulfillment.shipToType) {
-    return { ok: false, error: 'Pick a delivery destination above.' }
-  }
-  if (
-    draft.fulfillment.shipToType === 'SPECIFIC_WAREHOUSE' &&
-    !draft.fulfillment.warehousePartnerServiceId
-  ) {
-    return { ok: false, error: 'Choose a specific warehouse from the list.' }
-  }
-  if (
-    draft.fulfillment.shipToType === 'SAVED_ADDRESS' &&
-    !draft.fulfillment.savedAddressId
-  ) {
-    return { ok: false, error: 'Pick a saved address from your list.' }
-  }
-  if (draft.fulfillment.shipToType === 'NEW_ADDRESS') {
-    const a = draft.fulfillment.newAddress
-    if (!a || !a.contactName || !a.addressLine1 || !a.city || !a.postalCode) {
-      return { ok: false, error: 'Fill in the new address details above.' }
-    }
-  }
-  return { ok: true }
 }
 
 // =============================================================================
