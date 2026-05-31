@@ -152,6 +152,39 @@ export async function startLaunchFromTemplate(
       },
       select: { id: true },
     })
+
+    // Pre-create the CheckoutDraft with the quantity (and any other
+    // selection) the creator picked on the detail page. This makes the
+    // wizard's Step 2 show the chosen quantity wired-up but still
+    // editable, rather than booting with `quantity: null` and forcing
+    // the creator to re-enter it after the canvas detour.
+    //
+    // Shape MUST mirror apps/creator/.../checkout/types.ts emptyDraftState().
+    // If the wizard's CheckoutDraftState changes, this seed must follow.
+    //
+    // Safe to `create` (not upsert): the slug-collision counter above
+    // ensures we always created a brand-new Product for this launch,
+    // so no CheckoutDraft for it can exist yet. Wrapped in try/catch
+    // so a Stripe-style P2002 unique-constraint hiccup never blocks
+    // the canvas redirect — wizard will fall back to an empty draft.
+    const clampedQty = clampQuantity(input.quantity)
+    try {
+      await prisma.checkoutDraft.create({
+        data: {
+          creatorUserId: userId,
+          productId: product.id,
+          currentStep: 1,
+          completedSteps: [],
+          state: buildSeedDraftState({ quantity: clampedQty }) as unknown as object,
+        },
+      })
+    } catch (draftErr) {
+      console.warn(
+        '[launch-actions] CheckoutDraft seed failed — wizard will start empty:',
+        draftErr,
+      )
+    }
+
     return {
       ok: true,
       url: creatorUrl(`/products/${product.id}/design/canvas`),
@@ -163,6 +196,60 @@ export async function startLaunchFromTemplate(
       message: (err as Error).message,
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// CheckoutDraftState seed — mirrors apps/creator emptyDraftState() exactly.
+// Copied (not imported) because launch-actions lives in apps/marketing and
+// there's no shared types package for the wizard state today. If the wizard
+// shape changes, this must follow.
+// -----------------------------------------------------------------------------
+
+function buildSeedDraftState({ quantity }: { quantity: number | null }) {
+  return {
+    review: {
+      ackDesignFinal: false,
+      ackProductionReady: false,
+      ackComplianceReviewed: false,
+    },
+    production: {
+      quantity,
+      substrateSlug: null,
+      packagingMaterialSlug: null,
+      finishPartnerFinishIds: [] as string[],
+    },
+    subscription: {
+      seenOffer: false,
+      offerAccepted: false,
+      cadence: null,
+      runCount: null,
+      discountBp: 0,
+    },
+    fulfillment: {
+      shipToType: null,
+      warehousePartnerServiceId: null,
+      savedAddressId: null,
+      newAddress: null,
+      saveNewAddress: false,
+    },
+    accessories: { itemIds: [] as string[] },
+    viral: { requests: [] as Array<{ kind: 'social' | 'video' | 'poster' }> },
+    cart: { promoCode: null, complianceAck: null },
+    designVersionId: null,
+    isAdjustmentForOrderId: null,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+// Hard MOQ floor matches ProductionStep's DEFAULT_MOQ (100). Anything
+// below gets clamped up so we never persist a sub-minimum quantity.
+const MIN_QTY = 100
+const MAX_QTY = 100_000
+function clampQuantity(n: number | undefined): number | null {
+  if (n == null || Number.isNaN(n)) return null
+  if (n < MIN_QTY) return MIN_QTY
+  if (n > MAX_QTY) return MAX_QTY
+  return Math.round(n)
 }
 
 function slugify(s: string): string {
