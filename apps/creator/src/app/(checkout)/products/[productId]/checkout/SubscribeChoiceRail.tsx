@@ -115,19 +115,15 @@ export function SubscribeChoiceRail({
   }
 
   function pickSubscribe() {
-    // Per Pavel 2026-05-31 — the moment the creator commits to
-    // Subscribe (or even peeks at it via the row header), auto-open
-    // the benefits popup so they see what they're agreeing to without
-    // having to hunt for the "What's included?" link.
+    // Per Pavel 2026-05-31 — open the benefits popup (the "What's
+    // included" tier card) so the creator sees what Subscribe & Save
+    // offers without hunting. DON'T auto-expand the configuration
+    // dropdown — Pavel doesn't like that. They click the chevron if
+    // they want to tweak cadence / runs.
     setShowInfo(true)
-    setSubExpanded(true)
-    // The radio flips for everyone (Pavel: "I want to trigger the
-    // radio button and activate the subscription plan"). Tier-gating
-    // happens downstream in placeOrderFromCheckoutDraft — Maker's
-    // soft-fail path keeps the day-1 order intact and skips the
-    // Stripe subscription creation, so flipping the radio here is
-    // safe. The Builder lock badge still tells the user what tier
-    // unlocks the discount.
+    // The radio flips for everyone. Tier-gating happens downstream
+    // in placeOrderFromCheckoutDraft — Maker's soft-fail keeps the
+    // day-1 order intact and skips Stripe subscription creation.
     onChange({
       offerAccepted: true,
       cadence: state.cadence ?? 'MONTHLY',
@@ -213,12 +209,13 @@ export function SubscribeChoiceRail({
       <div className="h-px bg-ink-100" />
 
       {/* --- Subscribe & Save row -------------------------------------- */}
-      <div
-        className={
-          'transition-colors ' +
-          (subscribeSelected ? 'bg-pink-50/40' : 'bg-white')
-        }
-      >
+      {/* Per Pavel 2026-06-01 — gray bg (a notch darker than the
+          white rail) instead of the pink-50 tint. Reads as "available
+          but not active" without leaning on brand pink. Same gray on
+          both selected and idle so the row's visual identity stays
+          stable across radio toggles — selection is communicated by
+          the RadioDot itself, not by the row tint. */}
+      <div className="bg-ink-50 transition-colors">
         {/* TEASER (always visible) — radio + label + price + chevron.
             Must NOT be a <button> — it contains nested interactive
             elements (the 'What's included?' link button + the
@@ -271,7 +268,14 @@ export function SubscribeChoiceRail({
                     </span>
                   )
                 : (
-                  <BuilderLockBadgeWithHoverCard />
+                  // Static Lock badge — the Builder tier card now
+                  // lives in the "What's included?" popup (Pavel
+                  // 2026-06-01), so this badge no longer needs hover
+                  // behaviour. It's purely a status indicator.
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-ink-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-600">
+                    <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+                    Builder
+                  </span>
                 )}
             </div>
             {/* Always render the discounted price — per Pavel
@@ -326,14 +330,14 @@ export function SubscribeChoiceRail({
           />
         </div>
 
-        {/* INFO POPOVER — toggled by the (i) icon next to the label.
-            Replaces the old "Upgrade to Builder" CTA: it tells the
-            creator what's included with Subscribe & Save (i.e. the
-            Builder-plan benefits) so they can decide on their own
-            without us pushing them. Shown regardless of tier so even
-            unlocked creators get a quick refresher. */}
+        {/* INFO POPOVER — toggled by the "What's included?" link
+            (and auto-opened on Subscribe pick). Per Pavel 2026-06-01,
+            the popup now uses the Builder tier card design (was a
+            plain bulleted list). Same content as the Studio
+            UpgradeOverlay's middle card — visual consistency across
+            the app. */}
         {showInfo && (
-          <div className="relative mx-3 mb-3 rounded-lg border border-ink-200 bg-white p-3 shadow-md">
+          <div className="relative mx-3 mb-3 rounded-xl border-2 border-pink-200 bg-white p-4 shadow-md">
             <button
               type="button"
               aria-label="Close info"
@@ -342,37 +346,55 @@ export function SubscribeChoiceRail({
             >
               <X className="h-3 w-3" aria-hidden="true" />
             </button>
-            <p className="pr-5 text-[12px] font-semibold text-ink-900">
-              What you get with Subscribe &amp; Save
+            {/* Tier header — same pattern as Studio UpgradeOverlay */}
+            <div className="flex items-center gap-2 pr-5">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-pink-100">
+                <Zap className="h-3.5 w-3.5 text-pink-700" aria-hidden="true" />
+              </span>
+              <span className="text-[13px] font-bold text-ink-900">Builder</span>
+              <span className="ml-auto rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
+                Recommended
+              </span>
+            </div>
+            {/* Price */}
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="font-display text-xl font-bold tabular-nums text-ink-900">
+                $29
+              </span>
+              <span className="text-[10.5px] text-ink-500">/ month</span>
+            </div>
+            <p className="mt-0.5 text-[10.5px] text-ink-600">
+              For creators ready to ship orders.
             </p>
-            <ul className="mt-2 space-y-1.5 text-[11.5px] text-ink-700">
+            {/* Features list */}
+            <ul className="mt-3 space-y-1 text-[11px] text-ink-700">
               <li className="flex items-start gap-1.5">
                 <Check
                   className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                   aria-hidden="true"
                 />
-                <span>Save up to {MAX_DISCOUNT_PCT}% on every run</span>
+                <span>Subscribe &amp; Save (up to {MAX_DISCOUNT_PCT}% off every run)</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
                   className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                   aria-hidden="true"
                 />
-                <span>Choose how often it&rsquo;s produced</span>
+                <span>Print-ready PDF + PNG export</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
                   className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                   aria-hidden="true"
                 />
-                <span>Skip or cancel anytime</span>
+                <span>Multi-channel push (Shopify, Etsy…)</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
                   className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
                   aria-hidden="true"
                 />
-                <span>Same partners, same locked manifest every cycle</span>
+                <span>Volume pricing (~{MAX_DISCOUNT_PCT}% off catalog)</span>
               </li>
             </ul>
           </div>
@@ -562,15 +584,15 @@ function formatCents(cents: number): string {
 }
 
 // =============================================================================
-// BuilderLockBadgeWithHoverCard — Lock chip + hover-revealed tier card
+// BuilderLockBadgeWithHoverCard — DEPRECATED 2026-06-01
 //
-// Per Pavel 2026-05-31 — when a Maker hovers (or focuses, for a11y) the
-// 'Builder' lock badge on the Subscribe row, surface a compact pricing
-// card popup that mirrors the Studio UpgradeOverlay card pattern.
-// Information-only, no CTA — Pavel's rule: inform, don't sell.
+// Pavel asked to remove the hover-revealed tier card. The same content
+// is now the body of the "What's included?" popover (one place for
+// "what's in this plan"). This component is no longer rendered; keeping
+// it here in case we want to revive the hover affordance later.
 // =============================================================================
 
-function BuilderLockBadgeWithHoverCard() {
+function _BuilderLockBadgeWithHoverCard_DEPRECATED() {
   const [open, setOpen] = useState(false)
   return (
     <span

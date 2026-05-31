@@ -66,14 +66,10 @@ export function OrderSummary({
 
   return (
     <div className="space-y-3">
-      {subAccepted && state.subscription?.cadence && (
-        <SubscribedSummary
-          cadence={state.subscription.cadence}
-          runCount={state.subscription.runCount ?? null}
-          discountBp={state.subscription.discountBp ?? 0}
-        />
-      )}
-
+      {/* SubscribedSummary readout removed 2026-06-01 per Pavel —
+          redundant with the Subscribe & Save card in the rail above
+          (which already shows the cadence, runs, and discount). The
+          OrderSummary just owns the price breakdown now. */}
       <div
         className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm"
         aria-labelledby="order-summary-heading"
