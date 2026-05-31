@@ -284,6 +284,16 @@ export default async function OrderDetailPage({
                   costCents: d.costCents,
                   acceptDeadlineAt: d.acceptDeadlineAt,
                   acceptedAt: d.acceptedAt,
+                  productionStartedAt: d.productionStartedAt,
+                  qualityCheckStartedAt: d.qualityCheckStartedAt,
+                  qualityCheckFailedAt: d.qualityCheckFailedAt,
+                  qualityCheckFailureNotes: d.qualityCheckFailureNotes,
+                  readyAt: d.readyAt,
+                  shippedAt: d.shippedAt,
+                  inTransitAt: d.inTransitAt,
+                  deliveredAt: d.deliveredAt,
+                  trackingCarrier: d.trackingCarrier,
+                  trackingNumber: d.trackingNumber,
                   serviceType: d.partnerService.type,
                   partnerName: d.partnerService.partner.companyName,
                 }}
@@ -400,7 +410,18 @@ interface DispatchView {
   status: DispatchStatusKey
   costCents: number
   acceptDeadlineAt: Date
+  // Per-state timestamps for the milestone timeline (B6 schema).
   acceptedAt: Date | null
+  productionStartedAt: Date | null
+  qualityCheckStartedAt: Date | null
+  qualityCheckFailedAt: Date | null
+  qualityCheckFailureNotes: string | null
+  readyAt: Date | null
+  shippedAt: Date | null
+  inTransitAt: Date | null
+  deliveredAt: Date | null
+  trackingCarrier: string | null
+  trackingNumber: string | null
   serviceType: string
   partnerName: string
 }
@@ -483,22 +504,19 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
               })}
             </p>
           )}
-          {isAccepted && d.acceptedAt && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-              Accepted{' '}
-              {new Date(d.acceptedAt).toLocaleString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          )}
+          {isAccepted && <DispatchTimeline dispatch={d} />}
           {isFailure && (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-red-700">
               <AlertOctagon className="h-3 w-3" aria-hidden="true" />
               {palette.label} — re-routing kicked in automatically
+            </p>
+          )}
+          {/* B6 — surface QC failure notes even when status is FAILED_QC
+              so the creator knows what went wrong without DMing admin. */}
+          {d.status === 'FAILED_QC' && d.qualityCheckFailureNotes && (
+            <p className="mt-2 rounded-md bg-red-50/60 px-2.5 py-1.5 text-[11.5px] text-red-700">
+              <span className="font-semibold">Failure note:</span>{' '}
+              <span className="italic">{d.qualityCheckFailureNotes}</span>
             </p>
           )}
         </div>
@@ -543,6 +561,106 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
         )}
       </footer>
     </article>
+  )
+}
+
+// =============================================================================
+// DispatchTimeline — vertical milestone list inside the dispatch card
+// =============================================================================
+//
+// #108-next — surface the per-state timestamps the partner stamps as
+// they advance: Accepted → Production → (QC) → Ready → Shipped →
+// (In transit) → Delivered. QC and In Transit are optional beats — they
+// only render when stamped. The most-recent completed step is the
+// "current" one for visual emphasis (filled dot vs ring).
+//
+// Tracking carrier + number, when present on the SHIPPED step, render
+// inline so the creator doesn't need to click into the dispatch detail
+// to copy them.
+
+function DispatchTimeline({ dispatch: d }: { dispatch: DispatchView }) {
+  // Build the ordered milestone list. Each entry either has a
+  // timestamp (= completed) or null (= not yet reached). We render only
+  // the completed ones so the timeline grows visibly as the partner
+  // advances — empty states would just be noise here.
+  const steps: Array<{
+    key: string
+    label: string
+    at: Date | null
+    detail?: string | null
+  }> = [
+    { key: 'accepted', label: 'Accepted', at: d.acceptedAt },
+    {
+      key: 'producing',
+      label: 'In production',
+      at: d.productionStartedAt,
+    },
+    {
+      key: 'qc',
+      label: 'Quality check',
+      at: d.qualityCheckStartedAt,
+    },
+    { key: 'ready', label: 'Ready to ship', at: d.readyAt },
+    {
+      key: 'shipped',
+      label: 'Shipped',
+      at: d.shippedAt,
+      detail:
+        d.trackingCarrier && d.trackingNumber
+          ? `${d.trackingCarrier} · ${d.trackingNumber}`
+          : d.trackingNumber ?? null,
+    },
+    { key: 'in_transit', label: 'In transit', at: d.inTransitAt },
+    { key: 'delivered', label: 'Delivered', at: d.deliveredAt },
+  ]
+
+  const completed = steps.filter((s) => s.at != null)
+  if (completed.length === 0) return null
+
+  const lastIdx = completed.length - 1
+
+  return (
+    <ol className="mt-3 space-y-1.5 border-l border-zinc-200 pl-3">
+      {completed.map((step, idx) => {
+        const isLast = idx === lastIdx
+        return (
+          <li
+            key={step.key}
+            className="relative flex items-baseline gap-2 text-[11.5px]"
+          >
+            <span
+              className={
+                'absolute -left-[15px] top-1.5 h-1.5 w-1.5 rounded-full ' +
+                (isLast
+                  ? 'bg-emerald-500 ring-2 ring-emerald-100'
+                  : 'bg-emerald-300')
+              }
+              aria-hidden="true"
+            />
+            <span
+              className={
+                isLast ? 'font-semibold text-zinc-900' : 'text-zinc-700'
+              }
+            >
+              {step.label}
+            </span>
+            <span className="text-zinc-500">
+              {new Date(step.at!).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+            {step.detail && (
+              <span className="ml-1 truncate font-mono text-[10.5px] text-zinc-500">
+                · {step.detail}
+              </span>
+            )}
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
