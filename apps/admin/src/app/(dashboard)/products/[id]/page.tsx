@@ -11,9 +11,30 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ilaunchify/ui'
-import { ArrowLeft, Box, Beaker, Award, DollarSign, FileText, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Box, Beaker, Award, DollarSign, FileText, ShieldAlert, AlertTriangle, FlaskConical } from 'lucide-react'
 import { ProductReviewer } from './ProductReviewer'
 import type { ProductTemplateStatus } from '@prisma/client'
+
+// #141 — Risk threshold. Slots > this percentage of total recipe weight
+// that aren't ADMIN_VERIFIED/LIBRARY_PROMOTED get a red flag because
+// the FDA-printed label depends on their nutrient + allergen data
+// being accurate. Matches the memory [[ilaunchify-ingredient-governance]]
+// >5%-weight red-flag rule.
+const HIGH_WEIGHT_THRESHOLD_PCT = 5
+
+type IngredientRisk = 'OK' | 'LOW_RISK' | 'HIGH_RISK'
+
+function classifySlotRisk(
+  status: string,
+  weightPct: number,
+): IngredientRisk {
+  if (status === 'ADMIN_VERIFIED' || status === 'LIBRARY_PROMOTED') {
+    return 'OK'
+  }
+  // SELF_ATTESTED + anything below the threshold = low risk (informed,
+  // not blocking — partners are already shipping with this row).
+  return weightPct > HIGH_WEIGHT_THRESHOLD_PCT ? 'HIGH_RISK' : 'LOW_RISK'
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -89,6 +110,28 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
   }
 
+  // #141 — Compute per-slot weight% + risk classification so the
+  // ingredients card + top-of-page banner can flag SELF_ATTESTED
+  // ingredients above the 5% threshold. Total weight is the sum of
+  // base ingredient weights only (replacements + optionals don't
+  // contribute to the published recipe's nutrient profile).
+  const totalWeightG = template.ingredientSlots.reduce(
+    (sum, s) => sum + Number(s.weightG),
+    0,
+  )
+  const slotsWithRisk = template.ingredientSlots.map((s) => {
+    const weightG = Number(s.weightG)
+    const weightPct = totalWeightG > 0 ? (weightG / totalWeightG) * 100 : 0
+    return {
+      slot: s,
+      weightG,
+      weightPct,
+      risk: classifySlotRisk(s.baseIngredient.verificationStatus, weightPct),
+    }
+  })
+  const highRiskSlots = slotsWithRisk.filter((s) => s.risk === 'HIGH_RISK')
+  const lowRiskSlots = slotsWithRisk.filter((s) => s.risk === 'LOW_RISK')
+
   return (
     <div className="space-y-6">
       <header>
@@ -127,6 +170,20 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,360px]">
         {/* Left — product snapshot */}
         <div className="space-y-3">
+          {/* #141 — Top-of-page risk banner. Surfaces high-risk
+              SELF_ATTESTED ingredients (>5% of recipe weight) so admin
+              sees the gating risk before scrolling. Low-risk SELF_ATTESTED
+              gets a softer informational note when no high-risk exists. */}
+          {(highRiskSlots.length > 0 || lowRiskSlots.length > 0) && (
+            <IngredientRiskBanner
+              highRisk={highRiskSlots.map((s) => ({
+                name: s.slot.baseIngredient.name,
+                weightPct: s.weightPct,
+              }))}
+              lowRiskCount={lowRiskSlots.length}
+            />
+          )}
+
           {/* Pending edits diff banner */}
           {template.status === 'PENDING_EDIT_REVIEW' && template.pendingEditPayload && (
             <PendingEditsDiff
@@ -148,26 +205,39 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             <Row label="Unit cost" value={`$${(template.unitCostCents / 100).toFixed(2)}`} />
           </SnapshotCard>
 
-          {/* Ingredients */}
+          {/* Ingredients — #141 enhanced with weight% + risk pills */}
           <SnapshotCard icon={Beaker} title={`Ingredients (${template.ingredientSlots.length})`}>
-            {template.ingredientSlots.length === 0 ? (
+            {slotsWithRisk.length === 0 ? (
               <Empty>No ingredient slots configured.</Empty>
             ) : (
               <ul className="space-y-1.5">
-                {template.ingredientSlots.map((s) => (
+                {slotsWithRisk.map(({ slot: s, weightG, weightPct, risk }) => (
                   <li
                     key={s.id}
-                    className="flex items-start justify-between rounded border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+                    className={
+                      'flex items-start justify-between rounded border px-3 py-2 text-sm ' +
+                      (risk === 'HIGH_RISK'
+                        ? 'border-red-200 bg-red-50/40'
+                        : 'border-zinc-100 bg-zinc-50')
+                    }
                   >
-                    <div>
-                      <div className="font-medium text-zinc-900">{s.baseIngredient.name}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-zinc-900">
+                          {s.baseIngredient.name}
+                        </span>
+                        <IngredientRiskPill
+                          risk={risk}
+                          status={s.baseIngredient.verificationStatus}
+                        />
+                      </div>
                       <div className="text-xs text-zinc-500">
-                        {Number(s.weightG)}g · {s.baseIngredient.source ?? 'unsourced'} ·{' '}
-                        {s.baseIngredient.verificationStatus.toLowerCase().replace(/_/g, ' ')}
+                        {weightG}g · {weightPct.toFixed(1)}% of recipe ·{' '}
+                        {s.baseIngredient.source ?? 'unsourced'}
                       </div>
                     </div>
                     {s.baseIngredient.allergenFlags.length > 0 && (
-                      <span className="text-xs text-amber-700">
+                      <span className="ml-2 flex-shrink-0 text-xs text-amber-700">
                         {s.baseIngredient.allergenFlags.join(', ')}
                       </span>
                     )}
@@ -410,4 +480,134 @@ function humanizeTopology(t: string): string {
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
+}
+
+// -----------------------------------------------------------------------------
+// #141 — Ingredient risk surfacing
+// -----------------------------------------------------------------------------
+
+function IngredientRiskBanner({
+  highRisk,
+  lowRiskCount,
+}: {
+  highRisk: Array<{ name: string; weightPct: number }>
+  lowRiskCount: number
+}) {
+  // High-risk path: red callout naming each ingredient + weight%.
+  // The 5% threshold is the [[ilaunchify-ingredient-governance]] rule —
+  // anything above it that hasn't been admin-verified materially affects
+  // the printed nutrient/allergen claims.
+  if (highRisk.length > 0) {
+    return (
+      <div
+        role="alert"
+        className="rounded-xl border-2 border-red-300 bg-red-50/60 p-4"
+      >
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle
+            className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-700"
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[14px] font-bold text-red-900">
+              {highRisk.length === 1
+                ? '1 high-weight SELF_ATTESTED ingredient'
+                : `${highRisk.length} high-weight SELF_ATTESTED ingredients`}
+            </h2>
+            <p className="mt-1 text-[12.5px] text-red-800">
+              Each is above the {HIGH_WEIGHT_THRESHOLD_PCT}% recipe-weight
+              threshold and hasn&rsquo;t been admin-verified — their nutrient +
+              allergen data carries the FDA-printed label. Review the
+              ingredient in <Link href="/ingredients" className="font-semibold underline">the queue</Link> before
+              approving this product.
+            </p>
+            <ul className="mt-2 space-y-1 text-[12px] text-red-900">
+              {highRisk.map((i) => (
+                <li key={i.name} className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] tabular-nums">
+                    {i.weightPct.toFixed(1)}%
+                  </span>
+                  <span className="font-medium">{i.name}</span>
+                </li>
+              ))}
+            </ul>
+            {lowRiskCount > 0 && (
+              <p className="mt-2 text-[11.5px] text-red-700/80">
+                Plus {lowRiskCount} additional SELF_ATTESTED ingredient
+                {lowRiskCount === 1 ? '' : 's'} under the threshold (lower
+                risk, still attestation-only).
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Low-risk only: softer informational pill — admin should know but
+  // doesn't need to gate on it.
+  if (lowRiskCount > 0) {
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-[12.5px] text-amber-900"
+      >
+        <FlaskConical
+          className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700"
+          aria-hidden="true"
+        />
+        <div>
+          <span className="font-semibold">
+            {lowRiskCount} SELF_ATTESTED ingredient
+            {lowRiskCount === 1 ? '' : 's'} in this recipe.
+          </span>{' '}
+          All under the {HIGH_WEIGHT_THRESHOLD_PCT}%-weight threshold —
+          partner attestation is the only verification. Promote in{' '}
+          <Link href="/ingredients" className="font-semibold underline">
+            the queue
+          </Link>{' '}
+          if any get repeated across partners.
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
+function IngredientRiskPill({
+  risk,
+  status,
+}: {
+  risk: IngredientRisk
+  status: string
+}) {
+  if (risk === 'HIGH_RISK') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-red-800"
+        title="Above 5% of recipe weight + only partner attestation. Verify before approving."
+      >
+        <AlertTriangle className="h-2.5 w-2.5" />
+        Risk
+      </span>
+    )
+  }
+  if (risk === 'LOW_RISK') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800"
+        title="Partner self-attested. Under the 5% threshold so lower-risk, but unverified."
+      >
+        Self-attested
+      </span>
+    )
+  }
+  // OK path — show the verified status so admin can tell USDA from
+  // ADMIN_VERIFIED rows at a glance.
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+      {status === 'ADMIN_VERIFIED' ? 'Verified' : 'Library'}
+    </span>
+  )
 }
