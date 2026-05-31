@@ -115,12 +115,12 @@ export function SubscribeChoiceRail({
   }
 
   function pickSubscribe() {
-    // Per Pavel 2026-05-31 — open the benefits popup (the "What's
-    // included" tier card) so the creator sees what Subscribe & Save
-    // offers without hunting. DON'T auto-expand the configuration
-    // dropdown — Pavel doesn't like that. They click the chevron if
-    // they want to tweak cadence / runs.
-    setShowInfo(true)
+    // Per Pavel 2026-06-01 — picking Subscribe just commits the
+    // choice. No auto-open of the configuration dropdown AND no
+    // auto-open of the "What's included?" popup. Both stay hidden
+    // until the creator deliberately clicks the chevron or the
+    // pink "What's included?" link.
+    //
     // The radio flips for everyone. Tier-gating happens downstream
     // in placeOrderFromCheckoutDraft — Maker's soft-fail keeps the
     // day-1 order intact and skips Stripe subscription creation.
