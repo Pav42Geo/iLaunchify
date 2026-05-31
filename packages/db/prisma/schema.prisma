@@ -547,6 +547,23 @@ model CreatorProfile {
   // know "always been MAKER" vs "promoted on YYYY-MM-DD by admin X".
   tierChangedAt       DateTime?
   tierChangedById     String?
+  // V1.5-T1 — Stripe-managed tier subscription handles. Populated when
+  // a creator self-upgrades via /settings/plan and read/written from
+  // the webhook (customer.subscription.created / .updated / .deleted).
+  // Null for MAKER (no Stripe sub) and for admin-promoted Builder/Agency
+  // creators (admin courtesy upgrades — no Stripe sub on file).
+  //   stripeTierSubscriptionId — Stripe Subscription handle (sub_…),
+  //                               @unique so the webhook can look up
+  //                               the creator profile in O(1)
+  //   tierCurrentPeriodEnd     — when the current paid period ends;
+  //                               used by /settings/plan to render
+  //                               "Renews / Cancels on YYYY-MM-DD"
+  //   tierCancelAtPeriodEnd    — creator clicked Cancel; subscription
+  //                               stays active until tierCurrentPeriodEnd,
+  //                               then webhook flips them back to MAKER
+  stripeTierSubscriptionId String?   @unique
+  tierCurrentPeriodEnd     DateTime?
+  tierCancelAtPeriodEnd    Boolean   @default(false)
   // Fee overrides
   feeRateOverrideBp   Int?
   feeRateOverrideReason String?
