@@ -145,10 +145,11 @@ export function SubscribeChoiceRail({
   return (
     <section
       aria-labelledby="subscribe-choice-heading"
-      /* overflow-visible (was -hidden) so the Builder-tier hover card
-         can float past the section's rounded edge. The card's z-index
-         layers it above OrderSummary below. */
-      className="rounded-xl border border-ink-200 bg-white"
+      /* overflow-hidden restored 2026-06-01 — the popup now lives
+         in-flow inside the section (no escaping needed), and without
+         clipping the inner card backgrounds spill past the rounded
+         border at the bottom. */
+      className="overflow-hidden rounded-xl border border-ink-200 bg-white"
     >
       <h3 id="subscribe-choice-heading" className="sr-only">
         Purchase frequency
