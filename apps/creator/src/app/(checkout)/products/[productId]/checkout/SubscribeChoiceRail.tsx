@@ -95,6 +95,10 @@ export function SubscribeChoiceRail({
   }
 
   function pickOneTime() {
+    // User switched to One-time → no need for the Subscribe benefits
+    // popup to keep occupying space. They can reopen it any time via
+    // "What's included?".
+    setShowInfo(false)
     onChange({
       offerAccepted: false,
       cadence: null,
@@ -104,9 +108,16 @@ export function SubscribeChoiceRail({
   }
 
   function pickSubscribe() {
+    // Per Pavel 2026-05-31 — the moment the creator commits to
+    // Subscribe (or even peeks at it via the row header), auto-open
+    // the benefits popup so they see what they're agreeing to without
+    // having to hunt for the "What's included?" link. They can dismiss
+    // with the X.
+    setShowInfo(true)
     if (!unlocked) {
-      // For Maker we still let the row expand to show the upgrade CTA,
-      // but don't flip the offer flag (the offer doesn't exist for them).
+      // For Maker we still let the row expand so the popup has
+      // breathing room, but don't flip the offer flag (the offer
+      // doesn't exist for them).
       setSubExpanded(true)
       return
     }
