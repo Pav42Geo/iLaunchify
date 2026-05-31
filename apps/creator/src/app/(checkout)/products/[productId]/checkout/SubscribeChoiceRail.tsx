@@ -432,23 +432,6 @@ export function SubscribeChoiceRail({
                 {state.cadence === 'QUARTERLY' ? '3 months' : '30 days'} from
                 today.
               </p>
-
-              {/* CTA slot for Subscribe mode — same button, same label,
-                  but now anchored UNDER the Subscribe card so the action
-                  visually belongs to whichever plan the creator picked.
-                  When subscribeSelected flips, the button moves from the
-                  One-time slot above to here. */}
-              <button
-                type="button"
-                onClick={() => {
-                  pickSubscribe() // idempotent re-confirm current cadence/runs
-                  onAdvance()
-                }}
-                disabled={isSaving}
-                className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
-              >
-                Add subscription to cart
-              </button>
             </div>
           )}
         {/* Locked branch — intentionally renders nothing in the
@@ -458,11 +441,28 @@ export function SubscribeChoiceRail({
             'included with Builder plan' text — it's redundant." */}
       </div>
 
-      {/* Bottom CTA slot intentionally removed on 2026-05-31. The
-          primary action now lives INSIDE whichever card is currently
-          selected (One-time slot under the One-time row, Subscribe slot
-          inside the expanded panel). Per Pavel — the button visually
-          belongs to the plan being committed to. */}
+      {/* CTA slot for Subscribe mode — symmetric with the One-time
+          slot above. Anchored as a SIBLING below the Subscribe row
+          (not inside the configuration panel), so the button stays
+          visible even if the user collapses the panel via the
+          chevron. Same label, same handler — only the position
+          differs. Together with the One-time slot above, the button
+          always lives directly under whichever plan card is active. */}
+      {subscribeSelected && unlocked && (
+        <div className="border-t border-pink-100 bg-pink-50/40 p-3">
+          <button
+            type="button"
+            onClick={() => {
+              pickSubscribe() // idempotent re-confirm cadence/runs
+              onAdvance()
+            }}
+            disabled={isSaving}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+          >
+            Add subscription to cart
+          </button>
+        </div>
+      )}
     </section>
   )
 }
