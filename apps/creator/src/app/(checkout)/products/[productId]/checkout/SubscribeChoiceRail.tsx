@@ -462,10 +462,12 @@ export function SubscribeChoiceRail({
           slot above. Anchored as a SIBLING below the Subscribe row
           (not inside the configuration panel), so the button stays
           visible even if the user collapses the panel via the
-          chevron. Same label, same handler — only the position
-          differs. Together with the One-time slot above, the button
-          always lives directly under whichever plan card is active. */}
-      {subscribeSelected && unlocked && (
+          chevron. Renders whenever Subscribe is the active radio,
+          regardless of tier (per Pavel 2026-05-31: the button MUST
+          appear under whichever plan is selected). The downstream
+          placeOrderFromCheckoutDraft handles Maker tier-gating —
+          here in the UI the button is the advance affordance. */}
+      {subscribeSelected && (
         <div className="border-t border-pink-100 bg-pink-50/40 p-3">
           <button
             type="button"
