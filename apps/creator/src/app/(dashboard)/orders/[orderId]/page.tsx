@@ -18,6 +18,9 @@ import { prisma } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { notFound } from 'next/navigation'
+// /pricing lives in apps/marketing (port 3010 in dev) — must use
+// marketingUrl() for cross-app navigation; in-app <Link> 404s here.
+import { marketingUrl } from '@/lib/marketing-url'
 import {
   AlertOctagon,
   ArrowLeft,
@@ -616,8 +619,8 @@ function ActionsCard({
               Get product support
             </Link>
           ) : (
-            <Link
-              href="/pricing?tier=builder"
+            <a
+              href={marketingUrl('/pricing?tier=builder')}
               className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50/50 px-2 py-1.5 text-zinc-700 hover:bg-pink-50 hover:text-zinc-900"
               title="Concierge product support is included with Builder + Agency plans"
             >
@@ -629,7 +632,7 @@ function ActionsCard({
                 <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
                 Builder
               </span>
-            </Link>
+            </a>
           )}
         </li>
         {productId && (

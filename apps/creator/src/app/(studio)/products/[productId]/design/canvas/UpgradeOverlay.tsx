@@ -18,9 +18,11 @@
 // the labels + ordering stay in sync with the marketing pricing page.
 
 import * as React from 'react'
-import Link from 'next/link'
 import { X, Sparkles, Zap, Crown, Check } from 'lucide-react'
 import type { TierKey } from '@ilaunchify/ui'
+// /pricing lives in apps/marketing (port 3010 in dev). Cross-app links
+// must use marketingUrl(); plain <Link href="/pricing"> 404s here.
+import { marketingUrl } from '@/lib/marketing-url'
 
 interface Props {
   /** Currently-paying tier (drives the highlighted card + button states). */
@@ -262,8 +264,8 @@ function TierCardView({
           Your current plan
         </button>
       ) : (
-        <Link
-          href={`/pricing?tier=${tier.key}`}
+        <a
+          href={marketingUrl(`/pricing?tier=${tier.key}`)}
           className={
             'rounded-full px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (tier.highlight
@@ -272,7 +274,7 @@ function TierCardView({
           }
         >
           {tier.key === 'agency' ? 'Talk to sales' : `Upgrade to ${tier.name}`}
-        </Link>
+        </a>
       )}
     </div>
   )

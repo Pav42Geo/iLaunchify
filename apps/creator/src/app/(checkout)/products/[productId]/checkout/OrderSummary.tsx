@@ -10,8 +10,9 @@
 // Shipping + tax remain placeholders here — they land in G4 (fulfillment
 // + carrier rates) and G5 (tax computation at My cart).
 
-import Link from 'next/link'
 import { Lock, Repeat } from 'lucide-react'
+// /pricing lives in apps/marketing — cross-app links use marketingUrl().
+import { marketingUrl } from '@/lib/marketing-url'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 
@@ -202,12 +203,12 @@ function SubscribeAndSaveStub({ unlocked }: { unlocked: boolean }) {
               Join the waitlist
             </button>
           ) : (
-            <Link
-              href="/pricing?tier=builder"
+            <a
+              href={marketingUrl('/pricing?tier=builder')}
               className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-pink-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
             >
               Upgrade to Builder
-            </Link>
+            </a>
           )}
         </div>
       </div>

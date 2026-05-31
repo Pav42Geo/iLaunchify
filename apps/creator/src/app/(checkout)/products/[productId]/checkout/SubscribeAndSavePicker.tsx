@@ -20,8 +20,11 @@
 // component is purely controlled.
 
 import { Lock, Repeat, ShieldCheck, Sparkles } from 'lucide-react'
-import Link from 'next/link'
 import type { SubscriptionState } from './types'
+// /pricing lives in apps/marketing (port 3010 in dev). Cross-app links
+// must use marketingUrl(); plain <Link href="/pricing"> 404s because the
+// creator app doesn't own that route.
+import { marketingUrl } from '@/lib/marketing-url'
 
 // V1 discount ladder. Per Pavel's R8.c memory: "up to 12%". Conservative
 // V1 floors that admin can dial up once we have data on take-rate.
@@ -221,13 +224,13 @@ export function SubscribeAndSavePicker({
             </>
           ) : (
             <div className="mt-3">
-              <Link
-                href="/pricing?tier=builder"
+              <a
+                href={marketingUrl('/pricing?tier=builder')}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1 rounded-full bg-pink-500 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
               >
                 Upgrade to Builder
-              </Link>
+              </a>
             </div>
           )}
         </button>
