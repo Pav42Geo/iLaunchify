@@ -309,16 +309,18 @@ export function SubscribeChoiceRail({
             <p className="text-[10.5px] leading-snug text-ink-500">
               Cancel anytime
             </p>
-            {/* "What's included?" trigger — a visible inline link with
-                icon, in pink so it reads as a discoverable action
-                instead of the tiny grey (i) it replaced. Stops
-                propagation so the popover open doesn't also toggle
-                the row's expand state. Anchored under the price
-                caption so it sits in the user's natural read path. */}
+            {/* "What's included?" trigger — hover opens the tier-card
+                popup (Pavel 2026-06-01). Click also toggles for touch
+                and keyboard users. Mouse-leave closes; the popup has
+                its own X for click-pinned users. */}
             <button
               type="button"
               aria-label="See what's included with Subscribe & Save"
               aria-expanded={showInfo}
+              onMouseEnter={() => setShowInfo(true)}
+              onMouseLeave={() => setShowInfo(false)}
+              onFocus={() => setShowInfo(true)}
+              onBlur={() => setShowInfo(false)}
               onClick={(e) => {
                 e.stopPropagation()
                 setShowInfo((v) => !v)
