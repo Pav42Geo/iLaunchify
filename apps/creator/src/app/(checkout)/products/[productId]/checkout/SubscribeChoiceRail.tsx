@@ -183,6 +183,27 @@ export function SubscribeChoiceRail({
         </div>
       </button>
 
+      {/* CTA slot for One-time mode — anchored UNDER the One-time row
+          per Pavel 2026-05-31. The button visually belongs to whichever
+          card is currently selected, so the creator sees the action
+          attached to the plan they're committing to. Label stays
+          "Add subscription to cart" regardless of mode (Pavel's call). */}
+      {!subscribeSelected && (
+        <div className="border-t border-ink-100 bg-ink-50/40 p-3">
+          <button
+            type="button"
+            onClick={() => {
+              pickOneTime() // idempotent re-confirm
+              onAdvance()
+            }}
+            disabled={isSaving}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+          >
+            Add subscription to cart
+          </button>
+        </div>
+      )}
+
       {/* divider */}
       <div className="h-px bg-ink-100" />
 
@@ -344,9 +365,8 @@ export function SubscribeChoiceRail({
             CTA (unlocked) OR neutral "available on Builder" copy
             (locked). Slides under the teaser; only renders when the
             user has expanded it. */}
-        {subExpanded &&
-          (unlocked ? (
-            <div className="space-y-3 border-t border-pink-100 px-4 pb-4 pt-3">
+        {subExpanded && unlocked && (
+          <div className="space-y-3 border-t border-pink-100 px-4 pb-4 pt-3">
               {/* Short benefit bullets per Pavel — no redundant savings
                   line here (OrderSummary already shows "Subscription
                   savings (X%)" as a recalculated breakdown row). */}
@@ -412,53 +432,37 @@ export function SubscribeChoiceRail({
                 {state.cadence === 'QUARTERLY' ? '3 months' : '30 days'} from
                 today.
               </p>
+
+              {/* CTA slot for Subscribe mode — same button, same label,
+                  but now anchored UNDER the Subscribe card so the action
+                  visually belongs to whichever plan the creator picked.
+                  When subscribeSelected flips, the button moves from the
+                  One-time slot above to here. */}
+              <button
+                type="button"
+                onClick={() => {
+                  pickSubscribe() // idempotent re-confirm current cadence/runs
+                  onAdvance()
+                }}
+                disabled={isSaving}
+                className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+              >
+                Add subscription to cart
+              </button>
             </div>
-          ) : (
-            // Locked branch (Maker tier). No "Upgrade to Builder" CTA
-            // per Pavel — the info popover next to the label is the only
-            // surface that explains what Builder includes. Keep the
-            // expanded body intentionally minimal so the row reads as
-            // "available with Builder" rather than "buy this now."
-            <div className="border-t border-ink-100 px-4 pb-4 pt-3">
-              <p className="text-[11.5px] leading-snug text-ink-600">
-                Subscribe &amp; Save is included with the Builder plan.
-                Tap the info icon above to see what&rsquo;s included.
-              </p>
-            </div>
-          ))}
+          )}
+        {/* Locked branch — intentionally renders nothing in the
+            expanded area. The hover-revealed Builder tier card on
+            the Lock badge + the auto-opened info popup on Subscribe
+            pick handle all the explanation. Per Pavel: "remove the
+            'included with Builder plan' text — it's redundant." */}
       </div>
 
-      {/* --- Single primary advance CTA ------------------------------- */
-      /* Replaces the old ActionsCard "Continue to Checkout" button.
-         Per Pavel 2026-05-30, the wizard advance lives HERE in the
-         subscription rail so the creator has one decisive action that
-         both (a) commits whichever mode is currently selected and
-         (b) moves them to Step 3. Label flips with the mode so it
-         mirrors Amazon's "Add to cart" vs "Add subscription to cart". */}
-      <div className="border-t border-ink-100 bg-ink-50/40 p-3">
-        <button
-          type="button"
-          onClick={() => {
-            // Commit-if-needed before advancing so the autosave at the
-            // wizard layer picks up the choice. Safe to re-call
-            // pickOneTime/pickSubscribe — they're idempotent.
-            if (subscribeSelected && unlocked) {
-              pickSubscribe() // re-confirms current cadence/runs
-            } else if (!subscribeSelected) {
-              pickOneTime()
-            }
-            onAdvance()
-          }}
-          disabled={isSaving}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
-        >
-          {/* Per Pavel 2026-05-31 — single fixed label regardless of
-              mode. Drives the creator toward the subscription path
-              even when One-time is currently selected; the radio still
-              decides which mode actually gets committed on click. */}
-          Add subscription to cart
-        </button>
-      </div>
+      {/* Bottom CTA slot intentionally removed on 2026-05-31. The
+          primary action now lives INSIDE whichever card is currently
+          selected (One-time slot under the One-time row, Subscribe slot
+          inside the expanded panel). Per Pavel — the button visually
+          belongs to the plan being committed to. */}
     </section>
   )
 }
