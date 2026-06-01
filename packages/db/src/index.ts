@@ -26,3 +26,8 @@ export {
   findFirstBannedIngredient,
   type BannedIngredientMatch,
 } from './banned-ingredients'
+export {
+  findBannedProductTerm,
+  type BannedProductTerm,
+  type BannedProductTermMatch,
+} from './banned-product-categories'

@@ -1,7 +1,8 @@
 'use server'
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, findBannedProductTerm } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { z } from 'zod'
 
 const DraftSchema = z.object({
@@ -37,6 +38,7 @@ export async function createDraftFromTemplate(
     where: { id: parsed.data.templateId },
     include: {
       subcategory: { include: { category: true } },
+      niches: { select: { niche: { select: { slug: true } } } },
       ingredientSlots: { orderBy: { displayOrder: 'asc' } },
       variants: { where: { id: parsed.data.variantId } },
     },
@@ -46,6 +48,34 @@ export async function createDraftFromTemplate(
   }
   const variant = template.variants[0]
   if (!variant) return { ok: false, error: 'Variant not found' }
+
+  // Banned-product-category gate (FDA_REGULATORY_POSTURE §5 item 14 / risk #9).
+  // Hard-block federally-fuzzy product types (CBD, kratom, THC, infant formula)
+  // at the creation gate + audit the attempt.
+  const bannedCategory = findBannedProductTerm({
+    name: template.name,
+    subcategorySlug: template.subcategory.slug,
+    nicheSlugs: template.niches.map((n) => n.niche.slug),
+  })
+  if (bannedCategory) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: template.id,
+      action: 'PRODUCT_BANNED_CATEGORY_BLOCK',
+      payload: {
+        templateName: template.name,
+        bannedTerm: bannedCategory.term,
+        label: bannedCategory.label,
+        reason: bannedCategory.reason,
+        matchedIn: bannedCategory.matchedIn,
+        brandId: brand.id,
+      },
+    })
+    return {
+      ok: false,
+      error: `${bannedCategory.label} products can't be launched on iLaunchify — ${bannedCategory.reason}`,
+    }
+  }
 
   // Map category enum
   const productCategory =

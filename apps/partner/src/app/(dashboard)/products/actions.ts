@@ -9,7 +9,7 @@
 //   /partner/products/[id]/edit     → autosave via saveProductFields (debounced)
 //                                   → submitForReview when ready
 
-import { prisma, findFirstBannedIngredient } from '@ilaunchify/db'
+import { prisma, findFirstBannedIngredient, findBannedProductTerm } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -294,6 +294,8 @@ export async function submitProductForReview(productTemplateId: string): Promise
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
     include: {
+      subcategory: { select: { slug: true } },
+      niches: { select: { niche: { select: { slug: true } } } },
       ingredientSlots: {
         select: {
           id: true,
@@ -362,6 +364,35 @@ export async function submitProductForReview(productTemplateId: string): Promise
     return {
       ok: false,
       error: `Cannot submit: "${banned.name}" is a banned ingredient — ${banned.match.reason}. Remove it before submitting.`,
+    }
+  }
+
+  // Banned-product-category gate (FDA_REGULATORY_POSTURE §5 item 14 / risk #9) —
+  // defense-in-depth so a banned product TYPE never reaches PENDING_REVIEW.
+  const bannedCategory = findBannedProductTerm({
+    name: tpl.name,
+    subcategorySlug: tpl.subcategory?.slug,
+    nicheSlugs: tpl.niches.map((n) => n.niche.slug),
+    ingredientNames,
+  })
+  if (bannedCategory) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_BANNED_CATEGORY_BLOCK',
+      fromValue: tpl.status,
+      payload: {
+        name: tpl.name,
+        partnerId: partner.id,
+        bannedTerm: bannedCategory.term,
+        label: bannedCategory.label,
+        reason: bannedCategory.reason,
+        matchedIn: bannedCategory.matchedIn,
+      },
+    })
+    return {
+      ok: false,
+      error: `Cannot submit: ${bannedCategory.label} is a prohibited product category — ${bannedCategory.reason}`,
     }
   }
 

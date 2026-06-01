@@ -96,6 +96,8 @@ export const AUDIT_ACTIONS = [
   'PRODUCT_TEMPLATE_ARCHIVE',
   // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5)
   'PRODUCT_TEMPLATE_BANNED_BLOCK',
+  // Banned-product-category gate (FDA_REGULATORY_POSTURE §5 item 14 / risk #9)
+  'PRODUCT_BANNED_CATEGORY_BLOCK',
   // Payments (mostly SYSTEM actor from webhooks)
   'CHARGE_SUCCEEDED',
   'TRANSFER_QUEUED',
