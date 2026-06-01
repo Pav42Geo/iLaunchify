@@ -1,23 +1,36 @@
-// REBUILD R15.c — Admin Tier Management module.
+// REBUILD R15.c → v2 admin surface uplift (2026-06-01).
 //
-// Three URL-driven tabs at /admin/tiers?tab=<creators|partners|plans>:
-//   - Creators: list every CreatorProfile with current subscriptionTier
-//     + last-change timestamp + per-account fee override. Edit drawer
-//     (R15.d) lets admin promote/demote and set a feeRateOverrideBp.
-//   - Partners: same shape for Partner.tier (Verified/Trusted/Premier).
-//     Partner-type filter so admin can scope to MANUFACTURING etc.
-//   - Plans & fees: read-only summary table of the 6 SubscriptionPlan
-//     rows + their PlanFeature + FeeRule children. Inline editor
-//     (R15.e) ships next.
+// Three URL-driven tabs at /admin/tiers?tab=<creators|partners|plans>.
+// Page chrome now matches the locked v2 admin pattern:
+//   - Cream rounded-3xl hero band w/ eyebrow + h1 + subline + black-pill CTA
+//   - 5-card KPI strip (Total accounts / Creator Builder+Agency / Partner
+//     Trusted+Premier / Fee overrides / Plans)
+//   - Pill-style tab bar (NOT bottom-border) so the page reads as a
+//     destination, not a sub-route of a list
+//   - Existing CreatorsTab / PartnersTab / PlansTab continue to load
+//     their own data — we only re-skin the chrome that wraps them.
+//
+// See memory: ilaunchify-admin-surface-pattern.md (v2 rules)
+// Reference: apps/admin/src/app/(dashboard)/partners/page.tsx
 //
 // Permission model: requireRole(['ADMIN']) — single role gate; finer
 // per-action permissions land when V1.5 brings the staff role split.
 
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Crown, Users, Building2, Sliders } from 'lucide-react'
+import {
+  Crown,
+  Users,
+  Building2,
+  Sliders,
+  Star,
+  ShieldCheck,
+  Receipt,
+  LayoutGrid,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { cn } from '@ilaunchify/ui'
 import { CreatorsTab } from './CreatorsTab'
 import { PartnersTab } from './PartnersTab'
 import { PlansTab } from './PlansTab'
@@ -25,13 +38,25 @@ import { PlansTab } from './PlansTab'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Tiers & plans — Admin' }
 
+// -----------------------------------------------------------------------------
+// Tabs
+// -----------------------------------------------------------------------------
+
 type TabKey = 'creators' | 'partners' | 'plans'
 
-const TABS: Array<{ key: TabKey; label: string; icon: typeof Users }> = [
+const TABS: Array<{ key: TabKey; label: string; icon: LucideIcon }> = [
   { key: 'creators', label: 'Creators', icon: Users },
   { key: 'partners', label: 'Partners', icon: Building2 },
-  { key: 'plans',    label: 'Plans & fees', icon: Sliders },
+  { key: 'plans', label: 'Plans & fees', icon: Sliders },
 ]
+
+function isTabKey(s: string | undefined): s is TabKey {
+  return s === 'creators' || s === 'partners' || s === 'plans'
+}
+
+// -----------------------------------------------------------------------------
+// Page
+// -----------------------------------------------------------------------------
 
 interface PageProps {
   searchParams: Promise<{
@@ -45,33 +70,60 @@ interface PageProps {
 export default async function TiersPage({ searchParams }: PageProps) {
   await requireRole(['ADMIN'])
   const sp = await searchParams
-  const activeTab: TabKey = TABS.some((t) => t.key === sp.tab)
-    ? (sp.tab as TabKey)
-    : 'creators'
+  const activeTab: TabKey = isTabKey(sp.tab) ? sp.tab : 'creators'
 
-  // Counts for tab badges — cheap aggregate counts, no row data here.
-  const [creatorCount, partnerCount, planCount] = await Promise.all([
+  // KPI strip data — counts independent of any active filter so the
+  // header always shows the platform-wide picture.
+  const [
+    creatorCount,
+    partnerCount,
+    planCount,
+    creatorTierCounts,
+    partnerTierCounts,
+    creatorOverrideCount,
+    partnerOverrideCount,
+  ] = await Promise.all([
     prisma.creatorProfile.count(),
     prisma.partner.count(),
     prisma.subscriptionPlan.count(),
+    prisma.creatorProfile.groupBy({
+      by: ['subscriptionTier'],
+      _count: { _all: true },
+    }),
+    prisma.partner.groupBy({
+      by: ['tier'],
+      _count: { _all: true },
+    }),
+    prisma.creatorProfile.count({ where: { feeRateOverrideBp: { not: null } } }),
+    prisma.partner.count({ where: { feeRateOverrideBp: { not: null } } }),
   ])
+
+  const creatorTierMap = new Map(
+    creatorTierCounts.map((c) => [c.subscriptionTier as string, c._count._all]),
+  )
+  const partnerTierMap = new Map(
+    partnerTierCounts.map((c) => [c.tier as string, c._count._all]),
+  )
+
+  const totalAccounts = creatorCount + partnerCount
+  const paidCreatorCount =
+    (creatorTierMap.get('BUILDER') ?? 0) + (creatorTierMap.get('AGENCY') ?? 0)
+  const upperPartnerCount =
+    (partnerTierMap.get('TRUSTED') ?? 0) + (partnerTierMap.get('PREMIER') ?? 0)
+  const overrideCount = creatorOverrideCount + partnerOverrideCount
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-            <Crown className="h-3.5 w-3.5" /> Admin
-          </div>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-zinc-900">
-            Tiers &amp; plans
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Manage creator and partner subscription tiers, per-account fee
-            overrides, and the platform-wide feature matrix.
-          </p>
-        </div>
-      </header>
+      <Header
+        activeTab={activeTab}
+        totalAccounts={totalAccounts}
+        paidCreatorCount={paidCreatorCount}
+        upperPartnerCount={upperPartnerCount}
+        overrideCount={overrideCount}
+        planCount={planCount}
+        creatorCount={creatorCount}
+        partnerCount={partnerCount}
+      />
 
       <TabBar
         active={activeTab}
@@ -91,9 +143,167 @@ export default async function TiersPage({ searchParams }: PageProps) {
   )
 }
 
-// =============================================================================
-// TabBar — same vocabulary as the creator /products tabs (R11)
-// =============================================================================
+// -----------------------------------------------------------------------------
+// Header — cream band + 5-card KPI strip
+// -----------------------------------------------------------------------------
+
+function Header({
+  activeTab,
+  totalAccounts,
+  paidCreatorCount,
+  upperPartnerCount,
+  overrideCount,
+  planCount,
+  creatorCount,
+  partnerCount,
+}: {
+  activeTab: TabKey
+  totalAccounts: number
+  paidCreatorCount: number
+  upperPartnerCount: number
+  overrideCount: number
+  planCount: number
+  creatorCount: number
+  partnerCount: number
+}) {
+  return (
+    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <Crown className="h-3 w-3" /> Settings · Tiers &amp; Plans
+          </p>
+          <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            Tier &amp; plan management
+          </h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+            Manage creator and partner subscription tiers, per-account fee overrides,
+            and the platform-wide feature matrix.
+          </p>
+        </div>
+
+        <Link
+          href="/tiers?tab=plans"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-ink-900 px-5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <Sliders className="h-4 w-4" /> Edit plans
+        </Link>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <KpiCard
+          href="/tiers"
+          label="Total accounts"
+          value={totalAccounts}
+          icon={Users}
+          subline={`${creatorCount} creators · ${partnerCount} partners`}
+          active={activeTab === 'creators' || activeTab === 'partners'}
+        />
+        <KpiCard
+          href="/tiers?tab=creators&tier=BUILDER"
+          label="Creator Builder+"
+          value={paidCreatorCount}
+          icon={Star}
+          tone="emerald"
+          subline="Builder + Agency"
+        />
+        <KpiCard
+          href="/tiers?tab=partners&tier=TRUSTED"
+          label="Partner Trusted+"
+          value={upperPartnerCount}
+          icon={ShieldCheck}
+          tone="emerald"
+          subline="Trusted + Premier"
+        />
+        <KpiCard
+          href="/tiers?tab=creators&tier=BUILDER"
+          label="Fee overrides"
+          value={overrideCount}
+          icon={Receipt}
+          tone="amber"
+          subline="Per-account custom rate"
+        />
+        <KpiCard
+          href="/tiers?tab=plans"
+          label="Plans"
+          value={planCount}
+          icon={LayoutGrid}
+          tone="sky"
+          subline="Creator + partner"
+          active={activeTab === 'plans'}
+        />
+      </div>
+    </div>
+  )
+}
+
+function KpiCard({
+  href,
+  label,
+  value,
+  icon: Icon,
+  tone,
+  active,
+  subline,
+}: {
+  href: string
+  label: string
+  value: number
+  icon: LucideIcon
+  tone?: 'amber' | 'emerald' | 'sky' | 'rose'
+  active?: boolean
+  subline?: string
+}) {
+  const ring: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
+    amber: 'group-hover:ring-amber-300/60',
+    emerald: 'group-hover:ring-emerald-300/60',
+    sky: 'group-hover:ring-sky-300/60',
+    rose: 'group-hover:ring-rose-300/60',
+  }
+  const iconTone: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
+    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    sky: 'bg-sky-100 text-sky-700',
+    rose: 'bg-rose-100 text-rose-700',
+  }
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group relative rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow',
+        'hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+        'ring-1 ring-transparent',
+        tone ? ring[tone] : 'group-hover:ring-pink-300/40',
+        active && 'ring-pink-300/40',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-xl',
+            tone ? iconTone[tone] : 'bg-pink-100 text-pink-700',
+          )}
+        >
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="flex-1">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            {label}
+          </p>
+          <p className="font-display text-[22px] font-bold leading-none text-ink-900">
+            {value.toLocaleString()}
+          </p>
+          {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// TabBar — pill-style segmented control (v2 pattern)
+// -----------------------------------------------------------------------------
 
 function TabBar({
   active,
@@ -105,7 +315,7 @@ function TabBar({
   return (
     <nav
       aria-label="Tier management tabs"
-      className="flex flex-wrap items-center gap-1 border-b border-zinc-200"
+      className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-ink-200 bg-white p-0.5"
     >
       {TABS.map((t) => {
         const isActive = t.key === active
@@ -113,22 +323,23 @@ function TabBar({
         return (
           <Link
             key={t.key}
-            href={`/tiers${t.key === 'creators' ? '' : `?tab=${t.key}`}`}
+            href={t.key === 'creators' ? '/tiers' : `/tiers?tab=${t.key}`}
             aria-current={isActive ? 'page' : undefined}
-            className={
-              '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 ' +
-              (isActive
-                ? 'border-zinc-900 text-zinc-900'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800')
-            }
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[12.5px] font-semibold transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+              isActive
+                ? 'bg-ink-900 text-white'
+                : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900',
+            )}
           >
             <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             {t.label}
             <span
-              className={
-                'inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold ' +
-                (isActive ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600')
-              }
+              className={cn(
+                'inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums',
+                isActive ? 'bg-white/20 text-white' : 'bg-ink-100 text-ink-600',
+              )}
             >
               {counts[t.key]}
             </span>

@@ -1,412 +1,710 @@
-// =============================================================================
-// Admin Leads — advanced inbox (Pavel 2026-06-01)
-// =============================================================================
+// Admin Leads list — advanced (post Pavel 2026-06-01).
 //
-// Locked admin pattern: cream header band + KPI strip + filter chips +
-// sortable table. Replaces the plain Card-list. Leads = Partner rows in
-// DRAFT or INVITED status — the funnel BEFORE the 5-layer onboarding starts.
+// Leads = Partner rows in DRAFT or INVITED status — the pre-onboarding
+// funnel BEFORE the 5-layer onboarding starts. Qualify them or invite
+// them to advance.
 //
-// Columns: company name + email, services (chips), source, age in days,
-// status pill, contact link, row arrow.
+// Mirrors the locked admin surface pattern from /admin/partners and
+// /admin/creators (cream header + KPI strip + URL-driven filter chips +
+// sortable table + RowActionsMenu).
+// See memory: ilaunchify-admin-surface-pattern.md (v2 — 2026-06-01).
 //
-// Filter chips: All / Draft / Invited. Sort: newest / oldest / stuck (age-desc).
+// Query params:
+//   ?q=acme           — search companyName / legalName / email / website
+//   ?status=DRAFT     — narrow by lead status (DRAFT | INVITED)
+//   ?sort=newest|oldest|stuck — default "newest" (createdAt desc)
+//   ?page=2           — pagination (50 / page)
 
+import { prisma } from '@ilaunchify/db'
 import Link from 'next/link'
 import {
   Inbox,
-  Clock,
+  Sparkles,
   Mail,
-  Globe,
+  Clock,
+  CalendarPlus,
+  AlertTriangle,
+  ArrowUpDown,
+  Search,
   Building2,
-  ArrowRight,
-  ArrowDownUp,
+  Globe,
   Phone,
   MapPin,
-  Sparkles,
-  CheckCircle2,
+  Factory,
+  Package as PackageIcon,
+  Printer,
+  Warehouse as WarehouseIcon,
 } from 'lucide-react'
-import { prisma } from '@ilaunchify/db'
+import type { LucideIcon } from 'lucide-react'
+import type { ServiceType } from '@prisma/client'
 import { cn } from '@ilaunchify/ui'
 import { LeadRowActions } from './LeadRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Leads — Admin' }
 
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
 type LeadStatus = 'DRAFT' | 'INVITED'
 
-const STATUS_TONE: Record<LeadStatus, { bg: string; dot: string; label: string }> = {
-  DRAFT: {
-    bg: 'bg-amber-50 text-amber-800 border-amber-200',
-    dot: 'bg-amber-500',
-    label: 'Pending review',
-  },
-  INVITED: {
-    bg: 'bg-blue-50 text-blue-800 border-blue-200',
-    dot: 'bg-blue-500',
-    label: 'Invited',
-  },
+const LEAD_STATUS_ORDER: LeadStatus[] = ['DRAFT', 'INVITED']
+
+const STATUS_LABELS: Record<LeadStatus, string> = {
+  DRAFT: 'Pending review',
+  INVITED: 'Invited',
 }
 
+const STATUS_TONE: Record<
+  LeadStatus,
+  { dot: string; bg: string; text: string; border: string }
+> = {
+  DRAFT: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
+  INVITED: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+}
+
+const SERVICE_LABELS: Record<ServiceType, string> = {
+  MANUFACTURING: 'Manufacturing',
+  COPACKING: 'Co-packing',
+  LABEL_PRINTING: 'Label printing',
+}
+
+const SERVICE_ICON: Record<ServiceType, LucideIcon> = {
+  MANUFACTURING: Factory,
+  COPACKING: PackageIcon,
+  LABEL_PRINTING: Printer,
+}
+
+const PAGE_SIZE = 50
+const STUCK_LEAD_DAYS = 14 // open lead older than this flags the urgent strip
+const NEW_LEAD_WINDOW_DAYS = 7 // "New this week"
+
+// -----------------------------------------------------------------------------
+// Page
+// -----------------------------------------------------------------------------
+
 interface PageProps {
-  searchParams: Promise<{ status?: string; sort?: string }>
+  searchParams: Promise<{
+    q?: string
+    status?: string
+    sort?: string
+    page?: string
+  }>
+}
+
+function isValidStatus(s: string | undefined): s is LeadStatus {
+  return s === 'DRAFT' || s === 'INVITED'
+}
+function parseSort(s: string | undefined): 'newest' | 'oldest' | 'stuck' {
+  if (s === 'oldest' || s === 'stuck') return s
+  return 'newest'
 }
 
 export default async function LeadsPage({ searchParams }: PageProps) {
-  const { status: statusParam, sort: sortParam } = await searchParams
-  const status =
-    statusParam === 'DRAFT' || statusParam === 'INVITED'
-      ? (statusParam as LeadStatus)
-      : null
-  const sort = sortParam === 'oldest' ? 'oldest' : sortParam === 'stuck' ? 'stuck' : 'newest'
+  const sp = await searchParams
+  const q = sp.q?.trim() || ''
+  const status = isValidStatus(sp.status) ? sp.status : undefined
+  const sort = parseSort(sp.sort)
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
 
-  const last30 = new Date(Date.now() - 30 * 24 * 3600 * 1000)
-  const [draftCount, invitedCount, newThisMonth, oldestStuckDays, rows] = await Promise.all([
+  // Build dynamic where clause as a free-form object — Prisma's deep
+  // generic inference doesn't play well with conditional shapes, so
+  // we cast at the call site (documented escape hatch — see memory:
+  // ilaunchify-admin-surface-pattern v2 § Strict TS notes).
+  const baseScope: Record<string, unknown> = { status: { in: LEAD_STATUS_ORDER } }
+  const where: Record<string, unknown> = { ...baseScope }
+  if (q) {
+    where.OR = [
+      { companyName: { contains: q, mode: 'insensitive' } },
+      { legalName: { contains: q, mode: 'insensitive' } },
+      { websiteUrl: { contains: q, mode: 'insensitive' } },
+      { user: { email: { contains: q, mode: 'insensitive' } } },
+    ]
+  }
+  if (status) where.status = status
+
+  const newWindowStart = new Date(Date.now() - NEW_LEAD_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+
+  // KPI strip is independent of the active filter — chip counts always
+  // show the full picture so admin can navigate confidently.
+  const [
+    draftCount,
+    invitedCount,
+    newThisWeekCount,
+    oldestOpenLead,
+    total,
+    rows,
+  ] = await Promise.all([
     prisma.partner.count({ where: { status: 'DRAFT' } }),
     prisma.partner.count({ where: { status: 'INVITED' } }),
     prisma.partner.count({
-      where: { status: { in: ['DRAFT', 'INVITED'] }, createdAt: { gte: last30 } },
-    }),
-    prisma.partner
-      .findFirst({
-        where: { status: { in: ['DRAFT', 'INVITED'] } },
-        orderBy: { createdAt: 'asc' },
-        select: { createdAt: true },
-      })
-      .then((p) =>
-        p ? Math.floor((Date.now() - p.createdAt.getTime()) / (24 * 3600 * 1000)) : 0,
-      ),
-    prisma.partner.findMany({
       where: {
-        status: status
-          ? { equals: status }
-          : { in: ['DRAFT', 'INVITED'] },
+        status: { in: LEAD_STATUS_ORDER },
+        createdAt: { gte: newWindowStart },
       },
+    }),
+    prisma.partner.findFirst({
+      where: { status: { in: LEAD_STATUS_ORDER } },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    prisma.partner.count({ where: where as never }),
+    prisma.partner.findMany({
+      where: where as never,
       include: {
-        user: { select: { email: true, name: true } },
+        user: { select: { email: true, stripeAccountStatus: true, stripeAccountId: true } },
         services: { select: { type: true } },
       },
       orderBy:
         sort === 'oldest' || sort === 'stuck'
           ? { createdAt: 'asc' }
           : { createdAt: 'desc' },
-      take: 200,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
   ])
 
-  const totalCount = draftCount + invitedCount
+  const totalOpen = draftCount + invitedCount
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const statusCountMap = new Map<LeadStatus, number>([
+    ['DRAFT', draftCount],
+    ['INVITED', invitedCount],
+  ])
+
+  const oldestStuckDays = oldestOpenLead?.createdAt
+    ? Math.floor(
+        (Date.now() - new Date(oldestOpenLead.createdAt).getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null
 
   return (
     <div className="space-y-6">
+      {/* HEADER (cream band) */}
       <Header
-        totalCount={totalCount}
+        totalOpen={totalOpen}
         draftCount={draftCount}
         invitedCount={invitedCount}
-        newThisMonth={newThisMonth}
+        newThisWeekCount={newThisWeekCount}
         oldestStuckDays={oldestStuckDays}
       />
 
-      <FilterChips
-        active={status}
-        totalCount={totalCount}
-        draftCount={draftCount}
-        invitedCount={invitedCount}
-        currentSort={sort}
+      {/* URGENT CALLOUT — oldest lead has been sitting too long */}
+      {oldestStuckDays != null && oldestStuckDays >= STUCK_LEAD_DAYS && (
+        <Link
+          href="/leads?sort=stuck"
+          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+            <AlertTriangle className="h-[18px] w-[18px]" />
+          </span>
+          <div className="flex-1">
+            <p className="text-[13.5px] font-semibold text-rose-900">
+              Lead stuck {oldestStuckDays} days in the inbox
+            </p>
+            <p className="text-[11.5px] text-rose-700">
+              Sort by oldest stuck to triage the leads that have been waiting the longest.
+            </p>
+          </div>
+          <ArrowUpDown className="h-4 w-4 text-rose-700" />
+        </Link>
+      )}
+
+      {/* FILTER BAR — search + status chips + sort */}
+      <FilterBar
+        q={q}
+        status={status}
+        sort={sort}
+        statusCountMap={statusCountMap}
+        totalOpen={totalOpen}
+        total={total}
       />
 
+      {/* TABLE */}
       {rows.length === 0 ? (
-        <EmptyState filtered={status !== null} />
+        <EmptyState filtered={Boolean(q || status)} />
       ) : (
-        <LeadsTable rows={rows} />
+        <LeadsTable rows={rows} sort={sort} />
       )}
+
+      {/* PAGINATION */}
+      <Pagination page={page} totalPages={totalPages} sp={sp} />
     </div>
   )
 }
 
-// =============================================================================
-// Header — KPI strip
-// =============================================================================
+// -----------------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------------
 
 function Header({
-  totalCount,
+  totalOpen,
   draftCount,
   invitedCount,
-  newThisMonth,
+  newThisWeekCount,
   oldestStuckDays,
 }: {
-  totalCount: number
+  totalOpen: number
   draftCount: number
   invitedCount: number
-  newThisMonth: number
-  oldestStuckDays: number
+  newThisWeekCount: number
+  oldestStuckDays: number | null
 }) {
+  const oldestTone: 'rose' | 'emerald' =
+    oldestStuckDays != null && oldestStuckDays >= STUCK_LEAD_DAYS ? 'rose' : 'emerald'
+
   return (
-    <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="bg-[#F3EFE8] px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">Inbox</p>
-        <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
-          Leads
-        </h1>
-        <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
-          Partner applications waiting for review or onboarding. Qualify the
-          ones with the right capabilities, disqualify the rest, and invite
-          new partners directly.
-        </p>
+    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            Inbox · Leads
+          </p>
+          <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            Lead inbox
+          </h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+            Partners who registered but haven&apos;t started the 5-layer onboarding yet — qualify
+            or invite to advance them.
+          </p>
+        </div>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-4">
-        <Kpi icon={Inbox} label="Total open" value={totalCount} tone="ink" />
-        <Kpi icon={Sparkles} label="Pending review" value={draftCount} tone="warning" />
-        <Kpi icon={Mail} label="Invited" value={invitedCount} tone="info" />
-        <Kpi
+
+      {/* KPI strip */}
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <KpiCard
+          href="/leads"
+          label="Total open"
+          value={totalOpen}
+          icon={Inbox}
+          active
+        />
+        <KpiCard
+          href="/leads?status=DRAFT"
+          label="Pending review"
+          value={draftCount}
+          icon={Sparkles}
+          tone="amber"
+        />
+        <KpiCard
+          href="/leads?status=INVITED&sort=newest"
+          label="Invited"
+          value={invitedCount}
+          icon={Mail}
+          tone="sky"
+        />
+        <KpiCard
+          href="/leads?sort=stuck"
+          label="Oldest stuck"
+          value={oldestStuckDays ?? 0}
           icon={Clock}
-          label="Oldest · days"
-          value={oldestStuckDays}
-          tone={oldestStuckDays > 14 ? 'danger' : 'success'}
+          tone={oldestTone}
+          subline={oldestStuckDays != null ? 'days waiting' : '—'}
+        />
+        <KpiCard
+          href="/leads?sort=newest"
+          label="New this week"
+          value={newThisWeekCount}
+          icon={CalendarPlus}
+          tone="emerald"
         />
       </div>
-      {newThisMonth > 0 && (
-        <div className="border-t border-ink-100 bg-pink-50/60 px-5 py-2.5 text-[11.5px] text-pink-800">
-          <Sparkles className="mr-1 inline h-3 w-3" aria-hidden="true" />
-          <span className="font-semibold">{newThisMonth}</span>{' '}
-          new lead{newThisMonth === 1 ? '' : 's'} in the last 30 days.
-        </div>
-      )}
-    </header>
-  )
-}
-
-function Kpi({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof Inbox
-  label: string
-  value: number
-  tone: 'ink' | 'warning' | 'info' | 'success' | 'danger'
-}) {
-  const numeralTone = {
-    ink: 'text-ink-900',
-    warning: 'text-amber-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
-    danger: 'text-rose-700',
-  }[tone]
-  return (
-    <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-        <Icon className="h-3 w-3" aria-hidden="true" />
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-1 font-display text-[22px] font-semibold tabular-nums leading-none tracking-tight',
-          numeralTone,
-        )}
-      >
-        {value.toLocaleString()}
-      </p>
     </div>
   )
 }
 
-// =============================================================================
-// Filter chips
-// =============================================================================
-
-function FilterChips({
+function KpiCard({
+  href,
+  label,
+  value,
+  icon: Icon,
+  tone,
   active,
-  totalCount,
-  draftCount,
-  invitedCount,
-  currentSort,
+  subline,
 }: {
-  active: LeadStatus | null
-  totalCount: number
-  draftCount: number
-  invitedCount: number
-  currentSort: 'newest' | 'oldest' | 'stuck'
+  href: string
+  label: string
+  value: number
+  icon: LucideIcon
+  tone?: 'amber' | 'emerald' | 'sky' | 'rose'
+  active?: boolean
+  subline?: string
 }) {
-  const filters: Array<{ value: LeadStatus | null; label: string; count: number }> = [
-    { value: null, label: 'All', count: totalCount },
-    { value: 'DRAFT', label: 'Pending review', count: draftCount },
-    { value: 'INVITED', label: 'Invited', count: invitedCount },
-  ]
+  const ring: Record<NonNullable<typeof tone>, string> = {
+    amber: 'group-hover:ring-amber-300/60',
+    emerald: 'group-hover:ring-emerald-300/60',
+    sky: 'group-hover:ring-sky-300/60',
+    rose: 'group-hover:ring-rose-300/60',
+  }
+  const iconTone: Record<NonNullable<typeof tone>, string> = {
+    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    sky: 'bg-sky-100 text-sky-700',
+    rose: 'bg-rose-100 text-rose-700',
+  }
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group relative rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow',
+        'hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+        'ring-1 ring-transparent',
+        tone ? ring[tone] : 'group-hover:ring-pink-300/40',
+        active && 'ring-pink-300/40',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-xl',
+            tone ? iconTone[tone] : 'bg-pink-100 text-pink-700',
+          )}
+        >
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="flex-1">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            {label}
+          </p>
+          <p className="font-display text-[22px] font-bold leading-none text-ink-900">{value}</p>
+          {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
+        </div>
+      </div>
+    </Link>
+  )
+}
 
-  const buildHref = (status: LeadStatus | null, sort: typeof currentSort) => {
+// -----------------------------------------------------------------------------
+// FilterBar
+// -----------------------------------------------------------------------------
+
+function FilterBar({
+  q,
+  status,
+  sort,
+  statusCountMap,
+  totalOpen,
+  total,
+}: {
+  q: string
+  status: LeadStatus | undefined
+  sort: 'newest' | 'oldest' | 'stuck'
+  statusCountMap: Map<LeadStatus, number>
+  totalOpen: number
+  total: number
+}) {
+  const buildHref = (overrides: Partial<{ status: string; sort: string; q: string }>) => {
     const params = new URLSearchParams()
-    if (status) params.set('status', status)
-    if (sort !== 'newest') params.set('sort', sort)
-    const q = params.toString()
-    return q ? `/leads?${q}` : '/leads'
+    const finalQ: string = overrides.q !== undefined ? overrides.q : q
+    const finalStatus: string = overrides.status !== undefined ? overrides.status : status ?? ''
+    const finalSort: string = overrides.sort !== undefined ? overrides.sort : sort
+    if (finalQ) params.set('q', finalQ)
+    if (finalStatus) params.set('status', finalStatus)
+    if (finalSort && finalSort !== 'newest') params.set('sort', finalSort)
+    const qs = params.toString()
+    return `/leads${qs ? `?${qs}` : ''}`
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <nav aria-label="Filter by status" className="flex flex-1 flex-wrap gap-2">
-        {filters.map((f) => {
-          const isActive = active === f.value
-          return (
-            <Link
-              key={f.label}
-              href={buildHref(f.value, currentSort)}
-              aria-current={isActive ? 'page' : undefined}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium',
-                'transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-                isActive
-                  ? 'border-pink-500 bg-pink-500 text-white'
-                  : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900',
-              )}
-            >
-              {f.label}
-              <span
-                className={cn(
-                  'inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[10.5px] font-semibold tabular-nums',
-                  isActive ? 'bg-white/20 text-white' : 'bg-ink-100 text-ink-700',
-                )}
-              >
-                {f.count}
-              </span>
-            </Link>
-          )
-        })}
-      </nav>
-      <Link
-        href={buildHref(active, currentSort === 'newest' ? 'oldest' : currentSort === 'oldest' ? 'stuck' : 'newest')}
-        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-ink-400 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-      >
-        <ArrowDownUp className="h-3.5 w-3.5" />
-        {currentSort === 'newest'
-          ? 'Newest first'
-          : currentSort === 'oldest'
-            ? 'Oldest first'
-            : 'Most stuck'}
-      </Link>
+    <div className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
+      {/* Search row */}
+      <form className="flex flex-wrap items-center gap-2" method="GET">
+        <div className="relative min-w-[260px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Search company, email, or website…"
+            className="h-9 w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          />
+        </div>
+        {status && <input type="hidden" name="status" value={status} />}
+        {sort !== 'newest' && <input type="hidden" name="sort" value={sort} />}
+        <button
+          type="submit"
+          className="inline-flex h-9 items-center rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          Search
+        </button>
+        {(q || status || sort !== 'newest') && (
+          <Link
+            href="/leads"
+            className="inline-flex h-9 items-center rounded-full border border-ink-200 px-3 text-[12px] font-medium text-ink-700 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            Clear
+          </Link>
+        )}
+
+        {/* Right: sort + count */}
+        <div className="ml-auto flex items-center gap-3 text-[12px] text-ink-600">
+          <span className="hidden md:inline">{total.toLocaleString()} results</span>
+          <SortToggle currentSort={sort} buildHref={buildHref} />
+        </div>
+      </form>
+
+      {/* Status chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+          Status
+        </span>
+        <FilterChip
+          href={buildHref({ status: '' })}
+          active={!status}
+          label="All"
+          count={totalOpen}
+        />
+        {LEAD_STATUS_ORDER.map((s) => (
+          <FilterChip
+            key={s}
+            href={buildHref({ status: s })}
+            active={status === s}
+            label={STATUS_LABELS[s]!}
+            count={statusCountMap.get(s) ?? 0}
+            tone={STATUS_TONE[s]!}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
-// =============================================================================
-// Table
-// =============================================================================
+function FilterChip({
+  href,
+  active,
+  label,
+  count,
+  tone,
+  icon: Icon,
+}: {
+  href: string
+  active: boolean
+  label: string
+  count: number | null
+  tone?: { bg: string; text: string; border: string; dot: string }
+  icon?: LucideIcon
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+        active
+          ? 'border-ink-900 bg-ink-900 text-white'
+          : tone
+            ? `${tone.bg} ${tone.text} ${tone.border} hover:bg-white`
+            : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50',
+      )}
+    >
+      {Icon && <Icon className="h-3 w-3" />}
+      {tone && !active && <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />}
+      {label}
+      {count !== null && (
+        <span className={cn('text-[10.5px] tabular-nums', active ? 'text-white/70' : 'text-ink-500')}>
+          {count}
+        </span>
+      )}
+    </Link>
+  )
+}
 
-interface LeadRow {
+function SortToggle({
+  currentSort,
+  buildHref,
+}: {
+  currentSort: 'newest' | 'oldest' | 'stuck'
+  buildHref: (o: Partial<{ status: string; sort: string; q: string }>) => string
+}) {
+  const options: { value: 'newest' | 'oldest' | 'stuck'; label: string }[] = [
+    { value: 'newest', label: 'Newest' },
+    { value: 'oldest', label: 'Oldest' },
+    { value: 'stuck', label: 'Oldest stuck' },
+  ]
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-0.5">
+      {options.map((o) => (
+        <Link
+          key={o.value}
+          href={buildHref({ sort: o.value })}
+          className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+            currentSort === o.value
+              ? 'bg-ink-900 text-white'
+              : 'text-ink-600 hover:bg-ink-50',
+          )}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Table
+// -----------------------------------------------------------------------------
+
+type LeadRow = {
   id: string
   status: string
   companyName: string
-  websiteUrl: string | null
-  contactPhone: string | null
+  legalName: string
   city: string | null
   state: string | null
+  country: string
+  websiteUrl: string | null
+  contactPhone: string | null
   leadSource: string | null
   createdAt: Date
   updatedAt: Date
-  user: { email: string; name: string | null }
-  services: { type: string }[]
+  user: { email: string; stripeAccountStatus: string | null; stripeAccountId: string | null }
+  services: { type: ServiceType }[]
 }
 
-function LeadsTable({ rows }: { rows: LeadRow[] }) {
+function LeadsTable({
+  rows,
+  sort,
+}: {
+  rows: LeadRow[]
+  sort: 'newest' | 'oldest' | 'stuck'
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
         <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Company</Th>
-            <Th>Status</Th>
-            <Th>Services</Th>
             <Th>Source</Th>
-            <Th>Location</Th>
-            <Th className="text-right">Age</Th>
+            <Th>Services</Th>
+            <Th>Status</Th>
+            <Th>Stripe</Th>
+            <Th>{sort === 'newest' ? 'Created' : 'Age'}</Th>
             <Th className="w-[36px]" />
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
           {rows.map((lead) => {
-            const tone = STATUS_TONE[lead.status as LeadStatus] ?? STATUS_TONE.DRAFT
-            const ageDays = Math.floor(
-              (Date.now() - lead.createdAt.getTime()) / (24 * 3600 * 1000),
-            )
-            const isStale = ageDays > 14
+            const tone =
+              STATUS_TONE[(lead.status as LeadStatus)] ??
+              STATUS_TONE.DRAFT
+            const label =
+              STATUS_LABELS[(lead.status as LeadStatus)] ?? 'Pending review'
+            const ageDays = daysAgo(lead.createdAt)
+            const isStuck = ageDays != null && ageDays >= STUCK_LEAD_DAYS
+            const location = [lead.city, lead.state, lead.country].filter(Boolean).join(', ')
+            const stripeConnected = Boolean(lead.user.stripeAccountId)
+            const initials = computeInitials(lead.companyName)
+            const website = lead.websiteUrl
+              ? lead.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+              : null
+
             return (
-              <tr key={lead.id} className="group hover:bg-ink-50/40">
-                <td className="px-4 py-3 align-top">
-                  <Link
-                    href={`/leads/${lead.id}`}
-                    className="-mx-2 -my-1 block rounded-md px-2 py-1 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                  >
-                    <p className="inline-flex items-center gap-1.5 font-semibold text-ink-900">
-                      <Building2 className="h-3.5 w-3.5 text-ink-400" />
-                      {lead.companyName}
-                    </p>
-                    <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[11.5px] text-ink-500">
-                      <Mail className="h-3 w-3" />
-                      {lead.user.email}
-                    </p>
-                    {lead.websiteUrl && (
-                      <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[10.5px] text-pink-700">
-                        <Globe className="h-3 w-3" />
-                        {lead.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+              <tr key={lead.id} className="transition-colors hover:bg-pink-50/20">
+                <td className="px-3 py-3 align-top">
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-pink-100 text-[11px] font-semibold text-pink-700"
+                    >
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/leads/${lead.id}`}
+                        className="block font-semibold text-ink-900 hover:text-pink-700 focus-visible:outline-none focus-visible:underline"
+                      >
+                        {lead.companyName}
+                      </Link>
+                      <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[11px] text-ink-500">
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{lead.user.email}</span>
                       </p>
-                    )}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 align-top">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
-                      tone.bg,
-                    )}
-                  >
-                    <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
-                    {tone.label}
-                  </span>
-                  {lead.contactPhone && (
-                    <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] text-ink-500">
-                      <Phone className="h-2.5 w-2.5" />
-                      {lead.contactPhone}
-                    </p>
-                  )}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  <div className="flex flex-wrap gap-1">
-                    {lead.services.length > 0 ? (
-                      lead.services.map((s) => (
-                        <span
-                          key={s.type}
-                          className="inline-flex rounded-full border border-ink-200 bg-white px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-ink-700"
-                        >
-                          {s.type.replace(/_/g, ' ').toLowerCase()}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-ink-400">—</span>
-                    )}
+                      {website && (
+                        <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[10.5px] text-pink-700">
+                          <Globe className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{website}</span>
+                        </p>
+                      )}
+                      {location && (
+                        <p className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-ink-400">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{location}</span>
+                        </p>
+                      )}
+                      {lead.contactPhone && (
+                        <p className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] text-ink-400">
+                          <Phone className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{lead.contactPhone}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 align-top text-[11.5px] text-ink-600">
-                  {lead.leadSource ?? '—'}
-                </td>
-                <td className="px-4 py-3 align-top text-[11.5px] text-ink-700">
-                  {lead.city || lead.state ? (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-ink-400" />
-                      {[lead.city, lead.state].filter(Boolean).join(', ')}
+                <td className="px-3 py-3 align-top text-[11.5px] text-ink-600">
+                  {lead.leadSource ? (
+                    <span className="inline-flex rounded-full border border-ink-200 bg-white px-2 py-[2px] text-[10.5px] font-medium text-ink-700">
+                      {humanizeSource(lead.leadSource)}
                     </span>
                   ) : (
                     <span className="text-ink-400">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right align-top tabular-nums">
+                <td className="px-3 py-3 align-top">
+                  {lead.services.length === 0 ? (
+                    <span className="text-[11px] text-ink-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {lead.services.map((s) => {
+                        const Icon = SERVICE_ICON[s.type] ?? WarehouseIcon
+                        return (
+                          <span
+                            key={s.type}
+                            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700"
+                          >
+                            <Icon className="h-3 w-3" />
+                            {SERVICE_LABELS[s.type]}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </td>
+                <td className="px-3 py-3 align-top">
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1 text-[11.5px] font-semibold',
-                      isStale ? 'text-rose-700' : 'text-ink-700',
+                      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+                      tone.bg,
+                      tone.text,
+                      tone.border,
                     )}
                   >
-                    {isStale && <Clock className="h-3 w-3" />}
-                    {formatAge(ageDays)}
+                    <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
+                    {label}
+                  </span>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  {stripeConnected ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {lead.user.stripeAccountStatus ?? 'Connected'}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-ink-400">Not connected</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 align-top">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[11.5px]',
+                      isStuck ? 'font-semibold text-rose-700' : 'text-ink-600',
+                    )}
+                  >
+                    {isStuck && <Clock className="h-3 w-3" />}
+                    {ageDays != null ? formatAge(ageDays) : '—'}
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right align-top">
@@ -426,43 +724,128 @@ function LeadsTable({ rows }: { rows: LeadRow[] }) {
   )
 }
 
-// =============================================================================
-// Local helpers
-// =============================================================================
-
-function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
+function Th({
+  children,
+  className,
+}: {
+  children?: React.ReactNode
+  className?: string
+}) {
   return (
-    <th className={'px-4 py-2.5 text-left font-semibold ' + (className ?? '')}>
-      {children}
-    </th>
+    <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>{children}</th>
   )
 }
 
-function EmptyState({ filtered }: { filtered: boolean }) {
+// -----------------------------------------------------------------------------
+// Pagination
+// -----------------------------------------------------------------------------
+
+function Pagination({
+  page,
+  totalPages,
+  sp,
+}: {
+  page: number
+  totalPages: number
+  sp: { q?: string; status?: string; sort?: string }
+}) {
+  if (totalPages <= 1) return null
+
+  const buildHref = (p: number) => {
+    const params = new URLSearchParams()
+    if (sp.q) params.set('q', sp.q)
+    if (sp.status) params.set('status', sp.status)
+    if (sp.sort) params.set('sort', sp.sort)
+    if (p > 1) params.set('page', String(p))
+    const qs = params.toString()
+    return `/leads${qs ? `?${qs}` : ''}`
+  }
+
   return (
-    <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
-      <span
-        aria-hidden="true"
-        className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
-      >
-        <CheckCircle2 className="h-5 w-5" />
+    <div className="flex items-center justify-between border-t border-ink-100 pt-4 text-[12.5px]">
+      <span className="text-ink-500">
+        Page {page} of {totalPages}
       </span>
-      <h2 className="mt-3 font-display text-lg font-semibold text-ink-900">
-        {filtered ? 'No leads in this status' : 'Inbox zero'}
-      </h2>
-      <p className="mx-auto mt-1 max-w-[440px] text-[13px] text-ink-600">
-        {filtered
-          ? 'Try a different filter to see other leads.'
-          : 'New partner applications surface here the moment they submit.'}
-      </p>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Link
+            href={buildHref(page - 1)}
+            className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+          >
+            ← Previous
+          </Link>
+        )}
+        {page < totalPages && (
+          <Link
+            href={buildHref(page + 1)}
+            className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+          >
+            Next →
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
 
+// -----------------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------------
+
+function EmptyState({ filtered }: { filtered: boolean }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
+      <span
+        aria-hidden="true"
+        className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"
+      >
+        <Inbox className="h-5 w-5" />
+      </span>
+      <h3 className="mt-3 font-display text-[15px] font-semibold text-ink-900">
+        {filtered ? 'No leads match' : 'Inbox zero'}
+      </h3>
+      <p className="mt-1 text-[12.5px] text-ink-500">
+        {filtered
+          ? 'Try a different filter combination.'
+          : 'New partner applications surface here the moment they submit.'}
+      </p>
+      {filtered && (
+        <Link
+          href="/leads"
+          className="mt-4 inline-flex h-8 items-center rounded-full border border-ink-200 px-4 text-[12px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+        >
+          Reset filters
+        </Link>
+      )}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Local helpers
+// -----------------------------------------------------------------------------
+
+function daysAgo(d: Date | null | undefined): number | null {
+  if (!d) return null
+  return Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
+}
+
 function formatAge(days: number): string {
-  if (days === 0) return 'today'
-  if (days === 1) return '1 day'
-  if (days < 30) return `${days} days`
-  if (days < 365) return `${Math.floor(days / 30)}mo`
-  return `${(days / 365).toFixed(1)}y`
+  if (days <= 0) return 'today'
+  if (days === 1) return '1d ago'
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
+}
+
+function computeInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2)
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?'
+}
+
+function humanizeSource(source: string): string {
+  return source
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }

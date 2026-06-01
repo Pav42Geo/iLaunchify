@@ -1,213 +1,765 @@
-// Admin product review queue.
-// Per docs/MANUFACTURER_PRODUCT_BUILDER.md §8 + #133.
+// Admin Product review queue — advanced v2 (Pavel 2026-06-01).
 //
-// Tabs (via ?tab= query):
-//   new   — PENDING_REVIEW (first-time submissions, default)
-//   edits — PENDING_EDIT_REVIEW (live products with proposed edits)
-//   all   — every status, sorted by recently updated
+// ProductTemplate rows submitted by partners. Review the contents, approve to
+// publish, or send back with a checklist of changes.
 //
-// Each row links to /admin/products/[id] where admin reviews + decides.
+// Layout follows the locked admin surface pattern (cream hero band + KPI strip
+// + URL-driven filter chips + sortable table + RowActionsMenu).
+// See memory: ilaunchify-admin-surface-pattern.md
+//
+// Query params:
+//   ?q=protein           — search name / slug
+//   ?status=PENDING_REVIEW — narrow by status
+//   ?sort=updated|oldest|created — default "updated"
+//   ?page=2              — pagination (50 / page)
 
-import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ilaunchify/ui'
-import { Package } from 'lucide-react'
+import Link from 'next/link'
+import {
+  Package,
+  Inbox,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCcw,
+  Search,
+  ArrowUpDown,
+  Clock,
+  Layers,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { ProductTemplateStatus } from '@prisma/client'
+import { cn } from '@ilaunchify/ui'
+import { ProductRowActions } from './ProductRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Admin' }
 
-const TAB_LABELS = [
-  { id: 'new', label: 'New submissions', status: ['PENDING_REVIEW', 'UNDER_REVIEW'] as ProductTemplateStatus[] },
-  { id: 'edits', label: 'Edits in review', status: ['PENDING_EDIT_REVIEW'] as ProductTemplateStatus[] },
-  { id: 'changes', label: 'Needs changes', status: ['NEEDS_CHANGES'] as ProductTemplateStatus[] },
-  { id: 'live', label: 'Live', status: ['PUBLISHED'] as ProductTemplateStatus[] },
-  { id: 'all', label: 'All', status: null as ProductTemplateStatus[] | null },
-] as const
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
 
-const STATUS_BADGE: Partial<Record<ProductTemplateStatus, { label: string; cls: string }>> = {
-  PENDING_REVIEW: { label: 'Pending review', cls: 'bg-blue-100 text-blue-800 ring-blue-200' },
-  PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'bg-blue-100 text-blue-800 ring-blue-200' },
-  NEEDS_CHANGES: { label: 'Needs changes', cls: 'bg-amber-100 text-amber-800 ring-amber-200' },
-  PUBLISHED: { label: 'Live', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-200' },
-  DRAFT: { label: 'Draft', cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200' },
-  PAUSED: { label: 'Paused', cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200' },
-  REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-800 ring-red-200' },
-  UNDER_REVIEW: { label: 'Under review (legacy)', cls: 'bg-blue-100 text-blue-800 ring-blue-200' },
-  ARCHIVED: { label: 'Archived (legacy)', cls: 'bg-red-100 text-red-800 ring-red-200' },
+const STATUS_ORDER: ProductTemplateStatus[] = [
+  'PENDING_REVIEW',
+  'PENDING_EDIT_REVIEW',
+  'NEEDS_CHANGES',
+  'PUBLISHED',
+  'DRAFT',
+  'REJECTED',
+]
+
+const STATUS_LABELS: Record<ProductTemplateStatus, string> = {
+  DRAFT: 'Draft',
+  PENDING_REVIEW: 'Pending review',
+  NEEDS_CHANGES: 'Needs changes',
+  PUBLISHED: 'Live',
+  PENDING_EDIT_REVIEW: 'Edits in review',
+  PAUSED: 'Paused',
+  REJECTED: 'Rejected',
+  UNDER_REVIEW: 'Under review',
+  ARCHIVED: 'Archived',
 }
 
+const STATUS_TONE: Record<
+  ProductTemplateStatus,
+  { dot: string; bg: string; text: string; border: string }
+> = {
+  DRAFT: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  PENDING_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
+  NEEDS_CHANGES: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
+  PUBLISHED: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
+  PENDING_EDIT_REVIEW: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+  PAUSED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  REJECTED: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
+  UNDER_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
+  ARCHIVED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+}
+
+const PAGE_SIZE = 50
+const STUCK_REVIEW_DAYS = 5
+
+// -----------------------------------------------------------------------------
+// Page
+// -----------------------------------------------------------------------------
+
 interface PageProps {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{
+    q?: string
+    status?: string
+    sort?: string
+    page?: string
+  }>
+}
+
+function isValidStatus(s: string | undefined): s is ProductTemplateStatus {
+  return !!s && (STATUS_ORDER as readonly string[]).includes(s)
+}
+
+function parseSort(s: string | undefined): 'updated' | 'oldest' | 'created' {
+  if (s === 'oldest' || s === 'created') return s
+  return 'updated'
 }
 
 export default async function AdminProductsListPage({ searchParams }: PageProps) {
-  const { tab: tabParam } = await searchParams
-  const activeTab = TAB_LABELS.find((t) => t.id === tabParam) ?? TAB_LABELS[0]
+  const sp = await searchParams
+  const q = sp.q?.trim() || ''
+  const status = isValidStatus(sp.status) ? sp.status : undefined
+  const sort = parseSort(sp.sort)
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
 
-  // Load counts for all tabs (one query — cheap on small data)
-  const allCounts = await prisma.productTemplate.groupBy({
-    by: ['status'],
-    _count: { _all: true },
-  })
-  const countByStatus = new Map(allCounts.map((c) => [c.status, c._count._all]))
+  // Build where clause as a free-form object — too dynamic for Prisma's
+  // literal-typed WhereInput inference. We cast at query time.
+  const where: Record<string, unknown> = {}
+  if (q) {
+    where.OR = [
+      { name: { contains: q, mode: 'insensitive' } },
+      { slug: { contains: q, mode: 'insensitive' } },
+    ]
+  }
+  if (status) where.status = status
 
-  // Active-tab rows
-  const where = activeTab.status ? { status: { in: activeTab.status } } : {}
-  const rows = await prisma.productTemplate.findMany({
-    where,
-    include: {
-      subcategory: { select: { name: true, category: { select: { name: true } } } },
-      manufacturerService: {
-        select: { partner: { select: { id: true, companyName: true } } },
+  const fiveDaysAgo = new Date(Date.now() - STUCK_REVIEW_DAYS * 24 * 60 * 60 * 1000)
+
+  const [totalCount, statusCounts, oldestStuckReview, total, rows] = await Promise.all([
+    prisma.productTemplate.count(),
+    prisma.productTemplate.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.productTemplate.findFirst({
+      where: {
+        status: { in: ['PENDING_REVIEW', 'PENDING_EDIT_REVIEW'] },
+        updatedAt: { lt: fiveDaysAgo },
       },
-      _count: {
-        select: {
-          ingredientSlots: true,
-          packagingSystems: true,
-          variants: true,
-          reviewItems: { where: { resolved: false } },
+      orderBy: { updatedAt: 'asc' },
+      select: { updatedAt: true },
+    }),
+    prisma.productTemplate.count({ where: where as never }),
+    prisma.productTemplate.findMany({
+      where: where as never,
+      include: {
+        subcategory: { select: { name: true, category: { select: { name: true } } } },
+        manufacturerService: {
+          select: { partner: { select: { id: true, companyName: true } } },
+        },
+        _count: {
+          select: {
+            ingredientSlots: true,
+            packagingSystems: true,
+            variants: true,
+            reviewItems: { where: { resolved: false } },
+          },
         },
       },
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 100,
-  })
+      orderBy:
+        sort === 'oldest'
+          ? { updatedAt: 'asc' }
+          : sort === 'created'
+            ? { createdAt: 'desc' }
+            : { updatedAt: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ])
+
+  const statusCountMap = new Map(
+    statusCounts.map((c) => [c.status as ProductTemplateStatus, c._count._all]),
+  )
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const oldestStuckDays = oldestStuckReview?.updatedAt
+    ? Math.floor(
+        (Date.now() - new Date(oldestStuckReview.updatedAt).getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null
+
+  const newSubmissionsCount =
+    (statusCountMap.get('PENDING_REVIEW') ?? 0) + (statusCountMap.get('UNDER_REVIEW') ?? 0)
+  const editsInReviewCount = statusCountMap.get('PENDING_EDIT_REVIEW') ?? 0
+  const needsChangesCount = statusCountMap.get('NEEDS_CHANGES') ?? 0
+  const liveCount = statusCountMap.get('PUBLISHED') ?? 0
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+      {/* HEADER (cream band) */}
+      <Header
+        totalCount={totalCount}
+        newSubmissionsCount={newSubmissionsCount}
+        editsInReviewCount={editsInReviewCount}
+        needsChangesCount={needsChangesCount}
+        liveCount={liveCount}
+        activeStatus={status}
+      />
+
+      {/* URGENT CALLOUT — stuck review > 5 days */}
+      {oldestStuckDays != null && (
+        <Link
+          href="/products?status=PENDING_REVIEW&sort=oldest"
+          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+            <AlertTriangle className="h-[18px] w-[18px]" />
+          </span>
+          <div className="flex-1">
+            <p className="text-[13.5px] font-semibold text-rose-900">
+              Submission stuck {oldestStuckDays} days in review
+            </p>
+            <p className="text-[11.5px] text-rose-700">
+              Sort by oldest update to find products waiting on your decision.
+            </p>
+          </div>
+          <ArrowUpDown className="h-4 w-4 text-rose-700" />
+        </Link>
+      )}
+
+      {/* FILTER BAR — search + status chips + sort */}
+      <FilterBar
+        q={q}
+        status={status}
+        sort={sort}
+        statusCountMap={statusCountMap}
+        total={total}
+      />
+
+      {/* TABLE */}
+      {rows.length === 0 ? (
+        <EmptyState filtered={Boolean(q || status)} />
+      ) : (
+        <ProductsTable rows={rows} />
+      )}
+
+      {/* PAGINATION */}
+      <Pagination page={page} totalPages={totalPages} sp={sp} />
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------------
+
+function Header({
+  totalCount,
+  newSubmissionsCount,
+  editsInReviewCount,
+  needsChangesCount,
+  liveCount,
+  activeStatus,
+}: {
+  totalCount: number
+  newSubmissionsCount: number
+  editsInReviewCount: number
+  needsChangesCount: number
+  liveCount: number
+  activeStatus: ProductTemplateStatus | undefined
+}) {
+  return (
+    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="flex flex-col gap-2">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Products & Categories · Admin queue
+        </p>
+        <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Product review queue
+        </h1>
+        <p className="max-w-2xl text-[13px] text-ink-600">
           ProductTemplates submitted by partners. Review the contents, approve to publish,
           or send back with a checklist of changes.
         </p>
-      </header>
-
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-zinc-200">
-        {TAB_LABELS.map((t) => {
-          const count = t.status
-            ? t.status.reduce((sum, s) => sum + (countByStatus.get(s) ?? 0), 0)
-            : Array.from(countByStatus.values()).reduce((a, b) => a + b, 0)
-          const isActive = t.id === activeTab.id
-          return (
-            <Link
-              key={t.id}
-              href={t.id === 'new' ? '/products' : `/products?tab=${t.id}`}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'border-emerald-500 text-emerald-700'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-900'
-              }`}
-            >
-              {t.label}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
-                  isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'
-                }`}
-              >
-                {count}
-              </span>
-            </Link>
-          )
-        })}
       </div>
 
-      {rows.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="rounded-full bg-emerald-50 p-3">
-              <Package className="h-7 w-7 text-emerald-600" />
-            </div>
-            <CardTitle className="text-base">Nothing to review</CardTitle>
-            <CardDescription className="text-sm">
-              The {activeTab.label.toLowerCase()} queue is empty right now.
-            </CardDescription>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{activeTab.label}</CardTitle>
-            <CardDescription>{rows.length} item{rows.length === 1 ? '' : 's'}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-t border-zinc-200 text-left text-xs uppercase tracking-wider text-zinc-500">
-                    <th className="px-6 py-2 font-medium">Product</th>
-                    <th className="px-3 py-2 font-medium">Partner</th>
-                    <th className="px-3 py-2 font-medium">Category</th>
-                    <th className="px-3 py-2 font-medium">Composition</th>
-                    <th className="px-3 py-2 font-medium">Open items</th>
-                    <th className="px-3 py-2 font-medium">Updated</th>
-                    <th className="px-6 py-2 font-medium" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const badge = STATUS_BADGE[r.status] ?? {
-                      label: r.status,
-                      cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
-                    }
-                    return (
-                      <tr key={r.id} className="border-t border-zinc-100 hover:bg-zinc-50">
-                        <td className="px-6 py-3">
-                          <div className="font-medium text-zinc-900">{r.name}</div>
-                          <span
-                            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.cls}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-zinc-700">
-                          {r.manufacturerService?.partner ? (
-                            <Link
-                              href={`/partners/${r.manufacturerService.partner.id}`}
-                              className="hover:underline"
-                            >
-                              {r.manufacturerService.partner.companyName}
-                            </Link>
-                          ) : (
-                            <span className="text-zinc-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-zinc-700">
-                          {r.subcategory.category.name} · {r.subcategory.name}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-zinc-600">
-                          {r._count.ingredientSlots} ing · {r._count.packagingSystems} pkg ·{' '}
-                          {r._count.variants} var
-                        </td>
-                        <td className="px-3 py-3 text-zinc-700">
-                          {r._count.reviewItems > 0 ? (
-                            <span className="text-amber-700">{r._count.reviewItems} open</span>
-                          ) : (
-                            <span className="text-zinc-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-zinc-500">
-                          {new Date(r.updatedAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <Link
-                            href={`/products/${r.id}`}
-                            className="text-sm font-medium text-emerald-700 hover:underline"
-                          >
-                            Review →
-                          </Link>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPI strip */}
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <KpiCard
+          href="/products"
+          label="Total"
+          value={totalCount}
+          icon={Package}
+          active={!activeStatus}
+        />
+        <KpiCard
+          href="/products?status=PENDING_REVIEW"
+          label="New submissions"
+          value={newSubmissionsCount}
+          icon={Inbox}
+          tone="amber"
+          active={activeStatus === 'PENDING_REVIEW'}
+        />
+        <KpiCard
+          href="/products?status=PENDING_EDIT_REVIEW"
+          label="Edits in review"
+          value={editsInReviewCount}
+          icon={RefreshCcw}
+          tone="sky"
+          active={activeStatus === 'PENDING_EDIT_REVIEW'}
+        />
+        <KpiCard
+          href="/products?status=NEEDS_CHANGES"
+          label="Needs changes"
+          value={needsChangesCount}
+          icon={AlertTriangle}
+          tone="rose"
+          active={activeStatus === 'NEEDS_CHANGES'}
+        />
+        <KpiCard
+          href="/products?status=PUBLISHED"
+          label="Live"
+          value={liveCount}
+          icon={CheckCircle2}
+          tone="emerald"
+          active={activeStatus === 'PUBLISHED'}
+        />
+      </div>
+    </div>
+  )
+}
+
+function KpiCard({
+  href,
+  label,
+  value,
+  icon: Icon,
+  tone,
+  active,
+  subline,
+}: {
+  href: string
+  label: string
+  value: number
+  icon: LucideIcon
+  tone?: 'amber' | 'emerald' | 'sky' | 'rose'
+  active?: boolean
+  subline?: string
+}) {
+  const ring: Record<NonNullable<typeof tone>, string> = {
+    amber: 'group-hover:ring-amber-300/60',
+    emerald: 'group-hover:ring-emerald-300/60',
+    sky: 'group-hover:ring-sky-300/60',
+    rose: 'group-hover:ring-rose-300/60',
+  }
+  const iconTone: Record<NonNullable<typeof tone>, string> = {
+    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    sky: 'bg-sky-100 text-sky-700',
+    rose: 'bg-rose-100 text-rose-700',
+  }
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group relative rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow',
+        'hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+        'ring-1 ring-transparent',
+        tone ? ring[tone] : 'group-hover:ring-pink-300/40',
+        active && (tone ? ring[tone].replace('group-hover:', '') : 'ring-pink-300/40'),
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-xl',
+            tone ? iconTone[tone] : 'bg-pink-100 text-pink-700',
+          )}
+        >
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="flex-1">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            {label}
+          </p>
+          <p className="font-display text-[22px] font-bold leading-none text-ink-900">{value}</p>
+          {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// FilterBar
+// -----------------------------------------------------------------------------
+
+function FilterBar({
+  q,
+  status,
+  sort,
+  statusCountMap,
+  total,
+}: {
+  q: string
+  status: ProductTemplateStatus | undefined
+  sort: 'updated' | 'oldest' | 'created'
+  statusCountMap: Map<ProductTemplateStatus, number>
+  total: number
+}) {
+  const buildHref = (overrides: Partial<{ status: string; sort: string; q: string }>) => {
+    const params = new URLSearchParams()
+    const finalQ: string = overrides.q !== undefined ? overrides.q : q
+    const finalStatus: string = overrides.status !== undefined ? overrides.status : status ?? ''
+    const finalSort: string = overrides.sort !== undefined ? overrides.sort : sort
+    if (finalQ) params.set('q', finalQ)
+    if (finalStatus) params.set('status', finalStatus)
+    if (finalSort && finalSort !== 'updated') params.set('sort', finalSort)
+    const qs = params.toString()
+    return `/products${qs ? `?${qs}` : ''}`
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
+      {/* Search row */}
+      <form className="flex flex-wrap items-center gap-2" method="GET">
+        <div className="relative min-w-[260px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Search product name or slug…"
+            className="h-9 w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          />
+        </div>
+        {status && <input type="hidden" name="status" value={status} />}
+        {sort !== 'updated' && <input type="hidden" name="sort" value={sort} />}
+        <button
+          type="submit"
+          className="inline-flex h-9 items-center rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          Search
+        </button>
+        {(q || status || sort !== 'updated') && (
+          <Link
+            href="/products"
+            className="inline-flex h-9 items-center rounded-full border border-ink-200 px-3 text-[12px] font-medium text-ink-700 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            Clear
+          </Link>
+        )}
+
+        <div className="ml-auto flex items-center gap-3 text-[12px] text-ink-600">
+          <span className="hidden md:inline">{total.toLocaleString()} results</span>
+          <SortToggle currentSort={sort} buildHref={buildHref} />
+        </div>
+      </form>
+
+      {/* Status chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+          Status
+        </span>
+        <FilterChip href={buildHref({ status: '' })} active={!status} label="All" count={null} />
+        {STATUS_ORDER.map((s) => (
+          <FilterChip
+            key={s}
+            href={buildHref({ status: s })}
+            active={status === s}
+            label={STATUS_LABELS[s]!}
+            count={statusCountMap.get(s) ?? 0}
+            tone={STATUS_TONE[s]!}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FilterChip({
+  href,
+  active,
+  label,
+  count,
+  tone,
+  icon: Icon,
+}: {
+  href: string
+  active: boolean
+  label: string
+  count: number | null
+  tone?: { bg: string; text: string; border: string; dot: string }
+  icon?: LucideIcon
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+        active
+          ? 'border-ink-900 bg-ink-900 text-white'
+          : tone
+            ? `${tone.bg} ${tone.text} ${tone.border} hover:bg-white`
+            : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50',
+      )}
+    >
+      {Icon && <Icon className="h-3 w-3" />}
+      {tone && !active && <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />}
+      {label}
+      {count !== null && (
+        <span className={cn('text-[10.5px] tabular-nums', active ? 'text-white/70' : 'text-ink-500')}>
+          {count}
+        </span>
+      )}
+    </Link>
+  )
+}
+
+function SortToggle({
+  currentSort,
+  buildHref,
+}: {
+  currentSort: 'updated' | 'oldest' | 'created'
+  buildHref: (o: Partial<{ status: string; sort: string; q: string }>) => string
+}) {
+  const options: { value: 'updated' | 'oldest' | 'created'; label: string }[] = [
+    { value: 'updated', label: 'Recently updated' },
+    { value: 'oldest', label: 'Oldest update' },
+    { value: 'created', label: 'Newest created' },
+  ]
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-0.5">
+      {options.map((o) => (
+        <Link
+          key={o.value}
+          href={buildHref({ sort: o.value })}
+          className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+            currentSort === o.value
+              ? 'bg-ink-900 text-white'
+              : 'text-ink-600 hover:bg-ink-50',
+          )}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Table
+// -----------------------------------------------------------------------------
+
+type ProductRow = {
+  id: string
+  name: string
+  slug: string
+  status: ProductTemplateStatus
+  updatedAt: Date
+  subcategory: { name: string; category: { name: string } }
+  manufacturerService: {
+    partner: { id: string; companyName: string }
+  } | null
+  _count: {
+    ingredientSlots: number
+    packagingSystems: number
+    variants: number
+    reviewItems: number
+  }
+}
+
+function ProductsTable({ rows }: { rows: ProductRow[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <table className="w-full text-[12.5px]">
+        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <tr>
+            <Th>Product</Th>
+            <Th>Partner</Th>
+            <Th>Category</Th>
+            <Th>Status</Th>
+            <Th>Composition</Th>
+            <Th>Open items</Th>
+            <Th>Updated</Th>
+            <Th className="w-[36px]" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-ink-100">
+          {rows.map((p) => {
+            const tone = STATUS_TONE[p.status]!
+            const age = daysAgo(p.updatedAt)
+            const partner = p.manufacturerService?.partner ?? null
+
+            return (
+              <tr key={p.id} className="transition-colors hover:bg-pink-50/20">
+                <td className="px-3 py-3 align-top">
+                  <Link
+                    href={`/products/${p.id}`}
+                    className="block font-semibold text-ink-900 hover:text-pink-700 focus-visible:outline-none focus-visible:underline"
+                  >
+                    {p.name}
+                  </Link>
+                  <p className="mt-0.5 text-[11px] text-ink-500">{p.slug}</p>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  {partner ? (
+                    <Link
+                      href={`/partners/${partner.id}`}
+                      className="text-[12px] text-ink-700 hover:text-pink-700 hover:underline"
+                    >
+                      {partner.companyName}
+                    </Link>
+                  ) : (
+                    <span className="text-[11px] text-ink-400">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 align-top text-[11.5px] text-ink-700">
+                  {p.subcategory.category.name} · {p.subcategory.name}
+                </td>
+                <td className="px-3 py-3 align-top">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+                      tone.bg,
+                      tone.text,
+                      tone.border,
+                    )}
+                  >
+                    <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
+                    {STATUS_LABELS[p.status]}
+                  </span>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-ink-600">
+                    <Layers className="h-3 w-3 text-ink-400" />
+                    {p._count.ingredientSlots} ing · {p._count.packagingSystems} pkg ·{' '}
+                    {p._count.variants} var
+                  </span>
+                </td>
+                <td className="px-3 py-3 align-top">
+                  {p._count.reviewItems > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-amber-700">
+                      {p._count.reviewItems}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-ink-400">—</span>
+                  )}
+                </td>
+                <td className="px-3 py-3 align-top">
+                  <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-600">
+                    <Clock className="h-3 w-3 text-ink-400" />
+                    {age != null ? formatAge(age) : '—'}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right align-top">
+                  <ProductRowActions
+                    productId={p.id}
+                    productName={p.name}
+                    slug={p.slug}
+                    partnerId={partner?.id ?? null}
+                  />
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Th({
+  children,
+  className,
+}: {
+  children?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>{children}</th>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Pagination
+// -----------------------------------------------------------------------------
+
+function Pagination({
+  page,
+  totalPages,
+  sp,
+}: {
+  page: number
+  totalPages: number
+  sp: { q?: string; status?: string; sort?: string }
+}) {
+  if (totalPages <= 1) return null
+
+  const buildHref = (p: number) => {
+    const params = new URLSearchParams()
+    if (sp.q) params.set('q', sp.q)
+    if (sp.status) params.set('status', sp.status)
+    if (sp.sort) params.set('sort', sp.sort)
+    if (p > 1) params.set('page', String(p))
+    const qs = params.toString()
+    return `/products${qs ? `?${qs}` : ''}`
+  }
+
+  return (
+    <div className="flex items-center justify-between border-t border-ink-100 pt-4 text-[12.5px]">
+      <span className="text-ink-500">
+        Page {page} of {totalPages}
+      </span>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Link
+            href={buildHref(page - 1)}
+            className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+          >
+            ← Previous
+          </Link>
+        )}
+        {page < totalPages && (
+          <Link
+            href={buildHref(page + 1)}
+            className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+          >
+            Next →
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------------
+
+function EmptyState({ filtered }: { filtered: boolean }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
+      <Package className="mx-auto h-8 w-8 text-ink-300" />
+      <h3 className="mt-3 font-display text-[15px] font-semibold text-ink-900">
+        {filtered ? 'No products match' : 'No products yet'}
+      </h3>
+      <p className="mt-1 text-[12.5px] text-ink-500">
+        {filtered
+          ? 'Try a different filter combination.'
+          : 'Once partners start submitting ProductTemplates, they will show up here.'}
+      </p>
+      {filtered && (
+        <Link
+          href="/products"
+          className="mt-4 inline-flex h-8 items-center rounded-full border border-ink-200 px-4 text-[12px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+        >
+          Reset filters
+        </Link>
       )}
     </div>
   )
+}
+
+// -----------------------------------------------------------------------------
+// Local helpers
+// -----------------------------------------------------------------------------
+
+function daysAgo(d: Date | null | undefined): number | null {
+  if (!d) return null
+  return Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function formatAge(days: number): string {
+  if (days <= 0) return 'today'
+  if (days === 1) return '1d ago'
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
 }
