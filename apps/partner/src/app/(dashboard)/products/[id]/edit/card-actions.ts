@@ -41,7 +41,7 @@ async function authorize(productTemplateId: string) {
   }
   const template = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
-    select: { id: true, manufacturerServiceId: true, status: true },
+    select: { id: true, manufacturerServiceId: true, status: true, recipeEntryMode: true },
   })
   if (!template) return { user, partner, template: null, error: 'TEMPLATE_NOT_FOUND' as const }
   if (template.status === 'REJECTED') {
@@ -139,6 +139,16 @@ export async function addIngredientSlot(input: {
   }
 
   const slot = await prisma.$transaction(async (tx) => {
+    // Stamp the primary recipe-entry method on the first slot add (Slice 2).
+    // Belt-and-suspenders against a race with the chooser's setRecipeEntryMode;
+    // the first writer owns it, so this only fires when still null. No audit
+    // here — setRecipeEntryMode writes RECIPE_ENTRY_MODE_SET on the UI path.
+    if (template.recipeEntryMode === null) {
+      await tx.productTemplate.update({
+        where: { id: template.id },
+        data: { recipeEntryMode: 'SEARCH_BUILD' },
+      })
+    }
     let ingredientId = input.ingredientId
     if (!ingredientId) {
       // Legacy path — bare name -> SELF_ATTESTED PARTNER_PRIVATE row.
@@ -242,6 +252,43 @@ export async function removeIngredientSlot(slotId: string): Promise<Result> {
   await prisma.templateIngredientSlot.delete({ where: { id: slotId } })
   revalidatePath(`/products/${slot.productTemplate.id}/edit`)
   return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// RECIPE ENTRY MODE — analytics record of how the partner built the recipe
+// (Slice 2). The first method to set it owns it: never overwritten. Analytics-
+// only metadata, so it does NOT trigger a PUBLISHED → PENDING_EDIT_REVIEW
+// transition.
+// -----------------------------------------------------------------------------
+
+export type RecipeEntryModeValue = 'SEARCH_BUILD' | 'AI_PARSER' | 'DECLARED_PANEL'
+
+export async function setRecipeEntryMode(
+  productTemplateId: string,
+  mode: RecipeEntryModeValue,
+): Promise<Result<{ mode: RecipeEntryModeValue }>> {
+  const { user, template, error } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Never overwrite — the first writer owns the record.
+  if (template.recipeEntryMode !== null) {
+    return { ok: true, data: { mode: template.recipeEntryMode } }
+  }
+
+  await prisma.productTemplate.update({
+    where: { id: template.id },
+    data: { recipeEntryMode: mode },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'RECIPE_ENTRY_MODE_SET',
+    payload: { mode },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true, data: { mode } }
 }
 
 // -----------------------------------------------------------------------------

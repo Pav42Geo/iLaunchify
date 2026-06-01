@@ -32,8 +32,10 @@ import {
   removeIngredientSlot,
   addReplacement,
   removeReplacement,
+  setRecipeEntryMode,
 } from '../card-actions'
 import { IngredientPicker } from './IngredientPicker'
+import { ModeChooser, type Mode } from './ModeChooser'
 import type { IngredientResult } from '../ingredient-actions'
 
 export interface ReplacementRow {
@@ -56,19 +58,58 @@ interface IngredientsCardProps {
   productTemplateId: string
   initialSlots: SlotRow[]
   isDraft: boolean
+  /** Primary recipe-entry method recorded so far (Slice 2), or null if unset. */
+  initialRecipeEntryMode: Mode | null
 }
 
-export function IngredientsCard({ productTemplateId, initialSlots, isDraft }: IngredientsCardProps) {
+export function IngredientsCard({
+  productTemplateId,
+  initialSlots,
+  isDraft,
+  initialRecipeEntryMode,
+}: IngredientsCardProps) {
   const router = useRouter()
   const [slots, setSlots] = useState<SlotRow[]>(initialSlots)
   const [showNew, setShowNew] = useState(false)
+  const [, startTransition] = useTransition()
+
+  // Mode chooser (Slice 2). Empty recipe shows the 3 tiles; once a slot exists
+  // it collapses to a "Built with: X · Switch mode" pill. recipeMode tracks the
+  // analytics record so the pill updates without a refresh.
+  const [recipeMode, setRecipeMode] = useState<Mode | null>(initialRecipeEntryMode)
+  const isEmpty = slots.length === 0
+  const [chooserExpanded, setChooserExpanded] = useState(isEmpty)
 
   function refreshFromServer() {
     router.refresh()
   }
 
+  function handleModeSelect(mode: Mode) {
+    // Slice 2: only Mode 1 is live; the other tiles render disabled so this
+    // is the only reachable branch. Collapse the chooser, reveal the add-slot
+    // UI, and optimistically stamp the method if not already recorded.
+    if (mode !== 'SEARCH_BUILD') return
+    setChooserExpanded(false)
+    if (isDraft) setShowNew(true)
+    if (recipeMode === null) {
+      setRecipeMode('SEARCH_BUILD')
+      startTransition(async () => {
+        const res = await setRecipeEntryMode(productTemplateId, 'SEARCH_BUILD')
+        if (res.ok) setRecipeMode(res.data.mode)
+      })
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {isDraft && (
+        <ModeChooser
+          currentMode={recipeMode}
+          collapsed={!chooserExpanded && !isEmpty}
+          onSelect={handleModeSelect}
+          onExpand={() => setChooserExpanded(true)}
+        />
+      )}
       {slots.length === 0 ? (
         <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
           No ingredient slots yet. Add at least one base ingredient before submitting.

@@ -2118,11 +2118,21 @@ model Subcategory {
   @@index([categoryId])
 }
 
+enum RecipeEntryMode {
+  SEARCH_BUILD                                            // Mode 1 — pick ingredients one at a time
+  AI_PARSER                                               // Mode 2 — paste a recipe, AI matches each line
+  DECLARED_PANEL                                          // Mode 3 — type the Nutrition/Supplement Facts directly
+}
+
 model ProductTemplate {
   id              String        @id @default(cuid())
   subcategoryId   String
   manufacturerServiceId String?                          // null until manufacturer self-builder ships (V1.1)
   status          ProductTemplateStatus  @default(DRAFT)
+  // Primary recipe entry method (analytics). Nullable: legacy templates have no
+  // recorded method. The FIRST method that adds a slot owns this — never
+  // overwritten (Slice 2, docs/builds/ingredients-mode-chooser-slice-2.md).
+  recipeEntryMode RecipeEntryMode?
   name            String                                  // "Whey Protein Powder"
   description     String?
   slug            String        @unique

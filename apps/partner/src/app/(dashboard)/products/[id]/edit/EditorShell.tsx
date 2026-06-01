@@ -37,7 +37,7 @@ import {
   MessageSquare,
   FileText,
 } from 'lucide-react'
-import type { ProductTemplateStatus, IngredientSource } from '@ilaunchify/db'
+import type { ProductTemplateStatus, IngredientSource, RecipeEntryMode } from '@ilaunchify/db'
 import type { NicheSuggestion } from '@ilaunchify/marketplace'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
 import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
@@ -83,6 +83,7 @@ interface TemplateSnapshot {
   allergenCrossContamination: string | null
   subcategoryName: string
   categoryName: string
+  recipeEntryMode: RecipeEntryMode | null
 }
 
 interface Counts {
@@ -350,6 +351,7 @@ export function EditorShell({
             productTemplateId={template.id}
             initialSlots={ingredientSlots}
             isDraft={isDraft}
+            initialRecipeEntryMode={template.recipeEntryMode}
           />
         </EditorCard>
 

@@ -180,6 +180,7 @@ export default async function ProductEditPage({ params }: PageProps) {
           allergenCrossContamination: template.allergenCrossContamination,
           subcategoryName: template.subcategory.name,
           categoryName: template.subcategory.category.name,
+          recipeEntryMode: template.recipeEntryMode,
         }}
         counts={{
           ingredients: template.ingredientSlots.length,

@@ -309,4 +309,8 @@ Anything Pavel locks during the build cycle goes here, dated, so future-Pavel do
 - **2026-06-01 (Slice 1)** — Skipped the unit test from the brief: `apps/partner` has no test runner/script and no existing tests for these server actions (DB-integration, not unit-testable without a harness). Relied on typecheck + the brief's manual smoke test. Revisit when a partner test harness exists.
 - **2026-06-01 (Slice 1)** — Empty-state picker already existed; this slice refined it to recent (≤8) + library staples (≤12) under two client subheaders, with a cold-seed USDA fallback when no LIBRARY rows.
 
+- **2026-06-01 (Slice 2)** — `migrate dev` hangs locally as expected → hand-authored `20260601200000_add_recipe_entry_mode/migration.sql` (CREATE TYPE + ALTER TABLE) + `migrate deploy` + `prisma generate`. Pavel still needs `prisma generate` + `next dev` restart on his machine.
+- **2026-06-01 (Slice 2)** — Adapted the brief's pseudocode to the real codebase: `authorize()` returns `{ user, partner, template }` (not `product`) — extended its select with `recipeEntryMode`; audit via `logAuditAs(user, …)` (not `writeAuditLog`); the belt-and-suspenders SEARCH_BUILD stamp lives INSIDE `addIngredientSlot`'s existing `$transaction` (atomic with the slot insert), no audit on that path (only `setRecipeEntryMode` writes `RECIPE_ENTRY_MODE_SET`).
+- **2026-06-01 (Slice 2)** — `ModeChooser` is gated behind `isDraft` (matches the add-slot UI gate) — a non-draft template shows no chooser. Collapsed formula `!chooserExpanded && !isEmpty` per brief: tiles stay visible until the recipe has ≥1 slot, then it's a pill.
+
 Append new decisions here as they're made.
