@@ -25,6 +25,11 @@ import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
 import { seedNiches } from './seed-niches'
 import { seedTicketCategories } from './seed-ticket-categories'
+// 2026-06-02 V1.1 marketplace taxonomy — locked 4-layer model.
+import { seedCategoriesLocked } from './seed-categories-locked'
+import { seedNicheSubcategories } from './seed-niche-subcategories'
+import { seedLifestyleTags } from './seed-lifestyle-tags'
+import { seedNicheRules } from './seed-niche-rules'
 
 const prisma = new PrismaClient()
 
@@ -76,11 +81,27 @@ async function main() {
   // PartnerServicePackagingMaterial junctions.
   await seedProductionOptions(prisma)
 
-  // --- Niche taxonomy (V1 product-plan additions 2026-06-01) ---
-  // ~14 starter audience-facing niches (Sports Nutrition, Pet, Keto, etc.)
-  // that drive marketplace filtering + /launch/[niche] landing pages.
-  // Partners tag their ProductTemplates via ProductTemplateNiche.
+  // --- Marketplace taxonomy (V1.1 — 2026-06-02 locked 4-layer model) ---
+  // Layer 2 — 13 LOCKED categories + 121 subcategories (per
+  // docs/MARKETPLACE_DESIGN.md §2). Supersedes the legacy FOD category
+  // tree; seed-catalog's category block is no longer called.
+  await seedCategoriesLocked(prisma)
+
+  // Layer 1 — 8 locked Creator Niches. Must run BEFORE
+  // seedNicheSubcategories + seedNicheRules so their FKs resolve.
   await seedNiches(prisma)
+
+  // Layer 1 ↔ Layer 2 junction — reconciled subcategory list per niche
+  // (Option A: Layer 2 canonical, Niche references via junction).
+  await seedNicheSubcategories(prisma)
+
+  // Layer 4 — 30 LOCKED Lifestyle Tags across LIFESTYLE / AUDIENCE / TREND.
+  await seedLifestyleTags(prisma)
+
+  // NicheRule deterministic auto-assignment engine — 12 initial rules.
+  // Engine consumes these at ProductTemplate submit and writes
+  // NicheAssignmentAudit rows.
+  await seedNicheRules(prisma)
 
   // --- Support ticketing categories (2026-06-01) ---
   // 10 starter categories (Order issue, Payment / payout, Dispatch deadline,
@@ -544,12 +565,25 @@ async function main() {
   }
 
   // --- Catalog: categories, subcategories, ProductTemplates ---
-  const manufactService = manufUser.partner?.services.find((s) => s.type === 'MANUFACTURING')
-  if (manufactService) {
-    await seedCatalog({ manufacturerServiceId: manufactService.id })
-  } else {
-    console.warn('Skipping catalog seed: no manufacturer service found.')
-  }
+  // 2026-06-02: the legacy FOD-port category seed (`seedCatalog`) is no
+  // longer the source of truth for Layer 2 — `seedCategoriesLocked`
+  // above owns the LOCKED 13-category / 121-subcategory taxonomy
+  // (per docs/MARKETPLACE_DESIGN.md §2 + Pavel decision 2026-06-01).
+  //
+  // `seedCatalog` also created sample ProductTemplate rows (Whey,
+  // Granola, etc.). Those templates referenced FOD-named subcategory
+  // slugs (`whey-protein`, `granola-energy-bars`, …) that no longer
+  // exist in the locked taxonomy, so re-enabling this call without a
+  // rewrite would crash on the missing subBy() lookup. Re-enable only
+  // after Slice 2 ports the sample templates to the locked slugs.
+  //
+  // const manufactService = manufUser.partner?.services.find((s) => s.type === 'MANUFACTURING')
+  // if (manufactService) {
+  //   await seedCatalog({ manufacturerServiceId: manufactService.id })
+  // } else {
+  //   console.warn('Skipping catalog seed: no manufacturer service found.')
+  // }
+  void seedCatalog  // keep import referenced so tsc doesn't bark; remove when Slice 2 lands
 
   // --- iLaunchify starter templates (#134) ---
   // Platform-curated, manufacturerServiceId=NULL. Partners clone these as

@@ -2075,6 +2075,8 @@ model Subcategory {
   packagingOptions Json?
   category        Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   productTemplates ProductTemplate[]
+  // 2026-06-02 V1.1 marketplace taxonomy — Layer 2 ↔ Layer 1 junction
+  niches          NicheSubcategory[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   @@index([categoryId])
@@ -2125,6 +2127,8 @@ model ProductTemplate {
   // V1 — product-plan additions 2026-06-01.
   pricingTiers    ProductTemplatePricingTier[]
   niches          ProductTemplateNiche[]
+  // 2026-06-02 V1.1 marketplace taxonomy — Layer 4 lifestyle tags
+  lifestyleTags   ProductTemplateLifestyleTag[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   @@index([subcategoryId, status])
@@ -3447,6 +3451,9 @@ model Niche {
   iconEmoji        String?                                                // hero emoji + subnav glyph
   accentHex        String?                                                // hex (e.g. #FF2E63) for niche-themed surfaces
   productTemplates ProductTemplateNiche[]
+  // 2026-06-02 V1.1 marketplace taxonomy — Layer 1 ↔ Layer 2 junction (Option A) + rules
+  subcategories    NicheSubcategory[]
+  rules            NicheRule[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   @@index([isActive, displayOrder])
@@ -3460,6 +3467,101 @@ model ProductTemplateNiche {
   niche             Niche           @relation(fields: [nicheId], references: [id], onDelete: Cascade)
   @@id([productTemplateId, nicheId])
   @@index([nicheId])
+}
+
+// =============================================================================
+// 2026-06-02 V1.1 marketplace taxonomy — Layer 4 LifestyleTag, Niche ↔
+// Subcategory junction (Option A — Layer 2 canonical), NicheRule auto-
+// assignment engine, and NicheAssignmentAudit. See docs/MARKETPLACE_DESIGN.md
+// §2 + memory note ilaunchify-marketplace-decisions-2026-06-01.md.
+// =============================================================================
+
+// LIFESTYLE TAGS — Layer 4 of the marketplace taxonomy
+enum LifestyleTagGroup {
+  LIFESTYLE      // Keto, Paleo, Vegan, Vegetarian, Gluten-free, Dairy-free, Sugar-free, Low-carb, High-protein, Organic, Non-GMO, Plant-based, Whole30
+  AUDIENCE       // Kids, Adults, Seniors, Athletes, Pregnancy-safe, Pets
+  TREND          // Functional, Adaptogenic, Microbiome, Mood, Energy, Sleep, Immunity, Beauty-from-within, Sustainable packaging, Single-origin, Small-batch
+}
+
+model LifestyleTag {
+  id           String              @id @default(cuid())
+  slug         String              @unique
+  name         String
+  group        LifestyleTagGroup
+  description  String?
+  iconEmoji    String?
+  accentHex    String?
+  displayOrder Int                 @default(0)
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  productTemplates ProductTemplateLifestyleTag[]
+  @@index([group, displayOrder])
+}
+
+model ProductTemplateLifestyleTag {
+  productTemplateId String
+  lifestyleTagId    String
+  source            NicheAssignmentSource @default(MANUFACTURER)
+  createdAt         DateTime              @default(now())
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  lifestyleTag      LifestyleTag    @relation(fields: [lifestyleTagId], references: [id], onDelete: Cascade)
+  @@id([productTemplateId, lifestyleTagId])
+}
+
+// NICHE × SUBCATEGORY junction — Layer 1 references Layer 2 leaves (Option A)
+model NicheSubcategory {
+  nicheId       String
+  subcategoryId String
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  niche         Niche       @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  @@id([nicheId, subcategoryId])
+  @@index([nicheId, displayOrder])
+}
+
+// NICHE AUTO-ASSIGNMENT RULES — the deterministic engine
+enum NicheRuleConditionKind {
+  LABELING_TYPE       // labelingType matches one of the listed values
+  CATEGORY            // ProductTemplate.subcategory.categoryId in list
+  SUBCATEGORY         // ProductTemplate.subcategoryId in list
+  CERT_ATTACHED       // any ProductTemplateCertificate.instance.certificateType.slug in list
+  LIFESTYLE_TAG       // any tagged LifestyleTag.slug in list
+}
+
+enum NicheAssignmentSource {
+  AUTO_RULE     // assigned by NicheRule engine at submit
+  MANUFACTURER  // confirmed/added by manufacturer
+  ADMIN         // override by admin during review
+}
+
+model NicheRule {
+  id             String              @id @default(cuid())
+  slug           String              @unique
+  nicheId        String
+  description    String
+  isActive       Boolean             @default(true)
+  isLocked       Boolean             @default(false)   // true = manufacturer cannot deselect (e.g., Pet Wellness for PET_PRODUCT)
+  weight         Int                 @default(50)      // higher = stronger suggestion; 0..100
+  conditions     Json                                  // [{kind: 'LABELING_TYPE', values: ['PET_PRODUCT']}, ...] — AND across array, OR within values
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  niche          Niche               @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  @@index([nicheId, isActive])
+}
+
+// AUDIT: every niche assignment writes one of these
+model NicheAssignmentAudit {
+  id                String                @id @default(cuid())
+  productTemplateId String
+  nicheId           String
+  source            NicheAssignmentSource
+  ruleId            String?               // present when source=AUTO_RULE
+  actorUserId       String?               // present when source=MANUFACTURER or ADMIN
+  applied           Boolean               // true=assigned, false=removed
+  createdAt         DateTime              @default(now())
+  @@index([productTemplateId, createdAt])
 }
 
 // =============================================================================
