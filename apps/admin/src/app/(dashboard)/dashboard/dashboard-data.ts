@@ -130,7 +130,9 @@ export async function loadKpiCards(): Promise<KpiCard[]> {
       label: 'New creators · 30d',
       value: creatorsThis,
       delta: pctDelta(creatorsThis, creatorsPrev),
-      href: '/tiers',
+      // Routes to the new creator CRM index (#569). The /tiers Creators tab
+      // is for promotion/demotion — distinct surface.
+      href: '/creators',
       iconKey: 'creators',
       tone: 'info',
     },

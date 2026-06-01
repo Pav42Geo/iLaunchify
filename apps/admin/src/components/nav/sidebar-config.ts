@@ -191,9 +191,7 @@ const PRIMARY: SidebarRegion = {
       icon: Users,
       defaultOpen: false,
       children: [
-        // /creators is not built yet. Once a creator CRM ships we'll add it
-        // alongside Partners. For now this group has a single child but is
-        // kept as a section so adding /creators later is a one-line change.
+        { kind: 'item', href: '/creators', label: 'Creators', icon: Users },
         { kind: 'item', href: '/partners', label: 'Partners', icon: Building2 },
       ],
     },
