@@ -95,15 +95,6 @@ export type SidebarItem =
       label: string
       /** Optional icon shown next to the group label. */
       icon?: LucideIcon
-      /**
-       * The landing-page URL for this category. Each top-level group is its
-       * own hub (dashboard for that category) — the sidebar links to this URL
-       * and the landing page renders its own grid of sub-area cards.
-       *
-       * When omitted, this is a structural-only group (deeper in the tree)
-       * that doesn't render as a sidebar entry today.
-       */
-      href?: string
       children: SidebarItem[]
     }
 
@@ -139,7 +130,6 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Inbox',
       icon: Inbox,
-      href: '/inbox',
       children: [
         {
           kind: 'item',
@@ -215,7 +205,6 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Manage',
       icon: Layers,
-      href: '/manage',
       children: [
         {
           kind: 'item',
@@ -433,7 +422,6 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Settings',
       icon: ShieldCheck,
-      href: '/settings',
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
         {
@@ -473,7 +461,6 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Help & Support',
       icon: LifeBuoy,
-      href: '/help-support',
       children: [
         {
           kind: 'item',
@@ -531,7 +518,6 @@ const APPLICATIONS: SidebarRegion = {
       kind: 'group',
       label: 'Integrations & API',
       icon: Plug,
-      href: '/integrations',
       children: [
         { kind: 'item', label: 'Channels', icon: Plug, href: '/channels' },
         {
