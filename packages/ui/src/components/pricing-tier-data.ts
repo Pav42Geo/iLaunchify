@@ -11,32 +11,34 @@ export type TierKey = 'maker' | 'builder' | 'agency'
 export interface PricingTierRow {
   /** Display label for the quantity band (e.g., "50 – 99", "Sample"). */
   band: string
-  /** Numeric lower bound — used for footnote savings calc. `null` for sample row. */
+  /** Numeric lower bound — used to match the visitor's quantity. `null` for sample row. */
   bandMin: number | null
-  prices: Record<TierKey, number>
+  /**
+   * Tier-independent per-unit price, in cents. Per the LOCKED pricing model
+   * (MARKETPLACE_MANAGEMENT_PLAN §6): the volume tier sets the unit price; a
+   * creator's Builder/Agency tier discounts the platform *fee*, NOT this unit
+   * cost. So one price per band, the same for every creator tier.
+   */
+  perUnitCents: number
+  /** Hard floor — promos/discounts cannot dip below. Omitted by the synthetic fallback. */
+  perUnitFloorCents?: number
 }
 
 /**
- * Generates a plausible tier × quantity-band table scaled around a base price.
- * Useful for V1 demo before real pricing data flows from the routing engine.
+ * Generates a plausible quantity-band table scaled around a base price.
+ * Synthetic fallback — used only when a ProductTemplate has no real
+ * ProductTemplatePricingTier rows yet (see getPricingTierRows). One price per
+ * band per the locked model; creator-tier differences are fee-side, not here.
  */
 export function buildSamplePricingRows(basePrice: number): PricingTierRow[] {
-  const tiers = (mul: number): Record<TierKey, number> => ({
-    maker: round(basePrice * mul),
-    builder: round(basePrice * mul * 0.88),
-    agency: round(basePrice * mul * 0.78),
-  })
+  const cents = (mul: number): number => Math.round(basePrice * mul * 100)
   return [
-    { band: 'Sample', bandMin: null, prices: tiers(2.5) },
-    { band: '50 – 99', bandMin: 50, prices: tiers(1.85) },
-    { band: '100 – 249', bandMin: 100, prices: tiers(1.65) },
-    { band: '250 – 499', bandMin: 250, prices: tiers(1.5) },
-    { band: '500 – 999', bandMin: 500, prices: tiers(1.35) },
-    { band: '1,000 – 2,499', bandMin: 1000, prices: tiers(1.2) },
-    { band: '2,500+', bandMin: 2500, prices: tiers(1.05) },
+    { band: 'Sample', bandMin: null, perUnitCents: cents(2.5) },
+    { band: '50 – 99', bandMin: 50, perUnitCents: cents(1.85) },
+    { band: '100 – 249', bandMin: 100, perUnitCents: cents(1.65) },
+    { band: '250 – 499', bandMin: 250, perUnitCents: cents(1.5) },
+    { band: '500 – 999', bandMin: 500, perUnitCents: cents(1.35) },
+    { band: '1,000 – 2,499', bandMin: 1000, perUnitCents: cents(1.2) },
+    { band: '2,500+', bandMin: 2500, perUnitCents: cents(1.05) },
   ]
-}
-
-function round(n: number): number {
-  return Math.round(n * 100) / 100
 }

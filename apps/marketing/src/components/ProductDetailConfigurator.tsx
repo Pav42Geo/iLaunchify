@@ -9,7 +9,7 @@ import {
   EarningsCalculator,
   ShippingInfoCard,
   PricingTierModal,
-  buildSamplePricingRows,
+  type PricingTierRow,
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
@@ -36,6 +36,9 @@ import { LaunchCtaCluster } from './LaunchCtaCluster'
 export interface ProductDetailConfiguratorProps {
   template: SampleTemplate
   detail: TemplateDetail
+  /** Per-unit pricing by quantity band, loaded server-side from
+   * ProductTemplatePricingTier (synthetic fallback for fixture-only demos). */
+  pricingRows: PricingTierRow[]
   /** When true, "Start launching" goes straight to the Design Studio with the
    * selection carried as query params. When false (default), it lands on
    * /start, which converts the visitor into a signed-up creator first. */
@@ -45,6 +48,7 @@ export interface ProductDetailConfiguratorProps {
 export function ProductDetailConfigurator({
   template,
   detail,
+  pricingRows,
   isAuthenticated = false,
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
@@ -59,13 +63,10 @@ export function ProductDetailConfigurator({
   const [quantity, setQuantity] = React.useState<number>(template.minUnits)
 
   // ----- Pricing math (V1 demo) -----
-  // Base unit price from the marketplace card, scaled by the quantity-band
-  // factor used in buildSamplePricingRows, then bumped by packaging delta
-  // and size factor.
-  const rows = React.useMemo(
-    () => buildSamplePricingRows(template.pricePerUnit),
-    [template.pricePerUnit],
-  )
+  // Per-unit price by quantity band comes from the server (real
+  // ProductTemplatePricingTier rows, or synthetic fallback). Size + packaging
+  // deltas below are still rough demo math until the routing engine lands.
+  const rows = pricingRows
 
   const matchedRow = React.useMemo(() => {
     const eligible = rows.filter(
@@ -84,7 +85,7 @@ export function ProductDetailConfigurator({
   const sizeIndex = Math.max(0, sizeOptions.indexOf(sizeKey))
   const sizeMultiplier = 1 + sizeIndex * 0.85
 
-  const baseCost = matchedRow.prices[currentTier]
+  const baseCost = matchedRow.perUnitCents / 100
   const landedCost = +(baseCost * sizeMultiplier + packagingDelta).toFixed(2)
   const totalOrderCost = +(landedCost * quantity).toFixed(2)
 

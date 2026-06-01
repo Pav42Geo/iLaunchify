@@ -11,19 +11,20 @@ import type { PricingTierRow, TierKey } from './pricing-tier-data'
  * PricingTierModal — the "📊 See pricing by tier" affordance on the
  * ProductTemplate detail page (per MARKETPLACE_DESIGN.md §8).
  *
- * Rows = MOQ quantity bands (admin-curated, sourced from ProductionPath data
- * once wired to the DB).
- * Columns = creator subscription tiers (Maker / Builder / Agency per
- * PLATFORM_SPEC.md).
- * Cells = landed cost per unit at that (band × tier).
+ * Rows = MOQ quantity bands sourced from ProductTemplatePricingTier (falls
+ * through to a synthetic table when a template has no real tiers yet — see
+ * getPricingTierRows).
  *
- * The current tier is highlighted. A personalized footnote calls out the
- * savings the visitor would get by upgrading at their current quantity.
+ * Per the LOCKED pricing model (MARKETPLACE_MANAGEMENT_PLAN §6) there is ONE
+ * per-unit price per band — the volume band sets the unit price, and a
+ * creator's Builder/Agency tier discounts the platform *fee*, not the unit
+ * cost. So this is a quantity-band table, not a tier-comparison grid; the
+ * tier benefit is called out as a fee note below.
  *
  * Logged-in only — logged-out gets the same page without this trigger
  * (per MARKETPLACE_DESIGN.md §9 hybrid gating).
  *
- * For the data-shape types + sample-row generator, see `pricing-tier-data.ts`
+ * For the data-shape types + synthetic-row generator, see `pricing-tier-data.ts`
  * (a non-'use client' sibling — server components import the helper from
  * there, then pass the rows as a prop to this client modal).
  */
@@ -32,26 +33,18 @@ export interface PricingTierModalProps {
   productName: string
   variantName?: string
   rows: PricingTierRow[]
-  /** Visitor's current tier. */
+  /** Visitor's current tier — drives the upgrade CTA (fee-side benefit). */
   currentTier: TierKey
-  /** Visitor's current quantity from the detail-page input (used for footnote). */
+  /** Visitor's current quantity from the detail-page input (used for the subtotal note). */
   currentQuantity: number
   /** Called when the visitor clicks "Upgrade to [tier]" inside the modal. */
   onUpgrade?: (target: TierKey) => void
 }
 
-const TIERS: TierKey[] = ['maker', 'builder', 'agency']
-
 const TIER_LABEL: Record<TierKey, string> = {
   maker: 'Maker',
   builder: 'Builder',
   agency: 'Agency',
-}
-
-const TIER_ICON: Record<TierKey, string> = {
-  maker: '',
-  builder: '⚡',
-  agency: '🏛',
 }
 
 function fmt(n: number): string {
@@ -80,19 +73,16 @@ export function PricingTierModal({
   const upgrade = nextTier(currentTier)
   const matchedRow = findRowForQuantity(rows, currentQuantity)
 
-  // Personalized savings footnote
-  const footnote: React.ReactNode = (() => {
-    if (!matchedRow || !upgrade) return null
-    const here = matchedRow.prices[currentTier]
-    const there = matchedRow.prices[upgrade]
-    if (here <= there) return null
-    const saving = here - there
-    const total = saving * currentQuantity
+  // Subtotal at the visitor's current quantity. The unit price is the same
+  // across creator tiers (locked model) — tier benefits are fee-side.
+  const orderNote: React.ReactNode = (() => {
+    if (!matchedRow) return null
+    const total = (matchedRow.perUnitCents * currentQuantity) / 100
     return (
       <>
-        At {currentQuantity} units you'd save{' '}
-        <strong>{fmt(saving)}/unit</strong> on {TIER_LABEL[upgrade]} (
-        <strong>{fmt(total)} / order</strong>)
+        At {currentQuantity.toLocaleString()} units ·{' '}
+        <strong>{fmt(matchedRow.perUnitCents / 100)}/unit</strong> (
+        <strong>{fmt(total)} subtotal</strong>)
       </>
     )
   })()
@@ -102,13 +92,13 @@ export function PricingTierModal({
       <DialogTrigger asChild>
         <button className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-pink-700 hover:text-pink-600 transition-colors">
           <BarChart3 strokeWidth={2} className="w-3.5 h-3.5" />
-          See pricing by tier
+          See pricing by quantity
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-lg p-0 overflow-hidden">
         <div className="p-6 pb-4 border-b border-ink-200">
           <DialogTitle className="font-display text-xl font-bold tracking-[-0.01em] text-ink-900">
-            Pricing by tier
+            Pricing by quantity
           </DialogTitle>
           <div className="text-sm font-normal text-ink-500 mt-1">
             {productName}
@@ -121,73 +111,54 @@ export function PricingTierModal({
             <thead>
               <tr className="border-b border-ink-200">
                 <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
-                  Tier
+                  Quantity / month
                 </th>
-                <th className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
-                  Monthly QTY
+                <th className="text-right px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+                  Per unit
                 </th>
-                {TIERS.map((t) => (
-                  <th
-                    key={t}
-                    className={cn(
-                      'text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em]',
-                      t === currentTier
-                        ? 'bg-pink-50 text-pink-700'
-                        : 'text-ink-500',
-                    )}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {TIER_ICON[t]} {TIER_LABEL[t]}
-                    </span>
-                    {t === currentTier && (
-                      <span className="block text-[9px] font-normal opacity-70 mt-px">
-                        (current)
-                      </span>
-                    )}
-                  </th>
-                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr
-                  key={row.band}
-                  className={cn(
-                    'border-b border-ink-100 last:border-b-0',
-                    'hover:bg-ink-50/50',
-                  )}
-                >
-                  <td className="px-6 py-3 text-ink-600 font-medium">
-                    {row.bandMin === null ? '—' : i}
-                  </td>
-                  <td className="px-3 py-3 text-ink-700">{row.band}</td>
-                  {TIERS.map((t) => (
+              {rows.map((row) => {
+                const isMatch = matchedRow?.band === row.band
+                return (
+                  <tr
+                    key={row.band}
+                    className={cn(
+                      'border-b border-ink-100 last:border-b-0 hover:bg-ink-50/50',
+                      isMatch && 'bg-pink-50/50',
+                    )}
+                  >
+                    <td className="px-6 py-3 text-ink-700">
+                      {row.band}
+                      {isMatch && (
+                        <span className="ml-2 text-[9px] font-semibold uppercase tracking-[0.06em] text-pink-700">
+                          your qty
+                        </span>
+                      )}
+                    </td>
                     <td
-                      key={t}
                       className={cn(
-                        'text-right px-4 py-3 font-mono tabular-nums',
-                        t === currentTier
-                          ? 'bg-pink-50/50 font-semibold text-ink-900'
-                          : 'text-ink-900',
+                        'text-right px-6 py-3 font-mono tabular-nums',
+                        isMatch ? 'font-semibold text-ink-900' : 'text-ink-900',
                       )}
                     >
-                      {fmt(row.prices[t])}
+                      {fmt(row.perUnitCents / 100)}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
 
-        {footnote && (
-          <div className="px-6 py-4 border-t border-ink-200 bg-cream text-[13px] text-ink-700">
-            Your current tier:{' '}
-            <strong className="text-ink-900">{TIER_LABEL[currentTier]}</strong>
-            {' · '}
-            {footnote}
+        <div className="px-6 py-4 border-t border-ink-200 bg-cream text-[13px] text-ink-700 space-y-1">
+          {orderNote && <div>{orderNote}</div>}
+          <div className="text-ink-600">
+            Same unit price for every plan — <strong className="text-ink-900">Builder</strong> and{' '}
+            <strong className="text-ink-900">Agency</strong> tiers lower your platform fee, not the unit cost.
           </div>
-        )}
+        </div>
 
         <div className="px-6 py-4 flex items-center justify-end gap-3 border-t border-ink-200">
           <button
@@ -207,4 +178,3 @@ export function PricingTierModal({
     </Dialog>
   )
 }
-

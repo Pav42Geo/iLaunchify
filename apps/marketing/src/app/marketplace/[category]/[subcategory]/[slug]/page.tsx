@@ -5,8 +5,6 @@ import {
   Button,
   CertStrip,
   ProductCard,
-  PricingTierModal,
-  buildSamplePricingRows,
   ProductSpecGrid,
   ShippingInfoCard,
   PropertyBar,
@@ -24,6 +22,7 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
+import { getPricingTierRows } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 
@@ -86,6 +85,10 @@ export default async function ProductDetailPage({
   // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
   // the template isn't in the DB yet → chip strips just don't render.
   const taxonomyChips = await getProductTaxonomyChips(template.slug)
+
+  // Punch-list #2 — real per-unit pricing from ProductTemplatePricingTier when
+  // the template exists in the DB; synthetic fallback for fixture-only demos.
+  const pricingRows = await getPricingTierRows(template.slug, template.pricePerUnit)
 
   // Per Pavel: only surface a qualifier line for organic certs. The
   // generic 'Independent verification' label was noise — let the cert
@@ -181,6 +184,7 @@ export default async function ProductDetailPage({
             <ProductDetailConfigurator
               template={template}
               detail={detail}
+              pricingRows={pricingRows}
               isAuthenticated={isAuthenticated}
             />
 
