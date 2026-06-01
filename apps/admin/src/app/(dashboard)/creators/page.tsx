@@ -141,7 +141,10 @@ export default async function CreatorsPage({ searchParams }: PageProps) {
                 return (
                   <tr key={c.id} className="group hover:bg-ink-50/40">
                     <td className="px-4 py-3 align-top">
-                      <div className="flex items-start gap-2.5">
+                      <Link
+                        href={`/creators/${c.id}`}
+                        className="-mx-2 -my-1.5 flex items-start gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                      >
                         <Avatar name={c.displayName ?? c.user.name ?? c.user.email} />
                         <div className="min-w-0">
                           <p className="font-semibold text-ink-900">
@@ -156,21 +159,18 @@ export default async function CreatorsPage({ searchParams }: PageProps) {
                             </p>
                           )}
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <Link
-                        href={`/tiers#creator-${c.id}`}
+                      <span
                         className={cn(
                           'inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
                           tone.bg,
-                          'transition-opacity hover:opacity-80',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
                         )}
                       >
                         <Crown className="h-2.5 w-2.5" aria-hidden="true" />
                         {tone.label}
-                      </Link>
+                      </span>
                       {c.feeRateOverrideBp !== null && (
                         <p className="mt-1 text-[10px] text-amber-700">
                           fee override · {c.feeRateOverrideBp}bp
@@ -204,8 +204,8 @@ export default async function CreatorsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-3 py-3 text-right align-top">
                       <Link
-                        href={`/tiers#creator-${c.id}`}
-                        aria-label={`Manage ${c.displayName ?? c.user.email}`}
+                        href={`/creators/${c.id}`}
+                        aria-label={`Open ${c.displayName ?? c.user.email}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
