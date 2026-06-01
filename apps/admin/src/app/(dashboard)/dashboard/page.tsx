@@ -475,7 +475,9 @@ function ModerationQueueTile({ items }: { items: ModerationQueueItem[] }) {
     label: item.label,
     sublabel: `${item.sublabel} · ${item.ageDays}d waiting`,
     tone: item.ageDays > 10 ? 'danger' : 'warning',
-    icon: AlertTriangle,
+    // QueueWidget is a client component — pass a rendered element, not the
+    // Lucide component itself (forwardRef objects can't cross the RSC boundary).
+    icon: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
     primaryAction: {
       label: `${item.actionLabel} →`,
       href: item.href,
@@ -486,7 +488,7 @@ function ModerationQueueTile({ items }: { items: ModerationQueueItem[] }) {
     <QueueWidget
       title="Moderation queue"
       subtitle="Items stuck longer than the SLA — act fast"
-      icon={AlertTriangle}
+      icon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
       tone="danger"
       span={12}
       items={queueItems}

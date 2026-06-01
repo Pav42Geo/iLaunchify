@@ -13,7 +13,6 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { type LucideIcon } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import {
   Widget,
@@ -36,16 +35,25 @@ export interface QueueWidgetItem {
   id: string
   label: string
   sublabel?: string
-  icon?: React.ReactNode | LucideIcon
+  /** Leading icon — a RENDERED element (e.g. `<Inbox />`). QueueWidget is a
+   * client component, so a Lucide component (forwardRef object) can't cross the
+   * RSC boundary — only ReactNode does. */
+  icon?: React.ReactNode
   /** Tone for the leading icon ball / dot. */
   tone?: WidgetTone
   primaryAction: QueueAction
 }
 
-export interface QueueWidgetProps extends WidgetBaseProps {
+// QueueWidget is a client component (it supports onSelect callbacks), so its
+// header icon must also be a ReactNode element, not a Lucide component — hence
+// the Omit + re-declare. Server widgets (Widget/KpiWidget/...) keep the
+// LucideIcon convenience because they render the icon server-side.
+export interface QueueWidgetProps extends Omit<WidgetBaseProps, 'icon'> {
   items: QueueWidgetItem[]
   maxItems?: number
   emptyLabel?: string
+  /** Header icon — pass a rendered element, e.g. `icon={<AlertTriangle />}`. */
+  icon?: React.ReactNode
 }
 
 const ACTION_TONE: Record<QueueActionTone, string> = {
@@ -78,14 +86,8 @@ const DOT_TONE: Record<WidgetTone, string> = {
 }
 
 function renderIcon(icon: QueueWidgetItem['icon']): React.ReactNode {
-  if (!icon) return null
-  if (React.isValidElement(icon) || typeof icon === 'string' || typeof icon === 'number') {
-    return icon
-  }
-  // Component TYPE (function OR forwardRef object). Lucide icons are forwardRef
-  // objects, so `typeof === 'function'` misses them — see Widget.renderIcon.
-  const Icon = icon as LucideIcon
-  return <Icon className="h-4 w-4" aria-hidden="true" />
+  // icon is a ReactNode (rendered element / text) — render as-is.
+  return icon ?? null
 }
 
 function ActionButton({ action }: { action: QueueAction }) {

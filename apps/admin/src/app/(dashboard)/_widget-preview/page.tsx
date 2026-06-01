@@ -317,7 +317,7 @@ export default function WidgetPreviewPage() {
           title="Awaiting your attention"
           subtitle="5 items past their threshold"
           tone="pink"
-          icon={Bell}
+          icon={<Bell className="h-4 w-4" aria-hidden="true" />}
           footerLink={{ href: '/inbox', label: 'Open full inbox' }}
           span={12}
           items={[
@@ -325,7 +325,7 @@ export default function WidgetPreviewPage() {
               id: 'q-lead-1',
               label: 'Acme Foods lead — stuck 6 days',
               sublabel: 'Lead · ops@acme.test',
-              icon: Inbox,
+              icon: <Inbox className="h-4 w-4" aria-hidden="true" />,
               tone: 'warning',
               primaryAction: { label: 'Triage', href: '/leads/1', tone: 'ink' },
             },
@@ -333,7 +333,7 @@ export default function WidgetPreviewPage() {
               id: 'q-product-1',
               label: 'Berry Booster gummy — stuck 5 days',
               sublabel: 'Product · PENDING_REVIEW',
-              icon: PackageOpen,
+              icon: <PackageOpen className="h-4 w-4" aria-hidden="true" />,
               tone: 'pink',
               primaryAction: { label: 'Review', href: '/products/1', tone: 'pink' },
             },
@@ -341,7 +341,7 @@ export default function WidgetPreviewPage() {
               id: 'q-partner-1',
               label: 'Sunrise Co-Pack — stuck 7 days',
               sublabel: 'Partner · OPS_PENDING_REVIEW',
-              icon: ShieldCheck,
+              icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
               tone: 'info',
               primaryAction: { label: 'Review', href: '/partners/1', tone: 'ink' },
             },
@@ -349,7 +349,7 @@ export default function WidgetPreviewPage() {
               id: 'q-dispatch-1',
               label: 'Dispatch DSP-294 — past accept deadline',
               sublabel: 'OrderDispatch · auto-cancel pending',
-              icon: ShoppingBag,
+              icon: <ShoppingBag className="h-4 w-4" aria-hidden="true" />,
               tone: 'danger',
               primaryAction: { label: 'Cancel', href: '/orders/1', tone: 'danger' },
             },
@@ -357,7 +357,7 @@ export default function WidgetPreviewPage() {
               id: 'q-ingredient-1',
               label: 'Stevia Reb-M — self-attested 8 days',
               sublabel: 'Ingredient · SELF_ATTESTED',
-              icon: CheckCircle2,
+              icon: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
               tone: 'success',
               primaryAction: { label: 'Promote', href: '/ingredients/1', tone: 'success' },
             },
