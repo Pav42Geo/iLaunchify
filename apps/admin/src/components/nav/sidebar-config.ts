@@ -173,6 +173,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/applications/packaging-mockups', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
       ],
@@ -233,7 +234,6 @@ const APPLICATIONS: SidebarRegion = {
     { kind: 'item', label: 'Marketplace', icon: Store, href: '/applications/marketplace', hiddenUntilBuilt: true },
     { kind: 'item', label: 'Design Studio (with Admin mode)', icon: Brush, href: '/applications/design-studio', hiddenUntilBuilt: true },
     { kind: 'item', label: 'Packaging Studio', icon: Boxes, href: '/applications/packaging-studio', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/applications/packaging-mockups', hiddenUntilBuilt: true },
     {
       kind: 'group',
       label: 'Integrations & API',

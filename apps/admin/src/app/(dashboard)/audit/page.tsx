@@ -20,7 +20,9 @@ import {
   Building2,
   Sparkles,
   ArrowRight,
+  AlertOctagon,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { listAuditLogs, AUDIT_ENTITY_TYPES } from '@ilaunchify/audit'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
@@ -100,24 +102,41 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   const last24h = new Date(Date.now() - 24 * 3600 * 1000)
   const last7d = new Date(Date.now() - 7 * 24 * 3600 * 1000)
 
-  const [logs, totalCount, count24h, count7d, uniqueActors7d, entityCounts] =
-    await Promise.all([
-      listAuditLogs({ ...filters, limit: 200 }),
-      prisma.auditLog.count(),
-      prisma.auditLog.count({ where: { at: { gte: last24h } } }),
-      prisma.auditLog.count({ where: { at: { gte: last7d } } }),
-      prisma.auditLog
-        .findMany({
-          where: { at: { gte: last7d } },
-          select: { actorId: true },
-          distinct: ['actorId'],
-        })
-        .then((rows) => rows.filter((r) => r.actorId).length),
-      prisma.auditLog.groupBy({
-        by: ['entityType'],
-        _count: { _all: true },
-      }),
-    ])
+  const [
+    logs,
+    totalCount,
+    count24h,
+    count7d,
+    uniqueActors7d,
+    entityCounts,
+    highImpactCount,
+  ] = await Promise.all([
+    listAuditLogs({ ...filters, limit: 200 }),
+    prisma.auditLog.count(),
+    prisma.auditLog.count({ where: { at: { gte: last24h } } }),
+    prisma.auditLog.count({ where: { at: { gte: last7d } } }),
+    prisma.auditLog
+      .findMany({
+        where: { at: { gte: last7d } },
+        select: { actorId: true },
+        distinct: ['actorId'],
+      })
+      .then((rows) => rows.filter((r) => r.actorId).length),
+    prisma.auditLog.groupBy({
+      by: ['entityType'],
+      _count: { _all: true },
+    }),
+    prisma.auditLog.count({
+      where: {
+        OR: [
+          { action: { contains: 'DELETE' } },
+          { action: { contains: 'REJECT' } },
+          { action: { contains: 'SUSPEND' } },
+          { action: { contains: 'REFUND' } },
+        ],
+      },
+    }),
+  ])
 
   const entityCountMap = new Map(
     entityCounts.map((c) => [c.entityType, c._count._all]),
@@ -143,6 +162,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
         count24h={count24h}
         count7d={count7d}
         uniqueActors7d={uniqueActors7d}
+        highImpactCount={highImpactCount}
       />
 
       <EntityChips
@@ -177,74 +197,137 @@ function Header({
   count24h,
   count7d,
   uniqueActors7d,
+  highImpactCount,
 }: {
   totalCount: number
   count24h: number
   count7d: number
   uniqueActors7d: number
+  highImpactCount: number
 }) {
+  const since24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+  const since7d = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+
   return (
-    <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="bg-[#F3EFE8] px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
-          Settings
+    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div>
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Settings · Audit Log
         </p>
-        <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Audit log
         </h1>
-        <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
-          Append-only history of every state transition on partners, orders,
-          dispatches, payments, files, ingredients, and certifications.
-          Links into the audit log are deep-linkable.
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          Every privileged action on the platform — partner activation, product
+          approvals, tier changes, manual overrides. Filter by entity, action,
+          actor, or window.
         </p>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-4">
-        <Kpi icon={History} label="Total events" value={totalCount} tone="ink" />
-        <Kpi icon={Clock} label="Past 24h" value={count24h} tone="pink" />
-        <Kpi icon={Activity} label="Past 7d" value={count7d} tone="info" />
-        <Kpi
-          icon={Users}
-          label="Unique actors · 7d"
+
+      {/* KPI strip */}
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <KpiCard
+          href="/audit"
+          label="Total events"
+          value={totalCount}
+          icon={History}
+          active
+        />
+        <KpiCard
+          href={`/audit?since=${encodeURIComponent(since24h)}`}
+          label="Today"
+          value={count24h}
+          icon={Clock}
+          tone="sky"
+        />
+        <KpiCard
+          href={`/audit?since=${encodeURIComponent(since7d)}`}
+          label="This week"
+          value={count7d}
+          icon={Activity}
+          tone="emerald"
+        />
+        <KpiCard
+          href="/audit?action=DELETE"
+          label="High-impact"
+          value={highImpactCount}
+          icon={AlertOctagon}
+          tone="rose"
+        />
+        <KpiCard
+          href={`/audit?since=${encodeURIComponent(since7d)}`}
+          label="Active actors"
           value={uniqueActors7d}
-          tone="success"
+          icon={Users}
+          tone="amber"
+          subline="Last 7 days"
         />
       </div>
-    </header>
+    </div>
   )
 }
 
-function Kpi({
-  icon: Icon,
+function KpiCard({
+  href,
   label,
   value,
+  icon: Icon,
   tone,
+  active,
+  subline,
 }: {
-  icon: typeof History
+  href: string
   label: string
   value: number
-  tone: 'ink' | 'pink' | 'info' | 'success'
+  icon: LucideIcon
+  tone?: 'amber' | 'emerald' | 'sky' | 'rose'
+  active?: boolean
+  subline?: string
 }) {
-  const numeralTone = {
-    ink: 'text-ink-900',
-    pink: 'text-pink-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
-  }[tone]
+  const ring: Record<NonNullable<typeof tone>, string> = {
+    amber: 'group-hover:ring-amber-300/60',
+    emerald: 'group-hover:ring-emerald-300/60',
+    sky: 'group-hover:ring-sky-300/60',
+    rose: 'group-hover:ring-rose-300/60',
+  }
+  const iconTone: Record<NonNullable<typeof tone>, string> = {
+    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    sky: 'bg-sky-100 text-sky-700',
+    rose: 'bg-rose-100 text-rose-700',
+  }
   return (
-    <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-        <Icon className="h-3 w-3" aria-hidden="true" />
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-1 font-display text-[22px] font-semibold tabular-nums leading-none tracking-tight',
-          numeralTone,
-        )}
-      >
-        {value.toLocaleString()}
-      </p>
-    </div>
+    <Link
+      href={href}
+      className={cn(
+        'group relative rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow',
+        'hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+        'ring-1 ring-transparent',
+        tone ? ring[tone]! : 'group-hover:ring-pink-300/40',
+        active && 'ring-pink-300/40',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-xl',
+            tone ? iconTone[tone]! : 'bg-pink-100 text-pink-700',
+          )}
+        >
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="flex-1">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            {label}
+          </p>
+          <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">
+            {value.toLocaleString()}
+          </p>
+          {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
+        </div>
+      </div>
+    </Link>
   )
 }
 

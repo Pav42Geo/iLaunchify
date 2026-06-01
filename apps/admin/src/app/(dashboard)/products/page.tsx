@@ -25,6 +25,7 @@ import {
   ArrowUpDown,
   Clock,
   Layers,
+  Eye,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProductTemplateStatus } from '@prisma/client'
@@ -638,12 +639,24 @@ function ProductsTable({ rows }: { rows: ProductRow[] }) {
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right align-top">
-                  <ProductRowActions
-                    productId={p.id}
-                    productName={p.name}
-                    slug={p.slug}
-                    partnerId={partner?.id ?? null}
-                  />
+                  <div className="inline-flex items-center gap-1">
+                    {/* Quick-review eye — fast path to the detail page,
+                        sits just left of the 3-dot menu (Pavel 2026-06-01) */}
+                    <Link
+                      href={`/products/${p.id}`}
+                      aria-label={`Review ${p.name}`}
+                      title="Quick review"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Link>
+                    <ProductRowActions
+                      productId={p.id}
+                      productName={p.name}
+                      slug={p.slug}
+                      partnerId={partner?.id ?? null}
+                    />
+                  </div>
                 </td>
               </tr>
             )
