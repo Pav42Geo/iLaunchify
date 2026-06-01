@@ -221,7 +221,7 @@ function SidebarGroup({
           'group flex w-full items-center gap-2 rounded-md py-1.5 text-left',
           'transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-          depth === 0 ? 'pl-2 pr-2.5' : 'pl-2 pr-2',
+          depth === 0 ? 'pl-2.5 pr-2' : 'pl-2 pr-2',
           depth === 0
             ? 'text-[13px] font-medium'
             : 'text-[12.5px]',
@@ -230,13 +230,6 @@ function SidebarGroup({
             : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900',
         )}
       >
-        <ChevronRight
-          aria-hidden="true"
-          className={cn(
-            'h-3 w-3 shrink-0 text-ink-400 transition-transform duration-150',
-            isOpen && 'rotate-90',
-          )}
-        />
         {Icon && (
           <Icon
             aria-hidden="true"
@@ -260,6 +253,14 @@ function SidebarGroup({
             {totalCount}
           </span>
         )}
+        {/* Chevron on the RIGHT — rotates 90° clockwise to point down when open. */}
+        <ChevronRight
+          aria-hidden="true"
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 text-ink-400 transition-transform duration-150',
+            isOpen && 'rotate-90',
+          )}
+        />
       </button>
 
       {/* Children — CSS grid-row trick gives smooth height transition. */}

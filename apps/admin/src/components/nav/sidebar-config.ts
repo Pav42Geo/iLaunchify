@@ -1,19 +1,15 @@
 // =============================================================================
-// Admin sidebar v3 — section-divider layout (Pavel 2026-06-01 amendment)
+// Admin sidebar v3 — LOCKED tree (post-2026-06-01)
 // =============================================================================
 //
-// Source of truth for visual structure:
-// docs/spaces/.../memory/ilaunchify-admin-sidebar-v3-locked.md
+// Source of truth (memory): ilaunchify-admin-sidebar-v3-locked.md
 //
-// 2026-06-01 amendment: Pavel asked to promote MANAGE / ASSET MANAGEMENT /
-// COMMUNICATIONS / LANGUAGES & MARKETS / SETTINGS to top-level region
-// dividers (same treatment as APPLICATIONS — small caps caption with
-// horizontal hairlines on each side). AI Tools removed for now.
+// Structure: two regions — PRIMARY (no header) and APPLICATIONS (— divider —).
+// Inside PRIMARY: Dashboard, Inbox group, Orders, Manage group, Settings
+// group, Help & Support group. All groups are expandable (chevron-RIGHT,
+// rotates to chevron-down when open).
 //
-// Visual model: each region renders a header divider (when label is set),
-// then its items as a flat list. Items that are still groups (Inbox,
-// Users & Roles, Global Compliance Center, Integrations & API, Help &
-// Support) remain expandable with the chevron + auto-expand on active.
+// AI Tools removed 2026-06-01.
 //
 // =============================================================================
 
@@ -43,6 +39,7 @@ import {
   Boxes,
   Brush,
   Eye,
+  Layers,
   Type,
   Image,
   ScrollText,
@@ -87,24 +84,19 @@ export type SidebarItem =
   | {
       kind: 'group'
       label: string
-      /** Optional icon shown next to the group label. */
       icon?: LucideIcon
       children: SidebarItem[]
     }
 
 export interface SidebarRegion {
   id: string
-  /** Empty string = no region header rendered (first/primary region). */
   label: string
   items: SidebarItem[]
 }
 
 // =============================================================================
-// PRIMARY region — no header, top of sidebar
+// PRIMARY region — Dashboard / Inbox / Orders / Manage / Settings / Help
 // =============================================================================
-//
-// Dashboard is the home button. Inbox stays expandable (8 sub-queues).
-// Orders is a leaf. Help & Support kept as an expandable group too.
 
 const PRIMARY: SidebarRegion = {
   id: 'primary',
@@ -139,116 +131,88 @@ const PRIMARY: SidebarRegion = {
     },
     {
       kind: 'group',
-      label: 'Help & Support',
-      icon: LifeBuoy,
+      label: 'Manage',
+      icon: Layers,
       children: [
-        { kind: 'item', label: 'My tickets', icon: Ticket, href: '/my-tickets', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Products & Categories', icon: Package, href: '/products' },
+        {
+          kind: 'group',
+          label: 'Users & Roles',
+          icon: Users,
+          children: [
+            { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
+            { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Asset Management',
+          icon: Boxes,
+          children: [
+            { kind: 'item', label: 'Packaging Symbols', icon: Sparkles, href: '/asset-management/packaging-symbols', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Nutrition Facts Labels', icon: FileText, href: '/asset-management/nutrition-facts-labels', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Supplement Facts Labels', icon: FileText, href: '/asset-management/supplement-facts-labels', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
+            { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
+            { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Communications',
+          icon: Megaphone,
+          children: [
+            { kind: 'item', label: 'Notification templates', icon: Mail, href: '/communications/notification-templates', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Broadcasts', icon: Radio, href: '/communications/broadcasts', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Support workflows', icon: Workflow, href: '/communications/support-workflows', hiddenUntilBuilt: true },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Languages & Markets',
+          icon: Globe,
+          children: [
+            { kind: 'item', label: 'Markets / Regions', icon: Globe, href: '/markets' },
+            {
+              kind: 'group',
+              label: 'Global Compliance Center',
+              icon: Globe2,
+              children: [
+                { kind: 'item', label: 'Market Profiles', icon: Map, href: '/compliance-center/market-profiles', hiddenUntilBuilt: true },
+                { kind: 'item', label: 'Regulation Matrix', icon: ShieldCheck, href: '/compliance-center/regulation-matrix', hiddenUntilBuilt: true },
+                { kind: 'item', label: 'Compliance Gallery', icon: Award, href: '/compliance-center/compliance-gallery', hiddenUntilBuilt: true },
+              ],
+            },
+          ],
+        },
       ],
     },
-  ],
-}
-
-// =============================================================================
-// MANAGE region (Pavel 2026-06-01 — promoted to its own divider)
-// =============================================================================
-
-const MANAGE: SidebarRegion = {
-  id: 'manage',
-  label: 'Manage',
-  items: [
-    { kind: 'item', label: 'Products & Categories', icon: Package, href: '/products' },
     {
       kind: 'group',
-      label: 'Users & Roles',
-      icon: Users,
+      label: 'Settings',
+      icon: ShieldCheck,
       children: [
-        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
-        { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
+        { kind: 'item', label: 'Analytics & Monitoring', icon: LineChart, href: '/analytics', hiddenUntilBuilt: true },
       ],
     },
   ],
 }
 
 // =============================================================================
-// ASSET MANAGEMENT region (Pavel 2026-06-01 — promoted to its own divider)
-// =============================================================================
-
-const ASSET_MANAGEMENT: SidebarRegion = {
-  id: 'asset-management',
-  label: 'Asset Management',
-  items: [
-    { kind: 'item', label: 'Packaging Symbols', icon: Sparkles, href: '/asset-management/packaging-symbols', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Nutrition Facts Labels', icon: FileText, href: '/asset-management/nutrition-facts-labels', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Supplement Facts Labels', icon: FileText, href: '/asset-management/supplement-facts-labels', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
-    { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
-    { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
-  ],
-}
-
-// =============================================================================
-// COMMUNICATIONS region (Pavel 2026-06-01 — promoted to its own divider)
-// =============================================================================
-
-const COMMUNICATIONS: SidebarRegion = {
-  id: 'communications',
-  label: 'Communications',
-  items: [
-    { kind: 'item', label: 'Notification templates', icon: Mail, href: '/communications/notification-templates', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Broadcasts', icon: Radio, href: '/communications/broadcasts', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Support workflows', icon: Workflow, href: '/communications/support-workflows', hiddenUntilBuilt: true },
-  ],
-}
-
-// =============================================================================
-// LANGUAGES & MARKETS region (Pavel 2026-06-01 — promoted to its own divider)
-// =============================================================================
-
-const LANGUAGES_AND_MARKETS: SidebarRegion = {
-  id: 'languages-and-markets',
-  label: 'Languages & Markets',
-  items: [
-    { kind: 'item', label: 'Markets / Regions', icon: Globe, href: '/markets' },
-    {
-      kind: 'group',
-      label: 'Global Compliance Center',
-      icon: Globe2,
-      children: [
-        { kind: 'item', label: 'Market Profiles', icon: Map, href: '/compliance-center/market-profiles', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Regulation Matrix', icon: ShieldCheck, href: '/compliance-center/regulation-matrix', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Compliance Gallery', icon: Award, href: '/compliance-center/compliance-gallery', hiddenUntilBuilt: true },
-      ],
-    },
-  ],
-}
-
-// =============================================================================
-// SETTINGS region (Pavel 2026-06-01 — promoted to its own divider)
-// =============================================================================
-
-const SETTINGS: SidebarRegion = {
-  id: 'settings',
-  label: 'Settings',
-  items: [
-    { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
-    { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
-    { kind: 'item', label: 'Analytics & Monitoring', icon: LineChart, href: '/analytics', hiddenUntilBuilt: true },
-  ],
-}
-
-// =============================================================================
-// APPLICATIONS region (existing — kept)
+// APPLICATIONS region (existing)
 // =============================================================================
 
 const APPLICATIONS: SidebarRegion = {
@@ -272,12 +236,24 @@ const APPLICATIONS: SidebarRegion = {
   ],
 }
 
-export const SIDEBAR_REGIONS: SidebarRegion[] = [
-  PRIMARY,
-  MANAGE,
-  ASSET_MANAGEMENT,
-  COMMUNICATIONS,
-  LANGUAGES_AND_MARKETS,
-  SETTINGS,
-  APPLICATIONS,
-]
+// =============================================================================
+// HELP region — sits at the very bottom (Pavel 2026-06-01)
+// =============================================================================
+
+const HELP: SidebarRegion = {
+  id: 'help',
+  // No label — renders as a bare group after the APPLICATIONS divider.
+  label: '',
+  items: [
+    {
+      kind: 'group',
+      label: 'Help & Support',
+      icon: LifeBuoy,
+      children: [
+        { kind: 'item', label: 'My tickets', icon: Ticket, href: '/my-tickets', hiddenUntilBuilt: true },
+      ],
+    },
+  ],
+}
+
+export const SIDEBAR_REGIONS: SidebarRegion[] = [PRIMARY, APPLICATIONS, HELP]
