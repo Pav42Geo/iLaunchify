@@ -19,34 +19,3 @@ body {
   color: var(--text-primary);
   background: var(--bg-canvas);
 }
-
-/* Admin sidebar drill-in/back slide animations */
-@keyframes admin-sidebar-slide-forward {
-  from {
-    transform: translateX(24px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes admin-sidebar-slide-back {
-  from {
-    transform: translateX(-24px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.admin-sidebar-slide-forward {
-  animation: admin-sidebar-slide-forward 220ms ease-out both;
-}
-
-.admin-sidebar-slide-back {
-  animation: admin-sidebar-slide-back 220ms ease-out both;
-}
