@@ -19,3 +19,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export * from '@prisma/client'
+
+// Banned-ingredient runtime enforcement helpers (FDA_REGULATORY_POSTURE §5).
+export {
+  isIngredientBanned,
+  findFirstBannedIngredient,
+  type BannedIngredientMatch,
+} from './banned-ingredients'

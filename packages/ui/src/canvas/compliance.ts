@@ -334,8 +334,8 @@ export function scanLabelCompliance(
   // --------------------------------------------------------------------
   if (ctx.bioengineered) {
     findings.push({
-      id: 'be-disclosure-info',
-      severity: 'INFO',
+      id: 'be-disclosure',
+      severity: 'WARNING',
       title: 'Bioengineered food disclosure required',
       detail:
         'This product contains bioengineered ingredient(s). USDA NBFDS requires a disclosure — either the BE symbol, an on-pack text statement, or a digital link, depending on your tier.',

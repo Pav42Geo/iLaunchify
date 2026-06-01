@@ -15,8 +15,9 @@
 // All new rows start at SELF_ATTESTED so the partner can immediately ship
 // products with them (per the "operational trust > margin optimization" memo).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, isIngredientBanned } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import type { BioengineeredStatus, IngredientSource, Prisma } from '@ilaunchify/db'
 
 export type IngredientResult = {
@@ -215,6 +216,31 @@ export async function createPartnerPrivateIngredient(
   if (internalName.length > 200) return { ok: false, error: 'Internal name is too long.' }
   if (labelDeclarationName.length > 200) {
     return { ok: false, error: 'Label declaration name is too long.' }
+  }
+
+  // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5). Match
+  // against the seeded BannedIngredient dictionary; block + audit the attempt.
+  const banned =
+    (await isIngredientBanned(internalName)) ??
+    (await isIngredientBanned(labelDeclarationName))
+  if (banned) {
+    await logAuditAs(user, {
+      entityType: 'Ingredient',
+      entityId: internalName,
+      action: 'INGREDIENT_BANNED_BLOCK',
+      payload: {
+        attemptedName: internalName,
+        labelDeclarationName,
+        matchedBanned: banned.matchName,
+        reason: banned.reason,
+        reference: banned.reference,
+        partnerId,
+      },
+    })
+    return {
+      ok: false,
+      error: `"${internalName}" is on the banned-ingredient list and can't be added — ${banned.reason}`,
+    }
   }
 
   const ing = await prisma.ingredient.create({

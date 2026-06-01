@@ -105,6 +105,7 @@ export function ExportModal({
   const [generating, setGenerating] = React.useState(false)
   const [lastExportedAt, setLastExportedAt] = React.useState<Date | null>(null)
   const [acknowledged, setAcknowledged] = React.useState(false)
+  const [beAcknowledged, setBeAcknowledged] = React.useState(false)
 
   // DS-69a — fresh scan every time the modal opens so the user always
   // sees the current state, not a cached count from a prior open.
@@ -113,6 +114,7 @@ export function ExportModal({
     if (!open || !canvas) {
       setScan(null)
       setAcknowledged(false)
+      setBeAcknowledged(false)
       return
     }
     try {
@@ -127,9 +129,15 @@ export function ExportModal({
     ? scan.findings.filter((f) => f.severity === 'BLOCKING')
     : []
   const hasBlockings = blockingFindings.length > 0
-  // Generate is gated only when there ARE blockings AND the user
-  // hasn't acked yet. Clean designs proceed instantly.
-  const generateBlocked = hasBlockings && !acknowledged
+  // Bioengineered disclosure (WARNING) gets its OWN ack — USDA NBFDS (7 CFR 66)
+  // is a separate regime from the FDA blocking findings (FDA_REGULATORY_POSTURE
+  // §10). Detect it by id and gate generate on a distinct checkbox.
+  const beFinding: ScanFinding | null =
+    scan?.findings.find((f) => f.id === 'be-disclosure') ?? null
+  const hasBE = beFinding !== null
+  // Generate is gated when there are unacked blockings OR an unacked BE
+  // disclosure. Clean designs proceed instantly.
+  const generateBlocked = (hasBlockings && !acknowledged) || (hasBE && !beAcknowledged)
 
   // When the user flips format, reset bleed to the format-typical default.
   React.useEffect(() => {
@@ -181,17 +189,17 @@ export function ExportModal({
       if (onExported) {
         // Build the ack payload — server action persists it on
         // DesignVersion.generationMeta for audit trail.
-        const ack: ExportAck = hasBlockings
-          ? {
-              acknowledged: true,
-              ackedAt: new Date().toISOString(),
-              ackedFindings: blockingFindings.map((f) => ({
-                id: f.id,
-                title: f.title,
-                severity: f.severity,
-                citation: f.citation,
-              })),
-            }
+        const ackedFindings = [
+          ...(hasBlockings ? blockingFindings : []),
+          ...(hasBE && beFinding ? [beFinding] : []),
+        ].map((f) => ({
+          id: f.id,
+          title: f.title,
+          severity: f.severity,
+          citation: f.citation,
+        }))
+        const ack: ExportAck = ackedFindings.length
+          ? { acknowledged: true, ackedAt: new Date().toISOString(), ackedFindings }
           : { acknowledged: false }
         await onExported(ack)
       }
@@ -248,6 +256,16 @@ export function ExportModal({
                   onOpenCompliance()
                 }
               }}
+            />
+          )}
+
+          {/* §10 — bioengineered disclosure (USDA NBFDS) gets its own ack,
+              separate from the FDA blocking gate above. */}
+          {hasBE && beFinding && (
+            <BioengineeredAck
+              finding={beFinding}
+              acknowledged={beAcknowledged}
+              onToggleAck={() => setBeAcknowledged((v) => !v)}
             />
           )}
 
@@ -406,7 +424,7 @@ export function ExportModal({
                   onExported handler change. See AUTO_RECOGNITION_PLAN.md. */}
               {generating
                 ? 'Generating…'
-                : hasBlockings && acknowledged
+                : (hasBlockings && acknowledged) || (hasBE && beAcknowledged)
                   ? 'Export at my risk'
                   : 'Generate + Download'}
             </button>
@@ -527,6 +545,73 @@ function BlockingWarning({
                 iLaunchify will record this acknowledgement on the design
                 version.
               </span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================================
+// BioengineeredAck — separate WARNING-level ack for the USDA NBFDS bioengineered
+// disclosure (7 CFR 66). Distinct regime from the FDA blocking gate, so it has
+// its own checkbox (FDA_REGULATORY_POSTURE §10).
+// ============================================================================
+
+function BioengineeredAck({
+  finding,
+  acknowledged,
+  onToggleAck,
+}: {
+  finding: ScanFinding
+  acknowledged: boolean
+  onToggleAck: () => void
+}) {
+  return (
+    <section
+      className={
+        'rounded-md border p-3.5 ' +
+        (acknowledged ? 'border-amber-300 bg-amber-50/60' : 'border-amber-400 bg-amber-50')
+      }
+      role="alert"
+    >
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-700" />
+        <div className="flex-1">
+          <div className="text-[12.5px] font-bold text-ink-900">{finding.title}</div>
+          <p className="mt-1 text-[11.5px] text-ink-700 leading-[1.5]">
+            {finding.detail}
+            {finding.citation && (
+              <span className="text-ink-500 font-mono ml-1.5 text-[10.5px]">
+                {finding.citation}
+              </span>
+            )}
+          </p>
+
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <button
+              type="button"
+              onClick={onToggleAck}
+              aria-pressed={acknowledged}
+              className={
+                'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
+                (acknowledged
+                  ? 'bg-amber-500 border-amber-500'
+                  : 'border-amber-500 bg-white hover:border-amber-700')
+              }
+            >
+              {acknowledged && (
+                <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold">
+                  ✓
+                </span>
+              )}
+            </button>
+            <span className="text-[11.5px] text-ink-900 leading-[1.45]">
+              <span className="font-semibold">
+                I&apos;ll include the required bioengineered (BE) disclosure before production.
+              </span>{' '}
+              <span className="text-ink-600">Recorded on the design version.</span>
             </span>
           </label>
         </div>

@@ -94,6 +94,8 @@ export const AUDIT_ACTIONS = [
   'PRODUCT_TEMPLATE_PAUSE',
   'PRODUCT_TEMPLATE_REACTIVATE',
   'PRODUCT_TEMPLATE_ARCHIVE',
+  // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5)
+  'PRODUCT_TEMPLATE_BANNED_BLOCK',
   // Payments (mostly SYSTEM actor from webhooks)
   'CHARGE_SUCCEEDED',
   'TRANSFER_QUEUED',
@@ -114,6 +116,8 @@ export const AUDIT_ACTIONS = [
   // #140 — admin ingredient verification queue + library promotion
   'INGREDIENT_VERIFY',
   'INGREDIENT_LIBRARY_PROMOTE',
+  // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5)
+  'INGREDIENT_BANNED_BLOCK',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

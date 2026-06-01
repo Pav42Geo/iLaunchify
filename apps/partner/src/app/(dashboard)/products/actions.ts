@@ -9,7 +9,7 @@
 //   /partner/products/[id]/edit     → autosave via saveProductFields (debounced)
 //                                   → submitForReview when ready
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, findFirstBannedIngredient } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -294,7 +294,21 @@ export async function submitProductForReview(productTemplateId: string): Promise
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
     include: {
-      ingredientSlots: { select: { id: true } },
+      ingredientSlots: {
+        select: {
+          id: true,
+          baseIngredient: {
+            select: { name: true, internalName: true, labelDeclarationName: true },
+          },
+        },
+      },
+      optionalIngredients: {
+        select: {
+          ingredient: {
+            select: { name: true, internalName: true, labelDeclarationName: true },
+          },
+        },
+      },
       packagingSystems: { select: { packagingSystemId: true } },
       variants: { select: { id: true } },
     },
@@ -311,6 +325,44 @@ export async function submitProductForReview(productTemplateId: string): Promise
   }
   if (tpl.variants.length === 0) {
     return { ok: false, error: 'Configure at least one variant (container size).' }
+  }
+
+  // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5). Re-check
+  // the full composition at the publish gate — refuse the transition + audit
+  // the block if any base/optional ingredient matches the dictionary.
+  const ingredientNames = [
+    ...tpl.ingredientSlots.flatMap((s) =>
+      s.baseIngredient
+        ? [s.baseIngredient.name, s.baseIngredient.internalName, s.baseIngredient.labelDeclarationName]
+        : [],
+    ),
+    ...tpl.optionalIngredients.flatMap((o) =>
+      o.ingredient
+        ? [o.ingredient.name, o.ingredient.internalName, o.ingredient.labelDeclarationName]
+        : [],
+    ),
+  ].filter((n): n is string => Boolean(n))
+
+  const banned = await findFirstBannedIngredient(ingredientNames)
+  if (banned) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_TEMPLATE_BANNED_BLOCK',
+      fromValue: tpl.status,
+      payload: {
+        name: tpl.name,
+        partnerId: partner.id,
+        offendingIngredient: banned.name,
+        matchedBanned: banned.match.matchName,
+        reason: banned.match.reason,
+        reference: banned.match.reference,
+      },
+    })
+    return {
+      ok: false,
+      error: `Cannot submit: "${banned.name}" is a banned ingredient — ${banned.match.reason}. Remove it before submitting.`,
+    }
   }
 
   await prisma.productTemplate.update({
