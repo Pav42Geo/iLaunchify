@@ -63,3 +63,13 @@ body {
     animation: none !important;
   }
 }
+
+/* Legal document prose (Terms / Privacy / Agreements) — punch-list #3 */
+.legal-prose { color: #2a2a32; font-size: 14px; line-height: 1.7; }
+.legal-prose h2 { font-size: 18px; font-weight: 700; margin: 2rem 0 0.75rem; color: #16161a; }
+.legal-prose h3 { font-size: 15px; font-weight: 600; margin: 1.5rem 0 0.5rem; color: #16161a; }
+.legal-prose h4 { font-size: 14px; font-weight: 600; margin: 1.25rem 0 0.4rem; color: #16161a; }
+.legal-prose p { margin: 0.75rem 0; }
+.legal-prose ul { margin: 0.75rem 0; padding-left: 1.25rem; list-style: disc; }
+.legal-prose li { margin: 0.35rem 0; }
+.legal-prose strong { font-weight: 600; color: #16161a; }

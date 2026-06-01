@@ -59,6 +59,8 @@ export function LandingFooter() {
           <FooterCol title="Company">
             <FooterLink href="/terms">Terms</FooterLink>
             <FooterLink href="/privacy">Privacy</FooterLink>
+            <FooterLink href="/creator-agreement">Creator Agreement</FooterLink>
+            <FooterLink href="/partner-agreement">Partner Agreement</FooterLink>
           </FooterCol>
         </div>
 

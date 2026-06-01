@@ -31,6 +31,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { StepShell } from './_StepShell'
+import { marketingUrl } from '@/lib/marketing-url'
 import type { ReviewState } from '../types'
 import type { ReviewSnapshot } from '../review-actions'
 
@@ -423,6 +424,27 @@ function ActionRail({
       <p className="text-center text-[11px] text-ink-500">
         Tick approval above, then use <strong>Continue to production</strong> in
         the footer.
+      </p>
+      <p className="text-center text-[11px] text-ink-400">
+        By continuing you agree to our{' '}
+        <a
+          href={marketingUrl('/terms')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink-700"
+        >
+          Terms
+        </a>{' '}
+        and{' '}
+        <a
+          href={marketingUrl('/privacy')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink-700"
+        >
+          Privacy Policy
+        </a>
+        .
       </p>
     </div>
   )
