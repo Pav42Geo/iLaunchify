@@ -43,6 +43,8 @@ import {
   Settings,
   ShoppingCart,
   PaintBucket,
+  Globe,
+  MapPin,
 } from 'lucide-react'
 
 export type SidebarItem =
@@ -176,6 +178,10 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', href: '/products', label: 'Products', icon: Package },
         { kind: 'item', href: '/ingredients', label: 'Ingredients', icon: FlaskConical },
         { kind: 'item', href: '/certificate-types', label: 'Cert library', icon: Award },
+        // #154 — V1 read-only surfaces for Market + Region. Seed-driven; the
+        // pages link straight from the sidebar so admin can verify coverage.
+        { kind: 'item', href: '/markets', label: 'Markets', icon: Globe },
+        { kind: 'item', href: '/regions', label: 'Regions', icon: MapPin },
       ],
     },
     {
