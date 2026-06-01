@@ -23,6 +23,7 @@ export type CanvasCustomType =
   | 'barcode'
   | 'internal-sku'
   | 'nutrition-panel'
+  | 'cert-badge'
 
 /**
  * Required-label-section discriminator (DS-55).

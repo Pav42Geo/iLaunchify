@@ -39,6 +39,11 @@ interface StageProps {
    *  outlives this prop — it lives until Stage unmounts, at which point
    *  it's disposed. Consumers should null out their ref on unmount. */
   onReady?: (canvas: fabric.Canvas) => void
+  /** Called once the initialDesignJson has finished loading (or immediately
+   *  when there is none). Distinct from onReady, which fires synchronously
+   *  while loadFromJSON is still pending — anything that must run against the
+   *  hydrated object set (e.g. cert-badge reconcile) belongs here. */
+  onHydrated?: (canvas: fabric.Canvas) => void
   /** Optional initial design state (Fabric JSON). Loaded after canvas instantiation. */
   initialDesignJson?: object | null
   /** Optional className on the wrapper. */
@@ -51,6 +56,7 @@ export function Stage({
   viewZoom = 1,
   surfaceColor = '#ffffff',
   onReady,
+  onHydrated,
   initialDesignJson,
   className,
 }: StageProps) {
@@ -97,11 +103,14 @@ export function Stage({
         .then(() => {
           if (cancelled) return
           canvas.renderAll()
+          onHydrated?.(canvas)
         })
         .catch(() => {
           // Swallow — usually fires when dispose raced ahead of the
           // load promise. Same defensive intent as the cancelled flag.
         })
+    } else {
+      onHydrated?.(canvas)
     }
 
     onReady?.(canvas)

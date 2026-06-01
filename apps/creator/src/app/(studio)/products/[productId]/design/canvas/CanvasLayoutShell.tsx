@@ -33,7 +33,9 @@ import {
   generateBlankPdfSpec,
   generateBlankSvgSpec,
   mmToInchesStr,
+  reconcileCertBadges,
 } from '@ilaunchify/ui'
+import type { CertBadge } from './cert-badge-actions'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
   useSelectedObject,
@@ -123,6 +125,11 @@ interface Props {
   /** Existing Fabric JSON to hydrate the canvas with on mount. */
   initialDesignJson: object | null
   /**
+   * The product's earned cert badges (DESIGN_STUDIO.md §Certificate badges V1).
+   * Reconciled onto the canvas as a managed cert zone once the stage is ready.
+   */
+  certBadges: CertBadge[]
+  /**
    * Server-derived product context used by the compliance scan + label
    * drawer pre-fill. allergens / bioengineered come from the recipe;
    * netQuantity + netQuantityKind from the bound variant. See
@@ -205,6 +212,7 @@ export function CanvasLayoutShell({
   dieCut,
   brandAssets,
   initialDesignJson,
+  certBadges,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
   creatorTier = 'maker',
@@ -213,6 +221,23 @@ export function CanvasLayoutShell({
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
+
+  // Reconcile the managed cert-badge zone after the saved design hydrates.
+  // Stage fires onHydrated post-loadFromJSON, so badges aren't wiped by the
+  // async load and re-opens don't duplicate (identity = certInstanceId, which
+  // round-trips through customData). DESIGN_STUDIO.md §Certificate badges V1.
+  const handleCertReconcile = React.useCallback(
+    (c: FabricCanvas) => {
+      void reconcileCertBadges(c, certBadges, {
+        widthMm: dieCut.widthMm,
+        heightMm: dieCut.heightMm,
+        bleedMm: dieCut.bleedMm,
+        safeAreaMm: dieCut.safeAreaMm,
+      })
+    },
+    [certBadges, dieCut],
+  )
+
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [mockupOpen, setMockupOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -543,6 +568,7 @@ export function CanvasLayoutShell({
                   guides={guides}
                   initialDesignJson={initialDesignJson}
                   onReady={setCanvas}
+                  onHydrated={handleCertReconcile}
                 />
               </div>
             </div>
@@ -1343,6 +1369,7 @@ function CanvasStageWithFrame({
   guides,
   initialDesignJson,
   onReady,
+  onHydrated,
   viewZoom,
 }: {
   dieCut: DieCutSpec
@@ -1350,6 +1377,7 @@ function CanvasStageWithFrame({
   guides: GuideVisibility
   initialDesignJson: object | null
   onReady: (canvas: FabricCanvas) => void
+  onHydrated: (canvas: FabricCanvas) => void
   /** DS-73.1 — forwarded to Stage so fabric setZoom keeps object coords
       anchored to the resizing canvas. */
   viewZoom: number
@@ -1371,6 +1399,7 @@ function CanvasStageWithFrame({
         surfaceColor="#ffffff"
         initialDesignJson={initialDesignJson ?? undefined}
         onReady={onReady}
+        onHydrated={onHydrated}
       />
       <DieCutFrame dieCut={dieCut} pxPerMm={pxPerMm} guides={guides} />
     </div>

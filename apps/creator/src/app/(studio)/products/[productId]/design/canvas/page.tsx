@@ -21,6 +21,7 @@ import {
 } from '@ilaunchify/ui'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
 import { loadDesignJson } from './actions'
+import { loadProductCertBadges } from './cert-badge-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,6 +145,10 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // empty canvas (first time editing this product).
   const initialDesignJson = (await loadDesignJson(product.id)) as object | null
 
+  // Cert badges (DESIGN_STUDIO.md §Certificate badges V1) — the product's earned
+  // certs, surfaced as managed vector badges on the host surface's canvas.
+  const { badges: certBadges } = await loadProductCertBadges(product.id)
+
   // R14.d — real subscription tier from the DB (defaults to 'maker' for
   // anyone without a CreatorProfile row, e.g. admin impersonation).
   const creatorTier = await getCreatorTier(user.id)
@@ -162,6 +167,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       dieCut={dieCut}
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
+      certBadges={certBadges}
       productCtx={productCtx}
       creatorTier={creatorTier}
     />

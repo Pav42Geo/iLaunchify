@@ -102,6 +102,11 @@ export {
   type LabelSectionRole,
 } from './canvas/objects'
 export {
+  reconcileCertBadges,
+  type CertBadgePlacement,
+  type CertBadgeDieCut,
+} from './canvas/certBadges'
+export {
   generateQrCodeDataUrl,
   generateBarcodeDataUrl,
   generateInternalSkuBarcodeDataUrl,
