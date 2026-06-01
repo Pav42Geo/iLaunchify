@@ -1,22 +1,32 @@
 'use client'
 
-// Admin sidebar v3 — client renderer (always-open, no collapse).
+// Admin sidebar — FLAT TOP-LEVEL LINKS (Pavel 2026-06-01).
 //
-// Pavel rejected the collapsing UX 2026-05-31: "I dont like how the menus
-// expand let's find another solution to be more vusually knowing from what
-// structure you are coming from or in". This renderer addresses that by:
+// Pivot from the drill-in model: each top-level category in the locked tree
+// is now a Link to its own landing-page hub (a "dashboard for the category"),
+// and the sidebar is just a clean flat list of those top-level destinations.
+// The deep nested children from the locked tree (Asset Management → Packaging
+// Symbols → ..., etc.) belong on the category landing page as a card grid or
+// sub-navigation, NOT inside the sidebar.
 //
-//   1. NEVER collapsing groups — the whole structure is visible at all times.
-//      No expand/collapse buttons, no localStorage, no rotating chevrons.
-//   2. ACTIVE PATH highlighting — the current item gets a strong pink
-//      treatment, AND every ancestor group label gets a tinted state so the
-//      admin can scan top → down and see exactly which branch they're in.
-//   3. Tree guide lines — a faint vertical rule on the left of nested groups
-//      gives the parent-child relationship a visual anchor.
+// What renders here:
+//   • Dashboard               → /dashboard
+//   • Inbox                   → /inbox            (landing hub)
+//   • Orders                  → /orders
+//   • Manage                  → /manage           (landing hub)
+//   • Settings                → /settings         (landing hub)
+//   • Help & Support          → /help-support     (landing hub)
 //
-// Hidden routes (hiddenUntilBuilt) are filtered out by filterVisible() so
-// the rendered sidebar stays small even though the config carries the
-// locked V1+V1.5+V2 plan.
+//   — APPLICATIONS —          (visual divider)
+//
+//   • Marketplace             → /marketplace
+//   • Design Studio (Admin)   → /design-studio
+//   • Packaging Studio        → /packaging-studio
+//   • Packaging Mockups       → /packaging-mockups
+//   • Integrations & API      → /integrations     (landing hub)
+//
+// Pages without routes will 404 until built — Pavel asked for "all wired"
+// 2026-06-01. The category landing pages are the next build phase.
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -24,8 +34,6 @@ import { cn } from '@ilaunchify/ui'
 import type { LucideIcon } from 'lucide-react'
 import {
   SIDEBAR_REGIONS,
-  filterVisible,
-  findActivePath,
   type SidebarItem,
   type SidebarBadges,
 } from './sidebar-config'
@@ -37,47 +45,30 @@ interface AdminSidebarTreeProps {
 export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
   const pathname = usePathname()
 
-  // Filter hiddenUntilBuilt + empty groups before rendering.
-  const regions = SIDEBAR_REGIONS.map((region) => ({
-    ...region,
-    items: filterVisible(region.items),
-  })).filter((r) => r.items.length > 0)
-
-  // Compute the active path (sequence of group labels leading to the current
-  // item) for every region. Only one region will have a non-null match.
-  const activeAncestors = new Set<string>()
-  for (const region of regions) {
-    const path = findActivePath(region.items, pathname)
-    if (path) {
-      for (const label of path) activeAncestors.add(label)
-      break
-    }
-  }
-
   return (
     <aside
       aria-label="Admin navigation"
-      className="hidden w-64 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
+      className="hidden w-60 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
     >
-      {regions.map((region, idx) => (
+      {SIDEBAR_REGIONS.map((region, regionIdx) => (
         <div
           key={region.id}
-          className={cn(idx > 0 && 'mt-6 border-t border-ink-100 pt-5')}
+          className={cn(regionIdx > 0 && 'mt-6 border-t border-ink-100 pt-5')}
         >
-          {region.label && (
-            <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
-              — {region.label} —
+          {regionIdx > 0 && region.label && (
+            <div className="mb-2 flex items-center gap-2 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
+              <span className="h-px flex-1 bg-ink-200" />
+              <span>{region.label}</span>
+              <span className="h-px flex-1 bg-ink-200" />
             </div>
           )}
           <nav className="space-y-0.5">
             {region.items.map((item) => (
-              <RenderItem
-                key={itemKey(item)}
+              <TopLevelRow
+                key={topLevelKey(item)}
                 item={item}
                 pathname={pathname}
                 badges={badges}
-                activeAncestors={activeAncestors}
-                depth={0}
               />
             ))}
           </nav>
@@ -88,22 +79,19 @@ export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
 }
 
 // -----------------------------------------------------------------------------
-// Item dispatcher
+// One top-level row — either a leaf item or a group's landing-page link
 // -----------------------------------------------------------------------------
 
-function RenderItem({
+function TopLevelRow({
   item,
   pathname,
   badges,
-  activeAncestors,
-  depth,
 }: {
   item: SidebarItem
   pathname: string
   badges: SidebarBadges
-  activeAncestors: Set<string>
-  depth: number
 }) {
+  // Item leaf at root: render as a regular Link.
   if (item.kind === 'item') {
     return (
       <SidebarLink
@@ -112,109 +100,23 @@ function RenderItem({
         icon={item.icon}
         active={isActive(item.href, pathname)}
         badge={item.badgeKey ? badges[item.badgeKey] : undefined}
-        depth={depth}
       />
     )
   }
-  const isOnActivePath = activeAncestors.has(item.label)
-  // Sum badges for any descendant items so the group label can show a
-  // total pill — only meaningful at depth 0 (top-level Inbox group).
-  const total =
-    depth === 0
-      ? sumBadgesInGroup(item.children, badges)
-      : 0
 
+  // Group at root: render as a Link to the group's landing-page URL.
+  // Aggregate badges from any descendant items with badgeKeys so the row
+  // can surface a count (Inbox shows the sum of its queues).
+  const href = item.href ?? '/'
+  const total = sumBadgesInGroup(item.children, badges)
   return (
-    <SidebarGroup
+    <SidebarLink
+      href={href}
       label={item.label}
-      icon={item.icon}
-      onActivePath={isOnActivePath}
-      totalCount={total}
-      depth={depth}
-    >
-      {item.children.map((c) => (
-        <RenderItem
-          key={itemKey(c)}
-          item={c}
-          pathname={pathname}
-          badges={badges}
-          activeAncestors={activeAncestors}
-          depth={depth + 1}
-        />
-      ))}
-    </SidebarGroup>
-  )
-}
-
-// -----------------------------------------------------------------------------
-// One group (always-open visual container)
-// -----------------------------------------------------------------------------
-
-function SidebarGroup({
-  label,
-  icon: Icon,
-  onActivePath,
-  totalCount,
-  depth,
-  children,
-}: {
-  label: string
-  icon?: LucideIcon
-  onActivePath: boolean
-  totalCount: number
-  depth: number
-  children: React.ReactNode
-}) {
-  return (
-    <div className={cn(depth === 0 ? 'mt-3' : 'mt-1')}>
-      <div
-        className={cn(
-          'flex items-center gap-2 rounded-md px-2 py-1',
-          // The label is purely visual — no button, no hover affordance.
-          // Top-level groups get the small caps treatment, nested groups
-          // get a slightly less prominent treatment.
-          depth === 0
-            ? 'text-[10.5px] font-bold uppercase tracking-[0.1em]'
-            : 'text-[11px] font-semibold uppercase tracking-[0.06em]',
-          onActivePath
-            ? 'text-pink-700'
-            : depth === 0
-              ? 'text-ink-500'
-              : 'text-ink-400',
-        )}
-      >
-        {Icon && (
-          <Icon
-            aria-hidden="true"
-            className={cn(
-              'h-3 w-3 shrink-0',
-              onActivePath ? 'text-pink-600' : 'text-ink-400',
-            )}
-          />
-        )}
-        <span className="flex-1 truncate">{label}</span>
-        {totalCount > 0 && (
-          <span
-            aria-label={`${totalCount} pending`}
-            className="inline-flex h-4 min-w-[18px] items-center justify-center rounded-full bg-pink-100 px-1 text-[10px] font-semibold tabular-nums text-pink-700"
-          >
-            {totalCount}
-          </span>
-        )}
-      </div>
-
-      {/* Children — indented + faint guide line on the left. */}
-      <div
-        className={cn(
-          'mt-0.5 space-y-0.5',
-          depth === 0
-            ? 'ml-3 border-l border-ink-100 pl-2'
-            : 'ml-3 border-l border-ink-100 pl-2',
-        )}
-      >
-        {children}
-      </div>
-    </div>
+      icon={item.icon ?? null}
+      active={isActiveForGroup(href, pathname, item)}
+      badge={total > 0 ? total : undefined}
+    />
   )
 }
 
@@ -228,14 +130,12 @@ function SidebarLink({
   icon: Icon,
   active,
   badge,
-  depth,
 }: {
   href: string
   label: string
-  icon: LucideIcon
+  icon: LucideIcon | null
   active: boolean
   badge?: number
-  depth: number
 }) {
   const showBadge = typeof badge === 'number' && badge > 0
   return (
@@ -243,12 +143,9 @@ function SidebarLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-lg py-1.5 pr-2.5 text-[13px]',
+        'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px]',
         'transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-        // depth 0 has no parent group — pad left for the icon directly
-        // depth ≥1 lives inside a guide-line column already
-        depth === 0 ? 'pl-2.5' : 'pl-2',
         active
           ? 'bg-pink-50 font-semibold text-pink-700'
           : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900',
@@ -257,13 +154,15 @@ function SidebarLink({
       {active && (
         <span
           aria-hidden="true"
-          className="absolute -left-[2px] top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-pink-500"
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-pink-500"
         />
       )}
-      <Icon
-        aria-hidden="true"
-        className={cn('h-4 w-4 shrink-0', active ? 'text-pink-600' : 'text-ink-400')}
-      />
+      {Icon && (
+        <Icon
+          aria-hidden="true"
+          className={cn('h-4 w-4 shrink-0', active ? 'text-pink-600' : 'text-ink-400')}
+        />
+      )}
       <span className="flex-1 truncate">{label}</span>
       {showBadge && (
         <span
@@ -281,18 +180,40 @@ function SidebarLink({
 }
 
 // -----------------------------------------------------------------------------
-// Active-state matcher (unchanged from previous version)
+// Active-state matchers
 // -----------------------------------------------------------------------------
 
 function isActive(href: string, pathname: string): boolean {
   const [path] = href.split('?')
   if (path === '/dashboard') return pathname === '/dashboard'
-  if (path === '/' ) return pathname === '/'
+  if (path === '/') return pathname === '/'
   return pathname === path || pathname.startsWith(path + '/')
 }
 
-function itemKey(item: SidebarItem): string {
-  return item.kind === 'item' ? `i:${item.href}:${item.label}` : `g:${item.label}`
+/**
+ * A group is "active" when the current pathname is on the group's own landing
+ * URL OR on any descendant item's URL (so /admin/creators lights up the
+ * Manage row).
+ */
+function isActiveForGroup(
+  href: string,
+  pathname: string,
+  group: Extract<SidebarItem, { kind: 'group' }>,
+): boolean {
+  if (isActive(href, pathname)) return true
+  return descendantActive(group.children, pathname)
+}
+
+function descendantActive(items: SidebarItem[], pathname: string): boolean {
+  for (const item of items) {
+    if (item.kind === 'item') {
+      if (isActive(item.href, pathname)) return true
+    } else {
+      if (item.href && isActive(item.href, pathname)) return true
+      if (descendantActive(item.children, pathname)) return true
+    }
+  }
+  return false
 }
 
 function sumBadgesInGroup(children: SidebarItem[], badges: SidebarBadges): number {
@@ -305,4 +226,8 @@ function sumBadgesInGroup(children: SidebarItem[], badges: SidebarBadges): numbe
     }
   }
   return total
+}
+
+function topLevelKey(item: SidebarItem): string {
+  return item.kind === 'item' ? `i:${item.href}:${item.label}` : `g:${item.label}`
 }

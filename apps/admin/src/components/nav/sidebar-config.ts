@@ -95,6 +95,15 @@ export type SidebarItem =
       label: string
       /** Optional icon shown next to the group label. */
       icon?: LucideIcon
+      /**
+       * The landing-page URL for this category. Each top-level group is its
+       * own hub (dashboard for that category) — the sidebar links to this URL
+       * and the landing page renders its own grid of sub-area cards.
+       *
+       * When omitted, this is a structural-only group (deeper in the tree)
+       * that doesn't render as a sidebar entry today.
+       */
+      href?: string
       children: SidebarItem[]
     }
 
@@ -130,6 +139,7 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Inbox',
       icon: Inbox,
+      href: '/inbox',
       children: [
         {
           kind: 'item',
@@ -205,6 +215,7 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Manage',
       icon: Layers,
+      href: '/manage',
       children: [
         {
           kind: 'item',
@@ -422,6 +433,7 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Settings',
       icon: ShieldCheck,
+      href: '/settings',
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
         {
@@ -461,6 +473,7 @@ const PRIMARY: SidebarRegion = {
       kind: 'group',
       label: 'Help & Support',
       icon: LifeBuoy,
+      href: '/help-support',
       children: [
         {
           kind: 'item',
@@ -518,6 +531,7 @@ const APPLICATIONS: SidebarRegion = {
       kind: 'group',
       label: 'Integrations & API',
       icon: Plug,
+      href: '/integrations',
       children: [
         { kind: 'item', label: 'Channels', icon: Plug, href: '/channels' },
         {
@@ -544,47 +558,92 @@ export const SIDEBAR_REGIONS: SidebarRegion[] = [PRIMARY, APPLICATIONS]
 // =============================================================================
 // Helpers
 // =============================================================================
+//
+// hiddenUntilBuilt is intentionally NOT enforced — per Pavel 2026-06-01
+// the sidebar shows every link in the locked tree, even when the
+// destination page hasn't shipped yet (those clicks will 404 until they do).
+// The flag stays on items as informational metadata for future use.
 
 /**
- * Recursively strip `hiddenUntilBuilt` items + groups that become empty.
- * Used by the renderer + by tests to assert what's actually navigable.
+ * Walk a list of items at one level and find the first leaf whose href
+ * matches the pathname. Returns null if no match.
  */
-export function filterVisible(items: SidebarItem[]): SidebarItem[] {
-  const out: SidebarItem[] = []
-  for (const item of items) {
-    if (item.kind === 'item') {
-      if (!item.hiddenUntilBuilt) out.push(item)
-    } else {
-      const visibleChildren = filterVisible(item.children)
-      if (visibleChildren.length > 0) {
-        out.push({ ...item, children: visibleChildren })
-      }
-    }
-  }
-  return out
-}
-
-/**
- * Returns the array of group labels from the root down to the first item
- * matching `pathname`, or null if no match. Used by the renderer to
- * highlight ancestor groups along the active path.
- */
-export function findActivePath(
+function leafIndexInItems(
   items: SidebarItem[],
   pathname: string,
-): string[] | null {
-  for (const item of items) {
-    if (item.kind === 'item') {
+): number {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item && item.kind === 'item') {
       const [path] = item.href.split('?')
       const matches =
         path === '/dashboard'
           ? pathname === '/dashboard'
           : pathname === path || pathname.startsWith(path + '/')
-      if (matches) return []
-    } else {
-      const childPath = findActivePath(item.children, pathname)
-      if (childPath !== null) return [item.label, ...childPath]
+      if (matches) return i
     }
   }
-  return null
+  return -1
+}
+
+/**
+ * Find the group-label drill stack that reaches the current pathname.
+ *
+ *   pathname '/creators' → ['Manage', 'Users & Roles']  (leaf 'Creators' lives inside)
+ *   pathname '/dashboard' → []                          (leaf is at root)
+ *   pathname '/something-not-in-tree' → []              (default to root)
+ */
+export function findInitialDrillPath(
+  items: SidebarItem[],
+  pathname: string,
+): string[] {
+  // Leaf match at THIS level — no further drill needed.
+  if (leafIndexInItems(items, pathname) !== -1) return []
+  // Otherwise descend into each group.
+  for (const item of items) {
+    if (item.kind === 'group') {
+      const inside = findInitialDrillPath(item.children, pathname)
+      // Found if leaf is inside OR a deeper group contains it.
+      if (inside.length > 0 || leafIndexInItems(item.children, pathname) !== -1) {
+        return [item.label, ...inside]
+      }
+    }
+  }
+  return []
+}
+
+/**
+ * Resolve a drill stack of group labels into the array of items at that
+ * level. Returns the root items if path is empty. Returns null if any
+ * label doesn't resolve (stale path).
+ */
+export function resolveDrillPath(
+  rootItems: SidebarItem[],
+  path: string[],
+): SidebarItem[] | null {
+  let current = rootItems
+  for (const label of path) {
+    const group = current.find(
+      (i): i is Extract<SidebarItem, { kind: 'group' }> =>
+        i.kind === 'group' && i.label === label,
+    )
+    if (!group) return null
+    current = group.children
+  }
+  return current
+}
+
+/**
+ * Flatten BOTH regions into one array of root-level items. Used by the
+ * drill-renderer because the divider between PRIMARY and APPLICATIONS is
+ * a visual concern in the renderer, not a data concern.
+ */
+export function rootItemsWithDivider(): {
+  primaryItems: SidebarItem[]
+  applicationsItems: SidebarItem[]
+} {
+  return {
+    primaryItems: PRIMARY.items,
+    applicationsItems: APPLICATIONS.items,
+  }
 }
