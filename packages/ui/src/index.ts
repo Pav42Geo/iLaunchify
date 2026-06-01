@@ -64,6 +64,21 @@ export * from './components/EarningsCalculator'
 export * from './components/PropertyBar'
 export * from './components/ShippingInfoCard'
 
+// Dashboard widget primitives (shared admin / partner / creator)
+export * from './components/dashboard/Widget'
+export * from './components/dashboard/KpiWidget'
+export * from './components/dashboard/ChartWidget'
+export * from './components/dashboard/ListWidget'
+export * from './components/dashboard/QueueWidget'
+export * from './components/dashboard/StatusWidget'
+export * from './components/dashboard/TimelineWidget'
+export * from './components/charts/ChartSparkline'
+export * from './components/charts/ChartArea'
+export * from './components/charts/ChartBar'
+export * from './components/charts/ChartDonut'
+export * from './components/charts/ChartLine'
+export { chartPalette, chartToneOrder, type ChartTone } from './components/charts/chartPalette'
+
 // Nutrition rendering (compliance service consumer)
 export * from './nutrition/NutritionFactsRenderer'
 

@@ -34,6 +34,7 @@
     "jspdf": "^2.5.2",
     "lucide-react": "^0.453.0",
     "qrcode": "^1.5.4",
+    "recharts": "^2.13.0",
     "tailwind-merge": "^2.5.4"
   },
   "peerDependencies": {
