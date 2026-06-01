@@ -39,7 +39,15 @@ export default async function ProductEditPage({ params }: PageProps) {
       subcategory: { select: { name: true, category: { select: { name: true } } } },
       ingredientSlots: {
         include: {
-          baseIngredient: { select: { name: true, allergenFlags: true, source: true } },
+          baseIngredient: {
+            select: {
+              id: true,
+              name: true,
+              labelDeclarationName: true,
+              allergenFlags: true,
+              source: true,
+            },
+          },
           replacements: {
             include: { ingredient: { select: { name: true } } },
             orderBy: { displayOrder: 'asc' },
@@ -93,6 +101,24 @@ export default async function ProductEditPage({ params }: PageProps) {
       : Promise.resolve([] as Array<{ id: string; name: string | null; email: string }>),
   ])
   const nameByAuthor = new Map(noteAuthors.map((u) => [u.id, u.name ?? u.email] as const))
+
+  // Recipal-parity JSON fields (§4a.5c + §4a.5d) — defensively coerce.
+  const nutrientOverrides = Array.isArray(template.nutrientOverrides)
+    ? (template.nutrientOverrides as Array<{ nutrient: string; value: number; reason: string }>)
+    : []
+  const ingredientGroups = Array.isArray(template.ingredientGroups)
+    ? (template.ingredientGroups as Array<{
+        groupName: string
+        ingredientIds: string[]
+        displayMode: 'CATEGORY_ONLY' | 'CATEGORY_WITH_SUBLIST'
+        sortAs: 'byWeight' | 'asWritten'
+      }>)
+    : []
+  const baseIngredientsForGrouping = template.ingredientSlots.map((s) => ({
+    ingredientId: s.baseIngredient.id,
+    name: s.baseIngredient.labelDeclarationName ?? s.baseIngredient.name,
+    weightG: Number(s.weightG),
+  }))
 
   return (
     <div className="space-y-6">
@@ -201,6 +227,9 @@ export default async function ProductEditPage({ params }: PageProps) {
           body: n.body,
           createdAt: n.createdAt,
         }))}
+        nutrientOverrides={nutrientOverrides}
+        ingredientGroups={ingredientGroups}
+        baseIngredientsForGrouping={baseIngredientsForGrouping}
       />
     </div>
   )

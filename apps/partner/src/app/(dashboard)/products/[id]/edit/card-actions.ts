@@ -669,6 +669,179 @@ export async function saveCustomMeta(input: {
 }
 
 // -----------------------------------------------------------------------------
+// NUTRIENT OVERRIDES — per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5c.
+// Stored on ProductTemplate.nutrientOverrides as
+//   [{ nutrient: string, value: number, reason: string }].
+// The compliance service applies these AFTER summing the recipe and BEFORE
+// rounding, so the partner can correct for things like baking moisture loss.
+// Re-triggers admin review on a published template (handled by the FSM).
+// -----------------------------------------------------------------------------
+
+const ALLOWED_NUTRIENT_IDS = new Set([
+  'calories',
+  'totalFat',
+  'saturatedFat',
+  'transFat',
+  'cholesterol',
+  'sodium',
+  'totalCarbohydrate',
+  'dietaryFiber',
+  'totalSugars',
+  'addedSugars',
+  'protein',
+  'vitaminD',
+  'calcium',
+  'iron',
+  'potassium',
+  'vitaminA',
+  'vitaminC',
+  'vitaminE',
+])
+
+export interface NutrientOverrideRow {
+  nutrient: string
+  value: number
+  reason: string
+}
+
+export async function saveNutrientOverrides(input: {
+  productTemplateId: string
+  overrides: NutrientOverrideRow[]
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  if (input.overrides.length > 20) {
+    return { ok: false, error: 'Maximum 20 nutrient overrides.' }
+  }
+
+  // Validate + drop empties. We do not error on a single bad row — the editor
+  // shows row-level validation; here we just refuse to persist garbage.
+  const seenNutrients = new Set<string>()
+  const cleaned: NutrientOverrideRow[] = []
+  for (const raw of input.overrides) {
+    const nutrient = (raw.nutrient ?? '').trim()
+    if (!nutrient) continue
+    if (!ALLOWED_NUTRIENT_IDS.has(nutrient)) {
+      return { ok: false, error: `Unknown nutrient: ${nutrient}` }
+    }
+    if (seenNutrients.has(nutrient)) {
+      return { ok: false, error: `Duplicate override for ${nutrient}.` }
+    }
+    const value = Number(raw.value)
+    if (!Number.isFinite(value) || value < 0) {
+      return { ok: false, error: `Invalid value for ${nutrient}.` }
+    }
+    const reason = (raw.reason ?? '').trim()
+    if (!reason) {
+      return { ok: false, error: `Reason is required for ${nutrient} override.` }
+    }
+    seenNutrients.add(nutrient)
+    cleaned.push({ nutrient, value, reason })
+  }
+
+  await prisma.productTemplate.update({
+    where: { id: template.id },
+    // Prisma's InputJsonValue is conservative about typed-object arrays —
+    // cast through unknown so the editor's runtime-validated shape lands in
+    // the JSON column. Matches the existing customMeta pattern.
+    data: { nutrientOverrides: cleaned as unknown as object },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// INGREDIENT GROUPS — per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5d.
+// Stored on ProductTemplate.ingredientGroups as
+//   [{ groupName, ingredientIds[], displayMode, sortAs }].
+// FDA 21 CFR 101.4 permits a small set of category names — keep enforced.
+// -----------------------------------------------------------------------------
+
+const ALLOWED_GROUP_NAMES = new Set([
+  'Spices',
+  'Natural Flavors',
+  'Artificial Flavors',
+  'Spices and Spice Extractives',
+])
+
+export type IngredientGroupDisplayMode = 'CATEGORY_ONLY' | 'CATEGORY_WITH_SUBLIST'
+export type IngredientGroupSortAs = 'byWeight' | 'asWritten'
+
+export interface IngredientGroupRow {
+  groupName: string
+  ingredientIds: string[]
+  displayMode: IngredientGroupDisplayMode
+  sortAs: IngredientGroupSortAs
+}
+
+export async function saveIngredientGroups(input: {
+  productTemplateId: string
+  groups: IngredientGroupRow[]
+}): Promise<Result> {
+  const { error, template } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  if (input.groups.length > 8) {
+    return { ok: false, error: 'Maximum 8 ingredient groups per product.' }
+  }
+
+  // Validate: only allowed group names, each ingredient belongs to one group.
+  const seenIngredientIds = new Set<string>()
+  const cleaned: IngredientGroupRow[] = []
+  const seenGroupNames = new Set<string>()
+  for (const raw of input.groups) {
+    const groupName = (raw.groupName ?? '').trim()
+    if (!groupName) continue
+    if (!ALLOWED_GROUP_NAMES.has(groupName)) {
+      return { ok: false, error: `Group name not allowed by FDA: ${groupName}` }
+    }
+    if (seenGroupNames.has(groupName)) {
+      return { ok: false, error: `Duplicate group: ${groupName}` }
+    }
+    const ingredientIds = (raw.ingredientIds ?? []).filter((id): id is string => !!id?.trim())
+    if (!ingredientIds.length) continue
+    for (const id of ingredientIds) {
+      if (seenIngredientIds.has(id)) {
+        return { ok: false, error: `An ingredient is in two groups.` }
+      }
+      seenIngredientIds.add(id)
+    }
+    seenGroupNames.add(groupName)
+    cleaned.push({
+      groupName,
+      ingredientIds,
+      displayMode: raw.displayMode === 'CATEGORY_WITH_SUBLIST' ? 'CATEGORY_WITH_SUBLIST' : 'CATEGORY_ONLY',
+      sortAs: raw.sortAs === 'asWritten' ? 'asWritten' : 'byWeight',
+    })
+  }
+
+  // Verify every referenced ingredient id is actually a base slot on this template
+  // (defence in depth — the picker only surfaces slot ingredients).
+  if (cleaned.length) {
+    const allIds = cleaned.flatMap((g) => g.ingredientIds)
+    const slots = await prisma.templateIngredientSlot.findMany({
+      where: { productTemplateId: template.id, baseIngredientId: { in: allIds } },
+      select: { baseIngredientId: true },
+    })
+    const validIds = new Set(slots.map((s) => s.baseIngredientId))
+    for (const g of cleaned) {
+      g.ingredientIds = g.ingredientIds.filter((id) => validIds.has(id))
+    }
+  }
+
+  await prisma.productTemplate.update({
+    where: { id: template.id },
+    // See comment on saveNutrientOverrides for the cast rationale.
+    data: { ingredientGroups: cleaned as unknown as object },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
 // PARTNER NOTE — partner side of the admin↔partner thread.
 // -----------------------------------------------------------------------------
 

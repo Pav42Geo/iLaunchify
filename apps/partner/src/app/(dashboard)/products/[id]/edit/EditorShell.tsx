@@ -54,6 +54,12 @@ import {
 import { NotesThread, type NoteRow } from './cards/NotesThread'
 import { MediaCard } from './cards/MediaCard'
 import { CustomMetaCard, type CustomMetaRow } from './cards/CustomMetaCard'
+import { NutrientOverridesPanel } from './cards/NutrientOverridesPanel'
+import {
+  IngredientGroupingPanel,
+  type BaseIngredientOption,
+} from './cards/IngredientGroupingPanel'
+import type { NutrientOverrideRow, IngredientGroupRow } from './card-actions'
 
 // -----------------------------------------------------------------------------
 // Props
@@ -101,6 +107,11 @@ interface EditorShellProps {
   heroAssetId: string | null
   customMeta: CustomMetaRow[]
   notes: NoteRow[]
+  // V1 Recipal-parity (§4a.5c / §4a.5d) — persisted on ProductTemplate
+  nutrientOverrides: NutrientOverrideRow[]
+  ingredientGroups: IngredientGroupRow[]
+  // Map of baseIngredientId → name from ingredientSlots, computed in page.tsx
+  baseIngredientsForGrouping: BaseIngredientOption[]
 }
 
 // -----------------------------------------------------------------------------
@@ -120,6 +131,9 @@ export function EditorShell({
   heroAssetId,
   customMeta,
   notes,
+  nutrientOverrides,
+  ingredientGroups,
+  baseIngredientsForGrouping,
 }: EditorShellProps) {
   const router = useRouter()
 
@@ -264,6 +278,21 @@ export function EditorShell({
                 />
               </div>
             </Field>
+
+            {/* Recipal-parity advanced controls — collapsible sub-sections.
+                Live in Basics so they're discoverable without crowding the
+                main slot/variant flow. */}
+            <NutrientOverridesPanel
+              productTemplateId={template.id}
+              initial={nutrientOverrides}
+              isDraft={isDraft}
+            />
+            <IngredientGroupingPanel
+              productTemplateId={template.id}
+              initial={ingredientGroups}
+              baseIngredients={baseIngredientsForGrouping}
+              isDraft={isDraft}
+            />
           </div>
         </EditorCard>
 

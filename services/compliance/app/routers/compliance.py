@@ -24,12 +24,16 @@ router = APIRouter()
 async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
     prisma = await get_prisma()
 
-    # 1. Load recipe + ingredients + product context
+    # 1. Load recipe + ingredients + product context. Pull the linked
+    #    ProductTemplate's nutrientOverrides + ingredientGroups too so we
+    #    can apply Recipal-parity behaviour per MANUFACTURER_PRODUCT_BUILDER
+    #    §4a.5c-d. Templates are optional on V1.0 catalog rows; legacy
+    #    Products without a template fall back to no overrides/groups.
     recipe = await prisma.recipe.find_unique(
         where={"id": body.recipe_id},
         include={
             "ingredients": {"include": {"ingredient": True}},
-            "product": True,
+            "product": {"include": {"productTemplate": True}},
         },
     )
     if not recipe:
@@ -51,12 +55,23 @@ async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
     except FileNotFoundError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    # 3. Compute nutrition
+    # 3. Compute nutrition. Carry ingredient_id + label name + BE status
+    #    along so the rule evaluator can group ingredients and emit the
+    #    bioengineered disclosure.
     ingredient_rows = [
         {
+            "ingredient_id": ri.ingredient.id,
             "weight_g": float(ri.weightG),
+            "display_order": ri.position,
             "nutrition_per_100g": ri.ingredient.nutritionPer100g or {},
             "allergens": ri.ingredient.allergens or [],
+            "label_declaration_name": (
+                ri.ingredient.labelDeclarationName
+                or ri.ingredient.internalName
+                or ri.ingredient.name
+            ),
+            "name": ri.ingredient.name,
+            "bioengineered_status": getattr(ri.ingredient, "bioengineeredStatus", None),
         }
         for ri in recipe.ingredients
     ]
@@ -72,7 +87,16 @@ async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
         profile=profile,
     )
 
-    # 4. Evaluate compliance
+    # 4. Evaluate compliance. Pull template-level overrides + groups when
+    #    the Product is linked to a ProductTemplate (V1 catalog-driven path).
+    product_template = getattr(recipe.product, "productTemplate", None)
+    nutrient_overrides = (
+        getattr(product_template, "nutrientOverrides", None) if product_template else None
+    )
+    ingredient_groups = (
+        getattr(product_template, "ingredientGroups", None) if product_template else None
+    )
+
     serving_size_desc = recipe.servingSizeDesc or f"{float(recipe.servingSizeG):g} g"
     violations, warnings, disclosures, panel = evaluate_compliance(
         rule_pack=rule_pack_json,
@@ -82,6 +106,8 @@ async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
         servings_per_container=int(recipe.servingsPerContainer),
         claim_texts=[],  # V1: claim text capture comes in W6
         product_category=recipe.product.category,
+        nutrient_overrides=nutrient_overrides,
+        ingredient_groups=ingredient_groups,
     )
 
     outcome = "FAILED" if violations else ("PASSED_WITH_WARNINGS" if warnings else "PASSED")

@@ -781,6 +781,10 @@ model PartnerService {
   // matching (#153). Empty arrays mean "uses platform defaults."
   partnerServiceSubstrates         PartnerServiceSubstrate[]
   partnerServicePackagingMaterials PartnerServicePackagingMaterial[]
+  // V1 — product-plan additions 2026-06-01. Co-packer assignment back-relation:
+  // per-product-template, per-packaging-size pointer set by manufacturer/admin
+  // when fill/assembly is sourced through a different partner service.
+  coPackerAssignments              ProductTemplatePackaging[]        @relation("CoPackerAssignment")
   partner            Partner               @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
@@ -1982,6 +1986,20 @@ enum ProductTemplateStatus {
   ARCHIVED               // alias for REJECTED
 }
 
+// Per-template labeling regime (V1 product-plan additions 2026-06-01).
+// Drives which compliance rule pack runs (21 CFR 101.9 food vs 21 CFR 101.36
+// supplements vs AAFCO pet vs OTC drug-facts vs cosmetic) AND which "Facts"
+// panel renders on the label. Category.mainCategory STAYS — labelingType is
+// per-product because a "Beverage" category row covers both Food (RTD juice)
+// and Dietary Supplement (RTD nootropic shot).
+enum LabelingType {
+  FOOD                   // 21 CFR 101.9 Nutrition Facts panel
+  DIETARY_SUPPLEMENT     // 21 CFR 101.36 Supplement Facts panel
+  PET_PRODUCT            // AAFCO Guaranteed Analysis panel
+  OTC                    // 21 CFR 201.66 Drug Facts panel (over-the-counter)
+  COSMETIC               // 21 CFR 701 cosmetic labeling (no "Facts" panel)
+}
+
 // =============================================================================
 // PACKING TOPOLOGY
 // =============================================================================
@@ -2081,6 +2099,11 @@ model ProductTemplate {
   // V1 — Recipal-parity additions per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5c + §4a.5d
   nutrientOverrides           Json?                       // [{ nutrient, value, reason }] — applied after sum, before rounding
   ingredientGroups            Json?                       // [{ groupName, ingredientIds[], displayMode, sortAs }] for FDA-allowed grouping ('Spices', 'Natural Flavors')
+  // V1 — product-plan additions 2026-06-01.
+  // labelingType: per-template label regime (Food / Supplement / Pet / OTC / Cosmetic).
+  // Drives rule pack selection + which "Facts" panel renders. Default FOOD because
+  // the catalog skews food/beverage; partners flip to SUPPLEMENT or PET in the editor.
+  labelingType    LabelingType  @default(FOOD)
   // Relations
   subcategory     Subcategory   @relation(fields: [subcategoryId], references: [id])
   manufacturerService PartnerService? @relation(fields: [manufacturerServiceId], references: [id])
@@ -2094,6 +2117,9 @@ model ProductTemplate {
   reviewItems     ProductReviewItem[]
   notes           ProductNote[]
   flavorPresets   FlavorPreset[]
+  // V1 — product-plan additions 2026-06-01.
+  pricingTiers    ProductTemplatePricingTier[]
+  niches          ProductTemplateNiche[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   @@index([subcategoryId, status])
@@ -3192,9 +3218,44 @@ model ProductTemplatePackaging {
   leadTimeDays      Int                                                   // absolute, not delta from system default
   pricingTiers      Json                                                  // [{ minQuantity, unitPriceCents }]
   surfaceOverrides  Json?                                                 // [{ surfaceId, overrideFileId }] per-product die-line overrides
+  // V1 — product-plan additions 2026-06-01.
+  // coPackerServiceId: which co-packer PartnerService performs the fill/assembly
+  // for this product/size combo. Nullable — defaults to manufacturer-handled fill
+  // until the orchestration engine decomposes into a separate co-packer leg.
+  coPackerServiceId String?
   productTemplate   ProductTemplate  @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
   packagingSystem   PackagingSystem  @relation(fields: [packagingSystemId], references: [id])
+  coPackerService   PartnerService?  @relation("CoPackerAssignment", fields: [coPackerServiceId], references: [id])
   @@id([productTemplateId, packagingSystemId])
+  @@index([coPackerServiceId])
+}
+
+// -----------------------------------------------------------------------------
+// PRODUCT TEMPLATE PRICING TIERS — manufacturer-defined volume tiers
+// (V1 product-plan additions 2026-06-01).
+//
+// Distinct from `ProductTemplatePackaging.pricingTiers` JSON (which is
+// per-packaging-size sliding-scale price points). This typed model lives at
+// the ProductTemplate level so the marketplace can show "starts at $X/unit
+// for 1,000+" without joining through packaging. Per-tier lead time +
+// floor protect the manufacturer from below-cost orders during promos.
+// -----------------------------------------------------------------------------
+
+model ProductTemplatePricingTier {
+  id                String          @id @default(cuid())
+  productTemplateId String
+  sortOrder         Int             @default(0)
+  minQty            Int                                                   // inclusive lower bound
+  maxQty            Int?                                                  // inclusive upper bound; NULL = "and up"
+  perUnitCostCents  Int                                                   // current list per-unit price at this tier
+  perUnitFloorCents Int                                                   // hard floor — promos/discounts cannot dip below
+  leadTimeDays      Int?                                                  // optional override; falls through to packaging.leadTimeDays
+  notes             String?
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  @@unique([productTemplateId, sortOrder])
+  @@index([productTemplateId])
 }
 
 // -----------------------------------------------------------------------------
@@ -3359,4 +3420,39 @@ enum LabelTemplateStatus {
   PENDING_REVIEW      // submitted (AI-generated or partner-submitted) awaiting human curator approval
   ACTIVE              // available in Design Studio gallery
   DEPRECATED          // hidden from gallery; existing creator Designs still valid
+}
+
+// =============================================================================
+// NICHE TAXONOMY (V1 product-plan additions 2026-06-01)
+// =============================================================================
+// Typed catalog of audience-facing niches ("Sports Nutrition", "Pet",
+// "Keto / Low-Carb") that drive marketplace filtering + /launch/[niche]
+// landing pages. ProductTemplateNiche is a many-to-many junction; isPrimary
+// flags the canonical niche for catalog display when a template tags
+// multiple niches (most templates tag 1-2).
+// =============================================================================
+
+model Niche {
+  id               String                  @id @default(cuid())
+  slug             String                  @unique
+  name             String
+  description      String?
+  displayOrder     Int                     @default(0)
+  isActive         Boolean                 @default(true)
+  iconEmoji        String?                                                // hero emoji + subnav glyph
+  accentHex        String?                                                // hex (e.g. #FF2E63) for niche-themed surfaces
+  productTemplates ProductTemplateNiche[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  @@index([isActive, displayOrder])
+}
+
+model ProductTemplateNiche {
+  productTemplateId String
+  nicheId           String
+  isPrimary         Boolean         @default(false)                       // exactly one primary per template recommended (not enforced)
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  niche             Niche           @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  @@id([productTemplateId, nicheId])
+  @@index([nicheId])
 }

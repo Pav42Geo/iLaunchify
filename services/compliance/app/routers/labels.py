@@ -28,7 +28,7 @@ async def render_label(body: LabelRenderRequest):
         where={"id": body.recipe_id},
         include={
             "ingredients": {"include": {"ingredient": True}},
-            "product": True,
+            "product": {"include": {"productTemplate": True}},
         },
     )
     if not recipe:
@@ -45,15 +45,33 @@ async def render_label(body: LabelRenderRequest):
 
     ingredient_rows = [
         {
+            "ingredient_id": ri.ingredient.id,
             "weight_g": float(ri.weightG),
+            "display_order": ri.position,
             "nutrition_per_100g": ri.ingredient.nutritionPer100g or {},
             "allergens": ri.ingredient.allergens or [],
+            "label_declaration_name": (
+                ri.ingredient.labelDeclarationName
+                or ri.ingredient.internalName
+                or ri.ingredient.name
+            ),
+            "name": ri.ingredient.name,
+            "bioengineered_status": getattr(ri.ingredient, "bioengineeredStatus", None),
         }
         for ri in recipe.ingredients
     ]
     profile = calculate_nutrition(
         recipe_serving_size_g=float(recipe.servingSizeG),
         recipe_ingredients=ingredient_rows,
+    )
+
+    # Pull template-level Recipal-parity fields (overrides + groups) if linked.
+    product_template = getattr(recipe.product, "productTemplate", None)
+    nutrient_overrides = (
+        getattr(product_template, "nutrientOverrides", None) if product_template else None
+    )
+    ingredient_groups = (
+        getattr(product_template, "ingredientGroups", None) if product_template else None
     )
 
     serving_size_desc = recipe.servingSizeDesc or f"{float(recipe.servingSizeG):g} g"
@@ -64,6 +82,8 @@ async def render_label(body: LabelRenderRequest):
         serving_size_desc=serving_size_desc,
         servings_per_container=int(recipe.servingsPerContainer),
         product_category=recipe.product.category,
+        nutrient_overrides=nutrient_overrides,
+        ingredient_groups=ingredient_groups,
     )
 
     if body.format == "PDF":

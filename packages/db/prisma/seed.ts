@@ -23,6 +23,7 @@ import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
+import { seedNiches } from './seed-niches'
 
 const prisma = new PrismaClient()
 
@@ -73,6 +74,12 @@ async function main() {
   // offered subset via PartnerServiceSubstrate +
   // PartnerServicePackagingMaterial junctions.
   await seedProductionOptions(prisma)
+
+  // --- Niche taxonomy (V1 product-plan additions 2026-06-01) ---
+  // ~14 starter audience-facing niches (Sports Nutrition, Pet, Keto, etc.)
+  // that drive marketplace filtering + /launch/[niche] landing pages.
+  // Partners tag their ProductTemplates via ProductTemplateNiche.
+  await seedNiches(prisma)
 
   // --- Ingredient governance dictionaries ---
   // ~30 banned + ~40 controversial ingredients per

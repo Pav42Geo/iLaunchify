@@ -20,7 +20,10 @@ import hashlib
 import re
 from typing import Any
 
+from app.bioengineered import build_bioengineered_disclosure
 from app.calculation import collect_allergens
+from app.ingredient_statement import render_ingredient_statement
+from app.overrides import apply_nutrient_overrides, merge_overrides
 from app.rounding import round_nutrient, round_percent_dv
 from app.rule_packs import (
     get_allergen_list,
@@ -41,14 +44,40 @@ def evaluate_compliance(
     servings_per_container: int,
     claim_texts: list[str] | None = None,
     product_category: str = "FOOD",
+    # V1 Recipal-parity additions per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5c-e
+    nutrient_overrides: list[dict[str, Any]] | None = None,
+    preset_nutrient_overrides: list[dict[str, Any]] | None = None,
+    ingredient_groups: list[dict[str, Any]] | None = None,
 ) -> tuple[list[Violation], list[Violation], list[Disclosure], PanelData]:
     """Run the full V1 compliance evaluation.
 
+    Args:
+        rule_pack: Loaded rule pack JSON.
+        profile: Per-serving NutrientProfile from calculate_nutrition (raw).
+        recipe_ingredients: Resolved ingredient rows (incl. label_declaration_name,
+            ingredient_id, weight_g, allergens, bioengineered_status).
+        serving_size_desc: Display string for the panel header.
+        servings_per_container: Integer count for the panel header.
+        claim_texts: Optional marketing claim strings to evaluate.
+        product_category: 'FOOD' | 'SUPPLEMENT' | 'BEVERAGE_FUNCTIONAL'.
+        nutrient_overrides: ProductTemplate.nutrientOverrides JSON (or None).
+        preset_nutrient_overrides: FlavorPreset.nutrientOverrides JSON (or None);
+            preset wins on conflict per §4a.5c.
+        ingredient_groups: ProductTemplate.ingredientGroups JSON (or None).
+
     Returns: (violations, warnings, disclosures, panel_data)
+
+    Note: nutrient overrides are applied AFTER summing-from-ingredients and
+    BEFORE rounding/rendering. The overrides are persisted to the audit row
+    by the caller (router) via apply_nutrient_overrides()'s second return.
     """
     violations: list[Violation] = []
     warnings: list[Violation] = []
     disclosures: list[Disclosure] = []
+
+    # 0. Apply manual nutrient overrides per §4a.5c — preset wins on conflict.
+    merged_overrides = merge_overrides(nutrient_overrides, preset_nutrient_overrides)
+    profile, _applied_audit = apply_nutrient_overrides(profile, merged_overrides)
 
     # 1. Allergen detection — produce "Contains: ..." disclosure
     rule_pack_allergens = {a["id"]: a for a in get_allergen_list(rule_pack)}
@@ -123,6 +152,29 @@ def evaluate_compliance(
                     id=disclaimer.get("id", "dshea_disclaimer"),
                     text=disclaimer.get("text", ""),
                     placement=disclaimer.get("placement", "ADJACENT_TO_CLAIM"),
+                    required=True,
+                )
+            )
+
+    # 6. Bioengineered disclosure per 7 CFR Part 66 (USDA BE Standard 2022).
+    #    Triggered when any ingredient is flagged BIOENGINEERED or
+    #    DERIVED_FROM_BIOENGINEERED. See app/bioengineered.py.
+    be_disclosure = build_bioengineered_disclosure(recipe_ingredients)
+    if be_disclosure is not None:
+        disclosures.append(be_disclosure)
+
+    # 7. Ingredient statement with FDA-allowed grouping (21 CFR 101.4).
+    #    Rendered into a Disclosure with id 'ingredient_statement' so the
+    #    label renderer can pick it up alongside the existing Contains:
+    #    block. See app/ingredient_statement.py.
+    if recipe_ingredients:
+        statement = render_ingredient_statement(recipe_ingredients, ingredient_groups)
+        if statement:
+            disclosures.append(
+                Disclosure(
+                    id="ingredient_statement",
+                    text=f"Ingredients: {statement}",
+                    placement="INFORMATION_PANEL",
                     required=True,
                 )
             )
