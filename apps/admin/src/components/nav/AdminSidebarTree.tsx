@@ -1,37 +1,31 @@
 'use client'
 
-// Admin sidebar v3 — client renderer.
+// Admin sidebar v3 — client renderer (always-open, no collapse).
 //
-// Walks the sidebar-config tree and emits one of two visual shapes:
-//   • SidebarLink     — a single Link row (used for items + leaf children)
-//   • SidebarSection  — a collapsible group with header + indented children
+// Pavel rejected the collapsing UX 2026-05-31: "I dont like how the menus
+// expand let's find another solution to be more vusually knowing from what
+// structure you are coming from or in". This renderer addresses that by:
 //
-// IMPORTANT: SIDEBAR_REGIONS is imported HERE (in the client component)
-// rather than threaded as a prop from the parent server component. The
-// config contains Lucide icon component references which cannot cross
-// the server→client boundary in Next 15 / React 19 (Functions cannot be
-// passed directly to Client Components). Only the `badges` payload —
-// plain Record<string, number> — comes from the server.
+//   1. NEVER collapsing groups — the whole structure is visible at all times.
+//      No expand/collapse buttons, no localStorage, no rotating chevrons.
+//   2. ACTIVE PATH highlighting — the current item gets a strong pink
+//      treatment, AND every ancestor group label gets a tinted state so the
+//      admin can scan top → down and see exactly which branch they're in.
+//   3. Tree guide lines — a faint vertical rule on the left of nested groups
+//      gives the parent-child relationship a visual anchor.
 //
-// Active-state matching:
-//   • Exact match for "/dashboard" so it doesn't wrongly highlight on
-//     every subroute.
-//   • startsWith for everything else (so /partners/abc lights up /partners).
-//
-// Design system locks the chrome:
-//   • Aside is white with hairline border on the right.
-//   • Region labels: tiny ink-400 caps with letter-spacing.
-//   • Active row: pink-50 background + pink-700 text + pink left-bar accent.
-//   • Hover row: ink-50 background, no jump.
-//   • Focus ring: pink-500 ring-offset-1 (matches Button primitive).
+// Hidden routes (hiddenUntilBuilt) are filtered out by filterVisible() so
+// the rendered sidebar stays small even though the config carries the
+// locked V1+V1.5+V2 plan.
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 import type { LucideIcon } from 'lucide-react'
-import { SidebarSection } from './SidebarSection'
 import {
   SIDEBAR_REGIONS,
+  filterVisible,
+  findActivePath,
   type SidebarItem,
   type SidebarBadges,
 } from './sidebar-config'
@@ -42,18 +36,39 @@ interface AdminSidebarTreeProps {
 
 export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
   const pathname = usePathname()
-  const regions = SIDEBAR_REGIONS
+
+  // Filter hiddenUntilBuilt + empty groups before rendering.
+  const regions = SIDEBAR_REGIONS.map((region) => ({
+    ...region,
+    items: filterVisible(region.items),
+  })).filter((r) => r.items.length > 0)
+
+  // Compute the active path (sequence of group labels leading to the current
+  // item) for every region. Only one region will have a non-null match.
+  const activeAncestors = new Set<string>()
+  for (const region of regions) {
+    const path = findActivePath(region.items, pathname)
+    if (path) {
+      for (const label of path) activeAncestors.add(label)
+      break
+    }
+  }
 
   return (
     <aside
       aria-label="Admin navigation"
-      className="hidden w-60 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
+      className="hidden w-64 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
     >
       {regions.map((region, idx) => (
-        <div key={region.id} className={cn(idx > 0 && 'mt-6 border-t border-ink-100 pt-5')}>
-          <div className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-400">
-            {region.label}
-          </div>
+        <div
+          key={region.id}
+          className={cn(idx > 0 && 'mt-6 border-t border-ink-100 pt-5')}
+        >
+          {region.label && (
+            <div className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
+              — {region.label} —
+            </div>
+          )}
           <nav className="space-y-0.5">
             {region.items.map((item) => (
               <RenderItem
@@ -61,6 +76,8 @@ export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
                 item={item}
                 pathname={pathname}
                 badges={badges}
+                activeAncestors={activeAncestors}
+                depth={0}
               />
             ))}
           </nav>
@@ -78,10 +95,14 @@ function RenderItem({
   item,
   pathname,
   badges,
+  activeAncestors,
+  depth,
 }: {
   item: SidebarItem
   pathname: string
   badges: SidebarBadges
+  activeAncestors: Set<string>
+  depth: number
 }) {
   if (item.kind === 'item') {
     return (
@@ -91,26 +112,109 @@ function RenderItem({
         icon={item.icon}
         active={isActive(item.href, pathname)}
         badge={item.badgeKey ? badges[item.badgeKey] : undefined}
+        depth={depth}
       />
     )
   }
-  // section
-  const total = item.children.reduce<number>((acc, c) => {
-    if (c.kind !== 'item' || !c.badgeKey) return acc
-    return acc + (badges[c.badgeKey] ?? 0)
-  }, 0)
+  const isOnActivePath = activeAncestors.has(item.label)
+  // Sum badges for any descendant items so the group label can show a
+  // total pill — only meaningful at depth 0 (top-level Inbox group).
+  const total =
+    depth === 0
+      ? sumBadgesInGroup(item.children, badges)
+      : 0
+
   return (
-    <SidebarSection
-      id={item.id}
+    <SidebarGroup
       label={item.label}
       icon={item.icon}
-      defaultOpen={item.defaultOpen ?? false}
+      onActivePath={isOnActivePath}
       totalCount={total}
+      depth={depth}
     >
       {item.children.map((c) => (
-        <RenderItem key={itemKey(c)} item={c} pathname={pathname} badges={badges} />
+        <RenderItem
+          key={itemKey(c)}
+          item={c}
+          pathname={pathname}
+          badges={badges}
+          activeAncestors={activeAncestors}
+          depth={depth + 1}
+        />
       ))}
-    </SidebarSection>
+    </SidebarGroup>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// One group (always-open visual container)
+// -----------------------------------------------------------------------------
+
+function SidebarGroup({
+  label,
+  icon: Icon,
+  onActivePath,
+  totalCount,
+  depth,
+  children,
+}: {
+  label: string
+  icon?: LucideIcon
+  onActivePath: boolean
+  totalCount: number
+  depth: number
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn(depth === 0 ? 'mt-3' : 'mt-1')}>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md px-2 py-1',
+          // The label is purely visual — no button, no hover affordance.
+          // Top-level groups get the small caps treatment, nested groups
+          // get a slightly less prominent treatment.
+          depth === 0
+            ? 'text-[10.5px] font-bold uppercase tracking-[0.1em]'
+            : 'text-[11px] font-semibold uppercase tracking-[0.06em]',
+          onActivePath
+            ? 'text-pink-700'
+            : depth === 0
+              ? 'text-ink-500'
+              : 'text-ink-400',
+        )}
+      >
+        {Icon && (
+          <Icon
+            aria-hidden="true"
+            className={cn(
+              'h-3 w-3 shrink-0',
+              onActivePath ? 'text-pink-600' : 'text-ink-400',
+            )}
+          />
+        )}
+        <span className="flex-1 truncate">{label}</span>
+        {totalCount > 0 && (
+          <span
+            aria-label={`${totalCount} pending`}
+            className="inline-flex h-4 min-w-[18px] items-center justify-center rounded-full bg-pink-100 px-1 text-[10px] font-semibold tabular-nums text-pink-700"
+          >
+            {totalCount}
+          </span>
+        )}
+      </div>
+
+      {/* Children — indented + faint guide line on the left. */}
+      <div
+        className={cn(
+          'mt-0.5 space-y-0.5',
+          depth === 0
+            ? 'ml-3 border-l border-ink-100 pl-2'
+            : 'ml-3 border-l border-ink-100 pl-2',
+        )}
+      >
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -124,12 +228,14 @@ function SidebarLink({
   icon: Icon,
   active,
   badge,
+  depth,
 }: {
   href: string
   label: string
   icon: LucideIcon
   active: boolean
   badge?: number
+  depth: number
 }) {
   const showBadge = typeof badge === 'number' && badge > 0
   return (
@@ -137,9 +243,12 @@ function SidebarLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px]',
+        'relative flex items-center gap-2.5 rounded-lg py-1.5 pr-2.5 text-[13px]',
         'transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+        // depth 0 has no parent group — pad left for the icon directly
+        // depth ≥1 lives inside a guide-line column already
+        depth === 0 ? 'pl-2.5' : 'pl-2',
         active
           ? 'bg-pink-50 font-semibold text-pink-700'
           : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900',
@@ -148,7 +257,7 @@ function SidebarLink({
       {active && (
         <span
           aria-hidden="true"
-          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-pink-500"
+          className="absolute -left-[2px] top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-pink-500"
         />
       )}
       <Icon
@@ -172,19 +281,28 @@ function SidebarLink({
 }
 
 // -----------------------------------------------------------------------------
-// Active-state matcher
+// Active-state matcher (unchanged from previous version)
 // -----------------------------------------------------------------------------
 
 function isActive(href: string, pathname: string): boolean {
-  // Strip the search param for matching (the inbox uses ?tab=new and similar).
   const [path] = href.split('?')
-  // Exact-match for the dashboard root so nothing else under (dashboard) lights
-  // it up. Every other entry uses startsWith so e.g. /partners/abc lights up
-  // /partners.
-  if (path === '/' || path === '/dashboard') return pathname === path
+  if (path === '/dashboard') return pathname === '/dashboard'
+  if (path === '/' ) return pathname === '/'
   return pathname === path || pathname.startsWith(path + '/')
 }
 
 function itemKey(item: SidebarItem): string {
-  return item.kind === 'item' ? `i:${item.href}:${item.label}` : `s:${item.id}`
+  return item.kind === 'item' ? `i:${item.href}:${item.label}` : `g:${item.label}`
+}
+
+function sumBadgesInGroup(children: SidebarItem[], badges: SidebarBadges): number {
+  let total = 0
+  for (const c of children) {
+    if (c.kind === 'item' && c.badgeKey) {
+      total += badges[c.badgeKey] ?? 0
+    } else if (c.kind === 'group') {
+      total += sumBadgesInGroup(c.children, badges)
+    }
+  }
+  return total
 }

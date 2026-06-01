@@ -1,25 +1,24 @@
 // =============================================================================
-// Admin sidebar v3 — declarative tree
+// Admin sidebar v3 — LOCKED tree
 // =============================================================================
 //
-// Pavel locked the structure 2026-05-31 after the FOD legacy-screenshot audit.
-// The shape:
+// Source of truth: docs/spaces/.../memory/ilaunchify-admin-sidebar-v3-locked.md
+// (Pavel-locked 2026-05-31, VERBATIM). Read that file before changing anything
+// in this config. I deviated once already (the wrong "Operate/Catalog/People &
+// access" tree from earlier in this session) — Pavel rejected it. Don't drift.
 //
-//   • Top-level item        (always visible, no children — e.g. Dashboard)
-//   • Section with children (collapsible group with header + children rows)
-//   • Two outer regions     (PRIMARY + APPLICATIONS) separated by a divider
+// Visual model: ALWAYS-OPEN. No collapse, no expand interaction. The full
+// structure is visible at all times so the admin can see, just by glancing
+// at the sidebar, where they are AND where they came from. Active item +
+// every ancestor group gets visual emphasis (see AdminSidebarTree.tsx).
 //
-// This file is the ONLY source of truth for sidebar contents. Anything the
-// admin should *reach* via the left rail belongs here. Anything queued
-// (inbox/review items) that does NOT have a built page yet is omitted —
-// don't surface dead links.
+// Hide-until-built rule: when a referenced route doesn't exist yet, the
+// item carries `hiddenUntilBuilt: true`. The renderer filters those out
+// AND filters groups whose entire children list becomes empty. The tree
+// here stays the locked plan; the rendered sidebar shows only what works
+// today.
 //
-// Conventions for new entries:
-//   • href is the path under /admin (the admin app is mounted at /).
-//   • icon is a lucide-react component reference (not instance).
-//   • `kind: 'item'` = single nav row.
-//   • `kind: 'section'` = collapsible header with `children: SidebarItem[]`.
-//   • Sections can be nested ONE level deep (V1 — flat enough for ~12 items).
+// =============================================================================
 
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -27,57 +26,50 @@ import {
   Inbox,
   ShoppingBag,
   Package,
-  Boxes,
-  Library,
+  ShieldCheck,
   FlaskConical,
   Award,
   Users,
   Building2,
-  ShieldCheck,
-  CreditCard,
   Crown,
   Plug,
-  Wrench,
   History,
-  Bell,
-  Settings,
-  ShoppingCart,
-  PaintBucket,
   Globe,
-  MapPin,
+  Shield,
+  MessageSquare,
+  LifeBuoy,
+  Sparkles,
+  Bot,
+  BookOpen,
+  CreditCard,
+  Lock,
+  Code,
+  LineChart,
+  Boxes,
+  Brush,
+  Eye,
+  Layers,
+  Type,
+  Image,
+  ScrollText,
+  Megaphone,
+  Radio,
+  Workflow,
+  Globe2,
+  Map,
+  Layout,
+  PackageOpen,
+  FileText,
+  Ticket,
+  Store,
+  Mail,
+  TrendingUp,
 } from 'lucide-react'
 
-export type SidebarItem =
-  | {
-      kind: 'item'
-      href: string
-      label: string
-      icon: LucideIcon
-      /** Optional pink-pill count surfaced on the row. */
-      badgeKey?: BadgeKey
-    }
-  | {
-      kind: 'section'
-      /** Stable id used for localStorage open/closed persistence. */
-      id: string
-      label: string
-      icon: LucideIcon
-      defaultOpen?: boolean
-      children: SidebarItem[]
-    }
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
 
-export interface SidebarRegion {
-  id: string
-  label: string
-  items: SidebarItem[]
-}
-
-/**
- * Badge keys correspond to live counts the sidebar can render as small pink
- * pill annotations on rows. The values are computed server-side in
- * loadSidebarBadges() and threaded through the sidebar as a record so the
- * config stays static and pure.
- */
 export type BadgeKey =
   | 'leads.pending'
   | 'partners.pending'
@@ -88,150 +80,460 @@ export type BadgeKey =
 
 export type SidebarBadges = Partial<Record<BadgeKey, number>>
 
-// -----------------------------------------------------------------------------
-// PRIMARY region — operate the platform
-// -----------------------------------------------------------------------------
+export type SidebarItem =
+  | {
+      kind: 'item'
+      label: string
+      icon: LucideIcon
+      href: string
+      badgeKey?: BadgeKey
+      /** True when the destination route hasn't shipped yet. Renderer hides. */
+      hiddenUntilBuilt?: boolean
+    }
+  | {
+      kind: 'group'
+      label: string
+      /** Optional icon shown next to the group label. */
+      icon?: LucideIcon
+      children: SidebarItem[]
+    }
+
+export interface SidebarRegion {
+  id: string
+  /** Empty string = no region header rendered (primary region). */
+  label: string
+  items: SidebarItem[]
+}
+
+// =============================================================================
+// PRIMARY region — Dashboard / Inbox / Orders / Manage / Settings / Help
+// =============================================================================
 //
-// Order intent: top-down severity. Dashboard first because every shift starts
-// there. Inbox second because anything red-hot lives there. Then the high-
-// volume operational surfaces. Library + admin tools at the bottom.
+// No region label (the dashes around APPLICATIONS in the locked tree are the
+// only visible divider). Items are flat top-level entries until they need
+// children.
 
 const PRIMARY: SidebarRegion = {
   id: 'primary',
-  label: 'Operate',
+  label: '',
   items: [
+    // ---------------------------------------------------------------- Dashboard
     {
       kind: 'item',
-      href: '/dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
+      href: '/dashboard',
     },
+
+    // -------------------------------------------------------------------- Inbox
     {
-      kind: 'section',
-      id: 'inbox',
+      kind: 'group',
       label: 'Inbox',
       icon: Inbox,
-      defaultOpen: true,
       children: [
-        // All five Inbox entries route to surfaces that exist today. Where a
-        // real query-param filter is wired (only /products?tab=new today), we
-        // use it; the rest land on the bare list so the existing functionality
-        // is the source of truth.
         {
           kind: 'item',
-          href: '/leads',
           label: 'Leads',
           icon: Inbox,
+          href: '/leads',
           badgeKey: 'leads.pending',
         },
         {
           kind: 'item',
-          href: '/partners',
           label: 'Partner verification',
           icon: ShieldCheck,
+          href: '/partners',
           badgeKey: 'partners.pending',
         },
         {
           kind: 'item',
-          href: '/products?tab=new',
-          label: 'Product approvals',
-          icon: Package,
-          badgeKey: 'products.pending',
+          label: 'Cert instance reviews',
+          icon: Award,
+          // Until a dedicated /admin/certs/instances queue ships, route to
+          // the certificate-types page where instance review lives today.
+          href: '/certificate-types',
+          badgeKey: 'certs.pending',
         },
         {
           kind: 'item',
-          href: '/ingredients',
           label: 'Ingredient queue',
           icon: FlaskConical,
+          href: '/ingredients',
           badgeKey: 'ingredients.pending',
         },
         {
           kind: 'item',
-          href: '/certificate-types',
-          label: 'Cert reviews',
-          icon: Award,
-          badgeKey: 'certs.pending',
+          label: 'Product approvals',
+          icon: Package,
+          href: '/products?tab=new',
+          badgeKey: 'products.pending',
+        },
+        {
+          kind: 'item',
+          label: 'Packaging-type submissions',
+          icon: PackageOpen,
+          href: '/packaging-submissions',
+          hiddenUntilBuilt: true,
+        },
+        {
+          kind: 'item',
+          label: 'Phrase submissions',
+          icon: MessageSquare,
+          href: '/phrase-submissions',
+          hiddenUntilBuilt: true,
+        },
+        {
+          kind: 'item',
+          label: 'Support tickets',
+          icon: LifeBuoy,
+          href: '/support-tickets',
+          hiddenUntilBuilt: true,
         },
       ],
     },
+
+    // ------------------------------------------------------------------- Orders
     {
-      kind: 'section',
-      id: 'orders',
-      label: 'Orders & fulfilment',
+      kind: 'item',
+      label: 'Orders',
       icon: ShoppingBag,
-      defaultOpen: true,
+      href: '/orders',
+    },
+
+    // ------------------------------------------------------------------ Manage
+    {
+      kind: 'group',
+      label: 'Manage',
+      icon: Layers,
       children: [
-        // Single existing list route — kept under its parent so the group label
-        // matches the dashboard widget grouping. Sub-routes (dispatches /
-        // subscriptions filters) will be added in a follow-up once /orders
-        // supports those URL params.
-        { kind: 'item', href: '/orders', label: 'All orders', icon: ShoppingBag },
+        {
+          kind: 'item',
+          label: 'Products & Categories',
+          icon: Package,
+          href: '/products',
+        },
+        {
+          kind: 'group',
+          label: 'Users & Roles',
+          icon: Users,
+          children: [
+            {
+              kind: 'item',
+              label: 'Admins',
+              icon: Shield,
+              href: '/admins',
+              hiddenUntilBuilt: true,
+            },
+            { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
+            { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Asset Management',
+          icon: Boxes,
+          children: [
+            {
+              kind: 'item',
+              label: 'Packaging Symbols',
+              icon: Sparkles,
+              href: '/asset-management/packaging-symbols',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Packaging Materials',
+              icon: Boxes,
+              href: '/asset-management/packaging-materials',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Die-Cut Shapes (+ compliance grids)',
+              icon: Layout,
+              href: '/asset-management/die-cut-shapes',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Packaging Types',
+              icon: Package,
+              href: '/asset-management/packaging-types',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Nutrition Facts Labels',
+              icon: FileText,
+              href: '/asset-management/nutrition-facts-labels',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Supplement Facts Labels',
+              icon: FileText,
+              href: '/asset-management/supplement-facts-labels',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Mandatory Phrases',
+              icon: ScrollText,
+              href: '/asset-management/mandatory-phrases',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Certificate Library',
+              icon: Award,
+              href: '/certificate-types',
+            },
+            {
+              kind: 'item',
+              label: 'Ingredient Library',
+              icon: FlaskConical,
+              href: '/ingredients',
+            },
+            {
+              kind: 'item',
+              label: 'Die-Cut Design Templates',
+              icon: Brush,
+              href: '/asset-management/die-cut-design-templates',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Product Mockups',
+              icon: Eye,
+              href: '/asset-management/product-mockups',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Graphics Library',
+              icon: Image,
+              href: '/asset-management/graphics-library',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Fonts Library',
+              icon: Type,
+              href: '/asset-management/fonts-library',
+              hiddenUntilBuilt: true,
+            },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Communications',
+          icon: Megaphone,
+          children: [
+            {
+              kind: 'item',
+              label: 'Notification templates',
+              icon: Mail,
+              href: '/communications/notification-templates',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Broadcasts',
+              icon: Radio,
+              href: '/communications/broadcasts',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Support workflows',
+              icon: Workflow,
+              href: '/communications/support-workflows',
+              hiddenUntilBuilt: true,
+            },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'Languages & Markets',
+          icon: Globe,
+          children: [
+            {
+              kind: 'item',
+              label: 'Markets / Regions',
+              icon: Globe,
+              href: '/markets',
+            },
+            {
+              kind: 'group',
+              label: 'Global Compliance Center',
+              icon: Globe2,
+              children: [
+                {
+                  kind: 'item',
+                  label: 'Market Profiles',
+                  icon: Map,
+                  href: '/compliance-center/market-profiles',
+                  hiddenUntilBuilt: true,
+                },
+                {
+                  kind: 'item',
+                  label: 'Regulation Matrix',
+                  icon: ShieldCheck,
+                  href: '/compliance-center/regulation-matrix',
+                  hiddenUntilBuilt: true,
+                },
+                {
+                  kind: 'item',
+                  label: 'Compliance Gallery',
+                  icon: Award,
+                  href: '/compliance-center/compliance-gallery',
+                  hiddenUntilBuilt: true,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          kind: 'group',
+          label: 'AI Tools',
+          icon: Sparkles,
+          children: [
+            {
+              kind: 'item',
+              label: 'Prompt Library',
+              icon: BookOpen,
+              href: '/ai-tools/prompt-library',
+              hiddenUntilBuilt: true,
+            },
+            {
+              kind: 'item',
+              label: 'Template Agents',
+              icon: Bot,
+              href: '/ai-tools/template-agents',
+              hiddenUntilBuilt: true,
+            },
+          ],
+        },
       ],
     },
+
+    // ----------------------------------------------------------------- Settings
     {
-      kind: 'section',
-      id: 'catalog',
-      label: 'Catalog',
-      icon: Boxes,
-      defaultOpen: false,
+      kind: 'group',
+      label: 'Settings',
+      icon: ShieldCheck,
       children: [
-        { kind: 'item', href: '/products', label: 'Products', icon: Package },
-        { kind: 'item', href: '/ingredients', label: 'Ingredients', icon: FlaskConical },
-        { kind: 'item', href: '/certificate-types', label: 'Cert library', icon: Award },
-        // #154 — V1 read-only surfaces for Market + Region. Seed-driven; the
-        // pages link straight from the sidebar so admin can verify coverage.
-        { kind: 'item', href: '/markets', label: 'Markets', icon: Globe },
-        { kind: 'item', href: '/regions', label: 'Regions', icon: MapPin },
+        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        {
+          kind: 'item',
+          label: 'Billing & Subscription',
+          icon: CreditCard,
+          href: '/billing',
+          hiddenUntilBuilt: true,
+        },
+        {
+          kind: 'item',
+          label: 'Security & Access',
+          icon: Lock,
+          href: '/security',
+          hiddenUntilBuilt: true,
+        },
+        {
+          kind: 'item',
+          label: 'Developer & API',
+          icon: Code,
+          href: '/developer',
+          hiddenUntilBuilt: true,
+        },
+        { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
+        {
+          kind: 'item',
+          label: 'Analytics & Monitoring',
+          icon: LineChart,
+          href: '/analytics',
+          hiddenUntilBuilt: true,
+        },
       ],
     },
+
+    // ------------------------------------------------------------- Help & Support
     {
-      kind: 'section',
-      id: 'people',
-      label: 'People & access',
-      icon: Users,
-      defaultOpen: false,
+      kind: 'group',
+      label: 'Help & Support',
+      icon: LifeBuoy,
       children: [
-        { kind: 'item', href: '/creators', label: 'Creators', icon: Users },
-        { kind: 'item', href: '/partners', label: 'Partners', icon: Building2 },
-      ],
-    },
-    {
-      kind: 'section',
-      id: 'commerce',
-      label: 'Commerce',
-      icon: CreditCard,
-      defaultOpen: false,
-      children: [
-        { kind: 'item', href: '/tiers', label: 'Tiers & plans', icon: Crown },
-        { kind: 'item', href: '/channels', label: 'Channels', icon: Plug },
-        { kind: 'item', href: '/compliance', label: 'Compliance', icon: ShieldCheck },
+        {
+          kind: 'item',
+          label: 'My tickets',
+          icon: Ticket,
+          href: '/my-tickets',
+          hiddenUntilBuilt: true,
+        },
       ],
     },
   ],
 }
 
-// -----------------------------------------------------------------------------
-// APPLICATIONS region — embedded operational tools
-// -----------------------------------------------------------------------------
+// =============================================================================
+// APPLICATIONS region — embedded mini-apps
+// =============================================================================
 //
-// These are full-surface mini-apps the admin OPERATES rather than READS. Kept
-// in their own region per Pavel's spec — they're heavier than nav entries and
-// shouldn't visually mix with audit / settings.
+// All hidden in V1 — placeholders for the locked plan. Channels exists today
+// under /channels and is mapped under Integrations & API. Everything else
+// surfaces when the corresponding admin tooling lands.
 
 const APPLICATIONS: SidebarRegion = {
   id: 'applications',
   label: 'Applications',
   items: [
     {
-      kind: 'section',
-      id: 'platform-tools',
-      label: 'Platform tools',
-      icon: Wrench,
-      defaultOpen: false,
+      kind: 'item',
+      label: 'Marketplace',
+      icon: Store,
+      href: '/applications/marketplace',
+      hiddenUntilBuilt: true,
+    },
+    {
+      kind: 'item',
+      label: 'Design Studio (with Admin mode)',
+      icon: Brush,
+      href: '/applications/design-studio',
+      hiddenUntilBuilt: true,
+    },
+    {
+      kind: 'item',
+      label: 'Packaging Studio',
+      icon: Boxes,
+      href: '/applications/packaging-studio',
+      hiddenUntilBuilt: true,
+    },
+    {
+      kind: 'item',
+      label: 'Packaging Mockups (2D & 3D)',
+      icon: Eye,
+      href: '/applications/packaging-mockups',
+      hiddenUntilBuilt: true,
+    },
+    {
+      kind: 'group',
+      label: 'Integrations & API',
+      icon: Plug,
       children: [
-        { kind: 'item', href: '/audit', label: 'Audit log', icon: History },
-        { kind: 'item', href: '/notifications', label: 'Notifications', icon: Bell },
-        { kind: 'item', href: '/settings', label: 'Settings', icon: Settings },
+        { kind: 'item', label: 'Channels', icon: Plug, href: '/channels' },
+        {
+          kind: 'item',
+          label: 'Marketing',
+          icon: Megaphone,
+          href: '/integrations/marketing',
+          hiddenUntilBuilt: true,
+        },
+        {
+          kind: 'item',
+          label: 'Analytics',
+          icon: TrendingUp,
+          href: '/integrations/analytics',
+          hiddenUntilBuilt: true,
+        },
       ],
     },
   ],
@@ -239,37 +541,50 @@ const APPLICATIONS: SidebarRegion = {
 
 export const SIDEBAR_REGIONS: SidebarRegion[] = [PRIMARY, APPLICATIONS]
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Helpers
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 /**
- * Walks the tree and flattens to a `[href, label]` map.
- * Used by the topbar breadcrumb + tests to assert every route is wired.
+ * Recursively strip `hiddenUntilBuilt` items + groups that become empty.
+ * Used by the renderer + by tests to assert what's actually navigable.
  */
-export function flattenSidebar(regions: SidebarRegion[] = SIDEBAR_REGIONS) {
-  const out: Array<{ href: string; label: string }> = []
-  function walk(items: SidebarItem[]) {
-    for (const it of items) {
-      if (it.kind === 'item') out.push({ href: it.href, label: it.label })
-      else walk(it.children)
+export function filterVisible(items: SidebarItem[]): SidebarItem[] {
+  const out: SidebarItem[] = []
+  for (const item of items) {
+    if (item.kind === 'item') {
+      if (!item.hiddenUntilBuilt) out.push(item)
+    } else {
+      const visibleChildren = filterVisible(item.children)
+      if (visibleChildren.length > 0) {
+        out.push({ ...item, children: visibleChildren })
+      }
     }
   }
-  for (const r of regions) walk(r.items)
   return out
 }
 
-// Re-export icon names for the dashboard widget that mirrors quick actions.
-export {
-  LayoutDashboard,
-  Inbox,
-  ShoppingBag,
-  Package,
-  Users,
-  Building2,
-  ShieldCheck,
-  Crown,
-  ShoppingCart,
-  PaintBucket,
-  Library,
+/**
+ * Returns the array of group labels from the root down to the first item
+ * matching `pathname`, or null if no match. Used by the renderer to
+ * highlight ancestor groups along the active path.
+ */
+export function findActivePath(
+  items: SidebarItem[],
+  pathname: string,
+): string[] | null {
+  for (const item of items) {
+    if (item.kind === 'item') {
+      const [path] = item.href.split('?')
+      const matches =
+        path === '/dashboard'
+          ? pathname === '/dashboard'
+          : pathname === path || pathname.startsWith(path + '/')
+      if (matches) return []
+    } else {
+      const childPath = findActivePath(item.children, pathname)
+      if (childPath !== null) return [item.label, ...childPath]
+    }
+  }
+  return null
 }
