@@ -324,6 +324,139 @@ Each block component in the page then guards its render on `blocks[slug]`. Serve
 
 **Future: creator-side blocks** — same model could later carry creator-dashboard widgets (`scope: CREATOR_TIER`) so a Maker sees a slimmer panel than an Agency. Out of scope for V1; the schema is forward-compatible.
 
+### §2.6 Card media + hover-swap — manufacturer-uploaded stylized images + admin niche-card management
+
+**Prompt origin (Pavel 2026-06-01):** "Manage here the product cards and niche cards in the marketplace — image swapping on mouse over for the product and niche cards with mockup image and special dynamic image, but not in the detailed page. Also the Manufacturer should be able to upload stylized images of the product, die-cut template if they offer packaging."
+
+The detail-page toggles in §2.5 control *what blocks render* on the detail page. **§2.6 is a different surface entirely** — it covers the *visual content* of cards on the marketplace browse + niche landing pages. Cards have their own hover-swap visual signal, sourced from manufacturer-uploaded media that they curate during the product builder flow.
+
+#### Two distinct card surfaces
+
+| Surface | Where it lives | Who manages media |
+|---|---|---|
+| **Product card** (marketplace browse + category rows + featured grids + niche rails) | `/marketplace`, `/marketplace/[category]/[subcategory]`, `/launch/[niche]`, every product carousel | **Manufacturer** uploads in `/partner/products/[id]/edit` Media card |
+| **Niche card** (the 8 Creator Niche hero cards on `/marketplace` home + `/launch` index + the niche subnav strip) | Surfaces above | **Admin** uploads in `/admin/marketplace/niches` |
+
+Both card types support **hover-swap**: the card shows a primary image at rest and a secondary "dynamic" image on hover (lifestyle / mockup / packaging shot). Pavel: "not in the detailed page" — the detail page uses the gallery (separate composition), this hover-swap is for the browse surface only.
+
+#### Manufacturer media uploads (Product Templates)
+
+Extend the existing Media card in `apps/partner/.../products/[id]/edit` so manufacturers can upload **multiple** images per product, each tagged with a role:
+
+```ts
+model ProductTemplateMediaAsset {
+  id                   String   @id @default(cuid())
+  productTemplateId    String
+  assetId              String                              // R2 file ref
+  role                 ProductMediaRole                    // HERO | STYLIZED | LIFESTYLE | MOCKUP | PACKAGE_SHOT | INGREDIENT
+  sortOrder            Int      @default(0)
+  altText              String?
+  // Card-specific selection (admin can override per-niche / per-category at the §2.5 layer)
+  isCardPrimary        Boolean  @default(false)            // chosen for the marketplace card default state
+  isCardHover          Boolean  @default(false)            // chosen for the marketplace card hover state
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  productTemplate      ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  @@index([productTemplateId, role])
+  @@unique([productTemplateId, isCardPrimary])             // exactly one primary
+  @@unique([productTemplateId, isCardHover])               // exactly one hover, optional
+}
+
+enum ProductMediaRole {
+  HERO              // primary catalog photo, default card image
+  STYLIZED          // mockup / packshot — the dynamic hover image
+  LIFESTYLE         // product-in-use scene (also eligible for card hover)
+  MOCKUP            // rendered package mockup if manufacturer offers packaging
+  PACKAGE_SHOT      // flat-lay of finished package
+  INGREDIENT        // ingredient close-up — used on detail page only
+}
+```
+
+Manufacturer flow in `MediaCard.tsx`:
+1. Upload up to 8 images per product. Drag to reorder.
+2. Each image gets a role picker (HERO / STYLIZED / LIFESTYLE / MOCKUP / PACKAGE_SHOT / INGREDIENT).
+3. Two designated slots: **"Card primary"** (defaults to first HERO) + **"Card hover"** (defaults to first STYLIZED, else first LIFESTYLE, else null). Manufacturer can override the pick.
+4. Live preview component renders both states (default + hover) so the manufacturer sees what creators will see.
+5. The `ProductTemplate.imageAssetId` (existing field) stays as a denormalized cache of card-primary for fast list rendering; updated on save.
+
+#### Die-cut template upload — packaging-offering manufacturers only
+
+Per Pavel: "die-cut template if they offer packaging."
+
+Add to the same Media card a **conditional die-cut upload slot** that surfaces only when the manufacturer's `PartnerService` includes packaging capabilities (i.e., the partner runs `MANUFACTURING` with `packagingSystems[]` populated, or `LABEL_PRINTING`, or `COPACKING` with packaging supply). Otherwise the slot is hidden.
+
+```ts
+// Add to ProductTemplate
+dieCutTemplateFileId   String?               // PartnerFile (PDF) — only when partner offers packaging
+dieCutTemplatePreviewAssetId String?         // optional flattened PNG preview generated server-side
+dieCutTemplateUpdatedAt DateTime?
+```
+
+Why per-ProductTemplate instead of inheriting `PackagingSystem.dieCutSupport`:
+- A product can have its own product-specific die-line that overrides the generic packaging die-line (custom-shaped packaging, branded cutouts, etc.).
+- When the creator enters Design Studio for this product, the Studio uses the product-level die-cut if present; else falls back to the `PackagingSystem`-level die-line from the chosen packaging system; else fails closed with a "no die-line available" toast (matches the existing fallback chain).
+- Admin must verify the uploaded die-cut PDF passes the existing PitStop preflight before the product can move to PUBLISHED — surface this in the §141 product review checklist as a new "Die-cut preflight passed?" item.
+
+#### Admin niche-card media (Niche table)
+
+Extend the Niche model so admin can upload niche-specific hover-swap images:
+
+```ts
+// Add to Niche
+heroImageAssetId       String?               // default card image — admin-uploaded
+hoverImageAssetId      String?               // dynamic hover image — admin-uploaded
+heroVideoAssetId       String?               // optional auto-play loop on hover (V1.5+)
+```
+
+Admin flow in `/admin/marketplace/niches`:
+- Each of the 8 locked niches has a row with the two image slots inline.
+- Same hover preview as the manufacturer flow.
+- Falls back gracefully to the gradient + emoji from `apps/marketing/src/lib/niches.ts` when no image is uploaded (so the page never breaks).
+
+#### Renderer — `ProductCard` + `NicheCard` updates
+
+Both components in `packages/ui` extend:
+
+```tsx
+<ProductCard
+  productTemplateId={t.id}
+  primaryImage={t.imageAssetUrl}
+  hoverImage={t.hoverImageAssetUrl}        // NEW — optional; component handles undefined
+  // …
+/>
+<NicheCard
+  niche={n}
+  primaryImage={n.heroImageAssetUrl}        // NEW
+  hoverImage={n.hoverImageAssetUrl}         // NEW
+  fallbackGradient={n.gradient}             // existing — used when no images
+/>
+```
+
+The hover state is pure CSS (`group-hover:opacity-0` / `group-hover:opacity-100` with crossfade). No JS state, no flicker. Both images are `<img loading="lazy">`; the hover image preloads on mouseenter for the first-hover delay to feel instant.
+
+Mobile: hover state doesn't fire. The card uses primary only. A tap navigates to detail. (Pavel may want a "double-tap to swap" gesture for mobile in V1.5; out of scope V1.)
+
+#### Why this lives in §2 Marketplace Management (not just product builder)
+
+The **upload** happens in the partner / admin product builders. The **policy** — "which roles count as hover-eligible," "what's the fallback chain when manufacturer didn't designate a hover image," "is hover-swap on or off this season" — lives in marketplace management config. That last lever lets admin disable hover-swap globally (e.g., for accessibility-mode A/B) without breaking any card.
+
+A new `MarketplaceConfig` row covers the policy levers; future levers (autoplay on hover, hover-swap duration, double-tap mobile) attach here.
+
+```ts
+model MarketplaceConfig {
+  key      String  @id              // 'card.hoverSwap.enabled', 'card.hoverSwap.duration_ms', …
+  value    Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+```
+
+#### Out of scope (V1)
+
+- Per-creator-tier hover image (Premier sees the mockup, Maker sees the standard) — punted.
+- Video on hover — punted to V1.5+ (the schema includes `heroVideoAssetId` so we don't migrate later).
+- Hover image AB-testing — deferred with the rest of §2.4 A/B.
+
 ---
 
 ## §3 Schema additions required
