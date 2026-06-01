@@ -96,9 +96,9 @@ export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
       {SIDEBAR_REGIONS.map((region, idx) => (
         <div
           key={region.id}
-          className={cn(idx > 0 && 'mt-6 border-t border-ink-100 pt-5')}
+          className={cn(idx > 0 && 'mt-5 pt-4')}
         >
-          {idx > 0 && region.label && (
+          {region.label && (
             <div className="mb-2 flex items-center gap-2 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
               <span className="h-px flex-1 bg-ink-200" />
               <span>{region.label}</span>
