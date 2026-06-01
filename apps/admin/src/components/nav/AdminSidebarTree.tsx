@@ -48,43 +48,70 @@ export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
   // Returns ['Manage', 'Users & Roles'] for /admin/creators.
   const activeAncestors = computeActiveAncestors(SIDEBAR_REGIONS, pathname)
 
-  // First mount: merge localStorage + the active ancestor chain.
+  // Pavel 2026-06-01: only one TOP-LEVEL group open at a time (accordion).
+  // Compute the set of top-level group labels so we know which ones to
+  // close when another top-level opens. Sub-groups (depth ≥1) toggle
+  // independently — multiple can stay open.
+  const topLevelLabels = computeTopLevelGroupLabels(SIDEBAR_REGIONS)
+
+  // First mount: merge localStorage + the active ancestor chain, then
+  // collapse all OTHER top-level groups (accordion rule).
   useEffect(() => {
     const stored = readStorage()
-    const next = new Set<string>(stored)
-    for (const ancestor of activeAncestors) next.add(ancestor)
+    const merged = new Set<string>([...stored, ...activeAncestors])
+    const next = applyAccordion(merged, topLevelLabels, activeAncestors)
     setOpenSet(next)
     setHydrated(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Whenever the pathname changes, auto-open the new ancestor chain (but
-  // leave anything else the user opened alone).
+  // When pathname changes, auto-open the new ancestor chain AND apply
+  // accordion (close other top-level groups). User toggles for nested
+  // groups stay sticky.
   useEffect(() => {
     if (!hydrated) return
     setOpenSet((prev) => {
-      let changed = false
-      const next = new Set(prev)
-      for (const ancestor of activeAncestors) {
-        if (!next.has(ancestor)) {
-          next.add(ancestor)
-          changed = true
-        }
+      const merged = new Set([...prev, ...activeAncestors])
+      const next = applyAccordion(merged, topLevelLabels, activeAncestors)
+      // Skip update when no change.
+      if (next.size === prev.size && [...next].every((v) => prev.has(v))) {
+        return prev
       }
-      return changed ? next : prev
+      writeStorage(next)
+      return next
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, hydrated])
 
-  const toggle = useCallback((label: string) => {
-    setOpenSet((prev) => {
-      const next = new Set(prev)
-      if (next.has(label)) next.delete(label)
-      else next.add(label)
-      writeStorage(next)
-      return next
-    })
-  }, [])
+  const toggle = useCallback(
+    (label: string) => {
+      setOpenSet((prev) => {
+        const next = new Set(prev)
+        const wasOpen = next.has(label)
+        if (wasOpen) {
+          next.delete(label)
+        } else {
+          next.add(label)
+          // Accordion: if opening a top-level group, close every OTHER
+          // top-level group. Always keep the active-ancestor top-level
+          // chain open so navigation context never disappears.
+          if (topLevelLabels.has(label)) {
+            const activeTopLevel = activeAncestors.find((a) =>
+              topLevelLabels.has(a),
+            )
+            for (const other of topLevelLabels) {
+              if (other !== label && other !== activeTopLevel) {
+                next.delete(other)
+              }
+            }
+          }
+        }
+        writeStorage(next)
+        return next
+      })
+    },
+    [topLevelLabels, activeAncestors],
+  )
 
   const ancestorSet = new Set(activeAncestors)
 
@@ -402,6 +429,55 @@ function walkForAncestors(
     }
   }
   return null
+}
+
+/**
+ * Collect labels of every group that lives directly at the root of any
+ * region — these are the "top-level groups" subject to accordion behavior.
+ */
+function computeTopLevelGroupLabels(
+  regions: typeof SIDEBAR_REGIONS,
+): Set<string> {
+  const out = new Set<string>()
+  for (const region of regions) {
+    for (const item of region.items) {
+      if (item.kind === 'group') out.add(item.label)
+    }
+  }
+  return out
+}
+
+/**
+ * Apply the accordion rule to a candidate openSet: at most one top-level
+ * group open at a time. The top-level group that contains the active route
+ * always wins; otherwise the first top-level present in `candidate` wins.
+ */
+function applyAccordion(
+  candidate: Set<string>,
+  topLevelLabels: Set<string>,
+  activeAncestors: string[],
+): Set<string> {
+  // Find which top-level group the active route lives under (if any).
+  const activeTopLevel = activeAncestors.find((a) => topLevelLabels.has(a))
+
+  // Which top-level is "winning" the accordion slot:
+  //   1. The one containing the active route, if present.
+  //   2. Otherwise the first top-level the user has opened.
+  let winner: string | undefined = activeTopLevel
+  if (!winner) {
+    for (const label of candidate) {
+      if (topLevelLabels.has(label)) {
+        winner = label
+        break
+      }
+    }
+  }
+
+  const next = new Set(candidate)
+  for (const label of topLevelLabels) {
+    if (label !== winner) next.delete(label)
+  }
+  return next
 }
 
 // -----------------------------------------------------------------------------
