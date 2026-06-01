@@ -396,14 +396,25 @@ Partners get **zero** control over how their products render on the
 marketplace. Marketplace visual customization (themes, card variants,
 hero layout, color accents) is admin-only.
 
-- Partner Brand Identity feeds: canvas label render + Design Studio
-  template filtering. Period.
-- It does NOT feed: marketplace product card style, marketplace hero,
-  cert-strip color, or category-page accent.
-- The `MarketplaceTheme` model in §2.1 is for admin seasonal /
-  niche-specific themes only; never partner-scoped.
+**Critical disambiguation (Pavel 2026-06-01):** "Brand Identity" is a
+CREATOR concept, not a Partner concept.
 
-Why: Marketplace is the platform's brand surface. Letting partners
-re-skin would (a) destroy visual coherence, (b) become a trust attack
-surface (sketchy partners faking certification chips), (c) confuse
-creators about what's platform-promise vs partner-promise.
+- **Creator Brand Identity** (`/brands/[brandId]/assets`) — the
+  creator's brand presets for their D2C CPG line. Feeds the Fabric.js
+  packaging canvas + Design Studio template filtering. Only after the
+  creator has picked a template from the marketplace and entered the
+  Studio. Does NOT touch the marketplace browse surface.
+- **Partners do NOT have Brand Identity** in the iLaunchify sense.
+  They have a company name + verification status + optional profile
+  logo. They do NOT feed Design Studio, the canvas, or the marketplace
+  card. Marketplace renders one platform-standard card per product;
+  partners can't re-skin theirs.
+- The `MarketplaceTheme` model in §2.1 is for admin seasonal /
+  niche-specific themes only — never partner-scoped, never creator-
+  scoped.
+
+Why: Marketplace is the platform's brand surface. Letting either
+partners or creators re-skin would (a) destroy visual coherence, (b)
+become a trust attack surface (sketchy vendors faking certification
+chips), (c) confuse viewers about what's platform-promise vs
+vendor-promise.
