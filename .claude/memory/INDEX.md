@@ -69,6 +69,7 @@ cp "$LATEST"/*.md .claude/memory/
 ### Engineering gotchas
 
 - `ilaunchify-dev-prisma-restart.md` — restart Next after migrate
+- `ilaunchify-migrate-dev-hangs-use-deploy.md` — `migrate dev` hangs locally; hand-author SQL + `migrate deploy`
 - `ilaunchify-legacy-fod-frontend-squats-port-3000.md` — Docker container on 3000
 - `ilaunchify-cross-app-links-must-use-helper.md` — marketingUrl/creatorUrl helpers
 - `ilaunchify-cockroachdb-no-db-text.md` — no @db.Text
