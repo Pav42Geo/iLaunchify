@@ -1159,6 +1159,11 @@ model Design {
   brandId         String
   templateVersionId String?                              // which template version this started from
   status          DesignStatus     @default(DRAFT)
+  // Cert badges (DESIGN_STUDIO.md §Certificate badges V1). A product has one
+  // Design per surface/die-cut; exactly one is the "certifications surface"
+  // that hosts the managed cert-badge zone. Auto-defaults to the product's
+  // first Design; creator can move it (app logic enforces at-most-one true).
+  showsCertifications Boolean       @default(false)
   // Relations
   product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   brand           Brand            @relation(fields: [brandId], references: [id])
