@@ -107,7 +107,15 @@ export async function loadProductCertBadges(
         where: { id: badgeAssetId },
         select: { storageKey: true },
       })
-      if (asset?.storageKey) badgeUrl = await getSignedReadUrl(asset.storageKey)
+      // Long TTL: this URL is held for the whole editing session (the cert zone
+      // reconciles on open AND the Label-drawer "add" / thumbnail reuse it). The
+      // default 5-min signed URL would expire mid-session and silently fail the
+      // badge fetch. 8h comfortably covers a design session.
+      if (asset?.storageKey) {
+        badgeUrl = await getSignedReadUrl(asset.storageKey, {
+          expiresInSeconds: 8 * 60 * 60,
+        })
+      }
     }
     badges.push({
       certInstanceId: c.instance.id,
