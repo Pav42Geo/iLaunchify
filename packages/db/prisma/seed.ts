@@ -20,6 +20,7 @@ import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
+import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
@@ -589,6 +590,11 @@ async function main() {
   // Platform-curated, manufacturerServiceId=NULL. Partners clone these as
   // a head start on /products/new/starter.
   await seedStarterTemplates(prisma)
+
+  // --- Pricing bridge (punch-list #2) ---
+  // One real ProductTemplate matching a marketplace fixture slug + real pricing
+  // tiers, so the detail page shows real volume pricing (proves the wire).
+  await seedPricingBridge(prisma)
 
   // --- Design Studio template gallery (#148) ---
   // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
