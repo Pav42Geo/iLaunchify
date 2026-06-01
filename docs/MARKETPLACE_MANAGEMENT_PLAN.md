@@ -310,3 +310,100 @@ Five blocking-ish decisions that change the schema or the build order. Listed in
 - `apps/marketing/src/lib/sample-templates.ts`
 - `packages/ui/src/components/pricing-tier-data.ts`
 - Memory: `ilaunchify-business-model.md`, `ilaunchify-orchestration-thesis.md`, `ilaunchify-design-system-v1.md`, `ilaunchify-admin-surface-pattern.md`, `ilaunchify-admin-sidebar-v3-locked.md`, `ilaunchify-earn-the-right-to-multi-tenant.md`, `ilaunchify-markets-and-regions.md`, `ilaunchify-v15-tier-upgrade-shipped.md`, `ilaunchify-cockroachdb-no-db-text.md`, `ilaunchify-dev-prisma-restart.md`.
+
+---
+
+## §6 Pavel decisions — 2026-06-01 (LOCKED)
+
+Memory: `ilaunchify-marketplace-decisions-2026-06-01.md`.
+
+### Niches — 1 primary + up to 2 secondaries (total ≤ 3)
+
+Multi-niche is the right call BUT not unbounded. The trade-off:
+*Niche-as-landing-page* needs curatorial crispness (argues single).
+*Niche-as-filter-facet* needs expressive eligibility (argues multi).
+
+The synthesis honors both:
+
+- **Primary niche** — exactly one, mandatory. Drives `/launch/[slug]`
+  ordering, canonical URL, breadcrumb. Manufacturer picks at submit;
+  admin can re-pin during review (audit-logged).
+- **Secondary niches** — up to two, optional. Eligibility-only. Product
+  appears in `/marketplace?niche=<slug>` filter, ranked below primary
+  holders.
+- Schema field `ProductTemplateNiche.isPrimary` (already on the
+  `add_labeling_volumetiers_niche_copacker_2026_06_01` migration)
+  enforces the model; app-layer Zod enforces "exactly one true primary,
+  ≤2 false."
+- `/launch/[slug]` queries primary only. `/marketplace?niche=` filter
+  joins on either.
+
+Why this works for iLaunchify specifically: admin-reviewed products
+make tag-spam admin-correctable, creator personas are lifestyle-led
+so audience overlap is real, V1 inventory is sparse so single-niche
+landing pages would look dead.
+
+### Pet products — inline in /marketplace
+
+Pet (`labelingType=PET_PRODUCT`) products live in the **same**
+`/marketplace` browse surface. NO `/marketplace/pet` sub-route. A
+`labelingType` filter chip + a small "Pet" eyebrow on the product card
+disambiguates.
+
+Right Facts-panel renderer (Guaranteed Analysis for pet, NFR for
+human, SFR for supplements) branches downstream off `labelingType`.
+Compliance rule pack also branches.
+
+Why inline: V1 inventory is sparse, splitting fragments discovery,
+and creators who serve both human + pet audiences (common among
+lifestyle influencers) shouldn't have to context-switch.
+
+### Creator-visible price — composition formula (LOCKED)
+
+Every creator-facing price on the marketplace is computed LIVE:
+
+```
+creatorPrice(productId, qty, creatorTier) =
+    manufacturerPerUnitAtTier(productId, qty)           // ProductTemplatePricingTier
+  + platformFee(creatorTier, manufacturerPerUnit, qty)  // FeeRule lookup
+  + shippingEstimate(qty, fulfillmentMode)              // estimateShipping
+  + accessoryFees                                       // optional add-ons
+  + (optional) packagingFee                             // if non-default packaging
+```
+
+Rebuild `apps/marketing/src/.../PricingTierModal.tsx` to take
+`(productId, viewerTier)` and call a server action
+`computeCreatorPriceMatrix(productId, viewerTier)` returning one row
+per MOQ tier with the layered breakdown.
+
+Signed-out viewers render at Maker tier with a "Sign in for your tier"
+hint.
+
+This closes the marketplace audit doc's §3.1 highest-leverage gap.
+
+### "Premier partner" assumption — DROPPED
+
+The `PartnerTier` enum has values `VERIFIED | TRUSTED | PREMIER` in the
+schema, but **what each tier gives a partner has not been decided.**
+Drop any "Premier gets featured-module priority" assumption from this
+plan. Marketplace ranking ignores partner tier for V1. Featured-module
+priority is admin-curated only. Pavel will lock partner monetization
+later.
+
+### Marketplace theming — 100% admin-controlled
+
+Partners get **zero** control over how their products render on the
+marketplace. Marketplace visual customization (themes, card variants,
+hero layout, color accents) is admin-only.
+
+- Partner Brand Identity feeds: canvas label render + Design Studio
+  template filtering. Period.
+- It does NOT feed: marketplace product card style, marketplace hero,
+  cert-strip color, or category-page accent.
+- The `MarketplaceTheme` model in §2.1 is for admin seasonal /
+  niche-specific themes only; never partner-scoped.
+
+Why: Marketplace is the platform's brand surface. Letting partners
+re-skin would (a) destroy visual coherence, (b) become a trust attack
+surface (sketchy partners faking certification chips), (c) confuse
+creators about what's platform-promise vs partner-promise.
