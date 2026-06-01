@@ -49,6 +49,7 @@ import {
   Code,
   LineChart,
   Boxes,
+  Layers,
   Brush,
   Eye,
   Type,
@@ -143,9 +144,16 @@ const PRIMARY: SidebarRegion = {
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {
       kind: 'item',
-      label: 'Products & Categories',
+      label: 'Manufacturer Products',
       icon: Package,
       href: '/products',
+    },
+    {
+      kind: 'item',
+      label: 'Categories',
+      icon: Layers,
+      href: '/categories',
+      hiddenUntilBuilt: true,
     },
     {
       kind: 'group',
