@@ -44,6 +44,8 @@ export const AUDIT_ENTITY_TYPES = [
   'Niche',
   'NicheRule',
   'LifestyleTag',
+  // B.4 — order cancellation
+  'CancellationRequest',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -77,6 +79,10 @@ export const AUDIT_ACTIONS = [
   'ORDER_CREATED',
   'ORDER_PAID',
   'ORDER_CANCELLED',
+  // B.4 — order cancellation paths (locked 2026-05-19)
+  'CANCELLATION_REQUESTED',
+  'CANCELLATION_APPROVED',
+  'CANCELLATION_DENIED',
   // Order / dispatch
   'DISPATCH_ACCEPT',
   'DISPATCH_DECLINE',

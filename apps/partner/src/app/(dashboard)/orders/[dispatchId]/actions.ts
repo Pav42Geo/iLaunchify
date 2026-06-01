@@ -205,6 +205,61 @@ export async function enterQualityCheck({ dispatchId }: { dispatchId: string }):
   return { ok: true }
 }
 
+// B.4 — partner-requested cancellation. Allowed mid-production (ACCEPTED /
+// PRODUCING / QUALITY_CHECK); goes through CancellationRequest → admin review
+// (PLATFORM_SPEC §B.4, locked 2026-05-19). Approval forfeits payment + strike;
+// denial means the partner must fulfill — both handled at admin review.
+export async function requestCancellation({
+  dispatchId,
+  reason,
+}: {
+  dispatchId: string
+  reason: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const dispatch = await loadOwnedDispatch(user.id, dispatchId)
+  if (!dispatch) return { ok: false, error: 'Dispatch not found' }
+  if (
+    dispatch.status !== 'ACCEPTED' &&
+    dispatch.status !== 'PRODUCING' &&
+    dispatch.status !== 'QUALITY_CHECK'
+  ) {
+    return { ok: false, error: `Cannot request cancellation from ${dispatch.status}` }
+  }
+  const trimmed = reason.trim()
+  if (trimmed.length < 5) return { ok: false, error: 'Please give a brief reason (5+ characters).' }
+
+  const existing = await prisma.cancellationRequest.findFirst({
+    where: { dispatchId: dispatch.id, status: 'PENDING_REVIEW' },
+  })
+  if (existing) return { ok: false, error: 'A cancellation request is already pending review.' }
+
+  const req = await prisma.cancellationRequest.create({
+    data: {
+      orderId: dispatch.orderId,
+      dispatchId: dispatch.id,
+      requestedById: user.id,
+      reason: trimmed,
+      status: 'PENDING_REVIEW',
+    },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'CancellationRequest',
+    entityId: req.id,
+    action: 'CANCELLATION_REQUESTED',
+    payload: {
+      orderId: dispatch.orderId,
+      dispatchId: dispatch.id,
+      dispatchStatus: dispatch.status,
+      reason: trimmed,
+    },
+  })
+
+  revalidatePath(`/orders/${dispatchId}`)
+  return { ok: true }
+}
+
 export async function failQualityCheck({
   dispatchId,
   notes,

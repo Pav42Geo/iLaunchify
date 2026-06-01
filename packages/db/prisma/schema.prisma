@@ -476,6 +476,8 @@ model User {
   notifications       Notification[]
   notificationPreferences NotificationPreference[]
   creatorOrders       Order[]                          @relation("CreatorOrders")
+  cancellationRequestsMade     CancellationRequest[]   @relation("CancellationRequester")
+  cancellationRequestsReviewed CancellationRequest[]   @relation("CancellationReviewer")
   channelConnections  ChannelConnection[]              @relation("CreatorChannelConnections")
   // Phase G1 — in-progress checkout wizard drafts
   creatorCheckoutDrafts CheckoutDraft[]                @relation("CreatorCheckoutDrafts")
@@ -1765,6 +1767,7 @@ model Order {
   dispatches             OrderDispatch[]
   charge                 Charge?
   refunds                Refund[]
+  cancellationRequests   CancellationRequest[]
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
@@ -1775,6 +1778,33 @@ model Order {
 enum OrderShipToType {
   CREATOR_ADDRESS          // goods ship to the creator's own warehouse / address
   WAREHOUSE_PARTNER        // goods ship to a connected WAREHOUSE partner service
+}
+
+// Order cancellation — partner-requested path (PLATFORM_SPEC §B.4, locked
+// 2026-05-19). Creator pre-accept + admin force-cancel flip Order.status
+// directly; this model backs the partner-request → admin-review loop.
+model CancellationRequest {
+  id            String                    @id @default(cuid())
+  orderId       String
+  dispatchId    String?                   // null = whole-order cancel
+  requestedById String                    // partner user
+  reason        String
+  status        CancellationRequestStatus @default(PENDING_REVIEW)
+  reviewedById  String?                   // admin user
+  reviewedAt    DateTime?
+  reviewNotes   String?
+  createdAt     DateTime                  @default(now())
+  order         Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  requestedBy   User                      @relation("CancellationRequester", fields: [requestedById], references: [id])
+  reviewedBy    User?                     @relation("CancellationReviewer", fields: [reviewedById], references: [id])
+  @@index([status, createdAt])
+  @@index([orderId])
+}
+
+enum CancellationRequestStatus {
+  PENDING_REVIEW
+  APPROVED
+  DENIED
 }
 
 model OrderItem {
