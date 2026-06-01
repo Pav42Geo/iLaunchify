@@ -17,7 +17,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
-import type { LifestyleTagGroup } from '@prisma/client'
+import type { LifestyleTagGroup } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { LifestyleTagFormDialog } from './LifestyleTagFormDialog'
 import {

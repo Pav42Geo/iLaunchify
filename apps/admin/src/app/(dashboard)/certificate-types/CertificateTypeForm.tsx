@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Upload, ShieldCheck } from 'lucide-react'
-import type { CertificateTypeStatus } from '@prisma/client'
+import type { CertificateTypeStatus } from '@ilaunchify/db'
 import {
   createCertificateType,
   updateCertificateType,

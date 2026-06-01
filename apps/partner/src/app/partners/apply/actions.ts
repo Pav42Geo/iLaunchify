@@ -21,11 +21,11 @@ export type SubmitLeadResult = { ok: true } | { ok: false; error: string }
 
 export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<SubmitLeadResult> {
   const parsed = LeadSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.errors[0].message }
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
   const v = parsed.data
 
   // Idempotency: don't duplicate if a Partner with this email already exists.
-  const existingUser = await prisma.user.findUnique({ where: { email: v.email } })
+  const existingUser = await prisma.user.findUnique({ where: { email: v.email }, include: { partner: true } })
   if (existingUser?.partner) {
     return {
       ok: false,

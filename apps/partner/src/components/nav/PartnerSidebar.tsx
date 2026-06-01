@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package } from 'lucide-react'
-import type { PartnerStatus } from '@prisma/client'
+import type { PartnerStatus } from '@ilaunchify/db'
 
 interface NavItem {
   href: string

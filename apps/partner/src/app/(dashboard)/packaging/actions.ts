@@ -21,7 +21,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { uploadFile, packagingAssetKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import type { PackagingTopology, FlavorMode, FlavorPolicy, PackagingStatus } from '@prisma/client'
+import type { PackagingTopology, FlavorMode, FlavorPolicy, PackagingStatus } from '@ilaunchify/db'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })

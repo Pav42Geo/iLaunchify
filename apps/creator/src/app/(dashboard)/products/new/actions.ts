@@ -25,7 +25,7 @@ export async function createDraftFromTemplate(
 ): Promise<CreateDraftResult> {
   const user = await requireUser()
   const parsed = DraftSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.errors[0].message }
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
 
   // Verify the brand belongs to this creator
   const brand = await prisma.brand.findFirst({

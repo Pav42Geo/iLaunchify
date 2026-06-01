@@ -2,7 +2,7 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { setPreference, setQuietHours } from '@ilaunchify/notifications'
-import type { NotificationChannel, NotificationEvent } from '@prisma/client'
+import type { NotificationChannel, NotificationEvent } from '@ilaunchify/db'
 import { revalidatePath } from 'next/cache'
 
 export async function togglePreference(input: {

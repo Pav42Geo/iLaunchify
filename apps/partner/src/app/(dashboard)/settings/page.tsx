@@ -8,6 +8,11 @@ export default async function SettingsPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({ where: { userId: user.id } })
   if (!partner) return null
+  // stripeAccountId lives on User, not the session — query it (same pattern as /payments).
+  const userRecord = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { stripeAccountId: true },
+  })
 
   return (
     <div className="space-y-6">
@@ -21,7 +26,7 @@ export default async function SettingsPage() {
           <Row label="Company" value={partner.companyName} />
           <Row
             label="Stripe Connect"
-            value={user.stripeAccountId ? `Connected (${user.stripeAccountId})` : 'Not connected'}
+            value={userRecord?.stripeAccountId ? `Connected (${userRecord.stripeAccountId})` : 'Not connected'}
           />
         </CardContent>
       </Card>

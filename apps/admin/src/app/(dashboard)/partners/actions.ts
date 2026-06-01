@@ -10,7 +10,7 @@ import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 
 const InviteSchema = z.object({
   email: z.string().email(),
@@ -33,7 +33,7 @@ export async function invitePartner(input: {
   const admin = await requireRole('ADMIN')
   const parsed = InviteSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0].message }
+    return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
   }
 
   const { email, companyName, serviceType } = parsed.data

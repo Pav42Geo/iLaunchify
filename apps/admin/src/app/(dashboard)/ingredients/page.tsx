@@ -28,7 +28,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { VerificationStatus, IngredientSource } from '@prisma/client'
+import type { VerificationStatus, IngredientSource } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { IngredientRowActions } from './IngredientRowActions'
 

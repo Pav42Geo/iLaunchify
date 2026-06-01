@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Send } from 'lucide-react'
-import type { NoteAuthor } from '@prisma/client'
+import type { NoteAuthor } from '@ilaunchify/db'
 import { postPartnerProductNote } from '../card-actions'
 
 export interface NoteRow {

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Sparkles, ShieldCheck, Truck } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { SignupForm } from './SignupForm'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -141,7 +142,7 @@ function Feature({
   icon: Icon,
   label,
 }: {
-  icon: React.ComponentType<{ strokeWidth?: number; className?: string }>
+  icon: LucideIcon
   label: string
 }) {
   return (

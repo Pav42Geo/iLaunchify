@@ -10,7 +10,7 @@ import { requireRole } from '@ilaunchify/auth'
 import { uploadFile, certificateThumbnailKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import type { CertificateTypeStatus, PartnerCertInstanceStatus } from '@prisma/client'
+import type { CertificateTypeStatus, PartnerCertInstanceStatus } from '@ilaunchify/db'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })

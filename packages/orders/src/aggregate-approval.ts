@@ -12,7 +12,7 @@
 //   * any PENDING_ACCEPT, none ACCEPTED → AWAITING_PARTNERS
 //   * order already CANCELLED       → CANCELLED (no override)
 
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '@ilaunchify/db'
 
 type AggregateStatus =
   | 'AWAITING_PARTNERS'

@@ -14,7 +14,7 @@ const Schema = z.object({
 export async function publishProduct(input: z.infer<typeof Schema>) {
   const user = await requireUser()
   const parsed = Schema.safeParse(input)
-  if (!parsed.success) return { ok: false as const, error: parsed.error.errors[0].message }
+  if (!parsed.success) return { ok: false as const, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
 
   const product = await prisma.product.findFirst({
     where: { id: parsed.data.productId, brand: { creatorProfile: { userId: user.id } } },

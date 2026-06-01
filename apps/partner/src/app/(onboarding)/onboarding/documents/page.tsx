@@ -20,7 +20,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { FileUploadSlot, type ExistingFile } from './FileUploadSlot'
-import type { PartnerFile, PartnerFileKind, VerificationSectionType } from '@prisma/client'
+import type { PartnerFile, PartnerFileKind, VerificationSectionType } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 

@@ -8,7 +8,7 @@
 //
 // All purely presentational — no actions live here.
 
-import type { Partner, PartnerService, ServiceType } from '@prisma/client'
+import type { Partner, PartnerService, ServiceType } from '@ilaunchify/db'
 
 // -----------------------------------------------------------------------------
 // BUSINESS context

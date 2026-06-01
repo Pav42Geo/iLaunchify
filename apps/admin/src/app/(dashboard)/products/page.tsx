@@ -1,82 +1,140 @@
-// Admin Product review queue — advanced v2 (Pavel 2026-06-01).
+// =============================================================================
+// Admin Product review queue — v2 admin surface (task #586, Pavel 2026-06-01)
+// =============================================================================
 //
-// ProductTemplate rows submitted by partners. Review the contents, approve to
-// publish, or send back with a checklist of changes.
-//
-// Layout follows the locked admin surface pattern (cream hero band + KPI strip
-// + URL-driven filter chips + sortable table + RowActionsMenu).
+// Layout follows the locked admin surface pattern (cream hero band + 5-card
+// KPI strip + URL-driven tab + niche chips + secondary dropdown filters +
+// sortable wide table + RowActionsMenu).
 // See memory: ilaunchify-admin-surface-pattern.md
 //
-// Query params:
-//   ?q=protein           — search name / slug
-//   ?status=PENDING_REVIEW — narrow by status
-//   ?sort=updated|oldest|created — default "updated"
-//   ?page=2              — pagination (50 / page)
+// Query params (parsed in products-data.ts):
+//   ?tab=new | pending-edit | needs-changes | published | all
+//                    (default "new"; sidebar Inbox links to /products?tab=new)
+//   ?q=protein       — search ProductTemplate.name / slug
+//   ?niche=keto      — Niche.slug chip filter
+//   ?category=…      — Subcategory.slug dropdown
+//   ?manufacturer=…  — Partner.id dropdown
+//   ?sort=updatedAt|createdAt|name|status|manufacturer  (default updatedAt)
+//   ?dir=asc|desc                                        (default desc)
+//   ?page=2          — pagination (50 / page)
 
-import { prisma } from '@ilaunchify/db'
 import Link from 'next/link'
 import {
   Package,
+  Sparkles,
   Inbox,
+  RefreshCcw,
   AlertTriangle,
   CheckCircle2,
-  RefreshCcw,
+  Ban,
   Search,
-  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+  Calendar,
   Clock,
-  Layers,
-  Eye,
+  Building2,
+  Image as ImageIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { ProductTemplateStatus } from '@prisma/client'
+import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { ProductRowActions } from './ProductRowActions'
+import { marketingUrl } from '@/lib/marketing-url'
+import {
+  buildProductsHref,
+  loadProductsData,
+  PRODUCTS_TAB_LABEL,
+  PRODUCTS_TAB_ORDER,
+  type ParsedFilters,
+  type ProductRow,
+  type ProductsSortKey,
+  type ProductsTab,
+  type SortDir,
+} from './products-data'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Products — iLaunchify Admin' }
+export const metadata = { title: 'Products — Admin' }
 
 // -----------------------------------------------------------------------------
-// Constants
+// Presentation lookups
 // -----------------------------------------------------------------------------
-
-const STATUS_ORDER: ProductTemplateStatus[] = [
-  'PENDING_REVIEW',
-  'PENDING_EDIT_REVIEW',
-  'NEEDS_CHANGES',
-  'PUBLISHED',
-  'DRAFT',
-  'REJECTED',
-]
-
-const STATUS_LABELS: Record<ProductTemplateStatus, string> = {
-  DRAFT: 'Draft',
-  PENDING_REVIEW: 'Pending review',
-  NEEDS_CHANGES: 'Needs changes',
-  PUBLISHED: 'Live',
-  PENDING_EDIT_REVIEW: 'Edits in review',
-  PAUSED: 'Paused',
-  REJECTED: 'Rejected',
-  UNDER_REVIEW: 'Under review',
-  ARCHIVED: 'Archived',
-}
 
 const STATUS_TONE: Record<
   ProductTemplateStatus,
-  { dot: string; bg: string; text: string; border: string }
+  { bg: string; text: string; border: string; dot: string; label: string }
 > = {
-  DRAFT: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
-  PENDING_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  NEEDS_CHANGES: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
-  PUBLISHED: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  PENDING_EDIT_REVIEW: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
-  PAUSED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
-  REJECTED: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
-  UNDER_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  ARCHIVED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  DRAFT: {
+    bg: 'bg-zinc-100',
+    text: 'text-zinc-700',
+    border: 'border-zinc-200',
+    dot: 'bg-zinc-400',
+    label: 'Draft',
+  },
+  PENDING_REVIEW: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-800',
+    border: 'border-amber-200',
+    dot: 'bg-amber-500',
+    label: 'Pending review',
+  },
+  PENDING_EDIT_REVIEW: {
+    bg: 'bg-sky-100',
+    text: 'text-sky-800',
+    border: 'border-sky-200',
+    dot: 'bg-sky-500',
+    label: 'Edits in review',
+  },
+  NEEDS_CHANGES: {
+    bg: 'bg-rose-100',
+    text: 'text-rose-700',
+    border: 'border-rose-200',
+    dot: 'bg-rose-500',
+    label: 'Needs changes',
+  },
+  PUBLISHED: {
+    bg: 'bg-emerald-100',
+    text: 'text-emerald-800',
+    border: 'border-emerald-200',
+    dot: 'bg-emerald-500',
+    label: 'Live',
+  },
+  PAUSED: {
+    bg: 'bg-zinc-100',
+    text: 'text-zinc-700',
+    border: 'border-zinc-200',
+    dot: 'bg-zinc-400',
+    label: 'Paused',
+  },
+  REJECTED: {
+    bg: 'bg-rose-100',
+    text: 'text-rose-700',
+    border: 'border-rose-200',
+    dot: 'bg-rose-500',
+    label: 'Rejected',
+  },
+  UNDER_REVIEW: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-800',
+    border: 'border-amber-200',
+    dot: 'bg-amber-500',
+    label: 'Under review',
+  },
+  ARCHIVED: {
+    bg: 'bg-zinc-100',
+    text: 'text-zinc-700',
+    border: 'border-zinc-200',
+    dot: 'bg-zinc-400',
+    label: 'Archived',
+  },
 }
 
-const PAGE_SIZE = 50
-const STUCK_REVIEW_DAYS = 5
+const TAB_TONE: Record<ProductsTab, { dot: string; bg: string; text: string; border: string }> = {
+  new: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
+  'pending-edit': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+  'needs-changes': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
+  published: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
+  all: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+}
 
 // -----------------------------------------------------------------------------
 // Page
@@ -85,226 +143,139 @@ const STUCK_REVIEW_DAYS = 5
 interface PageProps {
   searchParams: Promise<{
     q?: string
-    status?: string
+    tab?: string
+    niche?: string
+    category?: string
+    manufacturer?: string
     sort?: string
+    dir?: string
     page?: string
   }>
 }
 
-function isValidStatus(s: string | undefined): s is ProductTemplateStatus {
-  return !!s && (STATUS_ORDER as readonly string[]).includes(s)
-}
-
-function parseSort(s: string | undefined): 'updated' | 'oldest' | 'created' {
-  if (s === 'oldest' || s === 'created') return s
-  return 'updated'
-}
-
 export default async function AdminProductsListPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const q = sp.q?.trim() || ''
-  const status = isValidStatus(sp.status) ? sp.status : undefined
-  const sort = parseSort(sp.sort)
-  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
-
-  // Build where clause as a free-form object — too dynamic for Prisma's
-  // literal-typed WhereInput inference. We cast at query time.
-  const where: Record<string, unknown> = {}
-  if (q) {
-    where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { slug: { contains: q, mode: 'insensitive' } },
-    ]
-  }
-  if (status) where.status = status
-
-  const fiveDaysAgo = new Date(Date.now() - STUCK_REVIEW_DAYS * 24 * 60 * 60 * 1000)
-
-  const [totalCount, statusCounts, oldestStuckReview, total, rows] = await Promise.all([
-    prisma.productTemplate.count(),
-    prisma.productTemplate.groupBy({ by: ['status'], _count: { _all: true } }),
-    prisma.productTemplate.findFirst({
-      where: {
-        status: { in: ['PENDING_REVIEW', 'PENDING_EDIT_REVIEW'] },
-        updatedAt: { lt: fiveDaysAgo },
-      },
-      orderBy: { updatedAt: 'asc' },
-      select: { updatedAt: true },
-    }),
-    prisma.productTemplate.count({ where: where as never }),
-    prisma.productTemplate.findMany({
-      where: where as never,
-      include: {
-        subcategory: { select: { name: true, category: { select: { name: true } } } },
-        manufacturerService: {
-          select: { partner: { select: { id: true, companyName: true } } },
-        },
-        _count: {
-          select: {
-            ingredientSlots: true,
-            packagingSystems: true,
-            variants: true,
-            reviewItems: { where: { resolved: false } },
-          },
-        },
-      },
-      orderBy:
-        sort === 'oldest'
-          ? { updatedAt: 'asc' }
-          : sort === 'created'
-            ? { createdAt: 'desc' }
-            : { updatedAt: 'desc' },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-  ])
-
-  const statusCountMap = new Map(
-    statusCounts.map((c) => [c.status as ProductTemplateStatus, c._count._all]),
-  )
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-
-  const oldestStuckDays = oldestStuckReview?.updatedAt
-    ? Math.floor(
-        (Date.now() - new Date(oldestStuckReview.updatedAt).getTime()) / (1000 * 60 * 60 * 24),
-      )
-    : null
-
-  const newSubmissionsCount =
-    (statusCountMap.get('PENDING_REVIEW') ?? 0) + (statusCountMap.get('UNDER_REVIEW') ?? 0)
-  const editsInReviewCount = statusCountMap.get('PENDING_EDIT_REVIEW') ?? 0
-  const needsChangesCount = statusCountMap.get('NEEDS_CHANGES') ?? 0
-  const liveCount = statusCountMap.get('PUBLISHED') ?? 0
+  const data = await loadProductsData(sp)
 
   return (
     <div className="space-y-6">
-      {/* HEADER (cream band) */}
-      <Header
-        totalCount={totalCount}
-        newSubmissionsCount={newSubmissionsCount}
-        editsInReviewCount={editsInReviewCount}
-        needsChangesCount={needsChangesCount}
-        liveCount={liveCount}
-        activeStatus={status}
-      />
+      <Header kpis={data.kpis} filters={data.filters} />
 
-      {/* URGENT CALLOUT — stuck review > 5 days */}
-      {oldestStuckDays != null && (
-        <Link
-          href="/products?status=PENDING_REVIEW&sort=oldest"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-            <AlertTriangle className="h-[18px] w-[18px]" />
-          </span>
-          <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
-              Submission stuck {oldestStuckDays} days in review
-            </p>
-            <p className="text-[11.5px] text-rose-700">
-              Sort by oldest update to find products waiting on your decision.
-            </p>
-          </div>
-          <ArrowUpDown className="h-4 w-4 text-rose-700" />
-        </Link>
-      )}
-
-      {/* FILTER BAR — search + status chips + sort */}
       <FilterBar
-        q={q}
-        status={status}
-        sort={sort}
-        statusCountMap={statusCountMap}
-        total={total}
+        filters={data.filters}
+        tabCounts={data.tabCounts}
+        nicheCounts={data.nicheCounts}
+        categoryOptions={data.categoryOptions}
+        manufacturerOptions={data.manufacturerOptions}
+        totalFiltered={data.totalFiltered}
       />
 
-      {/* TABLE */}
-      {rows.length === 0 ? (
-        <EmptyState filtered={Boolean(q || status)} />
+      {data.rows.length === 0 ? (
+        <EmptyState
+          filtered={Boolean(
+            data.filters.q ||
+              data.filters.niche ||
+              data.filters.category ||
+              data.filters.manufacturer ||
+              data.filters.tab !== 'new',
+          )}
+        />
       ) : (
-        <ProductsTable rows={rows} />
+        <ProductsTable rows={data.rows} filters={data.filters} />
       )}
 
-      {/* PAGINATION */}
-      <Pagination page={page} totalPages={totalPages} sp={sp} />
+      <Pagination filters={data.filters} totalPages={data.totalPages} />
     </div>
   )
 }
 
-// -----------------------------------------------------------------------------
-// Header
-// -----------------------------------------------------------------------------
+// =============================================================================
+// Header (cream band) + 5-card KPI strip
+// =============================================================================
 
 function Header({
-  totalCount,
-  newSubmissionsCount,
-  editsInReviewCount,
-  needsChangesCount,
-  liveCount,
-  activeStatus,
+  kpis,
+  filters,
 }: {
-  totalCount: number
-  newSubmissionsCount: number
-  editsInReviewCount: number
-  needsChangesCount: number
-  liveCount: number
-  activeStatus: ProductTemplateStatus | undefined
+  kpis: {
+    newSubmissions: number
+    pendingEditReview: number
+    needsChanges: number
+    published: number
+    rejected90d: number
+  }
+  filters: ParsedFilters
 }) {
+  void filters // reserved for future "active tab" KPI highlighting
   return (
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
-          Products & Categories · Admin queue
-        </p>
-        <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Product review queue
-        </h1>
-        <p className="max-w-2xl text-[13px] text-ink-600">
-          ProductTemplates submitted by partners. Review the contents, approve to publish,
-          or send back with a checklist of changes.
-        </p>
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            Products & Categories · Admin queue
+          </p>
+          <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            Product approvals
+          </h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+            Review submissions, monitor catalog health, and supervise marketplace placement.
+          </p>
+        </div>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — 5 cards */}
       <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
-          href="/products"
-          label="Total"
-          value={totalCount}
-          icon={Package}
-          active={!activeStatus}
-        />
-        <KpiCard
-          href="/products?status=PENDING_REVIEW"
+          href={buildProductsHref(
+            { ...filters, page: 1 },
+            { tab: 'new', niche: '', category: '', manufacturer: '', q: '' },
+          )}
           label="New submissions"
-          value={newSubmissionsCount}
+          value={kpis.newSubmissions}
           icon={Inbox}
-          tone="amber"
-          active={activeStatus === 'PENDING_REVIEW'}
+          tone="pink"
+          active={filters.tab === 'new'}
         />
         <KpiCard
-          href="/products?status=PENDING_EDIT_REVIEW"
-          label="Edits in review"
-          value={editsInReviewCount}
+          href={buildProductsHref(
+            { ...filters, page: 1 },
+            { tab: 'pending-edit', niche: '', category: '', manufacturer: '', q: '' },
+          )}
+          label="Pending edit re-review"
+          value={kpis.pendingEditReview}
           icon={RefreshCcw}
           tone="sky"
-          active={activeStatus === 'PENDING_EDIT_REVIEW'}
+          active={filters.tab === 'pending-edit'}
         />
         <KpiCard
-          href="/products?status=NEEDS_CHANGES"
+          href={buildProductsHref(
+            { ...filters, page: 1 },
+            { tab: 'needs-changes', niche: '', category: '', manufacturer: '', q: '' },
+          )}
           label="Needs changes"
-          value={needsChangesCount}
+          value={kpis.needsChanges}
           icon={AlertTriangle}
-          tone="rose"
-          active={activeStatus === 'NEEDS_CHANGES'}
+          tone="amber"
+          active={filters.tab === 'needs-changes'}
         />
         <KpiCard
-          href="/products?status=PUBLISHED"
-          label="Live"
-          value={liveCount}
+          href={buildProductsHref(
+            { ...filters, page: 1 },
+            { tab: 'published', niche: '', category: '', manufacturer: '', q: '' },
+          )}
+          label="Published"
+          value={kpis.published}
           icon={CheckCircle2}
           tone="emerald"
-          active={activeStatus === 'PUBLISHED'}
+          active={filters.tab === 'published'}
+        />
+        <KpiCard
+          href="/products?tab=all&sort=updatedAt&dir=desc"
+          label="Rejected · 90d"
+          value={kpis.rejected90d}
+          icon={Ban}
+          tone="rose"
+          subline="Last 90 days"
         />
       </div>
     </div>
@@ -324,7 +295,7 @@ function KpiCard({
   label: string
   value: number
   icon: LucideIcon
-  tone?: 'amber' | 'emerald' | 'sky' | 'rose'
+  tone?: 'amber' | 'emerald' | 'sky' | 'rose' | 'pink'
   active?: boolean
   subline?: string
 }) {
@@ -333,12 +304,14 @@ function KpiCard({
     emerald: 'group-hover:ring-emerald-300/60',
     sky: 'group-hover:ring-sky-300/60',
     rose: 'group-hover:ring-rose-300/60',
+    pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
     amber: 'bg-amber-100 text-amber-700',
     emerald: 'bg-emerald-100 text-emerald-700',
     sky: 'bg-sky-100 text-sky-700',
     rose: 'bg-rose-100 text-rose-700',
+    pink: 'bg-pink-100 text-pink-700',
   }
   return (
     <Link
@@ -349,7 +322,7 @@ function KpiCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
         'ring-1 ring-transparent',
         tone ? ring[tone] : 'group-hover:ring-pink-300/40',
-        active && (tone ? ring[tone].replace('group-hover:', '') : 'ring-pink-300/40'),
+        active && 'ring-pink-300/40',
       )}
     >
       <div className="flex items-center gap-3">
@@ -365,7 +338,9 @@ function KpiCard({
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
             {label}
           </p>
-          <p className="font-display text-[22px] font-bold leading-none text-ink-900">{value}</p>
+          <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">
+            {value.toLocaleString()}
+          </p>
           {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
         </div>
       </div>
@@ -373,58 +348,87 @@ function KpiCard({
   )
 }
 
-// -----------------------------------------------------------------------------
-// FilterBar
-// -----------------------------------------------------------------------------
+// =============================================================================
+// FilterBar — search + tab chips + niche chips + dropdowns
+// =============================================================================
 
 function FilterBar({
-  q,
-  status,
-  sort,
-  statusCountMap,
-  total,
+  filters,
+  tabCounts,
+  nicheCounts,
+  categoryOptions,
+  manufacturerOptions,
+  totalFiltered,
 }: {
-  q: string
-  status: ProductTemplateStatus | undefined
-  sort: 'updated' | 'oldest' | 'created'
-  statusCountMap: Map<ProductTemplateStatus, number>
-  total: number
+  filters: ParsedFilters
+  tabCounts: Record<ProductsTab, number>
+  nicheCounts: import('./products-data').NicheOption[]
+  categoryOptions: import('./products-data').CategoryOption[]
+  manufacturerOptions: import('./products-data').ManufacturerOption[]
+  totalFiltered: number
 }) {
-  const buildHref = (overrides: Partial<{ status: string; sort: string; q: string }>) => {
-    const params = new URLSearchParams()
-    const finalQ: string = overrides.q !== undefined ? overrides.q : q
-    const finalStatus: string = overrides.status !== undefined ? overrides.status : status ?? ''
-    const finalSort: string = overrides.sort !== undefined ? overrides.sort : sort
-    if (finalQ) params.set('q', finalQ)
-    if (finalStatus) params.set('status', finalStatus)
-    if (finalSort && finalSort !== 'updated') params.set('sort', finalSort)
-    const qs = params.toString()
-    return `/products${qs ? `?${qs}` : ''}`
-  }
+  const hasAnyFilter = Boolean(
+    filters.q || filters.niche || filters.category || filters.manufacturer || filters.tab !== 'new',
+  )
 
   return (
     <div className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
-      {/* Search row */}
+      {/* Search + dropdowns row */}
       <form className="flex flex-wrap items-center gap-2" method="GET">
-        <div className="relative min-w-[260px] flex-1">
+        <div className="relative min-w-[240px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
           <input
             type="search"
             name="q"
-            defaultValue={q}
+            defaultValue={filters.q}
             placeholder="Search product name or slug…"
             className="h-9 w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
           />
         </div>
-        {status && <input type="hidden" name="status" value={status} />}
-        {sort !== 'updated' && <input type="hidden" name="sort" value={sort} />}
+
+        {/* Subcategory dropdown */}
+        <select
+          name="category"
+          defaultValue={filters.category ?? ''}
+          aria-label="Subcategory filter"
+          className="h-9 max-w-[200px] rounded-lg border border-ink-200 bg-white px-2 text-[12.5px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        >
+          <option value="">All categories</option>
+          {categoryOptions.map((sc) => (
+            <option key={sc.slug} value={sc.slug}>
+              {sc.categoryName} · {sc.name} ({sc.count})
+            </option>
+          ))}
+        </select>
+
+        {/* Manufacturer dropdown */}
+        <select
+          name="manufacturer"
+          defaultValue={filters.manufacturer ?? ''}
+          aria-label="Manufacturer filter"
+          className="h-9 max-w-[200px] rounded-lg border border-ink-200 bg-white px-2 text-[12.5px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        >
+          <option value="">All manufacturers</option>
+          {manufacturerOptions.map((m) => (
+            <option key={m.partnerId} value={m.partnerId}>
+              {m.companyName} ({m.count})
+            </option>
+          ))}
+        </select>
+
+        {/* Preserve other filters across search submit */}
+        {filters.tab !== 'new' && <input type="hidden" name="tab" value={filters.tab} />}
+        {filters.niche && <input type="hidden" name="niche" value={filters.niche} />}
+        {filters.sort !== 'updatedAt' && <input type="hidden" name="sort" value={filters.sort} />}
+        {filters.dir !== 'desc' && <input type="hidden" name="dir" value={filters.dir} />}
+
         <button
           type="submit"
           className="inline-flex h-9 items-center rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          Search
+          Apply
         </button>
-        {(q || status || sort !== 'updated') && (
+        {hasAnyFilter && (
           <Link
             href="/products"
             className="inline-flex h-9 items-center rounded-full border border-ink-200 px-3 text-[12px] font-medium text-ink-700 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
@@ -433,29 +437,52 @@ function FilterBar({
           </Link>
         )}
 
-        <div className="ml-auto flex items-center gap-3 text-[12px] text-ink-600">
-          <span className="hidden md:inline">{total.toLocaleString()} results</span>
-          <SortToggle currentSort={sort} buildHref={buildHref} />
+        <div className="ml-auto text-[12px] text-ink-600">
+          <span className="hidden md:inline">{totalFiltered.toLocaleString()} results</span>
         </div>
       </form>
 
-      {/* Status chips */}
+      {/* Tab chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
           Status
         </span>
-        <FilterChip href={buildHref({ status: '' })} active={!status} label="All" count={null} />
-        {STATUS_ORDER.map((s) => (
+        {PRODUCTS_TAB_ORDER.map((tab) => (
           <FilterChip
-            key={s}
-            href={buildHref({ status: s })}
-            active={status === s}
-            label={STATUS_LABELS[s]!}
-            count={statusCountMap.get(s) ?? 0}
-            tone={STATUS_TONE[s]!}
+            key={tab}
+            href={buildProductsHref(filters, { tab, page: 1 })}
+            active={filters.tab === tab}
+            label={PRODUCTS_TAB_LABEL[tab]}
+            count={tabCounts[tab]}
+            tone={TAB_TONE[tab]}
           />
         ))}
       </div>
+
+      {/* Niche chips */}
+      {nicheCounts.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+            Niche
+          </span>
+          <FilterChip
+            href={buildProductsHref(filters, { niche: '', page: 1 })}
+            active={!filters.niche}
+            label="All niches"
+            count={null}
+          />
+          {nicheCounts.map((n) => (
+            <FilterChip
+              key={n.slug}
+              href={buildProductsHref(filters, { niche: n.slug, page: 1 })}
+              active={filters.niche === n.slug}
+              label={n.name}
+              emoji={n.iconEmoji}
+              count={n.count}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -466,14 +493,14 @@ function FilterChip({
   label,
   count,
   tone,
-  icon: Icon,
+  emoji,
 }: {
   href: string
   active: boolean
   label: string
   count: number | null
   tone?: { bg: string; text: string; border: string; dot: string }
-  icon?: LucideIcon
+  emoji?: string | null
 }) {
   return (
     <Link
@@ -488,11 +515,20 @@ function FilterChip({
             : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50',
       )}
     >
-      {Icon && <Icon className="h-3 w-3" />}
+      {emoji && (
+        <span aria-hidden="true" className="text-[13px] leading-none">
+          {emoji}
+        </span>
+      )}
       {tone && !active && <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />}
       {label}
       {count !== null && (
-        <span className={cn('text-[10.5px] tabular-nums', active ? 'text-white/70' : 'text-ink-500')}>
+        <span
+          className={cn(
+            'text-[10.5px] tabular-nums',
+            active ? 'text-white/70' : 'text-ink-500',
+          )}
+        >
           {count}
         </span>
       )}
@@ -500,109 +536,144 @@ function FilterChip({
   )
 }
 
-function SortToggle({
-  currentSort,
-  buildHref,
-}: {
-  currentSort: 'updated' | 'oldest' | 'created'
-  buildHref: (o: Partial<{ status: string; sort: string; q: string }>) => string
-}) {
-  const options: { value: 'updated' | 'oldest' | 'created'; label: string }[] = [
-    { value: 'updated', label: 'Recently updated' },
-    { value: 'oldest', label: 'Oldest update' },
-    { value: 'created', label: 'Newest created' },
-  ]
-  return (
-    <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-0.5">
-      {options.map((o) => (
-        <Link
-          key={o.value}
-          href={buildHref({ sort: o.value })}
-          className={cn(
-            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-            currentSort === o.value
-              ? 'bg-ink-900 text-white'
-              : 'text-ink-600 hover:bg-ink-50',
-          )}
-        >
-          {o.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Table
-// -----------------------------------------------------------------------------
+// =============================================================================
 
-type ProductRow = {
-  id: string
-  name: string
-  slug: string
-  status: ProductTemplateStatus
-  updatedAt: Date
-  subcategory: { name: string; category: { name: string } }
-  manufacturerService: {
-    partner: { id: string; companyName: string }
-  } | null
-  _count: {
-    ingredientSlots: number
-    packagingSystems: number
-    variants: number
-    reviewItems: number
-  }
-}
-
-function ProductsTable({ rows }: { rows: ProductRow[] }) {
+function ProductsTable({
+  rows,
+  filters,
+}: {
+  rows: ProductRow[]
+  filters: ParsedFilters
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
         <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
-            <Th>Product</Th>
-            <Th>Partner</Th>
+            <SortableTh sortKey="name" filters={filters}>
+              Product
+            </SortableTh>
+            <SortableTh sortKey="manufacturer" filters={filters}>
+              Manufacturer
+            </SortableTh>
             <Th>Category</Th>
-            <Th>Status</Th>
-            <Th>Composition</Th>
-            <Th>Open items</Th>
-            <Th>Updated</Th>
+            <Th>Niches</Th>
+            <SortableTh sortKey="status" filters={filters}>
+              Status
+            </SortableTh>
+            <SortableTh sortKey="updatedAt" filters={filters} className="text-right">
+              Updated
+            </SortableTh>
             <Th className="w-[36px]" />
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
           {rows.map((p) => {
             const tone = STATUS_TONE[p.status]!
-            const age = daysAgo(p.updatedAt)
-            const partner = p.manufacturerService?.partner ?? null
+            const marketplaceHref =
+              p.status === 'PUBLISHED'
+                ? marketingUrl(
+                    `/marketplace/${p.subcategory.category.slug}/${p.subcategory.slug}/${p.slug}`,
+                  )
+                : null
+            const visibleNiches = p.niches.slice(0, 3)
+            const overflow = p.niches.length - visibleNiches.length
 
             return (
               <tr key={p.id} className="transition-colors hover:bg-pink-50/20">
+                {/* Product cell — thumb + name + slug, clickable to detail */}
                 <td className="px-3 py-3 align-top">
                   <Link
                     href={`/products/${p.id}`}
-                    className="block font-semibold text-ink-900 hover:text-pink-700 focus-visible:outline-none focus-visible:underline"
+                    className="group/cell flex items-start gap-2.5 focus-visible:outline-none"
                   >
-                    {p.name}
-                  </Link>
-                  <p className="mt-0.5 text-[11px] text-ink-500">{p.slug}</p>
-                </td>
-                <td className="px-3 py-3 align-top">
-                  {partner ? (
-                    <Link
-                      href={`/partners/${partner.id}`}
-                      className="text-[12px] text-ink-700 hover:text-pink-700 hover:underline"
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-ink-200',
+                        p.imageAssetId
+                          ? 'bg-zinc-50 text-pink-600'
+                          : 'bg-pink-50 text-pink-500',
+                      )}
                     >
-                      {partner.companyName}
+                      {p.imageAssetId ? (
+                        <ImageIcon className="h-3 w-3" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ink-900 group-hover/cell:text-pink-700 group-focus-visible/cell:underline">
+                        {p.name}
+                      </p>
+                      <p className="mt-0.5 truncate text-[10.5px] text-ink-500">{p.slug}</p>
+                    </div>
+                  </Link>
+                </td>
+
+                {/* Manufacturer */}
+                <td className="px-3 py-3 align-top">
+                  {p.manufacturer ? (
+                    <Link
+                      href={`/partners/${p.manufacturer.partnerId}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                    >
+                      <Building2 className="h-3 w-3 text-ink-400" />
+                      <span className="truncate max-w-[140px]">
+                        {p.manufacturer.companyName}
+                      </span>
                     </Link>
                   ) : (
                     <span className="text-[11px] text-ink-400">—</span>
                   )}
                 </td>
-                <td className="px-3 py-3 align-top text-[11.5px] text-ink-700">
-                  {p.subcategory.category.name} · {p.subcategory.name}
+
+                {/* Category — subcategory name with category underneath */}
+                <td className="px-3 py-3 align-top">
+                  <p className="text-[12px] font-medium text-ink-800">
+                    {p.subcategory.name}
+                  </p>
+                  <p className="mt-0.5 text-[10.5px] text-ink-500">
+                    {p.subcategory.category.name}
+                  </p>
                 </td>
+
+                {/* Niches */}
+                <td className="px-3 py-3 align-top">
+                  {visibleNiches.length === 0 ? (
+                    <span className="text-[11px] text-ink-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {visibleNiches.map((n) => (
+                        <span
+                          key={n.slug}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium',
+                            n.isPrimary
+                              ? 'border-pink-200 bg-pink-50 text-pink-700'
+                              : 'border-ink-100 bg-zinc-50 text-ink-700',
+                          )}
+                        >
+                          {n.iconEmoji && (
+                            <span aria-hidden="true" className="text-[11px] leading-none">
+                              {n.iconEmoji}
+                            </span>
+                          )}
+                          {n.name}
+                        </span>
+                      ))}
+                      {overflow > 0 && (
+                        <span className="inline-flex items-center rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
+                          +{overflow}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
+
+                {/* Status pill */}
                 <td className="px-3 py-3 align-top">
                   <span
                     className={cn(
@@ -613,50 +684,30 @@ function ProductsTable({ rows }: { rows: ProductRow[] }) {
                     )}
                   >
                     <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
-                    {STATUS_LABELS[p.status]}
+                    {tone.label}
                   </span>
                 </td>
-                <td className="px-3 py-3 align-top">
-                  <span className="inline-flex items-center gap-1 text-[11px] text-ink-600">
-                    <Layers className="h-3 w-3 text-ink-400" />
-                    {p._count.ingredientSlots} ing · {p._count.packagingSystems} pkg ·{' '}
-                    {p._count.variants} var
-                  </span>
-                </td>
-                <td className="px-3 py-3 align-top">
-                  {p._count.reviewItems > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-amber-700">
-                      {p._count.reviewItems}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-ink-400">—</span>
-                  )}
-                </td>
-                <td className="px-3 py-3 align-top">
-                  <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-600">
-                    <Clock className="h-3 w-3 text-ink-400" />
-                    {age != null ? formatAge(age) : '—'}
-                  </span>
-                </td>
+
+                {/* Updated */}
                 <td className="px-3 py-3 text-right align-top">
-                  <div className="inline-flex items-center gap-1">
-                    {/* Quick-review eye — fast path to the detail page,
-                        sits just left of the 3-dot menu (Pavel 2026-06-01) */}
-                    <Link
-                      href={`/products/${p.id}`}
-                      aria-label={`Review ${p.name}`}
-                      title="Quick review"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Link>
-                    <ProductRowActions
-                      productId={p.id}
-                      productName={p.name}
-                      slug={p.slug}
-                      partnerId={partner?.id ?? null}
-                    />
-                  </div>
+                  <span
+                    className="inline-flex items-center gap-1 text-[11.5px] text-ink-600"
+                    title={p.updatedAt.toLocaleString()}
+                  >
+                    <Clock className="h-3 w-3 text-ink-400" />
+                    {formatRelative(p.updatedAt)}
+                  </span>
+                </td>
+
+                {/* Actions */}
+                <td className="px-3 py-3 text-right align-top">
+                  <ProductRowActions
+                    productId={p.id}
+                    productName={p.name}
+                    slug={p.slug}
+                    partnerId={p.manufacturer?.partnerId ?? null}
+                    marketplaceUrl={marketplaceHref}
+                  />
                 </td>
               </tr>
             )
@@ -674,53 +725,79 @@ function Th({
   children?: React.ReactNode
   className?: string
 }) {
+  return <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>{children}</th>
+}
+
+function SortableTh({
+  sortKey,
+  filters,
+  children,
+  className,
+}: {
+  sortKey: ProductsSortKey
+  filters: ParsedFilters
+  children: React.ReactNode
+  className?: string
+}) {
+  const isActive = filters.sort === sortKey
+  // Clicking an already-active column flips direction; clicking a new column
+  // defaults to desc for dates and asc for names/status/manufacturer.
+  const isDescDefault = sortKey === 'createdAt' || sortKey === 'updatedAt'
+  const nextDir: SortDir = isActive
+    ? filters.dir === 'desc'
+      ? 'asc'
+      : 'desc'
+    : isDescDefault
+      ? 'desc'
+      : 'asc'
+  const href = buildProductsHref(filters, { sort: sortKey, dir: nextDir, page: 1 })
+  const ArrowIcon = isActive ? (filters.dir === 'asc' ? ArrowUp : ArrowDown) : null
   return (
-    <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>{children}</th>
+    <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>
+      <Link
+        href={href}
+        aria-current={isActive ? 'page' : undefined}
+        className={cn(
+          'inline-flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+          isActive ? 'text-ink-900' : 'text-ink-500 hover:text-ink-800',
+        )}
+      >
+        {children}
+        {ArrowIcon && <ArrowIcon className="h-3 w-3" />}
+      </Link>
+    </th>
   )
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Pagination
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 function Pagination({
-  page,
+  filters,
   totalPages,
-  sp,
 }: {
-  page: number
+  filters: ParsedFilters
   totalPages: number
-  sp: { q?: string; status?: string; sort?: string }
 }) {
   if (totalPages <= 1) return null
-
-  const buildHref = (p: number) => {
-    const params = new URLSearchParams()
-    if (sp.q) params.set('q', sp.q)
-    if (sp.status) params.set('status', sp.status)
-    if (sp.sort) params.set('sort', sp.sort)
-    if (p > 1) params.set('page', String(p))
-    const qs = params.toString()
-    return `/products${qs ? `?${qs}` : ''}`
-  }
-
   return (
     <div className="flex items-center justify-between border-t border-ink-100 pt-4 text-[12.5px]">
       <span className="text-ink-500">
-        Page {page} of {totalPages}
+        Page {filters.page} of {totalPages}
       </span>
       <div className="flex gap-2">
-        {page > 1 && (
+        {filters.page > 1 && (
           <Link
-            href={buildHref(page - 1)}
+            href={buildProductsHref(filters, { page: filters.page - 1 })}
             className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
           >
             ← Previous
           </Link>
         )}
-        {page < totalPages && (
+        {filters.page < totalPages && (
           <Link
-            href={buildHref(page + 1)}
+            href={buildProductsHref(filters, { page: filters.page + 1 })}
             className="inline-flex h-8 items-center rounded-full border border-ink-200 px-3 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
           >
             Next →
@@ -731,20 +808,20 @@ function Pagination({
   )
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Empty state
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
     <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
       <Package className="mx-auto h-8 w-8 text-ink-300" />
       <h3 className="mt-3 font-display text-[15px] font-semibold text-ink-900">
-        {filtered ? 'No products match' : 'No products yet'}
+        {filtered ? 'No products match' : 'No new submissions'}
       </h3>
       <p className="mt-1 text-[12.5px] text-ink-500">
         {filtered
-          ? 'Try a different filter combination.'
+          ? 'Try a different filter combination — or jump to the "All" tab to see everything.'
           : 'Once partners start submitting ProductTemplates, they will show up here.'}
       </p>
       {filtered && (
@@ -759,20 +836,21 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   )
 }
 
-// -----------------------------------------------------------------------------
-// Local helpers
-// -----------------------------------------------------------------------------
+// =============================================================================
+// Helpers
+// =============================================================================
 
-function daysAgo(d: Date | null | undefined): number | null {
-  if (!d) return null
-  return Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
+function formatRelative(d: Date): string {
+  const diff = (Date.now() - d.getTime()) / 1000
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)}d ago`
+  if (diff < 30 * 86400) return `${Math.floor(diff / (7 * 86400))}w ago`
+  if (diff < 365 * 86400) return `${Math.floor(diff / (30 * 86400))}mo ago`
+  return `${Math.floor(diff / (365 * 86400))}y ago`
 }
 
-function formatAge(days: number): string {
-  if (days <= 0) return 'today'
-  if (days === 1) return '1d ago'
-  if (days < 7) return `${days}d ago`
-  if (days < 30) return `${Math.floor(days / 7)}w ago`
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`
-  return `${Math.floor(days / 365)}y ago`
-}
+// Ensure Calendar import is treated as used (we reference it from imports for
+// parity with sibling list pages even though formatRelative covers display).
+void Calendar

@@ -14,7 +14,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ilaunchify/ui'
-import type { PartnerFile, ServiceType } from '@prisma/client'
+import type { PartnerFile, ServiceType } from '@ilaunchify/db'
 import { YourBusinessSection } from './sections/YourBusinessSection'
 import { YourCompanySection, type CompanyState } from './sections/YourCompanySection'
 import { WhatYouCanDoSection, type CapsByType } from './sections/WhatYouCanDoSection'

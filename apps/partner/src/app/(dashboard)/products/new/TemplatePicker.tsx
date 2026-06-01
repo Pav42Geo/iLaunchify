@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Beaker, Package, X } from 'lucide-react'
-import type { ProductTemplateStatus } from '@prisma/client'
+import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { cloneTemplate, type CloneSource } from '../actions'
 
 interface TemplateOption {

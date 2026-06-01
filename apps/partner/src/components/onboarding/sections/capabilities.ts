@@ -6,7 +6,7 @@
 // `capsFromJson` to hydrate initial state, so it has to live in its own
 // non-client module.
 
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 
 // ----- Per-type capability shapes (loose; admin enforces strictness) -----
 

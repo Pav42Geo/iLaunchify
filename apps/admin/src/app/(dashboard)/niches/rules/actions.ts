@@ -14,7 +14,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import type { NicheRuleConditionKind } from '@prisma/client'
+import type { NicheRuleConditionKind } from '@ilaunchify/marketplace'
 
 type Result = { ok: true } | { ok: false; error: string }
 

@@ -22,7 +22,7 @@ import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
-import type { NicheRuleConditionKind } from '@prisma/client'
+import type { NicheRuleConditionKind } from '@ilaunchify/marketplace'
 import { RuleFormDialog, type OptionEntry } from './RuleFormDialog'
 import { DeleteRuleButton, RuleActiveToggle } from './RuleRowControls'
 

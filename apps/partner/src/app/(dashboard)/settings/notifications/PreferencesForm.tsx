@@ -5,7 +5,7 @@
 import { useState, useTransition } from 'react'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import type { NotificationChannel, NotificationEvent } from '@prisma/client'
+import type { NotificationChannel, NotificationEvent } from '@ilaunchify/db'
 import { togglePreference, saveQuietHours } from './actions'
 
 interface EffectivePreference {
@@ -37,7 +37,7 @@ function minutesToHHMM(min: number | null): string {
 function hhmmToMinutes(s: string): number | null {
   if (!s) return null
   const [h, m] = s.split(':').map((p) => parseInt(p, 10))
-  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  if (h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) return null
   return h * 60 + m
 }
 

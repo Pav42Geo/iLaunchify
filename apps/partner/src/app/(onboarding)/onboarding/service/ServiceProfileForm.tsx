@@ -17,7 +17,7 @@ import { saveServiceProfile } from './actions'
 
 interface Props {
   serviceId: string
-  serviceType: 'MANUFACTURING' | 'LABEL_PRINTING' | 'COPACKING'
+  serviceType: 'MANUFACTURING' | 'LABEL_PRINTING' | 'COPACKING' | 'WAREHOUSE'
   disclosureLevel: 'FULL' | 'CITY_STATE' | 'ANONYMOUS'
   initial: Record<string, unknown>
   /** Where to navigate after a successful save. Defaults to the onboarding documents step. */

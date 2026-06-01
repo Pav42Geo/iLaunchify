@@ -152,7 +152,7 @@ function HistoryCard({
                   {h.action}
                 </span>
                 <span className="text-[11px] text-zinc-500">
-                  {new Date(h.createdAt).toLocaleString()}
+                  {new Date(h.at).toLocaleString()}
                 </span>
               </div>
               {(h.fromValue || h.toValue) && (

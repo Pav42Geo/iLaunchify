@@ -5,7 +5,7 @@ import type {
   PartnerVerificationSection,
   VerificationSectionStatus,
   VerificationSectionType,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 
 // 5-section model — extended 2026-05-25 with OPERATIONAL_STANDARDS for the
 // 5-layer onboarding model (docs/PARTNER_ONBOARDING.md §2 + §7.4).

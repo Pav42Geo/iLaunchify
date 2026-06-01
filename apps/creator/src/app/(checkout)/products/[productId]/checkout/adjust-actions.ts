@@ -18,7 +18,7 @@
 //   re-review.
 
 import { prisma } from '@ilaunchify/db'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { recomputeAggregateApprovalStatus, parseInternalNotesLookups } from '@ilaunchify/orders'
 import { logAuditAs } from '@ilaunchify/audit'

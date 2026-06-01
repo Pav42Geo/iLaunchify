@@ -30,7 +30,7 @@ const LOGO_ALLOWED_MIME = new Set([
   'image/svg+xml',
 ])
 
-type Result<T = void> =
+type Result<T = unknown> =
   | ({ ok: true } & T)
   | { ok: false; error: string }
 

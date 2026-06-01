@@ -40,11 +40,11 @@ export const ilaunchifyPreset = {
         cream: '#FBFAF7',
       },
       fontFamily: {
-        sans: fontFamily.sans,
-        display: fontFamily.display,
-        serif: fontFamily.serif,
+        sans: [...fontFamily.sans],
+        display: [...fontFamily.display],
+        serif: [...fontFamily.serif],
       },
-      fontSize: fontSize,
+      fontSize: fontSize as unknown as Record<string, [string, Record<string, string>]>,
       spacing: spacing,
       borderRadius: {
         xs: radii.xs,

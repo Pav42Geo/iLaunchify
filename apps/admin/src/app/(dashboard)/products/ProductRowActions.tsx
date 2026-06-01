@@ -2,6 +2,11 @@
 
 // Per-row 3-dot menu for /admin/products. Platform standard RowActionsMenu.
 // See memory: ilaunchify-admin-surface-pattern.md (v2 — 2026-06-01).
+//
+// Approve / Request changes / Reject items deep-link into the detail page
+// with an ?action= hint. The actual mutation runs in the detail page's
+// ProductReviewer client component — the list-page menu is only a fast
+// fan-out so reviewers can triage in two clicks.
 
 import { useRouter } from 'next/navigation'
 import {
@@ -11,6 +16,10 @@ import {
   Copy,
   Sparkles,
   ExternalLink,
+  CheckCircle2,
+  MessageSquareWarning,
+  Ban,
+  Store,
 } from 'lucide-react'
 import {
   RowActionsMenu,
@@ -25,6 +34,8 @@ interface Props {
   productName: string
   slug: string
   partnerId: string | null
+  /** When the product is PUBLISHED, we surface a "View on marketplace" link. */
+  marketplaceUrl: string | null
 }
 
 export function ProductRowActions({
@@ -32,6 +43,7 @@ export function ProductRowActions({
   productName,
   slug,
   partnerId,
+  marketplaceUrl,
 }: Props) {
   const router = useRouter()
 
@@ -47,16 +59,43 @@ export function ProductRowActions({
     <RowActionsMenu label={`Actions for ${productName}`}>
       <RowActionLabel>{productName}</RowActionLabel>
       <RowActionItem href={`/products/${productId}`} icon={Eye}>
-        Review product
+        Open detail
       </RowActionItem>
+
+      <RowActionSeparator />
+
+      <RowActionItem
+        href={`/products/${productId}?action=approve`}
+        icon={CheckCircle2}
+      >
+        Approve…
+      </RowActionItem>
+      <RowActionItem
+        href={`/products/${productId}?action=request-changes`}
+        icon={MessageSquareWarning}
+      >
+        Request changes…
+      </RowActionItem>
+      <RowActionItem
+        href={`/products/${productId}?action=reject`}
+        icon={Ban}
+        danger
+      >
+        Reject…
+      </RowActionItem>
+
+      <RowActionSeparator />
+
+      {marketplaceUrl && (
+        <RowActionItem href={marketplaceUrl} icon={Store}>
+          View on marketplace
+        </RowActionItem>
+      )}
       {partnerId && (
         <RowActionItem href={`/partners/${partnerId}`} icon={Building2}>
           View partner
         </RowActionItem>
       )}
-
-      <RowActionSeparator />
-
       <RowActionItem
         onSelect={() =>
           router.push(`/audit?entityType=ProductTemplate&entityId=${productId}`)

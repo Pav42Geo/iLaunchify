@@ -6,7 +6,7 @@
 
 import { useId, useState, useTransition } from 'react'
 import { Pencil, Plus, X } from 'lucide-react'
-import type { LifestyleTagGroup } from '@prisma/client'
+import type { LifestyleTagGroup } from '@ilaunchify/db'
 import { createLifestyleTag, updateLifestyleTag } from './actions'
 
 const GROUPS: { value: LifestyleTagGroup; label: string }[] = [

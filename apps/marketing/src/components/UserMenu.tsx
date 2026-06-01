@@ -15,6 +15,7 @@ import {
   HelpCircle,
   LogOut,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { creatorUrl } from '@/lib/app-urls'
 
 /**
@@ -216,7 +217,7 @@ function MenuLink({
   crossApp,
 }: {
   href: string
-  icon: React.ComponentType<{ strokeWidth?: number; className?: string }>
+  icon: LucideIcon
   children: React.ReactNode
   onClick?: () => void
   /** Use raw <a> for cross-origin (apps/creator) targets. */

@@ -9,7 +9,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import type { PackagingStatus } from '@prisma/client'
+import type { PackagingStatus } from '@ilaunchify/db'
 import { setPackagingStatus } from '../actions'
 
 export function PackagingStatusToggle({

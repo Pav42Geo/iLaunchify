@@ -16,8 +16,9 @@
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { recordNicheAssignment } from '@ilaunchify/marketplace'
 import { revalidatePath } from 'next/cache'
-import type { ProductTemplateStatus } from '@prisma/client'
+import type { ProductTemplateStatus } from '@ilaunchify/db'
 
 type Result =
   | { ok: true }
@@ -299,5 +300,195 @@ export async function postProductNote(input: {
   })
 
   revalidatePath(`/products/${input.productTemplateId}`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Slice 3C — Marketplace placement overrides (admin product review page).
+//
+// Admin can override the niche + lifestyle-tag assignments a manufacturer
+// pinned (or that the auto-suggest engine inferred) during product review.
+// Both actions:
+//   • gate `requireRole(['ADMIN'])`
+//   • diff against the current junction rows, mutate inside a transaction
+//   • emit one NicheAssignmentAudit row per added or removed niche
+//     (via recordNicheAssignment) so /audit replay is complete
+//   • emit one platform AuditLog row (entityType=ProductTemplate, action
+//     niches.override / lifestyle-tags.override) so the change surfaces in
+//     /admin/audit alongside review decisions
+//   • refuse removal of a niche that has ANY active+matching NicheRule with
+//     isLocked=true (locked rules guarantee the niche assignment platform-wide)
+// -----------------------------------------------------------------------------
+
+export async function adminSetProductNiches(
+  productTemplateId: string,
+  nicheIds: string[],
+): Promise<Result> {
+  const admin = await requireRole(['ADMIN'])
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: {
+      id: true,
+      name: true,
+      niches: { select: { nicheId: true } },
+    },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+
+  // Sanitize input — uniq + non-empty strings only.
+  const desired = Array.from(new Set(nicheIds.filter((s) => typeof s === 'string' && s.length > 0)))
+  const current = new Set(tpl.niches.map((n) => n.nicheId))
+  const wanted = new Set(desired)
+
+  const toAdd = desired.filter((id) => !current.has(id))
+  const toRemove = Array.from(current).filter((id) => !wanted.has(id))
+
+  if (toAdd.length === 0 && toRemove.length === 0) return { ok: true }
+
+  // Validate that every nicheId being added actually exists + is active.
+  if (toAdd.length > 0) {
+    const found = await prisma.niche.findMany({
+      where: { id: { in: toAdd }, isActive: true },
+      select: { id: true },
+    })
+    if (found.length !== toAdd.length) {
+      return { ok: false, error: 'One or more niches are invalid or inactive.' }
+    }
+  }
+
+  // Refuse removal of any niche locked by an active rule.
+  if (toRemove.length > 0) {
+    const lockedRules = await prisma.nicheRule.findMany({
+      where: { isLocked: true, isActive: true, nicheId: { in: toRemove } },
+      select: { nicheId: true, niche: { select: { name: true } } },
+    })
+    if (lockedRules.length > 0) {
+      const name = lockedRules[0]!.niche.name
+      return {
+        ok: false,
+        error: `${name} is locked by a platform rule and cannot be removed`,
+      }
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (toRemove.length > 0) {
+      await tx.productTemplateNiche.deleteMany({
+        where: { productTemplateId, nicheId: { in: toRemove } },
+      })
+    }
+    if (toAdd.length > 0) {
+      // createMany skips duplicates so concurrent edits don't blow up.
+      await tx.productTemplateNiche.createMany({
+        data: toAdd.map((nicheId) => ({ productTemplateId, nicheId })),
+        skipDuplicates: true,
+      })
+    }
+  })
+
+  // Per-niche audit rows (NicheAssignmentAudit). Outside the txn so a
+  // logging hiccup never rolls back the user's mutation.
+  for (const nicheId of toAdd) {
+    await recordNicheAssignment({
+      productTemplateId,
+      nicheId,
+      source: 'ADMIN',
+      actorUserId: admin.id,
+      applied: true,
+    })
+  }
+  for (const nicheId of toRemove) {
+    await recordNicheAssignment({
+      productTemplateId,
+      nicheId,
+      source: 'ADMIN',
+      actorUserId: admin.id,
+      applied: false,
+    })
+  }
+
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'niches.override',
+    payload: {
+      name: tpl.name,
+      added: toAdd,
+      removed: toRemove,
+      finalIds: desired,
+    },
+  })
+
+  revalidatePath(`/products/${productTemplateId}`)
+  return { ok: true }
+}
+
+export async function adminSetProductLifestyleTags(
+  productTemplateId: string,
+  tagIds: string[],
+): Promise<Result> {
+  const admin = await requireRole(['ADMIN'])
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: {
+      id: true,
+      name: true,
+      lifestyleTags: { select: { lifestyleTagId: true } },
+    },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+
+  const desired = Array.from(new Set(tagIds.filter((s) => typeof s === 'string' && s.length > 0)))
+  const current = new Set(tpl.lifestyleTags.map((t) => t.lifestyleTagId))
+  const wanted = new Set(desired)
+
+  const toAdd = desired.filter((id) => !current.has(id))
+  const toRemove = Array.from(current).filter((id) => !wanted.has(id))
+
+  if (toAdd.length === 0 && toRemove.length === 0) return { ok: true }
+
+  if (toAdd.length > 0) {
+    const found = await prisma.lifestyleTag.findMany({
+      where: { id: { in: toAdd }, isActive: true },
+      select: { id: true },
+    })
+    if (found.length !== toAdd.length) {
+      return { ok: false, error: 'One or more lifestyle tags are invalid or inactive.' }
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (toRemove.length > 0) {
+      await tx.productTemplateLifestyleTag.deleteMany({
+        where: { productTemplateId, lifestyleTagId: { in: toRemove } },
+      })
+    }
+    if (toAdd.length > 0) {
+      await tx.productTemplateLifestyleTag.createMany({
+        data: toAdd.map((lifestyleTagId) => ({
+          productTemplateId,
+          lifestyleTagId,
+          source: 'ADMIN' as const,
+        })),
+        skipDuplicates: true,
+      })
+    }
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'lifestyle-tags.override',
+    payload: {
+      name: tpl.name,
+      added: toAdd,
+      removed: toRemove,
+      finalIds: desired,
+    },
+  })
+
+  revalidatePath(`/products/${productTemplateId}`)
   return { ok: true }
 }

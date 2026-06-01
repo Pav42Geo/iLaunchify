@@ -3,7 +3,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { Resend } from 'resend'
-import type { NotificationEvent } from '@prisma/client'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { renderTemplate, absoluteLink } from './templates'
 import { isEnabled, isInQuietHours } from './preferences'
 

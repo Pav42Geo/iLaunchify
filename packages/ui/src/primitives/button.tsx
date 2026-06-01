@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../lib/utils'
 
 /**
- * iLaunchify Button — full pill shape, five variants.
+ * iLaunchify Button — full pill shape, six variants.
  *
  * Locked design (2026-05-27, see docs/DESIGN_SYSTEM.md §8.1):
  *   - primary    Black pill, white text. Default CTA on light surfaces.
@@ -12,6 +12,8 @@ import { cn } from '../lib/utils'
  *                (business landing 'Apply now'). NEVER use on light surfaces.
  *   - pink       Pink pill, white text. Secondary brand action (rare).
  *   - secondary  White pill, ink-900 text, hairline border. Cancel, secondary.
+ *   - outline    Transparent, ink-900 text, hairline border. Like secondary
+ *                without the white fill — for use over tinted/cream surfaces.
  *   - ghost      Transparent, inherits color. Tertiary low-priority.
  *
  * Heights: sm 36px / md 44px (default) / lg 52px. All full pill.
@@ -35,6 +37,7 @@ const buttonVariants = cva(
         neon:      'bg-neon-500 text-ink-900 hover:bg-neon-400 hover:-translate-y-px',
         pink:      'bg-pink-500 text-white hover:bg-pink-600 hover:-translate-y-px',
         secondary: 'bg-white text-ink-900 border border-ink-300 shadow-sm hover:bg-ink-50',
+        outline:   'bg-transparent text-ink-900 border border-ink-300 hover:bg-ink-50',
         ghost:     'bg-transparent text-ink-900 hover:bg-ink-100',
       },
       size: {

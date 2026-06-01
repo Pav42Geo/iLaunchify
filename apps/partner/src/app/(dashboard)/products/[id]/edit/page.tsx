@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { suggestNiches } from '@ilaunchify/marketplace'
 import { ArrowLeft } from 'lucide-react'
 import { EditorShell } from './EditorShell'
 
@@ -82,7 +83,20 @@ export default async function ProductEditPage({ params }: PageProps) {
 
   // Load packaging + cert options the partner can pick from in the editor cards.
   // Notes need author names — ProductNote.authorId is a soft FK.
-  const [availablePackaging, availableCerts, noteAuthors] = await Promise.all([
+  //
+  // 2026-06-02 Slice 3B additions: full Niche catalogue + selected niches +
+  // every active LifestyleTag + selected tags + the suggest-niches engine
+  // result. The engine reads the same template row we already loaded.
+  const [
+    availablePackaging,
+    availableCerts,
+    noteAuthors,
+    nicheCatalog,
+    selectedNiches,
+    lifestyleCatalog,
+    selectedLifestyleTags,
+    nicheSuggestion,
+  ] = await Promise.all([
     prisma.packagingSystem.findMany({
       where: { partnerId: partner.id, status: 'ACTIVE' },
       select: { id: true, partnerName: true, topology: true, unitCount: true, moq: true },
@@ -99,6 +113,25 @@ export default async function ProductEditPage({ params }: PageProps) {
           select: { id: true, name: true, email: true },
         })
       : Promise.resolve([] as Array<{ id: string; name: string | null; email: string }>),
+    prisma.niche.findMany({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      select: { id: true, slug: true, name: true, iconEmoji: true, accentHex: true },
+    }),
+    prisma.productTemplateNiche.findMany({
+      where: { productTemplateId: id },
+      select: { nicheId: true },
+    }),
+    prisma.lifestyleTag.findMany({
+      where: { isActive: true },
+      orderBy: [{ group: 'asc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+      select: { id: true, slug: true, name: true, group: true, iconEmoji: true },
+    }),
+    prisma.productTemplateLifestyleTag.findMany({
+      where: { productTemplateId: id },
+      select: { lifestyleTagId: true },
+    }),
+    suggestNiches({ productTemplateId: id }),
   ])
   const nameByAuthor = new Map(noteAuthors.map((u) => [u.id, u.name ?? u.email] as const))
 
@@ -230,6 +263,11 @@ export default async function ProductEditPage({ params }: PageProps) {
         nutrientOverrides={nutrientOverrides}
         ingredientGroups={ingredientGroups}
         baseIngredientsForGrouping={baseIngredientsForGrouping}
+        niches={nicheCatalog}
+        selectedNicheIds={selectedNiches.map((n) => n.nicheId)}
+        nicheSuggestions={nicheSuggestion.suggestions}
+        lifestyleTags={lifestyleCatalog}
+        selectedLifestyleTagIds={selectedLifestyleTags.map((t) => t.lifestyleTagId)}
       />
     </div>
   )

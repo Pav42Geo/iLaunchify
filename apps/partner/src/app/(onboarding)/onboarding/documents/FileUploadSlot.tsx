@@ -9,7 +9,7 @@ import { useRef, useState, useTransition } from 'react'
 import { Card, Button } from '@ilaunchify/ui'
 import { Upload, FileText, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { PartnerFileKind, VerificationSectionType } from '@prisma/client'
+import type { PartnerFileKind, VerificationSectionType } from '@ilaunchify/db'
 import { uploadPartnerDocument, deletePartnerDocument } from './actions'
 
 export interface ExistingFile {

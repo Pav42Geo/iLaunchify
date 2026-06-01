@@ -14,7 +14,7 @@
 
 import { useId, useMemo, useState, useTransition } from 'react'
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import type { NicheRuleConditionKind } from '@prisma/client'
+import type { NicheRuleConditionKind } from '@ilaunchify/marketplace'
 import {
   createNicheRule,
   type RuleConditionInput,

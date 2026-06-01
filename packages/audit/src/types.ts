@@ -3,7 +3,7 @@
 // stores them as strings; the AuditActorRole enum on the Prisma side enforces
 // the small fixed set for actorRole only.
 
-import type { AuditActorRole as PrismaActorRole, AuditLog } from '@prisma/client'
+import type { AuditActorRole as PrismaActorRole, AuditLog } from '@ilaunchify/db'
 
 /**
  * Canonical list of entity types that flow through the audit log.

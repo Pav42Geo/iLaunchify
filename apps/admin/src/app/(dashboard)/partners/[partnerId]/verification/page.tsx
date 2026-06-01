@@ -26,7 +26,7 @@ import {
   CommercialContext,
 } from './SectionContext'
 import { CertificationsReview, type CertInstanceRow } from './CertificationsReview'
-import type { PartnerFile, VerificationSectionType } from '@prisma/client'
+import type { PartnerFile, VerificationSectionType } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 

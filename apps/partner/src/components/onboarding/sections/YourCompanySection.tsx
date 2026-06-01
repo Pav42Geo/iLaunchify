@@ -15,7 +15,7 @@
 
 import { useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
-import type { PartnerFile } from '@prisma/client'
+import type { PartnerFile } from '@ilaunchify/db'
 import { saveYourCompanySection } from '../../../app/(onboarding)/onboarding/actions'
 import { FileUploadSlot, type ExistingFile } from '../../../app/(onboarding)/onboarding/documents/FileUploadSlot'
 

@@ -15,7 +15,7 @@ import { CheckCircle2, Clock, AlertTriangle, FileText } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
-import type { VerificationSectionType, VerificationSectionStatus } from '@prisma/client'
+import type { VerificationSectionType, VerificationSectionStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Application status — iLaunchify Partners' }

@@ -16,7 +16,7 @@ import { dispatchNotification } from '@ilaunchify/notifications'
 import type {
   VerificationSectionStatus,
   VerificationSectionType,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }

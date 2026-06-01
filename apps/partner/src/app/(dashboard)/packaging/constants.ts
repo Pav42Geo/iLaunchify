@@ -7,7 +7,7 @@ import type {
   FlavorMode,
   FlavorPolicy,
   PackagingStatus,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 
 export const TOPOLOGY_OPTIONS: Array<{ value: PackagingTopology; label: string; hint: string }> = [
   { value: 'SINGLE_CONTAINER', label: 'Single container', hint: 'One jar, bottle, pouch, can, or box.' },

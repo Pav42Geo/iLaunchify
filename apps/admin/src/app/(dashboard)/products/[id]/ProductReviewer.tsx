@@ -33,7 +33,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
-import type { ProductTemplateStatus, NoteAuthor } from '@prisma/client'
+import type { ProductTemplateStatus, NoteAuthor } from '@ilaunchify/db'
 import {
   approveProductTemplate,
   requestProductChanges,

@@ -2,7 +2,7 @@
 // Each template renders from a small payload — keep the payload minimal so the
 // callers don't have to fetch entire entities.
 
-import type { NotificationEvent } from '@prisma/client'
+import type { NotificationEvent } from '@ilaunchify/db'
 
 export interface NotificationTemplate {
   title: string

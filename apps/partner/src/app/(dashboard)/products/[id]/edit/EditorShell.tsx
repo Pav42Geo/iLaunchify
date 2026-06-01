@@ -32,11 +32,13 @@ import {
   Award,
   Image as ImageIcon,
   Settings2,
+  Sparkles,
   Weight,
   MessageSquare,
   FileText,
 } from 'lucide-react'
-import type { ProductTemplateStatus, IngredientSource } from '@prisma/client'
+import type { ProductTemplateStatus, IngredientSource } from '@ilaunchify/db'
+import type { NicheSuggestion } from '@ilaunchify/marketplace'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
 import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
 import { AllergensCard } from './cards/AllergensCard'
@@ -59,6 +61,11 @@ import {
   IngredientGroupingPanel,
   type BaseIngredientOption,
 } from './cards/IngredientGroupingPanel'
+import {
+  NichesAndTagsCard,
+  type NicheOption,
+  type LifestyleTagOption,
+} from './cards/NichesAndTagsCard'
 import type { NutrientOverrideRow, IngredientGroupRow } from './card-actions'
 
 // -----------------------------------------------------------------------------
@@ -112,6 +119,12 @@ interface EditorShellProps {
   ingredientGroups: IngredientGroupRow[]
   // Map of baseIngredientId → name from ingredientSlots, computed in page.tsx
   baseIngredientsForGrouping: BaseIngredientOption[]
+  // 2026-06-02 Slice 3B — marketplace taxonomy
+  niches: NicheOption[]
+  selectedNicheIds: string[]
+  nicheSuggestions: NicheSuggestion[]
+  lifestyleTags: LifestyleTagOption[]
+  selectedLifestyleTagIds: string[]
 }
 
 // -----------------------------------------------------------------------------
@@ -134,6 +147,11 @@ export function EditorShell({
   nutrientOverrides,
   ingredientGroups,
   baseIngredientsForGrouping,
+  niches,
+  selectedNicheIds,
+  nicheSuggestions,
+  lifestyleTags,
+  selectedLifestyleTagIds,
 }: EditorShellProps) {
   const router = useRouter()
 
@@ -150,6 +168,7 @@ export function EditorShell({
   // Open-card map — cards are open by default; user collapses what they don't need.
   const [openCards, setOpenCards] = useState<Record<string, boolean>>({
     basics: true,
+    nichesAndTags: true,
     ingredients: true,
     allergens: true,
     packaging: true,
@@ -296,7 +315,28 @@ export function EditorShell({
           </div>
         </EditorCard>
 
-        {/* ② Ingredients */}
+        {/* ②  Niches & lifestyle tags — 2026-06-02 Slice 3B */}
+        <EditorCard
+          id="nichesAndTags"
+          icon={Sparkles}
+          title="Niches & lifestyle tags"
+          subtitle="Where this product appears across the marketplace + filter chips"
+          open={!!openCards.nichesAndTags}
+          onToggle={() => toggleCard('nichesAndTags')}
+          reapprovalRequired
+        >
+          <NichesAndTagsCard
+            productTemplateId={template.id}
+            niches={niches}
+            selectedNicheIds={selectedNicheIds}
+            suggestions={nicheSuggestions}
+            lifestyleTags={lifestyleTags}
+            selectedTagIds={selectedLifestyleTagIds}
+            isDraft={isDraft}
+          />
+        </EditorCard>
+
+        {/* ③ Ingredients */}
         <EditorCard
           id="ingredients"
           icon={Beaker}

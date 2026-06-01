@@ -1,7 +1,7 @@
 // Read + mark-read helpers for the notification center UI.
 
 import { prisma } from '@ilaunchify/db'
-import type { Notification } from '@prisma/client'
+import type { Notification } from '@ilaunchify/db'
 
 /**
  * In-app notifications for a user, newest first. Defaults to a 50-row cap

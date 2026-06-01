@@ -69,11 +69,12 @@ export default async function PaymentsPage() {
   const clawedBackCents = clawbacks.reduce((acc, c) => acc + c.amountCents, 0)
 
   const stripeConnected =
-    user.role === 'PARTNER' &&
-    (await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { stripeAccountId: true, stripeAccountStatus: true },
-    }))
+    user.role === 'PARTNER'
+      ? await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { stripeAccountId: true, stripeAccountStatus: true },
+        })
+      : null
 
   return (
     <div className="space-y-6">

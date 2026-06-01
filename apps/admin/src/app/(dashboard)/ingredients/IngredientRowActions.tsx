@@ -28,7 +28,7 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react'
-import type { VerificationStatus, IngredientSource } from '@prisma/client'
+import type { VerificationStatus, IngredientSource } from '@ilaunchify/db'
 import {
   RowActionsMenu,
   RowActionItem,

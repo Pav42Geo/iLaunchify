@@ -12,7 +12,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 import { saveServiceCapabilities } from '../../../app/(onboarding)/onboarding/actions'
 import type {
   ManufacturingCaps,

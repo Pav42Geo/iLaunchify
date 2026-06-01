@@ -55,10 +55,17 @@ import type {
   PartnerStatus,
   PartnerTier,
   FlavorPresetStatus,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { suggestNiches } from '@ilaunchify/marketplace'
 import { ProductReviewer } from './ProductReviewer'
+import { MarketplacePlacementPanel } from './MarketplacePlacementPanel'
+import type {
+  NicheOption,
+  LifestyleTagOption,
+  RuleHit,
+} from './MarketplacePlacementPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -241,6 +248,9 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
       flavorPresets: { orderBy: { sortOrder: 'asc' } },
       reviewItems: { orderBy: { createdAt: 'desc' } },
       notes: { orderBy: { createdAt: 'asc' } },
+      // 2026-06-02 Slice 3C — admin marketplace placement panel.
+      niches: { include: { niche: true } },
+      lifestyleTags: { include: { lifestyleTag: true } },
     },
   })
   if (!template) notFound()
@@ -281,6 +291,128 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
   const nameByAuthorId = new Map(
     authorUsers.map((u) => [u.id, u.name ?? u.email] as const),
   )
+
+  // -------------------------------------------------------------------------
+  // Slice 3C — Marketplace placement panel data
+  //
+  // 1. The 8 active niches (filter the chip list).
+  // 2. All active lifestyle tags grouped Lifestyle / Audience / Trend.
+  // 3. suggestNiches result — drives the auto-suggested dot + "Why these
+  //    niches?" disclosure.
+  // 4. Most-recent NicheAssignmentAudit per (productTemplate, niche) — drives
+  //    the AUTO / MFG / ADMIN source pill on each niche chip.
+  // -------------------------------------------------------------------------
+
+  const [allNicheRows, allLifestyleTagRows, suggestion, nicheAuditRows] =
+    await Promise.all([
+      prisma.niche.findMany({
+        where: { isActive: true },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          iconEmoji: true,
+          accentHex: true,
+        },
+      }),
+      prisma.lifestyleTag.findMany({
+        where: { isActive: true },
+        orderBy: [{ group: 'asc' }, { displayOrder: 'asc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          group: true,
+          iconEmoji: true,
+        },
+      }),
+      suggestNiches({ productTemplateId: template.id }),
+      prisma.nicheAssignmentAudit.findMany({
+        where: { productTemplateId: template.id },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          nicheId: true,
+          source: true,
+          applied: true,
+          createdAt: true,
+        },
+      }),
+    ])
+
+  const allNiches: NicheOption[] = allNicheRows
+  const allLifestyleTags: LifestyleTagOption[] = allLifestyleTagRows.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    group: t.group,
+    iconEmoji: t.iconEmoji,
+  }))
+  const assignedNicheIds = template.niches.map((n) => n.nicheId)
+  const assignedLifestyleTagIds = template.lifestyleTags.map((t) => t.lifestyleTagId)
+  const lifestyleTagSourceById: Record<
+    string,
+    'AUTO_RULE' | 'MANUFACTURER' | 'ADMIN'
+  > = {}
+  for (const t of template.lifestyleTags) {
+    lifestyleTagSourceById[t.lifestyleTagId] = t.source
+  }
+  // Most-recent audit per niche where applied=true. We iterate in DESC order
+  // and only record the first hit per nicheId.
+  const nicheAuditByNicheId: Record<
+    string,
+    { nicheId: string; source: 'AUTO_RULE' | 'MANUFACTURER' | 'ADMIN' }
+  > = {}
+  for (const row of nicheAuditRows) {
+    if (!row.applied) continue
+    if (nicheAuditByNicheId[row.nicheId]) continue
+    nicheAuditByNicheId[row.nicheId] = {
+      nicheId: row.nicheId,
+      source: row.source,
+    }
+  }
+  // Hydrate rule metadata (slug/description/weight/isLocked/nicheName) for
+  // every rawHit — the suggestNiches result only surfaces metadata for the
+  // post-dedup winners. We need the full picture for the disclosure panel.
+  const ruleIdsInHits = suggestion.rawHits.map((h) => h.ruleId)
+  const ruleMetaRows = ruleIdsInHits.length
+    ? await prisma.nicheRule.findMany({
+        where: { id: { in: ruleIdsInHits } },
+        select: {
+          id: true,
+          slug: true,
+          description: true,
+          weight: true,
+          isLocked: true,
+          niche: { select: { name: true } },
+        },
+      })
+    : []
+  const ruleMetaById = new Map(ruleMetaRows.map((r) => [r.id, r] as const))
+  const ruleHits: RuleHit[] = suggestion.rawHits
+    .map((h): RuleHit => {
+      const meta = ruleMetaById.get(h.ruleId)
+      return {
+        ruleId: h.ruleId,
+        ruleSlug: meta?.slug ?? h.ruleId.slice(0, 8),
+        description: meta?.description ?? '',
+        weight: meta?.weight ?? 0,
+        nicheId: h.nicheId,
+        nicheName: meta?.niche.name ?? '',
+        matched: h.matched,
+        isLocked: meta?.isLocked ?? false,
+      }
+    })
+    // Show matched first (most useful), then by weight desc within each bucket.
+    .sort((a, b) => {
+      if (a.matched !== b.matched) return a.matched ? -1 : 1
+      return b.weight - a.weight
+    })
+  const suggestedNicheIds = suggestion.suggestions.map((s) => s.nicheId)
+  const lockedNicheIds = suggestion.suggestions
+    .filter((s) => s.isLocked)
+    .map((s) => s.nicheId)
 
   // Tone + label resolution (strict-TS bang on Record<EnumKey, T>).
   const tone = STATUS_TONE[template.status]!
@@ -1107,6 +1239,22 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               </div>
             </div>
           </SnapshotCard>
+
+          {/* Slice 3C — Marketplace placement (above Partner Constraints).
+              Admin can override niche + lifestyle-tag assignments + see the
+              auto-suggest engine's reasoning. */}
+          <MarketplacePlacementPanel
+            productTemplateId={template.id}
+            allNiches={allNiches}
+            allLifestyleTags={allLifestyleTags}
+            assignedNicheIds={assignedNicheIds}
+            assignedLifestyleTagIds={assignedLifestyleTagIds}
+            lifestyleTagSourceById={lifestyleTagSourceById}
+            nicheAuditByNicheId={nicheAuditByNicheId}
+            suggestedNicheIds={suggestedNicheIds}
+            lockedNicheIds={lockedNicheIds}
+            ruleHits={ruleHits}
+          />
 
           {/* Partner Constraints — the surface Pavel asked for. Walks every
               partner-side gate the spec mentions (status / service status /

@@ -9,7 +9,7 @@ import type {
   PartnerFile,
   VerificationSectionStatus,
   VerificationSectionType,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 import { Check, AlertCircle, XCircle, RotateCcw, FileText, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { setSectionStatus } from './actions'

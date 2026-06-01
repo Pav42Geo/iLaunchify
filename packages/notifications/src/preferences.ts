@@ -5,7 +5,7 @@ import type {
   NotificationChannel,
   NotificationEvent,
   NotificationPreference,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 
 export interface EffectivePreference {
   event: NotificationEvent

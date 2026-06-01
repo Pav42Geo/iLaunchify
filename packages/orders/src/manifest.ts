@@ -12,7 +12,7 @@
 // Manifest shape is versioned so V2 can extend without breaking partner
 // ingest pipelines.
 
-import type { PrismaClient, Prisma } from '@prisma/client'
+import type { PrismaClient, Prisma } from '@ilaunchify/db'
 
 export const MANIFEST_VERSION = '1.0.0'
 

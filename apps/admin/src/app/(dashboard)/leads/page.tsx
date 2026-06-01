@@ -36,7 +36,7 @@ import {
   Warehouse as WarehouseIcon,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { LeadRowActions } from './LeadRowActions'
 
@@ -68,12 +68,14 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
   LABEL_PRINTING: 'Label printing',
+  WAREHOUSE: 'Warehousing',
 }
 
 const SERVICE_ICON: Record<ServiceType, LucideIcon> = {
   MANUFACTURING: Factory,
   COPACKING: PackageIcon,
   LABEL_PRINTING: Printer,
+  WAREHOUSE: WarehouseIcon,
 }
 
 const PAGE_SIZE = 50

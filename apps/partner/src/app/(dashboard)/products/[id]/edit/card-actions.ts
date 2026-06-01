@@ -9,7 +9,13 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
+import {
+  suggestNiches,
+  recordNicheAssignment,
+  type SuggestNichesResult,
+} from '@ilaunchify/marketplace'
 import { revalidatePath } from 'next/cache'
 
 type Result<T = void> =
@@ -860,6 +866,244 @@ export async function postPartnerProductNote(input: {
       authorType: 'PARTNER',
       body: input.body.trim(),
     },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// NICHES — 2026-06-02 V1.1 marketplace taxonomy (Slice 3B).
+// Per docs/MARKETPLACE_DESIGN.md §2 + memory note
+// ilaunchify-marketplace-decisions-2026-06-01.md.
+//
+// The partner sees 8 niche chips. Auto-suggestions come from
+// @ilaunchify/marketplace.suggestNiches — rules with `isLocked=true` cannot
+// be deselected. All other chips toggle freely; saves diff-and-write.
+//
+// **Approval map** — per docs/MANUFACTURER_PRODUCT_BUILDER.md §8b, niche
+// changes on a PUBLISHED template move it to PENDING_EDIT_REVIEW (the live
+// version keeps serving until admin approves). Edits on a DRAFT /
+// NEEDS_CHANGES row stay in that state.
+// -----------------------------------------------------------------------------
+
+export async function saveProductNiches(
+  productTemplateId: string,
+  nicheIds: string[],
+): Promise<Result<{ suggestions: SuggestNichesResult['suggestions'] }>> {
+  const { user, partner, error, template } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Re-run the suggestion engine — locked rules cannot be deselected. We
+  // need this regardless to (a) enforce the locked invariant server-side
+  // and (b) return fresh suggestions to the client for re-render.
+  const suggestion = await suggestNiches({ productTemplateId })
+  const lockedNicheIds = new Set(
+    suggestion.suggestions.filter((s) => s.isLocked).map((s) => s.nicheId),
+  )
+
+  // Dedupe + normalise input
+  const desired = new Set(nicheIds.filter((id) => typeof id === 'string' && id.length > 0))
+
+  // Every locked niche must remain selected.
+  for (const lockedId of lockedNicheIds) {
+    desired.add(lockedId)
+  }
+
+  // Validate that every desired niche actually exists (defence in depth —
+  // the picker only surfaces real rows but a hand-crafted POST shouldn't
+  // be able to insert orphan FKs).
+  const existing = await prisma.niche.findMany({
+    where: { id: { in: Array.from(desired) }, isActive: true },
+    select: { id: true },
+  })
+  const existingIds = new Set(existing.map((n) => n.id))
+  for (const id of desired) {
+    if (!existingIds.has(id)) {
+      return { ok: false, error: 'One or more niches are invalid.' }
+    }
+  }
+
+  // Current state — what's already linked.
+  const current = await prisma.productTemplateNiche.findMany({
+    where: { productTemplateId: template.id },
+    select: { nicheId: true },
+  })
+  const currentIds = new Set(current.map((c) => c.nicheId))
+
+  const toAdd = Array.from(desired).filter((id) => !currentIds.has(id))
+  const toRemove = Array.from(currentIds).filter((id) => !desired.has(id))
+
+  // Refuse to remove any locked niche (paranoid — desired-set logic above
+  // already adds locked back in, but a client racing the engine could in
+  // principle submit a stale list).
+  for (const id of toRemove) {
+    if (lockedNicheIds.has(id)) {
+      return { ok: false, error: 'A locked niche cannot be removed.' }
+    }
+  }
+
+  if (toAdd.length === 0 && toRemove.length === 0) {
+    // Nothing changed — still return fresh suggestions for client UX.
+    return { ok: true, data: { suggestions: suggestion.suggestions } }
+  }
+
+  // Approval-map — published templates flip to PENDING_EDIT_REVIEW on niche
+  // edits. Draft / NEEDS_CHANGES / PENDING_EDIT_REVIEW / PAUSED stay put.
+  const shouldGateForReview = template.status === 'PUBLISHED'
+
+  // Look up rule ids for the auto-rule audit rows (if a desired-added niche
+  // has a matching rule, we want to log source=AUTO_RULE; otherwise it's
+  // MANUFACTURER-initiated).
+  const ruleIdByNicheId = new Map<string, string>()
+  for (const s of suggestion.suggestions) {
+    ruleIdByNicheId.set(s.nicheId, s.ruleId)
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (toAdd.length > 0) {
+        await tx.productTemplateNiche.createMany({
+          data: toAdd.map((nicheId) => ({
+            productTemplateId: template.id,
+            nicheId,
+            isPrimary: false, // V1.1+ — Pavel reserved 1 primary + N secondaries
+          })),
+          skipDuplicates: true,
+        })
+      }
+      if (toRemove.length > 0) {
+        await tx.productTemplateNiche.deleteMany({
+          where: { productTemplateId: template.id, nicheId: { in: toRemove } },
+        })
+      }
+      if (shouldGateForReview) {
+        await tx.productTemplate.update({
+          where: { id: template.id },
+          data: { status: 'PENDING_EDIT_REVIEW' },
+        })
+      }
+    })
+  } catch (err) {
+    return { ok: false, error: `Could not save niches: ${(err as Error).message}` }
+  }
+
+  // Audit — one NicheAssignmentAudit row per delta, plus a single product-
+  // level AuditLog summarising the change.
+  for (const nicheId of toAdd) {
+    await recordNicheAssignment({
+      productTemplateId: template.id,
+      nicheId,
+      source: 'MANUFACTURER',
+      ruleId: ruleIdByNicheId.get(nicheId) ?? null,
+      actorUserId: user.id,
+      applied: true,
+    })
+  }
+  for (const nicheId of toRemove) {
+    await recordNicheAssignment({
+      productTemplateId: template.id,
+      nicheId,
+      source: 'MANUFACTURER',
+      ruleId: null,
+      actorUserId: user.id,
+      applied: false,
+    })
+  }
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_NICHES_UPDATED',
+    fromValue: template.status,
+    toValue: shouldGateForReview ? 'PENDING_EDIT_REVIEW' : template.status,
+    payload: {
+      partnerId: partner.id,
+      added: toAdd,
+      removed: toRemove,
+      lockedNiches: Array.from(lockedNicheIds),
+      gatedForReview: shouldGateForReview,
+    },
+  })
+
+  // Recompute suggestions post-write — niche selection itself isn't a rule
+  // input so the result is stable, but doing the second call keeps the
+  // client's chip state perfectly consistent with the server's view.
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true, data: { suggestions: suggestion.suggestions } }
+}
+
+// -----------------------------------------------------------------------------
+// LIFESTYLE TAGS — Layer 4 of the marketplace taxonomy.
+// Multi-select of Keto / Vegan / Athletes / Functional / etc. across the
+// Lifestyle / Audience / Trend groups. NOT approval-gated — these ship live.
+// -----------------------------------------------------------------------------
+
+export async function saveProductLifestyleTags(
+  productTemplateId: string,
+  tagIds: string[],
+): Promise<Result> {
+  const { user, partner, error, template } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  const desired = new Set(tagIds.filter((id) => typeof id === 'string' && id.length > 0))
+
+  // Validate every desired tag is real + active.
+  if (desired.size > 0) {
+    const existing = await prisma.lifestyleTag.findMany({
+      where: { id: { in: Array.from(desired) }, isActive: true },
+      select: { id: true },
+    })
+    const existingIds = new Set(existing.map((t) => t.id))
+    for (const id of desired) {
+      if (!existingIds.has(id)) {
+        return { ok: false, error: 'One or more lifestyle tags are invalid.' }
+      }
+    }
+  }
+
+  const current = await prisma.productTemplateLifestyleTag.findMany({
+    where: { productTemplateId: template.id },
+    select: { lifestyleTagId: true },
+  })
+  const currentIds = new Set(current.map((c) => c.lifestyleTagId))
+
+  const toAdd = Array.from(desired).filter((id) => !currentIds.has(id))
+  const toRemove = Array.from(currentIds).filter((id) => !desired.has(id))
+
+  if (toAdd.length === 0 && toRemove.length === 0) return { ok: true }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (toAdd.length > 0) {
+        await tx.productTemplateLifestyleTag.createMany({
+          data: toAdd.map((lifestyleTagId) => ({
+            productTemplateId: template.id,
+            lifestyleTagId,
+            source: 'MANUFACTURER' as const,
+          })),
+          skipDuplicates: true,
+        })
+      }
+      if (toRemove.length > 0) {
+        await tx.productTemplateLifestyleTag.deleteMany({
+          where: {
+            productTemplateId: template.id,
+            lifestyleTagId: { in: toRemove },
+          },
+        })
+      }
+    })
+  } catch (err) {
+    return { ok: false, error: `Could not save lifestyle tags: ${(err as Error).message}` }
+  }
+
+  // Lifestyle tags ship live — no PENDING_EDIT_REVIEW gate. We still write a
+  // product-level AuditLog so admin sees the change.
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_LIFESTYLE_TAGS_UPDATED',
+    payload: { partnerId: partner.id, added: toAdd, removed: toRemove },
   })
 
   revalidatePath(`/products/${template.id}/edit`)

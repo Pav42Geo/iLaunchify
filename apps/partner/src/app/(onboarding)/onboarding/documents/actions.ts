@@ -12,7 +12,7 @@
 // formData limit, but we double-check server-side.
 
 import { prisma } from '@ilaunchify/db'
-import type { PartnerFileKind, VerificationSectionType } from '@prisma/client'
+import type { PartnerFileKind, VerificationSectionType } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { uploadFile, deleteFile, partnerFileKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'

@@ -24,7 +24,7 @@ import {
 import { Mail, Copy, Check, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { invitePartner } from './actions'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 
 export function InvitePartnerDialog() {
   const [open, setOpen] = useState(false)

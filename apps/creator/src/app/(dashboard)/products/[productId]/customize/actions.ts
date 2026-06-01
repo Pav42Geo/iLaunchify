@@ -31,7 +31,7 @@ export type SaveResult =
 export async function saveCustomization(input: z.infer<typeof Schema>): Promise<SaveResult> {
   const user = await requireUser()
   const parsed = Schema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: parsed.error.errors[0].message }
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
 
   const product = await prisma.product.findFirst({
     where: { id: parsed.data.productId, brand: { creatorProfile: { userId: user.id } } },

@@ -118,7 +118,7 @@ function Section({
   )
 }
 
-import type { PackagingTopology, PackagingStatus } from '@prisma/client'
+import type { PackagingTopology, PackagingStatus } from '@ilaunchify/db'
 
 type Row = {
   id: string

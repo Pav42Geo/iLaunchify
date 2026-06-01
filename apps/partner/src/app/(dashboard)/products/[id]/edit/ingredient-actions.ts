@@ -17,7 +17,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import type { BioengineeredStatus, IngredientSource, Prisma } from '@prisma/client'
+import type { BioengineeredStatus, IngredientSource, Prisma } from '@ilaunchify/db'
 
 export type IngredientResult = {
   id: string

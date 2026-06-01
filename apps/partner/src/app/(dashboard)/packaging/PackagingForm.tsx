@@ -12,7 +12,7 @@ import type {
   PackagingTopology,
   FlavorMode,
   FlavorPolicy,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 import {
   TOPOLOGY_OPTIONS,
   FLAVOR_MODE_OPTIONS,

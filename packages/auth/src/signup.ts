@@ -13,7 +13,7 @@
 //   if (result.ok) { /* send magic link */ } else { /* show error */ }
 
 import { prisma } from '@ilaunchify/db'
-import type { UserRole } from '@prisma/client'
+import type { UserRole } from '@ilaunchify/db'
 
 /** Result of a signup attempt. */
 export type SignupResult =

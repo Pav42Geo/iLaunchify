@@ -3,7 +3,7 @@ import { LeadForm } from './LeadForm'
 
 export const metadata = { title: 'Apply — iLaunchify Partners' }
 
-const TYPE_LABELS: Record<string, { title: string; description: string }> = {
+const TYPE_LABELS = {
   MANUFACTURING: {
     title: 'Manufacturing partner application',
     description: 'Tell us about your facility. We review every application and reach out within 3 business days.',

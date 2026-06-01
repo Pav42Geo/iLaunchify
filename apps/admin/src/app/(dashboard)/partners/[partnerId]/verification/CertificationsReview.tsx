@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@ilaunchify/ui'
 import { CheckCircle2, XCircle, FileText, Clock } from 'lucide-react'
 import { toast } from 'sonner'
-import type { PartnerCertInstanceStatus } from '@prisma/client'
+import type { PartnerCertInstanceStatus } from '@ilaunchify/db'
 import { setCertInstanceStatus } from '../../../certificate-types/actions'
 
 export interface CertInstanceRow {

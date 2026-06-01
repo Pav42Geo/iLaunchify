@@ -1,6 +1,6 @@
 'use server'
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, Prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -15,7 +15,7 @@ const Schema = z.object({
 export async function saveServiceProfile(input: z.infer<typeof Schema>) {
   const user = await requireUser()
   const parsed = Schema.safeParse(input)
-  if (!parsed.success) return { ok: false as const, error: parsed.error.errors[0].message }
+  if (!parsed.success) return { ok: false as const, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
 
   const service = await prisma.partnerService.findFirst({
     where: { id: parsed.data.serviceId, partner: { userId: user.id } },
@@ -25,7 +25,7 @@ export async function saveServiceProfile(input: z.infer<typeof Schema>) {
   await prisma.partnerService.update({
     where: { id: service.id },
     data: {
-      capabilities: parsed.data.capabilities,
+      capabilities: parsed.data.capabilities as Prisma.InputJsonValue,
       disclosureLevel: parsed.data.disclosureLevel,
     },
   })
@@ -36,7 +36,7 @@ export async function saveServiceProfile(input: z.infer<typeof Schema>) {
     action: 'SERVICE_UPDATE',
     payload: {
       type: service.type,
-      capabilities: parsed.data.capabilities,
+      capabilities: parsed.data.capabilities as Prisma.InputJsonValue,
       disclosureLevel: parsed.data.disclosureLevel,
     },
   })

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, Flame, Sparkles, Zap } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { productGradient, type ProductGradient } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 
@@ -21,7 +22,7 @@ const VARIANT_CONFIG: Record<
   {
     eyebrow: string
     eyebrowTone: 'pink' | 'neon'
-    icon: React.ComponentType<{ strokeWidth?: number; className?: string }>
+    icon: LucideIcon
     statLabel: (t: SampleTemplate) => string
   }
 > = {

@@ -9,7 +9,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
 import { Plus, Package } from 'lucide-react'
-import type { ProductTemplateStatus } from '@prisma/client'
+import type { ProductTemplateStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }

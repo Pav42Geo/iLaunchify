@@ -333,6 +333,7 @@ enum TransferStatus {
   COMPLETED
   FAILED
   REVERSED
+  CANCELED
 }
 
 enum RefundReason {
@@ -2129,6 +2130,7 @@ model ProductTemplate {
   niches          ProductTemplateNiche[]
   // 2026-06-02 V1.1 marketplace taxonomy — Layer 4 lifestyle tags
   lifestyleTags   ProductTemplateLifestyleTag[]
+  nicheAssignmentAudits NicheAssignmentAudit[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   @@index([subcategoryId, status])
@@ -3454,6 +3456,7 @@ model Niche {
   // 2026-06-02 V1.1 marketplace taxonomy — Layer 1 ↔ Layer 2 junction (Option A) + rules
   subcategories    NicheSubcategory[]
   rules            NicheRule[]
+  nicheAssignmentAudits NicheAssignmentAudit[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   @@index([isActive, displayOrder])
@@ -3561,7 +3564,12 @@ model NicheAssignmentAudit {
   actorUserId       String?               // present when source=MANUFACTURER or ADMIN
   applied           Boolean               // true=assigned, false=removed
   createdAt         DateTime              @default(now())
+  // Additive relations (2026-06-01 Slice 3) — drive the /admin/niches/audit
+  // loader's orderBy/select/where. Cascade matches ProductTemplateNiche.
+  productTemplate   ProductTemplate       @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  niche             Niche                 @relation(fields: [nicheId], references: [id], onDelete: Cascade)
   @@index([productTemplateId, createdAt])
+  @@index([nicheId])
 }
 
 // =============================================================================

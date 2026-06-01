@@ -17,7 +17,7 @@ import type {
   PartnerFile,
   VerificationSectionStatus,
   VerificationSectionType,
-} from '@prisma/client'
+} from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Application — Partner' }
@@ -27,6 +27,7 @@ const SECTION_LABEL: Record<VerificationSectionType, string> = {
   FACILITY: 'Facility & capabilities',
   DOCUMENTS: 'Compliance documents',
   PUBLIC_PROFILE: 'Public profile',
+  OPERATIONAL_STANDARDS: 'Operational standards',
 }
 
 const SECTION_HREF: Record<VerificationSectionType, string> = {
@@ -34,6 +35,7 @@ const SECTION_HREF: Record<VerificationSectionType, string> = {
   FACILITY: '/onboarding/service',
   DOCUMENTS: '/onboarding/documents',
   PUBLIC_PROFILE: '/onboarding/documents',
+  OPERATIONAL_STANDARDS: '/onboarding/service',
 }
 
 const ALL_SECTIONS: VerificationSectionType[] = [

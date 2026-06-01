@@ -12,7 +12,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } fro
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import type { PartnerStatus } from '@prisma/client'
+import type { PartnerStatus } from '@ilaunchify/db'
 import {
   ALLOWED_TRANSITIONS,
   STATUS_LABEL,

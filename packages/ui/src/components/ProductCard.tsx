@@ -94,7 +94,7 @@ const GRADIENT_KEYS = Object.keys(productGradient) as ProductGradient[]
 function stableGradient(seed: string): ProductGradient {
   let hash = 0
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0
-  return GRADIENT_KEYS[Math.abs(hash) % GRADIENT_KEYS.length]
+  return GRADIENT_KEYS[Math.abs(hash) % GRADIENT_KEYS.length]!
 }
 
 function fmtMoney(n: number): string {

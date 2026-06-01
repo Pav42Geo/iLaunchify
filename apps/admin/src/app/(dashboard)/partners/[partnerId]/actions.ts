@@ -20,8 +20,12 @@ import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
-import type { PartnerStatus } from '@prisma/client'
-import { isAllowedTransition } from '@/lib/partner-fsm'
+import type { PartnerStatus } from '@ilaunchify/db'
+import {
+  isAllowedTransition,
+  auditActionForTransition,
+  notificationEventForTransition,
+} from '@/lib/partner-fsm'
 import { computeOverallStatus } from '@/lib/verification'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -134,51 +138,8 @@ export async function promotePartnerStatus({
   return { ok: true }
 }
 
-// -----------------------------------------------------------------------------
-// Action-name + notification mapping (kept here so the FSM helper stays pure)
-// -----------------------------------------------------------------------------
-
-function auditActionForTransition(from: PartnerStatus, to: PartnerStatus): string {
-  if (to === 'IDENTITY_VERIFIED') return 'PARTNER_VERIFY_IDENTITY'
-  if (to === 'OPERATIONALLY_CONFIGURED') return 'PARTNER_VERIFY_OPS'
-  if (to === 'OPS_PENDING_REVIEW') return 'PARTNER_SEND_TO_OPS_REVIEW'
-  if (to === 'ACTIVE') {
-    if (from === 'SUSPENDED' || from === 'PAUSED') return 'PARTNER_REINSTATE'
-    return 'PARTNER_ACTIVATE'
-  }
-  if (to === 'PAUSED') return 'PARTNER_PAUSE'
-  if (to === 'SUSPENDED') return 'PARTNER_SUSPEND'
-  if (to === 'TERMINATED') return 'PARTNER_TERMINATE'
-  // Backward transitions = request changes
-  if (
-    to === 'LEAD' ||
-    to === 'IDENTITY_PENDING_REVIEW' ||
-    to === 'IDENTITY_VERIFIED' ||
-    to === 'OPS_PENDING_REVIEW'
-  ) {
-    return 'PARTNER_REQUEST_CHANGES'
-  }
-  return 'PARTNER_STATUS_CHANGE'
-}
-
-function notificationEventForTransition(
-  _from: PartnerStatus,
-  to: PartnerStatus,
-): 'PARTNER_ACTIVATED' | 'SECTION_NEEDS_CHANGES' | 'SECTION_VERIFIED' | null {
-  if (to === 'ACTIVE') return 'PARTNER_ACTIVATED'
-  if (
-    to === 'LEAD' ||
-    to === 'IDENTITY_PENDING_REVIEW' ||
-    to === 'IDENTITY_VERIFIED' ||
-    to === 'OPS_PENDING_REVIEW'
-  ) {
-    return 'SECTION_NEEDS_CHANGES'
-  }
-  if (to === 'IDENTITY_VERIFIED' || to === 'OPERATIONALLY_CONFIGURED') {
-    return 'SECTION_VERIFIED'
-  }
-  return null
-}
+// (auditActionForTransition + notificationEventForTransition moved to
+// @/lib/partner-fsm so they can be unit-tested alongside the rest of the FSM.)
 
 // -----------------------------------------------------------------------------
 // Legacy aliases — kept so any caller still using the old API doesn't break.
@@ -214,4 +175,94 @@ export async function requestChanges({ partnerId }: { partnerId: string }): Prom
     return { ok: false, error: `No request-changes target defined for ${partner.status}` }
   }
   return promotePartnerStatus({ partnerId, toStatus })
+}
+
+// =============================================================================
+// Task #576 — Partner detail v2 actions
+//   - setPartnerTier      : admin-only tier change (audit-logged)
+//   - togglePartnerService: flip a PartnerService.status (ACTIVE / PAUSED)
+//     to suspend a single service without putting the whole partner on hold
+// Both write an AuditLog row.
+// =============================================================================
+
+export async function setPartnerTier(input: {
+  partnerId: string
+  toTier: 'VERIFIED' | 'TRUSTED' | 'PREMIER'
+  reason?: string
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const partner = await prisma.partner.findUnique({
+    where: { id: input.partnerId },
+    select: { id: true, tier: true, companyName: true },
+  })
+  if (!partner) return { ok: false, error: 'Partner not found' }
+  if (partner.tier === input.toTier) {
+    return { ok: false, error: `Partner is already ${input.toTier}` }
+  }
+
+  const fromTier = partner.tier
+  await prisma.partner.update({
+    where: { id: input.partnerId },
+    data: {
+      tier: input.toTier,
+      tierChangedAt: new Date(),
+      tierChangedById: admin.id,
+    },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'Partner',
+    entityId: input.partnerId,
+    action: 'PARTNER_TIER_CHANGE',
+    fromValue: fromTier,
+    toValue: input.toTier,
+    payload: {
+      companyName: partner.companyName,
+      reason: input.reason?.trim() || null,
+    },
+  })
+
+  revalidatePath(`/partners/${input.partnerId}`)
+  revalidatePath('/partners')
+  return { ok: true }
+}
+
+export async function togglePartnerService(input: {
+  serviceId: string
+  toActive: boolean
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const service = await prisma.partnerService.findUnique({
+    where: { id: input.serviceId },
+    select: { id: true, partnerId: true, status: true, type: true },
+  })
+  if (!service) return { ok: false, error: 'Service not found' }
+
+  const nextStatus = input.toActive ? 'ACTIVE' : 'PAUSED'
+  if (service.status === nextStatus) {
+    return { ok: false, error: `Service is already ${nextStatus}` }
+  }
+
+  await prisma.partnerService.update({
+    where: { id: input.serviceId },
+    data: { status: nextStatus },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'PartnerService',
+    entityId: input.serviceId,
+    action: 'SERVICE_UPDATE',
+    fromValue: service.status,
+    toValue: nextStatus,
+    payload: {
+      partnerId: service.partnerId,
+      serviceType: service.type,
+      toggledBy: 'admin',
+    },
+  })
+
+  revalidatePath(`/partners/${service.partnerId}`)
+  return { ok: true }
 }

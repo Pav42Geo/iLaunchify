@@ -14,7 +14,7 @@
 
 import { useState, useTransition } from 'react'
 import { Label } from '@ilaunchify/ui'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 import { saveYourBusinessSection } from '../../../app/(onboarding)/onboarding/actions'
 
 interface MarketOption {

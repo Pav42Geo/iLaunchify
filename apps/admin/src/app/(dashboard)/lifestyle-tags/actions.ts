@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import type { LifestyleTagGroup } from '@prisma/client'
+import type { LifestyleTagGroup } from '@ilaunchify/db'
 
 type Result = { ok: true } | { ok: false; error: string }
 

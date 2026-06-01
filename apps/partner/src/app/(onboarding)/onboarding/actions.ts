@@ -8,7 +8,7 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
-import type { ServiceType } from '@prisma/client'
+import type { ServiceType } from '@ilaunchify/db'
 import { revalidatePath } from 'next/cache'
 
 // -----------------------------------------------------------------------------
