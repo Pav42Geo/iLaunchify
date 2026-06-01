@@ -24,6 +24,7 @@ import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
 import { seedNiches } from './seed-niches'
+import { seedTicketCategories } from './seed-ticket-categories'
 
 const prisma = new PrismaClient()
 
@@ -80,6 +81,14 @@ async function main() {
   // that drive marketplace filtering + /launch/[niche] landing pages.
   // Partners tag their ProductTemplates via ProductTemplateNiche.
   await seedNiches(prisma)
+
+  // --- Support ticketing categories (2026-06-01) ---
+  // 10 starter categories (Order issue, Payment / payout, Dispatch deadline,
+  // Account / billing, Product approval, Partner verification, Design Studio
+  // bug, Compliance question, Feature request, Other). Per
+  // docs/SUPPORT_TICKETING_PLAN.md §2.2. Admin manages these via
+  // /admin/support/categories CRUD once W2-SUP3 ships.
+  await seedTicketCategories(prisma)
 
   // --- Ingredient governance dictionaries ---
   // ~30 banned + ~40 controversial ingredients per

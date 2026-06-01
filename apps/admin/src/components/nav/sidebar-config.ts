@@ -153,7 +153,6 @@ const PRIMARY: SidebarRegion = {
       label: 'Categories',
       icon: Layers,
       href: '/categories',
-      hiddenUntilBuilt: true,
     },
     {
       kind: 'group',

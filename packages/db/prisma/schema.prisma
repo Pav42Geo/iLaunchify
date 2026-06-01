@@ -484,6 +484,11 @@ model User {
   creatorSavedAddresses CreatorSavedAddress[]          @relation("CreatorSavedAddresses")
   // Phase G6 — Subscribe & save recurring production runs.
   productionSubscriptions ProductionSubscription[]    @relation("CreatorProductionSubscriptions")
+  // Support ticketing system (2026-06-01) — see docs/SUPPORT_TICKETING_PLAN.md
+  requestedTickets   Ticket[]        @relation("RequesterTickets")
+  assignedTickets    Ticket[]        @relation("AssigneeTickets")
+  ticketReplies      TicketReply[]   @relation("TicketReplyAuthor")
+  ticketEvents       TicketEvent[]   @relation("TicketEventActor")
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -3455,4 +3460,155 @@ model ProductTemplateNiche {
   niche             Niche           @relation(fields: [nicheId], references: [id], onDelete: Cascade)
   @@id([productTemplateId, nicheId])
   @@index([nicheId])
+}
+
+// =============================================================================
+// SUPPORT TICKETING (2026-06-01) — docs/SUPPORT_TICKETING_PLAN.md
+// =============================================================================
+// V1 internal ticketing system so creators + partners file structured support
+// requests instead of email/Slack DMs. Admin triages from /admin/support
+// inbox (5-card KPI strip + sortable table). Creators and partners file +
+// view at /help on their respective apps. Shared @ilaunchify/support package
+// brokers all four models so the three apps stay in sync.
+//
+// SLA tracking: slaBreachedAt is filled by an extension of the existing
+// auto-cancel-dispatches cron when the per-priority (or per-category
+// override) first-response window elapses without an admin reply.
+//
+// Activity log: TicketEvent rows render the per-ticket timeline; we ALSO
+// write to AuditLog for platform-wide forensic queries.
+//
+// Entity link: entityType is a free-form string, allow-listed at the
+// service layer (Order / OrderDispatch / Brand / Partner / PartnerService /
+// ProductTemplate / Product / ProductionSubscription / CreatorProfile /
+// OrderItem). New entity types added without a schema migration.
+// =============================================================================
+
+enum TicketStatus {
+  NEW                  // just filed; needs triage
+  TRIAGED              // admin assigned + priority set
+  IN_PROGRESS          // admin actively working it
+  WAITING_ON_REQUESTER // admin replied; awaiting requester response
+  RESOLVED             // admin marked resolved; not yet closed
+  CLOSED               // terminal; no further replies
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketRequesterRole {
+  CREATOR
+  PARTNER
+}
+
+enum TicketAuthorRole {
+  CREATOR
+  PARTNER
+  ADMIN
+}
+
+enum TicketEventKind {
+  CREATED
+  ASSIGNED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  REPLIED
+  RESOLVED
+  REOPENED
+  MERGED
+  SPLIT
+  SLA_BREACHED
+  INTERNAL_NOTE_ADDED
+}
+
+model Ticket {
+  id              String              @id @default(cuid())
+  // Who filed it
+  requesterUserId String
+  requesterRole   TicketRequesterRole
+  // Resolution ownership (nullable until first triage)
+  assigneeUserId  String?
+  // What it's about
+  categoryId      String
+  subject         String              @db.String(180)
+  body            String                                              // markdown allowed
+  // FSM position
+  status          TicketStatus        @default(NEW)
+  priority        TicketPriority      @default(MEDIUM)
+  // Optional entity link (allow-listed at service layer)
+  entityType      String?
+  entityId        String?
+  // SLA timestamps
+  firstResponseAt DateTime?                                           // first admin reply (not internal note)
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  slaBreachedAt   DateTime?                                           // cron sets when SLA window elapses
+  // Free-form admin scratchpad — visible only to admin
+  internalNotes   String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  // Relations
+  requester       User                @relation("RequesterTickets", fields: [requesterUserId], references: [id])
+  assignee        User?               @relation("AssigneeTickets", fields: [assigneeUserId], references: [id])
+  category        TicketCategory      @relation(fields: [categoryId], references: [id])
+  replies         TicketReply[]
+  events          TicketEvent[]
+
+  @@index([status, priority, createdAt])                              // primary inbox sort
+  @@index([assigneeUserId, status])                                   // "my queue"
+  @@index([requesterUserId, createdAt])                               // "my tickets"
+  @@index([categoryId, status])                                       // category dashboards
+  @@index([entityType, entityId])                                     // "tickets attached to this Order"
+  @@index([slaBreachedAt])                                            // "SLA-breaching" KPI card
+}
+
+model TicketCategory {
+  id                    String         @id @default(cuid())
+  slug                  String         @unique                        // "order-issue" etc.
+  name                  String                                        // human label
+  description           String?
+  defaultPriority       TicketPriority @default(MEDIUM)
+  defaultAssigneeUserId String?                                       // optional auto-assign at create time
+  slaResponseMinutes    Int?                                          // overrides global priority default
+  slaResolveMinutes     Int?                                          // overrides global priority default
+  isActive              Boolean        @default(true)
+  sortOrder             Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  tickets               Ticket[]
+
+  @@index([isActive, sortOrder])
+}
+
+model TicketReply {
+  id             String           @id @default(cuid())
+  ticketId       String
+  authorUserId   String
+  authorRole     TicketAuthorRole
+  body           String                                               // markdown; sanitized server-side
+  attachments    Json?                                                // [{ key, name, mimeType, size }] — R2 keys
+  isInternalNote Boolean          @default(false)                     // hidden from requester when true
+  createdAt      DateTime         @default(now())
+  ticket         Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author         User             @relation("TicketReplyAuthor", fields: [authorUserId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([authorUserId])
+}
+
+model TicketEvent {
+  id          String          @id @default(cuid())
+  ticketId    String
+  kind        TicketEventKind
+  payload     Json                                                    // { from, to, mergedFromTicketId, ... }
+  actorUserId String?                                                 // null for SYSTEM events (cron-driven)
+  createdAt   DateTime        @default(now())
+  ticket      Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor       User?           @relation("TicketEventActor", fields: [actorUserId], references: [id])
+
+  @@index([ticketId, createdAt])
 }

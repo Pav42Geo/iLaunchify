@@ -37,6 +37,9 @@ export const AUDIT_ENTITY_TYPES = [
   'ProductionSubscription',
   // #140 — admin ingredient verification queue + library promotion
   'Ingredient',
+  // Admin Category Management (marketplace taxonomy)
+  'Category',
+  'Subcategory',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
