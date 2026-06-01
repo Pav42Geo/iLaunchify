@@ -6,8 +6,15 @@
 //   • SidebarLink     — a single Link row (used for items + leaf children)
 //   • SidebarSection  — a collapsible group with header + indented children
 //
+// IMPORTANT: SIDEBAR_REGIONS is imported HERE (in the client component)
+// rather than threaded as a prop from the parent server component. The
+// config contains Lucide icon component references which cannot cross
+// the server→client boundary in Next 15 / React 19 (Functions cannot be
+// passed directly to Client Components). Only the `badges` payload —
+// plain Record<string, number> — comes from the server.
+//
 // Active-state matching:
-//   • Exact match for "/" (dashboard) so it doesn't wrongly highlight on
+//   • Exact match for "/dashboard" so it doesn't wrongly highlight on
 //     every subroute.
 //   • startsWith for everything else (so /partners/abc lights up /partners).
 //
@@ -23,20 +30,19 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 import type { LucideIcon } from 'lucide-react'
 import { SidebarSection } from './SidebarSection'
-import type {
-  SidebarItem,
-  SidebarRegion,
-  SidebarBadges,
-  BadgeKey,
+import {
+  SIDEBAR_REGIONS,
+  type SidebarItem,
+  type SidebarBadges,
 } from './sidebar-config'
 
 interface AdminSidebarTreeProps {
-  regions: SidebarRegion[]
   badges: SidebarBadges
 }
 
-export function AdminSidebarTree({ regions, badges }: AdminSidebarTreeProps) {
+export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
   const pathname = usePathname()
+  const regions = SIDEBAR_REGIONS
 
   return (
     <aside
