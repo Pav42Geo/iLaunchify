@@ -21,6 +21,7 @@ import { Users, Crown, Building2, Calendar, DollarSign, ShoppingBag, ArrowRight 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { CreatorRowActions } from './CreatorRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Creators — Admin' }
@@ -203,13 +204,13 @@ export default async function CreatorsPage({ searchParams }: PageProps) {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right align-top">
-                      <Link
-                        href={`/creators/${c.id}`}
-                        aria-label={`Open ${c.displayName ?? c.user.email}`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                      >
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
+                      <CreatorRowActions
+                        creatorId={c.id}
+                        userId={c.userId}
+                        displayName={c.displayName ?? c.user.email}
+                        email={c.user.email}
+                        handle={c.handle ?? null}
+                      />
                     </td>
                   </tr>
                 )

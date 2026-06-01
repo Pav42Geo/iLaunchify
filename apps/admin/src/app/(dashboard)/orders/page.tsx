@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { OrderRowActions } from './OrderRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Admin' }
@@ -161,7 +162,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         creator: { select: { email: true, name: true } },
         items: { select: { id: true } },
         dispatches: { select: { id: true, status: true } },
-        charge: { select: { status: true } },
+        charge: { select: { status: true, stripeChargeId: true } },
       },
       orderBy: { createdAt: sort === 'oldest' ? 'asc' : 'desc' },
       take: 200,
@@ -396,10 +397,12 @@ declare function loadOrdersStub(): Promise<
     status: string
     totalCents: number
     createdAt: Date
+    creatorUserId: string
     brand: { name: string; handle: string } | null
     creator: { email: string; name: string | null }
     items: { id: string }[]
     dispatches: { id: string; status: string }[]
+    charge: { status: string; stripeChargeId: string | null } | null
     aggregateApprovalStatus: string
   }>
 >
@@ -503,13 +506,13 @@ function OrdersTable({
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right align-top">
-                  <Link
-                    href={`/orders/${o.id}`}
-                    aria-label={`Open order ${o.id}`}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                  >
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                  <OrderRowActions
+                    orderId={o.id}
+                    brandName={o.brand?.name ?? null}
+                    brandHandle={o.brand?.handle ?? null}
+                    creatorUserId={o.creatorUserId}
+                    stripeChargeId={o.charge?.stripeChargeId ?? null}
+                  />
                 </td>
               </tr>
             )

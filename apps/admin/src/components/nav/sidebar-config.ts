@@ -5,10 +5,22 @@
 // Source of truth (memory): ilaunchify-admin-sidebar-v3-locked.md
 //
 // Structure: two regions — PRIMARY (no header) and APPLICATIONS (— divider —).
-// Inside PRIMARY: Dashboard, Inbox group, Orders, Manage group, Settings
-// group, Help & Support group. All groups are expandable (chevron-RIGHT,
-// rotates to chevron-down when open).
 //
+// PRIMARY (post Pavel 2026-06-01 amendment):
+//   - Dashboard
+//   - Inbox group
+//   - Orders
+//   - Products & Categories               (flat item, was under Manage)
+//   - Users & Roles                       (top-level group, was under Manage)
+//   - Asset Management                    (top-level group, was under Manage)
+//   - Settings group  (now also contains Languages & Markets + Communications)
+//
+// Pavel removed the wrapping "Manage" group entirely; its children were
+// promoted to top-level. Languages & Markets and Communications were moved
+// INTO Settings rather than promoted.
+//
+// All groups are expandable (chevron-RIGHT, rotates to chevron-down on open).
+// Help & Support sits at the very bottom in its own bare region.
 // AI Tools removed 2026-06-01.
 //
 // =============================================================================
@@ -39,7 +51,6 @@ import {
   Boxes,
   Brush,
   Eye,
-  Layers,
   Type,
   Image,
   ScrollText,
@@ -129,42 +140,53 @@ const PRIMARY: SidebarRegion = {
       icon: ShoppingBag,
       href: '/orders',
     },
+    // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
+    {
+      kind: 'item',
+      label: 'Products & Categories',
+      icon: Package,
+      href: '/products',
+    },
     {
       kind: 'group',
-      label: 'Manage',
-      icon: Layers,
+      label: 'Users & Roles',
+      icon: Users,
       children: [
-        { kind: 'item', label: 'Products & Categories', icon: Package, href: '/products' },
-        {
-          kind: 'group',
-          label: 'Users & Roles',
-          icon: Users,
-          children: [
-            { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
-            { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
-          ],
-        },
-        {
-          kind: 'group',
-          label: 'Asset Management',
-          icon: Boxes,
-          children: [
-            { kind: 'item', label: 'Packaging Symbols', icon: Sparkles, href: '/asset-management/packaging-symbols', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Nutrition Facts Labels', icon: FileText, href: '/asset-management/nutrition-facts-labels', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Supplement Facts Labels', icon: FileText, href: '/asset-management/supplement-facts-labels', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
-            { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
-            { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
-          ],
-        },
+        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
+        { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+      ],
+    },
+    {
+      kind: 'group',
+      label: 'Asset Management',
+      icon: Boxes,
+      children: [
+        { kind: 'item', label: 'Packaging Symbols', icon: Sparkles, href: '/asset-management/packaging-symbols', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Nutrition Facts Labels', icon: FileText, href: '/asset-management/nutrition-facts-labels', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Supplement Facts Labels', icon: FileText, href: '/asset-management/supplement-facts-labels', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
+        { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
+        { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
+      ],
+    },
+    // ---- Settings — now also holds Languages & Markets + Communications -----
+    {
+      kind: 'group',
+      label: 'Settings',
+      icon: ShieldCheck,
+      children: [
+        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
         {
           kind: 'group',
           label: 'Communications',
@@ -193,17 +215,6 @@ const PRIMARY: SidebarRegion = {
             },
           ],
         },
-      ],
-    },
-    {
-      kind: 'group',
-      label: 'Settings',
-      icon: ShieldCheck,
-      children: [
-        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
-        { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
         { kind: 'item', label: 'Analytics & Monitoring', icon: LineChart, href: '/analytics', hiddenUntilBuilt: true },
       ],

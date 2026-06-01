@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { LeadRowActions } from './LeadRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Leads — Admin' }
@@ -409,13 +410,12 @@ function LeadsTable({ rows }: { rows: LeadRow[] }) {
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right align-top">
-                  <Link
-                    href={`/leads/${lead.id}`}
-                    aria-label={`Open ${lead.companyName}`}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                  >
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                  <LeadRowActions
+                    leadId={lead.id}
+                    companyName={lead.companyName}
+                    email={lead.user.email}
+                    websiteUrl={lead.websiteUrl}
+                  />
                 </td>
               </tr>
             )
