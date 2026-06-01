@@ -77,33 +77,34 @@ export async function searchIngredients(input: {
     ],
   }
 
-  // Empty query → return recent/frequent for this partner instead of cold list.
+  // Empty query → curated panel: this partner's recently-used (up to 8) +
+  // library staples (up to 12). The client renders them under two subheaders
+  // ("Recently used" / "Library staples") keyed off the recentlyUsed flag.
   if (!q) {
-    const recentUsage = await prisma.ingredientUsage.findMany({
-      where: { partnerId },
-      orderBy: [{ lastUsedAt: 'desc' }],
-      take: limit,
-      include: {
-        ingredient: true,
-      },
+    const recent = await getRecentlyUsedIngredients(partnerId, EMPTY_STATE_RECENT_LIMIT)
+    const recentIds = recent.map((r) => r.id)
+    const notRecent = { id: { notIn: recentIds.length > 0 ? recentIds : ['__none__'] } }
+
+    // Library staples — curated LIBRARY rows the partner hasn't just used.
+    // No global useCount on Ingredient (it's per-partner on IngredientUsage)
+    // and no displayPriority column, so order by name. Cold-seed fallback to
+    // USDA when no LIBRARY rows exist yet.
+    let staples = await prisma.ingredient.findMany({
+      where: { ...visibility, ...notRecent, source: 'LIBRARY' },
+      orderBy: { name: 'asc' },
+      take: EMPTY_STATE_STAPLES_LIMIT,
     })
-    const recentIds = recentUsage.map((u) => u.ingredientId)
-    // Top-up with library staples if recent list is short.
-    const filler =
-      recentUsage.length < limit
-        ? await prisma.ingredient.findMany({
-            where: {
-              ...visibility,
-              id: { notIn: recentIds.length > 0 ? recentIds : ['__none__'] },
-              source: 'LIBRARY',
-            },
-            orderBy: { name: 'asc' },
-            take: limit - recentUsage.length,
-          })
-        : []
+    if (staples.length === 0) {
+      staples = await prisma.ingredient.findMany({
+        where: { ...visibility, ...notRecent, source: 'USDA' },
+        orderBy: { name: 'asc' },
+        take: EMPTY_STATE_STAPLES_LIMIT,
+      })
+    }
+
     const results: IngredientResult[] = [
-      ...recentUsage.map((u) => toResult(u.ingredient, { recentlyUsed: true, useCount: u.useCount })),
-      ...filler.map((i) => toResult(i, { recentlyUsed: false, useCount: 0 })),
+      ...recent,
+      ...staples.map((i) => toResult(i, { recentlyUsed: false, useCount: 0 })),
     ]
     return { ok: true, data: { results } }
   }
@@ -187,6 +188,42 @@ function toResult(
     recentlyUsed: extras.recentlyUsed,
     useCount: extras.useCount,
   }
+}
+
+// -----------------------------------------------------------------------------
+// EMPTY-STATE PANEL — recently-used + library staples (Slice 1).
+// -----------------------------------------------------------------------------
+
+/** Caps for the empty-query picker panel. */
+const EMPTY_STATE_RECENT_LIMIT = 8
+const EMPTY_STATE_STAPLES_LIMIT = 12
+
+/**
+ * The calling partner's recently-used ingredients, newest first.
+ *
+ * IngredientUsage is scoped by `partnerId` (confirmed in schema — not userId /
+ * partnerServiceId). Ordered by `lastUsedAt DESC` (recency = "what was I just
+ * working on"); switch to `[{ useCount: 'desc' }]` if Pavel prefers frequency.
+ * Returns picker-ready IngredientResult rows flagged recentlyUsed.
+ *
+ * Internal (NOT exported) on purpose: in a 'use server' module every export is
+ * a client-callable endpoint, and this takes a partnerId with no auth of its
+ * own. searchIngredients already authorized the caller before invoking it. Add
+ * an authorized wrapper if a surface ever needs it directly.
+ */
+async function getRecentlyUsedIngredients(
+  partnerId: string,
+  limit: number = EMPTY_STATE_RECENT_LIMIT,
+): Promise<IngredientResult[]> {
+  const usage = await prisma.ingredientUsage.findMany({
+    where: { partnerId },
+    orderBy: [{ lastUsedAt: 'desc' }],
+    take: limit,
+    include: { ingredient: true },
+  })
+  return usage.map((u) =>
+    toResult(u.ingredient, { recentlyUsed: true, useCount: u.useCount }),
+  )
 }
 
 // -----------------------------------------------------------------------------

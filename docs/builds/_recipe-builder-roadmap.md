@@ -303,4 +303,10 @@ Anything Pavel locks during the build cycle goes here, dated, so future-Pavel do
 - **2026-06-01** — Cap reset window: calendar month UTC.
 - **2026-06-01** — V1 = count AuditLog rows for cap check. V1.5 = `AiUsageCounter` model when needed.
 
+- **2026-06-01 (Slice 1)** — Audit action for slot/replacement banned-blocks reuses the EXISTING `INGREDIENT_BANNED_BLOCK` (the name `createPartnerPrivateIngredient` already writes), NOT the roadmap telemetry's `INGREDIENT_BAN_BLOCK`. One consistent action name across all ban paths beats matching the doc. **Telemetry query in §"Telemetry to watch" should read `action=INGREDIENT_BANNED_BLOCK`.**
+- **2026-06-01 (Slice 1)** — `IngredientUsage` is scoped by `partnerId` (not partnerServiceId/userId). `getRecentlyUsedIngredients(partnerId, limit)` ordered by `lastUsedAt DESC`. Kept INTERNAL (not exported) — in a 'use server' file an export is a client RPC endpoint, and the helper takes a partnerId with no auth; `searchIngredients` authorizes before calling it.
+- **2026-06-01 (Slice 1)** — `updateIngredientSlot` got NO ban check: it can't change `baseIngredientId` (only weight/replace-toggle/label), so there's no ingredient-introduction path to gate. The gate lives on `addIngredientSlot` + `addReplacement`.
+- **2026-06-01 (Slice 1)** — Skipped the unit test from the brief: `apps/partner` has no test runner/script and no existing tests for these server actions (DB-integration, not unit-testable without a harness). Relied on typecheck + the brief's manual smoke test. Revisit when a partner test harness exists.
+- **2026-06-01 (Slice 1)** — Empty-state picker already existed; this slice refined it to recent (≤8) + library staples (≤12) under two client subheaders, with a cold-seed USDA fallback when no LIBRARY rows.
+
 Append new decisions here as they're made.

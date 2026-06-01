@@ -7,7 +7,7 @@
 // via manufacturerServiceId → PartnerService → Partner. Edits on REJECTED
 // templates are refused. Most actions trigger revalidatePath on the editor.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, findFirstBannedIngredient } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
@@ -58,6 +58,41 @@ async function authorize(productTemplateId: string) {
 }
 
 // -----------------------------------------------------------------------------
+// Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5).
+//
+// createPartnerPrivateIngredient already honored the BannedIngredient
+// dictionary, but existing USDA / Library / Private *picks* bypassed it —
+// contradicting Creator Agreement §3. This closes the gap on every slot/
+// replacement add path. Returns the offending name + match (so the caller can
+// audit + error), or null when clear. Never mutates.
+// -----------------------------------------------------------------------------
+
+async function findSlotIngredientBan(opts: {
+  ingredientId?: string
+  name?: string | null
+}): Promise<{
+  name: string
+  match: { matchName: string | null; reason: string; reference: string | null }
+} | null> {
+  if (opts.ingredientId) {
+    const ing = await prisma.ingredient.findUnique({
+      where: { id: opts.ingredientId },
+      select: { name: true, internalName: true, labelDeclarationName: true },
+    })
+    if (!ing) return null
+    // Check every name field — a banned matcher could hit any of them.
+    const names = [ing.internalName, ing.labelDeclarationName, ing.name].filter(
+      (n): n is string => Boolean(n),
+    )
+    return findFirstBannedIngredient(names)
+  }
+  if (opts.name?.trim()) {
+    return findFirstBannedIngredient([opts.name.trim()])
+  }
+  return null
+}
+
+// -----------------------------------------------------------------------------
 // INGREDIENT SLOTS
 // -----------------------------------------------------------------------------
 
@@ -76,6 +111,31 @@ export async function addIngredientSlot(input: {
   if (input.weightG <= 0) return { ok: false, error: 'Weight must be greater than 0 grams.' }
   if (!input.ingredientId && !input.name?.trim()) {
     return { ok: false, error: 'Pick an ingredient or provide a name.' }
+  }
+
+  // Banned-list save-time enforcement — block any pick/name that matches the
+  // dictionary. Audit + refuse, never mutate.
+  const ban = await findSlotIngredientBan({ ingredientId: input.ingredientId, name: input.name })
+  if (ban) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: template.id,
+      action: 'INGREDIENT_BANNED_BLOCK',
+      payload: {
+        productTemplateId: template.id,
+        via: 'addIngredientSlot',
+        ingredientId: input.ingredientId ?? null,
+        attemptedName: ban.name,
+        matchedBanned: ban.match.matchName,
+        reason: ban.match.reason,
+        reference: ban.match.reference,
+        partnerId: partner.id,
+      },
+    })
+    return {
+      ok: false,
+      error: `"${ban.name}" is on the banned list for this product category and cannot be added — ${ban.match.reason} Contact admin to request an exception.`,
+    }
   }
 
   const slot = await prisma.$transaction(async (tx) => {
@@ -152,6 +212,10 @@ export async function updateIngredientSlot(input: {
   const { error } = await authorize(slot.productTemplate.id)
   if (error) return { ok: false, error }
 
+  // No banned-list check here: updateIngredientSlot only edits weight / replace
+  // toggle / label — it has no path to change baseIngredientId. The ban gate
+  // lives on the two paths that introduce an ingredient (addIngredientSlot,
+  // addReplacement). If a baseIngredientId swap is ever added here, gate it too.
   await prisma.templateIngredientSlot.update({
     where: { id: input.slotId },
     data: {
@@ -212,6 +276,34 @@ export async function addReplacement(input: {
 
   if (!input.ingredientId && !input.ingredientName?.trim()) {
     return { ok: false, error: 'Pick a replacement ingredient or provide a name.' }
+  }
+
+  // Banned-list save-time enforcement — same gate as addIngredientSlot.
+  const ban = await findSlotIngredientBan({
+    ingredientId: input.ingredientId,
+    name: input.ingredientName,
+  })
+  if (ban) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: slot.productTemplate.id,
+      action: 'INGREDIENT_BANNED_BLOCK',
+      payload: {
+        productTemplateId: slot.productTemplate.id,
+        via: 'addReplacement',
+        slotId: input.slotId,
+        ingredientId: input.ingredientId ?? null,
+        attemptedName: ban.name,
+        matchedBanned: ban.match.matchName,
+        reason: ban.match.reason,
+        reference: ban.match.reference,
+        partnerId: partner.id,
+      },
+    })
+    return {
+      ok: false,
+      error: `"${ban.name}" is on the banned list for this product category and cannot be added — ${ban.match.reason} Contact admin to request an exception.`,
+    }
   }
 
   const replacement = await prisma.$transaction(async (tx) => {

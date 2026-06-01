@@ -20,7 +20,7 @@
 //     which opens AddPrivateIngredientModal. The modal closes on save and
 //     calls onPick() with the freshly-created row.
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Input } from '@ilaunchify/ui'
 import { Beaker, Loader2, Plus, Search, Sparkles, X } from 'lucide-react'
 import { searchIngredients, type IngredientResult } from '../ingredient-actions'
@@ -95,6 +95,12 @@ export function IngredientPicker({
     }
   }
 
+  // Empty-state panel (no query) groups results under "Recently used" +
+  // "Library staples" subheaders. firstStapleIdx is the boundary between the
+  // recentlyUsed rows and the staples (−1 when there are no staples).
+  const isEmptyState = query.trim().length === 0
+  const firstStapleIdx = results.findIndex((r) => !r.recentlyUsed)
+
   return (
     <div className="relative">
       <div className="relative">
@@ -138,24 +144,34 @@ export function IngredientPicker({
 
           {!loading && results.length === 0 && (
             <div className="px-3 py-4 text-center text-xs text-zinc-500">
-              No matches for &ldquo;{query}&rdquo;. Create it as a private ingredient below.
+              {isEmptyState ? (
+                'Search for an ingredient by name.'
+              ) : (
+                <>No matches for &ldquo;{query}&rdquo;. Create it as a private ingredient below.</>
+              )}
             </div>
           )}
 
           {!loading &&
             results.map((ing, idx) => (
-              <button
-                key={ing.id}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  handlePick(ing)
-                }}
-                onMouseEnter={() => setActiveIndex(idx)}
-                className={`flex w-full items-start gap-3 border-b border-zinc-50 px-3 py-2 text-left text-sm last:border-0 ${
-                  idx === activeIndex ? 'bg-pink-50/40' : ''
-                }`}
-              >
+              <Fragment key={ing.id}>
+                {isEmptyState && idx === 0 && ing.recentlyUsed && (
+                  <GroupHeader>Recently used</GroupHeader>
+                )}
+                {isEmptyState && firstStapleIdx !== -1 && idx === firstStapleIdx && (
+                  <GroupHeader>Library staples</GroupHeader>
+                )}
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    handlePick(ing)
+                  }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  className={`flex w-full items-start gap-3 border-b border-zinc-50 px-3 py-2 text-left text-sm last:border-0 ${
+                    idx === activeIndex ? 'bg-pink-50/40' : ''
+                  }`}
+                >
                 <Beaker className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-400" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -184,7 +200,8 @@ export function IngredientPicker({
                     )}
                   </div>
                 </div>
-              </button>
+                </button>
+              </Fragment>
             ))}
 
           <button
@@ -216,6 +233,14 @@ export function IngredientPicker({
           }}
         />
       )}
+    </div>
+  )
+}
+
+function GroupHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-zinc-50/60 px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+      {children}
     </div>
   )
 }
