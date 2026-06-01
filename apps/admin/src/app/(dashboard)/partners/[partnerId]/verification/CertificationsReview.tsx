@@ -26,6 +26,8 @@ export interface CertInstanceRow {
   rejectionReason: string | null
   reviewedAt: Date | null
   pdfFileName: string | null
+  /** Admin-curated PNG web badge for the cert type, if uploaded. */
+  badgeUrl: string | null
   certificateType: {
     name: string
     slug: string
@@ -94,9 +96,18 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
   return (
     <div className="rounded-md border border-zinc-200 bg-white p-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-md bg-zinc-100 p-2">
-          <FileText className="h-4 w-4 text-zinc-500" />
-        </div>
+        {inst.badgeUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={inst.badgeUrl}
+            alt=""
+            className="mt-0.5 h-9 w-9 flex-shrink-0 rounded-md border border-zinc-200 bg-white object-contain p-1"
+          />
+        ) : (
+          <div className="mt-0.5 rounded-md bg-zinc-100 p-2">
+            <FileText className="h-4 w-4 text-zinc-500" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-zinc-900">{inst.certificateType.name}</span>

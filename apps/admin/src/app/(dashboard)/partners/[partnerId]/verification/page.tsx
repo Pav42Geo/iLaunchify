@@ -26,6 +26,7 @@ import {
   CommercialContext,
 } from './SectionContext'
 import { CertificationsReview, type CertInstanceRow } from './CertificationsReview'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import type { PartnerFile, VerificationSectionType } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
@@ -59,7 +60,13 @@ export default async function VerificationPage({ params }: PageProps) {
       certificateInstances: {
         include: {
           certificateType: {
-            select: { name: true, slug: true, description: true, verificationNotes: true },
+            select: {
+              name: true,
+              slug: true,
+              description: true,
+              verificationNotes: true,
+              thumbnailFileId: true,
+            },
           },
         },
         orderBy: [{ status: 'asc' }, { expiryDate: 'asc' }],
@@ -90,6 +97,12 @@ export default async function VerificationPage({ params }: PageProps) {
     : []
   const pdfFilenameById = new Map(pdfFiles.map((f) => [f.id, f.originalFilename]))
 
+  // Resolve the PNG web badge for each cert type so the reviewer sees the
+  // branded mark, not a generic file icon.
+  const certBadgeUrls = await resolveCertBadgeUrls(
+    partner.certificateInstances.map((c) => c.certificateType.thumbnailFileId),
+  )
+
   const certInstances: CertInstanceRow[] = partner.certificateInstances.map((c) => ({
     id: c.id,
     status: c.status,
@@ -100,6 +113,9 @@ export default async function VerificationPage({ params }: PageProps) {
     rejectionReason: c.rejectionReason,
     reviewedAt: c.reviewedAt,
     pdfFileName: pdfFilenameById.get(c.pdfFileId) ?? null,
+    badgeUrl: c.certificateType.thumbnailFileId
+      ? (certBadgeUrls.get(c.certificateType.thumbnailFileId) ?? null)
+      : null,
     certificateType: c.certificateType,
   }))
 

@@ -28,6 +28,9 @@ interface FormProps {
     status?: CertificateTypeStatus
     hasThumbnail?: boolean
     hasSvgBadge?: boolean
+    /** Preview URLs for the currently-uploaded badges (null if none). */
+    pngUrl?: string | null
+    svgUrl?: string | null
   }
 }
 
@@ -223,6 +226,14 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                   }}
                   disabled={isPending}
                 />
+                {initial?.pngUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={initial.pngUrl}
+                    alt="PNG badge preview"
+                    className="mt-3 h-16 w-16 rounded-md border border-zinc-200 bg-white object-contain p-1.5"
+                  />
+                )}
                 <div className="mt-3 flex items-center gap-3">
                   <Button
                     variant="outline"
@@ -258,6 +269,14 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                   }}
                   disabled={isPending}
                 />
+                {initial?.svgUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={initial.svgUrl}
+                    alt="SVG badge preview"
+                    className="mt-3 h-16 w-16 rounded-md border border-zinc-200 bg-white object-contain p-1.5"
+                  />
+                )}
                 <div className="mt-3 flex items-center gap-3">
                   <Button
                     variant="outline"

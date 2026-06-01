@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { ArrowLeft } from 'lucide-react'
 import { CertificateTypeForm } from '../CertificateTypeForm'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,11 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
     include: { _count: { select: { partnerInstances: true } } },
   })
   if (!ct) notFound()
+
+  // Resolve preview URLs for both badges so the admin can see what they uploaded.
+  const badgeUrls = await resolveCertBadgeUrls([ct.thumbnailFileId, ct.badgeSvgFileId])
+  const pngUrl = ct.thumbnailFileId ? (badgeUrls.get(ct.thumbnailFileId) ?? null) : null
+  const svgUrl = ct.badgeSvgFileId ? (badgeUrls.get(ct.badgeSvgFileId) ?? null) : null
 
   return (
     <div className="space-y-6">
@@ -47,6 +53,8 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
           status: ct.status,
           hasThumbnail: !!ct.thumbnailFileId,
           hasSvgBadge: !!ct.badgeSvgFileId,
+          pngUrl,
+          svgUrl,
         }}
       />
     </div>

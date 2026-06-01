@@ -13,6 +13,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { CertificationsClient } from './CertificationsClient'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
@@ -34,7 +35,9 @@ export default async function CertificationsPage() {
     prisma.partnerCertificateInstance.findMany({
       where: { partnerId: partner.id },
       include: {
-        certificateType: { select: { name: true, slug: true, description: true } },
+        certificateType: {
+          select: { name: true, slug: true, description: true, thumbnailFileId: true },
+        },
       },
       orderBy: [{ status: 'asc' }, { expiryDate: 'asc' }],
     }),
@@ -52,6 +55,16 @@ export default async function CertificationsPage() {
   const verified = instances.filter((i) => i.status === 'VERIFIED')
   const pending = instances.filter((i) => i.status === 'PENDING_REVIEW')
   const issues = instances.filter((i) => i.status === 'REJECTED' || i.status === 'EXPIRED')
+
+  // Resolve the admin-curated PNG web badge per cert type — the same branded
+  // mark shown publicly once VERIFIED.
+  const certBadgeUrls = await resolveCertBadgeUrls(
+    instances.map((i) => i.certificateType.thumbnailFileId),
+  )
+  const badgeFor = (i: { certificateType: { thumbnailFileId: string | null } }): string | null =>
+    i.certificateType.thumbnailFileId
+      ? (certBadgeUrls.get(i.certificateType.thumbnailFileId) ?? null)
+      : null
 
   return (
     <div className="space-y-6">
@@ -87,7 +100,7 @@ export default async function CertificationsPage() {
               iconClass="text-emerald-600"
             >
               {verified.map((inst) => (
-                <CertRow key={inst.id} inst={inst} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
               ))}
             </CertSection>
           )}
@@ -99,7 +112,7 @@ export default async function CertificationsPage() {
               iconClass="text-amber-600"
             >
               {pending.map((inst) => (
-                <CertRow key={inst.id} inst={inst} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
               ))}
             </CertSection>
           )}
@@ -111,7 +124,7 @@ export default async function CertificationsPage() {
               iconClass="text-red-600"
             >
               {issues.map((inst) => (
-                <CertRow key={inst.id} inst={inst} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
               ))}
             </CertSection>
           )}
@@ -194,14 +207,23 @@ type CertRowInstance = {
   certificateType: { name: string; slug: string; description: string }
 }
 
-function CertRow({ inst }: { inst: CertRowInstance }) {
+function CertRow({ inst, badgeUrl }: { inst: CertRowInstance; badgeUrl?: string | null }) {
   const expSoon = isExpiringSoon(inst.expiryDate)
   return (
     <div className="rounded-md border border-zinc-200 bg-white p-3">
       <div className="flex items-start gap-3">
-        <div className="rounded-md bg-zinc-100 p-2">
-          <FileText className="h-4 w-4 text-zinc-500" />
-        </div>
+        {badgeUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={badgeUrl}
+            alt=""
+            className="h-9 w-9 flex-shrink-0 rounded-md border border-zinc-200 bg-white object-contain p-1"
+          />
+        ) : (
+          <div className="rounded-md bg-zinc-100 p-2">
+            <FileText className="h-4 w-4 text-zinc-500" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="font-medium text-zinc-900">{inst.certificateType.name}</div>
           <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
