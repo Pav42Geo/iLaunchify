@@ -458,10 +458,13 @@ function hrefForEntity(type: string, id: string): string | null {
     case 'ProductTemplate':
       return `/products/${id}`
     case 'Order':
-      return `/orders`
+      // /admin/orders/[orderId] exists (196-line detail page).
+      return `/orders/${id}`
     case 'CreatorProfile':
-      return `/tiers`
+      // /admin/creators/[creatorId] shipped in #570.
+      return `/creators/${id}`
     case 'Ingredient':
+      // No per-ingredient detail page yet — index is the right landing.
       return `/ingredients`
     default:
       return null
