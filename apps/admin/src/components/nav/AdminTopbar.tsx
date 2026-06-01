@@ -7,12 +7,22 @@
 import type { User } from '@ilaunchify/auth'
 import { AppHeader } from '@ilaunchify/ui'
 import { AdminTopbarRight } from './AdminTopbarRight'
+import { AdminCenterNav } from './AdminCenterNav'
 
 export function AdminTopbar({ user }: { user: User }) {
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
+      center={
+        // Facebook-style center cluster: Home / Marketplace / Design Studio
+        // (large graphic-grey icons with active pink underline). Sits inside
+        // a flex-1 wrapper so the three tabs visually centre between the
+        // brand mark and the right cluster.
+        <div className="flex flex-1 justify-center">
+          <AdminCenterNav />
+        </div>
+      }
       right={<AdminTopbarRight email={user.email} name={user.name ?? null} />}
     />
   )
