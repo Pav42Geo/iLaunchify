@@ -26,11 +26,19 @@ const MODE_LABELS: Record<Mode, string> = {
 interface ModeChooserProps {
   currentMode: Mode | null
   collapsed: boolean
+  /** Mode 2 AI parser available for this partner's plan (Trusted+). */
+  aiAvailable: boolean
   onSelect: (mode: Mode) => void
   onExpand: () => void
 }
 
-export function ModeChooser({ currentMode, collapsed, onSelect, onExpand }: ModeChooserProps) {
+export function ModeChooser({
+  currentMode,
+  collapsed,
+  aiAvailable,
+  onSelect,
+  onExpand,
+}: ModeChooserProps) {
   if (collapsed) {
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-[#F3EFE8] px-3 py-2 text-xs text-zinc-600">
@@ -66,8 +74,11 @@ export function ModeChooser({ currentMode, collapsed, onSelect, onExpand }: Mode
         title="Parse with AI"
         sub="Paste a recipe or drop a label. We match each line and you confirm."
         when="Fastest from spec sheet"
-        badge="Coming next"
-        disabled
+        active={currentMode === 'AI_PARSER'}
+        disabled={!aiAvailable}
+        badge={aiAvailable ? undefined : 'Trusted+'}
+        lockedHint="Available on the Trusted and Premier partner tiers."
+        onClick={() => onSelect('AI_PARSER')}
       />
       <ModeTile
         icon={FileText}
@@ -89,6 +100,7 @@ function ModeTile({
   active = false,
   disabled = false,
   badge,
+  lockedHint,
   onClick,
 }: {
   icon: ComponentType<{ className?: string }>
@@ -98,6 +110,7 @@ function ModeTile({
   active?: boolean
   disabled?: boolean
   badge?: string
+  lockedHint?: string
   onClick?: () => void
 }) {
   return (
@@ -105,7 +118,7 @@ function ModeTile({
       type="button"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      title={disabled ? 'Available in next release.' : undefined}
+      title={disabled ? (lockedHint ?? 'Available in next release.') : undefined}
       aria-disabled={disabled}
       className={
         'relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ' +

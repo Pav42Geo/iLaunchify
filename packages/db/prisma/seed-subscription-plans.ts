@@ -148,6 +148,8 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'volume_discount_tiers',         label: 'Volume discount pricing',              boolValue: false },
       { code: 'subscribe_and_save',            label: 'Subscribe & save (partner side)',      boolValue: false },
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'basic' },
+      { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: false },
+      { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 0 },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 15.00, notes: 'Verified commission (iLaunchify cut)' },
@@ -174,6 +176,8 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'volume_discount_tiers',         label: 'Volume discount pricing',              boolValue: true },
       { code: 'subscribe_and_save',            label: 'Subscribe & save (partner side)',      boolValue: true },
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'advanced' },
+      { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: true },
+      { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 1000 },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 12.00, notes: 'Trusted commission' },
@@ -200,6 +204,8 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'volume_discount_tiers',         label: 'Volume discount pricing',              boolValue: true },
       { code: 'subscribe_and_save',            label: 'Subscribe & save (partner side)',      boolValue: true },
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'advanced_api' },
+      { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: true },
+      { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 5000 },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 8.00, notes: 'Premier commission' },

@@ -126,6 +126,12 @@ export const AUDIT_ACTIONS = [
   'INGREDIENT_LIBRARY_PROMOTE',
   // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5)
   'INGREDIENT_BANNED_BLOCK',
+  // Recipe builder — Slice 2 mode chooser + Slice 3 AI parser (Mode 2)
+  'RECIPE_ENTRY_MODE_SET',
+  'RECIPE_PARSE_RUN',
+  'RECIPE_PARSE_FAILED',
+  'RECIPE_PARSE_RATE_LIMITED',
+  'RECIPE_PARSE_COMMIT',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

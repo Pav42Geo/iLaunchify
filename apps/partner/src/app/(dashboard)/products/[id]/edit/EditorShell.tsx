@@ -105,6 +105,8 @@ interface IngredientSlot extends SlotRow {
 interface EditorShellProps {
   template: TemplateSnapshot
   counts: Counts
+  /** Mode 2 AI recipe parser available for this partner's plan (Slice 3). */
+  aiAvailable: boolean
   ingredientSlots: IngredientSlot[]
   packagingLinks: PackagingLinkRow[]
   variants: VariantRow[]
@@ -135,6 +137,7 @@ interface EditorShellProps {
 export function EditorShell({
   template,
   counts,
+  aiAvailable,
   ingredientSlots,
   packagingLinks,
   variants,
@@ -352,6 +355,7 @@ export function EditorShell({
             initialSlots={ingredientSlots}
             isDraft={isDraft}
             initialRecipeEntryMode={template.recipeEntryMode}
+            aiAvailable={aiAvailable}
           />
         </EditorCard>
 

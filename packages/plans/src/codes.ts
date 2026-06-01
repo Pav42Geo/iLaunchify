@@ -81,6 +81,10 @@ export const PARTNER_FEATURES = {
   SUBSCRIBE_AND_SAVE: 'subscribe_and_save',
   /** Order analytics tier — 'basic' / 'advanced' / 'advanced_api'. */
   ANALYTICS_LEVEL: 'analytics_level',
+  /** Mode 2 AI recipe parser in the product builder (Trusted+). */
+  AI_RECIPE_PARSER: 'ai_recipe_parser',
+  /** Monthly cap on AI recipe parses (number; 0 = none / off). */
+  AI_RECIPE_PARSER_MONTHLY_CAP: 'ai_recipe_parser_monthly_cap',
 } as const
 
 export type CreatorFeatureCode =

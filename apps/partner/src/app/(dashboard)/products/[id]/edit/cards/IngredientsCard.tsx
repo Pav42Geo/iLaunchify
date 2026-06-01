@@ -36,6 +36,7 @@ import {
 } from '../card-actions'
 import { IngredientPicker } from './IngredientPicker'
 import { ModeChooser, type Mode } from './ModeChooser'
+import { AiParserPanel } from './AiParserPanel'
 import type { IngredientResult } from '../ingredient-actions'
 
 export interface ReplacementRow {
@@ -60,6 +61,8 @@ interface IngredientsCardProps {
   isDraft: boolean
   /** Primary recipe-entry method recorded so far (Slice 2), or null if unset. */
   initialRecipeEntryMode: Mode | null
+  /** Mode 2 AI parser available for this partner's plan (Slice 3). */
+  aiAvailable: boolean
 }
 
 export function IngredientsCard({
@@ -67,10 +70,12 @@ export function IngredientsCard({
   initialSlots,
   isDraft,
   initialRecipeEntryMode,
+  aiAvailable,
 }: IngredientsCardProps) {
   const router = useRouter()
   const [slots, setSlots] = useState<SlotRow[]>(initialSlots)
   const [showNew, setShowNew] = useState(false)
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [, startTransition] = useTransition()
 
   // Mode chooser (Slice 2). Empty recipe shows the 3 tiles; once a slot exists
@@ -85,11 +90,19 @@ export function IngredientsCard({
   }
 
   function handleModeSelect(mode: Mode) {
-    // Slice 2: only Mode 1 is live; the other tiles render disabled so this
-    // is the only reachable branch. Collapse the chooser, reveal the add-slot
-    // UI, and optimistically stamp the method if not already recorded.
-    if (mode !== 'SEARCH_BUILD') return
+    if (mode === 'AI_PARSER') {
+      // Mode 2 (Slice 3). Open the parser panel; the method is stamped
+      // AI_PARSER at commit time (commitParsedSlots), not on select.
+      setChooserExpanded(false)
+      setShowNew(false)
+      setAiPanelOpen(true)
+      return
+    }
+    if (mode !== 'SEARCH_BUILD') return // DECLARED_PANEL still disabled (Slice 4)
+    // Mode 1: collapse the chooser, reveal the add-slot UI, and optimistically
+    // stamp the method if not already recorded.
     setChooserExpanded(false)
+    setAiPanelOpen(false)
     if (isDraft) setShowNew(true)
     if (recipeMode === null) {
       setRecipeMode('SEARCH_BUILD')
@@ -106,8 +119,21 @@ export function IngredientsCard({
         <ModeChooser
           currentMode={recipeMode}
           collapsed={!chooserExpanded && !isEmpty}
+          aiAvailable={aiAvailable}
           onSelect={handleModeSelect}
           onExpand={() => setChooserExpanded(true)}
+        />
+      )}
+
+      {isDraft && aiPanelOpen && (
+        <AiParserPanel
+          productTemplateId={productTemplateId}
+          onCommitted={() => {
+            setAiPanelOpen(false)
+            setRecipeMode('AI_PARSER')
+            refreshFromServer()
+          }}
+          onCancel={() => setAiPanelOpen(false)}
         />
       )}
       {slots.length === 0 ? (

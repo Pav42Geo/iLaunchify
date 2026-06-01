@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { suggestNiches } from '@ilaunchify/marketplace'
+import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { ArrowLeft } from 'lucide-react'
 import { EditorShell } from './EditorShell'
 
@@ -29,10 +30,21 @@ export default async function ProductEditPage({ params }: PageProps) {
 
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    select: { id: true, services: { where: { type: 'MANUFACTURING' }, select: { id: true } } },
+    select: {
+      id: true,
+      tier: true,
+      services: { where: { type: 'MANUFACTURING' }, select: { id: true } },
+    },
   })
   if (!partner) notFound()
   const serviceIds = partner.services.map((s) => s.id)
+
+  // Mode 2 AI parser gate — partner-plan feature (Trusted+). Drives the
+  // ModeChooser AI tile (enabled vs locked badge).
+  const aiAvailable = await hasFeature(
+    partnerTierToPlanCode(partner.tier.toLowerCase() as 'verified' | 'trusted' | 'premier'),
+    'ai_recipe_parser',
+  )
 
   const template = await prisma.productTemplate.findUnique({
     where: { id },
@@ -169,6 +181,7 @@ export default async function ProductEditPage({ params }: PageProps) {
       </header>
 
       <EditorShell
+        aiAvailable={aiAvailable}
         template={{
           id: template.id,
           name: template.name,
