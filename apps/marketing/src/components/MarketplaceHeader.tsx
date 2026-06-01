@@ -31,6 +31,16 @@ import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { creatorUrl } from '@/lib/app-urls'
 import { NICHES } from '@/lib/niches'
 
+/**
+ * Minimum niche shape the subnav strip needs. Both the hardcoded
+ * `niches.ts` entry and the DB-driven `MarketplaceNiche` (Slice 2B)
+ * satisfy this — the consumer chooses which one to pass.
+ */
+export interface MarketplaceHeaderNiche {
+  slug: string
+  name: string
+}
+
 export interface MarketplaceHeaderProps {
   /** When omitted/null, the header renders the guest variant. */
   user?: UserMenuProps['user'] | null
@@ -49,6 +59,14 @@ export interface MarketplaceHeaderProps {
    * undefined so no tab is highlighted.
    */
   activeNiche?: string
+  /**
+   * Niche tabs rendered in the subnav. When omitted, falls back to the
+   * locked hardcoded `NICHES` list so legacy callers (and any caller
+   * that doesn't need fresh DB data) keep working. Pages that already
+   * fetch niches (e.g. /marketplace via loadActiveNiches) should pass
+   * the DB-loaded array to avoid double-fetching.
+   */
+  niches?: ReadonlyArray<MarketplaceHeaderNiche>
 }
 
 export function MarketplaceHeader({
@@ -57,6 +75,7 @@ export function MarketplaceHeader({
   brands = [],
   activeBrandId,
   activeNiche,
+  niches = NICHES,
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
 
@@ -98,7 +117,7 @@ export function MarketplaceHeader({
         // AppHeaderSubnavStrip's scroll container.
         <AppHeaderSubnavStrip>
           <CategoriesMegaMenu />
-          {NICHES.map((n) => {
+          {niches.map((n) => {
             const isActive = activeNiche === n.slug
             return (
               <Link

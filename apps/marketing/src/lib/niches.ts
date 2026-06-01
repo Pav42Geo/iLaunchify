@@ -1,8 +1,21 @@
 /**
  * Niche data — 8 top-level Creator Niches from MARKETPLACE_DESIGN.md §2 Layer 1.
  *
- * V1 keeps this hardcoded; replace with Prisma `CreatorNiche` query once the
- * schema migrations land (M1 from MARKETPLACE_DESIGN.md §13).
+ * DUAL-SOURCE MODEL (Slice 2B, 2026-06-02):
+ *   - The Prisma `Niche` table owns the canonical row (slug, name,
+ *     description, iconEmoji, accentHex, displayOrder, isActive) + the
+ *     NicheSubcategory junction.
+ *   - This file owns the MARKETING-COPY layer (shortName, tagline,
+ *     gradient) until that copy moves into the DB.
+ *
+ * Consumers should call `loadActiveNiches()` / `loadNicheBySlug()` from
+ * `lib/niches-db.ts` instead of reading `NICHES` directly. The loader
+ * JOINs DB rows with the entries here on slug and returns the merged
+ * MarketplaceNiche shape.
+ *
+ * `NICHES` is also the empty-DB fallback: if the marketing app boots
+ * before Pavel runs the niche seed, the loader returns this list so the
+ * marketplace doesn't go blank. Keep slugs identical to seed-niches.ts.
  */
 
 import type { ProductGradient } from '@ilaunchify/ui'

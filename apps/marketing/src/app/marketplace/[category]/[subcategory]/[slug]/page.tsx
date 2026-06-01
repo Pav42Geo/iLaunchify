@@ -25,6 +25,7 @@ import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getMarketingSession } from '@/lib/session'
+import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -81,6 +82,11 @@ export default async function ProductDetailPage({
   const detail = findTemplateDetail(template.slug)
   const related = row.templates.filter((t) => t.slug !== slug).slice(0, 4)
 
+  // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
+  // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
+  // the template isn't in the DB yet → chip strips just don't render.
+  const taxonomyChips = await getProductTaxonomyChips(template.slug)
+
   // Per Pavel: only surface a qualifier line for organic certs. The
   // generic 'Independent verification' label was noise — let the cert
   // name speak for itself.
@@ -122,6 +128,43 @@ export default async function ProductDetailPage({
               <span className="text-warning-500">★★★★★</span>
               <span>Premier-tier · {template.leadTimeDays}-day lead</span>
             </div>
+
+            {/* Slice 2B — niche + lifestyle-tag chips. Renders nothing
+                when the template isn't in the DB yet, so existing
+                sample-template detail pages keep the old layout. */}
+            {(taxonomyChips.niches.length > 0 ||
+              taxonomyChips.lifestyleTags.length > 0) && (
+              <div className="flex flex-col gap-2 mb-5">
+                {taxonomyChips.niches.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {taxonomyChips.niches.map((n) => (
+                      <Link
+                        key={n.slug}
+                        href={`/launch/${n.slug}`}
+                        className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
+                      >
+                        {n.iconEmoji && <span aria-hidden="true">{n.iconEmoji}</span>}
+                        {n.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {taxonomyChips.lifestyleTags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {taxonomyChips.lifestyleTags.map((t) => (
+                      <Link
+                        key={t.slug}
+                        href={`/marketplace?tag=${encodeURIComponent(t.slug)}`}
+                        className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-white hover:text-pink-700 transition-colors"
+                      >
+                        {t.iconEmoji && <span aria-hidden="true">{t.iconEmoji}</span>}
+                        {t.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <ProductSpecGrid
               items={[

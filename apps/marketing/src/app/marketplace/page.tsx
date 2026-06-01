@@ -6,6 +6,7 @@ import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
+import { LifestyleTagFilters } from '@/components/LifestyleTagFilters'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import {
   getMarketplaceTemplates,
@@ -14,6 +15,8 @@ import {
   getCatalogCount,
   type MarketplaceSortKey,
 } from '@/lib/templates'
+import { loadActiveNiches } from '@/lib/niches-db'
+import { loadLifestyleTagGroups } from '@/lib/lifestyle-tags-db'
 
 const VALID_SORTS: MarketplaceSortKey[] = [
   'popular',
@@ -54,14 +57,17 @@ export default async function MarketplacePage({
     moq?: string
     q?: string
     /**
-     * Niche slug from the /launch/[niche] landings (SEO funnel).
-     * Recognised as an active filter chip; real niche → template
-     * scoring lands when CreatorNiche schema arrives (M1 in
-     * MARKETPLACE_DESIGN.md §13). Until then it's an
-     * informational pill that preserves user context after the
-     * landing-page jump.
+     * Niche slug from the /launch/[niche] landings (SEO funnel) — now
+     * also a real filter dimension (Slice 2B): joins on
+     * ProductTemplateNiche.some.niche.slug.
      */
     niche?: string
+    /**
+     * Slice 2B — LifestyleTag slugs from the marketplace chip rail.
+     * URLSearchParams allows repeated `?tag=keto&tag=vegan` values; Next
+     * 15 surfaces them as `string | string[] | undefined`.
+     */
+    tag?: string | string[]
   }>
 }) {
   const sp = await searchParams
@@ -73,8 +79,22 @@ export default async function MarketplacePage({
         .map((s) => s.trim())
         .filter(Boolean)
     : undefined
+  // Lifestyle tag slugs (Layer 4). Tolerate scalar OR repeated values.
+  const lifestyleTagSlugs = (() => {
+    const raw = sp.tag
+    if (!raw) return undefined
+    const list = Array.isArray(raw) ? raw : [raw]
+    const cleaned = list.map((s) => s.trim().toLowerCase()).filter(Boolean)
+    return cleaned.length > 0 ? cleaned : undefined
+  })()
   const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
-  const hasActiveFilters = Boolean(tags?.length || moqMax !== undefined || q || niche)
+  const hasActiveFilters = Boolean(
+    tags?.length ||
+      moqMax !== undefined ||
+      q ||
+      niche ||
+      lifestyleTagSlugs?.length,
+  )
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
@@ -86,11 +106,23 @@ export default async function MarketplacePage({
     trending,
     quickLaunch,
     catalogTotal,
+    niches,
+    lifestyleTagGroups,
   ] = await Promise.all([
-    getMarketplaceTemplates({ sort, tags, moqMax, q, take: 60 }),
+    getMarketplaceTemplates({
+      sort,
+      tags,
+      moqMax,
+      q,
+      niche,
+      lifestyleTagSlugs,
+      take: 60,
+    }),
     getTrendingTemplates(4),
     getQuickLaunchTemplates(4),
     getCatalogCount(),
+    loadActiveNiches(),
+    loadLifestyleTagGroups(),
   ])
 
   return (
@@ -101,6 +133,7 @@ export default async function MarketplacePage({
         activeBrandId={activeBrandId}
         hasUnreadNotifications={false}
         activeNiche={niche}
+        niches={niches}
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6 grid gap-7 items-start grid-cols-1 md:grid-cols-[240px_1fr]">
@@ -145,6 +178,11 @@ export default async function MarketplacePage({
               </div>
             </div>
           )}
+
+          {/* Lifestyle tag chips (Layer 4) — DB-driven, multi-select, URL.
+              Hidden entirely when no LifestyleTag rows exist yet so the
+              marketplace stays clean pre-seed. */}
+          <LifestyleTagFilters groups={lifestyleTagGroups} />
 
           {/* Controls + active filters */}
           <MarketplaceControlsBar

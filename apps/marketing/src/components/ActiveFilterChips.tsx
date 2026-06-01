@@ -16,7 +16,7 @@ import { findNiche } from '@/lib/niches'
  * context after the SEO-driven jump to the marketplace.
  */
 
-const FILTER_PARAMS = ['diet', 'moq', 'q', 'niche'] as const
+const FILTER_PARAMS = ['diet', 'moq', 'q', 'niche', 'tag'] as const
 type FilterParam = (typeof FILTER_PARAMS)[number]
 
 function titleCase(s: string) {
@@ -71,6 +71,15 @@ export function ActiveFilterChips() {
         remove: () => removeParam('niche'),
       })
     }
+    // Slice 2B — LifestyleTag chips (Layer 4). Repeated ?tag=keto&tag=vegan.
+    const tagSlugs = searchParams.getAll('tag')
+    tagSlugs.forEach((slug) => {
+      list.push({
+        key: `tag:${slug}`,
+        label: titleCase(slug.replace(/-/g, ' ')),
+        remove: () => removeTag(slug),
+      })
+    })
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
@@ -94,6 +103,17 @@ export function ActiveFilterChips() {
         .filter((s) => s && s.toLowerCase() !== tag.toLowerCase())
       if (current.length) p.set('diet', current.join(','))
       else p.delete('diet')
+    })
+  }
+
+  /** Remove one lifestyle-tag slug (LifestyleTag, repeated ?tag= values). */
+  function removeTag(slug: string) {
+    pushParams((p) => {
+      const remaining = p
+        .getAll('tag')
+        .filter((s) => s.toLowerCase() !== slug.toLowerCase())
+      p.delete('tag')
+      remaining.forEach((s) => p.append('tag', s))
     })
   }
 

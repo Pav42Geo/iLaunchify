@@ -26,11 +26,21 @@ export interface MarketplaceFilters {
   /** MOQ ceiling — only return templates where at least one variant has
    * moqMin ≤ this number. */
   moqMax?: number
-  /** Niche slug (mapped to category for now). */
+  /**
+   * Niche slug — drives ProductTemplateNiche.some.niche.slug filter when
+   * present. (Replaces the old category-mainCategory shortcut.)
+   */
   niche?: string
   /** Tag labels (Diet/Cert) — template must carry ALL tags listed.
    *  V1: applied at sample-data level. DB path needs certifications join. */
   tags?: string[]
+  /**
+   * Slice 2B — LifestyleTag slugs from the marketplace chip rail.
+   * V1 semantics: AND across the tag list (template must carry every
+   * selected tag). When the AND-within-group / OR-across-group split lands
+   * in V1.1, the marketplace page can pass pre-grouped slug arrays.
+   */
+  lifestyleTagSlugs?: string[]
 }
 
 /** Sort keys supported by the marketplace controls bar. */
@@ -148,7 +158,12 @@ const includeForCard = {
 } as const
 
 function buildWhere(args: GetTemplatesArgs) {
-  const { q, categorySlugs, subcategorySlugs, moqMax, niche } = args
+  const { q, categorySlugs, subcategorySlugs, moqMax, niche, lifestyleTagSlugs } =
+    args
+  // Slice 2B: niche filter now joins through ProductTemplateNiche (Layer 1
+  // taxonomy) — not the legacy Category.mainCategory shortcut, which never
+  // matched the niche slugs the marketplace was sending. Lifestyle tags
+  // (Layer 4) join through ProductTemplateLifestyleTag with AND semantics.
   return {
     status: 'PUBLISHED' as const,
     ...(q && {
@@ -164,7 +179,12 @@ function buildWhere(args: GetTemplatesArgs) {
       subcategory: { category: { slug: { in: categorySlugs } } },
     }),
     ...(niche && {
-      subcategory: { category: { mainCategory: niche } },
+      niches: { some: { niche: { slug: niche } } },
+    }),
+    ...(lifestyleTagSlugs?.length && {
+      AND: lifestyleTagSlugs.map((slug) => ({
+        lifestyleTags: { some: { lifestyleTag: { slug } } },
+      })),
     }),
     ...(moqMax !== undefined && {
       variants: { some: { moqMin: { lte: moqMax } } },

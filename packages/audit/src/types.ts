@@ -40,6 +40,10 @@ export const AUDIT_ENTITY_TYPES = [
   // Admin Category Management (marketplace taxonomy)
   'Category',
   'Subcategory',
+  // 2026-06-02 V1.1 marketplace taxonomy — Layer 1 Niches, Layer 4 Lifestyle tags
+  'Niche',
+  'NicheRule',
+  'LifestyleTag',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

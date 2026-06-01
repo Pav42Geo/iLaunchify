@@ -56,6 +56,7 @@ import {
   Image,
   ScrollText,
   Megaphone,
+  Tag,
   Radio,
   Workflow,
   Globe2,
@@ -153,6 +154,16 @@ const PRIMARY: SidebarRegion = {
       label: 'Categories',
       icon: Layers,
       href: '/categories',
+    },
+    {
+      kind: 'group',
+      label: 'Marketplace',
+      icon: Sparkles,
+      children: [
+        { kind: 'item', label: 'Niches', icon: Sparkles, href: '/niches', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
+      ],
     },
     {
       kind: 'group',
