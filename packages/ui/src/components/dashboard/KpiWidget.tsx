@@ -73,11 +73,14 @@ const KPI_TO_CHART_TONE: Record<WidgetTone, ChartTone> = {
 
 function renderIcon(icon: KpiWidgetProps['icon']): React.ReactNode {
   if (!icon) return null
-  if (typeof icon === 'function') {
-    const Icon = icon as LucideIcon
-    return <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+  // Already a rendered element or text node — pass through.
+  if (React.isValidElement(icon) || typeof icon === 'string' || typeof icon === 'number') {
+    return icon
   }
-  return icon
+  // Component TYPE (function OR forwardRef object). Lucide icons are forwardRef
+  // objects, so `typeof === 'function'` misses them — see Widget.renderIcon.
+  const Icon = icon as LucideIcon
+  return <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
 }
 
 function formatValue(v: string | number): string {

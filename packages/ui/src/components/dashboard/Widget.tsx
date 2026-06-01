@@ -127,12 +127,17 @@ const SPAN_CLASSES: Record<WidgetSpan, string> = {
 
 function renderIcon(icon: WidgetBaseProps['icon']): React.ReactNode {
   if (!icon) return null
-  // Lucide icons are React component types — check by shape.
-  if (typeof icon === 'function') {
-    const Icon = icon as LucideIcon
-    return <Icon className="h-4 w-4" aria-hidden="true" />
+  // Already a rendered element or text node — pass through.
+  if (React.isValidElement(icon) || typeof icon === 'string' || typeof icon === 'number') {
+    return icon
   }
-  return icon
+  // Otherwise it's a component TYPE: a plain function OR a forwardRef/memo
+  // object. Lucide icons are forwardRef objects (typeof 'object'), so a
+  // `typeof === 'function'` check misses them — leaving the raw component
+  // object to be rendered as a child, which RSC can't serialize ("only plain
+  // objects can be passed to Client Components").
+  const Icon = icon as LucideIcon
+  return <Icon className="h-4 w-4" aria-hidden="true" />
 }
 
 // -----------------------------------------------------------------------------

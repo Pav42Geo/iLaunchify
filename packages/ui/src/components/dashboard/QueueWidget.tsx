@@ -79,11 +79,13 @@ const DOT_TONE: Record<WidgetTone, string> = {
 
 function renderIcon(icon: QueueWidgetItem['icon']): React.ReactNode {
   if (!icon) return null
-  if (typeof icon === 'function') {
-    const Icon = icon as LucideIcon
-    return <Icon className="h-4 w-4" aria-hidden="true" />
+  if (React.isValidElement(icon) || typeof icon === 'string' || typeof icon === 'number') {
+    return icon
   }
-  return icon
+  // Component TYPE (function OR forwardRef object). Lucide icons are forwardRef
+  // objects, so `typeof === 'function'` misses them — see Widget.renderIcon.
+  const Icon = icon as LucideIcon
+  return <Icon className="h-4 w-4" aria-hidden="true" />
 }
 
 function ActionButton({ action }: { action: QueueAction }) {
