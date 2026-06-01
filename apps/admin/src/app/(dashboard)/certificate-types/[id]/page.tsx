@@ -46,6 +46,7 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
           verificationNotes: ct.verificationNotes ?? '',
           status: ct.status,
           hasThumbnail: !!ct.thumbnailFileId,
+          hasSvgBadge: !!ct.badgeSvgFileId,
         }}
       />
     </div>

@@ -456,6 +456,7 @@ interface CertTypeRow {
   slug: string
   description: string
   thumbnailFileId: string | null
+  badgeSvgFileId: string | null
   status: CertStatus
   updatedAt: Date
   _count: { partnerInstances: number }
@@ -491,10 +492,14 @@ function CertificateTypesTable({ rows }: { rows: CertTypeRow[] }) {
                   <code className="mt-0.5 inline-block rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10.5px] text-ink-600">
                     {t.slug}
                   </code>
-                  {!t.thumbnailFileId && (
+                  {(!t.thumbnailFileId || !t.badgeSvgFileId) && (
                     <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-amber-700">
                       <ShieldAlert className="h-2.5 w-2.5" />
-                      Missing badge thumbnail
+                      {!t.thumbnailFileId && !t.badgeSvgFileId
+                        ? 'Missing PNG + SVG badge'
+                        : !t.thumbnailFileId
+                          ? 'Missing PNG (web) badge'
+                          : 'Missing SVG (print) badge'}
                     </p>
                   )}
                 </td>

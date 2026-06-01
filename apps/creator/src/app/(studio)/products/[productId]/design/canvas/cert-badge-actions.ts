@@ -4,10 +4,11 @@
 //
 // Loads the product's EARNED certifications — V1 scope is manufacturer-supplied
 // via ProductCertificate (VERIFIED instances of ACTIVE cert types). Recipe-
-// eligible + brand-cert sources are V1.1. Each cert type's admin-curated badge
-// SVG (CertificateType.thumbnailFileId → Asset on R2) resolves to a signed URL
-// (re-derived each studio open — the cert zone reconciles, it doesn't persist
-// the URL).
+// eligible + brand-cert sources are V1.1. The studio is the print/production
+// surface, so it prefers each cert type's VECTOR badge (CertificateType.
+// badgeSvgFileId), falling back to the PNG (thumbnailFileId) when no SVG was
+// uploaded. The chosen Asset on R2 resolves to a signed URL (re-derived each
+// studio open — the cert zone reconciles, it doesn't persist the URL).
 //
 // Also manages the single "certifications surface" per product: a product has
 // one Design per surface/die-cut, and exactly one is the badge host. Auto-
@@ -80,7 +81,13 @@ export async function loadProductCertBadges(
         select: {
           id: true,
           certificateType: {
-            select: { name: true, slug: true, status: true, thumbnailFileId: true },
+            select: {
+              name: true,
+              slug: true,
+              status: true,
+              thumbnailFileId: true,
+              badgeSvgFileId: true,
+            },
           },
         },
       },
@@ -91,10 +98,13 @@ export async function loadProductCertBadges(
   for (const c of certs) {
     const ct = c.instance.certificateType
     if (ct.status !== 'ACTIVE') continue
+    // Production surface → prefer the VECTOR SVG; fall back to the PNG so the
+    // cert still renders if no SVG was uploaded for the type yet.
     let badgeUrl: string | null = null
-    if (ct.thumbnailFileId) {
+    const badgeAssetId = ct.badgeSvgFileId ?? ct.thumbnailFileId
+    if (badgeAssetId) {
       const asset = await prisma.asset.findUnique({
-        where: { id: ct.thumbnailFileId },
+        where: { id: badgeAssetId },
         select: { storageKey: true },
       })
       if (asset?.storageKey) badgeUrl = await getSignedReadUrl(asset.storageKey)

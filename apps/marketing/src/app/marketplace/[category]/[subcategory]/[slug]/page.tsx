@@ -25,6 +25,7 @@ import { findTemplateDetail } from '@/lib/template-detail'
 import { getPricingTierRows } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
+import { getProductCertBadges } from '@/lib/product-cert-badges'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -90,15 +91,30 @@ export default async function ProductDetailPage({
   // the template exists in the DB; synthetic fallback for fixture-only demos.
   const pricingRows = await getPricingTierRows(template.slug, template.pricePerUnit)
 
-  // Per Pavel: only surface a qualifier line for organic certs. The
-  // generic 'Independent verification' label was noise — let the cert
-  // name speak for itself.
-  const certs = (template.tags ?? []).map((tag) => ({
-    name: tag.label,
-    qualifier: tag.organic ? 'Certified Organic' : undefined,
-    icon: certIconForLabel(tag.label),
-    unconditional: tag.organic ?? false,
-  }))
+  // Cert strip. The authoritative signal is the product's EARNED certs —
+  // VERIFIED PartnerCertificateInstances surfaced as admin-curated PNG badges
+  // ("added by the vendor → approved by admin → live in the marketplace").
+  // When the template has none yet (fixture-only / pre-launch), fall back to
+  // the tag-derived certs so the strip still reads as a trust signal.
+  const earnedCertBadges = await getProductCertBadges(template.slug)
+  const certs =
+    earnedCertBadges.length > 0
+      ? earnedCertBadges.map((b) => ({
+          name: b.name,
+          iconUrl: b.iconUrl ?? undefined,
+          // Fallback glyph keeps the badge circle filled if the PNG is missing.
+          icon: certIconForLabel(b.name),
+          unconditional: true,
+        }))
+      : // Per Pavel: only surface a qualifier line for organic certs. The
+        // generic 'Independent verification' label was noise — let the cert
+        // name speak for itself.
+        (template.tags ?? []).map((tag) => ({
+          name: tag.label,
+          qualifier: tag.organic ? 'Certified Organic' : undefined,
+          icon: certIconForLabel(tag.label),
+          unconditional: tag.organic ?? false,
+        }))
 
   return (
     <>
@@ -315,7 +331,13 @@ function Breadcrumb({
 
 interface DetailGalleryProps {
   template: SampleTemplate
-  certs?: Array<{ name: string; qualifier?: string; unconditional?: boolean }>
+  certs?: Array<{
+    name: string
+    qualifier?: string
+    icon?: string
+    iconUrl?: string
+    unconditional?: boolean
+  }>
 }
 
 function DetailGallery({ template, certs = [] }: DetailGalleryProps) {

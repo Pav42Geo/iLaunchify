@@ -21,8 +21,11 @@ export interface CertStripItem {
   name: string
   /** One-line qualifier (e.g., "Certified Organic", "Independent verification"). */
   qualifier?: string
-  /** Emoji or icon glyph for V1 (replace with `<Image src={logoUrl}>` later). */
+  /** Emoji or icon glyph fallback when no badge image is available. */
   icon?: string
+  /** Admin-curated PNG badge URL. When set, rendered as the badge image
+   *  (preferred over `icon`). */
+  iconUrl?: string
   /** True = every viable production path satisfies this cert. False = path-conditional (dashed). */
   unconditional?: boolean
   /** Click handler — opens the side-drawer detail per MARKETPLACE_DESIGN.md §8. */
@@ -98,11 +101,19 @@ function CertBadge({
   name,
   qualifier,
   icon,
+  iconUrl,
   unconditional = true,
   onClick,
   compact = false,
 }: CertStripItem & { compact?: boolean }) {
   const Wrapper = onClick ? 'button' : 'div'
+  // Admin-curated PNG badge wins; emoji/glyph is the fallback.
+  const glyph = iconUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={iconUrl} alt="" className="h-full w-full object-contain p-1.5" />
+  ) : (
+    (icon ?? '✓')
+  )
   if (compact) {
     // Same vertical layout as the default badge — just scaled down for
     // the col-1 placement on the detail page. Icon: 56px → 40px, body
@@ -121,12 +132,12 @@ function CertBadge({
       >
         <span
           className={cn(
-            'w-12 h-12 rounded-full bg-white flex items-center justify-center text-[28px] leading-none',
+            'w-12 h-12 rounded-full bg-white flex items-center justify-center text-[28px] leading-none overflow-hidden',
             !unconditional && 'border border-dashed border-ink-300',
           )}
           aria-hidden="true"
         >
-          {icon ?? '✓'}
+          {glyph}
         </span>
         <span className="text-[12px] font-semibold text-ink-900 leading-tight max-w-[12ch]">
           {name}
@@ -151,12 +162,12 @@ function CertBadge({
     >
       <span
         className={cn(
-          'w-14 h-14 rounded-full bg-white border border-ink-200 flex items-center justify-center text-3xl',
+          'w-14 h-14 rounded-full bg-white border border-ink-200 flex items-center justify-center text-3xl overflow-hidden',
           !unconditional && 'border-dashed',
         )}
         aria-hidden="true"
       >
-        {icon ?? '✓'}
+        {glyph}
       </span>
       <span className="text-[13px] font-semibold text-ink-900 leading-tight max-w-[14ch]">
         {name}

@@ -14,6 +14,7 @@ import {
   updateCertificateType,
   setCertificateTypeStatus,
   uploadCertificateTypeThumbnail,
+  uploadCertificateTypeBadgeSvg,
 } from './actions'
 
 interface FormProps {
@@ -26,6 +27,7 @@ interface FormProps {
     verificationNotes: string
     status?: CertificateTypeStatus
     hasThumbnail?: boolean
+    hasSvgBadge?: boolean
   }
 }
 
@@ -33,7 +35,8 @@ const SLUG_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,40}[a-z0-9])?$/
 
 export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pngInputRef = useRef<HTMLInputElement>(null)
+  const svgInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initial?.name ?? '')
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -73,18 +76,21 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
     })
   }
 
-  function handleThumbnail(file: File) {
+  function handleBadge(file: File, kind: 'PNG' | 'SVG') {
     if (!typeId) return
     startTransition(async () => {
       const fd = new FormData()
       fd.set('typeId', typeId)
       fd.set('file', file)
-      const result = await uploadCertificateTypeThumbnail(fd)
+      const result =
+        kind === 'SVG'
+          ? await uploadCertificateTypeBadgeSvg(fd)
+          : await uploadCertificateTypeThumbnail(fd)
       if (!result.ok) {
         toast.error(result.error)
         return
       }
-      toast.success('Thumbnail uploaded')
+      toast.success(kind === 'SVG' ? 'Print badge (SVG) uploaded' : 'Web badge (PNG) uploaded')
       router.refresh()
     })
   }
@@ -189,39 +195,85 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
 
       {mode === 'edit' && typeId && (
         <>
-          {/* Thumbnail */}
+          {/* Badges — two assets per type: PNG for web UI, SVG for production. */}
           <div className="rounded-lg border border-zinc-200 bg-white p-6">
-            <h3 className="font-semibold text-zinc-900">Branded badge thumbnail</h3>
+            <h3 className="font-semibold text-zinc-900">Branded badges</h3>
             <p className="mt-1 text-sm text-zinc-500">
-              Uploaded once. Shown on creator product detail pages whenever a partner has a
-              VERIFIED instance of this type. PNG with transparent background preferred,
-              ~256×256.
+              Two assets per certificate. The PNG is the web badge; the SVG is the
+              print/production badge. Upload both so the cert renders correctly
+              everywhere it appears.
             </p>
-            <div className="mt-4 flex items-center gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/svg+xml,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleThumbnail(f)
-                }}
-                disabled={isPending}
-              />
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isPending}
-              >
-                <Upload className="mr-1.5 h-4 w-4" />
-                {initial?.hasThumbnail ? 'Replace thumbnail' : 'Upload thumbnail'}
-              </Button>
-              {initial?.hasThumbnail && (
-                <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Uploaded
-                </span>
-              )}
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {/* PNG — web UI */}
+              <div className="rounded-md border border-zinc-200 p-4">
+                <h4 className="text-sm font-semibold text-zinc-900">Web badge (PNG)</h4>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Shown on the marketplace product detail page + cert chips whenever a
+                  partner has a VERIFIED instance. PNG/WebP, transparent background, ~256×256.
+                </p>
+                <input
+                  ref={pngInputRef}
+                  type="file"
+                  accept="image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleBadge(f, 'PNG')
+                  }}
+                  disabled={isPending}
+                />
+                <div className="mt-3 flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => pngInputRef.current?.click()}
+                    disabled={isPending}
+                  >
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    {initial?.hasThumbnail ? 'Replace PNG' : 'Upload PNG'}
+                  </Button>
+                  {initial?.hasThumbnail && (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Uploaded
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* SVG — Design Studio / production */}
+              <div className="rounded-md border border-zinc-200 p-4">
+                <h4 className="text-sm font-semibold text-zinc-900">Print badge (SVG)</h4>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Vector badge placed on labels/packaging in the Design Studio. Required
+                  for print/production — vector keeps edges crisp at any size.
+                </p>
+                <input
+                  ref={svgInputRef}
+                  type="file"
+                  accept="image/svg+xml,.svg"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleBadge(f, 'SVG')
+                  }}
+                  disabled={isPending}
+                />
+                <div className="mt-3 flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => svgInputRef.current?.click()}
+                    disabled={isPending}
+                  >
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    {initial?.hasSvgBadge ? 'Replace SVG' : 'Upload SVG'}
+                  </Button>
+                  {initial?.hasSvgBadge && (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Uploaded
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

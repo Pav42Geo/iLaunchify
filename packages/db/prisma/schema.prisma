@@ -3167,7 +3167,8 @@ model CertificateType {
   id                  String                       @id @default(cuid())
   name                String
   slug                String                       @unique
-  thumbnailFileId     String?                                            // admin-uploaded badge, ~256x256
+  thumbnailFileId     String?                                            // admin-uploaded PNG badge (web UI: marketplace detail + chips), ~256x256
+  badgeSvgFileId      String?                                            // admin-uploaded VECTOR SVG badge — used in the Design Studio for print/production (vector required for production)
   description         String                                              // shown on hover/tooltip publicly
   verificationNotes   String?                                             // what admin looks for when verifying partner uploads
   status              CertificateTypeStatus        @default(ACTIVE)

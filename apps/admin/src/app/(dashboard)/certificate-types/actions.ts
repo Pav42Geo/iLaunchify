@@ -108,26 +108,44 @@ export async function setCertificateTypeStatus(
 }
 
 // -----------------------------------------------------------------------------
-// Thumbnail upload — admin-curated branded badge image (the public face of
-// the cert). Stored on R2 + linked via thumbnailFileId on CertificateType.
-// We reuse PartnerFile for the file row (ownerType-less convention since
-// these are platform-owned, not partner-owned; partnerId is set to the
-// admin user's id as a placeholder so the FK satisfies).
-// Cleaner long-term: an Asset row with ownerType=PLATFORM. For V1 we lean on
-// PartnerFile to ship the loop.
+// Badge uploads — admin-curated branded badge for a CertificateType. Two
+// assets per type, each its own slot:
+//   • PNG → thumbnailFileId — the WEB badge (marketplace product detail + cert
+//     chips). Stored with a public URL so statically-rendered marketing pages
+//     can <img> it directly.
+//   • SVG → badgeSvgFileId  — the VECTOR badge used in the Design Studio for
+//     print/production, where vector output is a hard requirement.
+// File rows are Asset (ownerType=PLATFORM, ownerId=null — platform-owned).
 // -----------------------------------------------------------------------------
 
-export async function uploadCertificateTypeThumbnail(formData: FormData): Promise<Result> {
+type CertBadgeKind = 'PNG' | 'SVG'
+
+const CERT_BADGE_ACCEPT: Record<CertBadgeKind, { mimes: string[]; label: string }> = {
+  PNG: { mimes: ['image/png', 'image/webp'], label: 'PNG or WebP' },
+  SVG: { mimes: ['image/svg+xml'], label: 'SVG' },
+}
+
+async function uploadCertBadge(formData: FormData, kind: CertBadgeKind): Promise<Result> {
   const admin = await requireRole('ADMIN')
 
   const typeId = String(formData.get('typeId') ?? '')
   const file = formData.get('file')
   if (!typeId) return { ok: false, error: 'Missing typeId.' }
   if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: 'No image provided.' }
+    return { ok: false, error: 'No file provided.' }
   }
   if (file.size > 5 * 1024 * 1024) {
-    return { ok: false, error: 'Thumbnail too large (max 5 MB).' }
+    return { ok: false, error: 'Badge too large (max 5 MB).' }
+  }
+
+  // Validate the file is the right kind. Browsers occasionally send an empty
+  // type for dragged .svg files, so sniff the extension as an SVG fallback.
+  const accept = CERT_BADGE_ACCEPT[kind]
+  const looksRight =
+    accept.mimes.includes(file.type) ||
+    (kind === 'SVG' && file.name.toLowerCase().endsWith('.svg'))
+  if (!looksRight) {
+    return { ok: false, error: `Wrong file type — upload a ${accept.label} file.` }
   }
 
   const ct = await prisma.certificateType.findUnique({
@@ -136,17 +154,26 @@ export async function uploadCertificateTypeThumbnail(formData: FormData): Promis
   })
   if (!ct) return { ok: false, error: 'Certificate type not found.' }
 
+  const contentType = file.type || (kind === 'SVG' ? 'image/svg+xml' : 'image/png')
   const buffer = Buffer.from(await file.arrayBuffer())
   let upload
   try {
     upload = await uploadFile({
       key: certificateThumbnailKey({ slug: ct.slug, filename: file.name }),
       body: buffer,
-      contentType: file.type,
+      contentType,
+      cacheControl: 'public, max-age=31536000, immutable',
+      contentDisposition: 'inline',
     })
   } catch (err) {
     return { ok: false, error: `Upload failed: ${(err as Error).message}` }
   }
+
+  // The PNG is shown on public, statically-rendered marketing pages → it needs
+  // a stable public URL. The SVG is read through a signed URL in the studio,
+  // so a public URL is optional for it (set it too when the bucket is public).
+  const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, '')
+  const publicUrl = publicBase ? `${publicBase}/${upload.key}` : null
 
   // Asset row (ownerType=PLATFORM, ownerId=null — these aren't partner-owned).
   const asset = await prisma.asset.create({
@@ -156,7 +183,8 @@ export async function uploadCertificateTypeThumbnail(formData: FormData): Promis
       type: 'ICON',
       source: 'USER_UPLOAD',
       storageKey: upload.key,
-      mimeType: file.type,
+      publicUrl,
+      mimeType: contentType,
       sizeBytes: upload.sizeBytes,
       isPublic: true,
       uploadedByUserId: admin.id,
@@ -165,12 +193,29 @@ export async function uploadCertificateTypeThumbnail(formData: FormData): Promis
 
   await prisma.certificateType.update({
     where: { id: typeId },
-    data: { thumbnailFileId: asset.id },
+    data: kind === 'SVG' ? { badgeSvgFileId: asset.id } : { thumbnailFileId: asset.id },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'CertificateType',
+    entityId: typeId,
+    action: kind === 'SVG' ? 'CERT_TYPE_BADGE_SVG_UPLOAD' : 'CERT_TYPE_BADGE_PNG_UPLOAD',
+    payload: { slug: ct.slug, kind, mimeType: contentType },
   })
 
   revalidatePath('/certificate-types')
   revalidatePath(`/certificate-types/${typeId}`)
   return { ok: true }
+}
+
+/** PNG web badge (marketplace product detail + cert chips) → thumbnailFileId. */
+export async function uploadCertificateTypeThumbnail(formData: FormData): Promise<Result> {
+  return uploadCertBadge(formData, 'PNG')
+}
+
+/** Vector SVG print badge (Design Studio / production) → badgeSvgFileId. */
+export async function uploadCertificateTypeBadgeSvg(formData: FormData): Promise<Result> {
+  return uploadCertBadge(formData, 'SVG')
 }
 
 // -----------------------------------------------------------------------------
