@@ -40,6 +40,7 @@ export * from './primitives/dialog'
 export * from './primitives/badge'
 export * from './primitives/chip'
 export * from './primitives/tabs'
+export * from './primitives/row-actions-menu'
 
 // Object-view components
 export * from './components/StatusPill'
