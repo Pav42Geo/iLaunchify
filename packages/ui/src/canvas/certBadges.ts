@@ -40,6 +40,28 @@ function badgeCertId(o: FabricObject): string | null {
   return null
 }
 
+/** The certInstanceIds of every cert badge currently on the canvas. */
+export function certBadgeIdsOnCanvas(canvas: FabricCanvas): Set<string> {
+  const s = new Set<string>()
+  for (const o of canvas.getObjects()) {
+    if (!isCertBadge(o)) continue
+    const id = badgeCertId(o)
+    if (id) s.add(id)
+  }
+  return s
+}
+
+/** Find the cert badge object for a given certInstanceId, or null. */
+export function findCertBadgeObject(
+  canvas: FabricCanvas,
+  certInstanceId: string,
+): FabricObject | null {
+  for (const o of canvas.getObjects()) {
+    if (isCertBadge(o) && badgeCertId(o) === certInstanceId) return o
+  }
+  return null
+}
+
 /** Load an SVG as a vector group; falls back to a raster image for PNG badges. */
 async function loadBadge(url: string, sizePx: number): Promise<FabricObject | null> {
   try {
@@ -66,16 +88,26 @@ async function loadBadge(url: string, sizePx: number): Promise<FabricObject | nu
   }
 }
 
-/** Re-flow visible badges into a centered row along the bottom safe area. */
-function layout(canvas: FabricCanvas, die: CertBadgeDieCut, pxPerMm: number): void {
-  const badges = canvas.getObjects().filter((o) => isCertBadge(o) && o.visible !== false)
-  if (badges.length === 0) return
+/**
+ * Position the given badges as a centered row along the bottom safe area.
+ *
+ * Only ever called on NEWLY-added badges — existing badges keep their saved
+ * coords so a creator's manual repositioning survives reopen (the cert zone
+ * auto-appears, then it's movable).
+ */
+function placeBadges(
+  canvas: FabricCanvas,
+  toPlace: FabricObject[],
+  die: CertBadgeDieCut,
+  pxPerMm: number,
+): void {
+  if (toPlace.length === 0) return
   const sizePx = BADGE_SIZE_MM * pxPerMm
   const gapPx = BADGE_GAP_MM * pxPerMm
-  const rowWidth = badges.length * sizePx + (badges.length - 1) * gapPx
+  const rowWidth = toPlace.length * sizePx + (toPlace.length - 1) * gapPx
   const startX = canvas.getWidth() / 2 - rowWidth / 2 + sizePx / 2
   const y = canvas.getHeight() - (die.bleedMm + die.safeAreaMm) * pxPerMm - sizePx / 2
-  badges.forEach((b, i) => {
+  toPlace.forEach((b, i) => {
     b.set({
       originX: 'center',
       originY: 'center',
@@ -114,8 +146,10 @@ export async function reconcileCertBadges(
     if (!id || !wantIds.has(id)) canvas.remove(o)
   }
 
-  // Add newly-earned badges.
+  // Add newly-earned badges, collecting them so only the NEW ones get
+  // auto-positioned (existing badges keep their saved/moved coords).
   const sizePx = BADGE_SIZE_MM * pxPerMm
+  const added: FabricObject[] = []
   for (const b of want) {
     if (existingIds.has(b.certInstanceId)) continue
     const obj = await loadBadge(b.badgeUrl!, sizePx)
@@ -125,8 +159,41 @@ export async function reconcileCertBadges(
       certInstanceId: b.certInstanceId,
     }
     canvas.add(obj)
+    added.push(obj)
   }
 
-  layout(canvas, die, pxPerMm)
+  placeBadges(canvas, added, die, pxPerMm)
   canvas.requestRenderAll()
+}
+
+/**
+ * Add a single cert badge to the canvas (used by the studio's Certifications
+ * control to re-place a badge the creator removed). No-op returning the
+ * existing object if it's already present.
+ */
+export async function addCertBadge(
+  canvas: FabricCanvas,
+  badge: CertBadgePlacement,
+  die: CertBadgeDieCut,
+): Promise<FabricObject | null> {
+  if (!badge.badgeUrl) return null
+  const existing = findCertBadgeObject(canvas, badge.certInstanceId)
+  if (existing) {
+    canvas.setActiveObject(existing)
+    canvas.requestRenderAll()
+    return existing
+  }
+  const pxPerMm = canvas.getWidth() / (die.widthMm + 2 * die.bleedMm)
+  const sizePx = BADGE_SIZE_MM * pxPerMm
+  const obj = await loadBadge(badge.badgeUrl, sizePx)
+  if (!obj) return null
+  ;(obj as { customType?: string }).customType = CERT_BADGE_TYPE
+  ;(obj as { customData?: unknown }).customData = {
+    certInstanceId: badge.certInstanceId,
+  }
+  canvas.add(obj)
+  placeBadges(canvas, [obj], die, pxPerMm)
+  canvas.setActiveObject(obj)
+  canvas.requestRenderAll()
+  return obj
 }

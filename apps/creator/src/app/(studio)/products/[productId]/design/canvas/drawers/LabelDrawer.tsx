@@ -15,21 +15,28 @@
 // snapped to the bound recipe on PDF generation.
 
 import * as React from 'react'
-import { Plus, Tag, Check, Target } from 'lucide-react'
+import { Plus, Tag, Check, Target, ShieldCheck } from 'lucide-react'
 import {
   addNutritionFactsPanel,
   addLabelSection,
+  addCertBadge,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
   type BrandCanvasAssets,
+  type DieCutSpec,
   type FabricCanvas,
   type LabelSectionRole,
 } from '@ilaunchify/ui'
 import { useCanvasRoles } from '../useCanvasRoles'
+import type { CertBadge } from '../cert-badge-actions'
 
 interface Props {
   canvas: FabricCanvas | null
   brandAssets: BrandCanvasAssets
+  /** The product's earned cert badges (Certifications section). */
+  certBadges?: CertBadge[]
+  /** Die-cut spec — needed to place a cert badge in the safe area. */
+  dieCut?: DieCutSpec
   /**
    * Optional product context used to pre-fill required-section text. When
    * available, "Add Statement of identity" drops the actual product name
@@ -45,7 +52,13 @@ interface Props {
 
 type StyleKey = 'standard' | 'tabular'
 
-export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
+export function LabelDrawer({
+  canvas,
+  brandAssets,
+  certBadges = [],
+  dieCut,
+  productCtx,
+}: Props) {
   const canvasRoles = useCanvasRoles(canvas)
 
   const [style, setStyle] = React.useState<StyleKey>('standard')
@@ -126,6 +139,23 @@ export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
     canvas.requestRenderAll()
   }
 
+  async function handleAddCert(badge: CertBadge) {
+    if (!canvas || !dieCut || !badge.badgeUrl) return
+    await addCertBadge(
+      canvas,
+      { certInstanceId: badge.certInstanceId, badgeUrl: badge.badgeUrl },
+      dieCut,
+    )
+  }
+
+  function handleFindCert(certInstanceId: string) {
+    if (!canvas) return
+    const obj = canvasRoles.findCertBadge(certInstanceId)
+    if (!obj) return
+    canvas.setActiveObject(obj)
+    canvas.requestRenderAll()
+  }
+
   return (
     <div className="space-y-5">
       {/* Required sections — DS-55. */}
@@ -191,6 +221,85 @@ export function LabelDrawer({ canvas, brandAssets, productCtx }: Props) {
             )
           })}
         </div>
+      </section>
+
+      <div className="h-px bg-ink-200" />
+
+      {/* Certifications — earned certs, dropped as print badges (Phase 3). */}
+      <section>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+          Certifications
+        </div>
+        <p className="text-[11px] text-ink-500 mb-2.5 leading-[1.45]">
+          Certs your product has earned. Tap to drop the print badge — it lands
+          in the bottom safe area, then you can move it anywhere.
+        </p>
+        {certBadges.length === 0 ? (
+          <p className="text-[11px] text-ink-400 italic leading-[1.45]">
+            None yet. Certifications a partner has verified for this product
+            appear here automatically.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {certBadges.map((badge) => {
+              const present = canvasRoles.certBadgeIds.has(badge.certInstanceId)
+              const noArt = !badge.badgeUrl
+              return (
+                <button
+                  key={badge.certInstanceId}
+                  type="button"
+                  onClick={() =>
+                    present
+                      ? handleFindCert(badge.certInstanceId)
+                      : handleAddCert(badge)
+                  }
+                  disabled={!canvas || (!present && noArt)}
+                  title={
+                    noArt
+                      ? 'No badge art uploaded for this certification yet'
+                      : present
+                        ? 'On canvas — click to select'
+                        : 'Drop the print badge on the canvas'
+                  }
+                  className={
+                    'w-full flex items-center justify-between gap-2 text-left rounded-md border px-2.5 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ' +
+                    (present
+                      ? 'border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50'
+                      : 'border-ink-200 hover:border-pink-500 hover:bg-pink-50/40')
+                  }
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    {badge.badgeUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={badge.badgeUrl}
+                        alt=""
+                        className="h-6 w-6 flex-shrink-0 rounded border border-ink-200 bg-white object-contain p-0.5"
+                      />
+                    ) : (
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border border-ink-200 bg-ink-50">
+                        <ShieldCheck className="h-3.5 w-3.5 text-ink-400" />
+                      </span>
+                    )}
+                    <span
+                      className={
+                        'text-[12.5px] font-semibold truncate ' +
+                        (present ? 'text-emerald-900' : 'text-ink-900')
+                      }
+                    >
+                      {badge.certTypeName}
+                    </span>
+                  </span>
+                  {present ? (
+                    <Target className="h-3.5 w-3.5 flex-shrink-0 text-emerald-700" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 flex-shrink-0 text-ink-500" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <div className="h-px bg-ink-200" />

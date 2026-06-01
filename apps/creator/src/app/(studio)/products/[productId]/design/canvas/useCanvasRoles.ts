@@ -15,6 +15,7 @@
 // honest while the user edits.
 
 import * as React from 'react'
+import { certBadgeIdsOnCanvas, findCertBadgeObject } from '@ilaunchify/ui'
 import type {
   CanvasCustomType,
   FabricCanvas,
@@ -27,10 +28,14 @@ export interface CanvasRoles {
   roles: Set<LabelSectionRole>
   /** True if at least one nutrition-panel customType is present. */
   nutritionPanelPresent: boolean
+  /** certInstanceIds of every cert badge currently on the canvas. */
+  certBadgeIds: Set<string>
   /** Look up the first object carrying a given role, or null. */
   findByRole: (role: LabelSectionRole) => FabricObject | null
   /** Look up the first nutrition-panel customType object, or null. */
   findNutritionPanel: () => FabricObject | null
+  /** Look up the cert badge object for a certInstanceId, or null. */
+  findCertBadge: (certInstanceId: string) => FabricObject | null
 }
 
 export function useCanvasRoles(canvas: FabricCanvas | null): CanvasRoles {
@@ -64,6 +69,7 @@ export function useCanvasRoles(canvas: FabricCanvas | null): CanvasRoles {
     return {
       roles,
       nutritionPanelPresent,
+      certBadgeIds: canvas ? certBadgeIdsOnCanvas(canvas) : new Set<string>(),
       findByRole: (role: LabelSectionRole) => {
         for (const obj of canvas?.getObjects() ?? []) {
           const cr = (obj as { customRole?: LabelSectionRole }).customRole
@@ -78,6 +84,8 @@ export function useCanvasRoles(canvas: FabricCanvas | null): CanvasRoles {
         }
         return null
       },
+      findCertBadge: (certInstanceId: string) =>
+        canvas ? findCertBadgeObject(canvas, certInstanceId) : null,
     }
     // We intentionally depend on `tick` so the memo invalidates after every
     // canvas mutation; the canvas instance itself is stable.

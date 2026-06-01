@@ -537,6 +537,7 @@ export function CanvasLayoutShell({
               guides={guides}
               setGuides={setGuides}
               brandAssets={brandAssets}
+              certBadges={certBadges}
               canvas={canvas}
               productId={productId}
               productName={productName}
@@ -909,6 +910,7 @@ function ToolDrawer({
   guides,
   setGuides,
   brandAssets,
+  certBadges,
   canvas,
   productId,
   productName,
@@ -920,6 +922,7 @@ function ToolDrawer({
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
+  certBadges: CertBadge[]
   canvas: FabricCanvas | null
   productId: string
   productName: string
@@ -977,6 +980,8 @@ function ToolDrawer({
           <LabelDrawer
             canvas={canvas}
             brandAssets={brandAssets}
+            certBadges={certBadges}
+            dieCut={dieCut}
             productCtx={{
               productName,
               brandName: brandAssets.brandName,

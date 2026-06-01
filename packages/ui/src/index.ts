@@ -103,6 +103,9 @@ export {
 } from './canvas/objects'
 export {
   reconcileCertBadges,
+  addCertBadge,
+  findCertBadgeObject,
+  certBadgeIdsOnCanvas,
   type CertBadgePlacement,
   type CertBadgeDieCut,
 } from './canvas/certBadges'
