@@ -235,6 +235,95 @@ enum MarketplaceModuleAudience { ANON MAKER BUILDER AGENCY ALL }
 
 **A/B variant support deferred to V1.5** — we'll know what to test after the first round of admin-curated modules ship and we can compare CTR. Premature to bake it in now.
 
+### §2.5 Detail-page block visibility — admin toggles per block
+
+**Prompt origin (Pavel 2026-06-01):** "Because I'm still torn on do I want the Manufacturer Name on the Product detailed page, if in the plan for editable Marketplace I wish I can be able to turn on/off as well as other elements in the detailed page."
+
+Module Management isn't only about the homepage. The **product detail page** is also a stack of blocks the admin should be able to switch on/off without code changes. This both defers the "do we show manufacturer name?" decision (the toggle exists; the default starts OFF until Pavel locks) and gives admin a single CMS-style surface for tuning the page over time.
+
+**Block inventory** — the product detail page is composed of these toggleable blocks. Initial defaults shown:
+
+| Block slug | Block name | Default V1 | Why toggleable |
+|---|---|---|---|
+| `gallery` | Hero gallery | ON, locked | Required — never disable |
+| `breadcrumb` | Category/niche breadcrumb | ON | — |
+| `name_price` | Name + price + CTA cluster | ON, locked | Required |
+| `manufacturer_attribution` | "Fulfilled by {company}" footer | OFF | Pavel's open question — toggle on globally when he decides |
+| `partner_tier_badge` | "Verified / Trusted / Premier" partner tier chip | OFF | Wait for partner monetization lock |
+| `cert_strip` | Certification chip strip (organic, non-GMO, …) | ON | — |
+| `volume_pricing` | Volume price tiers table (modal trigger) | ON | — |
+| `moq_card` | MOQ + lead-time card | ON | — |
+| `description` | Long-form description tab | ON | — |
+| `recipe_nutrition` | Recipe / Nutrition Facts tab | ON | — |
+| `ingredients_panel` | Ingredient statement | ON | — |
+| `flavors` | Flavor preset picker | ON | — |
+| `variants_picker` | Variant size/format picker | ON | — |
+| `cross_contam_notice` | "Made in a facility that processes…" notice | ON | — |
+| `bioengineered_notice` | BE disclosure | ON, derived | Conditional — surfaces when any slot has `isBioengineered=true` |
+| `related_products` | Related templates row | ON | — |
+| `partner_logo` | Partner logo in attribution | OFF | Coupled to `manufacturer_attribution` — only when both ON |
+| `reviews` | Reviews / ratings | OFF | V1.5+ feature, schema not built |
+
+**Scope hierarchy** — overrides resolve top-down (most specific wins):
+
+```
+product-specific (productTemplateId)  ← admin pin for one product
+  ↓ falls back to
+niche-specific (nicheSlug)             ← per-niche policy
+  ↓ falls back to
+category-specific (categoryId)         ← per-category policy
+  ↓ falls back to
+GLOBAL default                          ← platform-wide
+```
+
+This gives admin a path to e.g.: "Hide manufacturer name globally, BUT show it for the `gourmet` niche where culinary creators want to credit the maker."
+
+**Schema additions** — same `MarketplaceModule` storage extended:
+
+```ts
+model DetailPageBlockVisibility {
+  id                String   @id @default(cuid())
+  blockSlug         String                                // 'manufacturer_attribution' etc.
+  isEnabled         Boolean
+  scope             DetailPageBlockScope                  // GLOBAL | CATEGORY | NICHE | PRODUCT
+  // Exactly one of these is non-null per row (enforced app-layer)
+  categoryId        String?
+  nicheId           String?
+  productTemplateId String?
+  // Audit
+  updatedBy         String?
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  @@unique([blockSlug, scope, categoryId, nicheId, productTemplateId])
+}
+
+enum DetailPageBlockScope { GLOBAL CATEGORY NICHE PRODUCT }
+```
+
+**Admin surface** — new tab in `/admin/marketplace`:
+- **Detail Page Layout** tab — left column = block inventory list (with default state + scope chip showing how often it's been overridden). Right column = a live preview pane showing how the detail page renders with current toggles. Per-block "Override for niche / category / product…" picker opens a scope-specific edit.
+- Reorder is NOT in V1 — the detail page is a fixed top-to-bottom layout (gallery → name → price → tabs → related), so blocks can be hidden but not moved. Reorder is a V1.5+ stretch.
+
+**Renderer** — `apps/marketing/src/app/marketplace/[category]/[subcategory]/[slug]/page.tsx` calls a helper:
+
+```ts
+const blocks = await resolveDetailPageBlocks({
+  productTemplate,
+  nicheSlugs: productTemplate.niches.map(n => n.slug),
+  categoryId: productTemplate.subcategory.categoryId,
+})
+// returns { gallery: true, manufacturer_attribution: false, ... }
+```
+
+Each block component in the page then guards its render on `blocks[slug]`. Server-side resolution = no client-side flicker.
+
+**Why this shape vs. extending `MarketplaceModule`:**
+- Detail-page blocks are short, well-known, NOT user-curated content (no payload JSON to design).
+- A separate model keeps the homepage Module table from carrying detail-page-only rows.
+- Override scopes need to query by `(blockSlug, scope, scopeId)` — separate model gives clean indexes.
+
+**Future: creator-side blocks** — same model could later carry creator-dashboard widgets (`scope: CREATOR_TIER`) so a Maker sees a slimmer panel than an Agency. Out of scope for V1; the schema is forward-compatible.
+
 ---
 
 ## §3 Schema additions required
