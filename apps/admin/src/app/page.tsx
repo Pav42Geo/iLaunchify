@@ -1,8 +1,14 @@
-export default function AdminHome() {
-  return (
-    <main className="p-12">
-      <h1 className="text-2xl font-bold">iLaunchify — Admin</h1>
-      <p className="mt-2 text-gray-600">Internal use only.</p>
-    </main>
-  )
+import { redirect } from 'next/navigation'
+import { auth } from '@ilaunchify/auth'
+
+// Top-level route. Auth-aware redirect so guest prefetches don't trigger
+// the (dashboard)/layout.tsx requireRole call — which would log a noisy
+// JWTSessionError when there's no valid cookie.
+//
+//   Signed-in ADMIN → /dashboard  ((dashboard) layout still validates the role)
+//   Otherwise       → /login
+export default async function AdminRoot() {
+  const session = await auth()
+  if (session?.user?.role === 'ADMIN') redirect('/dashboard')
+  redirect('/login')
 }

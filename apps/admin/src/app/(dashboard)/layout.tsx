@@ -6,12 +6,14 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const user = await requireRole('ADMIN')
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-ink-50/40">
       <AdminTopbar user={user} />
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
+        {/* AdminSidebar is an async server component — React 19 / Next 15
+            awaits the promise without a type-error suppression. */}
         <AdminSidebar />
-        <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">
-          <div className="mx-auto max-w-6xl">{children}</div>
+        <main className="min-w-0 flex-1 overflow-y-auto p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
