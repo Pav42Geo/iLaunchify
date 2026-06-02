@@ -150,6 +150,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'basic' },
       { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: false },
       { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 0 },
+      { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 15.00, notes: 'Verified commission (iLaunchify cut)' },
@@ -178,6 +179,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'advanced' },
       { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: true },
       { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 1000 },
+      { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 12.00, notes: 'Trusted commission' },
@@ -206,6 +208,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'analytics_level',               label: 'Order analytics tier',                 stringValue: 'advanced_api' },
       { code: 'ai_recipe_parser',              label: 'AI recipe parser (Mode 2)',            description: 'Paste-to-recipe in the product builder.', boolValue: true },
       { code: 'ai_recipe_parser_monthly_cap',  label: 'AI recipe parser monthly cap',         description: 'Parses/month. 0 = off.', intValue: 5000 },
+      { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 8.00, notes: 'Premier commission' },

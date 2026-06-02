@@ -28,6 +28,8 @@ interface ModeChooserProps {
   collapsed: boolean
   /** Mode 2 AI parser available for this partner's plan (Trusted+). */
   aiAvailable: boolean
+  /** Mode 3 declared panel available for this partner's plan. */
+  declareAvailable: boolean
   onSelect: (mode: Mode) => void
   onExpand: () => void
 }
@@ -36,6 +38,7 @@ export function ModeChooser({
   currentMode,
   collapsed,
   aiAvailable,
+  declareAvailable,
   onSelect,
   onExpand,
 }: ModeChooserProps) {
@@ -85,8 +88,10 @@ export function ModeChooser({
         title="Declare the panel"
         sub="Type the Nutrition or Supplement Facts directly. Bypass per-ingredient computation."
         when="Pre-tested COA"
-        badge="Coming next"
-        disabled
+        active={currentMode === 'DECLARED_PANEL'}
+        disabled={!declareAvailable}
+        badge={declareAvailable ? undefined : 'Coming next'}
+        onClick={() => onSelect('DECLARED_PANEL')}
       />
     </div>
   )

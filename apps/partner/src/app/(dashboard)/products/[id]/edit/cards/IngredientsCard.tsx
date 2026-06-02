@@ -37,6 +37,7 @@ import {
 import { IngredientPicker } from './IngredientPicker'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel } from './AiParserPanel'
+import { DeclaredPanelPanel } from './DeclaredPanelPanel'
 import type { IngredientResult } from '../ingredient-actions'
 
 export interface ReplacementRow {
@@ -63,6 +64,10 @@ interface IngredientsCardProps {
   initialRecipeEntryMode: Mode | null
   /** Mode 2 AI parser available for this partner's plan (Slice 3). */
   aiAvailable: boolean
+  /** Mode 3 declared panel available for this partner's plan (Slice 4). */
+  declareAvailable: boolean
+  /** Product labeling regime — drives Nutrition vs Supplement Facts in Mode 3. */
+  labelingType: string
 }
 
 export function IngredientsCard({
@@ -71,11 +76,14 @@ export function IngredientsCard({
   isDraft,
   initialRecipeEntryMode,
   aiAvailable,
+  declareAvailable,
+  labelingType,
 }: IngredientsCardProps) {
   const router = useRouter()
   const [slots, setSlots] = useState<SlotRow[]>(initialSlots)
   const [showNew, setShowNew] = useState(false)
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const [declarePanelOpen, setDeclarePanelOpen] = useState(false)
   const [, startTransition] = useTransition()
 
   // Mode chooser (Slice 2). Empty recipe shows the 3 tiles; once a slot exists
@@ -95,14 +103,25 @@ export function IngredientsCard({
       // AI_PARSER at commit time (commitParsedSlots), not on select.
       setChooserExpanded(false)
       setShowNew(false)
+      setDeclarePanelOpen(false)
       setAiPanelOpen(true)
       return
     }
-    if (mode !== 'SEARCH_BUILD') return // DECLARED_PANEL still disabled (Slice 4)
+    if (mode === 'DECLARED_PANEL') {
+      // Mode 3 (Slice 4). Open the declare panel; declareNutritionPanel stamps
+      // DECLARED_PANEL + replaces slots on save.
+      setChooserExpanded(false)
+      setShowNew(false)
+      setAiPanelOpen(false)
+      setDeclarePanelOpen(true)
+      return
+    }
+    if (mode !== 'SEARCH_BUILD') return
     // Mode 1: collapse the chooser, reveal the add-slot UI, and optimistically
     // stamp the method if not already recorded.
     setChooserExpanded(false)
     setAiPanelOpen(false)
+    setDeclarePanelOpen(false)
     if (isDraft) setShowNew(true)
     if (recipeMode === null) {
       setRecipeMode('SEARCH_BUILD')
@@ -120,6 +139,7 @@ export function IngredientsCard({
           currentMode={recipeMode}
           collapsed={!chooserExpanded && !isEmpty}
           aiAvailable={aiAvailable}
+          declareAvailable={declareAvailable}
           onSelect={handleModeSelect}
           onExpand={() => setChooserExpanded(true)}
         />
@@ -134,6 +154,20 @@ export function IngredientsCard({
             refreshFromServer()
           }}
           onCancel={() => setAiPanelOpen(false)}
+        />
+      )}
+
+      {isDraft && declarePanelOpen && (
+        <DeclaredPanelPanel
+          productTemplateId={productTemplateId}
+          labelingType={labelingType}
+          existingSlotCount={slots.length}
+          onSaved={() => {
+            setDeclarePanelOpen(false)
+            setRecipeMode('DECLARED_PANEL')
+            refreshFromServer()
+          }}
+          onCancel={() => setDeclarePanelOpen(false)}
         />
       )}
       {slots.length === 0 ? (

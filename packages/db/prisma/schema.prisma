@@ -925,6 +925,9 @@ model Ingredient {
   verifiedById       String?                              // admin User who verified (null until ADMIN_VERIFIED)
   ownerPartnerId     String?                              // NULL for USDA + LIBRARY; partner id for PARTNER_PRIVATE
   promotedFromIngredientId String?                        // breadcrumb if this LIBRARY row was promoted from a PRIVATE one
+  // Mode 3 (Slice 4) — synthetic "Whole Product" row holding a declared panel.
+  // Hidden from the normal IngredientPicker so it never pollutes Mode 1 search.
+  isDeclaredPanelSynthetic Boolean @default(false)
   // V1 — bioengineered disclosure per USDA BE Standard 2022 (Recipal parity, FOD admin delta §1.5e)
   bioengineeredStatus BioengineeredStatus @default(NOT_APPLICABLE)
   createdAt       DateTime @default(now())
@@ -2124,6 +2127,14 @@ enum RecipeEntryMode {
   DECLARED_PANEL                                          // Mode 3 — type the Nutrition/Supplement Facts directly
 }
 
+// Mode 3 (Slice 4) — where a product's nutrition panel comes from. COMPUTED =
+// platform-derived from the recipe slots. DECLARED = manufacturer-entered (the
+// "Declared by manufacturer" disclosure is the FDA_REGULATORY_POSTURE §5 bridge).
+enum NutrientSource {
+  COMPUTED
+  DECLARED
+}
+
 model ProductTemplate {
   id              String        @id @default(cuid())
   subcategoryId   String
@@ -2133,6 +2144,11 @@ model ProductTemplate {
   // recorded method. The FIRST method that adds a slot owns this — never
   // overwritten (Slice 2, docs/builds/ingredients-mode-chooser-slice-2.md).
   recipeEntryMode RecipeEntryMode?
+  // Mode 3 (Slice 4). COMPUTED = platform-summed from slots (default).
+  // DECLARED = manufacturer-entered panel; declaredPanel holds the typed
+  // PanelData + ingredient statement + net quantity + allergens.
+  nutrientSource  NutrientSource @default(COMPUTED)
+  declaredPanel   Json?
   name            String                                  // "Whey Protein Powder"
   description     String?
   slug            String        @unique

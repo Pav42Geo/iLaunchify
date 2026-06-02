@@ -132,6 +132,7 @@ export const AUDIT_ACTIONS = [
   'RECIPE_PARSE_FAILED',
   'RECIPE_PARSE_RATE_LIMITED',
   'RECIPE_PARSE_COMMIT',
+  'DECLARE_NUTRITION_PANEL',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

@@ -85,6 +85,8 @@ export const PARTNER_FEATURES = {
   AI_RECIPE_PARSER: 'ai_recipe_parser',
   /** Monthly cap on AI recipe parses (number; 0 = none / off). */
   AI_RECIPE_PARSER_MONTHLY_CAP: 'ai_recipe_parser_monthly_cap',
+  /** Mode 3 declared nutrition panel (free for all partners — Pavel 2026-06-01). */
+  DECLARE_NUTRITION_PANEL: 'declare_nutrition_panel',
 } as const
 
 export type CreatorFeatureCode =

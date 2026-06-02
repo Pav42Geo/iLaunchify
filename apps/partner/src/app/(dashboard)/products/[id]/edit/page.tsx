@@ -39,12 +39,16 @@ export default async function ProductEditPage({ params }: PageProps) {
   if (!partner) notFound()
   const serviceIds = partner.services.map((s) => s.id)
 
-  // Mode 2 AI parser gate — partner-plan feature (Trusted+). Drives the
-  // ModeChooser AI tile (enabled vs locked badge).
-  const aiAvailable = await hasFeature(
-    partnerTierToPlanCode(partner.tier.toLowerCase() as 'verified' | 'trusted' | 'premier'),
-    'ai_recipe_parser',
+  // Mode 2 / Mode 3 gates — partner-plan features. Mode 2 AI parser is Trusted+;
+  // Mode 3 declared panel is free for all partners (Pavel 2026-06-01). Drives the
+  // ModeChooser tiles (enabled vs locked badge).
+  const partnerPlanCode = partnerTierToPlanCode(
+    partner.tier.toLowerCase() as 'verified' | 'trusted' | 'premier',
   )
+  const [aiAvailable, declareAvailable] = await Promise.all([
+    hasFeature(partnerPlanCode, 'ai_recipe_parser'),
+    hasFeature(partnerPlanCode, 'declare_nutrition_panel'),
+  ])
 
   const template = await prisma.productTemplate.findUnique({
     where: { id },
@@ -182,6 +186,8 @@ export default async function ProductEditPage({ params }: PageProps) {
 
       <EditorShell
         aiAvailable={aiAvailable}
+        declareAvailable={declareAvailable}
+        labelingType={template.labelingType}
         template={{
           id: template.id,
           name: template.name,

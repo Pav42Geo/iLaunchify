@@ -19,9 +19,19 @@ interface NutritionFactsRendererProps {
   className?: string
   /** Width in pixels; pass `null` to fill container */
   widthPx?: number | null
+  /**
+   * Mode 3 (Slice 4). When the panel is manufacturer-declared (not platform-
+   * computed), render the FDA-footer "Declared by manufacturer" caption.
+   */
+  declaredByManufacturer?: boolean
 }
 
-export function NutritionFactsRenderer({ data, className, widthPx = 280 }: NutritionFactsRendererProps) {
+export function NutritionFactsRenderer({
+  data,
+  className,
+  widthPx = 280,
+  declaredByManufacturer = false,
+}: NutritionFactsRendererProps) {
   const isSupplement = data.format === 'SUPPLEMENT_FACTS'
   const title = isSupplement ? 'Supplement Facts' : 'Nutrition Facts'
 
@@ -65,6 +75,12 @@ export function NutritionFactsRenderer({ data, className, widthPx = 280 }: Nutri
             </div>
           ))}
         </div>
+      )}
+
+      {declaredByManufacturer && (
+        <p className="mt-1 text-[8px] italic leading-tight text-gray-500">
+          Declared by manufacturer
+        </p>
       )}
     </div>
   )

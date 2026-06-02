@@ -26,6 +26,7 @@ import { getPricingTierRows } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
+import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -97,6 +98,8 @@ export default async function ProductDetailPage({
   // When the template has none yet (fixture-only / pre-launch), fall back to
   // the tag-derived certs so the strip still reads as a trust signal.
   const earnedCertBadges = await getProductCertBadges(template.slug)
+  // Slice 4 — DECLARED products show the manufacturer-attestation disclosure.
+  const nutrientSource = await getProductNutrientSource(template.slug)
   const certs =
     earnedCertBadges.length > 0
       ? earnedCertBadges.map((b) => ({
@@ -269,7 +272,7 @@ export default async function ProductDetailPage({
           </TabsContent>
 
           <TabsContent value="recipe">
-            <RecipeNutritionTab detail={detail} />
+            <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} />
           </TabsContent>
 
           <TabsContent value="ingredients">
@@ -444,7 +447,14 @@ function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDeta
   )
 }
 
-function RecipeNutritionTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> }) {
+function RecipeNutritionTab({
+  detail,
+  nutrientSource,
+}: {
+  detail: ReturnType<typeof findTemplateDetail>
+  nutrientSource: 'COMPUTED' | 'DECLARED' | null
+}) {
+  const declared = nutrientSource === 'DECLARED'
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 items-start">
       <div>
@@ -469,15 +479,34 @@ function RecipeNutritionTab({ detail }: { detail: ReturnType<typeof findTemplate
         </div>
       </div>
 
-      {detail.nutrition && (
+      {(detail.nutrition || declared) && (
         <div className="lg:justify-self-end">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
-            Supplement Facts (base recipe)
-          </div>
-          <NutritionFactsRenderer data={detail.nutrition} widthPx={300} />
-          <div className="text-[11px] text-ink-500 mt-2 max-w-[300px]">
-            Renders per FDA 21 CFR 101.36. Live-updates when the creator adjusts the recipe.
-          </div>
+          {declared && (
+            <div className="mb-3 max-w-[300px] rounded-md border border-pink-200 bg-pink-50/60 p-3 text-[12px] leading-snug text-ink-700">
+              <strong className="font-semibold text-ink-900">
+                Nutrition facts entered by the manufacturer.
+              </strong>{' '}
+              iLaunchify did not compute these values from individual ingredients.
+              The manufacturer attests to their accuracy.
+            </div>
+          )}
+          {detail.nutrition && (
+            <>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+                Supplement Facts (base recipe)
+              </div>
+              <NutritionFactsRenderer
+                data={detail.nutrition}
+                widthPx={300}
+                declaredByManufacturer={declared}
+              />
+              <div className="text-[11px] text-ink-500 mt-2 max-w-[300px]">
+                {declared
+                  ? 'Declared by the manufacturer. Not computed by iLaunchify.'
+                  : 'Renders per FDA 21 CFR 101.36. Live-updates when the creator adjusts the recipe.'}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

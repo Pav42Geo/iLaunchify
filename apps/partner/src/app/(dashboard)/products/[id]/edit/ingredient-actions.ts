@@ -69,7 +69,10 @@ export async function searchIngredients(input: {
   const q = input.query.trim()
 
   // Build a Prisma where that includes USDA + LIBRARY + (PRIVATE owned by me).
+  // Mode 3 (Slice 4) synthetic "Whole Product" rows are never surfaced — they
+  // hold a declared panel, not a real ingredient.
   const visibility: Prisma.IngredientWhereInput = {
+    isDeclaredPanelSynthetic: false,
     OR: [
       { source: 'USDA' },
       { source: 'LIBRARY' },
