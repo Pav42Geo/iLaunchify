@@ -113,7 +113,6 @@ function PartnerTypes() {
               icon={p.icon}
               name={p.name}
               description={p.desc}
-              activeCount={p.active}
               href={partnerUrl('/signup')}
             />
           ))}
@@ -262,7 +261,7 @@ function Footer() {
           </span>
         </Link>
         <div className="text-[13px] text-ink-500">
-          © 2026 iLaunchify · Built on the iLaunchify design system
+          © 2026 iLaunchify · Built in 2025–2026 · US-only V1
         </div>
       </div>
     </footer>
@@ -282,25 +281,21 @@ const PARTNER_TYPES = [
     icon: '🏭',
     name: 'Manufacturer',
     desc: 'Production & formulation. Powders, beverages, supplements, cosmetics.',
-    active: 128,
   },
   {
     icon: '📦',
     name: 'Co-packer',
     desc: 'Filling, sealing, labeling. Bridge between bulk product and shipped SKU.',
-    active: 94,
   },
   {
     icon: '🖨️',
     name: 'Label printer',
     desc: 'Custom label and packaging. Digital, flexo, offset — all certified workflows.',
-    active: 52,
   },
   {
     icon: '🚚',
     name: 'Logistics',
     desc: '3PL, fulfillment, shipping. Regional and national reach.',
-    active: 38,
   },
 ]
 

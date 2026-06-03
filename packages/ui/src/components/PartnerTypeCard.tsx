@@ -20,8 +20,9 @@ export interface PartnerTypeCardProps extends React.HTMLAttributes<HTMLElement> 
   name: string
   /** One-line description of the role. */
   description: string
-  /** Number of currently-active partners of this type. */
-  activeCount: number
+  /** Number of currently-active partners of this type. Omit to hide the pill
+   *  (we don't surface a count until there's a real one to show). */
+  activeCount?: number
   /** When provided, renders the card as a clickable link. */
   href?: string
 }
@@ -46,9 +47,11 @@ export const PartnerTypeCard = React.forwardRef<HTMLElement, PartnerTypeCardProp
           <div className="text-lg font-bold text-white mb-1">{name}</div>
           <div className="text-[13px] text-ink-400 leading-[1.5]">{description}</div>
         </div>
-        <span className="inline-flex self-start items-center gap-1.5 text-xs font-semibold text-ink-900 bg-neon-500 px-2.5 py-1 rounded-pill">
-          {activeCount.toLocaleString()} active
-        </span>
+        {typeof activeCount === 'number' && activeCount > 0 && (
+          <span className="inline-flex self-start items-center gap-1.5 text-xs font-semibold text-ink-900 bg-neon-500 px-2.5 py-1 rounded-pill">
+            {activeCount.toLocaleString()} active
+          </span>
+        )}
       </Wrapper>
     )
   },
