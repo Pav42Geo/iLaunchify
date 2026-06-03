@@ -75,7 +75,7 @@ const TIERS: Tier[] = [
     tagline: 'Run multiple brands at scale.',
     monthly: 249,
     annual: 2490,
-    productionFee: '9% production-order fee',
+    productionFee: '8% production-order fee',
     highlights: [
       { included: true, label: 'Unlimited products + brands' },
       { included: true, label: 'First-look routing position' },

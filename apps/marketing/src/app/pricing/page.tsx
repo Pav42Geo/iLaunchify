@@ -55,7 +55,7 @@ export default async function PricingPage({
           </h1>
           <p className="text-lg text-ink-700 max-w-[58ch] mx-auto leading-[1.55]">
             Maker is free forever. Production-order fees drop with tier — 15% on
-            Maker, 12% on Builder, 9% on Agency. No setup fees, no platform tax,
+            Maker, 12% on Builder, 8% on Agency. No setup fees, no platform tax,
             no per-seat charges. You only pay when you place a real production run.
           </p>
         </div>
@@ -271,7 +271,7 @@ const SECTIONS: ComparisonSection[] = [
   {
     label: 'Production economics',
     rows: [
-      { label: 'Production-order fee', maker: '15%', builder: '12%', agency: '9%' },
+      { label: 'Production-order fee', maker: '15%', builder: '12%', agency: '8%' },
       {
         label: 'Routing priority',
         maker: 'Standard',
@@ -353,7 +353,7 @@ const FAQ = [
   {
     question: 'What’s the difference between Builder and Agency?',
     answer:
-      'Builder is for creators scaling past one SKU — lower fee (12%), priority routing, more brand profiles, sample discounts. Agency adds full bulk pricing visibility across all partner volume tiers, free first sample credited against your main order if placed within 30 days, a dedicated account manager with a 4-hour support SLA, and the lowest production-order fee (9%). Most creators graduate to Agency when they take on a second brand or hit ~5 active SKUs.',
+      'Builder is for creators scaling past one SKU — lower fee (12%), priority routing, more brand profiles, sample discounts. Agency adds full bulk pricing visibility across all partner volume tiers, free first sample credited against your main order if placed within 30 days, a dedicated account manager with a 4-hour support SLA, and the lowest production-order fee (8%). Most creators graduate to Agency when they take on a second brand or hit ~5 active SKUs.',
   },
   {
     question: 'Is the marketplace free to browse?',

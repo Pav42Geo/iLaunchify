@@ -145,7 +145,7 @@ export default async function ContactSalesPage({
 
 const PERKS = [
   'Unlimited brand profiles + unlimited active products',
-  '9% production-order fee (Maker is 15%, Builder is 12%)',
+  '8% production-order fee (Maker is 15%, Builder is 12%)',
   'First-look routing position in the order-routing engine',
   'Bulk volume pricing visibility across all partner volume tiers (500–1,999 / 2k–9,999 / 10k+ units)',
   'Free first sample + future samples credited against your first main order if placed within 30 days',
