@@ -69,10 +69,10 @@ export default async function HowItWorksPage({
           </h1>
         </div>
         <p className="text-lg sm:text-xl text-ink-700 max-w-[60ch] mx-auto leading-[1.55] text-center mt-6">
-          You pick a template, customize the label, approve a sample. We
-          orchestrate every manufacturer, printer, co-packer, and warehouse
-          behind the scenes — so you ship a real product without becoming a
-          procurement specialist.
+          You pick a starter template. You customize the label in the Design
+          Studio. You approve a sample. We orchestrate every manufacturer, label
+          printer, co-packer, and warehouse in the production graph — so you
+          launch a real CPG brand without becoming a CPG operator.
         </p>
       </section>
 
@@ -86,8 +86,9 @@ export default async function HowItWorksPage({
             <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-[-0.025em] leading-[1]">
               Four steps you{' '}
               <span className="font-serif italic font-medium text-pink-500 tracking-[-0.02em]">
-                actually see.
-              </span>
+                see.
+              </span>{' '}
+              Forty handoffs you don&apos;t.
             </h2>
           </div>
 
@@ -283,8 +284,9 @@ export default async function HowItWorksPage({
             <em>Want to launch?</em>
           </h2>
           <p className="text-ink-300 text-lg max-w-[52ch] mx-auto mb-9">
-            Browse 200+ production-ready templates. Pick one. We'll do the
-            heavy lifting from here.
+            Browse the marketplace. Pick a starter. The Design Studio opens in
+            your browser, your card stays uncharged until every partner approves
+            your manifest, and your first sample is half-off.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button asChild variant="neon" size="md">
@@ -311,69 +313,70 @@ const CREATOR_STEPS = [
   {
     title: 'Browse the marketplace',
     description:
-      'Pick from 200+ production-ready templates across 8 niches. Every template is admin-curated with verified ingredients, certified packaging, and FDA-compliant label fields.',
+      'Pick from a curated library of production-ready templates across 8 niches. Every template is admin-curated against a locked taxonomy — verified ingredients, real packaging systems, FDA-compliant label fields. No free-text categories. No "list anything" chaos.',
     duration: '~10 minutes',
     icon: ShoppingBag,
   },
   {
     title: 'Customize in the Design Studio',
     description:
-      'Drop your logo into the canvas. Brand colors apply automatically. We render the Nutrition Facts and Supplement Facts panels by FDA spec — no fine-print expertise required.',
+      'Fabric.js canvas. Drag your logo. Brand colors apply automatically from your brand asset library. The Nutrition Facts and Supplement Facts panels render to 21 CFR spec — including min-font-size enforcement, allergen Big-9 detection, and net-quantity formatting. The compliance scan catches missing required sections before you export.',
     duration: '~30 minutes',
     icon: Wand2,
   },
   {
-    title: 'Approve a sample',
+    title: 'Order a sample',
     description:
-      '$15 ships you a single production-quality unit. Hold it, smell it, taste it. Approve to release the main order — we hold your payment until you do.',
+      'Sample orders ship 5–10 units to your door at production-quality. Hold it. Show your audience. Approve to release the main order — we authorize your card at checkout but don’t capture until every assigned partner approves the manifest. Every new creator’s first sample is 50% off (Maker and Builder) or free + credited (Agency).',
     duration: '4–6 days',
     icon: ShieldCheck,
   },
   {
     title: 'We ship for you',
     description:
-      'Direct to buyers, your warehouse, or retail accounts. We coordinate every partner in the production graph and surface one timeline so you stay focused on your brand.',
+      'Direct to your warehouse, a 3PL we coordinate, or your home. We orchestrate every partner in the production graph and surface one timeline so you stay focused on the brand. End buyers buy through your Shopify or TikTok Shop — iLaunchify never appears in the consumer flow.',
     duration: '7–14 days',
     icon: Truck,
   },
 ]
 
 const ORCH_BULLETS = [
-  'Each order is decomposed into a workflow graph — one node per partner role.',
-  'Routing engine picks proven partners by proximity, capability, capacity, and your tier.',
-  'Handoffs are reconciled automatically — labels printed by Tuesday meet co-packer slot by Thursday.',
-  'Your card stays uncharged until every partner confirms they can deliver.',
+  'Each order decomposes into a workflow graph — one node per partner role.',
+  'The routing engine selects partners by capability, region, capacity, and creator tier — same logic, every order, audit-logged.',
+  'Handoffs are reconciled automatically. If a co-packer’s slot moves, the label printer’s deadline moves with it.',
+  'Your card is authorized at checkout but never captured until every assigned partner approves the manifest. If anyone declines, we re-route — and you’re still not charged.',
 ]
 
+// Partner tiers surface as information only — tier behaviors beyond the three
+// locked facts (commission, storage, support SLA) are still being designed in
+// V1, so we don't promise tier-gated routing/features (see
+// ilaunchify-marketplace-decisions-2026-06-01 + CLAUDE.md partner-tier lock).
 const PARTNER_TIERS = [
   {
     name: 'Verified',
-    gateline: 'New to iLaunchify, passed onboarding.',
+    gateline: 'Entry — cert + facility docs verified.',
     bullets: [
-      'Full background check + facility audit',
-      'Operational standards contract signed',
-      'Insurance + compliance docs verified',
-      'Standard 15% marketplace commission',
+      '15% marketplace commission',
+      'Standard routing',
+      '1 GB file storage',
     ],
   },
   {
     name: 'Trusted',
-    gateline: '25+ orders shipped, 90%+ on-time rate.',
+    gateline: '25+ orders shipped, 90%+ on-time.',
     bullets: [
-      'Volume tier pricing unlocked',
-      'Subscribe-and-save reorder discounts',
+      '12% marketplace commission',
+      '10 GB file storage',
       '24-hour support SLA',
-      'Custom die-cut templates per quarter',
     ],
   },
   {
     name: 'Premier',
     gateline: '100+ orders, 95%+ on-time, admin-reviewed.',
     bullets: [
-      'First-look routing position',
-      'Creator-specific rate cards',
-      'Dedicated account manager (4hr SLA)',
-      'Featured in marketplace + agency creator deals',
+      '8% marketplace commission',
+      'Unlimited file storage',
+      '4-hour support SLA',
     ],
     highlight: true,
   },
@@ -382,22 +385,22 @@ const PARTNER_TIERS = [
 const TRUST_CARDS = [
   {
     title: 'Payment held until approved',
-    body: 'Your card is authorized but never captured until every partner confirms they can deliver your run.',
+    body: 'Your card is authorized at checkout. We don’t capture until every assigned partner approves the manifest. If anyone declines, we re-route — and we still don’t charge you.',
     icon: Lock,
   },
   {
     title: 'FDA labels rendered for you',
-    body: 'Supplement Facts and Nutrition Facts panels per 21 CFR. You can\'t accidentally ship a non-compliant label.',
+    body: 'Supplement Facts and Nutrition Facts panels per 21 CFR, with min-font-size enforcement, allergen Big-9 detection, bioengineered disclosure, and net-quantity formatting. The platform won’t let you export a non-compliant label without an explicit acknowledgement.',
     icon: ShieldCheck,
   },
   {
-    title: 'Global production network',
-    body: 'US + Canada (V1.1) + EU (V2). Partners matched by proximity to your buyers to cut shipping time.',
+    title: 'US production network',
+    body: 'V1 is US-only. Canada is V1.1, EU is V2. We match partners by region to cut shipping time and lead-time risk.',
     icon: Globe,
   },
   {
-    title: 'Quality, guaranteed',
-    body: 'Partner fails QC, partner eats the cost — and gets a strike. Three strikes per year and they\'re reviewed for suspension.',
+    title: 'Quality, structured',
+    body: 'If a partner fails QC, they eat the cost and earn a strike. Three strikes in 12 months and they enter a suspension review. Disputes are mediated against the platform manifest, not free-form email arguments.',
     icon: Sparkles,
   },
 ]

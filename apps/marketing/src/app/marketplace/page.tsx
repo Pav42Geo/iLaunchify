@@ -146,13 +146,13 @@ export default async function MarketplacePage({
         <main className="flex flex-col">
           <HeroBanner
             variant="island"
-            eyebrow="The marketplace for makers"
+            eyebrow="The production marketplace for CPG creators"
             headline={
               <>
                 Find your product. <em>Make it yours.</em> Launch it.
               </>
             }
-            deck="Browse curated, production-ready templates across 8 niches. Customize the label — we handle manufacturing, printing, and fulfillment."
+            deck="Browse a curated catalog of starter templates across 8 locked niches and 13 product categories. Customize the label in the Design Studio. We handle manufacturing, printing, co-packing, and fulfillment."
             className="mb-7"
           >
             <Button variant="secondary" asChild>

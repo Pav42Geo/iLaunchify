@@ -57,17 +57,17 @@ export function LandingHeader({
               {
                 label: 'Pricing',
                 href: '/pricing',
-                description: 'Maker · Builder · Agency tiers.',
+                description: 'Maker · Builder · Agency tiers + production-order fees.',
               },
               {
                 label: 'Browse the marketplace',
                 href: '/marketplace',
-                description: '200+ production-ready templates.',
+                description: 'Curated starter templates across 8 niches.',
               },
               {
                 label: 'Talk to sales',
                 href: '/contact-sales',
-                description: 'Multi-brand operators + agencies.',
+                description: 'Agency-tier onboarding for multi-brand operators.',
               },
             ]}
           />
@@ -79,17 +79,17 @@ export function LandingHeader({
               {
                 label: 'Why iLaunchify',
                 href: '/business',
-                description: 'The partner-side value proposition.',
+                description: 'Demand pipeline + structured workflow + Stripe Connect payouts.',
               },
               {
-                label: 'Partner tiers',
+                label: 'Partner network',
                 href: '/business#tiers',
-                description: 'Verified → Trusted → Premier.',
+                description: '4 service types · 5-layer onboarding.',
               },
               {
                 label: 'Apply to join',
                 href: partnerUrl('/signup'),
-                description: 'Start the 5-layer onboarding.',
+                description: '~25 minutes if you have your docs ready.',
               },
               {
                 label: 'Partner login',

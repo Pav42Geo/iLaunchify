@@ -45,7 +45,7 @@ export function LandingFooter() {
             <FooterLink href={partnerUrl('/login')} external>
               Partner login
             </FooterLink>
-            <FooterLink href="/contact-sales">Talk to sales</FooterLink>
+            <FooterLink href="/contact-sales">Talk to sales (Agency)</FooterLink>
           </FooterCol>
 
           <FooterCol title="Niches">
@@ -65,7 +65,7 @@ export function LandingFooter() {
         </div>
 
         <div className="pt-8 border-t border-white/[0.08] text-[13px] text-white/50">
-          © 2026 iLaunchify · Built on the locked design system
+          © 2026 iLaunchify · Built in 2025–2026 · US-only V1
         </div>
       </div>
     </footer>

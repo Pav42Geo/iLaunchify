@@ -79,7 +79,6 @@ const TIERS: Tier[] = [
     highlights: [
       { included: true, label: 'Unlimited products + brands' },
       { included: true, label: 'First-look routing position' },
-      { included: true, label: 'Premier-partner access' },
       { included: true, label: 'Bulk volume pricing visibility' },
       { included: true, label: 'Free sample + main-order credit' },
       { included: true, label: 'Dedicated account manager' },

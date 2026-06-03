@@ -54,8 +54,9 @@ export default async function PricingPage({
             </span>
           </h1>
           <p className="text-lg text-ink-700 max-w-[58ch] mx-auto leading-[1.55]">
-            Free to start. No card required. Production-order fees drop as you
-            grow — from 15% on Maker down to 9% on Agency.
+            Maker is free forever. Production-order fees drop with tier — 15% on
+            Maker, 12% on Builder, 9% on Agency. No setup fees, no platform tax,
+            no per-seat charges. You only pay when you place a real production run.
           </p>
         </div>
 
@@ -78,8 +79,10 @@ export default async function PricingPage({
               Every new creator gets a First Sample Discount
             </div>
             <div className="text-[13px] text-ink-600 leading-snug">
-              50% off your first sample order — up to 3 products × 3 units. Stacks
-              with every tier, including the free Maker plan.
+              50% off your first sample order — up to 3 products × 3 units (9 units
+              total). Available on every tier, including the free Maker plan. Agency
+              tier samples are free outright and credit against your first main order
+              if placed within 30 days.
             </div>
           </div>
         </div>
@@ -187,11 +190,12 @@ export default async function PricingPage({
       <section data-surface="dark" className="bg-ink-900 text-white">
         <div className="max-w-[1200px] mx-auto px-6 py-20 text-center">
           <h2 className="font-display text-4xl sm:text-5xl font-extrabold leading-[1] tracking-[-0.03em] mb-5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
-            Start free. <em>Pay nothing</em> until you ship.
+            Start free. <em>Pay nothing</em> until your manifest clears.
           </h2>
           <p className="text-ink-300 text-lg max-w-[52ch] mx-auto mb-9">
-            Maker is free forever. Builder + Agency only charge when your launch
-            is paying for itself.
+            Maker is free forever. Builder and Agency monthly fees start when you
+            upgrade. Production-order fees apply only to placed orders, captured only
+            when every partner approves.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button asChild variant="neon" size="lg">
@@ -275,12 +279,6 @@ const SECTIONS: ComparisonSection[] = [
         agency: 'First-look',
       },
       {
-        label: 'Premier-partner access',
-        maker: false,
-        builder: false,
-        agency: true,
-      },
-      {
         label: 'Bulk pricing visibility',
         maker: false,
         builder: false,
@@ -306,20 +304,8 @@ const SECTIONS: ComparisonSection[] = [
     ],
   },
   {
-    label: 'AI + compliance',
+    label: 'Compliance',
     rows: [
-      {
-        label: 'AI label design',
-        maker: 'Basic',
-        builder: 'Custom suggestions',
-        agency: 'Premium + custom',
-      },
-      {
-        label: 'AI formulation help',
-        maker: false,
-        builder: 'Read-only',
-        agency: 'Full editor',
-      },
       {
         label: 'Compliance check',
         maker: 'Standard',
@@ -367,7 +353,7 @@ const FAQ = [
   {
     question: 'What’s the difference between Builder and Agency?',
     answer:
-      'Builder is for creators scaling past one SKU. Agency adds Premier-partner access, full bulk pricing visibility, free samples credited against your main order, and a dedicated account manager. Most creators graduate to Agency around 5+ active SKUs or when they take on a second brand.',
+      'Builder is for creators scaling past one SKU — lower fee (12%), priority routing, more brand profiles, sample discounts. Agency adds full bulk pricing visibility across all partner volume tiers, free first sample credited against your main order if placed within 30 days, a dedicated account manager with a 4-hour support SLA, and the lowest production-order fee (9%). Most creators graduate to Agency when they take on a second brand or hit ~5 active SKUs.',
   },
   {
     question: 'Is the marketplace free to browse?',
@@ -377,7 +363,7 @@ const FAQ = [
   {
     question: 'What payment methods do you accept?',
     answer:
-      'All major credit cards via Stripe. Production orders also support ACH for Builder and Agency plans. We never charge you for a production run until every assigned partner confirms they accept the order.',
+      'All major credit cards via Stripe Checkout. Production orders also support ACH for Builder and Agency plans. Your card is authorized at checkout but only captured when every assigned partner approves the manifest — usually within 24–48 hours of order placement. If any partner declines, we re-route automatically; you’re not charged for a manifest that didn’t clear.',
   },
   {
     question: 'Can I switch between monthly and annual?',

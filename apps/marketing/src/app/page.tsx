@@ -73,13 +73,13 @@ export default async function HomePage({
 
         {/* Floating stickers */}
         <Sticker className="top-[120px] right-[6%] bg-neon-500 text-ink-900" rotation="5deg">
-          +1,247 launches
+          4 partner types
         </Sticker>
         <Sticker className="top-[280px] right-[18%] bg-pink-500 text-white" rotation="-8deg" delay="-2s">
-          USDA Organic ✓
+          8 niches · locked
         </Sticker>
         <Sticker className="bottom-[120px] right-[8%] bg-white border-[1.5px] border-ink-900 text-ink-900" rotation="6deg" delay="-4s">
-          8-day avg lead time
+          13 categories · live
         </Sticker>
         <Sticker
           className="top-[200px] left-[50%] text-ink-900"
@@ -87,14 +87,14 @@ export default async function HomePage({
           delay="-1s"
           style={{ background: '#FFE74C' }}
         >
-          ★ 4.9 partner trust
+          Manifest-versioned approvals
         </Sticker>
 
         {/* Hero content */}
         <div className="relative z-10 max-w-[1400px] mx-auto w-full">
           <div className="pop-in inline-flex items-center gap-2 bg-white border border-ink-200 px-4 py-2 rounded-pill text-[13px] font-medium mb-8">
             <span className="relative w-2 h-2 rounded-full bg-pink-500 pulse-dot" />
-            <span>Now open to creators in the US</span>
+            <span>Cohort 1 applications open · US-only</span>
           </div>
 
           <h1 className="font-display font-extrabold leading-[0.92] tracking-[-0.045em] max-w-[18ch] mb-8 text-[clamp(56px,9vw,144px)]">
@@ -102,7 +102,7 @@ export default async function HomePage({
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               your
             </span>{' '}
-            brand{' '}
+            CPG brand{' '}
             <span
               className="inline-block bg-neon-500 px-2 rounded-md text-ink-900"
               style={{ transform: 'rotate(-1.5deg)' }}
@@ -113,15 +113,16 @@ export default async function HomePage({
           </h1>
 
           <p className="pop-in text-[clamp(17px,2vw,22px)] max-w-[56ch] leading-[1.55] text-ink-900/[0.78] mb-10" style={{ animationDelay: '200ms' }}>
-            From recipe to packaging to shipped product — iLaunchify handles
-            the entire production graph behind one quote, one timeline, one
-            approval. Built for influencers, culinary creators, and brand
-            launchers who refuse to wait.
+            Pick a starter template. Customize the label. We orchestrate every
+            manufacturer, label printer, co-packer, and warehouse behind one
+            timeline and one quote — so you launch a real CPG brand without
+            becoming a CPG operator. Built for influencers and indie operators
+            who already have an audience but not an ops team.
           </p>
 
           <div className="pop-in flex flex-wrap items-center gap-4" style={{ animationDelay: '400ms' }}>
             <Button asChild variant="primary" size="lg">
-              <Link href="/marketplace">Start your launch →</Link>
+              <Link href="/marketplace">Browse the marketplace →</Link>
             </Button>
             <Button asChild variant="ghost" size="lg">
               <Link href="/how-it-works">See how it works</Link>
@@ -143,7 +144,7 @@ export default async function HomePage({
               <MarqueeItem accent="pink">FUNCTIONAL DRINKS</MarqueeItem>
               <MarqueeItem>ADAPTOGEN BLENDS</MarqueeItem>
               <MarqueeItem accent="neon">COLD-PRESSED COFFEE</MarqueeItem>
-              <MarqueeItem>SKINCARE LAUNCHES</MarqueeItem>
+              <MarqueeItem>ELECTROLYTE MIXES</MarqueeItem>
               <MarqueeItem accent="lemon">PET WELLNESS</MarqueeItem>
               <MarqueeItem>SNACK BARS</MarqueeItem>
               <MarqueeItem accent="pink">RTD COCKTAILS</MarqueeItem>
@@ -155,17 +156,17 @@ export default async function HomePage({
       {/* ============ STATS ============ */}
       <section className="max-w-[1400px] mx-auto px-6 sm:px-8 py-24 sm:py-32">
         <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-4">
-          By the numbers
+          What&apos;s wired
         </div>
         <h2 className="font-display font-bold leading-[1.02] tracking-[-0.035em] mb-16 sm:mb-20 max-w-[18ch] text-[clamp(40px,5vw,72px)]">
           A platform built on{' '}
-          <span className="font-serif italic font-medium">momentum.</span>
+          <span className="font-serif italic font-medium">architecture, not adjectives.</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          <StatCard variant="pink" number="1,247" label="Creator launches shipped in the last 12 months — and counting." />
-          <StatCard variant="neon" number="312" label="Verified partners across manufacturing, label printing, co-packing, and logistics." />
-          <StatCard variant="ink" number="8" unit="days" label='Average lead time from "Start Launching" to ready-to-ship.' />
+          <StatCard variant="pink" number="4" label="Partner types orchestrated per order: manufacturer, label printer, co-packer, warehouse." />
+          <StatCard variant="neon" number="8" label="Locked creator niches across functional food, beverage, supplement, and pet." />
+          <StatCard variant="ink" number="13" label="Curated product categories. One taxonomy. Zero free-text fields." />
         </div>
       </section>
 
@@ -180,7 +181,7 @@ export default async function HomePage({
             <span className="font-serif italic font-medium text-neon-500">
               One marketplace.
             </span>{' '}
-            Endless launches.
+            Pick a starter and go.
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -212,26 +213,20 @@ export default async function HomePage({
       <section className="bg-cream py-24 sm:py-32 px-6 sm:px-8">
         <div className="max-w-[1100px] mx-auto">
           <p className="font-serif italic font-normal leading-[1.15] tracking-[-0.02em] mb-8 text-[clamp(36px,5vw,64px)]">
-            I launched{' '}
+            Each order decomposes into a workflow graph across manufacturer,
+            label printer, co-packer, and warehouse. The platform resolves the
+            constraints; the creator sees{' '}
             <span
               className="inline-block bg-neon-500 px-3 rounded-lg not-italic font-display font-bold"
               style={{ transform: 'rotate(-1deg)' }}
             >
-              three SKUs
-            </span>{' '}
-            in the time it used to take to get a single MOQ quote. iLaunchify
-            replaced an entire ops team for me.
+              one timeline.
+            </span>
           </p>
           <div className="flex items-center gap-4 text-[15px]">
-            <div
-              className="w-14 h-14 rounded-full"
-              style={{ background: 'linear-gradient(135deg, #FF2E63, #FFE74C)' }}
-              aria-hidden="true"
-            />
             <div>
-              <strong className="font-semibold">Maya Reyes</strong>{' '}
               <span className="text-ink-700/65">
-                · Culinary creator · 480k followers · Cold-pressed sauce brand
+                — From the iLaunchify orchestration thesis (Pavel, 2026-05-26)
               </span>
             </div>
           </div>
@@ -267,15 +262,16 @@ export default async function HomePage({
             are.
           </h2>
           <p className="text-[clamp(17px,2vw,22px)] text-ink-900/[0.78] mb-12 max-w-[54ch] mx-auto">
-            Free to start. No setup fees. No commitment. Pick your first
-            product, customize it in minutes, and we'll handle the rest.
+            Maker is free forever. Your card isn&apos;t charged until every
+            partner confirms they can deliver your run. Pick a starter template
+            and start customizing.
           </p>
           <Link
             href="/marketplace"
             className="inline-flex items-center gap-3 bg-pink-500 text-white px-10 py-6 rounded-pill font-semibold transition-all duration-base ease-out-quart hover:-translate-y-1 hover:scale-[1.03] text-[clamp(18px,2vw,24px)]"
             style={{ boxShadow: '0 20px 48px rgba(255, 46, 99, 0.4)' }}
           >
-            Start launching →
+            Browse the marketplace →
           </Link>
         </div>
       </section>

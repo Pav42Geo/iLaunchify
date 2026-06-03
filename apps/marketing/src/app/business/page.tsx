@@ -20,13 +20,13 @@ export default function BusinessLandingPage() {
       <BusinessHeader />
 
       <HeroBanner
-        eyebrow="● Applications open · 72-hour review"
+        eyebrow="● Cohort 1 applications open · US partners · 72-hour review"
         headline={
           <>
             Grow your manufacturing pipeline, <em>on autopilot.</em>
           </>
         }
-        deck="Join 312 verified manufacturers, co-packers, label printers, and 3PL partners building with iLaunchify's network of creator brands. Steady orders, structured workflow, fast payment."
+        deck="Apply once. Run your floor against a queue of pre-qualified creator orders, routed by capability, region, and capacity. Structured workflow. Stripe Connect payouts on a published schedule. No brokers in the middle."
       >
         <Button variant="neon" size="lg" asChild>
           <a href={partnerUrl('/signup')}>Apply to join →</a>
@@ -101,8 +101,9 @@ function PartnerTypes() {
             Built for the people who <em>make</em> things.
           </h2>
           <p className="text-ink-400 text-[17px]">
-            Four partner types, one platform. Apply with the role that fits — multi-service
-            partners get one account with multiple memberships.
+            Four service types, one account. Apply with the role that fits. Multi-service
+            operations (manufacturing + co-packing under one roof) get one membership with
+            multiple service rows — no double-signing.
           </p>
         </header>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -197,18 +198,16 @@ function Testimonial() {
     >
       <div className="max-w-[1100px] mx-auto">
         <p className="font-serif italic text-3xl sm:text-4xl font-normal leading-[1.25] tracking-[-0.015em] text-ink-900 mb-8">
-          "Twenty years ago, taking on a small creator launch meant six emails, three sample
-          reviews, and a calendar of phone tag. iLaunchify replaces all of that with{' '}
+          Mid-order spec changes are the single biggest source of margin loss in
+          small-batch manufacturing. The{' '}
           <span className="not-italic font-medium text-pink-500">
-            a queue I can run my floor against.
-          </span>
-          "
+            manifest-versioned change request
+          </span>{' '}
+          is the right answer to that problem.
         </p>
         <div className="flex items-center gap-3.5 text-sm text-ink-600">
-          <span className="w-12 h-12 rounded-pill bg-gradient-to-br from-pink-400 to-neon-500" />
           <span>
-            <strong className="text-ink-900 font-semibold">Marcus Vellan</strong> ·
-            Director of Operations, Vellan Labels · Long Island City
+            — From the iLaunchify operational philosophy (Pavel, internal memo 2026-05-19)
           </span>
         </div>
       </div>
@@ -237,8 +236,9 @@ function FinalCta() {
           Ready to <em>grow?</em>
         </h2>
         <p className="text-ink-400 text-lg mb-10 max-w-[54ch] mx-auto">
-          Applications are open and free. The first order can flow within days of
-          activation.
+          Applications are free. Cohort 1 is small by design — we onboard partners
+          white-glove, so the first dispatches land cleanly. Apply when you have ~25
+          minutes and your cert PDFs handy.
         </p>
         <Button variant="neon" size="lg" asChild>
           <a href={partnerUrl('/signup')}>Apply to join →</a>
@@ -272,9 +272,9 @@ function Footer() {
 /* ---------- data ---------- */
 
 const STATS = [
-  { value: '312', label: 'verified partners across 4 service types' },
-  { value: '1,247', label: 'creator launches shipped in the last 12 months' },
-  { value: '$4.2M', label: 'paid out to partners in the same period' },
+  { value: '4', label: 'service types orchestrated per order: manufacturing, label printing, co-packing, warehouse' },
+  { value: '5', label: 'onboarding layers verified before any order routes — identity, capability, standards, commercial, integration' },
+  { value: '24h', label: 'target dispatch acceptance window before auto-cancel' },
 ]
 
 const PARTNER_TYPES = [
@@ -307,21 +307,21 @@ const PARTNER_TYPES = [
 const WHY = [
   {
     num: '01',
-    title: 'Steady demand pipeline',
+    title: 'Demand without the sales pipeline',
     text:
-      'A continuous queue of pre-qualified creator orders, routed to your floor based on capability, region, and capacity. No more chasing leads.',
+      "A continuous queue of pre-qualified creator orders routes to your dashboard. Accept what fits. Decline what doesn't. We never share a creator's contact info with you, and we never share yours with them until you ship.",
   },
   {
     num: '02',
-    title: 'Disputes handled upstream',
+    title: 'Change requests, structured',
     text:
-      'Structured revision requests, approval gates, and platform-mediated change orders. Free-form email arguments are a thing of the past.',
+      'Mid-order changes arrive as manifest-versioned change requests, not Slack threads. Quantity bumps, substrate swaps, and packaging tweaks come with a structured impact payload. You see what changed and what’s affected. Free-form email arguments are gone.',
   },
   {
     num: '03',
-    title: 'Fast, predictable payment',
+    title: 'Stripe Connect payouts',
     text:
-      'Payment held until all approval gates clear, then released to your Stripe Connect account on a published schedule. No 90-day net terms.',
+      'Each dispatch hits SHIPPED. Transfer queues to your Stripe Connect Express account on a published schedule. No invoicing. No chasing. No Net-60.',
   },
 ]
 
@@ -330,21 +330,21 @@ const STEPS = [
     num: '01',
     title: 'Apply',
     text:
-      'Tell us what you do — service type, capacity, region, certifications. Upload supporting documents. Takes about 25 minutes.',
+      'Tell us what you do across the five layers: identity (legal entity + docs), capability (substrates, machines, formats), operational standards (insurance + cert PDFs), commercial terms (rate cards + lead times), integration (Stripe Connect KYB). Self-serve. ~25 min if you have docs ready.',
     meta: '~25 min · self-serve',
   },
   {
     num: '02',
     title: 'Verify',
     text:
-      "Our partner ops team reviews your application across five layers — identity, capability, standards, commercial terms, integration. Most reviews complete in under 72 hours.",
+      'Our partner ops team reviews your application section-by-section against the same five layers. Cert PDFs are spot-checked against issuing-body records. Most decisions land in 72 hours. Some take longer; we’d rather be slow than wrong.',
     meta: '~72 hr · platform-side',
   },
   {
     num: '03',
     title: 'Activate',
     text:
-      "Once verified, your services go live in the routing engine and creator orders start flowing. Accept what fits, decline what doesn't — your floor, your pace.",
-    meta: 'live · paid per order',
+      'Activation flips your services live in the routing engine. Creator dispatches start flowing to your dashboard. Accept or decline within the SLA window. Auto-cancel kicks in if you don’t respond — same rule for everyone.',
+    meta: 'live · paid per dispatch',
   },
 ]

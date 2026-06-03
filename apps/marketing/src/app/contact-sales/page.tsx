@@ -50,9 +50,11 @@ export default async function ContactSalesPage({
               </span>
             </h1>
             <p className="text-lg text-ink-700 leading-[1.55]">
-              Multi-brand operators and influencer agencies get a 30-minute
-              onboarding call with a launch strategist before they touch the
-              platform. Tell us what you're building.
+              Agency-tier creators — multi-brand operators, influencer agencies,
+              and indie CPG operators with 5+ active SKUs — get a 30-minute
+              onboarding call with a launch lead before they touch the platform.
+              We pre-load brand profiles, payment methods, and partner contracts
+              so you can start producing in one session.
             </p>
           </div>
 
@@ -142,27 +144,27 @@ export default async function ContactSalesPage({
 }
 
 const PERKS = [
-  'Unlimited brand profiles + unlimited products',
-  '9% production-order fee (vs 15% on Maker)',
-  'First-look routing to Premier production partners',
-  'Bulk volume pricing visibility (500–1,999 / 2k–9,999 / 10k+)',
-  'Free first sample + future samples credited against main order',
-  'Dedicated account manager with 4-hour SLA',
-  'Co-marketing slots in our creator newsletter + case studies',
-  'Early access to V1.5+ features (pooled production, buffer inventory)',
+  'Unlimited brand profiles + unlimited active products',
+  '9% production-order fee (Maker is 15%, Builder is 12%)',
+  'First-look routing position in the order-routing engine',
+  'Bulk volume pricing visibility across all partner volume tiers (500–1,999 / 2k–9,999 / 10k+ units)',
+  'Free first sample + future samples credited against your first main order if placed within 30 days',
+  'Dedicated account manager with a 4-hour support SLA',
+  'Co-marketing slots in the creator newsletter + case studies (when we have them)',
+  'Early access to V2 features as they ship — demand pooling, buffer inventory, channel push beyond Shopify',
 ]
 
 const STEPS = [
   {
     title: 'We email to schedule a call',
-    body: 'Pick a 30-minute slot that works. We confirm by email within one business hour.',
+    body: 'Pick a 30-minute slot. We confirm within one business hour.',
   },
   {
     title: 'Strategy call with a launch lead',
-    body: "We walk through your roster, target shelves, and timeline. You ask anything.",
+    body: 'We walk through your roster, target channels, production timeline, and which Cohort 1 partners are the best initial match.',
   },
   {
     title: 'You launch your first SKU',
-    body: 'We pre-load credits, brand profiles, and Premier-partner contracts before you sign in.',
+    body: 'We pre-load brand profiles, payment methods, your first sample credit, and your first set of partner introductions before you sign in.',
   },
 ]
