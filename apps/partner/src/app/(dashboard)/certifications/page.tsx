@@ -171,6 +171,17 @@ export default async function CertificationsPage({
             <CertificationsClient availableTypes={availableTypes} />
           </CardContent>
         )}
+        <CardContent className="border-t border-zinc-100 pt-4">
+          <p className="text-sm text-zinc-500">
+            Carry a certification that isn&apos;t listed?{' '}
+            <Link
+              href="/certifications/request"
+              className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+            >
+              Request a new cert type →
+            </Link>
+          </p>
+        </CardContent>
       </Card>
     </div>
   )

@@ -674,7 +674,7 @@ export async function attachCertificate(input: {
   productTemplateId: string
   instanceId: string
 }): Promise<Result> {
-  const { partner, template, error } = await authorize(input.productTemplateId)
+  const { user, partner, template, error } = await authorize(input.productTemplateId)
   if (error) return { ok: false, error }
 
   const instance = await prisma.partnerCertificateInstance.findUnique({
@@ -706,12 +706,32 @@ export async function attachCertificate(input: {
   })
   if (existing) return { ok: false, error: 'That certificate is already attached.' }
 
-  await prisma.productCertificate.create({
-    data: {
-      productTemplateId: template.id,
-      instanceId: input.instanceId,
-      appliesToPackagingSystemIds: [],
-    },
+  // Reapproval-marked: changing certs on a PUBLISHED template re-gates it.
+  const shouldGateForReview = template.status === 'PUBLISHED'
+
+  await prisma.$transaction(async (tx) => {
+    await tx.productCertificate.create({
+      data: {
+        productTemplateId: template.id,
+        instanceId: input.instanceId,
+        appliesToPackagingSystemIds: [],
+      },
+    })
+    if (shouldGateForReview) {
+      await tx.productTemplate.update({
+        where: { id: template.id },
+        data: { status: 'PENDING_EDIT_REVIEW' },
+      })
+    }
+  })
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_CERT_ATTACHED',
+    fromValue: template.status,
+    toValue: shouldGateForReview ? 'PENDING_EDIT_REVIEW' : template.status,
+    payload: { partnerId: partner.id, instanceId: input.instanceId, gatedForReview: shouldGateForReview },
   })
 
   revalidatePath(`/products/${template.id}/edit`)
@@ -722,13 +742,33 @@ export async function detachCertificate(input: {
   productTemplateId: string
   instanceId: string
 }): Promise<Result> {
-  const { error, template } = await authorize(input.productTemplateId)
+  const { user, partner, error, template } = await authorize(input.productTemplateId)
   if (error) return { ok: false, error }
 
-  await prisma.productCertificate.delete({
-    where: {
-      productTemplateId_instanceId: { productTemplateId: template.id, instanceId: input.instanceId },
-    },
+  // Reapproval-marked: removing a cert from a PUBLISHED template re-gates it.
+  const shouldGateForReview = template.status === 'PUBLISHED'
+
+  await prisma.$transaction(async (tx) => {
+    await tx.productCertificate.delete({
+      where: {
+        productTemplateId_instanceId: { productTemplateId: template.id, instanceId: input.instanceId },
+      },
+    })
+    if (shouldGateForReview) {
+      await tx.productTemplate.update({
+        where: { id: template.id },
+        data: { status: 'PENDING_EDIT_REVIEW' },
+      })
+    }
+  })
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_CERT_DETACHED',
+    fromValue: template.status,
+    toValue: shouldGateForReview ? 'PENDING_EDIT_REVIEW' : template.status,
+    payload: { partnerId: partner.id, instanceId: input.instanceId, gatedForReview: shouldGateForReview },
   })
 
   revalidatePath(`/products/${template.id}/edit`)

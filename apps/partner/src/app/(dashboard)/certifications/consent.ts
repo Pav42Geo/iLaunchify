@@ -5,7 +5,7 @@
 export const CERT_UPLOAD_CONSENT_VERSION = '2026-06'
 
 export const CERT_UPLOAD_CONSENT_TEXT =
-  'I confirm I am authorized to share this certificate, that the document is accurate, ' +
-  'and I consent to iLaunchify storing it and processing it solely to verify my ' +
-  'certifications. iLaunchify keeps the PDF private — only iLaunchify staff review it; ' +
-  'public pages show only the verified badge.'
+  'By uploading, I confirm this certificate is genuine and currently valid. iLaunchify ' +
+  'stores it privately and encrypted, accessible only to iLaunchify admin for verification ' +
+  '— public pages show only the verified badge. I can request deletion at any time per the ' +
+  'DPA. The document is retained for 7 years after the certificate expires.'

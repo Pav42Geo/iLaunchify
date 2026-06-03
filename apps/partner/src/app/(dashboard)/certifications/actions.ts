@@ -342,6 +342,73 @@ export async function updateCertificate(input: {
 }
 
 // -----------------------------------------------------------------------------
+// REQUEST a new certificate type (C3). When a partner carries a cert that isn't
+// in the admin library, they submit a CertificateTypeRequest here; admins triage
+// it in /admin/certificate-requests (C2) and APPROVE → it becomes a real
+// CertificateType the partner can then claim.
+// -----------------------------------------------------------------------------
+
+export async function requestCertificateType(input: {
+  name: string
+  issuingBody?: string
+  description?: string
+}): Promise<Result<{ id: string }>> {
+  const { user, partner, error } = await requirePartner()
+  if (error) return { ok: false, error }
+
+  const name = input.name.trim()
+  if (name.length < 2) return { ok: false, error: 'Enter the certificate name (at least 2 characters).' }
+  if (name.length > 120) return { ok: false, error: 'Name is too long (max 120 characters).' }
+
+  // If a cert type already exists with this name, nudge them to claim it instead.
+  const existingType = await prisma.certificateType.findFirst({
+    where: { name: { equals: name, mode: 'insensitive' }, status: 'ACTIVE' },
+    select: { name: true },
+  })
+  if (existingType) {
+    return {
+      ok: false,
+      error: `"${existingType.name}" is already in the library — claim it from the list instead of requesting it.`,
+    }
+  }
+
+  // Avoid stacking duplicate pending requests from the same partner.
+  const dupePending = await prisma.certificateTypeRequest.findFirst({
+    where: {
+      createdByPartnerId: partner.id,
+      status: 'PENDING',
+      name: { equals: name, mode: 'insensitive' },
+    },
+    select: { id: true },
+  })
+  if (dupePending) {
+    return { ok: false, error: 'You already have a pending request for this certificate.' }
+  }
+
+  const created = await prisma.certificateTypeRequest.create({
+    data: {
+      createdByPartnerId: partner.id,
+      name,
+      issuingBody: input.issuingBody?.trim() || null,
+      description: input.description?.trim() || null,
+      status: 'PENDING',
+    },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'CertificateTypeRequest',
+    entityId: created.id,
+    action: 'CERT_TYPE_REQUEST_CREATE',
+    toValue: 'PENDING',
+    payload: { partnerId: partner.id, name, issuingBody: input.issuingBody?.trim() || null },
+  })
+
+  revalidatePath('/certifications')
+  revalidatePath('/certifications/request')
+  return { ok: true, data: { id: created.id } }
+}
+
+// -----------------------------------------------------------------------------
 // DELETE an instance + its R2 PDF + the PartnerFile row.
 // -----------------------------------------------------------------------------
 
