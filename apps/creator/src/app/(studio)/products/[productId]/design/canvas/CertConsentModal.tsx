@@ -16,7 +16,7 @@ import {
 } from '@ilaunchify/ui'
 import { ShieldCheck } from 'lucide-react'
 import { CERT_CLAIM_CONSENT_TEXT } from './claim-consent'
-import type { CertBadge } from './cert-badge-actions'
+import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 
 export function CertConsentModal({
   cert,
@@ -26,15 +26,22 @@ export function CertConsentModal({
 }: {
   cert: CertBadge | null
   isPending: boolean
-  onConfirm: () => void
+  /** Receives the chosen artwork variant (null when the cert has no variants). */
+  onConfirm: (variant: CertBadgeVariant | null) => void
   onClose: () => void
 }) {
   const [agreed, setAgreed] = React.useState(false)
+  const variants = cert?.variants ?? []
+  const [variantId, setVariantId] = React.useState<string | null>(null)
 
-  // Reset the checkbox each time a new cert is presented.
+  // Reset the checkbox + default the variant each time a new cert is presented.
   React.useEffect(() => {
     setAgreed(false)
-  }, [cert?.certInstanceId])
+    setVariantId(cert?.variants[0]?.variantId ?? null)
+  }, [cert?.certInstanceId, cert?.variants])
+
+  const selectedVariant = variants.find((v) => v.variantId === variantId) ?? null
+  const previewUrl = selectedVariant?.url ?? cert?.badgeUrl ?? null
 
   return (
     <Dialog open={!!cert} onOpenChange={(o) => !o && onClose()}>
@@ -50,14 +57,40 @@ export function CertConsentModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {cert?.badgeUrl && (
+          {previewUrl && (
             <div className="flex justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={cert.badgeUrl}
-                alt={`${cert.certTypeName} badge`}
+                src={previewUrl}
+                alt={`${cert?.certTypeName ?? ''} badge`}
                 className="h-20 w-20 rounded-md border border-ink-200 bg-white object-contain p-2"
               />
+            </div>
+          )}
+
+          {variants.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+                Variant
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {variants.map((v) => (
+                  <button
+                    key={v.variantId}
+                    type="button"
+                    onClick={() => setVariantId(v.variantId)}
+                    disabled={isPending}
+                    className={
+                      'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ' +
+                      (v.variantId === variantId
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                        : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
+                    }
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -85,7 +118,7 @@ export function CertConsentModal({
             Cancel
           </Button>
           <Button
-            onClick={onConfirm}
+            onClick={() => onConfirm(selectedVariant)}
             disabled={!agreed || isPending}
             className="bg-emerald-600 hover:bg-emerald-700"
           >

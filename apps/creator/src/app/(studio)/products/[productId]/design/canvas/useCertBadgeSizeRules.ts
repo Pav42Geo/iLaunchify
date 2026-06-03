@@ -17,8 +17,8 @@ import * as React from 'react'
 import type { FabricCanvas, FabricObject } from '@ilaunchify/ui'
 
 const CERT_BADGE_TYPE = 'cert-badge'
-const CERT_BADGE_MIN_MM = 8 // legibility floor
-const CERT_BADGE_MAX_MM = 40 // sane reproduction ceiling
+const CERT_BADGE_MIN_MM = 8 // legibility floor (default when no variant bound)
+const CERT_BADGE_MAX_MM = 40 // sane reproduction ceiling (default)
 
 interface ValidTransform {
   scaleX: number
@@ -41,14 +41,18 @@ export function useCertBadgeSizeRules(
     if (!canvas) return
     const pxPerMm = canvas.getWidth() / (dieCut.widthMm + 2 * dieCut.bleedMm)
 
-    // Min/max uniform scale for this badge given its intrinsic width.
+    // Min/max uniform scale for this badge given its intrinsic width. Reads the
+    // bound variant's reproduction bounds (tagged in customData at placement);
+    // falls back to platform defaults when no variant was chosen.
     function scaleBounds(obj: FabricObject): { min: number; max: number } | null {
       const w = (obj as { width?: number }).width ?? 0
       if (w <= 0) return null
-      return {
-        min: (CERT_BADGE_MIN_MM * pxPerMm) / w,
-        max: (CERT_BADGE_MAX_MM * pxPerMm) / w,
-      }
+      const cd = (obj as { customData?: { minWidthMm?: number | null; maxWidthMm?: number | null } })
+        .customData
+      const minMm = cd?.minWidthMm ?? CERT_BADGE_MIN_MM
+      let maxMm = cd?.maxWidthMm ?? CERT_BADGE_MAX_MM
+      if (maxMm < minMm) maxMm = minMm // guard against inverted variant data
+      return { min: (minMm * pxPerMm) / w, max: (maxMm * pxPerMm) / w }
     }
 
     function readTransform(obj: FabricObject): ValidTransform {

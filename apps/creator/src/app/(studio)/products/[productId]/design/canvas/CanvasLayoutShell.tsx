@@ -36,7 +36,7 @@ import {
   reconcileCertBadges,
   addCertBadge,
 } from '@ilaunchify/ui'
-import type { CertBadge } from './cert-badge-actions'
+import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
   useSelectedObject,
@@ -233,13 +233,21 @@ export function CanvasLayoutShell({
   const [pendingConsent, setPendingConsent] = useState<CertBadge | null>(null)
   const [consentRecording, startConsent] = React.useTransition()
 
-  // Place a badge on the canvas (consent already satisfied).
+  // Place a badge on the canvas (consent already satisfied). Uses the chosen
+  // artwork variant's URL + reproduction bounds when one was picked.
   const placeCertBadge = React.useCallback(
-    (badge: CertBadge) => {
-      if (!canvas || !badge.badgeUrl) return
+    (badge: CertBadge, variant?: CertBadgeVariant | null) => {
+      const url = variant?.url ?? badge.badgeUrl
+      if (!canvas || !url) return
       void addCertBadge(
         canvas,
-        { certInstanceId: badge.certInstanceId, badgeUrl: badge.badgeUrl },
+        {
+          certInstanceId: badge.certInstanceId,
+          badgeUrl: url,
+          variantId: variant?.variantId,
+          minWidthMm: variant?.minWidthMm ?? null,
+          maxWidthMm: variant?.maxWidthMm ?? null,
+        },
         { widthMm: dieCut.widthMm, heightMm: dieCut.heightMm, bleedMm: dieCut.bleedMm, safeAreaMm: dieCut.safeAreaMm },
       )
     },
@@ -256,25 +264,28 @@ export function CanvasLayoutShell({
     [placeCertBadge],
   )
 
-  const confirmConsent = React.useCallback(() => {
-    const badge = pendingConsent
-    if (!badge) return
-    startConsent(async () => {
-      const res = await recordLabelClaimConsent({
-        productId,
-        certInstanceId: badge.certInstanceId,
+  const confirmConsent = React.useCallback(
+    (variant: CertBadgeVariant | null) => {
+      const badge = pendingConsent
+      if (!badge) return
+      startConsent(async () => {
+        const res = await recordLabelClaimConsent({
+          productId,
+          certInstanceId: badge.certInstanceId,
+        })
+        if (!res.ok) {
+          toast.error(res.error)
+          return
+        }
+        setCertBadges((prev) =>
+          prev.map((b) => (b.certInstanceId === badge.certInstanceId ? { ...b, consented: true } : b)),
+        )
+        placeCertBadge({ ...badge, consented: true }, variant)
+        setPendingConsent(null)
       })
-      if (!res.ok) {
-        toast.error(res.error)
-        return
-      }
-      setCertBadges((prev) =>
-        prev.map((b) => (b.certInstanceId === badge.certInstanceId ? { ...b, consented: true } : b)),
-      )
-      placeCertBadge({ ...badge, consented: true })
-      setPendingConsent(null)
-    })
-  }, [pendingConsent, productId, placeCertBadge])
+    },
+    [pendingConsent, productId, placeCertBadge],
+  )
 
   // Reconcile the managed cert-badge zone after the saved design hydrates.
   // Stage fires onHydrated post-loadFromJSON, so badges aren't wiped by the

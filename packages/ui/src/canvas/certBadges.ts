@@ -23,6 +23,11 @@ export interface CertBadgePlacement {
    * never stripped for missing consent (grandfathered via the earned-set).
    */
   consented?: boolean
+  /** C7 — the chosen artwork variant id, tagged on the canvas object. */
+  variantId?: string
+  /** C7 — per-variant reproduction bounds; useCertBadgeSizeRules reads these. */
+  minWidthMm?: number | null
+  maxWidthMm?: number | null
 }
 
 export interface CertBadgeDieCut {
@@ -218,6 +223,9 @@ export async function addCertBadge(
   ;(obj as { customType?: string }).customType = CERT_BADGE_TYPE
   ;(obj as { customData?: unknown }).customData = {
     certInstanceId: badge.certInstanceId,
+    ...(badge.variantId ? { variantId: badge.variantId } : {}),
+    ...(badge.minWidthMm != null ? { minWidthMm: badge.minWidthMm } : {}),
+    ...(badge.maxWidthMm != null ? { maxWidthMm: badge.maxWidthMm } : {}),
   }
   applyCertBadgeControls(obj)
   canvas.add(obj)

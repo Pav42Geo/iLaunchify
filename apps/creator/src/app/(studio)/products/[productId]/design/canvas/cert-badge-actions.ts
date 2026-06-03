@@ -18,6 +18,21 @@ import { prisma } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { requireUser } from '@ilaunchify/auth'
 
+/**
+ * C7/C8 — an approved artwork variant of a cert badge (Color / B&W / Outline /
+ * contextual lockup), with its brand-standard reproduction bounds. Surfaced so
+ * the studio can offer a variant chooser and bind per-variant size rules.
+ */
+export interface CertBadgeVariant {
+  variantId: string
+  kind: string // CertAssetVariantKind
+  label: string
+  /** Resolved SVG (preferred) / PNG URL, or null if no asset uploaded. */
+  url: string | null
+  minWidthMm: number | null
+  maxWidthMm: number | null
+}
+
 export interface CertBadge {
   /** Stable id for the managed-zone reconcile (canvas object metadata). */
   certInstanceId: string
@@ -31,6 +46,19 @@ export interface CertBadge {
    * is true (never auto-stamp). Available now; the canvas gate is wired in C8.
    */
   consented: boolean
+  /** C7 approved artwork variants for this cert type (may be empty). */
+  variants: CertBadgeVariant[]
+}
+
+/** Resolve a platform Asset id to a long-lived signed URL (8h design session). */
+async function resolveAssetUrl(assetId: string | null): Promise<string | null> {
+  if (!assetId) return null
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    select: { storageKey: true },
+  })
+  if (!asset?.storageKey) return null
+  return getSignedReadUrl(asset.storageKey, { expiresInSeconds: 8 * 60 * 60 })
 }
 
 export interface ProductCertBadgesResult {
@@ -100,6 +128,18 @@ export async function loadProductCertBadges(
               status: true,
               thumbnailFileId: true,
               badgeSvgFileId: true,
+              assetVariants: {
+                select: {
+                  id: true,
+                  kind: true,
+                  label: true,
+                  svgFileId: true,
+                  pngFileId: true,
+                  minWidthMm: true,
+                  maxWidthMm: true,
+                },
+                orderBy: { sortOrder: 'asc' },
+              },
             },
           },
         },
@@ -112,30 +152,28 @@ export async function loadProductCertBadges(
     const ct = c.instance.certificateType
     if (ct.status !== 'ACTIVE') continue
     // Production surface → prefer the VECTOR SVG; fall back to the PNG so the
-    // cert still renders if no SVG was uploaded for the type yet.
-    let badgeUrl: string | null = null
-    const badgeAssetId = ct.badgeSvgFileId ?? ct.thumbnailFileId
-    if (badgeAssetId) {
-      const asset = await prisma.asset.findUnique({
-        where: { id: badgeAssetId },
-        select: { storageKey: true },
-      })
-      // Long TTL: this URL is held for the whole editing session (the cert zone
-      // reconciles on open AND the Label-drawer "add" / thumbnail reuse it). The
-      // default 5-min signed URL would expire mid-session and silently fail the
-      // badge fetch. 8h comfortably covers a design session.
-      if (asset?.storageKey) {
-        badgeUrl = await getSignedReadUrl(asset.storageKey, {
-          expiresInSeconds: 8 * 60 * 60,
-        })
-      }
-    }
+    // cert still renders if no SVG was uploaded for the type yet. (8h TTL covers
+    // a whole design session — the URL is held through reconcile + drawer add.)
+    const badgeUrl = await resolveAssetUrl(ct.badgeSvgFileId ?? ct.thumbnailFileId)
+
+    const variants: CertBadgeVariant[] = await Promise.all(
+      ct.assetVariants.map(async (v) => ({
+        variantId: v.id,
+        kind: v.kind,
+        label: v.label,
+        url: await resolveAssetUrl(v.svgFileId ?? v.pngFileId),
+        minWidthMm: v.minWidthMm,
+        maxWidthMm: v.maxWidthMm,
+      })),
+    )
+
     badges.push({
       certInstanceId: c.instance.id,
       certTypeName: ct.name,
       certTypeSlug: ct.slug,
       badgeUrl,
       consented: consentedIds.has(c.instance.id),
+      variants: variants.filter((v) => v.url),
     })
   }
 
