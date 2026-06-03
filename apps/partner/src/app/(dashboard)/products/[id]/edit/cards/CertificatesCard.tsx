@@ -10,7 +10,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@ilaunchify/ui'
+import { Button, CertExpiryBadge } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Award, Plus, Trash2, Clock, AlertTriangle, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
@@ -100,12 +100,12 @@ export function CertificatesCard({
                 <Award className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
                 <div>
                   <div className="font-medium text-zinc-900">{a.certName}</div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
                     {a.certificateNumber && <span>#{a.certificateNumber}</span>}
-                    <span>Expires {new Date(a.expiryDate).toLocaleDateString()}</span>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
                       Verified
                     </span>
+                    <CertExpiryBadge expiryDate={a.expiryDate} />
                   </div>
                 </div>
               </div>
@@ -140,9 +140,10 @@ export function CertificatesCard({
               >
                 <div>
                   <div className="font-medium text-zinc-900">{c.certName}</div>
-                  {c.certificateNumber && (
-                    <div className="text-xs text-zinc-500">#{c.certificateNumber}</div>
-                  )}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                    {c.certificateNumber && <span>#{c.certificateNumber}</span>}
+                    <CertExpiryBadge expiryDate={c.expiryDate} />
+                  </div>
                 </div>
                 <Button
                   size="sm"

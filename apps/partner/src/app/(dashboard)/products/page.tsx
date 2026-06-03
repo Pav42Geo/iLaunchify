@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
-import { Plus, Package } from 'lucide-react'
+import { Plus, Package, AlertTriangle } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
@@ -116,6 +116,7 @@ type Row = {
   subcategory: { name: string }
   priceFloorCents: number
   updatedAt: Date
+  certRefreshNeededAt: Date | null
   _count: { ingredientSlots: number; packagingSystems: number; variants: number }
 }
 
@@ -172,7 +173,18 @@ function ProductSection({ status, rows }: { status: ProductTemplateStatus; rows:
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-zinc-100 hover:bg-zinc-50">
-                  <td className="px-6 py-3 font-medium text-zinc-900">{r.name}</td>
+                  <td className="px-6 py-3 font-medium text-zinc-900">
+                    <span>{r.name}</span>
+                    {r.certRefreshNeededAt && (
+                      <Link
+                        href="/certifications"
+                        title="A certificate attached to this product expired — renew it to restore the badge."
+                        className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100"
+                      >
+                        <AlertTriangle className="h-3 w-3" /> Needs cert refresh
+                      </Link>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-zinc-700">{r.subcategory.name}</td>
                   <td className="px-3 py-3 text-zinc-700">{r._count.ingredientSlots}</td>
                   <td className="px-3 py-3 text-zinc-700">{r._count.packagingSystems}</td>
