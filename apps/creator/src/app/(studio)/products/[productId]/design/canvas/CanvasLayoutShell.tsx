@@ -247,6 +247,7 @@ export function CanvasLayoutShell({
           variantId: variant?.variantId,
           minWidthMm: variant?.minWidthMm ?? null,
           maxWidthMm: variant?.maxWidthMm ?? null,
+          requiredCoText: variant?.requiredCoText ?? null,
         },
         { widthMm: dieCut.widthMm, heightMm: dieCut.heightMm, bleedMm: dieCut.bleedMm, safeAreaMm: dieCut.safeAreaMm },
       )

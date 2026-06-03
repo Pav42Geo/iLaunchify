@@ -14,7 +14,7 @@
 // of viewport zoom — same derivation reconcileCertBadges uses.
 
 import * as React from 'react'
-import type { FabricCanvas, FabricObject } from '@ilaunchify/ui'
+import { removeCertCoText, type FabricCanvas, type FabricObject } from '@ilaunchify/ui'
 
 const CERT_BADGE_TYPE = 'cert-badge'
 const CERT_BADGE_MIN_MM = 8 // legibility floor (default when no variant bound)
@@ -129,12 +129,23 @@ export function useCertBadgeSizeRules(
       if (e.target) enforceOn(e.target)
     }
 
+    // C8 — a required claim must never outlive its mark: when a cert badge is
+    // removed, drop its required-co-text caption too.
+    function handleRemoved(e: { target?: FabricObject }) {
+      const obj = e.target
+      if (!obj || !isCertBadge(obj) || !canvas) return
+      const d = (obj as { customData?: { certInstanceId?: unknown } }).customData
+      const id = d?.certInstanceId
+      if (typeof id === 'string') removeCertCoText(canvas, id)
+    }
+
     canvas.on('mouse:down', handleMouseDown)
     canvas.on('object:scaling', handleScaling)
     canvas.on('mouse:up', handleMouseUp)
     canvas.on('object:added', handleAdded)
     canvas.on('selection:created', handleSelectionCreated)
     canvas.on('object:modified', handleModified)
+    canvas.on('object:removed', handleRemoved)
 
     for (const obj of canvas.getObjects()) enforceOn(obj)
 
@@ -145,6 +156,7 @@ export function useCertBadgeSizeRules(
       canvas.off('object:added', handleAdded)
       canvas.off('selection:created', handleSelectionCreated)
       canvas.off('object:modified', handleModified)
+      canvas.off('object:removed', handleRemoved)
     }
   }, [canvas, dieCut.widthMm, dieCut.bleedMm])
 }

@@ -28,6 +28,8 @@ export interface CertBadgePlacement {
   /** C7 — per-variant reproduction bounds; useCertBadgeSizeRules reads these. */
   minWidthMm?: number | null
   maxWidthMm?: number | null
+  /** C8 — text that must accompany the mark; auto-paired below the badge. */
+  requiredCoText?: string | null
 }
 
 export interface CertBadgeDieCut {
@@ -67,6 +69,61 @@ function badgeCertId(o: FabricObject): string | null {
     return String((d as { certInstanceId: unknown }).certInstanceId)
   }
   return null
+}
+
+// C8 — required co-text caption paired to a cert badge. A normal editable text
+// object (customType 'text') tagged with the badge's certInstanceId so it can
+// be found + removed when the badge is removed (a required claim must never be
+// orphaned from its mark).
+const CERT_COTEXT_LINK = 'coTextFor'
+
+function coTextFor(o: FabricObject): string | null {
+  const d = (o as { customData?: unknown }).customData
+  if (d && typeof d === 'object' && CERT_COTEXT_LINK in d) {
+    return String((d as Record<string, unknown>)[CERT_COTEXT_LINK])
+  }
+  return null
+}
+
+/** Remove the required-co-text caption(s) linked to a cert instance, if any. */
+export function removeCertCoText(canvas: FabricCanvas, certInstanceId: string): void {
+  for (const o of canvas.getObjects()) {
+    if (coTextFor(o) === certInstanceId) canvas.remove(o)
+  }
+}
+
+/** Drop a required-co-text caption just below a placed badge (idempotent). */
+function addCertCoText(
+  canvas: FabricCanvas,
+  certInstanceId: string,
+  text: string,
+  badge: FabricObject,
+  pxPerMm: number,
+): void {
+  // Already present → don't duplicate.
+  for (const o of canvas.getObjects()) {
+    if (coTextFor(o) === certInstanceId) return
+  }
+  const b = badge as unknown as {
+    left?: number
+    top?: number
+    getScaledHeight?: () => number
+  }
+  const badgeHalfH = (b.getScaledHeight?.() ?? BADGE_SIZE_MM * pxPerMm) / 2
+  const t = new fabric.IText(text, {
+    left: b.left ?? 0,
+    top: (b.top ?? 0) + badgeHalfH + 1 * pxPerMm,
+    originX: 'center',
+    originY: 'top',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: Math.max(6, 2.5 * pxPerMm), // ~2.5mm legibility floor
+    fill: '#0F1116',
+    editable: true,
+    textAlign: 'center',
+  })
+  ;(t as unknown as { set: (k: string, v: unknown) => void }).set('customType', 'text')
+  ;(t as { customData?: unknown }).customData = { [CERT_COTEXT_LINK]: certInstanceId }
+  canvas.add(t)
 }
 
 /** The certInstanceIds of every cert badge currently on the canvas. */
@@ -169,10 +226,14 @@ export async function reconcileCertBadges(
     existing.map(badgeCertId).filter((v): v is string => v != null),
   )
 
-  // Remove badges whose cert is no longer earned.
+  // Remove badges whose cert is no longer earned — and their co-text caption,
+  // so a required claim is never left orphaned on the label.
   for (const o of existing) {
     const id = badgeCertId(o)
-    if (!id || !wantIds.has(id)) canvas.remove(o)
+    if (!id || !wantIds.has(id)) {
+      canvas.remove(o)
+      if (id) removeCertCoText(canvas, id)
+    }
   }
 
   // Add newly-earned badges, collecting them so only the NEW ones get
@@ -230,6 +291,10 @@ export async function addCertBadge(
   applyCertBadgeControls(obj)
   canvas.add(obj)
   placeBadges(canvas, [obj], die, pxPerMm)
+  // C8 — auto-pair the required co-text caption beneath the badge.
+  if (badge.requiredCoText && badge.requiredCoText.trim()) {
+    addCertCoText(canvas, badge.certInstanceId, badge.requiredCoText.trim(), obj, pxPerMm)
+  }
   canvas.setActiveObject(obj)
   canvas.requestRenderAll()
   return obj

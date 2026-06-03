@@ -31,6 +31,8 @@ export interface CertBadgeVariant {
   url: string | null
   minWidthMm: number | null
   maxWidthMm: number | null
+  /** C8 — text that must accompany the mark; auto-paired as a caption on place. */
+  requiredCoText: string | null
 }
 
 export interface CertBadge {
@@ -137,6 +139,7 @@ export async function loadProductCertBadges(
                   pngFileId: true,
                   minWidthMm: true,
                   maxWidthMm: true,
+                  requiredCoText: true,
                 },
                 orderBy: { sortOrder: 'asc' },
               },
@@ -164,6 +167,7 @@ export async function loadProductCertBadges(
         url: await resolveAssetUrl(v.svgFileId ?? v.pngFileId),
         minWidthMm: v.minWidthMm,
         maxWidthMm: v.maxWidthMm,
+        requiredCoText: v.requiredCoText,
       })),
     )
 

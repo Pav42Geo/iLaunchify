@@ -106,6 +106,7 @@ export {
 export {
   reconcileCertBadges,
   addCertBadge,
+  removeCertCoText,
   findCertBadgeObject,
   certBadgeIdsOnCanvas,
   type CertBadgePlacement,
