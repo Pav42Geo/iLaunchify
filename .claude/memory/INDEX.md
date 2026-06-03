@@ -25,6 +25,7 @@ cp "$LATEST"/*.md .claude/memory/
 - `ilaunchify-orchestration-thesis.md` — multi-partner workflow graph platform
 - `ilaunchify-storefront-deferred.md` — no public consumer surfaces
 - `ilaunchify-earn-the-right-to-multi-tenant.md` — pre-PMF defaults
+- `ilaunchify-accessories-are-partner-bundled-only.md` — listing partner = fulfillment partner; no platform-routed accessories
 
 ### Marketplace taxonomy
 
@@ -36,6 +37,7 @@ cp "$LATEST"/*.md .claude/memory/
 - `ilaunchify-partner-onboarding.md` — 5-layer + 10-state FSM
 - `ilaunchify-partner-team-model.md` — Membership + ServiceMembership
 - `ilaunchify-leads-are-early-partners.md` — /admin/leads and /admin/partners share Partner table
+- `ilaunchify-partner-spec-source-of-truth.md` — PartnerPrintOutputSpec drives all export specs; no hardcoded platform defaults
 
 ### Creator system
 
@@ -74,6 +76,7 @@ cp "$LATEST"/*.md .claude/memory/
 - `ilaunchify-cross-app-links-must-use-helper.md` — marketingUrl/creatorUrl helpers
 - `ilaunchify-cockroachdb-no-db-text.md` — no @db.Text
 - `ilaunchify-rsc-boundary-config.md` — no Lucide icons across RSC boundary
+- `ilaunchify-prepress-terminology.md` — dieline (not die-cut), substrate (not material), PMS C/U/M designation; speak prepress operators' language
 
 ### Collaboration
 
