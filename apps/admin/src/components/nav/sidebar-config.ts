@@ -129,6 +129,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Leads', icon: Inbox, href: '/leads', badgeKey: 'leads.pending' },
         { kind: 'item', label: 'Partner verification', icon: ShieldCheck, href: '/partners', badgeKey: 'partners.pending' },
         { kind: 'item', label: 'Cert instance reviews', icon: Award, href: '/certificate-types', badgeKey: 'certs.pending' },
+        { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
         { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
         { kind: 'item', label: 'Packaging-type submissions', icon: PackageOpen, href: '/packaging-submissions', hiddenUntilBuilt: true },

@@ -17,7 +17,10 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
   const { id } = await params
   const ct = await prisma.certificateType.findUnique({
     where: { id },
-    include: { _count: { select: { partnerInstances: true } } },
+    include: {
+      _count: { select: { partnerInstances: true } },
+      alternativeOf: { select: { name: true } },
+    },
   })
   if (!ct) notFound()
 
@@ -55,6 +58,14 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
           hasSvgBadge: !!ct.badgeSvgFileId,
           pngUrl,
           svgUrl,
+          scope: ct.scope,
+          issuingBodyUrl: ct.issuingBodyUrl,
+          applicabilityNotes: ct.applicabilityNotes,
+          applicableLabelingTypes: ct.applicableLabelingTypes,
+          applicableCategorySlugs: ct.applicableCategorySlugs,
+          applicableMarketSlugs: ct.applicableMarketSlugs,
+          claimCategories: ct.claimCategories,
+          alternativeOfName: ct.alternativeOf?.name ?? null,
         }}
       />
     </div>

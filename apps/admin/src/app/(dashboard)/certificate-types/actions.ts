@@ -10,7 +10,7 @@ import { requireRole } from '@ilaunchify/auth'
 import { uploadFile, certificateThumbnailKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import type { CertificateTypeStatus, PartnerCertInstanceStatus } from '@ilaunchify/db'
+import type { CertificateTypeStatus, PartnerCertInstanceStatus, CertScope } from '@ilaunchify/db'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -66,8 +66,11 @@ export async function updateCertificateType(input: {
   name?: string
   description?: string
   verificationNotes?: string | null
+  scope?: CertScope | null
+  issuingBodyUrl?: string | null
+  applicabilityNotes?: string | null
 }): Promise<Result> {
-  await requireRole('ADMIN')
+  const admin = await requireRole('ADMIN')
   await prisma.certificateType.update({
     where: { id: input.id },
     data: {
@@ -76,8 +79,25 @@ export async function updateCertificateType(input: {
       ...(input.verificationNotes !== undefined
         ? { verificationNotes: input.verificationNotes?.trim() || null }
         : {}),
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      ...(input.issuingBodyUrl !== undefined
+        ? { issuingBodyUrl: input.issuingBodyUrl?.trim() || null }
+        : {}),
+      ...(input.applicabilityNotes !== undefined
+        ? { applicabilityNotes: input.applicabilityNotes?.trim() || null }
+        : {}),
     },
   })
+
+  await logAuditAs(admin, {
+    entityType: 'CertificateType',
+    entityId: input.id,
+    action: 'CERT_TYPE_UPDATE',
+    payload: {
+      fields: Object.keys(input).filter((k) => k !== 'id'),
+    },
+  })
+
   revalidatePath('/certificate-types')
   revalidatePath(`/certificate-types/${input.id}`)
   return { ok: true }

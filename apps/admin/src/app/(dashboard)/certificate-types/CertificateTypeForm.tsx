@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Upload, ShieldCheck } from 'lucide-react'
-import type { CertificateTypeStatus } from '@ilaunchify/db'
+import type { CertificateTypeStatus, CertScope } from '@ilaunchify/db'
 import {
   createCertificateType,
   updateCertificateType,
@@ -31,10 +31,29 @@ interface FormProps {
     /** Preview URLs for the currently-uploaded badges (null if none). */
     pngUrl?: string | null
     svgUrl?: string | null
+    /** C1 catalog metadata — editable scalars. */
+    scope?: CertScope | null
+    issuingBodyUrl?: string | null
+    applicabilityNotes?: string | null
+    /** C1 catalog metadata — read-only applicability (seeded from the master catalog). */
+    applicableLabelingTypes?: string[]
+    applicableCategorySlugs?: string[]
+    applicableMarketSlugs?: string[]
+    claimCategories?: string[]
+    alternativeOfName?: string | null
   }
 }
 
 const SLUG_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,40}[a-z0-9])?$/
+
+const SCOPE_OPTIONS: { value: CertScope; label: string }[] = [
+  { value: 'UNIVERSAL', label: 'Universal — applies to any product' },
+  { value: 'PRODUCT_LEVEL', label: 'Product-level — per finished good' },
+  { value: 'LABELING_SPECIFIC', label: 'Labeling-specific — depends on label type' },
+  { value: 'CATEGORY_SPECIFIC', label: 'Category-specific — only some categories' },
+  { value: 'FACILITY_LEVEL', label: 'Facility-level — certifies the plant' },
+  { value: 'COMPANY_LEVEL', label: 'Company-level — certifies the business' },
+]
 
 export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
   const router = useRouter()
@@ -44,6 +63,9 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [verificationNotes, setVerificationNotes] = useState(initial?.verificationNotes ?? '')
+  const [scope, setScope] = useState<CertScope | ''>(initial?.scope ?? '')
+  const [issuingBodyUrl, setIssuingBodyUrl] = useState(initial?.issuingBodyUrl ?? '')
+  const [applicabilityNotes, setApplicabilityNotes] = useState(initial?.applicabilityNotes ?? '')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [slugTouched, setSlugTouched] = useState(mode === 'edit')
@@ -68,6 +90,9 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
           name,
           description,
           verificationNotes,
+          scope: scope === '' ? null : scope,
+          issuingBodyUrl,
+          applicabilityNotes,
         })
         if (!result.ok) {
           setError(result.error)
@@ -182,6 +207,73 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
             disabled={isPending}
           />
         </Field>
+
+        {mode === 'edit' && (
+          <div className="space-y-5 rounded-md border border-zinc-100 bg-zinc-50/60 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-900">Catalog metadata</h3>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Drives applicability + the partner cert picker. Seeded from the master
+                catalog; edit the scalars here. Applicability arrays are catalog-managed
+                (re-seed to change).
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Scope" hint="How broadly the cert applies">
+                <select
+                  value={scope}
+                  onChange={(e) => setScope(e.target.value as CertScope | '')}
+                  disabled={isPending}
+                  className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+                >
+                  <option value="">— Not set —</option>
+                  {SCOPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Issuing body URL" hint="Link to the certifier's site">
+                <Input
+                  type="url"
+                  value={issuingBodyUrl}
+                  onChange={(e) => setIssuingBodyUrl(e.target.value)}
+                  placeholder="https://…"
+                  disabled={isPending}
+                />
+              </Field>
+            </div>
+
+            <Field
+              label="Applicability notes"
+              hint="When this cert is required / how reviewers should read it"
+            >
+              <textarea
+                value={applicabilityNotes}
+                onChange={(e) => setApplicabilityNotes(e.target.value)}
+                rows={2}
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+                disabled={isPending}
+              />
+            </Field>
+
+            {/* Read-only applicability — seeded from the master catalog. */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ChipList label="Labeling types" items={initial?.applicableLabelingTypes} />
+              <ChipList label="Categories" items={initial?.applicableCategorySlugs} />
+              <ChipList label="Markets" items={initial?.applicableMarketSlugs} />
+              <ChipList label="Claim categories" items={initial?.claimCategories} />
+            </div>
+            {initial?.alternativeOfName && (
+              <p className="text-xs text-zinc-500">
+                Accepted as an alternative to{' '}
+                <span className="font-medium text-zinc-700">{initial.alternativeOfName}</span>.
+              </p>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -325,6 +417,28 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
             </div>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+function ChipList({ label, items }: { label: string; items?: string[] }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-zinc-700">{label}</p>
+      {items && items.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {items.map((it) => (
+            <span
+              key={it}
+              className="inline-flex rounded-full bg-white px-2 py-0.5 text-[11px] text-zinc-600 ring-1 ring-zinc-200"
+            >
+              {it}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-zinc-400">— none —</p>
       )}
     </div>
   )
