@@ -15,6 +15,14 @@ export interface CertBadgePlacement {
   certInstanceId: string
   /** Admin-curated badge SVG/PNG URL; entries without a URL are skipped. */
   badgeUrl: string | null
+  /**
+   * C6/C8 render gate — only auto-place a badge the creator has consented to
+   * (LabelClaimConsent). `false` blocks the auto-add (the drawer opens a consent
+   * modal instead). `undefined` is treated as allowed for backward compatibility
+   * with callers that don't supply consent state. Already-placed badges are
+   * never stripped for missing consent (grandfathered via the earned-set).
+   */
+  consented?: boolean
 }
 
 export interface CertBadgeDieCut {
@@ -152,6 +160,9 @@ export async function reconcileCertBadges(
   const added: FabricObject[] = []
   for (const b of want) {
     if (existingIds.has(b.certInstanceId)) continue
+    // C6/C8 — never auto-stamp a badge the creator hasn't consented to. They
+    // add it via the Label drawer, which fires the consent modal first.
+    if (b.consented === false) continue
     const obj = await loadBadge(b.badgeUrl!, sizePx)
     if (!obj) continue
     ;(obj as { customType?: string }).customType = CERT_BADGE_TYPE

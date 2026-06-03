@@ -19,7 +19,6 @@ import { Plus, Tag, Check, Target, ShieldCheck } from 'lucide-react'
 import {
   addNutritionFactsPanel,
   addLabelSection,
-  addCertBadge,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
   type BrandCanvasAssets,
@@ -35,7 +34,12 @@ interface Props {
   brandAssets: BrandCanvasAssets
   /** The product's earned cert badges (Certifications section). */
   certBadges?: CertBadge[]
-  /** Die-cut spec — needed to place a cert badge in the safe area. */
+  /**
+   * C8 — request to add a cert badge. The shell decides: place immediately if
+   * already consented, else open the consent modal first (never auto-stamp).
+   */
+  onRequestAddCert?: (badge: CertBadge) => void
+  /** Die-cut spec (placement happens in the shell now; kept for compatibility). */
   dieCut?: DieCutSpec
   /**
    * Optional product context used to pre-fill required-section text. When
@@ -56,7 +60,7 @@ export function LabelDrawer({
   canvas,
   brandAssets,
   certBadges = [],
-  dieCut,
+  onRequestAddCert,
   productCtx,
 }: Props) {
   const canvasRoles = useCanvasRoles(canvas)
@@ -139,13 +143,10 @@ export function LabelDrawer({
     canvas.requestRenderAll()
   }
 
-  async function handleAddCert(badge: CertBadge) {
-    if (!canvas || !dieCut || !badge.badgeUrl) return
-    await addCertBadge(
-      canvas,
-      { certInstanceId: badge.certInstanceId, badgeUrl: badge.badgeUrl },
-      dieCut,
-    )
+  function handleAddCert(badge: CertBadge) {
+    if (!canvas || !badge.badgeUrl) return
+    // Delegate to the shell — it gates on consent before anything is placed.
+    onRequestAddCert?.(badge)
   }
 
   function handleFindCert(certInstanceId: string) {

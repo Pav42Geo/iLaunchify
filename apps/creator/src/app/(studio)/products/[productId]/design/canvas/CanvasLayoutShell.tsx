@@ -34,6 +34,7 @@ import {
   generateBlankSvgSpec,
   mmToInchesStr,
   reconcileCertBadges,
+  addCertBadge,
 } from '@ilaunchify/ui'
 import type { CertBadge } from './cert-badge-actions'
 import { useCanvasHistory } from './useCanvasHistory'
@@ -80,6 +81,9 @@ import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
+import { CertConsentModal } from './CertConsentModal'
+import { recordLabelClaimConsent } from './claim-consent-actions'
+import { toast } from 'sonner'
 import {
   Inbox,
   Tag,
@@ -212,7 +216,7 @@ export function CanvasLayoutShell({
   dieCut,
   brandAssets,
   initialDesignJson,
-  certBadges,
+  certBadges: initialCertBadges,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
   creatorTier = 'maker',
@@ -221,6 +225,55 @@ export function CanvasLayoutShell({
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
+
+  // C8 — cert badges held in state so consenting flips `consented` live without
+  // a reload. Seeded from the server (which already hydrated consent state).
+  const [certBadges, setCertBadges] = useState<CertBadge[]>(initialCertBadges)
+  const [pendingConsent, setPendingConsent] = useState<CertBadge | null>(null)
+  const [consentRecording, startConsent] = React.useTransition()
+
+  // Place a badge on the canvas (consent already satisfied).
+  const placeCertBadge = React.useCallback(
+    (badge: CertBadge) => {
+      if (!canvas || !badge.badgeUrl) return
+      void addCertBadge(
+        canvas,
+        { certInstanceId: badge.certInstanceId, badgeUrl: badge.badgeUrl },
+        { widthMm: dieCut.widthMm, heightMm: dieCut.heightMm, bleedMm: dieCut.bleedMm, safeAreaMm: dieCut.safeAreaMm },
+      )
+    },
+    [canvas, dieCut],
+  )
+
+  // C8 render gate — consented badges place immediately; un-consented ones open
+  // the consent modal first (never auto-stamp).
+  const handleRequestAddCert = React.useCallback(
+    (badge: CertBadge) => {
+      if (badge.consented) placeCertBadge(badge)
+      else setPendingConsent(badge)
+    },
+    [placeCertBadge],
+  )
+
+  const confirmConsent = React.useCallback(() => {
+    const badge = pendingConsent
+    if (!badge) return
+    startConsent(async () => {
+      const res = await recordLabelClaimConsent({
+        productId,
+        certInstanceId: badge.certInstanceId,
+      })
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      setCertBadges((prev) =>
+        prev.map((b) => (b.certInstanceId === badge.certInstanceId ? { ...b, consented: true } : b)),
+      )
+      placeCertBadge({ ...badge, consented: true })
+      setPendingConsent(null)
+    })
+  }, [pendingConsent, productId, placeCertBadge])
 
   // Reconcile the managed cert-badge zone after the saved design hydrates.
   // Stage fires onHydrated post-loadFromJSON, so badges aren't wiped by the
@@ -538,6 +591,7 @@ export function CanvasLayoutShell({
               setGuides={setGuides}
               brandAssets={brandAssets}
               certBadges={certBadges}
+              onRequestAddCert={handleRequestAddCert}
               canvas={canvas}
               productId={productId}
               productName={productName}
@@ -660,6 +714,14 @@ export function CanvasLayoutShell({
         brandName={brandAssets.brandName}
         open={mockupOpen}
         onClose={() => setMockupOpen(false)}
+      />
+
+      {/* C8 — consent-at-claim before a cert badge is placed on the label. */}
+      <CertConsentModal
+        cert={pendingConsent}
+        isPending={consentRecording}
+        onConfirm={confirmConsent}
+        onClose={() => setPendingConsent(null)}
       />
 
       {/* Export modal (DS-64) — generates print-ready PDF / PNG. DS-69
@@ -911,6 +973,7 @@ function ToolDrawer({
   setGuides,
   brandAssets,
   certBadges,
+  onRequestAddCert,
   canvas,
   productId,
   productName,
@@ -923,6 +986,7 @@ function ToolDrawer({
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
   certBadges: CertBadge[]
+  onRequestAddCert: (badge: CertBadge) => void
   canvas: FabricCanvas | null
   productId: string
   productName: string
@@ -981,6 +1045,7 @@ function ToolDrawer({
             canvas={canvas}
             brandAssets={brandAssets}
             certBadges={certBadges}
+            onRequestAddCert={onRequestAddCert}
             dieCut={dieCut}
             productCtx={{
               productName,
