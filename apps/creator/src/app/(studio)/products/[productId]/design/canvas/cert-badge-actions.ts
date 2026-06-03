@@ -25,6 +25,12 @@ export interface CertBadge {
   certTypeSlug: string
   /** Admin-curated badge SVG/PNG, or null if no badge was uploaded for the type. */
   badgeUrl: string | null
+  /**
+   * C6 render gate — true once the creator has recorded a LabelClaimConsent for
+   * this cert instance + product. The studio must NOT render a badge until this
+   * is true (never auto-stamp). Available now; the canvas gate is wired in C8.
+   */
+  consented: boolean
 }
 
 export interface ProductCertBadgesResult {
@@ -70,6 +76,13 @@ export async function loadProductCertBadges(
 
   const hostDesignId = await ensureCertHostSurface(productId)
   if (!product.productTemplateId) return { badges: [], hostDesignId }
+
+  // C6 — which cert instances this creator has ACTIVE consent to display.
+  const consentRows = await prisma.labelClaimConsent.findMany({
+    where: { userId: user.id, productId, revokedAt: null, partnerCertificateInstanceId: { not: null } },
+    select: { partnerCertificateInstanceId: true },
+  })
+  const consentedIds = new Set(consentRows.map((r) => r.partnerCertificateInstanceId))
 
   const certs = await prisma.productCertificate.findMany({
     where: {
@@ -122,6 +135,7 @@ export async function loadProductCertBadges(
       certTypeName: ct.name,
       certTypeSlug: ct.slug,
       badgeUrl,
+      consented: consentedIds.has(c.instance.id),
     })
   }
 

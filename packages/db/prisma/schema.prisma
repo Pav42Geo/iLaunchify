@@ -763,6 +763,7 @@ model Partner {
   packagingSystems        PackagingSystem[]
   certificateInstances    PartnerCertificateInstance[]
   certificateTypeRequests CertificateTypeRequest[]      @relation("PartnerCertTypeRequests") // C1
+  documents               PartnerDocument[]             @relation("PartnerDocuments") // C6
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -4072,4 +4073,57 @@ model LabelingSymbolVariant {
   labelingSymbol     LabelingSymbol @relation(fields: [labelingSymbolId], references: [id], onDelete: Cascade)
 
   @@index([labelingSymbolId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Certificates C6 — consent-at-claim + partner document vault
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PartnerDocumentStatus {
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+// The load-bearing liability record — one row per cert badge a creator consents to place.
+model LabelClaimConsent {
+  id                           String    @id @default(cuid())
+  userId                       String // creator User who consented (soft FK)
+  productId                    String? // creator Product the design belongs to (soft FK)
+  productTemplateId            String? // manufacturer template (soft FK)
+  designVersion                String? // design snapshot/version id at consent time
+  partnerCertificateInstanceId String? // the specific VERIFIED instance being claimed (soft FK)
+  certificateTypeId            String? // cert type (soft FK)
+  certName                     String // denormalized cert name for the record
+  consentTextVersion           String // which consent wording was shown
+  ipAddress                    String?
+  userAgent                    String?
+  metadata                     Json?
+  revokedAt                    DateTime? // set if the creator later removes the badge / withdraws
+  createdAt                    DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([productId])
+  @@index([partnerCertificateInstanceId])
+}
+
+// KYB / compliance document vault — real relation to Partner.
+model PartnerDocument {
+  id              String                @id @default(cuid())
+  partnerId       String
+  documentType    String // e.g. ARTICLES_OF_INCORPORATION, AUTHORIZED_SIGNER_ID, FFR, CGMP, MOCRA, CERTIFICATE_OF_INSURANCE
+  fileId          String // PartnerFile id (soft FK)
+  status          PartnerDocumentStatus @default(PENDING_REVIEW)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  expiryDate      DateTime?
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  partner         Partner               @relation("PartnerDocuments", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, status])
+  @@index([documentType])
 }

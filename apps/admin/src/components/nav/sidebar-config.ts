@@ -69,6 +69,7 @@ import {
   Mail,
   TrendingUp,
   Recycle,
+  BadgeCheck,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -208,6 +209,7 @@ const PRIMARY: SidebarRegion = {
       icon: Shield,
       children: [
         { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access' },
+        { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents' },
         { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true },
       ],
