@@ -177,7 +177,9 @@ export async function uploadCanvasImage(
       contentDisposition: 'inline',
     })
 
-    const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, '')
+    const publicBase = (
+      process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_URL
+    )?.replace(/\/$/, '')
     if (!publicBase) {
       return {
         ok: false,

@@ -172,7 +172,9 @@ async function uploadCertBadge(formData: FormData, kind: CertBadgeKind): Promise
   // The PNG is shown on public, statically-rendered marketing pages → it needs
   // a stable public URL. The SVG is read through a signed URL in the studio,
   // so a public URL is optional for it (set it too when the bucket is public).
-  const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, '')
+  const publicBase = (
+    process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_URL
+  )?.replace(/\/$/, '')
   const publicUrl = publicBase ? `${publicBase}/${upload.key}` : null
 
   // Asset row (ownerType=PLATFORM, ownerId=null — these aren't partner-owned).
