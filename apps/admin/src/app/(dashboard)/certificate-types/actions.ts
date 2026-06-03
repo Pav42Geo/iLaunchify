@@ -286,6 +286,67 @@ export async function setCertInstanceStatus(input: {
     },
   })
 
+  // C4 — when a RENEWAL instance is verified, migrate the old instance's product
+  // attachments onto the new one, retire the old instance, and clear the grace
+  // "needs cert refresh" flag on every affected template.
+  if (input.to === 'VERIFIED') {
+    const replaced = await prisma.partnerCertificateInstance.findMany({
+      where: { replacedById: input.instanceId },
+      include: { productAssignments: true },
+    })
+    for (const old of replaced) {
+      for (const pa of old.productAssignments) {
+        const dupe = await prisma.productCertificate.findUnique({
+          where: {
+            productTemplateId_instanceId: {
+              productTemplateId: pa.productTemplateId,
+              instanceId: input.instanceId,
+            },
+          },
+        })
+        if (!dupe) {
+          await prisma.productCertificate.create({
+            data: {
+              productTemplateId: pa.productTemplateId,
+              instanceId: input.instanceId,
+              appliesToPackagingSystemIds: pa.appliesToPackagingSystemIds,
+            },
+          })
+        }
+        await prisma.productCertificate
+          .delete({
+            where: {
+              productTemplateId_instanceId: {
+                productTemplateId: pa.productTemplateId,
+                instanceId: old.id,
+              },
+            },
+          })
+          .catch(() => {})
+        await prisma.productTemplate
+          .update({ where: { id: pa.productTemplateId }, data: { certRefreshNeededAt: null } })
+          .catch(() => {})
+      }
+
+      if (old.status !== 'EXPIRED') {
+        await prisma.partnerCertificateInstance.update({
+          where: { id: old.id },
+          data: { status: 'EXPIRED' },
+        })
+      }
+
+      await logAuditAs(admin, {
+        entityType: 'PartnerCertificateInstance',
+        entityId: old.id,
+        action: 'CERT_INSTANCE_RENEWAL_MIGRATED',
+        payload: {
+          migratedToInstanceId: input.instanceId,
+          attachmentsMoved: old.productAssignments.length,
+        },
+      })
+    }
+  }
+
   revalidatePath(`/partners/${inst.partnerId}/verification`)
   revalidatePath(`/partners/${inst.partnerId}`)
   return { ok: true }

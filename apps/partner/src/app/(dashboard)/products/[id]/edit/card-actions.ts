@@ -679,13 +679,26 @@ export async function attachCertificate(input: {
 
   const instance = await prisma.partnerCertificateInstance.findUnique({
     where: { id: input.instanceId },
-    select: { partnerId: true, status: true },
+    select: { partnerId: true, status: true, expiryDate: true },
   })
   if (!instance || instance.partnerId !== partner.id) {
     return { ok: false, error: 'Certificate not found in your catalog.' }
   }
   if (instance.status !== 'VERIFIED') {
     return { ok: false, error: 'Only VERIFIED certificates can be attached. Wait for admin review.' }
+  }
+  // C4 hard block — never attach an expired cert, even if the nightly cron
+  // hasn't flipped its (VERIFIED) status to EXPIRED yet.
+  if (instance.expiryDate.getTime() < Date.now()) {
+    const when = instance.expiryDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+    return {
+      ok: false,
+      error: `This certificate expired on ${when}. Renew it from your Certifications page before attaching.`,
+    }
   }
 
   const existing = await prisma.productCertificate.findUnique({

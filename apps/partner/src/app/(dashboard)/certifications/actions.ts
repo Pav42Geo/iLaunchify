@@ -167,6 +167,123 @@ export async function claimCertificate(formData: FormData): Promise<Result<{ id:
 }
 
 // -----------------------------------------------------------------------------
+// RENEW an existing instance (C4). Creates a NEW PartnerCertificateInstance
+// (status PENDING_REVIEW) with a fresh PDF + expiry, and links the OLD instance
+// forward via replacedById = newInstance.id. The old instance keeps its status
+// + product attachments until an admin verifies the new one, at which point
+// attachments auto-migrate (see admin setCertInstanceStatus). This preserves
+// the full audit trail rather than mutating the expired row in place.
+// -----------------------------------------------------------------------------
+
+export async function renewCertificate(formData: FormData): Promise<Result<{ id: string }>> {
+  const { user, partner, error } = await requirePartner()
+  if (error) return { ok: false, error }
+
+  const oldInstanceId = String(formData.get('oldInstanceId') ?? '')
+  const certificateNumber = String(formData.get('certificateNumber') ?? '').trim() || null
+  const issuingBody = String(formData.get('issuingBody') ?? '').trim() || null
+  const issueDateRaw = String(formData.get('issueDate') ?? '').trim()
+  const expiryDateRaw = String(formData.get('expiryDate') ?? '').trim()
+  const notes = String(formData.get('notes') ?? '').trim() || null
+  const file = formData.get('file')
+
+  if (!oldInstanceId) return { ok: false, error: 'Missing the certificate being renewed.' }
+  if (!expiryDateRaw) return { ok: false, error: 'New expiry date is required.' }
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'A renewed PDF upload is required.' }
+  }
+  if (file.size > UPLOAD_MAX_BYTES) return { ok: false, error: 'File too large (max 20 MB).' }
+  if (!ALLOWED_MIME.has(file.type)) {
+    return { ok: false, error: `Unsupported file type "${file.type}". Use PDF, PNG, JPEG, or WebP.` }
+  }
+
+  const old = await prisma.partnerCertificateInstance.findUnique({
+    where: { id: oldInstanceId },
+    include: { certificateType: { select: { id: true, name: true } } },
+  })
+  if (!old) return { ok: false, error: 'Certificate to renew not found.' }
+  if (old.partnerId !== partner.id) return { ok: false, error: 'Not your certificate.' }
+  if (old.replacedById) {
+    return { ok: false, error: 'A renewal is already in progress for this certificate.' }
+  }
+
+  // Create the new instance first (need its id for the R2 key).
+  let instance
+  try {
+    instance = await prisma.partnerCertificateInstance.create({
+      data: {
+        partnerId: partner.id,
+        certificateTypeId: old.certificateType.id,
+        pdfFileId: 'pending',
+        certificateNumber,
+        issuingBody,
+        issueDate: issueDateRaw ? new Date(issueDateRaw) : null,
+        expiryDate: new Date(expiryDateRaw),
+        status: 'PENDING_REVIEW',
+        notes,
+      },
+    })
+  } catch (err) {
+    return { ok: false, error: `Could not create renewal: ${(err as Error).message}` }
+  }
+
+  let upload
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    upload = await uploadFile({
+      key: certPdfKey({ partnerId: partner.id, instanceId: instance.id, filename: file.name }),
+      body: buffer,
+      contentType: file.type,
+      contentDisposition: `attachment; filename="${file.name.replace(/"/g, '_')}"`,
+    })
+  } catch (err) {
+    await prisma.partnerCertificateInstance.delete({ where: { id: instance.id } }).catch(() => {})
+    return { ok: false, error: `PDF upload failed: ${(err as Error).message}` }
+  }
+
+  const partnerFile = await prisma.partnerFile.create({
+    data: {
+      partnerId: partner.id,
+      sectionType: 'DOCUMENTS',
+      kind: 'CERTIFICATE',
+      r2Key: upload.key,
+      originalFilename: file.name,
+      contentType: file.type,
+      sizeBytes: upload.sizeBytes,
+      uploadedById: user.id,
+    },
+  })
+
+  // Link new PDF + point the OLD instance forward to the new one.
+  await prisma.$transaction([
+    prisma.partnerCertificateInstance.update({
+      where: { id: instance.id },
+      data: { pdfFileId: partnerFile.id },
+    }),
+    prisma.partnerCertificateInstance.update({
+      where: { id: old.id },
+      data: { replacedById: instance.id },
+    }),
+  ])
+
+  await logAuditAs(user, {
+    entityType: 'PartnerCertificateInstance',
+    entityId: instance.id,
+    action: 'CERT_INSTANCE_RENEW',
+    toValue: 'PENDING_REVIEW',
+    payload: {
+      partnerId: partner.id,
+      certificateType: old.certificateType.name,
+      replacesInstanceId: old.id,
+      filename: file.name,
+    },
+  })
+
+  revalidatePath('/certifications')
+  return { ok: true, data: { id: instance.id } }
+}
+
+// -----------------------------------------------------------------------------
 // UPDATE editable fields on an existing instance (number/issuing body/dates).
 // PDF is replaced via separate action.
 // -----------------------------------------------------------------------------

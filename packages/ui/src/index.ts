@@ -23,6 +23,7 @@
 //   import preset from '@ilaunchify/ui/tailwind.preset'  in tailwind.config.ts
 
 export { cn } from './lib/utils'
+export * from './lib/certExpiry'
 export { brandThemeToCssVars } from './brand-theme'
 export * from './fonts'
 
@@ -53,6 +54,7 @@ export * from './components/AppHeaderUserMenu'
 export * from './components/IngredientSlotCard'
 export * from './components/CertChip'
 export * from './components/CertStrip'
+export * from './components/CertExpiryBadge'
 export * from './components/PricingTierModal'
 export * from './components/pricing-tier-data'
 export * from './components/PartnerTypeCard'

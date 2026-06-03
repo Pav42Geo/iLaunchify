@@ -10,7 +10,15 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@ilaunchify/ui'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Button,
+  CertExpiryBadge,
+} from '@ilaunchify/ui'
 import { CheckCircle2, XCircle, FileText, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PartnerCertInstanceStatus } from '@ilaunchify/db'
@@ -109,9 +117,10 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-zinc-900">{inst.certificateType.name}</span>
             <StatusPill status={inst.status} />
+            <CertExpiryBadge expiryDate={inst.expiryDate} />
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}

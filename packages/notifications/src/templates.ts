@@ -71,6 +71,26 @@ interface TemplateData {
     dispatchType: string
     reason?: string
   }
+  // C4 — certificate expiry tracking
+  CERT_EXPIRING_SOON: {
+    instanceId: string
+    certName: string
+    daysRemaining: number
+    expiryDate: string // ISO
+  }
+  CERT_EXPIRED: {
+    instanceId: string
+    certName: string
+    expiryDate: string // ISO
+    affectedProductCount: number
+  }
+  ADMIN_CERT_EXPIRED_ON_PUBLISHED: {
+    instanceId: string
+    certName: string
+    companyName: string
+    affectedProductCount: number
+    creatorNames: string[]
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -240,9 +260,53 @@ export function renderTemplate<E extends NotificationEvent>(
         link: `/orders/${d.orderId}`,
       }
     }
+    // -----------------------------------------------------------------------
+    // C4 — certificate expiry tracking
+    // -----------------------------------------------------------------------
+    case 'CERT_EXPIRING_SOON': {
+      const d = data as TemplateData['CERT_EXPIRING_SOON']
+      const when = fmtDate(d.expiryDate)
+      return {
+        title:
+          d.daysRemaining <= 7
+            ? `${d.certName} expires in ${d.daysRemaining} day${d.daysRemaining === 1 ? '' : 's'}`
+            : `${d.certName} expires soon`,
+        body: `Your ${d.certName} certificate expires on ${when}. Renew it now so your live products keep their verified badge.`,
+        link: `/certifications?renew=${d.instanceId}`,
+      }
+    }
+    case 'CERT_EXPIRED': {
+      const d = data as TemplateData['CERT_EXPIRED']
+      return {
+        title: `${d.certName} has expired`,
+        body:
+          d.affectedProductCount > 0
+            ? `Your ${d.certName} certificate expired on ${fmtDate(d.expiryDate)}. ${d.affectedProductCount} product${d.affectedProductCount === 1 ? '' : 's'} now need${d.affectedProductCount === 1 ? 's' : ''} a refreshed cert. Renew to restore the badge.`
+            : `Your ${d.certName} certificate expired on ${fmtDate(d.expiryDate)}. Renew it to keep attaching it to products.`,
+        link: `/certifications?renew=${d.instanceId}`,
+      }
+    }
+    case 'ADMIN_CERT_EXPIRED_ON_PUBLISHED': {
+      const d = data as TemplateData['ADMIN_CERT_EXPIRED_ON_PUBLISHED']
+      const creators =
+        d.creatorNames.length > 0
+          ? ` Affected creators: ${d.creatorNames.slice(0, 5).join(', ')}${d.creatorNames.length > 5 ? `, +${d.creatorNames.length - 5} more` : ''}.`
+          : ''
+      return {
+        title: `Expired cert on ${d.affectedProductCount} live product${d.affectedProductCount === 1 ? '' : 's'}`,
+        body: `${d.companyName}'s ${d.certName} expired while attached to ${d.affectedProductCount} PUBLISHED product${d.affectedProductCount === 1 ? '' : 's'}.${creators} Products are flagged "needs cert refresh".`,
+        link: `/audit`,
+      }
+    }
     default:
       return { title: `${event}`, body: '' }
   }
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function humanDispatchType(t: string): string {

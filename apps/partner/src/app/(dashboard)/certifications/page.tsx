@@ -10,15 +10,29 @@
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CertExpiryBadge,
+  certExpiryTone,
+} from '@ilaunchify/ui'
 import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { CertificationsClient } from './CertificationsClient'
+import { RenewCertButton } from './RenewCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
 
-export default async function CertificationsPage() {
+export default async function CertificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ renew?: string }>
+}) {
+  const { renew: renewId } = await searchParams
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -100,7 +114,7 @@ export default async function CertificationsPage() {
               iconClass="text-emerald-600"
             >
               {verified.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
               ))}
             </CertSection>
           )}
@@ -112,7 +126,7 @@ export default async function CertificationsPage() {
               iconClass="text-amber-600"
             >
               {pending.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
               ))}
             </CertSection>
           )}
@@ -124,7 +138,7 @@ export default async function CertificationsPage() {
               iconClass="text-red-600"
             >
               {issues.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} />
+                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
               ))}
             </CertSection>
           )}
@@ -204,11 +218,26 @@ type CertRowInstance = {
   expiryDate: Date
   rejectionReason: string | null
   notes: string | null
+  replacedById: string | null
   certificateType: { name: string; slug: string; description: string }
 }
 
-function CertRow({ inst, badgeUrl }: { inst: CertRowInstance; badgeUrl?: string | null }) {
-  const expSoon = isExpiringSoon(inst.expiryDate)
+function CertRow({
+  inst,
+  badgeUrl,
+  renewId,
+}: {
+  inst: CertRowInstance
+  badgeUrl?: string | null
+  renewId?: string
+}) {
+  // Offer renewal when expired, or when a still-valid cert is within 90 days of
+  // expiry (tone is 'soon' or 'urgent'). Pending/rejected rows don't renew.
+  const tone = certExpiryTone(inst.expiryDate)
+  const canRenew =
+    inst.status === 'EXPIRED' ||
+    (inst.status === 'VERIFIED' && (tone === 'soon' || tone === 'urgent'))
+
   return (
     <div className="rounded-md border border-zinc-200 bg-white p-3">
       <div className="flex items-start gap-3">
@@ -225,14 +254,14 @@ function CertRow({ inst, badgeUrl }: { inst: CertRowInstance; badgeUrl?: string 
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-zinc-900">{inst.certificateType.name}</div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-medium text-zinc-900">{inst.certificateType.name}</div>
+            <CertExpiryBadge expiryDate={inst.expiryDate} />
+          </div>
           <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}
             {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
-            <span className={expSoon ? 'font-medium text-amber-700' : ''}>
-              Expires {new Date(inst.expiryDate).toLocaleDateString()}
-              {expSoon && ' ⚠'}
-            </span>
+            <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>
           </div>
           {inst.status === 'REJECTED' && inst.rejectionReason && (
             <div className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-800">
@@ -240,14 +269,18 @@ function CertRow({ inst, badgeUrl }: { inst: CertRowInstance; badgeUrl?: string 
               {inst.rejectionReason}
             </div>
           )}
+          {canRenew && (
+            <div className="mt-2">
+              <RenewCertButton
+                instanceId={inst.id}
+                certName={inst.certificateType.name}
+                renewalPending={!!inst.replacedById}
+                autoOpen={renewId === inst.id}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
-}
-
-function isExpiringSoon(d: Date): boolean {
-  const ms = new Date(d).getTime() - Date.now()
-  const days = ms / (1000 * 60 * 60 * 24)
-  return days <= 60 && days > 0
 }
