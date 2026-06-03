@@ -24,9 +24,13 @@
 import { prisma } from '@ilaunchify/db'
 import { createDispatches } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { appLogger } from '@ilaunchify/logger'
 import type Stripe from 'stripe'
 import { stripe } from './client'
 import { cancelProductionSubscription } from './subscriptions'
+
+// Structured logger for the webhook hot path — every line carries app=payments.
+const log = appLogger('payments')
 
 export async function handleStripeEvent(event: Stripe.Event): Promise<{ handled: boolean }> {
   switch (event.type) {
@@ -438,11 +442,11 @@ async function onCheckoutSessionCompleted(
     // Hard mismatch — Stripe shouldn't fire this without our metadata
     // because createTierCheckoutSession always pins both. Log & bail
     // rather than partially apply.
-    // eslint-disable-next-line no-console
-    console.error(
-      '[webhook] checkout.session.completed tier session missing metadata',
-      { sessionId: session.id, metadata: session.metadata },
-    )
+    log.error('checkout.session.completed tier session missing metadata', {
+      event: 'checkout.session.completed',
+      sessionId: session.id,
+      metadata: session.metadata,
+    })
     return
   }
 

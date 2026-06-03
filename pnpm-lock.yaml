@@ -516,6 +516,12 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/logger:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/marketplace:
     dependencies:
       '@ilaunchify/db':
@@ -572,6 +578,9 @@ importers:
       '@ilaunchify/db':
         specifier: workspace:*
         version: link:../db
+      '@ilaunchify/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@ilaunchify/orders':
         specifier: workspace:*
         version: link:../orders
