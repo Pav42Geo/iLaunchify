@@ -22,7 +22,7 @@ import {
 import { CheckCircle2, XCircle, FileText, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PartnerCertInstanceStatus } from '@ilaunchify/db'
-import { setCertInstanceStatus } from '../../../certificate-types/actions'
+import { setCertInstanceStatus, getCertificatePdfUrl } from '../../../certificate-types/actions'
 
 export interface CertInstanceRow {
   id: string
@@ -83,6 +83,17 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
 
+  function viewPdf() {
+    startTransition(async () => {
+      const result = await getCertificatePdfUrl({ instanceId: inst.id })
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      window.open(result.data.url, '_blank', 'noopener,noreferrer')
+    })
+  }
+
   function decide(to: PartnerCertInstanceStatus) {
     startTransition(async () => {
       const result = await setCertInstanceStatus({
@@ -130,9 +141,15 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
             )}
             <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>
             {inst.pdfFileName && (
-              <span className="truncate text-zinc-600" title={inst.pdfFileName}>
-                📎 {inst.pdfFileName}
-              </span>
+              <button
+                type="button"
+                onClick={viewPdf}
+                disabled={isPending}
+                title={`View ${inst.pdfFileName} (logged)`}
+                className="inline-flex max-w-[240px] items-center gap-1 truncate rounded text-zinc-600 underline-offset-2 hover:text-emerald-700 hover:underline disabled:opacity-50"
+              >
+                📎 <span className="truncate">{inst.pdfFileName}</span>
+              </button>
             )}
           </div>
           {inst.certificateType.verificationNotes && (

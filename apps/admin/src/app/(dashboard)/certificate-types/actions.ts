@@ -10,7 +10,13 @@ import { requireRole } from '@ilaunchify/auth'
 import { uploadFile, certificateThumbnailKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import type { CertificateTypeStatus, PartnerCertInstanceStatus, CertScope } from '@ilaunchify/db'
+import type {
+  CertificateTypeStatus,
+  PartnerCertInstanceStatus,
+  CertScope,
+  DocumentAccessReason,
+} from '@ilaunchify/db'
+import { readPartnerDocument } from '@/lib/document-access'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -238,6 +244,35 @@ export async function uploadCertificateTypeThumbnail(formData: FormData): Promis
 /** Vector SVG print badge (Design Studio / production) → badgeSvgFileId. */
 export async function uploadCertificateTypeBadgeSvg(formData: FormData): Promise<Result> {
   return uploadCertBadge(formData, 'SVG')
+}
+
+// -----------------------------------------------------------------------------
+// P10 — view a partner's private cert PDF. Generates a short-lived signed URL
+// and writes a DocumentAccessLog row (GDPR accountability) via the shared
+// read choke-point. This is the only sanctioned way to surface the PDF.
+// -----------------------------------------------------------------------------
+
+export async function getCertificatePdfUrl(input: {
+  instanceId: string
+  reason?: DocumentAccessReason
+}): Promise<Result<{ url: string }>> {
+  const admin = await requireRole('ADMIN')
+
+  const inst = await prisma.partnerCertificateInstance.findUnique({
+    where: { id: input.instanceId },
+    select: { pdfFileId: true },
+  })
+  if (!inst || !inst.pdfFileId || inst.pdfFileId === 'pending') {
+    return { ok: false, error: 'No PDF on file for this certificate.' }
+  }
+
+  const result = await readPartnerDocument({
+    fileId: inst.pdfFileId,
+    actorUserId: admin.id,
+    reason: input.reason ?? 'VERIFICATION',
+  })
+  if (!result.ok) return { ok: false, error: result.error }
+  return { ok: true, data: { url: result.url } }
 }
 
 // -----------------------------------------------------------------------------
