@@ -1,5 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { buildSamplePricingRows, type PricingTierRow } from '@ilaunchify/ui'
+import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
+import type { TierKey } from '@ilaunchify/auth'
 
 /**
  * Server helper — real per-unit pricing for a ProductTemplate, by quantity band.
@@ -46,4 +48,57 @@ export async function getPricingTierRows(
 function formatBand(minQty: number, maxQty: number | null): string {
   if (maxQty === null) return `${minQty.toLocaleString()}+`
   return `${minQty.toLocaleString()} – ${maxQty.toLocaleString()}`
+}
+
+// -----------------------------------------------------------------------------
+// P3 — real creator price matrix.
+//
+// creator per-unit price = manufacturer unit cost (band) + tier-discounted
+// platform fee. The fee % comes from lookupFeeRate (the seeded PlanFeature /
+// FeeRule table — the source of truth), NOT a hardcoded number. Production
+// shipping is excluded here: it's destination/qty-dependent and estimated at
+// checkout under the partner-managed-carrier model (V1). docs/builds/
+// _platform-v1-finish-line.md P3.
+// -----------------------------------------------------------------------------
+
+export interface CreatorPricingMatrix {
+  rows: PricingTierRow[]
+  /** Platform-fee percent applied at the viewer's tier (from lookupFeeRate). */
+  feePercent: number
+  /** Tier the price was computed at (signed-out → 'maker'). */
+  viewerTier: TierKey
+}
+
+// Fallback if the production-order fee rule isn't seeded for the plan — use the
+// Maker headline rate so we never under-quote the platform fee.
+const FALLBACK_FEE_PERCENT = 15
+
+export async function getCreatorPricingMatrix(
+  slug: string,
+  viewerTier: TierKey,
+  fallbackBasePrice: number,
+): Promise<CreatorPricingMatrix> {
+  // Base = manufacturer unit cost per band (real DB tiers, or synthetic fallback).
+  const baseRows = await getPricingTierRows(slug, fallbackBasePrice)
+
+  const feeRule = await lookupFeeRate(
+    creatorTierToPlanCode(viewerTier),
+    FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL,
+  )
+  const feePercent = feeRule?.ratePercent ?? FALLBACK_FEE_PERCENT
+
+  const rows: PricingTierRow[] = baseRows.map((r) => {
+    const manufacturerCents = r.perUnitCents
+    const platformFeeCents = Math.round((manufacturerCents * feePercent) / 100)
+    return {
+      ...r,
+      manufacturerCents,
+      platformFeeCents,
+      feePercent,
+      // All-in creator unit price (shipping excluded — estimated at checkout).
+      perUnitCents: manufacturerCents + platformFeeCents,
+    }
+  })
+
+  return { rows, feePercent, viewerTier }
 }

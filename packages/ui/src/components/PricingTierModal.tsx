@@ -33,10 +33,14 @@ export interface PricingTierModalProps {
   productName: string
   variantName?: string
   rows: PricingTierRow[]
-  /** Visitor's current tier — drives the upgrade CTA (fee-side benefit). */
+  /** Visitor's current tier — the platform fee for this tier is baked into the
+   *  rows' perUnitCents. Drives the breakdown line + upgrade CTA. */
   currentTier: TierKey
   /** Visitor's current quantity from the detail-page input (used for the subtotal note). */
   currentQuantity: number
+  /** Signed-in? When false the price shown is the Maker rate — surface a
+   *  "sign in for your tier" hint. */
+  isAuthenticated?: boolean
   /** Called when the visitor clicks "Upgrade to [tier]" inside the modal. */
   onUpgrade?: (target: TierKey) => void
 }
@@ -68,10 +72,13 @@ export function PricingTierModal({
   rows,
   currentTier,
   currentQuantity,
+  isAuthenticated = false,
   onUpgrade,
 }: PricingTierModalProps) {
   const upgrade = nextTier(currentTier)
   const matchedRow = findRowForQuantity(rows, currentQuantity)
+  // The platform-fee % is uniform across rows (it's a tier property).
+  const feePercent = rows.find((r) => r.feePercent !== undefined)?.feePercent ?? null
 
   // Subtotal at the visitor's current quantity. The unit price is the same
   // across creator tiers (locked model) — tier benefits are fee-side.
@@ -152,11 +159,49 @@ export function PricingTierModal({
           </table>
         </div>
 
-        <div className="px-6 py-4 border-t border-ink-200 bg-cream text-[13px] text-ink-700 space-y-1">
+        <div className="px-6 py-4 border-t border-ink-200 bg-cream text-[13px] text-ink-700 space-y-1.5">
           {orderNote && <div>{orderNote}</div>}
+
+          {/* P3 breakdown for the matched band — manufacturer + tier fee. */}
+          {matchedRow?.manufacturerCents !== undefined &&
+            matchedRow.platformFeeCents !== undefined && (
+              <div className="text-ink-600 font-mono text-[12px] tabular-nums">
+                {fmt(matchedRow.manufacturerCents / 100)} manufacturer
+                {' + '}
+                {fmt(matchedRow.platformFeeCents / 100)} platform fee
+                {feePercent !== null && ` (${feePercent}% ${TIER_LABEL[currentTier]})`}
+                {' = '}
+                <strong className="text-ink-900">{fmt(matchedRow.perUnitCents / 100)}/unit</strong>
+              </div>
+            )}
+
+          {/* Tier note — the price already reflects the viewer's tier fee. */}
           <div className="text-ink-600">
-            Same unit price for every plan — <strong className="text-ink-900">Builder</strong> and{' '}
-            <strong className="text-ink-900">Agency</strong> tiers lower your platform fee, not the unit cost.
+            {isAuthenticated ? (
+              <>
+                Priced at your <strong className="text-ink-900">{TIER_LABEL[currentTier]}</strong>{' '}
+                tier{feePercent !== null && ` (${feePercent}% platform fee)`}.
+                {upgrade && (
+                  <>
+                    {' '}
+                    <strong className="text-ink-900">{TIER_LABEL[upgrade]}</strong> lowers the fee
+                    further.
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                Showing <strong className="text-ink-900">Maker</strong> pricing
+                {feePercent !== null && ` (${feePercent}% platform fee)`}.{' '}
+                <strong className="text-ink-900">Sign in</strong> to see pricing at your tier.
+              </>
+            )}
+          </div>
+
+          {/* Shipping is not in the unit price — partner-managed, estimated at checkout. */}
+          <div className="text-ink-500 text-[12px]">
+            Production shipping isn&apos;t included — it&apos;s estimated at checkout based on
+            quantity and destination.
           </div>
         </div>
 

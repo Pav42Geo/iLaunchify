@@ -39,6 +39,9 @@ export interface ProductDetailConfiguratorProps {
   /** Per-unit pricing by quantity band, loaded server-side from
    * ProductTemplatePricingTier (synthetic fallback for fixture-only demos). */
   pricingRows: PricingTierRow[]
+  /** Viewer's creator tier — drives the platform-fee already baked into the
+   * pricing rows + the "sign in for your tier" hint. 'maker' when signed-out. */
+  viewerTier?: 'maker' | 'builder' | 'agency'
   /** When true, "Start launching" goes straight to the Design Studio with the
    * selection carried as query params. When false (default), it lands on
    * /start, which converts the visitor into a signed-up creator first. */
@@ -49,6 +52,7 @@ export function ProductDetailConfigurator({
   template,
   detail,
   pricingRows,
+  viewerTier = 'maker',
   isAuthenticated = false,
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
@@ -75,8 +79,9 @@ export function ProductDetailConfigurator({
     return eligible.length > 0 ? eligible[eligible.length - 1]! : rows[0]!
   }, [rows, quantity])
 
-  // Maker is the default tier in V1 demo (logged-out / new creator).
-  const currentTier = 'maker' as const
+  // Viewer's real tier (Maker for signed-out) — the platform fee for this tier
+  // is already baked into pricingRows.perUnitCents by getCreatorPricingMatrix.
+  const currentTier = viewerTier
 
   const packagingDelta =
     detail.packaging.find((p) => p.id === packagingId)?.priceDelta ?? 0
@@ -187,6 +192,7 @@ export function ProductDetailConfigurator({
             rows={rows}
             currentTier={currentTier}
             currentQuantity={quantity}
+            isAuthenticated={isAuthenticated}
           />
         </div>
       </div>

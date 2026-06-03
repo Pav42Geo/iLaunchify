@@ -262,6 +262,9 @@ importers:
       '@ilaunchify/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ilaunchify/plans':
+        specifier: workspace:*
+        version: link:../../packages/plans
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types

@@ -14,14 +14,26 @@ export interface PricingTierRow {
   /** Numeric lower bound — used to match the visitor's quantity. `null` for sample row. */
   bandMin: number | null
   /**
-   * Tier-independent per-unit price, in cents. Per the LOCKED pricing model
-   * (MARKETPLACE_MANAGEMENT_PLAN §6): the volume tier sets the unit price; a
-   * creator's Builder/Agency tier discounts the platform *fee*, NOT this unit
-   * cost. So one price per band, the same for every creator tier.
+   * All-in creator per-unit price, in cents = manufacturer unit cost (set by the
+   * volume band) + the creator's tier-discounted platform fee. Production
+   * shipping is NOT included — it's destination/qty-dependent and estimated at
+   * checkout (partner-managed carriers, V1).
+   *
+   * Per the LOCKED model (MARKETPLACE_MANAGEMENT_PLAN §6): the band sets the
+   * manufacturer unit cost; the creator's tier moves the FEE, not the unit cost.
+   * So the manufacturer portion is one-price-per-band, and the fee portion is the
+   * only tier-dependent piece of this total.
    */
   perUnitCents: number
   /** Hard floor — promos/discounts cannot dip below. Omitted by the synthetic fallback. */
   perUnitFloorCents?: number
+  // ---- P3 breakdown (present when prices are computed with a real fee) ----
+  /** Manufacturer unit cost in cents (the band price, pre-fee). */
+  manufacturerCents?: number
+  /** Platform fee in cents applied to this unit at the viewer's tier. */
+  platformFeeCents?: number
+  /** The platform-fee percent used (e.g. 15 for Maker), for the breakdown line. */
+  feePercent?: number
 }
 
 /**

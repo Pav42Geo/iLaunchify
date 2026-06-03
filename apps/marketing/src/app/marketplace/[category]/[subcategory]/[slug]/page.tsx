@@ -22,8 +22,9 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
-import { getPricingTierRows } from '@/lib/pricing'
+import { getCreatorPricingMatrix } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
+import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
@@ -88,9 +89,16 @@ export default async function ProductDetailPage({
   // the template isn't in the DB yet → chip strips just don't render.
   const taxonomyChips = await getProductTaxonomyChips(template.slug)
 
-  // Punch-list #2 — real per-unit pricing from ProductTemplatePricingTier when
-  // the template exists in the DB; synthetic fallback for fixture-only demos.
-  const pricingRows = await getPricingTierRows(template.slug, template.pricePerUnit)
+  // P3 — real creator price = manufacturer unit cost + tier-discounted platform
+  // fee. Tier comes from the signed-in creator's CreatorProfile (Maker for
+  // signed-out). Shipping is excluded (estimated at checkout).
+  const viewerTier = session?.user?.id ? await getCreatorTier(session.user.id) : 'maker'
+  const pricingMatrix = await getCreatorPricingMatrix(
+    template.slug,
+    viewerTier,
+    template.pricePerUnit,
+  )
+  const pricingRows = pricingMatrix.rows
 
   // Cert strip. The authoritative signal is the product's EARNED certs —
   // VERIFIED PartnerCertificateInstances surfaced as admin-curated PNG badges
@@ -204,6 +212,7 @@ export default async function ProductDetailPage({
               template={template}
               detail={detail}
               pricingRows={pricingRows}
+              viewerTier={viewerTier}
               isAuthenticated={isAuthenticated}
             />
 
