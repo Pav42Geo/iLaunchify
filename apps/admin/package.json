@@ -13,6 +13,7 @@
   "dependencies": {
     "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
+    "@sentry/nextjs": "^8.45.0",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/marketplace": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",

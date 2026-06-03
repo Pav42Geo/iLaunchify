@@ -1,7 +1,17 @@
-// Next 15 instrumentation — structured server-error logging (PLATFORM_SPEC
-// §Tier 4 #19, observability foundation). This is the Sentry integration point:
-// once a SENTRY_DSN is configured + @sentry/nextjs added, replace the
-// console.error with `Sentry.captureRequestError(error, request, context)`.
+// Next 15 instrumentation — structured server-error logging + Sentry capture
+// (P6, observability). The structured JSON log ALWAYS runs (so we have signal
+// without Sentry); Sentry capture is layered on top and only fires when
+// SENTRY_DSN is configured (sentry.server.config.ts is DSN-guarded too).
+
+import * as Sentry from '@sentry/nextjs'
+
+const APP = 'creator'
+
+export async function register(): Promise<void> {
+  if (process.env.SENTRY_DSN && process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./sentry.server.config')
+  }
+}
 
 export function onRequestError(
   error: unknown,
@@ -15,7 +25,7 @@ export function onRequestError(
   console.error(
     JSON.stringify({
       level: 'error',
-      app: 'creator',
+      app: APP,
       event: 'request_error',
       method: request.method,
       path: request.path,
@@ -25,4 +35,13 @@ export function onRequestError(
       time: new Date().toISOString(),
     }),
   )
+
+  if (process.env.SENTRY_DSN) {
+    type CRE = typeof Sentry.captureRequestError
+    Sentry.captureRequestError(
+      error,
+      request as Parameters<CRE>[1],
+      context as Parameters<CRE>[2],
+    )
+  }
 }

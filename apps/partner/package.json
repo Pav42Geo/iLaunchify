@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@sentry/nextjs": "^8.45.0",
     "@ilaunchify/ai": "workspace:*",
     "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",

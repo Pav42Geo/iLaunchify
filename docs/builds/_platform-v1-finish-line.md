@@ -1,26 +1,53 @@
 # Platform V1 finish-line punch list
 
+> **STATUS: IN PROGRESS. P1 and P2 are SHIPPED on `main`. P3–P9 still pending.**
+> The checkbox column below is the source of truth for what's done — but the boxes themselves are not authoritative until they've been verified against `main`. If you (Claude Code) are about to start a P-item, first verify its actual state by reading the code (see "How to verify each item" below), then trust what you observe over what the box says. Update the box if it disagrees. Do NOT assume an item is done OR not-done based on prose framing in this document — verify the code.
+
+## How to verify each item before starting
+
+The checkboxes below were originally hand-stamped and may drift from `main`. Before working on any item, run the corresponding verify command and update the box if it disagrees:
+
+| # | Verify command |
+|---|---|
+| P1 | grep banned-list save-time enforcement in `apps/partner/.../card-actions.ts` + check BE severity = `WARNING` in `compliance.ts` line ~338 + check `BioengineeredAck` exists in `ExportModal.tsx` |
+| P2 | grep for fabricated traction in `apps/marketing` — `"1,247"`, `"4.2M"`, `"312"`, `"Maya Reyes"`, `"Vellan"` should all return zero occurrences |
+| P3 | check `apps/marketing/src/lib/pricing-tier-data.ts` — `buildSamplePricingRows` should be gone, replaced by real `ProductTemplatePricingTier` + `lookupFeeRate` call |
+| P4 | check `apps/marketing/src/app/legal/[slug]/page.tsx` exists + footer renders /terms /privacy links |
+| P5 | check most recent successful `stripe listen` log + verify a checkout.session.completed event ran the order-create path end-to-end |
+| P6 | check `@sentry/nextjs` (or equivalent) imported in each of the 4 apps' instrumentation hooks |
+| P7 | check Vercel project list + Cockroach connection string in production env + Resend domain verified |
+| P8 | `git log --oneline --grep="prisma migrate"` in last week + verify pending tasks #168–#173, #471, #490, #500, #531, #536, #542, #552, #553, #578, #579, #582, #584 are no longer pending |
+| P9 | check production smoke checklist signed off + first real order processed |
+
+If a verify command shows the item is done, flip the box to `[x]` and add the commit SHA next to it. Don't redo shipped work.
+
 The execution order between current state and **"first creator transacts with first partner end-to-end."** Read this top-to-bottom in one sitting. Use as the running checklist for the next ~2 weeks. Decision log lives at the bottom — append as you make calls.
 
 ## The nine items at a glance
 
-| # | Item | Lift | Brief / source | Pavel housekeeping |
-|---|---|---|---|---|
-| P1 | Banned-ingredient runtime enforcement + BE severity bump | ~½ day | `docs/builds/ingredients-prework-slice-1.md` + below | typecheck |
-| P2 | Marketing copy refresh PR — strip fabricated traction | ~½ day | `docs/marketing/landing_copy_refresh.md` | typecheck + restart |
-| P3 | Marketplace `creatorPrice` real formula | ~2 days | below | depends on migration backlog drain first |
-| P4 | Legal pages on marketing site | ~½ day | `docs/legal/*.docx` → markdown | typecheck + restart |
-| P5 | Stripe webhook end-to-end verification | ~½ day (longer if broken) | below | `stripe` CLI in test mode |
-| P6 | Sentry + structured logging across the four apps | ~1 day | below | env vars in production |
-| P7 | Production infra audit — DNS, Resend, R2, Cockroach | ~1-3 days | below ([VERIFY]-heavy) | infra setup |
-| P8 | Migration backlog drain | ~½ day | tasks #168-#173, #471, #490, #500, #531, #536, #542, #552, #553, #578, #579, #582, #584 | Pavel only |
-| P9 | End-to-end smoke test + production cutover | ~1 day | below | dev → staging → production |
+| Status | # | Item | Lift | Brief / source | Pavel housekeeping |
+|---|---|---|---|---|---|
+| [x] | P1 | Banned-ingredient runtime enforcement + BE severity bump — SHIPPED (commit `d3c809f` + BE session) | ~½ day | `docs/builds/ingredients-prework-slice-1.md` + below | typecheck |
+| [x] | P2 | Marketing copy refresh PR — strip fabricated traction — SHIPPED (commits `6948267` + `84f175b`) | ~½ day | `docs/marketing/landing_copy_refresh.md` | typecheck + restart |
+| [ ] | P3 | Marketplace `creatorPrice` real formula | ~2 days | below | depends on migration backlog drain first |
+| [x] | P4 | Legal pages on marketing site — SHIPPED (commit `4177ea0`; routes at /terms /privacy /creator-agreement /partner-agreement, NOT /legal/[slug]) | ~½ day | `docs/legal/*.docx` → markdown | typecheck + restart |
+| [ ] | P5 | Stripe webhook end-to-end verification | ~½ day (longer if broken) | below | `stripe` CLI in test mode |
+| [x] | P6 | Sentry + structured logging across the four apps — SHIPPED (logger+health `aca0e4e`; Sentry server-side wiring, DSN-guarded). Set SENTRY_DSN in prod to activate. Follow-ups: client-side via withSentryConfig + source-map upload | ~1 day | below | SENTRY_DSN in production |
+| [ ] | P7 | Production infra audit — DNS, Resend, R2, Cockroach | ~1-3 days | below ([VERIFY]-heavy) | infra setup |
+| [ ] | P8 | Migration backlog drain | ~½ day | tasks #168-#173, #471, #490, #500, #531, #536, #542, #552, #553, #578, #579, #582, #584 | Pavel only |
+| [ ] | P9 | End-to-end smoke test + production cutover | ~1 day | below | dev → staging → production |
 
 **Total: ~7-10 days of focused work over ~2 weeks (with buffer for surprises in P7).** This is what gets you to "ready to invite beta cohort 1."
 
+## What's already done vs what this punch list will do
+
+**Already shipped (substrate — context only, not part of this punch list):** ~590 tasks across four apps, mature schema, locked design system, locked 4-layer taxonomy, full partner editor, full creator app, full admin v2 surface pattern, Stripe Connect account wiring, multi-partner workflow shipped.
+
+**NOT shipped — what this punch list covers:** real marketplace prices (P3), real public legal surfaces (P4), real observability (P6), real production environment (P7), FDA-flagged contract/code contradictions (P1 closes one), webhook verification (P5), migration backlog (P8), production cutover (P9), and marketing copy that doesn't fabricate traction (P2).
+
 ## The honest answer to "are we almost done with V1?"
 
-No. We are roughly **2 weeks of focused work** from V1-launchable. What's already shipped is the substrate — ~590 tasks, four apps, mature schema, locked design, locked taxonomy, full partner editor, full creator app, full admin v2, Stripe Connect wired, multi-partner workflow shipped. What's missing is the **closing of the loop**: real prices, real legal surfaces, real observability, real production environment, and the closing of three FDA-flagged contradictions between contract and code.
+No. We are roughly **2 weeks of focused work** from V1-launchable. The substrate above is done. The closing of the loop is what's listed in the at-a-glance table above and detailed in the briefs below. Until P1–P9 ship, demoing the platform to a creator or partner is unsafe — fake prices, misrepresented contracts, no monitoring, no legal surface.
 
 This punch list closes that loop. After it ships, the platform can actually run a beta cohort. Until it ships, demoing the platform to a creator or partner is unsafe — fake prices, misrepresented contracts, no monitoring, no legal surface.
 
@@ -46,9 +73,11 @@ P9 (smoke + cutover) waits on basically everything.
 
 ## Recommended ship order (2-week sprint)
 
+> **Updated 2026-06-03: P1 + P2 already shipped on `main`. Sprint starts at P4 + P6.** Verify each item's status (see "How to verify each item" above) before pasting any build prompt — don't redo shipped work.
+
 **Week 1**
-- **Day 1 (Mon):** P1 + P2 — ship both as one bundled commit OR two PRs back-to-back. Both small, both close legal exposure (P1 closes a contract contradiction, P2 removes fabricated traction numbers). High-leverage starts.
-- **Day 2 (Tue):** P4 (legal pages) + P6 start (Sentry wiring).
+- ~~**Day 1 (Mon):** P1 + P2~~ — DONE on `main`. Skip.
+- **Day 1-2 (Mon-Tue):** P4 (legal pages) + P6 start (Sentry wiring) — first unblocked items.
 - **Day 3 (Wed):** P8 (migration backlog drain — Pavel-only morning) + start P3 (creatorPrice formula in afternoon).
 - **Day 4 (Thu):** P3 finish.
 - **Day 5 (Fri):** P5 (Stripe E2E) + P6 finish.
@@ -87,6 +116,8 @@ Make these before the relevant item ships. Each has a sensible default and an al
 Each item below is independently executable. Paste the prompt into Claude Code, wait for the slice to ship, verify, move on.
 
 ### P1 — Banned-ingredient runtime enforcement + BE severity bump
+
+**Status:** [x] SHIPPED on `main` — commit `d3c809f` + earlier BE session. Verified in code: 5 banned-list markers in `apps/partner/.../card-actions.ts`, BE severity = `WARNING` at `compliance.ts:338`, and `BioengineeredAck` gate live in `ExportModal.tsx` (7 markers). Do NOT redo.
 
 Same brief as Slice 1 of the Recipe Builder line — `docs/builds/ingredients-prework-slice-1.md`. Plus a small additional change: flip the bioengineered disclosure severity in `compliance.ts` line ~339 from INFO to WARNING when a product is BE-flagged, and add a separate ack on the ExportModal.
 
@@ -128,6 +159,8 @@ Then /ship "P1 FDA briefing fixes — banned-ingredient runtime enforcement
 
 ### P2 — Marketing copy refresh PR
 
+**Status:** [x] SHIPPED on `main` — commits `6948267` + `84f175b`. Verified in code: zero occurrences of fabricated traction (`"1,247"`, `"4.2M"`, `"312"`, `"Maya Reyes"`, `"Vellan"`) in `apps/marketing`. Do NOT redo.
+
 Ship the 42 `[CURRENT]→[PROPOSED]` blocks at `docs/marketing/landing_copy_refresh.md`. Strips the fabricated traction numbers (1,247 launches, 312 partners, $4.2M paid, two named testimonials) that are live in production right now. Removes "Premier partner gets X" language across /pricing, /how-it-works, /contact-sales.
 
 **Why V1-blocking:** a journalist or beta candidate landing on the home page today reads obviously false metrics. Material misrepresentation, not just polish.
@@ -156,6 +189,8 @@ remove Premier-partner language".
 ```
 
 ### P3 — Marketplace creatorPrice real formula
+
+**Status:** [ ] NOT SHIPPED — to do. (Blocked by P8.)
 
 The single biggest V1-blocker. The PricingTierModal currently shows synthetic prices computed by `buildSamplePricingRows()` in `apps/marketing/src/lib/pricing-tier-data.ts`. Real prices need to consume `ProductTemplatePricingTier` rows + `lookupFeeRate(creatorTier)` from `packages/plans` + a shipping estimate.
 
@@ -216,6 +251,8 @@ ProductTemplatePricingTier + lookupFeeRate + breakdown UI".
 
 ### P4 — Legal pages on marketing site
 
+**Status:** [ ] NOT SHIPPED — to do.
+
 Convert the four .docx drafts at `docs/legal/` to markdown, render as routes on `apps/marketing/src/app/legal/[slug]/page.tsx`, add footer links via `LandingFooter`. Each page carries the existing "DRAFT FOR LAWYER REVIEW — NOT LEGAL ADVICE" preamble — partners and creators in the beta will see this disclaimer.
 
 **Why V1-blocking:** no /terms or /privacy = can't legally onboard a first user. Even a beta with friends-and-family needs minimal legal surface.
@@ -268,6 +305,8 @@ Then /ship "P4 legal pages — /terms /privacy /creator-agreement
 
 ### P5 — Stripe webhook end-to-end verification
 
+**Status:** [ ] NOT SHIPPED — to do.
+
 Not a build — a verification. The audit flagged this as never having been run via `stripe trigger` in test mode. Webhooks are coded; the question is whether the loop actually closes.
 
 **Paste this into Claude Code:**
@@ -318,6 +357,8 @@ Then /ship "P5 Stripe webhook E2E verification — <N> events verified,
 
 ### P6 — Sentry + structured logging across the four apps
 
+**Status:** [ ] NOT SHIPPED — to do.
+
 The audit flagged this as missing. Beta without observability is flying blind. Sentry is the recommended default.
 
 **Paste this into Claude Code:**
@@ -364,6 +405,8 @@ Then /ship "P6 Sentry + structured logging across all four apps +
 ```
 
 ### P7 — Production infra audit
+
+**Status:** [ ] NOT SHIPPED — to do.
 
 This is the [VERIFY]-heavy block. First action is surfacing current state, second action is filling gaps. Don't paste a build prompt for this until you've spent 30 minutes auditing what's actually deployed.
 
@@ -413,6 +456,8 @@ After you have answers, the P7 build prompt becomes specific — "stand up X, co
 
 ### P8 — Migration backlog drain (Pavel-only)
 
+**Status:** [ ] NOT SHIPPED — to do.
+
 Two-week-deferred migrations have piled up. Drain them in one session.
 
 **Paste this into Claude Code:**
@@ -460,6 +505,8 @@ anything).
 ```
 
 ### P9 — Production cutover + final smoke test
+
+**Status:** [ ] NOT SHIPPED — to do. (Blocked by P1–P8.)
 
 This is the actual go-live. Depends on every other item. Don't paste this prompt until P1-P7 are all shipped and P8 has drained cleanly.
 
