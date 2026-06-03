@@ -10,6 +10,7 @@ import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Upload, FileText, X } from 'lucide-react'
 import { claimCertificate } from './actions'
+import { CERT_UPLOAD_CONSENT_TEXT } from './consent'
 
 interface CertTypeOption {
   id: string
@@ -68,6 +69,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
   const [expiryDate, setExpiryDate] = useState('')
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [consent, setConsent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -82,6 +84,10 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
       setError('Expiry date is required.')
       return
     }
+    if (!consent) {
+      setError('Please confirm the upload consent.')
+      return
+    }
 
     const fd = new FormData()
     fd.set('certificateTypeId', certType.id)
@@ -91,6 +97,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
     fd.set('expiryDate', expiryDate)
     fd.set('notes', notes)
     fd.set('file', file)
+    fd.set('consent', consent ? 'true' : 'false')
 
     startTransition(async () => {
       const result = await claimCertificate(fd)
@@ -211,6 +218,17 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
         </p>
       </Field>
 
+      <label className="flex items-start gap-2 rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-600">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          disabled={isPending}
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+        />
+        <span>{CERT_UPLOAD_CONSENT_TEXT}</span>
+      </label>
+
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -223,7 +241,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
         </Button>
         <Button
           type="submit"
-          disabled={isPending || !file || !expiryDate}
+          disabled={isPending || !file || !expiryDate || !consent}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           {isPending ? 'Submitting…' : 'Submit for review'}

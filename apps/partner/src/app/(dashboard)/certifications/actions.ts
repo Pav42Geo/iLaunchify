@@ -18,6 +18,13 @@ import { requireUser } from '@ilaunchify/auth'
 import { uploadFile, deleteFile, certPdfKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { CERT_UPLOAD_CONSENT_VERSION } from './consent'
+
+/** P10 — the upload-consent checkbox must be ticked (formData `consent`). */
+function consentGiven(formData: FormData): boolean {
+  const v = String(formData.get('consent') ?? '')
+  return v === 'true' || v === '1' || v === 'on'
+}
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -66,6 +73,9 @@ export async function claimCertificate(formData: FormData): Promise<Result<{ id:
   if (!ALLOWED_MIME.has(file.type)) {
     return { ok: false, error: `Unsupported file type "${file.type}". Use PDF, PNG, JPEG, or WebP.` }
   }
+  if (!consentGiven(formData)) {
+    return { ok: false, error: 'Please confirm the upload consent before submitting.' }
+  }
 
   const certType = await prisma.certificateType.findUnique({
     where: { id: certificateTypeId },
@@ -105,6 +115,8 @@ export async function claimCertificate(formData: FormData): Promise<Result<{ id:
         expiryDate: new Date(expiryDateRaw),
         status: 'PENDING_REVIEW',
         notes,
+        consentAcceptedAt: new Date(),
+        consentVersion: CERT_UPLOAD_CONSENT_VERSION,
       },
     })
   } catch (err) {
@@ -196,6 +208,9 @@ export async function renewCertificate(formData: FormData): Promise<Result<{ id:
   if (!ALLOWED_MIME.has(file.type)) {
     return { ok: false, error: `Unsupported file type "${file.type}". Use PDF, PNG, JPEG, or WebP.` }
   }
+  if (!consentGiven(formData)) {
+    return { ok: false, error: 'Please confirm the upload consent before submitting.' }
+  }
 
   const old = await prisma.partnerCertificateInstance.findUnique({
     where: { id: oldInstanceId },
@@ -221,6 +236,8 @@ export async function renewCertificate(formData: FormData): Promise<Result<{ id:
         expiryDate: new Date(expiryDateRaw),
         status: 'PENDING_REVIEW',
         notes,
+        consentAcceptedAt: new Date(),
+        consentVersion: CERT_UPLOAD_CONSENT_VERSION,
       },
     })
   } catch (err) {

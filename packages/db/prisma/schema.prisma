@@ -3334,6 +3334,9 @@ model PartnerCertificateInstance {
   reviewedAt         DateTime?
   rejectionReason    String?
   notes              String? // optional partner-supplied notes for admin
+  // P10 — GDPR upload-consent capture
+  consentAcceptedAt  DateTime? // when the partner ticked the upload-consent checkbox
+  consentVersion     String? // which consent text version they accepted (e.g. "2026-06")
   // C4 — expiry tracking. Idempotency flags: timestamp set once the corresponding
   // expiry notice has been dispatched, so the cron never double-sends.
   notifiedAt60d      DateTime? // 60-day-out expiry notice sent
