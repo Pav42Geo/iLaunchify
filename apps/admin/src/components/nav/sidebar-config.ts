@@ -198,6 +198,17 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
       ],
     },
+    // ---- Compliance & Data Rights (P10 / GDPR) ------------------------------
+    {
+      kind: 'group',
+      label: 'Compliance & Data Rights',
+      icon: Shield,
+      children: [
+        { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access' },
+        { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true },
+      ],
+    },
     // ---- Settings — now also holds Languages & Markets + Communications -----
     {
       kind: 'group',
