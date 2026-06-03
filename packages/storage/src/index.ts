@@ -6,7 +6,7 @@
 //   R2_ACCOUNT_ID         — Cloudflare account id (find in dashboard URL)
 //   R2_ACCESS_KEY_ID      — generated under R2 > Manage R2 API Tokens
 //   R2_SECRET_ACCESS_KEY  — same place
-//   R2_BUCKET_NAME        — bucket to write to (e.g. "ilaunchify-uploads")
+//   R2_BUCKET             — bucket to write to (e.g. "ilaunchify-uploads")
 //
 // All env access goes through getR2Config() which throws a useful error
 // when something is missing — callers should let that propagate rather
