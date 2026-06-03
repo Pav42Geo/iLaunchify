@@ -760,6 +760,7 @@ model Partner {
   // V1 new relations (manufacturer product builder — packaging + certificates)
   packagingSystems      PackagingSystem[]
   certificateInstances  PartnerCertificateInstance[]
+  certificateTypeRequests CertificateTypeRequest[]    @relation("PartnerCertTypeRequests") // C1
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt
 }
@@ -3198,9 +3199,91 @@ model CertificateType {
   description         String                                              // shown on hover/tooltip publicly
   verificationNotes   String?                                             // what admin looks for when verifying partner uploads
   status              CertificateTypeStatus        @default(ACTIVE)
+  // C1 — master-catalog applicability metadata (docs/builds/_certificates-master-catalog.json).
+  // Slug arrays (not enums) so they ingest the locked catalog vocab verbatim.
+  applicableLabelingTypes String[]                                        // FOOD / BEVERAGE / SUPPLEMENT / COSMETIC / PET_PRODUCT / BABY_NUTRITION
+  applicableCategorySlugs String[]                                        // Layer-2 category slugs (the locked 13)
+  applicableMarketSlugs   String[]                                        // US / CA / EU / UK / * (all)
+  scope               CertScope?                                          // applicability level (PRODUCT/FACILITY/COMPANY/…)
+  claimCategories     String[]                                            // organic / non-gmo / kosher / vegan / …
+  issuingBodyUrl      String?                                             // issuing body's standards/registry URL
+  applicabilityNotes  String?                                             // free-text admin guidance
+  // Self-reference: this cert is an "alternative of" a more recognized one
+  // (e.g. CCOF Organic → USDA Organic). Used by the picker to group equivalents.
+  alternativeOfId     String?
+  alternativeOf       CertificateType?             @relation("CertAlternatives", fields: [alternativeOfId], references: [id])
+  alternatives        CertificateType[]            @relation("CertAlternatives")
   createdAt           DateTime                     @default(now())
   updatedAt           DateTime                     @updatedAt
   partnerInstances    PartnerCertificateInstance[]
+
+  @@index([scope])
+  @@index([alternativeOfId])
+}
+
+// C1 — partner-initiated request to add a NEW cert type to the master library.
+// Admin reviews via /admin/certificate-requests (C2).
+enum CertificateTypeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CertificateTypeRequest {
+  id                      String   @id @default(cuid())
+  createdByPartnerId      String
+  name                    String
+  issuingBody             String?
+  description             String?
+  applicableLabelingTypes String[]
+  applicableCategorySlugs String[]
+  applicableMarketSlugs   String[]
+  status                  CertificateTypeRequestStatus @default(PENDING)
+  reviewedById            String?                       // admin User who reviewed
+  reviewedAt              DateTime?
+  rejectionReason         String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  createdByPartner        Partner  @relation("PartnerCertTypeRequests", fields: [createdByPartnerId], references: [id])
+
+  @@index([status])
+  @@index([createdByPartnerId])
+}
+
+// C1 — sensitive-document access log. Every read of a partner cert PDF (signed
+// URL) writes one row with a required reason (GDPR accountability; C5 wraps
+// getSignedReadUrl to enforce it). Audit-style soft FKs (string ids).
+enum DocumentAccessReason {
+  VERIFICATION
+  SUPPORT
+  AUDIT
+  PARTNER_DOWNLOAD
+  LEGAL_HOLD
+  ADMIN_REVIEW
+}
+
+model DocumentAccessLog {
+  id                String   @id @default(cuid())
+  actorUserId       String
+  fileId            String                                  // soft FK to PartnerFile / Asset (R2 object)
+  accessReason      DocumentAccessReason
+  productTemplateId String?
+  accessedAt        DateTime @default(now())
+
+  @@index([fileId, accessedAt])
+  @@index([actorUserId, accessedAt])
+}
+
+// C1 — cert applicability level. The roadmap's 5 (UNIVERSAL / LABELING_SPECIFIC /
+// CATEGORY_SPECIFIC / FACILITY_LEVEL / COMPANY_LEVEL) plus PRODUCT_LEVEL, which
+// the locked master catalog actually uses (catalog is source of truth).
+enum CertScope {
+  UNIVERSAL
+  PRODUCT_LEVEL
+  LABELING_SPECIFIC
+  CATEGORY_SPECIFIC
+  FACILITY_LEVEL
+  COMPANY_LEVEL
 }
 
 // Partner's actual certification — they upload the PDF (private to admin),

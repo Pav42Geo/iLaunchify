@@ -18,6 +18,7 @@ import { seedMarketsRegions } from './seed-markets-regions'
 import { seedPartnerOnboarding } from './seed-partner-onboarding'
 import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
+import { seedCertificateCatalog } from './seed-certificate-catalog'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedPricingBridge } from './seed-pricing-bridge'
@@ -59,10 +60,12 @@ async function main() {
   await seedBrandIdentity(prisma)
 
   // --- Admin certificate library ---
-  // 12 starter CertificateType rows (NSF, USDA Organic, etc.) per
-  // docs/MANUFACTURER_PRODUCT_BUILDER.md §7.2. Admin uploads branded
-  // thumbnails via /admin/certificates after launch (task #129).
+  // 12 starter CertificateType rows (NSF, USDA Organic, etc.) with curated
+  // descriptions/verificationNotes, THEN the C1 master catalog (~89 types) which
+  // enriches those + adds the rest with applicability metadata. Catalog upsert
+  // preserves the curated descriptions (it only writes the metadata fields).
   await seedCertificateTypes(prisma)
+  await seedCertificateCatalog(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,
