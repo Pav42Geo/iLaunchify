@@ -6,6 +6,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
+    "test:webhooks": "dotenv -e ../../.env.local -- tsx scripts/webhook-integration-test.ts",
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
@@ -19,6 +20,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "dotenv-cli": "^7.4.4",
+    "tsx": "^4.19.1",
     "typescript": "^5.6.3"
   }
 }
