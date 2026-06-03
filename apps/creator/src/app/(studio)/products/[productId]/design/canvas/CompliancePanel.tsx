@@ -25,14 +25,17 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react'
+import { ShieldCheck, Plus } from 'lucide-react'
 import {
   scanLabelCompliance,
   findObjectByRef,
+  certBadgeIdsOnCanvas,
   type FabricCanvas,
   type LabelScanResult,
   type ScanFinding,
   type ScanSeverity,
 } from '@ilaunchify/ui'
+import type { CertBadge } from './cert-badge-actions'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -45,10 +48,23 @@ interface Props {
     bioengineered: boolean
     netQuantity: string | null
   }
+  /** Verified certs available to this product (for the "unused claims" nudge). */
+  certBadges?: CertBadge[]
+  /** Request to add a cert (routes through the shell's consent gate). */
+  onAddCert?: (badge: CertBadge) => void
 }
 
-export function CompliancePanel({ canvas, open, onClose, productCtx }: Props) {
+export function CompliancePanel({
+  canvas,
+  open,
+  onClose,
+  productCtx,
+  certBadges = [],
+  onAddCert,
+}: Props) {
   const [result, setResult] = React.useState<LabelScanResult | null>(null)
+  // Which cert instances are currently on the canvas — drives the unused list.
+  const [placedCertIds, setPlacedCertIds] = React.useState<Set<string>>(new Set())
 
   // Re-scan whenever the canvas mutates. The scan is pure so we can run it
   // freely; keeps the counts honest while the user edits.
@@ -59,7 +75,9 @@ export function CompliancePanel({ canvas, open, onClose, productCtx }: Props) {
     }
 
     function rescan() {
+      if (!canvas) return
       setResult(scanLabelCompliance(canvas, productCtx))
+      setPlacedCertIds(certBadgeIdsOnCanvas(canvas))
     }
 
     rescan()
@@ -73,6 +91,11 @@ export function CompliancePanel({ canvas, open, onClose, productCtx }: Props) {
     }
   }, [canvas, open, productCtx])
 
+  // Verified certs with art that aren't on the label yet — an opt-in nudge.
+  const unusedCerts = certBadges.filter(
+    (b) => b.badgeUrl && !placedCertIds.has(b.certInstanceId),
+  )
+
   if (!open) return null
 
   return (
@@ -85,6 +108,9 @@ export function CompliancePanel({ canvas, open, onClose, productCtx }: Props) {
           <Findings findings={result.findings} canvas={canvas} />
         )}
         {!result && <LoadingState />}
+        {unusedCerts.length > 0 && (
+          <AvailableCertifications certs={unusedCerts} onAddCert={onAddCert} />
+        )}
         <FooterNote />
       </div>
     </aside>
@@ -398,6 +424,57 @@ function LoadingState() {
       <RefreshCw className="mx-auto h-5 w-5 text-ink-400 animate-spin" />
       <p className="mt-2 text-[11.5px] text-ink-500">Scanning canvas…</p>
     </div>
+  )
+}
+
+// ============================================================================
+// Available certifications — unused verified claims nudge (C8 part 7)
+// ============================================================================
+
+function AvailableCertifications({
+  certs,
+  onAddCert,
+}: {
+  certs: CertBadge[]
+  onAddCert?: (badge: CertBadge) => void
+}) {
+  return (
+    <section className="rounded-md border border-emerald-200 bg-emerald-50/40 p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+        <ShieldCheck className="h-3 w-3" />
+        Available certifications
+      </div>
+      <p className="mt-1 text-[11px] text-ink-600 leading-[1.45]">
+        {certs.length} verified {certs.length === 1 ? 'certification is' : 'certifications are'} ready
+        to display but not on your label yet. Add them — you&apos;ll confirm each claim first.
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {certs.map((c) => (
+          <li
+            key={c.certInstanceId}
+            className="flex items-center justify-between gap-2 rounded-md border border-emerald-200 bg-white px-2.5 py-1.5"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={c.badgeUrl!}
+                alt=""
+                className="h-6 w-6 flex-shrink-0 rounded border border-ink-200 bg-white object-contain p-0.5"
+              />
+              <span className="truncate text-[12px] font-semibold text-ink-900">{c.certTypeName}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onAddCert?.(c)}
+              disabled={!onAddCert}
+              className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[10.5px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
+            >
+              <Plus className="h-3 w-3" /> Add
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

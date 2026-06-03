@@ -684,6 +684,8 @@ export function CanvasLayoutShell({
             open={complianceOpen}
             onClose={() => setComplianceOpen(false)}
             productCtx={productCtx}
+            certBadges={certBadges}
+            onAddCert={handleRequestAddCert}
           />
 
           {/* Bottom floating controls */}
