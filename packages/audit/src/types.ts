@@ -27,6 +27,9 @@ export const AUDIT_ENTITY_TYPES = [
   'PackagingSystem',
   'CertificateType',
   'CertificateTypeRequest',
+  'CertificateAssetVariant',
+  'PackagingSymbol',
+  'LabelingSymbol',
   'PartnerCertificateInstance',
   'RulePack',
   // R15.c — admin tier management module

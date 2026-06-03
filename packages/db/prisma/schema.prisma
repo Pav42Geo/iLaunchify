@@ -3247,6 +3247,7 @@ model CertificateType {
   createdAt               DateTime                     @default(now())
   updatedAt               DateTime                     @updatedAt
   partnerInstances        PartnerCertificateInstance[]
+  assetVariants           CertificateAssetVariant[]
 
   @@index([scope])
   @@index([alternativeOfId])
@@ -3928,4 +3929,147 @@ model TicketEvent {
   actor       User?           @relation("TicketEventActor", fields: [actorUserId], references: [id])
 
   @@index([ticketId, createdAt])
+}
+
+// ===========================================================================
+// C7 — Asset Library (certificate / packaging / labeling symbol catalog)
+// Asset file refs are PLAIN nullable String soft-FKs to Asset (svgFileId /
+// pngFileId) — same pattern as CertificateType.thumbnailFileId. No @relation.
+// ===========================================================================
+
+enum AssetCatalogStatus {
+  ACTIVE
+  DEPRECATED
+}
+
+enum CertAssetVariantKind {
+  COLOR
+  BLACK_WHITE
+  OUTLINE
+  CONTEXTUAL // e.g. OU-D, "100% Organic" lockups
+}
+
+enum PackagingSymbolFamily {
+  RESIN_CODE // SPI/RIC 1-7
+  RECYCLING_MARK // How2Recycle, Green Dot, Mobius loop
+  COMPOSTABILITY // BPI Compostable, OK Compost
+  DISPOSAL // store drop-off, "do not litter"
+  OTHER
+}
+
+enum LabelingSymbolFamily {
+  ATTRIBUTION // "Distributed by", "Manufactured for"
+  STORAGE // refrigerate after opening, keep frozen
+  ALLERGEN // allergen icons
+  DISCLOSURE // BE/bioengineered disclosure
+  WARNING // Prop 65, choking hazard
+  OTHER
+}
+
+enum SymbolRequirement {
+  REQUIRED
+  RECOMMENDED
+  OPTIONAL
+}
+
+model CertificateAssetVariant {
+  id                 String               @id @default(cuid())
+  certificateTypeId  String
+  kind               CertAssetVariantKind
+  label              String // human label, e.g. "Color", "OU-D"
+  svgFileId          String? // soft FK to Asset (vector — production)
+  pngFileId          String? // soft FK to Asset (raster — UI preview)
+  minWidthMm         Float? // smallest reproduction size
+  maxWidthMm         Float?
+  approvedColorSpec  String? // e.g. "PMS 348C / #00843D"
+  requiredCoText     String? // text that must accompany the mark
+  clearSpaceFactor   Float? // clear space = factor × mark height
+  brandGuidelinesUrl String?
+  notes              String?
+  sortOrder          Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  certificateType    CertificateType      @relation(fields: [certificateTypeId], references: [id], onDelete: Cascade)
+
+  @@index([certificateTypeId])
+}
+
+model PackagingSymbol {
+  id                   String                   @id @default(cuid())
+  slug                 String                   @unique
+  name                 String
+  description          String?
+  family               PackagingSymbolFamily
+  applicableSubstrates String[]
+  applicableMaterials  String[]
+  applicableMarkets    String[] // market slugs
+  requirement          SymbolRequirement        @default(OPTIONAL)
+  requiredWhen         String? // free-text rule, e.g. "Required in CA for rigid plastics"
+  status               AssetCatalogStatus       @default(ACTIVE)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  variants             PackagingSymbolVariant[]
+
+  @@index([family])
+  @@index([status])
+}
+
+model PackagingSymbolVariant {
+  id                 String          @id @default(cuid())
+  packagingSymbolId  String
+  label              String
+  svgFileId          String?
+  pngFileId          String?
+  minWidthMm         Float?
+  maxWidthMm         Float?
+  approvedColorSpec  String?
+  clearSpaceFactor   Float?
+  brandGuidelinesUrl String?
+  notes              String?
+  sortOrder          Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  packagingSymbol    PackagingSymbol @relation(fields: [packagingSymbolId], references: [id], onDelete: Cascade)
+
+  @@index([packagingSymbolId])
+}
+
+model LabelingSymbol {
+  id                      String                  @id @default(cuid())
+  slug                    String                  @unique
+  name                    String
+  description             String?
+  family                  LabelingSymbolFamily
+  applicableCategorySlugs String[]
+  applicableMarkets       String[]
+  requirement             SymbolRequirement       @default(OPTIONAL)
+  requiredWhen            String?
+  requiredCoText          String?
+  status                  AssetCatalogStatus      @default(ACTIVE)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  variants                LabelingSymbolVariant[]
+
+  @@index([family])
+  @@index([status])
+}
+
+model LabelingSymbolVariant {
+  id                 String         @id @default(cuid())
+  labelingSymbolId   String
+  label              String
+  svgFileId          String?
+  pngFileId          String?
+  minWidthMm         Float?
+  maxWidthMm         Float?
+  approvedColorSpec  String?
+  clearSpaceFactor   Float?
+  brandGuidelinesUrl String?
+  notes              String?
+  sortOrder          Int            @default(0)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  labelingSymbol     LabelingSymbol @relation(fields: [labelingSymbolId], references: [id], onDelete: Cascade)
+
+  @@index([labelingSymbolId])
 }

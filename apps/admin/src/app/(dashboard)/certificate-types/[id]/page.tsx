@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Palette } from 'lucide-react'
 import { CertificateTypeForm } from '../CertificateTypeForm'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
@@ -39,10 +39,18 @@ export default async function EditCertificateTypePage({ params }: PageProps) {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to library
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">{ct.name}</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          {ct._count.partnerInstances.toLocaleString()} partner instance
-          {ct._count.partnerInstances === 1 ? '' : 's'}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-zinc-500">
+            {ct._count.partnerInstances.toLocaleString()} partner instance
+            {ct._count.partnerInstances === 1 ? '' : 's'}
+          </p>
+          <Link
+            href={`/certificate-types/${ct.id}/variants`}
+            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+          >
+            <Palette className="h-3.5 w-3.5" /> Brand assets &amp; variants →
+          </Link>
+        </div>
       </header>
 
       <CertificateTypeForm
