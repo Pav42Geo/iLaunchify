@@ -29,9 +29,15 @@ export function LegalDocument({ slug }: { slug: string }) {
       </header>
 
       <article className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="font-display text-3xl font-bold tracking-[-0.02em] text-ink-900">
+        {/* Unmissable DRAFT badge above the title, even to a fast scroller. */}
+        <span className="inline-flex items-center rounded-pill border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-800">
+          Draft
+        </span>
+
+        <h1 className="mt-3 font-display text-3xl font-bold tracking-[-0.02em] text-ink-900">
           {doc.title}
         </h1>
+        <p className="mt-1 text-[13px] text-ink-400">Last updated June 1, 2026</p>
 
         <div
           role="note"
