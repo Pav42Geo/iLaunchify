@@ -53,6 +53,7 @@ import {
 } from './useCanvasShortcuts'
 import { usePanMode } from './usePanMode'
 import { useLabelMinSize } from './useLabelMinSize'
+import { useCertBadgeSizeRules } from './useCertBadgeSizeRules'
 import { useWheelZoom } from './useWheelZoom'
 import { useDeselectOnOutsideClick } from './useDeselectOnOutsideClick'
 import { useObjectClipboard } from './useObjectClipboard'
@@ -409,6 +410,7 @@ export function CanvasLayoutShell({
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
+  useCertBadgeSizeRules(canvas, dieCut) // C8 — clamp cert badge reproduction size
 
   // DS-61 / DS-62 — hover-to-open left rail with click-to-pin.
   //

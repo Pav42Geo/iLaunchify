@@ -36,6 +36,22 @@ const CERT_BADGE_TYPE = 'cert-badge'
 const BADGE_SIZE_MM = 12 // standardized badge size
 const BADGE_GAP_MM = 2
 
+/**
+ * C8 — lock a cert badge's shape at drop time. A certification mark must keep
+ * its aspect ratio (no stretching) and never flip, so we hide the mid-edge
+ * (non-uniform) scale handles and leave only the corner (uniform) ones. The
+ * min/max reproduction-size clamp on those corner handles lives in the
+ * useCertBadgeSizeRules hook (it needs the live die-cut px-per-mm).
+ */
+function applyCertBadgeControls(obj: FabricObject): void {
+  const o = obj as unknown as {
+    set: (props: object) => void
+    setControlsVisibility?: (v: Record<string, boolean>) => void
+  }
+  o.set({ lockScalingFlip: true })
+  o.setControlsVisibility?.({ mt: false, mb: false, ml: false, mr: false })
+}
+
 function isCertBadge(o: FabricObject): boolean {
   return (o as { customType?: unknown }).customType === CERT_BADGE_TYPE
 }
@@ -169,6 +185,7 @@ export async function reconcileCertBadges(
     ;(obj as { customData?: unknown }).customData = {
       certInstanceId: b.certInstanceId,
     }
+    applyCertBadgeControls(obj)
     canvas.add(obj)
     added.push(obj)
   }
@@ -202,6 +219,7 @@ export async function addCertBadge(
   ;(obj as { customData?: unknown }).customData = {
     certInstanceId: badge.certInstanceId,
   }
+  applyCertBadgeControls(obj)
   canvas.add(obj)
   placeBadges(canvas, [obj], die, pxPerMm)
   canvas.setActiveObject(obj)
