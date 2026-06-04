@@ -17,6 +17,14 @@ export {
   createDispatches,
 } from './routing'
 export type { RoutingResult, RoutingFailure } from './routing'
+export {
+  scorePartnerMatch,
+  rankPartnerMatches,
+  pickBestMatch,
+  capabilityScore,
+  proximityScore,
+} from './scoring'
+export type { MatchCandidate, MatchContext, MatchScore } from './scoring'
 export { runAutoCancel } from './auto-cancel'
 export type { AutoCancelResult } from './auto-cancel'
 export {

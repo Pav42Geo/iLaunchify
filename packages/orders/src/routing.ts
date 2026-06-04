@@ -13,6 +13,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
+import { pickBestMatch, type MatchCandidate } from './scoring'
 
 export interface RoutingResult {
   ok: true
@@ -34,6 +35,11 @@ export async function findRouting(params: {
   productId: string
   quantity: number
   templateId?: string | null
+  // B4 — optional matching context. When supplied, proximity + cert dimensions
+  // join the manufacturer scoring; absent, scoring uses capacity fit alone.
+  destinationCountry?: string | null
+  destinationRegionId?: string | null
+  targetMarketId?: string | null
 }): Promise<RoutingResult | RoutingFailure> {
   const product = await prisma.product.findUnique({
     where: { id: params.productId },
@@ -55,7 +61,9 @@ export async function findRouting(params: {
     include: { partner: { include: { user: true } } },
   })
 
-  const manufacturer = manufServices.find((s) => {
+  // Hard gates first (category fit, MOQ range, payouts enabled), then B4
+  // scoring ranks the survivors so we pick the best fit, not the first.
+  const gated = manufServices.filter((s) => {
     const caps = s.capabilities as Record<string, unknown>
     const categories = (caps.categories as string[] | undefined) ?? []
     const moqMin = (caps.moqMin as number | undefined) ?? 0
@@ -68,13 +76,48 @@ export async function findRouting(params: {
     )
   })
 
-  if (!manufacturer) {
+  if (gated.length === 0) {
     return {
       ok: false,
       reason: 'NO_MANUFACTURER',
       message: `No active manufacturer matches ${product.category} at qty ${params.quantity} with payouts enabled`,
     }
   }
+
+  // Market-cert coverage per candidate partner (active + non-expired).
+  const now = new Date()
+  const certRows = await prisma.partnerMarketCert.findMany({
+    where: {
+      partnerId: { in: gated.map((s) => s.partnerId) },
+      status: 'ACTIVE',
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: { partnerId: true, marketId: true },
+  })
+  const marketsByPartner = new Map<string, string[]>()
+  for (const r of certRows) {
+    marketsByPartner.set(r.partnerId, [...(marketsByPartner.get(r.partnerId) ?? []), r.marketId])
+  }
+
+  const matchCandidates: MatchCandidate[] = gated.map((s) => {
+    const caps = s.capabilities as Record<string, unknown>
+    return {
+      serviceId: s.id,
+      moqMin: (caps.moqMin as number | undefined) ?? 0,
+      moqMax: (caps.moqMax as number | undefined) ?? Number.POSITIVE_INFINITY,
+      partnerCountry: s.partner.country,
+      partnerRegionId: s.partner.primaryRegionId ?? null,
+      certifiedMarketIds: marketsByPartner.get(s.partnerId) ?? [],
+    }
+  })
+
+  const best = pickBestMatch(matchCandidates, {
+    quantity: params.quantity,
+    destinationCountry: params.destinationCountry,
+    destinationRegionId: params.destinationRegionId,
+    targetMarketId: params.targetMarketId,
+  })
+  const manufacturer = gated.find((s) => s.id === best?.serviceId) ?? gated[0]!
 
   // -------- Print provider --------
   const dieCutTemplateId = product.template?.dieCutTemplateId
