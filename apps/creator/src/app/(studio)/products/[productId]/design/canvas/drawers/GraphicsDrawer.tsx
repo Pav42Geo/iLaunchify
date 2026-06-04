@@ -10,14 +10,14 @@ import * as React from 'react'
 import { Search, Loader2, Sparkles } from 'lucide-react'
 import { addIconFromUrl, type FabricCanvas } from '@ilaunchify/ui'
 import { searchIcons, type IconHit } from '../graphics-actions'
+import { ICON_COLLECTIONS } from '../graphics-collections'
 
 const INK_HEX = '0F1116'
 
-function iconSvgUrl(prefix: string, name: string, heightPx: number, colorHex = INK_HEX): string {
+function iconSvgUrl(id: string, heightPx: number, colorHex = INK_HEX): string {
+  const [prefix, name] = id.split(':')
   return `https://api.iconify.design/${prefix}/${name}.svg?height=${heightPx}&color=%23${colorHex}`
 }
-
-const SUGGESTIONS = ['leaf', 'heart', 'star', 'flame', 'droplet', 'shield', 'sparkles', 'crown']
 
 export function GraphicsDrawer({ canvas }: { canvas: FabricCanvas | null }) {
   const [query, setQuery] = React.useState('')
@@ -49,15 +49,37 @@ export function GraphicsDrawer({ canvas }: { canvas: FabricCanvas | null }) {
     }
   }, [query])
 
-  async function add(h: IconHit) {
+  async function addById(id: string) {
     if (!canvas) return
-    setAdding(h.id)
+    setAdding(id)
     try {
-      await addIconFromUrl(canvas, iconSvgUrl(h.prefix, h.name, 200), { sizePx: 96 })
+      await addIconFromUrl(canvas, iconSvgUrl(id, 200), { sizePx: 96 })
     } finally {
       setAdding(null)
     }
   }
+
+  const IconButton = ({ id }: { id: string }) => (
+    <button
+      type="button"
+      onClick={() => addById(id)}
+      disabled={!canvas || adding === id}
+      title={id}
+      className="flex aspect-square items-center justify-center rounded-md border border-ink-200 p-2 hover:border-pink-400 hover:bg-pink-50/40 disabled:opacity-50"
+    >
+      {adding === id ? (
+        <Loader2 className="h-4 w-4 animate-spin text-ink-400" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={iconSvgUrl(id, 40)}
+          alt={id}
+          loading="lazy"
+          className="h-full w-full object-contain"
+        />
+      )}
+    </button>
+  )
 
   return (
     <div className="space-y-3">
@@ -75,52 +97,34 @@ export function GraphicsDrawer({ canvas }: { canvas: FabricCanvas | null }) {
         />
       </div>
 
-      {!query.trim() && (
-        <div className="flex flex-wrap gap-1.5">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setQuery(s)}
-              className="rounded-full border border-ink-200 px-2.5 py-1 text-[11px] text-ink-600 hover:border-pink-400 hover:text-ink-900"
-            >
-              {s}
-            </button>
+      {!query.trim() ? (
+        // Curated CPG/supplement collections (no search needed).
+        <div className="space-y-3">
+          {ICON_COLLECTIONS.map((col) => (
+            <section key={col.label}>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+                {col.label}
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {col.icons.map((id) => (
+                  <IconButton key={id} id={id} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
-      )}
-
-      {loading ? (
+      ) : loading ? (
         <div className="flex items-center gap-2 py-6 text-[12px] text-ink-500">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
         </div>
-      ) : query.trim() && hits.length === 0 ? (
+      ) : hits.length === 0 ? (
         <p className="py-6 text-center text-[11.5px] italic text-ink-400">
           No icons for “{query}”. Try a simpler word.
         </p>
       ) : (
         <div className="grid grid-cols-5 gap-1.5">
           {hits.map((h) => (
-            <button
-              key={h.id}
-              type="button"
-              onClick={() => add(h)}
-              disabled={!canvas || adding === h.id}
-              title={h.id}
-              className="flex aspect-square items-center justify-center rounded-md border border-ink-200 p-2 hover:border-pink-400 hover:bg-pink-50/40 disabled:opacity-50"
-            >
-              {adding === h.id ? (
-                <Loader2 className="h-4 w-4 animate-spin text-ink-400" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={iconSvgUrl(h.prefix, h.name, 40)}
-                  alt={h.name}
-                  loading="lazy"
-                  className="h-full w-full object-contain"
-                />
-              )}
-            </button>
+            <IconButton key={h.id} id={h.id} />
           ))}
         </div>
       )}
