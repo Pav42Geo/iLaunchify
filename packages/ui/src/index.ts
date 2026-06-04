@@ -105,6 +105,13 @@ export {
 } from './canvas/objects'
 export { addIconFromUrl } from './canvas/graphics'
 export {
+  PATTERN_TILES,
+  patternTileDataUrl,
+  setCanvasPatternBackground,
+  clearCanvasPattern,
+  type PatternTile,
+} from './canvas/patterns'
+export {
   reconcileCertBadges,
   addCertBadge,
   removeCertCoText,

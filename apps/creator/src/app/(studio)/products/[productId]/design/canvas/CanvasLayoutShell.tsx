@@ -85,6 +85,7 @@ import { LabelDrawer } from './drawers/LabelDrawer'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { GraphicsDrawer } from './drawers/GraphicsDrawer'
+import { PatternsDrawer } from './drawers/PatternsDrawer'
 import { CertConsentModal } from './CertConsentModal'
 import { recordLabelClaimConsent } from './claim-consent-actions'
 import { toast } from 'sonner'
@@ -204,7 +205,7 @@ const TOOLS: Array<{
   { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: true },
   { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
   { key: 'background', label: 'Background', icon: ImageDown, v1: true },
-  { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: false },
+  { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: true },
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
@@ -1103,6 +1104,7 @@ function ToolDrawer({
         {tool === 'finishes' && <FinishesDrawer />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool === 'graphics' && <GraphicsDrawer canvas={canvas} />}
+        {tool === 'pattern' && <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&
@@ -1113,7 +1115,8 @@ function ToolDrawer({
           tool !== 'layers' &&
           tool !== 'finishes' &&
           tool !== 'components' &&
-          tool !== 'graphics' && <ComingSoonStub label={titles[tool]} />}
+          tool !== 'graphics' &&
+          tool !== 'pattern' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )
