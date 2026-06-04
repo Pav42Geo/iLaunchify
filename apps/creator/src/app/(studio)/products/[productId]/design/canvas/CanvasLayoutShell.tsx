@@ -84,6 +84,7 @@ import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
+import { GraphicsDrawer } from './drawers/GraphicsDrawer'
 import { CertConsentModal } from './CertConsentModal'
 import { recordLabelClaimConsent } from './claim-consent-actions'
 import { toast } from 'sonner'
@@ -200,7 +201,7 @@ const TOOLS: Array<{
   { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   { key: 'images', label: 'Images', icon: ImageIcon, v1: true },
-  { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: false },
+  { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: true },
   { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
   { key: 'background', label: 'Background', icon: ImageDown, v1: true },
   { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: false },
@@ -1101,6 +1102,7 @@ function ToolDrawer({
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool === 'finishes' && <FinishesDrawer />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
+        {tool === 'graphics' && <GraphicsDrawer canvas={canvas} />}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&
@@ -1110,7 +1112,8 @@ function ToolDrawer({
           tool !== 'barcode' &&
           tool !== 'layers' &&
           tool !== 'finishes' &&
-          tool !== 'components' && <ComingSoonStub label={titles[tool]} />}
+          tool !== 'components' &&
+          tool !== 'graphics' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )

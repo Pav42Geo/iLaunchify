@@ -18,6 +18,7 @@ export type CanvasCustomType =
   | 'text'
   | 'text-combo'
   | 'image'
+  | 'graphic'
   | 'brand-logo'
   | 'qr-code'
   | 'barcode'

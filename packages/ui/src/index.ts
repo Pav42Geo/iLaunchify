@@ -103,6 +103,7 @@ export {
   type CanvasCustomType,
   type LabelSectionRole,
 } from './canvas/objects'
+export { addIconFromUrl } from './canvas/graphics'
 export {
   reconcileCertBadges,
   addCertBadge,
