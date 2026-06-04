@@ -33,6 +33,8 @@ export interface CertBadgeVariant {
   maxWidthMm: number | null
   /** C8 — text that must accompany the mark; auto-paired as a caption on place. */
   requiredCoText: string | null
+  /** C8 — clear-space = factor × mark height; nothing may sit inside it. */
+  clearSpaceFactor: number | null
 }
 
 export interface CertBadge {
@@ -140,6 +142,7 @@ export async function loadProductCertBadges(
                   minWidthMm: true,
                   maxWidthMm: true,
                   requiredCoText: true,
+                  clearSpaceFactor: true,
                 },
                 orderBy: { sortOrder: 'asc' },
               },
@@ -168,6 +171,7 @@ export async function loadProductCertBadges(
         minWidthMm: v.minWidthMm,
         maxWidthMm: v.maxWidthMm,
         requiredCoText: v.requiredCoText,
+        clearSpaceFactor: v.clearSpaceFactor,
       })),
     )
 

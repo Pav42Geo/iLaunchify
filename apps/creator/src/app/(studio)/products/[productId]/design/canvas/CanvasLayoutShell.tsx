@@ -248,6 +248,7 @@ export function CanvasLayoutShell({
           minWidthMm: variant?.minWidthMm ?? null,
           maxWidthMm: variant?.maxWidthMm ?? null,
           requiredCoText: variant?.requiredCoText ?? null,
+          clearSpaceFactor: variant?.clearSpaceFactor ?? null,
         },
         { widthMm: dieCut.widthMm, heightMm: dieCut.heightMm, bleedMm: dieCut.bleedMm, safeAreaMm: dieCut.safeAreaMm },
       )

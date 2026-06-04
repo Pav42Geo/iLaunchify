@@ -25,17 +25,19 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react'
-import { ShieldCheck, Plus } from 'lucide-react'
+import { ShieldCheck, Plus, AlertTriangle as AlertTriangleIcon, Target as TargetIcon } from 'lucide-react'
 import {
   scanLabelCompliance,
   findObjectByRef,
   certBadgeIdsOnCanvas,
+  findCertBadgeObject,
   type FabricCanvas,
   type LabelScanResult,
   type ScanFinding,
   type ScanSeverity,
 } from '@ilaunchify/ui'
 import type { CertBadge } from './cert-badge-actions'
+import { findClearSpaceViolations, type ClearSpaceViolation } from './clearSpace'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -65,6 +67,7 @@ export function CompliancePanel({
   const [result, setResult] = React.useState<LabelScanResult | null>(null)
   // Which cert instances are currently on the canvas — drives the unused list.
   const [placedCertIds, setPlacedCertIds] = React.useState<Set<string>>(new Set())
+  const [clearSpace, setClearSpace] = React.useState<ClearSpaceViolation[]>([])
 
   // Re-scan whenever the canvas mutates. The scan is pure so we can run it
   // freely; keeps the counts honest while the user edits.
@@ -78,6 +81,7 @@ export function CompliancePanel({
       if (!canvas) return
       setResult(scanLabelCompliance(canvas, productCtx))
       setPlacedCertIds(certBadgeIdsOnCanvas(canvas))
+      setClearSpace(findClearSpaceViolations(canvas))
     }
 
     rescan()
@@ -108,6 +112,9 @@ export function CompliancePanel({
           <Findings findings={result.findings} canvas={canvas} />
         )}
         {!result && <LoadingState />}
+        {clearSpace.length > 0 && (
+          <ClearSpaceWarnings violations={clearSpace} certBadges={certBadges} canvas={canvas} />
+        )}
         {unusedCerts.length > 0 && (
           <AvailableCertifications certs={unusedCerts} onAddCert={onAddCert} />
         )}
@@ -424,6 +431,66 @@ function LoadingState() {
       <RefreshCw className="mx-auto h-5 w-5 text-ink-400 animate-spin" />
       <p className="mt-2 text-[11.5px] text-ink-500">Scanning canvas…</p>
     </div>
+  )
+}
+
+// ============================================================================
+// Clear-space warnings — objects intruding a badge's clear-space zone (C8)
+// ============================================================================
+
+function ClearSpaceWarnings({
+  violations,
+  certBadges,
+  canvas,
+}: {
+  violations: ClearSpaceViolation[]
+  certBadges: CertBadge[]
+  canvas: FabricCanvas | null
+}) {
+  const nameFor = (id: string) =>
+    certBadges.find((b) => b.certInstanceId === id)?.certTypeName ?? 'certification'
+
+  function find(certInstanceId: string) {
+    if (!canvas) return
+    const obj = findCertBadgeObject(canvas, certInstanceId)
+    if (!obj) return
+    canvas.setActiveObject(obj)
+    canvas.requestRenderAll()
+  }
+
+  return (
+    <section className="rounded-md border border-amber-200 bg-amber-50/50 p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+        <AlertTriangleIcon className="h-3 w-3" />
+        Clear-space
+      </div>
+      <p className="mt-1 text-[11px] text-ink-600 leading-[1.45]">
+        Certification marks need a clear margin around them. Move overlapping elements away to
+        stay on-spec.
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {violations.map((v) => (
+          <li
+            key={v.certInstanceId}
+            className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-white px-2.5 py-1.5"
+          >
+            <span className="min-w-0 text-[12px] text-ink-800">
+              <span className="font-semibold">{nameFor(v.certInstanceId)}</span>{' '}
+              <span className="text-ink-500">
+                — {v.intruders} element{v.intruders === 1 ? '' : 's'} too close
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => find(v.certInstanceId)}
+              className="inline-flex flex-shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800 hover:bg-amber-100"
+            >
+              <TargetIcon className="h-3 w-3" /> Find
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

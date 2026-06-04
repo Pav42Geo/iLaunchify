@@ -30,6 +30,8 @@ export interface CertBadgePlacement {
   maxWidthMm?: number | null
   /** C8 — text that must accompany the mark; auto-paired below the badge. */
   requiredCoText?: string | null
+  /** C8 — clear-space = factor × mark height; compliance flags intrusions. */
+  clearSpaceFactor?: number | null
 }
 
 export interface CertBadgeDieCut {
@@ -287,6 +289,7 @@ export async function addCertBadge(
     ...(badge.variantId ? { variantId: badge.variantId } : {}),
     ...(badge.minWidthMm != null ? { minWidthMm: badge.minWidthMm } : {}),
     ...(badge.maxWidthMm != null ? { maxWidthMm: badge.maxWidthMm } : {}),
+    ...(badge.clearSpaceFactor != null ? { clearSpaceFactor: badge.clearSpaceFactor } : {}),
   }
   applyCertBadgeControls(obj)
   canvas.add(obj)
