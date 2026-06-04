@@ -147,6 +147,12 @@ const PRIMARY: SidebarRegion = {
       icon: ShoppingBag,
       href: '/orders',
     },
+    {
+      kind: 'item',
+      label: 'Routing preview',
+      icon: Workflow,
+      href: '/routing-preview',
+    },
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {
       kind: 'item',
