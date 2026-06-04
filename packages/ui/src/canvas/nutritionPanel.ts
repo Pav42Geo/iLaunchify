@@ -52,6 +52,8 @@ export interface PanelSections {
 
 export interface NutritionPanelOpts {
   style?: NutritionPanelStyle
+  /** C4 — the picked LabelFormat (e.g. FDA_VERTICAL, FDA_TABULAR). Drives layout. */
+  format?: string
   /** C3.b — section visibility toggles. */
   sections?: PanelSections
   ink?: string
@@ -98,7 +100,10 @@ export async function addNutritionFactsPanel(
   const ink = opts.ink ?? '#000000'
   const bg = opts.bg === undefined ? '#FFFFFF' : opts.bg // null = transparent
   const border = opts.border ?? true
-  const width = opts.widthPx ?? 220
+  // FDA Tabular runs wider (nutrient rows render in two side-by-side columns);
+  // the standard vertical layout stays narrow.
+  const tabular = opts.format === 'FDA_TABULAR'
+  const width = opts.widthPx ?? (tabular ? 360 : 220)
 
   // Build children. Coordinates are local to the group; positioning happens
   // at the bottom via the group's center.
@@ -192,41 +197,80 @@ export async function addNutritionFactsPanel(
   y += 10
 
   // ===== Rows =====
-  for (const row of data.rows) {
-    children.push(rule(pad, y, width - pad, 0.5, ink))
-    y += 3
-    const indent = (row.indent ?? 0) * 8
-    children.push(
-      text(`${row.label} ${row.value}`, pad + indent, y, {
-        fontSize: 9,
-        fontWeight: row.bold ? 700 : 400,
-        fill: ink,
-      }),
-    )
-    if (row.dvPercent !== null && row.dvPercent !== undefined) {
+  if (tabular) {
+    // FDA Tabular — nutrient rows in two side-by-side columns.
+    const gap = 10
+    const colW = (width - 2 * pad - gap) / 2
+    const half = Math.ceil(data.rows.length / 2)
+    const yStart = y
+    const renderColumn = (rows: NutritionRow[], x: number): number => {
+      let cy = yStart
+      for (const row of rows) {
+        children.push(rule(x, cy, x + colW, 0.5, ink))
+        cy += 3
+        const indent = (row.indent ?? 0) * 6
+        children.push(
+          text(`${row.label} ${row.value}`, x + indent, cy, {
+            fontSize: 8,
+            fontWeight: row.bold ? 700 : 400,
+            fill: ink,
+            width: colW - 24,
+          }),
+        )
+        if (row.dvPercent !== null && row.dvPercent !== undefined) {
+          children.push(
+            text(`${row.dvPercent}%`, x + colW, cy, {
+              fontSize: 8,
+              fontWeight: 700,
+              fill: ink,
+              textAlign: 'right',
+              originX: 'right',
+            }),
+          )
+        }
+        cy += 12
+      }
+      return cy
+    }
+    const yLeft = renderColumn(data.rows.slice(0, half), pad)
+    const yRight = renderColumn(data.rows.slice(half), pad + colW + gap)
+    y = Math.max(yLeft, yRight)
+  } else {
+    for (const row of data.rows) {
+      children.push(rule(pad, y, width - pad, 0.5, ink))
+      y += 3
+      const indent = (row.indent ?? 0) * 8
       children.push(
-        text(`${row.dvPercent}%`, width - pad, y, {
+        text(`${row.label} ${row.value}`, pad + indent, y, {
           fontSize: 9,
-          fontWeight: 700,
+          fontWeight: row.bold ? 700 : 400,
           fill: ink,
-          textAlign: 'right',
-          originX: 'right',
         }),
       )
-    }
-    y += 12
-
-    // "Includes Xg Added Sugars" under Total Sugars
-    if (row.label === 'Total Sugars' && data.addedSugarG !== undefined) {
-      children.push(
-        text(
-          `   Includes ${data.addedSugarG}g Added Sugars`,
-          pad + indent + 8,
-          y,
-          { fontSize: 9, fontStyle: 'italic', fill: ink },
-        ),
-      )
+      if (row.dvPercent !== null && row.dvPercent !== undefined) {
+        children.push(
+          text(`${row.dvPercent}%`, width - pad, y, {
+            fontSize: 9,
+            fontWeight: 700,
+            fill: ink,
+            textAlign: 'right',
+            originX: 'right',
+          }),
+        )
+      }
       y += 12
+
+      // "Includes Xg Added Sugars" under Total Sugars
+      if (row.label === 'Total Sugars' && data.addedSugarG !== undefined) {
+        children.push(
+          text(`   Includes ${data.addedSugarG}g Added Sugars`, pad + indent + 8, y, {
+            fontSize: 9,
+            fontStyle: 'italic',
+            fill: ink,
+          }),
+        )
+        y += 12
+      }
     }
   }
 
@@ -278,6 +322,7 @@ export async function addNutritionFactsPanel(
     subTargetCheck: false,
   })
   group.set('customType', 'nutrition-panel' satisfies CanvasCustomType)
+  ;(group as { customData?: unknown }).customData = { format: opts.format ?? 'FDA_VERTICAL' }
 
   // Position at viewport center.
   const vpt = canvas.viewportTransform

@@ -88,6 +88,8 @@ export function LabelDrawer({
   const [showTitle, setShowTitle] = React.useState(true)
   const [showFootnote, setShowFootnote] = React.useState(true)
   const sections = { hideTitle: !showTitle, hideFootnote: !showFootnote }
+  // C4 — the format chosen in the picker, applied to the nutrition panel.
+  const [selectedFormat, setSelectedFormat] = React.useState<string | null>(null)
 
   // Which facts panel applies to this product + whether it's already on the
   // canvas (drives the add/remove toggle on the button).
@@ -118,6 +120,7 @@ export function LabelDrawer({
         bg,
         border,
         sections,
+        format: selectedFormat ?? undefined,
       })
     } finally {
       setAdding(false)
@@ -178,6 +181,29 @@ export function LabelDrawer({
     canvas.remove(obj)
     canvas.discardActiveObject()
     canvas.requestRenderAll()
+  }
+
+  // C4 — pick a format. Records it (applied on next add) and, if a nutrition
+  // panel is already on the canvas, re-renders it in place with the new layout.
+  function handleFormatChange(format: string) {
+    setSelectedFormat(format)
+    // Only the nutrition (FOOD) panel has multiple layout formats in V1.
+    if (!canvas || (labelingType && labelingType !== 'FOOD')) return
+    const obj = canvasRoles.findPanel('nutrition-panel')
+    if (!obj) return // nothing placed yet — the choice applies on the next add
+    const o = obj as unknown as { left?: number; top?: number }
+    const left = o.left
+    const top = o.top
+    canvas.remove(obj)
+    void addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
+      ink,
+      bg,
+      border,
+      sections,
+      format,
+      centerX: left,
+      centerY: top,
+    })
   }
 
   // Per-section pre-fill text from product context. Falls back to the
@@ -261,6 +287,7 @@ export function LabelDrawer({
             labelingType={labelingType}
             widthMm={dieCut.widthMm}
             heightMm={dieCut.heightMm}
+            onFormatChange={handleFormatChange}
           />
           <div className="h-px bg-ink-200" />
         </>

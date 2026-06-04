@@ -34,10 +34,13 @@ export function LabelFormatPicker({
   labelingType,
   widthMm,
   heightMm,
+  onFormatChange,
 }: {
   labelingType: LabelingType
   widthMm: number
   heightMm: number
+  /** Fired when the creator picks a format (re-renders the on-canvas panel). */
+  onFormatChange?: (format: string) => void
 }) {
   const [data, setData] = React.useState<RecommendFormatsResult | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -87,7 +90,10 @@ export function LabelFormatPicker({
         <div className="space-y-2">
           <select
             value={selected ?? ''}
-            onChange={(e) => setSelected(e.target.value)}
+            onChange={(e) => {
+              setSelected(e.target.value)
+              onFormatChange?.(e.target.value)
+            }}
             className="w-full rounded-md border border-ink-200 bg-white px-2.5 py-1.5 text-[12.5px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
           >
             {all.map((f) => (
