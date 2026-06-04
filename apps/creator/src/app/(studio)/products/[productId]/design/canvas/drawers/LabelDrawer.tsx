@@ -215,6 +215,61 @@ export function LabelDrawer({
 
   return (
     <div className="space-y-5">
+      {/* C2.a — facts panel, branched by labeling type (moved to top so it's the
+          first, most-prominent action). Supplement → Supplement Facts, pet →
+          Guaranteed Analysis, OTC → Drug Facts, else Nutrition Facts. */}
+      {labelingType === 'DIETARY_SUPPLEMENT' ? (
+        <button
+          type="button"
+          onClick={handleAddSupplement}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Supplement Facts'}
+        </button>
+      ) : labelingType === 'PET_PRODUCT' ? (
+        <button
+          type="button"
+          onClick={handleAddAafco}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Guaranteed Analysis'}
+        </button>
+      ) : labelingType === 'OTC' ? (
+        <button
+          type="button"
+          onClick={handleAddDrugFacts}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Drug Facts'}
+        </button>
+      ) : canvasRoles.nutritionPanelPresent ? (
+        <button
+          type="button"
+          onClick={handleFindNutritionPanel}
+          disabled={!canvas}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-emerald-300 bg-emerald-50 text-emerald-900 rounded-md hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+        >
+          <Target className="h-3.5 w-3.5" />
+          Nutrition Facts on canvas — click to select
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Nutrition Facts'}
+        </button>
+      )}
+
       {/* C4.b — label format picker (recommended + valid alternatives). */}
       {labelingType && dieCut && (
         <>
@@ -564,61 +619,6 @@ export function LabelDrawer({
           Applied when you add the panel. Hiding required sections may flag in the compliance scan.
         </p>
       </section>
-
-      {/* C2.a — facts panel, branched by labeling type. Supplement products get
-          the Supplement Facts panel (21 CFR 101.36); everything else gets
-          Nutrition Facts (21 CFR 101.9, one-per-package find-to-select). */}
-      {labelingType === 'DIETARY_SUPPLEMENT' ? (
-        <button
-          type="button"
-          onClick={handleAddSupplement}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Supplement Facts'}
-        </button>
-      ) : labelingType === 'PET_PRODUCT' ? (
-        <button
-          type="button"
-          onClick={handleAddAafco}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Guaranteed Analysis'}
-        </button>
-      ) : labelingType === 'OTC' ? (
-        <button
-          type="button"
-          onClick={handleAddDrugFacts}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Drug Facts'}
-        </button>
-      ) : canvasRoles.nutritionPanelPresent ? (
-        <button
-          type="button"
-          onClick={handleFindNutritionPanel}
-          disabled={!canvas}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-emerald-300 bg-emerald-50 text-emerald-900 rounded-md hover:bg-emerald-100 disabled:opacity-40 transition-colors"
-        >
-          <Target className="h-3.5 w-3.5" />
-          Nutrition Facts on canvas — click to select
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Nutrition Facts'}
-        </button>
-      )}
 
       {/* Disclosure */}
       <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
