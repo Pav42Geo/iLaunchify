@@ -83,6 +83,7 @@ import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
+import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { CertConsentModal } from './CertConsentModal'
 import { recordLabelClaimConsent } from './claim-consent-actions'
 import { toast } from 'sonner'
@@ -98,6 +99,7 @@ import {
   QrCode,
   Barcode,
   Layers,
+  Boxes,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -179,6 +181,7 @@ type ToolKey =
   | 'barcode'
   | 'layers'
   | 'finishes'
+  | 'components'
 
 /**
  * `conditional` tools (DS-70b) only appear in the rail when the runtime
@@ -204,6 +207,7 @@ const TOOLS: Array<{
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
+  { key: 'components', label: 'Components', icon: Boxes, v1: true },
   // Conditional — only renders when partnerOffersFinishes flag is true.
   {
     key: 'finishes',
@@ -1039,6 +1043,7 @@ function ToolDrawer({
     barcode: 'Barcode',
     layers: 'Layers',
     finishes: 'Finishes',
+    components: 'Components',
   }
 
   return (
@@ -1095,6 +1100,7 @@ function ToolDrawer({
         {tool === 'barcode' && <BarcodeDrawer canvas={canvas} />}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool === 'finishes' && <FinishesDrawer />}
+        {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&
@@ -1103,7 +1109,8 @@ function ToolDrawer({
           tool !== 'qrcode' &&
           tool !== 'barcode' &&
           tool !== 'layers' &&
-          tool !== 'finishes' && <ComingSoonStub label={titles[tool]} />}
+          tool !== 'finishes' &&
+          tool !== 'components' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )
