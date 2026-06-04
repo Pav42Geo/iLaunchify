@@ -22,6 +22,8 @@ import {
   SAMPLE_SUPPLEMENT_DATA,
   addAafcoPanel,
   SAMPLE_AAFCO_DATA,
+  addDrugFactsPanel,
+  SAMPLE_DRUG_FACTS_DATA,
   addLabelSection,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
@@ -133,6 +135,17 @@ export function LabelDrawer({
     setAdding(true)
     try {
       await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, widthPx: width })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  // C2.b — Drug Facts panel (21 CFR 201.66), for OTC.
+  async function handleAddDrugFacts() {
+    if (!canvas) return
+    setAdding(true)
+    try {
+      await addDrugFactsPanel(canvas, SAMPLE_DRUG_FACTS_DATA, { ink, bg, border, widthPx: width })
     } finally {
       setAdding(false)
     }
@@ -538,6 +551,16 @@ export function LabelDrawer({
         >
           <Plus className="h-3.5 w-3.5" />
           {adding ? 'Adding…' : 'Add Guaranteed Analysis'}
+        </button>
+      ) : labelingType === 'OTC' ? (
+        <button
+          type="button"
+          onClick={handleAddDrugFacts}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Drug Facts'}
         </button>
       ) : canvasRoles.nutritionPanelPresent ? (
         <button

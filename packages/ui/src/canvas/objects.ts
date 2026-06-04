@@ -25,6 +25,7 @@ export type CanvasCustomType =
   | 'nutrition-panel'
   | 'supplement-panel'
   | 'aafco-panel'
+  | 'drug-facts-panel'
   | 'cert-badge'
 
 /**

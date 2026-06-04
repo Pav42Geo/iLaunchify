@@ -154,6 +154,16 @@ export {
   type AafcoPanelOpts,
 } from './canvas/aafcoPanel'
 export {
+  addDrugFactsPanel,
+  updateDrugFactsPanel,
+  SAMPLE_DRUG_FACTS_DATA,
+  type DrugFactsData,
+  type DrugFactsPanelProps,
+  type DrugActiveIngredient,
+  type DrugWarningLine,
+  type DrugFactsPanelOpts,
+} from './canvas/drugFactsPanel'
+export {
   validateGtin,
   prettyPrintGtin,
   GTIN_FORMAT_LABEL,
