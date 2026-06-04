@@ -157,6 +157,9 @@ export interface CostBreakdown {
   labelUnitCents: number
   packagingUnitCents: number
   finishUnitCents: number
+  // C7.h — per-unit surcharge from selected packaging-component variants
+  // (custom cap, branded seal, …). 0 when every slot uses its default.
+  componentsUnitCents: number
   // Setup fees that don't scale with quantity (cents).
   setupCents: number
   // Order-level totals (cents).
@@ -220,7 +223,25 @@ export async function estimateProductionCost(
     finishUnitCents += f.perUnitPriceCents ?? 0
   }
 
-  const perUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents
+  // C7.h — walk the product's packaging components. Each slot with a selected
+  // (non-default) variant adds its per-unit surcharge, scaled by unitsPerParent
+  // (variety multipacks hold N of a flavor). Default-included variants add $0,
+  // so this is 0 until partners list upgrade variants.
+  const components = await prisma.packagingComponent.findMany({
+    where: { productId: input.productId },
+    select: {
+      unitsPerParent: true,
+      selectedVariant: { select: { baseSurchargePerUnit: true } },
+    },
+  })
+  let componentsUnitCents = 0
+  for (const c of components) {
+    if (!c.selectedVariant) continue
+    const surchargeCents = Math.round(Number(c.selectedVariant.baseSurchargePerUnit) * 100)
+    componentsUnitCents += surchargeCents * (c.unitsPerParent || 1)
+  }
+
+  const perUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents + componentsUnitCents
   const subtotalCents = perUnitCents * qty + setupCents
 
   // Platform fee — use the current effective PlatformFeeConfig row.
@@ -241,6 +262,7 @@ export async function estimateProductionCost(
       labelUnitCents,
       packagingUnitCents,
       finishUnitCents,
+      componentsUnitCents,
       setupCents,
       subtotalCents,
       platformFeeCents,

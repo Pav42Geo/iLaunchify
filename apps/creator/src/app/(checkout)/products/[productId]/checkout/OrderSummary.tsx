@@ -117,6 +117,12 @@ export function OrderSummary({
           }
           dimmed={state.production.finishPartnerFinishIds.length === 0}
         />
+        {hasEstimate && estimate.componentsUnitCents > 0 && (
+          <Row
+            label={`Component upgrades${qty ? ` × ${qty}` : ''}`}
+            value={formatCents(estimate.componentsUnitCents * estimate.quantity)}
+          />
+        )}
         <Row
           label="Platform fee"
           value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
