@@ -38,6 +38,7 @@ import { InfoTip } from '../InfoTip'
 import type { CertBadge } from '../cert-badge-actions'
 import type { LabelingType } from '@ilaunchify/db'
 import { LabelFormatPicker } from './LabelFormatPicker'
+import { ClaimSuggestions } from './ClaimSuggestions'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -481,6 +482,15 @@ export function LabelDrawer({
           </label>
         </div>
       </section>
+
+      {/* C6 — nutrient-content claim suggestions (FOOD only; maps to the
+          Nutrition Facts dataset). */}
+      {(!labelingType || labelingType === 'FOOD') && (
+        <>
+          <div className="h-px bg-ink-200" />
+          <ClaimSuggestions canvas={canvas} data={SAMPLE_NUTRITION_DATA} />
+        </>
+      )}
 
     </div>
   )
