@@ -134,6 +134,7 @@ export {
   type NutritionPanelProps,
   type NutritionRow,
   type NutritionPanelOpts,
+  type PanelSections,
 } from './canvas/nutritionPanel'
 export {
   addSupplementFactsPanel,

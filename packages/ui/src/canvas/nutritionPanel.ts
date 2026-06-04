@@ -42,8 +42,18 @@ export interface NutritionRow {
   bold?: boolean
 }
 
+/** C3.b — per-section visibility toggles supported by every facts panel. */
+export interface PanelSections {
+  /** Hide the panel title ("Nutrition Facts" / "Supplement Facts" / …). */
+  hideTitle?: boolean
+  /** Hide the small-print footnote / adequacy statement at the bottom. */
+  hideFootnote?: boolean
+}
+
 export interface NutritionPanelOpts {
   style?: NutritionPanelStyle
+  /** C3.b — section visibility toggles. */
+  sections?: PanelSections
   ink?: string
   /** null or 'transparent' → no fill; the bg rect renders with stroke only if border is on. */
   bg?: string | null
@@ -97,16 +107,18 @@ export async function addNutritionFactsPanel(
   let y = pad
 
   // ===== Header =====
-  children.push(
-    text('Nutrition Facts', 0 + pad, y, {
-      fontSize: 22,
-      fontWeight: 900,
-      fontFamily: 'Helvetica',
-      fill: ink,
-      width: width - 2 * pad,
-    }),
-  )
-  y += 22 + 3
+  if (!opts.sections?.hideTitle) {
+    children.push(
+      text('Nutrition Facts', 0 + pad, y, {
+        fontSize: 22,
+        fontWeight: 900,
+        fontFamily: 'Helvetica',
+        fill: ink,
+        width: width - 2 * pad,
+      }),
+    )
+    y += 22 + 3
+  }
 
   children.push(
     text(`${data.servingsPerContainer} servings per container`, pad, y, {
@@ -223,15 +235,17 @@ export async function addNutritionFactsPanel(
   y += 8
 
   // Footnote
-  children.push(
-    text(data.footnote, pad, y, {
-      fontSize: 7,
-      fill: ink,
-      width: width - 2 * pad,
-      lineHeight: 1.15,
-    }),
-  )
-  y += estimateLines(data.footnote, width - 2 * pad, 7) * 9 + pad
+  if (!opts.sections?.hideFootnote) {
+    children.push(
+      text(data.footnote, pad, y, {
+        fontSize: 7,
+        fill: ink,
+        width: width - 2 * pad,
+        lineHeight: 1.15,
+      }),
+    )
+    y += estimateLines(data.footnote, width - 2 * pad, 7) * 9 + pad
+  }
 
   // ===== Background rect =====
   // bg: null → fully transparent. We still draw the rect so the group has

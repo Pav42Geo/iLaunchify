@@ -84,6 +84,10 @@ export function LabelDrawer({
   const [border, setBorder] = React.useState(true)
   const [width, setWidth] = React.useState(220)
   const [adding, setAdding] = React.useState(false)
+  // C3.b — per-section visibility toggles, applied at add time.
+  const [showTitle, setShowTitle] = React.useState(true)
+  const [showFootnote, setShowFootnote] = React.useState(true)
+  const sections = { hideTitle: !showTitle, hideFootnote: !showFootnote }
 
   // Brand swatches (deduped) for the quick-pick row in color sections.
   const brandSwatches = Array.from(
@@ -107,6 +111,7 @@ export function LabelDrawer({
         bg,
         border,
         widthPx: width,
+        sections,
       })
     } finally {
       setAdding(false)
@@ -123,6 +128,7 @@ export function LabelDrawer({
         bg,
         border,
         widthPx: width,
+        sections,
       })
     } finally {
       setAdding(false)
@@ -134,7 +140,7 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, widthPx: width })
+      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, widthPx: width, sections })
     } finally {
       setAdding(false)
     }
@@ -145,7 +151,7 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addDrugFactsPanel(canvas, SAMPLE_DRUG_FACTS_DATA, { ink, bg, border, widthPx: width })
+      await addDrugFactsPanel(canvas, SAMPLE_DRUG_FACTS_DATA, { ink, bg, border, widthPx: width, sections })
     } finally {
       setAdding(false)
     }
@@ -526,6 +532,36 @@ export function LabelDrawer({
         <p className="mt-1.5 text-[11px] text-ink-500">
           Fit the panel to your label's available space — narrower for small
           bottles, wider for boxes.
+        </p>
+      </section>
+
+      {/* C3.b — per-section visibility toggles, applied when the panel is added. */}
+      <section>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+          Panel sections
+        </div>
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-2 text-[12px] text-ink-800">
+            <input
+              type="checkbox"
+              checked={showTitle}
+              onChange={(e) => setShowTitle(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
+            />
+            Show panel title
+          </label>
+          <label className="flex items-center gap-2 text-[12px] text-ink-800">
+            <input
+              type="checkbox"
+              checked={showFootnote}
+              onChange={(e) => setShowFootnote(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
+            />
+            Show footnote / disclosure
+          </label>
+        </div>
+        <p className="mt-1.5 text-[10.5px] text-ink-400 leading-[1.4]">
+          Applied when you add the panel. Hiding required sections may flag in the compliance scan.
         </p>
       </section>
 

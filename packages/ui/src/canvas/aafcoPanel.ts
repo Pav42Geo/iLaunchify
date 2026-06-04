@@ -12,6 +12,7 @@
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
 import type { CanvasCustomType } from './objects'
+import type { PanelSections } from './nutritionPanel'
 
 export interface AafcoAnalysisRow {
   label: string // "Crude Protein"
@@ -37,6 +38,8 @@ export interface AafcoPanelOpts {
   widthPx?: number
   centerX?: number
   centerY?: number
+  /** C3.b — section visibility toggles. */
+  sections?: PanelSections
 }
 
 export const SAMPLE_AAFCO_DATA: AafcoPanelData = {
@@ -72,16 +75,18 @@ export async function addAafcoPanel(
   let y = pad
 
   // ===== Guaranteed Analysis =====
-  children.push(
-    text('Guaranteed Analysis', pad, y, {
-      fontSize: 14,
-      fontWeight: 900,
-      fontFamily: 'Helvetica',
-      fill: ink,
-      width: inner,
-    }),
-  )
-  y += 18
+  if (!opts.sections?.hideTitle) {
+    children.push(
+      text('Guaranteed Analysis', pad, y, {
+        fontSize: 14,
+        fontWeight: 900,
+        fontFamily: 'Helvetica',
+        fill: ink,
+        width: inner,
+      }),
+    )
+    y += 18
+  }
   children.push(rule(pad, y, width - pad, 3, ink))
   y += 5
 
@@ -115,7 +120,7 @@ export async function addAafcoPanel(
   }
 
   // ===== Nutritional Adequacy statement (optional) =====
-  if (data.nutritionalAdequacy) {
+  if (data.nutritionalAdequacy && !opts.sections?.hideFootnote) {
     children.push(
       text(data.nutritionalAdequacy, pad, y, {
         fontSize: 7.5,

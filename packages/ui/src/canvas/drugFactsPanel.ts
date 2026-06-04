@@ -13,6 +13,7 @@
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
 import type { CanvasCustomType } from './objects'
+import type { PanelSections } from './nutritionPanel'
 
 export interface DrugActiveIngredient {
   /** "Acetaminophen 500 mg (in each tablet)". */
@@ -45,6 +46,8 @@ export interface DrugFactsPanelOpts {
   widthPx?: number
   centerX?: number
   centerY?: number
+  /** C3.b — section visibility toggles. */
+  sections?: PanelSections
 }
 
 export const SAMPLE_DRUG_FACTS_DATA: DrugFactsData = {
@@ -85,10 +88,12 @@ export async function addDrugFactsPanel(
   let y = pad
 
   // ===== Drug Facts title =====
-  children.push(
-    text('Drug Facts', pad, y, { fontSize: 18, fontWeight: 900, fontFamily: 'Helvetica', fill: ink, width: inner }),
-  )
-  y += 20
+  if (!opts.sections?.hideTitle) {
+    children.push(
+      text('Drug Facts', pad, y, { fontSize: 18, fontWeight: 900, fontFamily: 'Helvetica', fill: ink, width: inner }),
+    )
+    y += 20
+  }
   children.push(rule(pad, y, width - pad, 4, ink))
   y += 6
 
@@ -148,7 +153,7 @@ export async function addDrugFactsPanel(
   y += estimateLines(data.inactiveIngredients, inner, 8) * 10 + 4
 
   // ===== Questions =====
-  if (data.questions) {
+  if (data.questions && !opts.sections?.hideFootnote) {
     y = sectionRule(children, pad, y, width, ink)
     children.push(text(data.questions, pad, y, { fontSize: 8, fontWeight: 700, fill: ink, width: inner }))
     y += 12

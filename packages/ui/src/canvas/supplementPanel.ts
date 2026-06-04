@@ -17,6 +17,7 @@
 import * as fabric from 'fabric'
 import type { FabricCanvas, FabricObject } from './types'
 import type { CanvasCustomType } from './objects'
+import type { PanelSections } from './nutritionPanel'
 
 export interface SupplementRow {
   label: string
@@ -47,6 +48,8 @@ export interface SupplementPanelOpts {
   widthPx?: number
   centerX?: number
   centerY?: number
+  /** C3.b — section visibility toggles. */
+  sections?: PanelSections
 }
 
 export const SAMPLE_SUPPLEMENT_DATA: SupplementPanelData = {
@@ -82,16 +85,18 @@ export async function addSupplementFactsPanel(
   let y = pad
 
   // ===== Header =====
-  children.push(
-    text('Supplement Facts', pad, y, {
-      fontSize: 20,
-      fontWeight: 900,
-      fontFamily: 'Helvetica',
-      fill: ink,
-      width: width - 2 * pad,
-    }),
-  )
-  y += 22
+  if (!opts.sections?.hideTitle) {
+    children.push(
+      text('Supplement Facts', pad, y, {
+        fontSize: 20,
+        fontWeight: 900,
+        fontFamily: 'Helvetica',
+        fill: ink,
+        width: width - 2 * pad,
+      }),
+    )
+    y += 22
+  }
 
   children.push(
     text(`Serving Size ${data.servingSize}`, pad, y, {
@@ -164,24 +169,26 @@ export async function addSupplementFactsPanel(
   y += 9
 
   // ===== Footnotes =====
-  children.push(
-    text('* Percent Daily Values are based on a 2,000 calorie diet.', pad, y, {
-      fontSize: 7,
-      fill: ink,
-      width: width - 2 * pad,
-      lineHeight: 1.15,
-    }),
-  )
-  y += estimateLines('* Percent Daily Values are based on a 2,000 calorie diet.', width - 2 * pad, 7) * 9 + 2
-  if (anyDaggered) {
+  if (!opts.sections?.hideFootnote) {
     children.push(
-      text('† Daily Value not established.', pad, y, {
+      text('* Percent Daily Values are based on a 2,000 calorie diet.', pad, y, {
         fontSize: 7,
         fill: ink,
         width: width - 2 * pad,
+        lineHeight: 1.15,
       }),
     )
-    y += 10
+    y += estimateLines('* Percent Daily Values are based on a 2,000 calorie diet.', width - 2 * pad, 7) * 9 + 2
+    if (anyDaggered) {
+      children.push(
+        text('† Daily Value not established.', pad, y, {
+          fontSize: 7,
+          fill: ink,
+          width: width - 2 * pad,
+        }),
+      )
+      y += 10
+    }
   }
 
   const boxHeight = y + pad
