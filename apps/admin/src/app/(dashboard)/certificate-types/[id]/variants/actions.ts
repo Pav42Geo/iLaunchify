@@ -136,8 +136,13 @@ export async function deleteCertAssetVariant(id: string): Promise<Result> {
   return { ok: true }
 }
 
+// EPS is accepted in the vector "SVG" slot as a print-ready master (no
+// conversion needed); browsers report it under several MIME types, hence the
+// list + extension sniff below.
+const EPS_MIMES = ['application/postscript', 'application/eps', 'application/x-eps', 'image/eps', 'image/x-eps']
+
 const VARIANT_ASSET_ACCEPT: Record<'SVG' | 'PNG', string[]> = {
-  SVG: ['image/svg+xml'],
+  SVG: ['image/svg+xml', ...EPS_MIMES],
   PNG: ['image/png', 'image/webp'],
 }
 
@@ -153,11 +158,12 @@ export async function uploadCertVariantAsset(
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No file provided.' }
   if (file.size > 5 * 1024 * 1024) return { ok: false, error: 'File too large (max 5 MB).' }
 
+  const name = file.name.toLowerCase()
   const looksRight =
     VARIANT_ASSET_ACCEPT[kind].includes(file.type) ||
-    (kind === 'SVG' && file.name.toLowerCase().endsWith('.svg'))
+    (kind === 'SVG' && (name.endsWith('.svg') || name.endsWith('.eps')))
   if (!looksRight) {
-    return { ok: false, error: `Wrong file type — upload a ${kind} file.` }
+    return { ok: false, error: `Wrong file type — upload a ${kind === 'SVG' ? 'SVG or EPS' : 'PNG'} file.` }
   }
 
   const variant = await prisma.certificateAssetVariant.findUnique({
@@ -166,7 +172,9 @@ export async function uploadCertVariantAsset(
   })
   if (!variant) return { ok: false, error: 'Variant not found.' }
 
-  const contentType = file.type || (kind === 'SVG' ? 'image/svg+xml' : 'image/png')
+  const contentType =
+    file.type ||
+    (kind === 'SVG' ? (name.endsWith('.eps') ? 'application/postscript' : 'image/svg+xml') : 'image/png')
   const buffer = Buffer.from(await file.arrayBuffer())
   let upload
   try {

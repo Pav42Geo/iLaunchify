@@ -181,7 +181,7 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
             <input
               ref={svgRef}
               type="file"
-              accept="image/svg+xml,.svg"
+              accept="image/svg+xml,.svg,application/postscript,.eps"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
@@ -223,10 +223,20 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
   )
 }
 
+/** EPS masters can't preview in an <img>; detect by the key path before the query. */
+function isEpsUrl(url: string): boolean {
+  const path = url.split('?')[0] ?? ''
+  return path.toLowerCase().endsWith('.eps')
+}
+
 function AssetThumb({ url, label }: { url: string | null; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1">
-      {url ? (
+      {url && isEpsUrl(url) ? (
+        <div className="flex h-12 w-12 flex-col items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-center">
+          <span className="text-[10px] font-semibold text-zinc-700">EPS</span>
+        </div>
+      ) : url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={url}
