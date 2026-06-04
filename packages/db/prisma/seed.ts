@@ -17,6 +17,7 @@ import { seedCatalog } from './seed-catalog'
 import { seedMarketsRegions } from './seed-markets-regions'
 import { seedPartnerOnboarding } from './seed-partner-onboarding'
 import { seedPartnerMarketCerts } from './seed-partner-market-certs'
+import { seedMarketplaceFixtures } from './seed-marketplace-fixtures'
 import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
 import { seedCertificateCatalog } from './seed-certificate-catalog'
@@ -140,6 +141,13 @@ async function main() {
   // Soft-warns high-dose caffeine combinations, kratom, etc.
   // FINAL list should be regulatory-consultant reviewed before V1 launch.
   await seedIngredientDictionaries(prisma)
+
+  // --- Marketplace demo fixtures (multi-partner routing + B4 scoring) ---
+  // Two distinct ACTIVE manufacturers with payouts + market certs, and brand
+  // operating-regions + target markets — so routing actually ranks candidates
+  // and proximity/cert scoring has real context. Runs last (needs partners +
+  // brands + markets + regions).
+  await seedMarketplaceFixtures(prisma)
 
   // --- Platform fee config ---
   await prisma.platformFeeConfig.create({
