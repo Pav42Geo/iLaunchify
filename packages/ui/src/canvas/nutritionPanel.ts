@@ -101,9 +101,11 @@ export async function addNutritionFactsPanel(
   const bg = opts.bg === undefined ? '#FFFFFF' : opts.bg // null = transparent
   const border = opts.border ?? true
   // FDA Tabular runs wider (nutrient rows render in two side-by-side columns);
-  // the standard vertical layout stays narrow.
+  // FDA Linear is a compact narrow run-on format for very small packages; the
+  // standard vertical layout stays the default.
   const tabular = opts.format === 'FDA_TABULAR'
-  const width = opts.widthPx ?? (tabular ? 360 : 220)
+  const linear = opts.format === 'FDA_LINEAR'
+  const width = opts.widthPx ?? (tabular ? 360 : linear ? 180 : 220)
 
   // Build children. Coordinates are local to the group; positioning happens
   // at the bottom via the group's center.
@@ -235,6 +237,25 @@ export async function addNutritionFactsPanel(
     const yLeft = renderColumn(data.rows.slice(0, half), pad)
     const yRight = renderColumn(data.rows.slice(half), pad + colW + gap)
     y = Math.max(yLeft, yRight)
+  } else if (linear) {
+    // FDA Linear (21 CFR 101.9(j)(13)(ii)(A)(2)) — for very small packages the
+    // nutrient list runs as a single string: "Total Fat 1g (1% DV), Sodium 35mg
+    // (2% DV), …". One wrapped paragraph instead of per-row hairlines.
+    const parts = data.rows.map((row) => {
+      const dv =
+        row.dvPercent !== null && row.dvPercent !== undefined ? ` (${row.dvPercent}% DV)` : ''
+      return `${row.label} ${row.value}${dv}`
+    })
+    const paragraph = parts.join(', ') + '.'
+    children.push(
+      text(paragraph, pad, y, {
+        fontSize: 8,
+        fill: ink,
+        width: width - 2 * pad,
+        lineHeight: 1.3,
+      }),
+    )
+    y += estimateLines(paragraph, width - 2 * pad, 8) * 11 + 4
   } else {
     for (const row of data.rows) {
       children.push(rule(pad, y, width - pad, 0.5, ink))

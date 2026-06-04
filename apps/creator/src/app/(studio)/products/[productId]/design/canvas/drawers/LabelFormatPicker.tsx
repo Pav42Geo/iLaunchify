@@ -72,7 +72,7 @@ export function LabelFormatPicker({
         Label format
         {!loading && all.length > 0 && (
           <InfoTip
-            text={`${all.length} FDA-approved format${all.length === 1 ? '' : 's'} fit your ${Math.round(widthMm)}×${Math.round(heightMm)} mm label${data ? ` (${data.trimSurfaceAreaSqIn.toFixed(1)} sq in)` : ''}. Switching re-renders the panel once the format-aware renderer ships.`}
+            text={`${all.length} FDA-approved format${all.length === 1 ? '' : 's'} fit your ${Math.round(widthMm)}×${Math.round(heightMm)} mm label${data ? ` (${data.trimSurfaceAreaSqIn.toFixed(1)} sq in)` : ''}. Switching re-renders the on-canvas panel in place.`}
           />
         )}
       </div>
