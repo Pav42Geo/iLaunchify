@@ -40,6 +40,13 @@ export interface AafcoPanelOpts {
   centerY?: number
   /** C3.b — section visibility toggles. */
   sections?: PanelSections
+  /**
+   * C4 — the picked LabelFormat. AAFCO_PET_TREAT renders the simplified treat
+   * layout (Guaranteed Analysis + Ingredients only); treats labeled for
+   * intermittent/supplemental feeding are exempt from Feeding Directions and
+   * Calorie Content. AAFCO_PET_FOOD (default) renders the full panel.
+   */
+  format?: string
 }
 
 export const SAMPLE_AAFCO_DATA: AafcoPanelData = {
@@ -67,7 +74,10 @@ export async function addAafcoPanel(
   const ink = opts.ink ?? '#000000'
   const bg = opts.bg === undefined ? '#FFFFFF' : opts.bg
   const border = opts.border ?? true
-  const width = opts.widthPx ?? 240
+  // AAFCO_PET_TREAT — simplified, narrower layout; drops Feeding Directions +
+  // Calorie Content (treats for intermittent/supplemental feeding are exempt).
+  const treat = opts.format === 'AAFCO_PET_TREAT'
+  const width = opts.widthPx ?? (treat ? 200 : 240)
   const pad = 8
   const inner = width - 2 * pad
 
@@ -111,11 +121,13 @@ export async function addAafcoPanel(
   // ===== Ingredients =====
   y = labeledBlock(children, 'Ingredients:', data.ingredients, pad, y, inner, ink, width)
 
-  // ===== Feeding Directions =====
-  y = labeledBlock(children, 'Feeding Directions:', data.feedingDirections, pad, y, inner, ink, width)
+  // ===== Feeding Directions (full pet-food format only) =====
+  if (!treat) {
+    y = labeledBlock(children, 'Feeding Directions:', data.feedingDirections, pad, y, inner, ink, width)
+  }
 
-  // ===== Calorie Content (optional) =====
-  if (data.calorieContent) {
+  // ===== Calorie Content (optional; full pet-food format only) =====
+  if (data.calorieContent && !treat) {
     y = labeledBlock(children, 'Calorie Content:', data.calorieContent, pad, y, inner, ink, width)
   }
 
@@ -159,6 +171,7 @@ export async function addAafcoPanel(
     subTargetCheck: false,
   })
   group.set('customType', 'aafco-panel' satisfies CanvasCustomType)
+  ;(group as { customData?: unknown }).customData = { format: opts.format ?? 'AAFCO_PET_FOOD' }
 
   const vpt = canvas.viewportTransform
   const w = canvas.getWidth()

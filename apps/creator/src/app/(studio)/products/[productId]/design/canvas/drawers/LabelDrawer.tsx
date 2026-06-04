@@ -148,7 +148,13 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, sections })
+      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, {
+        ink,
+        bg,
+        border,
+        sections,
+        format: selectedFormat ?? undefined,
+      })
     } finally {
       setAdding(false)
     }
@@ -183,27 +189,40 @@ export function LabelDrawer({
     canvas.requestRenderAll()
   }
 
-  // C4 — pick a format. Records it (applied on next add) and, if a nutrition
-  // panel is already on the canvas, re-renders it in place with the new layout.
+  // C4 — pick a format. Records it (applied on next add) and, if the matching
+  // facts panel is already on the canvas, re-renders it in place with the new
+  // layout. FOOD (Nutrition: Vertical/Tabular/Linear) and PET_PRODUCT (AAFCO:
+  // Pet Food/Pet Treat) carry multiple layout formats in V1.
   function handleFormatChange(format: string) {
     setSelectedFormat(format)
-    // Only the nutrition (FOOD) panel has multiple layout formats in V1.
-    if (!canvas || (labelingType && labelingType !== 'FOOD')) return
-    const obj = canvasRoles.findPanel('nutrition-panel')
+    if (!canvas) return
+    const obj = canvasRoles.findPanel(panelType)
     if (!obj) return // nothing placed yet — the choice applies on the next add
     const o = obj as unknown as { left?: number; top?: number }
-    const left = o.left
-    const top = o.top
+    const centerX = o.left
+    const centerY = o.top
     canvas.remove(obj)
-    void addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
-      ink,
-      bg,
-      border,
-      sections,
-      format,
-      centerX: left,
-      centerY: top,
-    })
+    if (panelType === 'nutrition-panel') {
+      void addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
+        ink,
+        bg,
+        border,
+        sections,
+        format,
+        centerX,
+        centerY,
+      })
+    } else if (panelType === 'aafco-panel') {
+      void addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, {
+        ink,
+        bg,
+        border,
+        sections,
+        format,
+        centerX,
+        centerY,
+      })
+    }
   }
 
   // Per-section pre-fill text from product context. Falls back to the
