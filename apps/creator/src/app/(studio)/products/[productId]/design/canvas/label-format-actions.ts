@@ -43,7 +43,20 @@ export async function recommendLabelFormats(input: {
     where: { labelingType: input.labelingType },
   })
 
-  const lite: RecommendedFormat[] = rules.map((r) => ({
+  // Only offer formats appropriate for a current US product. The catalog also
+  // carries Canadian (V1.1, schema-ready), USDA/Old-FDA legacy, and the
+  // special-population infant/child formats — none of which should appear for a
+  // normal US SKU. They stay seeded (for V1.1 / category-aware selection later)
+  // but are excluded from the picker here.
+  const offerable = rules.filter(
+    (r) =>
+      !r.format.startsWith('CANADIAN_') &&
+      !r.format.startsWith('USDA_OLD_FDA_') &&
+      r.format !== 'FDA_INFANT' &&
+      r.format !== 'FDA_CHILD',
+  )
+
+  const lite: RecommendedFormat[] = offerable.map((r) => ({
     format: r.format,
     cfrCitation: r.cfrCitation,
     panelOrientation: r.panelOrientation,
