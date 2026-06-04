@@ -37,6 +37,7 @@ import {
   addCertBadge,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
+import type { LabelingType } from '@ilaunchify/db'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
   useSelectedObject,
@@ -134,6 +135,8 @@ interface Props {
    * Reconciled onto the canvas as a managed cert zone once the stage is ready.
    */
   certBadges: CertBadge[]
+  /** C4.b — product's labeling type, drives label-format recommendation. */
+  labelingType: LabelingType
   /**
    * Server-derived product context used by the compliance scan + label
    * drawer pre-fill. allergens / bioengineered come from the recipe;
@@ -218,6 +221,7 @@ export function CanvasLayoutShell({
   brandAssets,
   initialDesignJson,
   certBadges: initialCertBadges,
+  labelingType,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
   creatorTier = 'maker',
@@ -607,6 +611,7 @@ export function CanvasLayoutShell({
               brandAssets={brandAssets}
               certBadges={certBadges}
               onRequestAddCert={handleRequestAddCert}
+              labelingType={labelingType}
               canvas={canvas}
               productId={productId}
               productName={productName}
@@ -991,6 +996,7 @@ function ToolDrawer({
   brandAssets,
   certBadges,
   onRequestAddCert,
+  labelingType,
   canvas,
   productId,
   productName,
@@ -1004,6 +1010,7 @@ function ToolDrawer({
   brandAssets: BrandCanvasAssets
   certBadges: CertBadge[]
   onRequestAddCert: (badge: CertBadge) => void
+  labelingType: LabelingType
   canvas: FabricCanvas | null
   productId: string
   productName: string
@@ -1063,6 +1070,7 @@ function ToolDrawer({
             brandAssets={brandAssets}
             certBadges={certBadges}
             onRequestAddCert={onRequestAddCert}
+            labelingType={labelingType}
             dieCut={dieCut}
             productCtx={{
               productName,

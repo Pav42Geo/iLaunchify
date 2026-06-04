@@ -81,6 +81,9 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
           containerSizeG: true,
         },
       },
+      // C4.b — labeling type drives label-format recommendation. Lives on the
+      // manufacturer template; default to FOOD when unbound.
+      productTemplate: { select: { labelingType: true } },
     },
   })
   if (!product) notFound()
@@ -169,6 +172,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       initialDesignJson={initialDesignJson}
       certBadges={certBadges}
       productCtx={productCtx}
+      labelingType={product.productTemplate?.labelingType ?? 'FOOD'}
       creatorTier={creatorTier}
     />
   )

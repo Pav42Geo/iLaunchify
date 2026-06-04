@@ -28,6 +28,8 @@ import {
 } from '@ilaunchify/ui'
 import { useCanvasRoles } from '../useCanvasRoles'
 import type { CertBadge } from '../cert-badge-actions'
+import type { LabelingType } from '@ilaunchify/db'
+import { LabelFormatPicker } from './LabelFormatPicker'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -39,7 +41,9 @@ interface Props {
    * already consented, else open the consent modal first (never auto-stamp).
    */
   onRequestAddCert?: (badge: CertBadge) => void
-  /** Die-cut spec (placement happens in the shell now; kept for compatibility). */
+  /** C4.b — product labeling type, drives the label-format picker. */
+  labelingType?: LabelingType
+  /** Die-cut spec — label surface dims for the format picker. */
   dieCut?: DieCutSpec
   /**
    * Optional product context used to pre-fill required-section text. When
@@ -61,6 +65,8 @@ export function LabelDrawer({
   brandAssets,
   certBadges = [],
   onRequestAddCert,
+  labelingType,
+  dieCut,
   productCtx,
 }: Props) {
   const canvasRoles = useCanvasRoles(canvas)
@@ -159,6 +165,18 @@ export function LabelDrawer({
 
   return (
     <div className="space-y-5">
+      {/* C4.b — label format picker (recommended + valid alternatives). */}
+      {labelingType && dieCut && (
+        <>
+          <LabelFormatPicker
+            labelingType={labelingType}
+            widthMm={dieCut.widthMm}
+            heightMm={dieCut.heightMm}
+          />
+          <div className="h-px bg-ink-200" />
+        </>
+      )}
+
       {/* Required sections — DS-55. */}
       <section>
         <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
