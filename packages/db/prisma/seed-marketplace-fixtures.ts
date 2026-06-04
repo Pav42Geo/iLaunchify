@@ -104,7 +104,10 @@ export async function seedMarketplaceFixtures(prisma: PrismaClient): Promise<voi
     const regionId = regions.get(m.regionCode)
     await prisma.partner.update({
       where: { id: partner.id },
-      data: { ...(regionId ? { primaryRegionId: regionId } : {}) },
+      // status ACTIVE so the routing gate (partner: { status: 'ACTIVE' }) admits
+      // it — without this a manufacturer with an ACTIVE *service* still never
+      // routes.
+      data: { status: 'ACTIVE', ...(regionId ? { primaryRegionId: regionId } : {}) },
     })
     // Payouts enabled so the routing gate (stripeAccountStatus === 'ACTIVE') passes.
     await prisma.user.update({

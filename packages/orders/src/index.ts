@@ -17,6 +17,8 @@ export {
   createDispatches,
 } from './routing'
 export type { RoutingResult, RoutingFailure } from './routing'
+export { previewManufacturerMatches } from './routing'
+export type { RoutingPreviewResult, RoutingPreviewCandidate } from './routing'
 export {
   scorePartnerMatch,
   rankPartnerMatches,

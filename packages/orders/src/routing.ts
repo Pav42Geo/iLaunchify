@@ -13,7 +13,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
-import { pickBestMatch, type MatchCandidate } from './scoring'
+import { pickBestMatch, rankPartnerMatches, type MatchCandidate } from './scoring'
 
 export interface RoutingResult {
   ok: true
@@ -314,4 +314,160 @@ export async function createDispatches(params: {
   ])
 
   return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// B4 — routing preview (admin transparency).
+//
+// Same gates + scoring as findRouting's manufacturer leg, but returns the FULL
+// ranked candidate set with per-dimension score breakdowns + the reason any
+// candidate was gated out. Powers the admin /routing-preview tool so ops can
+// see (and sanity-check) why the engine picks a given manufacturer.
+// -----------------------------------------------------------------------------
+
+export interface RoutingPreviewCandidate {
+  serviceId: string
+  partnerName: string
+  moqMin: number
+  /** null = unbounded. */
+  moqMax: number | null
+  passedGate: boolean
+  gateReason: string | null
+  /** Score fields are null when the candidate was gated out. */
+  total: number | null
+  capability: number | null
+  proximity: number | null
+  cert: number | null
+}
+
+export interface RoutingPreviewResult {
+  productCategory: string
+  winnerServiceId: string | null
+  candidates: RoutingPreviewCandidate[]
+}
+
+export async function previewManufacturerMatches(params: {
+  productId: string
+  quantity: number
+  destinationCountry?: string | null
+  destinationRegionId?: string | null
+  targetMarketId?: string | null
+}): Promise<RoutingPreviewResult | { error: string }> {
+  const product = await prisma.product.findUnique({
+    where: { id: params.productId },
+    select: { category: true },
+  })
+  if (!product) return { error: 'Product not found' }
+
+  const services = await prisma.partnerService.findMany({
+    where: { type: 'MANUFACTURING', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
+    select: {
+      id: true,
+      capabilities: true,
+      partner: {
+        select: {
+          id: true,
+          companyName: true,
+          country: true,
+          primaryRegionId: true,
+          user: { select: { stripeAccountStatus: true } },
+        },
+      },
+    },
+  })
+
+  const now = new Date()
+  const certRows = await prisma.partnerMarketCert.findMany({
+    where: {
+      partnerId: { in: services.map((s) => s.partner.id) },
+      status: 'ACTIVE',
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: { partnerId: true, marketId: true },
+  })
+  const marketsByPartner = new Map<string, string[]>()
+  for (const r of certRows) {
+    marketsByPartner.set(r.partnerId, [...(marketsByPartner.get(r.partnerId) ?? []), r.marketId])
+  }
+
+  const ctx = {
+    quantity: params.quantity,
+    destinationCountry: params.destinationCountry,
+    destinationRegionId: params.destinationRegionId,
+    targetMarketId: params.targetMarketId,
+  }
+
+  const passers: { candidate: MatchCandidate; name: string; moqMaxFinite: number | null }[] = []
+  const failures: RoutingPreviewCandidate[] = []
+
+  for (const s of services) {
+    const caps = s.capabilities as Record<string, unknown>
+    const categories = (caps.categories as string[] | undefined) ?? []
+    const moqMin = (caps.moqMin as number | undefined) ?? 0
+    const moqMax = (caps.moqMax as number | undefined) ?? Number.POSITIVE_INFINITY
+    const moqMaxFinite = Number.isFinite(moqMax) ? moqMax : null
+
+    let reason: string | null = null
+    if (!categories.includes(product.category)) reason = `Doesn't make ${product.category}`
+    else if (params.quantity < moqMin) reason = `Below MOQ (${moqMin.toLocaleString()})`
+    else if (params.quantity > moqMax) reason = `Above max (${moqMax.toLocaleString()})`
+    else if (s.partner.user.stripeAccountStatus !== 'ACTIVE') reason = 'Payouts not enabled'
+
+    if (reason) {
+      failures.push({
+        serviceId: s.id,
+        partnerName: s.partner.companyName,
+        moqMin,
+        moqMax: moqMaxFinite,
+        passedGate: false,
+        gateReason: reason,
+        total: null,
+        capability: null,
+        proximity: null,
+        cert: null,
+      })
+      continue
+    }
+
+    passers.push({
+      candidate: {
+        serviceId: s.id,
+        moqMin,
+        moqMax,
+        partnerCountry: s.partner.country,
+        partnerRegionId: s.partner.primaryRegionId,
+        certifiedMarketIds: marketsByPartner.get(s.partner.id) ?? [],
+      },
+      name: s.partner.companyName,
+      moqMaxFinite,
+    })
+  }
+
+  const ranked = rankPartnerMatches(
+    passers.map((p) => p.candidate),
+    ctx,
+  )
+  const metaById = new Map(passers.map((p) => [p.candidate.serviceId, p]))
+
+  const passCandidates: RoutingPreviewCandidate[] = ranked.map((r) => {
+    const meta = metaById.get(r.serviceId)
+    return {
+      serviceId: r.serviceId,
+      partnerName: meta?.name ?? '—',
+      moqMin: meta?.candidate.moqMin ?? 0,
+      moqMax: meta?.moqMaxFinite ?? null,
+      passedGate: true,
+      gateReason: null,
+      total: r.total,
+      capability: r.breakdown.capability,
+      proximity: r.breakdown.proximity,
+      cert: r.breakdown.cert,
+    }
+  })
+
+  return {
+    productCategory: product.category,
+    winnerServiceId: ranked[0]?.serviceId ?? null,
+    candidates: [...passCandidates, ...failures],
+  }
 }
