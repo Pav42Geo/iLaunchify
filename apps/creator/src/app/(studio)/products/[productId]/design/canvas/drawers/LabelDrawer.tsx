@@ -83,7 +83,6 @@ export function LabelDrawer({
   /** null sentinel for transparent. */
   const [bg] = React.useState<string | null>('#FFFFFF')
   const [border] = React.useState(true)
-  const [width, setWidth] = React.useState(220)
   const [adding, setAdding] = React.useState(false)
   // C3.b — per-section visibility toggles, applied at add time.
   const [showTitle, setShowTitle] = React.useState(true)
@@ -118,7 +117,6 @@ export function LabelDrawer({
         ink,
         bg,
         border,
-        widthPx: width,
         sections,
       })
     } finally {
@@ -135,7 +133,6 @@ export function LabelDrawer({
         ink,
         bg,
         border,
-        widthPx: width,
         sections,
       })
     } finally {
@@ -148,7 +145,7 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, widthPx: width, sections })
+      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, sections })
     } finally {
       setAdding(false)
     }
@@ -159,7 +156,7 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addDrugFactsPanel(canvas, SAMPLE_DRUG_FACTS_DATA, { ink, bg, border, widthPx: width, sections })
+      await addDrugFactsPanel(canvas, SAMPLE_DRUG_FACTS_DATA, { ink, bg, border, sections })
     } finally {
       setAdding(false)
     }
@@ -408,33 +405,8 @@ export function LabelDrawer({
 
       <div className="h-px bg-ink-200" />
 
-      {/* Layout style + Ink/Background + Border all live on the panel's own
-          toolbar (and the format picker above) — not duplicated in the drawer. */}
-
-      {/* Width slider */}
-      <section>
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-            Width
-          </div>
-          <span className="text-[11px] font-mono tabular-nums text-ink-600">
-            {width}px
-          </span>
-        </div>
-        <input
-          type="range"
-          min={160}
-          max={360}
-          step={4}
-          value={width}
-          onChange={(e) => setWidth(Number(e.target.value))}
-          className="w-full accent-pink-500"
-        />
-        <p className="mt-1.5 text-[11px] text-ink-500">
-          Fit the panel to your label's available space — narrower for small
-          bottles, wider for boxes.
-        </p>
-      </section>
+      {/* Layout style, Ink/Background, Border, and Width all live on the panel's
+          own toolbar (and the format picker above) — not duplicated in the drawer. */}
 
       {/* C3.b — per-section visibility toggles, applied when the panel is added. */}
       <section>
