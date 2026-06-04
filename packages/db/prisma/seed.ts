@@ -16,6 +16,7 @@ import { PrismaClient, UserRole, ProductCategory } from '@prisma/client'
 import { seedCatalog } from './seed-catalog'
 import { seedMarketsRegions } from './seed-markets-regions'
 import { seedPartnerOnboarding } from './seed-partner-onboarding'
+import { seedPartnerMarketCerts } from './seed-partner-market-certs'
 import { seedBrandIdentity } from './seed-brand-identity'
 import { seedCertificateTypes } from './seed-certificate-types'
 import { seedCertificateCatalog } from './seed-certificate-catalog'
@@ -54,6 +55,11 @@ async function main() {
   // Seeds the singleton PlatformMandatedStandards row + the STANDARD_V1.0 ContractTerms
   // that every partner agrees to during onboarding (per docs/PARTNER_ONBOARDING.md §2.5).
   await seedPartnerOnboarding(prisma)
+
+  // --- Partner market certifications (B4 scoring cert dimension) ---
+  // Certify manufacturing partners for their home-country market so the
+  // partner-matching scorer has real cert data to read.
+  await seedPartnerMarketCerts(prisma)
 
   // --- Brand identity placeholders ---
   // Bare-minimum BrandStylePreset / ColorPalette / TypographyPair / TypographyFont
