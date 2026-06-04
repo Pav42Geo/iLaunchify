@@ -32,6 +32,7 @@ import { seedCategoriesLocked } from './seed-categories-locked'
 import { seedNicheSubcategories } from './seed-niche-subcategories'
 import { seedLifestyleTags } from './seed-lifestyle-tags'
 import { seedNicheRules } from './seed-niche-rules'
+import { seedLabelFormatRules } from './seed-label-format-rules'
 
 const prisma = new PrismaClient()
 
@@ -66,6 +67,11 @@ async function main() {
   // preserves the curated descriptions (it only writes the metadata fields).
   await seedCertificateTypes(prisma)
   await seedCertificateCatalog(prisma)
+
+  // --- Label format catalog (Track C / C1.b) ---
+  // One LabelFormatRule per (LabelFormat × LabelingType) — drives format
+  // auto-recommendation (C4). Starter constants; refined by the rule-pack work.
+  await seedLabelFormatRules(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,

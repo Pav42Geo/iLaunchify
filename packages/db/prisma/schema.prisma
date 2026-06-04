@@ -4127,3 +4127,63 @@ model PartnerDocument {
   @@index([partnerId, status])
   @@index([documentType])
 }
+
+// ── Track C — Compliance Templates (C1.a): Label Format Catalog ──────────────
+
+enum LabelFormat {
+  // FDA Nutrition Facts (food) — 21 CFR 101.9
+  FDA_VERTICAL
+  FDA_TABULAR
+  FDA_LINEAR
+  FDA_AS_PACKAGED_AS_PREPARED
+  FDA_AGGREGATE
+  FDA_INFANT
+  FDA_CHILD
+  FDA_100_GRAMS
+  // FDA Supplement Facts — 21 CFR 101.36
+  FDA_SUPPLEMENT
+  // FDA Drug Facts — 21 CFR 201.66 (OTC)
+  FDA_DRUG_FACTS
+  // AAFCO Pet
+  AAFCO_PET_FOOD
+  AAFCO_PET_TREAT
+  // Canadian (V1.1 schema-ready)
+  CANADIAN_VERTICAL
+  CANADIAN_LINEAR
+  CANADIAN_HORIZONTAL
+  CANADIAN_AGGREGATE
+  CANADIAN_100_GRAMS
+  // USDA / Old FDA legacy
+  USDA_OLD_FDA_VERTICAL
+  USDA_OLD_FDA_TABULAR
+  USDA_OLD_FDA_LINEAR
+}
+
+enum PanelOrientation {
+  VERTICAL
+  HORIZONTAL
+  TABULAR
+  LINEAR
+}
+
+model LabelFormatRule {
+  format              LabelFormat
+  labelingType        LabelingType
+  cfrCitation         String
+  minSurfaceAreaSqIn  Decimal          @db.Decimal(8, 3)
+  minLabelWidthMm     Decimal          @db.Decimal(8, 2)
+  minLabelHeightMm    Decimal          @db.Decimal(8, 2)
+  minFontSizePt       Decimal          @db.Decimal(5, 2)
+  minHeaderFontSizePt Decimal          @db.Decimal(5, 2)
+  supportsMultiColumn Boolean          @default(false)
+  supportsAggregate   Boolean          @default(false)
+  supportsDualColumn  Boolean          @default(false)
+  panelOrientation    PanelOrientation
+  preferenceScore     Int              @default(50)
+  notes               String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@id([format, labelingType])
+  @@index([labelingType])
+}
