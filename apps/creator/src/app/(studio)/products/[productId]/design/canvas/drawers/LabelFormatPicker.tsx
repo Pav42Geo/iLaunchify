@@ -9,6 +9,7 @@
 import * as React from 'react'
 import { Sparkles, Loader2 } from 'lucide-react'
 import type { LabelingType } from '@ilaunchify/db'
+import { InfoTip } from '../InfoTip'
 import {
   recommendLabelFormats,
   type RecommendedFormat,
@@ -64,8 +65,13 @@ export function LabelFormatPicker({
 
   return (
     <section>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
         Label format
+        {!loading && all.length > 0 && (
+          <InfoTip
+            text={`${all.length} FDA-approved format${all.length === 1 ? '' : 's'} fit your ${Math.round(widthMm)}×${Math.round(heightMm)} mm label${data ? ` (${data.trimSurfaceAreaSqIn.toFixed(1)} sq in)` : ''}. Switching re-renders the panel once the format-aware renderer ships.`}
+          />
+        )}
       </div>
 
       {loading ? (
@@ -107,12 +113,6 @@ export function LabelFormatPicker({
             </div>
           )}
 
-          <p className="text-[10.5px] text-ink-400 leading-[1.4]">
-            {all.length} FDA-approved format{all.length === 1 ? '' : 's'} fit your{' '}
-            {Math.round(widthMm)}×{Math.round(heightMm)} mm label
-            {data ? ` (${data.trimSurfaceAreaSqIn.toFixed(1)} sq in)` : ''}. Switching re-renders the
-            panel once the format-aware renderer ships.
-          </p>
         </div>
       )}
     </section>

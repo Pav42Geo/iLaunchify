@@ -34,6 +34,8 @@ export interface CanvasRoles {
   findByRole: (role: LabelSectionRole) => FabricObject | null
   /** Look up the first nutrition-panel customType object, or null. */
   findNutritionPanel: () => FabricObject | null
+  /** Look up the first object of any panel customType, or null. */
+  findPanel: (customType: CanvasCustomType) => FabricObject | null
   /** Look up the cert badge object for a certInstanceId, or null. */
   findCertBadge: (certInstanceId: string) => FabricObject | null
 }
@@ -81,6 +83,13 @@ export function useCanvasRoles(canvas: FabricCanvas | null): CanvasRoles {
         for (const obj of canvas?.getObjects() ?? []) {
           const ct = (obj as { customType?: CanvasCustomType }).customType
           if (ct === 'nutrition-panel') return obj
+        }
+        return null
+      },
+      findPanel: (customType: CanvasCustomType) => {
+        for (const obj of canvas?.getObjects() ?? []) {
+          const ct = (obj as { customType?: CanvasCustomType }).customType
+          if (ct === customType) return obj
         }
         return null
       },

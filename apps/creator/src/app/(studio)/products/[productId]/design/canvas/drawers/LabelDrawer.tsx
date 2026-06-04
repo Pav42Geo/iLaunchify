@@ -15,7 +15,7 @@
 // snapped to the bound recipe on PDF generation.
 
 import * as React from 'react'
-import { Plus, Tag, Check, Target, ShieldCheck } from 'lucide-react'
+import { Plus, Check, Target, ShieldCheck, Trash2 } from 'lucide-react'
 import {
   addNutritionFactsPanel,
   addSupplementFactsPanel,
@@ -28,11 +28,13 @@ import {
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
   type BrandCanvasAssets,
+  type CanvasCustomType,
   type DieCutSpec,
   type FabricCanvas,
   type LabelSectionRole,
 } from '@ilaunchify/ui'
 import { useCanvasRoles } from '../useCanvasRoles'
+import { InfoTip } from '../InfoTip'
 import type { CertBadge } from '../cert-badge-actions'
 import type { LabelingType } from '@ilaunchify/db'
 import { LabelFormatPicker } from './LabelFormatPicker'
@@ -78,9 +80,10 @@ export function LabelDrawer({
   const canvasRoles = useCanvasRoles(canvas)
 
   const [style, setStyle] = React.useState<StyleKey>('standard')
-  const [ink, setInk] = React.useState('#000000')
+  // Ink/bg kept at defaults — recoloring lives on the panel's own toolbar.
+  const [ink] = React.useState('#000000')
   /** null sentinel for transparent. */
-  const [bg, setBg] = React.useState<string | null>('#FFFFFF')
+  const [bg] = React.useState<string | null>('#FFFFFF')
   const [border, setBorder] = React.useState(true)
   const [width, setWidth] = React.useState(220)
   const [adding, setAdding] = React.useState(false)
@@ -89,17 +92,25 @@ export function LabelDrawer({
   const [showFootnote, setShowFootnote] = React.useState(true)
   const sections = { hideTitle: !showTitle, hideFootnote: !showFootnote }
 
-  // Brand swatches (deduped) for the quick-pick row in color sections.
-  const brandSwatches = Array.from(
-    new Set(
-      [
-        brandAssets.colorPrimary,
-        brandAssets.colorSecondary,
-        brandAssets.colorAccent,
-        ...brandAssets.extraSwatches,
-      ].filter((c): c is string => Boolean(c)),
-    ),
-  )
+  // Which facts panel applies to this product + whether it's already on the
+  // canvas (drives the add/remove toggle on the button).
+  const panelType: CanvasCustomType =
+    labelingType === 'DIETARY_SUPPLEMENT'
+      ? 'supplement-panel'
+      : labelingType === 'PET_PRODUCT'
+        ? 'aafco-panel'
+        : labelingType === 'OTC'
+          ? 'drug-facts-panel'
+          : 'nutrition-panel'
+  const panelLabel =
+    labelingType === 'DIETARY_SUPPLEMENT'
+      ? 'Supplement Facts'
+      : labelingType === 'PET_PRODUCT'
+        ? 'Guaranteed Analysis'
+        : labelingType === 'OTC'
+          ? 'Drug Facts'
+          : 'Nutrition Facts'
+  const panelOnCanvas = !!canvasRoles.findPanel(panelType)
 
   async function handleAdd() {
     if (!canvas) return
@@ -157,6 +168,24 @@ export function LabelDrawer({
     }
   }
 
+  // Add the facts panel appropriate to this product's labeling type.
+  async function handleAddPanel() {
+    if (labelingType === 'DIETARY_SUPPLEMENT') return handleAddSupplement()
+    if (labelingType === 'PET_PRODUCT') return handleAddAafco()
+    if (labelingType === 'OTC') return handleAddDrugFacts()
+    return handleAdd()
+  }
+
+  // Toggle-off: clicking the button again removes the panel from the artboard.
+  function handleRemovePanel() {
+    if (!canvas) return
+    const obj = canvasRoles.findPanel(panelType)
+    if (!obj) return
+    canvas.remove(obj)
+    canvas.discardActiveObject()
+    canvas.requestRenderAll()
+  }
+
   // Per-section pre-fill text from product context. Falls back to the
   // generic placeholders baked into addLabelSection.
   function presetTextFor(role: LabelSectionRole): string | undefined {
@@ -191,14 +220,6 @@ export function LabelDrawer({
     canvas.requestRenderAll()
   }
 
-  function handleFindNutritionPanel() {
-    if (!canvas) return
-    const obj = canvasRoles.findNutritionPanel()
-    if (!obj) return
-    canvas.setActiveObject(obj)
-    canvas.requestRenderAll()
-  }
-
   function handleAddCert(badge: CertBadge) {
     if (!canvas || !badge.badgeUrl) return
     // Delegate to the shell — it gates on consent before anything is placed.
@@ -215,58 +236,27 @@ export function LabelDrawer({
 
   return (
     <div className="space-y-5">
-      {/* C2.a — facts panel, branched by labeling type (moved to top so it's the
-          first, most-prominent action). Supplement → Supplement Facts, pet →
-          Guaranteed Analysis, OTC → Drug Facts, else Nutrition Facts. */}
-      {labelingType === 'DIETARY_SUPPLEMENT' ? (
+      {/* Facts panel — branched by labeling type, and a toggle: once it's on the
+          artboard, the same button removes it. */}
+      {panelOnCanvas ? (
         <button
           type="button"
-          onClick={handleAddSupplement}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Supplement Facts'}
-        </button>
-      ) : labelingType === 'PET_PRODUCT' ? (
-        <button
-          type="button"
-          onClick={handleAddAafco}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Guaranteed Analysis'}
-        </button>
-      ) : labelingType === 'OTC' ? (
-        <button
-          type="button"
-          onClick={handleAddDrugFacts}
-          disabled={!canvas || adding}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Drug Facts'}
-        </button>
-      ) : canvasRoles.nutritionPanelPresent ? (
-        <button
-          type="button"
-          onClick={handleFindNutritionPanel}
+          onClick={handleRemovePanel}
           disabled={!canvas}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-emerald-300 bg-emerald-50 text-emerald-900 rounded-md hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-rose-300 bg-rose-50 text-rose-700 rounded-md hover:bg-rose-100 disabled:opacity-40 transition-colors"
         >
-          <Target className="h-3.5 w-3.5" />
-          Nutrition Facts on canvas — click to select
+          <Trash2 className="h-3.5 w-3.5" />
+          Remove {panelLabel}
         </button>
       ) : (
         <button
           type="button"
-          onClick={handleAdd}
+          onClick={handleAddPanel}
           disabled={!canvas || adding}
           className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
-          {adding ? 'Adding…' : 'Add Nutrition Facts'}
+          {adding ? 'Adding…' : `Add ${panelLabel}`}
         </button>
       )}
 
@@ -284,14 +274,10 @@ export function LabelDrawer({
 
       {/* Required sections — DS-55. */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Required sections
+          <InfoTip text="Tap to drop a pre-tagged text block. The compliance scanner looks for these stamps to confirm each FDA-required section is on your label." />
         </div>
-        <p className="text-[11px] text-ink-500 mb-2.5 leading-[1.45]">
-          Tap to drop a pre-tagged text block. The compliance scanner
-          looks for these stamps to confirm each FDA-required section
-          is on your label.
-        </p>
         <div className="space-y-1">
           {(
             [
@@ -351,13 +337,10 @@ export function LabelDrawer({
 
       {/* Certifications — earned certs, dropped as print badges (Phase 3). */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Certifications
+          <InfoTip text="Certs your product has earned. Tap to drop the print badge — it lands in the bottom safe area, then you can move it anywhere." />
         </div>
-        <p className="text-[11px] text-ink-500 mb-2.5 leading-[1.45]">
-          Certs your product has earned. Tap to drop the print badge — it lands
-          in the bottom safe area, then you can move it anywhere.
-        </p>
         {certBadges.length === 0 ? (
           <p className="text-[11px] text-ink-400 italic leading-[1.45]">
             None yet. Certifications a partner has verified for this product
@@ -450,95 +433,8 @@ export function LabelDrawer({
         </div>
       </section>
 
-      {/* Ink color */}
-      <ColorRow
-        label="Ink color"
-        value={ink}
-        onChange={setInk}
-        brandSwatches={brandSwatches}
-      />
-
-      {/* Background color (with transparent option) */}
-      <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
-          Background
-        </div>
-        <div className="flex items-center gap-1.5 mb-2">
-          <button
-            type="button"
-            onClick={() => setBg(null)}
-            aria-pressed={bg === null}
-            className={
-              'h-9 px-3 rounded-md border text-[12px] font-semibold transition-colors relative overflow-hidden ' +
-              (bg === null
-                ? 'border-pink-500 bg-pink-50 text-pink-700 ring-2 ring-pink-500/20'
-                : 'border-ink-300 bg-white text-ink-700 hover:border-ink-500')
-            }
-            style={{
-              backgroundImage:
-                bg === null
-                  ? undefined
-                  : 'repeating-conic-gradient(#e5e7eb 0% 25%, #ffffff 0% 50%)',
-              backgroundSize: '12px 12px',
-            }}
-          >
-            <span className="relative bg-white/80 px-1 rounded">Transparent</span>
-          </button>
-          {bg !== null && (
-            <>
-              <label className="relative w-9 h-9 rounded-md border border-ink-300 overflow-hidden cursor-pointer flex-shrink-0">
-                <input
-                  type="color"
-                  value={bg}
-                  onChange={(e) => setBg(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-                <span className="absolute inset-1 rounded" style={{ backgroundColor: bg }} />
-              </label>
-              <input
-                type="text"
-                value={bg}
-                onChange={(e) => setBg(e.target.value)}
-                className="flex-1 h-9 px-2 text-[12px] font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500"
-              />
-            </>
-          )}
-          {bg === null && (
-            <button
-              type="button"
-              onClick={() => setBg('#FFFFFF')}
-              className="h-9 px-3 text-[12px] font-semibold text-ink-700 hover:text-ink-900 hover:bg-ink-100 rounded-md transition-colors"
-            >
-              Set color →
-            </button>
-          )}
-        </div>
-        {bg !== null && brandSwatches.length > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-pink-700 font-semibold mr-1">
-              Brand
-            </span>
-            {brandSwatches.slice(0, 5).map((hex) => {
-              const active = hex.toUpperCase() === (bg ?? '').toUpperCase()
-              return (
-                <button
-                  key={hex}
-                  type="button"
-                  onClick={() => setBg(hex)}
-                  title={hex}
-                  className={
-                    'h-6 w-6 rounded border transition-all ' +
-                    (active
-                      ? 'border-pink-500 ring-2 ring-pink-500/20 scale-105'
-                      : 'border-ink-200 hover:border-ink-400')
-                  }
-                  style={{ backgroundColor: hex }}
-                />
-              )
-            })}
-          </div>
-        )}
-      </section>
+      {/* Ink + Background colors live on the panel's own toolbar (select the
+          panel to recolor) — not duplicated here. */}
 
       {/* Border */}
       <section>
@@ -592,8 +488,9 @@ export function LabelDrawer({
 
       {/* C3.b — per-section visibility toggles, applied when the panel is added. */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
           Panel sections
+          <InfoTip text="Applied when you add the panel. Hiding required sections may flag in the compliance scan." />
         </div>
         <div className="space-y-1.5">
           <label className="flex items-center gap-2 text-[12px] text-ink-800">
@@ -615,28 +512,8 @@ export function LabelDrawer({
             Show footnote / disclosure
           </label>
         </div>
-        <p className="mt-1.5 text-[10.5px] text-ink-400 leading-[1.4]">
-          Applied when you add the panel. Hiding required sections may flag in the compliance scan.
-        </p>
       </section>
 
-      {/* Disclosure */}
-      <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
-        <div className="flex gap-2.5">
-          <Tag strokeWidth={2.5} className="h-3.5 w-3.5 text-pink-700 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-700">
-              Sample values · real data at print
-            </div>
-            <p className="mt-1 text-[11px] text-ink-700 leading-[1.45]">
-              The panel ships with placeholder nutrient values for layout. Real
-              per-product values bind to the panel at print / export time from
-              your linked Recipe via the compliance service. Drag the panel
-              into the safe area to lock its position.
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
@@ -679,64 +556,3 @@ function StyleTile({
   )
 }
 
-function ColorRow({
-  label,
-  value,
-  onChange,
-  brandSwatches,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  brandSwatches: string[]
-}) {
-  return (
-    <section>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
-        {label}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <label className="relative w-9 h-9 rounded-md border border-ink-300 overflow-hidden cursor-pointer flex-shrink-0">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-          />
-          <span className="absolute inset-1 rounded" style={{ backgroundColor: value }} />
-        </label>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 h-9 px-2 text-[12px] font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500"
-        />
-      </div>
-      {brandSwatches.length > 0 && (
-        <div className="mt-2 flex items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-pink-700 font-semibold mr-1">
-            Brand
-          </span>
-          {brandSwatches.slice(0, 5).map((hex) => {
-            const active = hex.toUpperCase() === value.toUpperCase()
-            return (
-              <button
-                key={hex}
-                type="button"
-                onClick={() => onChange(hex)}
-                title={hex}
-                className={
-                  'h-6 w-6 rounded border transition-all ' +
-                  (active
-                    ? 'border-pink-500 ring-2 ring-pink-500/20 scale-105'
-                    : 'border-ink-200 hover:border-ink-400')
-                }
-                style={{ backgroundColor: hex }}
-              />
-            )
-          })}
-        </div>
-      )}
-    </section>
-  )
-}
