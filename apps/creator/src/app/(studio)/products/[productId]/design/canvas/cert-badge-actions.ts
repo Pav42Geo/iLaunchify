@@ -65,40 +65,6 @@ async function resolveAssetUrl(assetId: string | null): Promise<string | null> {
   return getSignedReadUrl(asset.storageKey, { expiresInSeconds: 8 * 60 * 60 })
 }
 
-// Browsers can't paint EPS/PostScript in a canvas <img> — those are accepted in
-// the vector slot purely as print-ready masters. For on-canvas DISPLAY we use
-// the vector asset only when it's browser-renderable (SVG); an EPS master falls
-// back to the raster PNG so the badge still shows in the Studio. The EPS still
-// flows downstream as the print master.
-const NON_RENDERABLE_VECTOR_MIMES = new Set([
-  'application/postscript',
-  'application/eps',
-  'application/x-eps',
-  'image/eps',
-  'image/x-eps',
-])
-
-/**
- * Pick the best browser-renderable badge URL for on-canvas display: the vector
- * asset when it's an SVG, otherwise the raster fallback (PNG). Returns null when
- * neither yields a renderable asset.
- */
-async function resolveDisplayBadgeUrl(
-  vectorId: string | null,
-  rasterId: string | null,
-): Promise<string | null> {
-  if (vectorId) {
-    const asset = await prisma.asset.findUnique({
-      where: { id: vectorId },
-      select: { storageKey: true, mimeType: true },
-    })
-    if (asset?.storageKey && !NON_RENDERABLE_VECTOR_MIMES.has(asset.mimeType)) {
-      return getSignedReadUrl(asset.storageKey, { expiresInSeconds: 8 * 60 * 60 })
-    }
-  }
-  return resolveAssetUrl(rasterId)
-}
-
 export interface ProductCertBadgesResult {
   badges: CertBadge[]
   /** The Design that hosts the cert zone (auto-defaulted on first load). */
@@ -191,18 +157,17 @@ export async function loadProductCertBadges(
   for (const c of certs) {
     const ct = c.instance.certificateType
     if (ct.status !== 'ACTIVE') continue
-    // Production surface → prefer the VECTOR badge, but only when it's browser-
-    // renderable (SVG); an EPS master falls back to the PNG for on-canvas display
-    // (and when no vector was uploaded at all). (8h TTL covers a whole design
-    // session — the URL is held through reconcile + drawer add.)
-    const badgeUrl = await resolveDisplayBadgeUrl(ct.badgeSvgFileId, ct.thumbnailFileId)
+    // Production surface → prefer the VECTOR SVG; fall back to the PNG so the
+    // cert still renders if no SVG was uploaded for the type yet. (8h TTL covers
+    // a whole design session — the URL is held through reconcile + drawer add.)
+    const badgeUrl = await resolveAssetUrl(ct.badgeSvgFileId ?? ct.thumbnailFileId)
 
     const variants: CertBadgeVariant[] = await Promise.all(
       ct.assetVariants.map(async (v) => ({
         variantId: v.id,
         kind: v.kind,
         label: v.label,
-        url: await resolveDisplayBadgeUrl(v.svgFileId, v.pngFileId),
+        url: await resolveAssetUrl(v.svgFileId ?? v.pngFileId),
         minWidthMm: v.minWidthMm,
         maxWidthMm: v.maxWidthMm,
         requiredCoText: v.requiredCoText,

@@ -17,12 +17,6 @@ import {
   uploadCertificateTypeBadgeSvg,
 } from './actions'
 
-/** EPS masters can't preview in an <img>; detect by the key path before the query. */
-function isEpsUrl(url: string): boolean {
-  const path = url.split('?')[0] ?? ''
-  return path.toLowerCase().endsWith('.eps')
-}
-
 interface FormProps {
   mode: 'create' | 'edit'
   typeId?: string
@@ -351,16 +345,15 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
 
               {/* SVG — Design Studio / production */}
               <div className="rounded-md border border-zinc-200 p-4">
-                <h4 className="text-sm font-semibold text-zinc-900">Print badge (SVG or EPS)</h4>
+                <h4 className="text-sm font-semibold text-zinc-900">Print badge (SVG)</h4>
                 <p className="mt-1 text-xs text-zinc-500">
                   Vector badge placed on labels/packaging in the Design Studio. Required
-                  for print/production — vector keeps edges crisp at any size. SVG or EPS
-                  (program brand-kit masters are often EPS — upload as-is, no conversion).
+                  for print/production — vector keeps edges crisp at any size.
                 </p>
                 <input
                   ref={svgInputRef}
                   type="file"
-                  accept="image/svg+xml,.svg,application/postscript,.eps"
+                  accept="image/svg+xml,.svg"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0]
@@ -368,22 +361,14 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                   }}
                   disabled={isPending}
                 />
-                {initial?.svgUrl &&
-                  (isEpsUrl(initial.svgUrl) ? (
-                    <div className="mt-3 flex h-16 w-16 flex-col items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-center">
-                      <span className="text-[11px] font-semibold text-zinc-700">EPS</span>
-                      <span className="text-[8px] uppercase tracking-wide text-zinc-400">
-                        print master
-                      </span>
-                    </div>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={initial.svgUrl}
-                      alt="SVG badge preview"
-                      className="mt-3 h-16 w-16 rounded-md border border-zinc-200 bg-white object-contain p-1.5"
-                    />
-                  ))}
+                {initial?.svgUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={initial.svgUrl}
+                    alt="SVG badge preview"
+                    className="mt-3 h-16 w-16 rounded-md border border-zinc-200 bg-white object-contain p-1.5"
+                  />
+                )}
                 <div className="mt-3 flex items-center gap-3">
                   <Button
                     variant="outline"

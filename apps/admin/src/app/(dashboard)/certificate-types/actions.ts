@@ -140,33 +140,15 @@ export async function setCertificateTypeStatus(
 //     chips). Stored with a public URL so statically-rendered marketing pages
 //     can <img> it directly.
 //   • SVG → badgeSvgFileId  — the VECTOR badge used in the Design Studio for
-//     print/production, where vector output is a hard requirement. EPS is also
-//     accepted here as a print-ready master (program brand kits ship EPS); the
-//     Studio falls back to the PNG for on-canvas display since browsers can't
-//     paint EPS, while the EPS flows downstream as the print master.
+//     print/production, where vector output is a hard requirement.
 // File rows are Asset (ownerType=PLATFORM, ownerId=null — platform-owned).
 // -----------------------------------------------------------------------------
 
 type CertBadgeKind = 'PNG' | 'SVG'
 
-// Browsers report EPS under a handful of MIME types (and often an empty type
-// for a dragged .eps), so we sniff the extension too. EPS is accepted in the
-// vector "SVG" slot as a print-ready master — no conversion needed.
-const EPS_MIMES = ['application/postscript', 'application/eps', 'application/x-eps', 'image/eps', 'image/x-eps']
-
-function isVectorFile(file: File): boolean {
-  const name = file.name.toLowerCase()
-  return (
-    file.type === 'image/svg+xml' ||
-    EPS_MIMES.includes(file.type) ||
-    name.endsWith('.svg') ||
-    name.endsWith('.eps')
-  )
-}
-
 const CERT_BADGE_ACCEPT: Record<CertBadgeKind, { mimes: string[]; label: string }> = {
   PNG: { mimes: ['image/png', 'image/webp'], label: 'PNG or WebP' },
-  SVG: { mimes: ['image/svg+xml', ...EPS_MIMES], label: 'SVG or EPS' },
+  SVG: { mimes: ['image/svg+xml'], label: 'SVG' },
 }
 
 async function uploadCertBadge(formData: FormData, kind: CertBadgeKind): Promise<Result> {
@@ -186,7 +168,8 @@ async function uploadCertBadge(formData: FormData, kind: CertBadgeKind): Promise
   // type for dragged .svg files, so sniff the extension as an SVG fallback.
   const accept = CERT_BADGE_ACCEPT[kind]
   const looksRight =
-    kind === 'SVG' ? isVectorFile(file) : accept.mimes.includes(file.type)
+    accept.mimes.includes(file.type) ||
+    (kind === 'SVG' && file.name.toLowerCase().endsWith('.svg'))
   if (!looksRight) {
     return { ok: false, error: `Wrong file type — upload a ${accept.label} file.` }
   }
@@ -197,13 +180,7 @@ async function uploadCertBadge(formData: FormData, kind: CertBadgeKind): Promise
   })
   if (!ct) return { ok: false, error: 'Certificate type not found.' }
 
-  const contentType =
-    file.type ||
-    (kind === 'SVG'
-      ? file.name.toLowerCase().endsWith('.eps')
-        ? 'application/postscript'
-        : 'image/svg+xml'
-      : 'image/png')
+  const contentType = file.type || (kind === 'SVG' ? 'image/svg+xml' : 'image/png')
   const buffer = Buffer.from(await file.arrayBuffer())
   let upload
   try {
