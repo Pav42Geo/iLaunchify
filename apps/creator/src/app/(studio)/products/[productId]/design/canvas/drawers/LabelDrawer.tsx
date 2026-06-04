@@ -66,7 +66,6 @@ interface Props {
   }
 }
 
-type StyleKey = 'standard' | 'tabular'
 
 export function LabelDrawer({
   canvas,
@@ -79,12 +78,11 @@ export function LabelDrawer({
 }: Props) {
   const canvasRoles = useCanvasRoles(canvas)
 
-  const [style, setStyle] = React.useState<StyleKey>('standard')
-  // Ink/bg kept at defaults — recoloring lives on the panel's own toolbar.
+  // Ink/bg/border kept at defaults — restyling lives on the panel's own toolbar.
   const [ink] = React.useState('#000000')
   /** null sentinel for transparent. */
   const [bg] = React.useState<string | null>('#FFFFFF')
-  const [border, setBorder] = React.useState(true)
+  const [border] = React.useState(true)
   const [width, setWidth] = React.useState(220)
   const [adding, setAdding] = React.useState(false)
   // C3.b — per-section visibility toggles, applied at add time.
@@ -117,7 +115,6 @@ export function LabelDrawer({
     setAdding(true)
     try {
       await addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
-        style,
         ink,
         bg,
         border,
@@ -411,55 +408,8 @@ export function LabelDrawer({
 
       <div className="h-px bg-ink-200" />
 
-      {/* Style */}
-      <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
-          Layout style
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          <StyleTile
-            active={style === 'standard'}
-            label="Standard"
-            hint="Vertical · most common"
-            onClick={() => setStyle('standard')}
-          />
-          <StyleTile
-            active={style === 'tabular'}
-            label="Tabular"
-            hint="Side-by-side · V2"
-            onClick={() => setStyle('tabular')}
-            disabled
-          />
-        </div>
-      </section>
-
-      {/* Ink + Background colors live on the panel's own toolbar (select the
-          panel to recolor) — not duplicated here. */}
-
-      {/* Border */}
-      <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
-          Border
-        </div>
-        <label className="flex items-center gap-2.5 text-[13px] cursor-pointer">
-          <button
-            type="button"
-            onClick={() => setBorder((v) => !v)}
-            aria-pressed={border}
-            className={
-              'w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
-              (border ? 'bg-pink-500 border-pink-500' : 'border-ink-300 hover:border-ink-500')
-            }
-          >
-            {border && (
-              <span className="absolute inset-0 flex items-center justify-center text-white text-[11px] font-bold">
-                ✓
-              </span>
-            )}
-          </button>
-          <span className="text-ink-700">Draw outer border (1px in ink color)</span>
-        </label>
-      </section>
+      {/* Layout style + Ink/Background + Border all live on the panel's own
+          toolbar (and the format picker above) — not duplicated in the drawer. */}
 
       {/* Width slider */}
       <section>
@@ -518,41 +468,4 @@ export function LabelDrawer({
   )
 }
 
-// ============================================================================
-// Sub-components
-// ============================================================================
-
-function StyleTile({
-  active,
-  label,
-  hint,
-  onClick,
-  disabled,
-}: {
-  active: boolean
-  label: string
-  hint: string
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={active}
-      className={
-        'text-left rounded-md border p-3 transition-all ' +
-        (disabled
-          ? 'border-ink-200 bg-ink-50 opacity-60 cursor-not-allowed'
-          : active
-            ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
-            : 'border-ink-200 bg-white hover:border-ink-400')
-      }
-    >
-      <div className="font-bold text-[13px] text-ink-900">{label}</div>
-      <div className="text-[10.5px] text-ink-500 mt-0.5">{hint}</div>
-    </button>
-  )
-}
 
