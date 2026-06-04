@@ -18,6 +18,8 @@ import * as React from 'react'
 import { Plus, Check, Target, ShieldCheck, Trash2 } from 'lucide-react'
 import {
   addNutritionFactsPanel,
+  addAggregateNutritionPanel,
+  SAMPLE_AGGREGATE_NUTRITION_DATA,
   addSupplementFactsPanel,
   SAMPLE_SUPPLEMENT_DATA,
   addAafcoPanel,
@@ -91,6 +93,11 @@ export function LabelDrawer({
   const sections = { hideTitle: !showTitle, hideFootnote: !showFootnote }
   // C4 — the format chosen in the picker, applied to the nutrition panel.
   const [selectedFormat, setSelectedFormat] = React.useState<string | null>(null)
+  // C5 — variety-pack flavor count. >1 (FOOD only) renders the aggregate
+  // multi-column panel and steers the picker toward FDA_AGGREGATE.
+  const [flavorCount, setFlavorCount] = React.useState(1)
+  const isFood = !labelingType || labelingType === 'FOOD'
+  const aggregate = isFood && flavorCount > 1
 
   // Which facts panel applies to this product + whether it's already on the
   // canvas (drives the add/remove toggle on the button).
@@ -101,7 +108,9 @@ export function LabelDrawer({
         ? 'aafco-panel'
         : labelingType === 'OTC'
           ? 'drug-facts-panel'
-          : 'nutrition-panel'
+          : aggregate
+            ? 'nutrition-aggregate-panel'
+            : 'nutrition-panel'
   const panelLabel =
     labelingType === 'DIETARY_SUPPLEMENT'
       ? 'Supplement Facts'
@@ -116,13 +125,24 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
-        ink,
-        bg,
-        border,
-        sections,
-        format: selectedFormat ?? undefined,
-      })
+      if (aggregate) {
+        await addAggregateNutritionPanel(
+          canvas,
+          {
+            flavors: SAMPLE_AGGREGATE_NUTRITION_DATA.flavors.slice(0, flavorCount),
+            footnote: SAMPLE_AGGREGATE_NUTRITION_DATA.footnote,
+          },
+          { ink, bg, border, sections },
+        )
+      } else {
+        await addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
+          ink,
+          bg,
+          border,
+          sections,
+          format: selectedFormat ?? undefined,
+        })
+      }
     } finally {
       setAdding(false)
     }
@@ -223,6 +243,15 @@ export function LabelDrawer({
         centerX,
         centerY,
       })
+    } else if (panelType === 'nutrition-aggregate-panel') {
+      void addAggregateNutritionPanel(
+        canvas,
+        {
+          flavors: SAMPLE_AGGREGATE_NUTRITION_DATA.flavors.slice(0, flavorCount),
+          footnote: SAMPLE_AGGREGATE_NUTRITION_DATA.footnote,
+        },
+        { ink, bg, border, sections, centerX, centerY },
+      )
     }
   }
 
@@ -300,6 +329,33 @@ export function LabelDrawer({
         </button>
       )}
 
+      {/* C5 — variety-pack columns (FOOD). >1 → aggregate multi-column panel. */}
+      {isFood && (
+        <section>
+          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            Variety pack
+            <InfoTip text="One package, multiple flavors? Pick how many columns. 2–3 renders an FDA aggregate panel (21 CFR 101.9(h)(4)) — nutrient names once, a value column per flavor. Sample flavors until real per-flavor data binds at print." />
+          </div>
+          <div className="inline-flex rounded-md border border-ink-200 p-0.5">
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setFlavorCount(n)}
+                className={
+                  'h-7 w-12 rounded text-[12px] font-semibold transition-colors ' +
+                  (flavorCount === n
+                    ? 'bg-ink-900 text-white'
+                    : 'text-ink-600 hover:bg-ink-100')
+                }
+              >
+                {n === 1 ? 'Single' : n}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* C4.b — label format picker (recommended + valid alternatives). */}
       {labelingType && dieCut && (
         <>
@@ -307,6 +363,7 @@ export function LabelDrawer({
             labelingType={labelingType}
             widthMm={dieCut.widthMm}
             heightMm={dieCut.heightMm}
+            flavorCount={flavorCount}
             onFormatChange={handleFormatChange}
           />
           <div className="h-px bg-ink-200" />

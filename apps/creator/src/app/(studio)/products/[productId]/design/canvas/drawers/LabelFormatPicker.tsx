@@ -34,11 +34,14 @@ export function LabelFormatPicker({
   labelingType,
   widthMm,
   heightMm,
+  flavorCount = 1,
   onFormatChange,
 }: {
   labelingType: LabelingType
   widthMm: number
   heightMm: number
+  /** C5 — >1 steers the ranker to aggregate/multi-column formats. */
+  flavorCount?: number
   /** Fired when the creator picks a format (re-renders the on-canvas panel). */
   onFormatChange?: (format: string) => void
 }) {
@@ -49,7 +52,7 @@ export function LabelFormatPicker({
   React.useEffect(() => {
     let alive = true
     setLoading(true)
-    recommendLabelFormats({ labelingType, widthMm, heightMm, flavorCount: 1 })
+    recommendLabelFormats({ labelingType, widthMm, heightMm, flavorCount })
       .then((res) => {
         if (!alive) return
         setData(res)
@@ -59,7 +62,7 @@ export function LabelFormatPicker({
     return () => {
       alive = false
     }
-  }, [labelingType, widthMm, heightMm])
+  }, [labelingType, widthMm, heightMm, flavorCount])
 
   const all: RecommendedFormat[] = data
     ? [data.recommended, ...data.alternatives].filter((x): x is RecommendedFormat => !!x)
