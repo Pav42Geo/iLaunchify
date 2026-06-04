@@ -106,10 +106,19 @@ export async function placeOrderFromCheckoutDraft(
   if (!shipTo.ok) return { ok: false, error: shipTo.error }
 
   // --- 4. Find routing (existing @ilaunchify/orders) -------------------------
+  // B4 — pass real matching context from the product's brand so routing scores
+  // proximity (brand operating region) + cert (brand's primary target market),
+  // not capacity alone. Both null-safe → the scorer omits any absent dimension.
+  const primaryMarket = await prisma.brandTargetMarket.findFirst({
+    where: { brandId: product.brandId, isPrimary: true },
+    select: { marketId: true },
+  })
   const routing = await findRouting({
     productId: product.id,
     quantity: qty,
     templateId: product.productTemplateId,
+    destinationRegionId: product.brand.operatingRegionId,
+    targetMarketId: primaryMarket?.marketId ?? null,
   })
   if (!routing.ok) return { ok: false, error: routing.message }
 
