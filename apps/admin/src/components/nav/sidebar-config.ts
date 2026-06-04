@@ -70,6 +70,7 @@ import {
   TrendingUp,
   Recycle,
   BadgeCheck,
+  Gift,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -134,6 +135,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
         { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
+        { kind: 'item', label: 'Accessory verification', icon: Gift, href: '/accessories' },
         { kind: 'item', label: 'Packaging-type submissions', icon: PackageOpen, href: '/packaging-submissions', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Phrase submissions', icon: MessageSquare, href: '/phrase-submissions', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: true },
