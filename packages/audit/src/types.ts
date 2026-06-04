@@ -26,6 +26,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Product',
   'PackagingSystem',
   'PackagingComponent',
+  'AccessoryOffering',
   'CertificateType',
   'CertificateTypeRequest',
   'CertificateAssetVariant',
