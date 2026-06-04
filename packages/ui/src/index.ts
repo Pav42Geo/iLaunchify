@@ -145,6 +145,15 @@ export {
   type SupplementPanelOpts,
 } from './canvas/supplementPanel'
 export {
+  addAafcoPanel,
+  updateAafcoPanel,
+  SAMPLE_AAFCO_DATA,
+  type AafcoPanelData,
+  type AafcoPanelProps,
+  type AafcoAnalysisRow,
+  type AafcoPanelOpts,
+} from './canvas/aafcoPanel'
+export {
   validateGtin,
   prettyPrintGtin,
   GTIN_FORMAT_LABEL,

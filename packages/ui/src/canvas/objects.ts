@@ -24,6 +24,7 @@ export type CanvasCustomType =
   | 'internal-sku'
   | 'nutrition-panel'
   | 'supplement-panel'
+  | 'aafco-panel'
   | 'cert-badge'
 
 /**

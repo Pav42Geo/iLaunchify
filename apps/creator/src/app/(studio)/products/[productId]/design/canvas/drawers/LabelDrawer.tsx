@@ -20,6 +20,8 @@ import {
   addNutritionFactsPanel,
   addSupplementFactsPanel,
   SAMPLE_SUPPLEMENT_DATA,
+  addAafcoPanel,
+  SAMPLE_AAFCO_DATA,
   addLabelSection,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
@@ -120,6 +122,17 @@ export function LabelDrawer({
         border,
         widthPx: width,
       })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  // C2.c — AAFCO Guaranteed Analysis panel, for PET_PRODUCT.
+  async function handleAddAafco() {
+    if (!canvas) return
+    setAdding(true)
+    try {
+      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, { ink, bg, border, widthPx: width })
     } finally {
       setAdding(false)
     }
@@ -515,6 +528,16 @@ export function LabelDrawer({
         >
           <Plus className="h-3.5 w-3.5" />
           {adding ? 'Adding…' : 'Add Supplement Facts'}
+        </button>
+      ) : labelingType === 'PET_PRODUCT' ? (
+        <button
+          type="button"
+          onClick={handleAddAafco}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Guaranteed Analysis'}
         </button>
       ) : canvasRoles.nutritionPanelPresent ? (
         <button
