@@ -136,6 +136,15 @@ export {
   type NutritionPanelOpts,
 } from './canvas/nutritionPanel'
 export {
+  addSupplementFactsPanel,
+  updateSupplementPanel,
+  SAMPLE_SUPPLEMENT_DATA,
+  type SupplementPanelData,
+  type SupplementPanelProps,
+  type SupplementRow,
+  type SupplementPanelOpts,
+} from './canvas/supplementPanel'
+export {
   validateGtin,
   prettyPrintGtin,
   GTIN_FORMAT_LABEL,

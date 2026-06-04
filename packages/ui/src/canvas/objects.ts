@@ -23,6 +23,7 @@ export type CanvasCustomType =
   | 'barcode'
   | 'internal-sku'
   | 'nutrition-panel'
+  | 'supplement-panel'
   | 'cert-badge'
 
 /**

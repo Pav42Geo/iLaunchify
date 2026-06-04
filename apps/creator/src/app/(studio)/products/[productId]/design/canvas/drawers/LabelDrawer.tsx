@@ -18,6 +18,8 @@ import * as React from 'react'
 import { Plus, Tag, Check, Target, ShieldCheck } from 'lucide-react'
 import {
   addNutritionFactsPanel,
+  addSupplementFactsPanel,
+  SAMPLE_SUPPLEMENT_DATA,
   addLabelSection,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
@@ -97,6 +99,22 @@ export function LabelDrawer({
     try {
       await addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
         style,
+        ink,
+        bg,
+        border,
+        widthPx: width,
+      })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  // C2.a — Supplement Facts panel (21 CFR 101.36), for DIETARY_SUPPLEMENT.
+  async function handleAddSupplement() {
+    if (!canvas) return
+    setAdding(true)
+    try {
+      await addSupplementFactsPanel(canvas, SAMPLE_SUPPLEMENT_DATA, {
         ink,
         bg,
         border,
@@ -485,9 +503,20 @@ export function LabelDrawer({
         </p>
       </section>
 
-      {/* Add Nutrition Facts — converts to "Find on canvas" when one is present
-          to prevent duplicates (21 CFR 101.9 — one panel per package). */}
-      {canvasRoles.nutritionPanelPresent ? (
+      {/* C2.a — facts panel, branched by labeling type. Supplement products get
+          the Supplement Facts panel (21 CFR 101.36); everything else gets
+          Nutrition Facts (21 CFR 101.9, one-per-package find-to-select). */}
+      {labelingType === 'DIETARY_SUPPLEMENT' ? (
+        <button
+          type="button"
+          onClick={handleAddSupplement}
+          disabled={!canvas || adding}
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-black disabled:opacity-40 disabled:hover:bg-ink-900 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {adding ? 'Adding…' : 'Add Supplement Facts'}
+        </button>
+      ) : canvasRoles.nutritionPanelPresent ? (
         <button
           type="button"
           onClick={handleFindNutritionPanel}
