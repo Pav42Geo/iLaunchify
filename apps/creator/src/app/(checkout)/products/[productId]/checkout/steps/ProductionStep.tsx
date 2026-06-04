@@ -27,6 +27,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { StepShell } from './_StepShell'
+import { ComponentsPanel } from './ComponentsPanel'
 import type { ProductionState } from '../types'
 import {
   getProductionOptions,
@@ -284,6 +285,9 @@ export function ProductionStep({
             </div>
           </div>
         </article>
+
+        {/* C7.f — packaging components (primary / closure / seal). */}
+        <ComponentsPanel productId={productId} />
 
         {/* Three small reassurance cards — kept lightweight so the cart
             line stays the visual anchor. The Subscribe & Save picker

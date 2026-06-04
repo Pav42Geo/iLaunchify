@@ -52,8 +52,10 @@ export interface ComponentRow {
   tier: PackagingTier
   role: ComponentRole
   packagingTypeId: string
+  packagingTypeName: string
   decorationMethod: DecorationMethod
   selectedVariantId: string | null
+  selectedVariantName: string | null
   parentComponentId: string | null
   displayOrder: number
   /** True when this is an FDA-mandatory seal — UI disables removal. */
@@ -79,11 +81,90 @@ export async function listProductComponents(
       selectedVariantId: true,
       parentComponentId: true,
       displayOrder: true,
+      packagingType: { select: { displayName: true } },
+      selectedVariant: { select: { name: true } },
     },
   })
   return {
     ok: true,
-    data: rows.map((r) => ({ ...r, fdaLocked: sealLocked && r.role === 'SEAL' })),
+    data: rows.map((r) => ({
+      id: r.id,
+      tier: r.tier,
+      role: r.role,
+      packagingTypeId: r.packagingTypeId,
+      packagingTypeName: r.packagingType?.displayName ?? '—',
+      decorationMethod: r.decorationMethod,
+      selectedVariantId: r.selectedVariantId,
+      selectedVariantName: r.selectedVariant?.name ?? null,
+      parentComponentId: r.parentComponentId,
+      displayOrder: r.displayOrder,
+      fdaLocked: sealLocked && r.role === 'SEAL',
+    })),
+  }
+}
+
+export interface ContainerTypeOption {
+  id: string
+  displayName: string
+  containerCategory: ContainerCategory
+}
+
+/** Container PackagingTypes (excludes OTHER cap/seal parts) for the primary picker. */
+export async function listContainerPackagingTypes(): Promise<Result<ContainerTypeOption[]>> {
+  await requireUser()
+  const rows = await prisma.packagingType.findMany({
+    where: { status: 'ACTIVE', containerCategory: { not: null, notIn: ['OTHER'] } },
+    orderBy: { displayName: 'asc' },
+    select: { id: true, displayName: true, containerCategory: true },
+  })
+  return {
+    ok: true,
+    data: rows
+      .filter((r): r is typeof r & { containerCategory: ContainerCategory } => !!r.containerCategory)
+      .map((r) => ({ id: r.id, displayName: r.displayName, containerCategory: r.containerCategory })),
+  }
+}
+
+export interface ComponentVariantOption {
+  id: string
+  name: string
+  description: string | null
+  baseSurchargePerUnitCents: number
+  leadTimeDeltaDays: number
+  isCustomizable: boolean
+  isDefaultIncluded: boolean
+}
+
+/** Decoration variants offered for a component slot (empty until partners list them). */
+export async function listComponentVariants(
+  packagingTypeId: string,
+  role: ComponentRole,
+): Promise<Result<ComponentVariantOption[]>> {
+  await requireUser()
+  const rows = await prisma.packagingComponentVariant.findMany({
+    where: { packagingTypeId, componentRole: role, status: 'ACTIVE' },
+    orderBy: [{ isDefaultIncluded: 'desc' }, { baseSurchargePerUnit: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      baseSurchargePerUnit: true,
+      leadTimeDeltaDays: true,
+      isCustomizable: true,
+      isDefaultIncluded: true,
+    },
+  })
+  return {
+    ok: true,
+    data: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      baseSurchargePerUnitCents: Math.round(Number(r.baseSurchargePerUnit) * 100),
+      leadTimeDeltaDays: r.leadTimeDeltaDays,
+      isCustomizable: r.isCustomizable,
+      isDefaultIncluded: r.isDefaultIncluded,
+    })),
   }
 }
 
