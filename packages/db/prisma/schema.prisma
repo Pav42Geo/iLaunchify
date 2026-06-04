@@ -1056,6 +1056,8 @@ model Product {
   checkoutDrafts          CheckoutDraft[]
   // Phase G6 — Subscribe & save recurring production runs.
   productionSubscriptions ProductionSubscription[]
+  // Slice C7.a — multi-component packaging
+  packagingComponents     PackagingComponent[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -3149,17 +3151,19 @@ enum FlavorPresetStatus {
 // as admin clusters partner-contributed PackagingSystems via the promotion
 // queue (task #135).
 model PackagingType {
-  id                String              @id @default(cuid())
-  slug              String              @unique // 'hdpe-jar-16oz-wide-mouth'
+  id                String               @id @default(cuid())
+  slug              String               @unique // 'hdpe-jar-16oz-wide-mouth'
   displayName       String // canonical name shown publicly
   imageFileId       String? // admin-curated reference photo (Asset/PartnerFile soft FK)
   defaultTopology   PackagingTopology
   defaultDimensions Json? // { lengthMm, widthMm, heightMm }
   defaultSurfaces   Json? // [{ name, defaultBleedMm }]
-  status            PackagingTypeStatus @default(ACTIVE)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  status            PackagingTypeStatus  @default(ACTIVE)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   systems           PackagingSystem[]
+  // Slice C7.a — multi-component packaging
+  components        PackagingComponent[]
 }
 
 // Partner-owned packaging system — links optionally to a canonical PackagingType.
@@ -3213,6 +3217,133 @@ model PackagingSurface {
   mandatoryZones    Json? // [{ type, x, y, w, h, required }] — V1.1 zone editor
   registrationMarks Json?
   packagingSystem   PackagingSystem @relation(fields: [packagingSystemId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// MULTI-COMPONENT PACKAGING (Slice C7.a) — every product has multiple physical
+// PackagingComponents (primary container, closures, seals, secondary cartons,
+// tertiary shipping). Each component has its own dieline + decoration + design
+// version + pricing. Spec: docs/builds/_V1_PACKAGING_COMPONENTS.md
+// -----------------------------------------------------------------------------
+
+enum PackagingTier {
+  PRIMARY // the container holding the product
+  SECONDARY // retail-facing carton/box around primary
+  TERTIARY // shipping/distribution outer packaging
+}
+
+enum ComponentRole {
+  CONTAINER // primary container itself (can, bottle, jar, pouch)
+  CARTON // secondary box/carton
+  CLOSURE // cap, lid
+  SEAL // tamper-evident seal (foil, shrink band, sticker)
+  INSERT // recipe card, brand-story card, instruction sheet
+  LABEL // separate-applied label when decoration is PRESSURE_SENSITIVE_LABEL
+  SHIPPER // tertiary shipping packaging (branded mailer, polybag, master case)
+}
+
+// Decoration method — how a component is decorated, independent of the container.
+// Spec: docs/builds/_V1_DECORATION_METHODS.md
+enum DecorationMethod {
+  // Primary decoration methods (one per component, required)
+  DIRECT_PRINT // offset/digital/litho printed on substrate itself
+  PRESSURE_SENSITIVE_LABEL // sticker label applied post-fill
+  SHRINK_SLEEVE // full-body shrink-wrap, gravure or digital
+  IN_MOLD_LABEL // for plastic containers, label fused at moulding
+  HEAT_TRANSFER // heat-applied label, mid-volume
+  // Accent decoration methods (can be combined with primary)
+  FOIL_STAMP // hot foil application (metallic finish)
+  EMBOSS // raised impression
+  DEBOSS // sunken impression
+  SPOT_UV // selective glossy varnish
+  // No decoration
+  NONE // stock cap, blank seal, plain insert
+}
+
+// Lifecycle status for marketplace offerings (component variants, accessories).
+enum OfferingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  ARCHIVED
+}
+
+model PackagingComponent {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  tier PackagingTier // PRIMARY | SECONDARY | TERTIARY
+  role ComponentRole // CONTAINER | CARTON | CLOSURE | SEAL | INSERT | LABEL | SHIPPER
+
+  // What it is — admin-curated PackagingType (330ml can, 6-pack carton)
+  packagingTypeId String
+  packagingType   PackagingType @relation(fields: [packagingTypeId], references: [id])
+
+  // Who makes it (selected at marketplace time) — soft FK to PartnerPackagingOffering
+  partnerOfferingId String?
+
+  // Which decoration variant (closure: plain vs custom; seal: foil vs shrink band)
+  selectedVariantId String?
+  selectedVariant   PackagingComponentVariant? @relation(fields: [selectedVariantId], references: [id])
+
+  // The dieline this component uses (resolved from variant or default) — soft FK
+  dielineId String?
+
+  // The decoration method for THIS component (different from sibling components)
+  decorationMethod DecorationMethod @default(NONE)
+
+  // Design surface — its own artwork; nullable for stock variants — soft FK
+  designVersionId String?
+
+  // For multi-flavor multipacks
+  unitsPerParent    Int                  @default(1) // 4 of THIS flavor in a 12-pack of 3 flavors
+  parentComponentId String? // primaries link to their secondary carton
+  parent            PackagingComponent?  @relation("ComponentHierarchy", fields: [parentComponentId], references: [id])
+  children          PackagingComponent[] @relation("ComponentHierarchy")
+
+  // Per-component flavor preset (variety pack support) — soft FK to FlavorPreset
+  flavorPresetId String?
+
+  // Editor sort
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([parentComponentId])
+}
+
+// Variants of a component — different decoration choices for the same slot.
+model PackagingComponentVariant {
+  id                String        @id @default(uuid())
+  packagingTypeId   String
+  componentRole     ComponentRole
+  partnerOfferingId String // which partner offers this variant — soft FK
+
+  name        String // "Black metal twist cap" | "Custom-printed shrink band"
+  description String?
+
+  isCustomizable    Boolean // does selecting this open a Studio surface?
+  isDefaultIncluded Boolean @default(false) // is this the standard included variant?
+
+  baseSurchargePerUnit Decimal @db.Decimal(10, 4) // cost added per unit beyond the default
+  leadTimeDeltaDays    Int     @default(0)
+
+  dielineId String? // unlocked if isCustomizable=true — soft FK
+
+  // Compliance
+  isFdaTamperEvident Boolean @default(false) // counts toward FDA 21 CFR 211.132
+
+  status OfferingStatus
+
+  createdAt DateTime @default(now())
+
+  // Back-relation — components that selected this variant
+  components PackagingComponent[]
+
+  @@index([packagingTypeId])
 }
 
 // -----------------------------------------------------------------------------
