@@ -3101,6 +3101,22 @@ enum PackagingTopology {
   OTHER // catch-all (V1.5+ admin can add canonical types via PackagingType)
 }
 
+// Slice C7.c — explicit container category for a PackagingType, used to derive the
+// implied multi-component slots (CONTAINER / CLOSURE / SEAL).
+enum ContainerCategory {
+  BOTTLE
+  JAR
+  CAN
+  TUBE
+  POUCH
+  SACHET
+  STICK_PACK
+  BOX
+  CARTON
+  CASE
+  OTHER
+}
+
 enum FlavorMode {
   SINGLE // one flavor per packaging unit (1 jar = 1 flavor)
   MULTI // multiple flavors per packaging unit (variety pack)
@@ -3158,6 +3174,10 @@ model PackagingType {
   displayName       String // canonical name shown publicly
   imageFileId       String? // admin-curated reference photo (Asset/PartnerFile soft FK)
   defaultTopology   PackagingTopology
+  // Slice C7.c — explicit container category (defaultTopology is too coarse to derive
+  // which component slots CONTAINER/CLOSURE/SEAL a product implies). Nullable: admins
+  // set it during curation; no existing PackagingType rows to backfill.
+  containerCategory ContainerCategory?
   defaultDimensions Json? // { lengthMm, widthMm, heightMm }
   defaultSurfaces   Json? // [{ name, defaultBleedMm }]
   status            PackagingTypeStatus  @default(ACTIVE)
