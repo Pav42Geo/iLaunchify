@@ -6,12 +6,15 @@
   "types": "./src/index.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
+    "seed:product-niches": "pnpm exec dotenv -e ../../.env.local -- tsx scripts/seed-product-niches.ts",
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
     "@ilaunchify/db": "workspace:*"
   },
   "devDependencies": {
+    "dotenv-cli": "^7.4.4",
+    "tsx": "^4.19.1",
     "typescript": "^5.6.3"
   }
 }
