@@ -1058,6 +1058,8 @@ model Product {
   productionSubscriptions ProductionSubscription[]
   // Slice C7.a — multi-component packaging
   packagingComponents     PackagingComponent[]
+  // Slice C7.b — partner-bundled accessories
+  accessories             ProductAccessory[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -3344,6 +3346,73 @@ model PackagingComponentVariant {
   components PackagingComponent[]
 
   @@index([packagingTypeId])
+}
+
+// -----------------------------------------------------------------------------
+// ACCESSORIES (Slice C7.b) — partner-bundled-only
+// Per [[ilaunchify-accessories-are-partner-bundled-only]]: the listing partner
+// IS the fulfillment partner. No platform-curated catalog, no cross-partner
+// orchestration in V1/V1.5. An accessory exists only when a partner lists it,
+// links it to specific offerings, and commits to bundling it at pack-out.
+// -----------------------------------------------------------------------------
+
+enum AccessoryCategory {
+  SPOON
+  RIBBON
+  TAG // hangtag, neck tag
+  INSERT // recipe card, brand insert
+  CAP_COVER // decorative paper cover over jar lid
+  TISSUE // branded tissue paper
+  WAX_SEAL
+  STICKER_PACK
+  OTHER
+}
+
+model AccessoryOffering {
+  id               String @id @default(uuid())
+  partnerServiceId String // REQUIRED — listing partner is fulfillment partner. Soft FK (no relation per brief).
+
+  name         String // "Laser-engraved wooden honey dipper"
+  category     AccessoryCategory
+  description  String
+  imageFileKey String // R2 key
+
+  // Explicit ties — partner picks which of their offerings it fits.
+  applicablePartnerOfferingIds String[]
+
+  // Array of tiers stored in a single JSONB column. Cockroach's Prisma connector
+  // rejects the `Json[]` list type (P1012) — bare `Json` holding the array is the
+  // schema-wide precedent (cf. PartnerPackagingOffering.pricingTiers).
+  pricingTiers Json // [{quantity, pricePerUnit}]
+  moq          Int  @default(1)
+  leadTimeDays Int
+
+  isCustomizable      Boolean // engraving text, color choice
+  customizationFields Json // [{field:"engravingText", type:"text", max:30}]
+
+  status OfferingStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Back-relation — products that linked this accessory
+  productLinks ProductAccessory[]
+
+  @@index([partnerServiceId])
+  @@index([status])
+}
+
+model ProductAccessory {
+  productId           String
+  product             Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  accessoryOfferingId String
+  accessoryOffering   AccessoryOffering @relation(fields: [accessoryOfferingId], references: [id], onDelete: Cascade)
+
+  customizationValues    Json? // {engravingText: "Pavel's Honey"}
+  quantityPerProductUnit Int   @default(1)
+
+  @@id([productId, accessoryOfferingId])
+  @@index([accessoryOfferingId])
 }
 
 // -----------------------------------------------------------------------------
