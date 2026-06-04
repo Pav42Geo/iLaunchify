@@ -17,11 +17,17 @@
 // which isn't populated yet. The pure rule helper lives in ./component-slots.
 
 import { prisma } from '@ilaunchify/db'
-import type { ComponentRole, DecorationMethod, PackagingTier } from '@ilaunchify/db'
+import type {
+  ComponentRole,
+  ContainerCategory,
+  DecorationMethod,
+  LabelingType,
+  PackagingTier,
+} from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import { sealIsFdaMandatory } from './component-slots'
+import { impliedComponentSlots, sealIsFdaMandatory } from './component-slots'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -212,4 +218,104 @@ export async function removePackagingComponent(
   })
   revalidatePath(`/products/${productId}/checkout`)
   return { ok: true, data: { id: componentId } }
+}
+
+/**
+ * Default closure/seal PackagingType slug for an auto-created slot (from the
+ * seeded canonical catalog). CONTAINER resolves from the chosen primary type,
+ * so it returns null here.
+ */
+function defaultPartSlug(
+  role: ComponentRole,
+  category: ContainerCategory,
+  labelingType: LabelingType,
+): string | null {
+  if (role === 'CLOSURE') {
+    if (category === 'TUBE') return 'flip-top-cap'
+    return labelingType === 'DIETARY_SUPPLEMENT' || labelingType === 'OTC'
+      ? 'cr-cap-supplement'
+      : 'metal-twist-cap-63mm'
+  }
+  if (role === 'SEAL') return 'induction-foil-seal'
+  return null
+}
+
+/**
+ * Materialize the implied component slots for a product from its chosen primary
+ * container PackagingType. CONTAINER uses that type; CLOSURE/SEAL resolve to the
+ * seeded default cap/seal types. Idempotent — only roles not already present are
+ * created. The caller (Components UI) supplies the container type the creator picked.
+ */
+export async function createDefaultComponentSlots(
+  productId: string,
+  primaryPackagingTypeId: string,
+): Promise<Result<{ created: number }>> {
+  const { user, product, error } = await authorizeProduct(productId)
+  if (!user || !product) return { ok: false, error: error ?? 'NOT_FOUND' }
+
+  const primary = await prisma.packagingType.findUnique({
+    where: { id: primaryPackagingTypeId },
+    select: { id: true, containerCategory: true },
+  })
+  if (!primary) return { ok: false, error: 'Packaging type not found.' }
+  if (!primary.containerCategory) {
+    return { ok: false, error: 'That packaging type has no container category set.' }
+  }
+
+  const labelingType = product.productTemplate?.labelingType ?? 'FOOD'
+  const slots = impliedComponentSlots(primary.containerCategory, labelingType)
+
+  const existing = await prisma.packagingComponent.findMany({
+    where: { productId },
+    select: { role: true, displayOrder: true },
+  })
+  const presentRoles = new Set(existing.map((e) => e.role))
+  let order = existing.reduce((m, e) => Math.max(m, e.displayOrder), -1)
+
+  // Resolve default cap/seal type ids by slug in one query.
+  const slugs = slots
+    .map((s) => defaultPartSlug(s.role, primary.containerCategory!, labelingType))
+    .filter((s): s is string => !!s)
+  const parts = slugs.length
+    ? await prisma.packagingType.findMany({
+        where: { slug: { in: slugs } },
+        select: { id: true, slug: true },
+      })
+    : []
+  const idBySlug = new Map(parts.map((p) => [p.slug, p.id]))
+
+  const toCreate = slots
+    .filter((s) => !presentRoles.has(s.role))
+    .map((s) => {
+      const slug = defaultPartSlug(s.role, primary.containerCategory!, labelingType)
+      const packagingTypeId = s.role === 'CONTAINER' ? primary.id : slug ? idBySlug.get(slug) : null
+      return packagingTypeId
+        ? {
+            productId,
+            tier: s.tier,
+            role: s.role,
+            packagingTypeId,
+            decorationMethod: 'NONE' as DecorationMethod,
+            displayOrder: ++order,
+          }
+        : null
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+
+  if (toCreate.length === 0) return { ok: true, data: { created: 0 } }
+
+  await prisma.packagingComponent.createMany({ data: toCreate })
+  await logAuditAs(user, {
+    entityType: 'PackagingComponent',
+    entityId: productId,
+    action: 'create',
+    payload: {
+      productId,
+      seeded: true,
+      roles: toCreate.map((c) => c.role),
+      primaryPackagingTypeId,
+    },
+  })
+  revalidatePath(`/products/${productId}/checkout`)
+  return { ok: true, data: { created: toCreate.length } }
 }
