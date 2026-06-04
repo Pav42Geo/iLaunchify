@@ -23,6 +23,7 @@ export type CanvasCustomType =
   | 'barcode'
   | 'internal-sku'
   | 'nutrition-panel'
+  | 'nutrition-aggregate-panel'
   | 'supplement-panel'
   | 'aafco-panel'
   | 'drug-facts-panel'

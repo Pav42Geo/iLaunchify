@@ -137,6 +137,15 @@ export {
   type PanelSections,
 } from './canvas/nutritionPanel'
 export {
+  addAggregateNutritionPanel,
+  updateAggregateNutritionPanel,
+  SAMPLE_AGGREGATE_NUTRITION_DATA,
+  type AggregateNutritionData,
+  type AggregateNutritionProps,
+  type AggregateNutritionOpts,
+  type NutritionFlavor,
+} from './canvas/aggregateNutritionPanel'
+export {
   addSupplementFactsPanel,
   updateSupplementPanel,
   SAMPLE_SUPPLEMENT_DATA,
