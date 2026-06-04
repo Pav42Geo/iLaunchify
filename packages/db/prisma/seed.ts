@@ -25,6 +25,7 @@ import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
+import { seedPackagingTypes } from './seed-packaging-types'
 import { seedNiches } from './seed-niches'
 import { seedTicketCategories } from './seed-ticket-categories'
 // 2026-06-02 V1.1 marketplace taxonomy — locked 4-layer model.
@@ -90,6 +91,12 @@ async function main() {
   // offered subset via PartnerServiceSubstrate +
   // PartnerServicePackagingMaterial junctions.
   await seedProductionOptions(prisma)
+
+  // --- Packaging type catalog (C7 — admin-curated canonical packaging) ---
+  // Starter primary containers (with containerCategory) + closure/seal parts
+  // so the partner packaging picker is populated and multi-component slot
+  // derivation has real data.
+  await seedPackagingTypes(prisma)
 
   // --- Marketplace taxonomy (V1.1 — 2026-06-02 locked 4-layer model) ---
   // Layer 2 — 13 LOCKED categories + 121 subcategories (per
