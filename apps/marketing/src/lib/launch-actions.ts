@@ -13,6 +13,7 @@
 // a modal).
 
 import { prisma } from '@ilaunchify/db'
+import type { DecorationMethod } from '@ilaunchify/db'
 import { auth } from '@ilaunchify/auth'
 import { creatorUrl } from './app-urls'
 
@@ -24,6 +25,11 @@ export interface StartLaunchInput {
   size?: string
   packaging?: string
   quantity?: number
+  /** Slice C8.2 — chosen decoration offering from the marketplace picker. When
+   *  present, the launch materialises a primary PackagingComponent so checkout
+   *  can price the container's decoration. */
+  decorationMethod?: DecorationMethod
+  partnerOfferingId?: string
 }
 
 export type StartLaunchResult =
@@ -152,6 +158,45 @@ export async function startLaunchFromTemplate(
       },
       select: { id: true },
     })
+
+    // Slice C8.2 — if the creator picked a decoration on the marketplace
+    // detail page, materialise ONE primary PackagingComponent (the container)
+    // wired to the chosen partner offering. Checkout prices it from the
+    // offering's tiered pricing. Verify the offering is still ACTIVE; skip
+    // silently if it isn't so the launch flow never breaks.
+    if (input.partnerOfferingId) {
+      try {
+        const offering = await prisma.partnerPackagingOffering.findFirst({
+          where: { id: input.partnerOfferingId, status: 'ACTIVE' },
+          select: {
+            id: true,
+            packagingTypeId: true,
+            dielineId: true,
+            decorationMethod: true,
+          },
+        })
+        if (offering) {
+          await prisma.packagingComponent.create({
+            data: {
+              productId: product.id,
+              tier: 'PRIMARY',
+              role: 'CONTAINER',
+              packagingTypeId: offering.packagingTypeId,
+              partnerOfferingId: offering.id,
+              dielineId: offering.dielineId,
+              decorationMethod: offering.decorationMethod,
+              unitsPerParent: 1,
+              displayOrder: 0,
+            },
+          })
+        }
+      } catch (compErr) {
+        console.warn(
+          '[launch-actions] PackagingComponent seed failed — launch continues:',
+          compErr,
+        )
+      }
+    }
 
     // Pre-create the CheckoutDraft with the quantity (and any other
     // selection) the creator picked on the detail page. This makes the

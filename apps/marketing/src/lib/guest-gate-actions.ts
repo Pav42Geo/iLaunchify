@@ -121,6 +121,9 @@ export async function signupGuestAndPrepareLaunch(
     ...(input.size ? { size: input.size } : {}),
     ...(input.packaging ? { packaging: input.packaging } : {}),
     ...(input.quantity ? { quantity: String(input.quantity) } : {}),
+    // Slice C8.2 — carry the chosen decoration offering through signup so the
+    // post-signin product gets its primary PackagingComponent.
+    ...(input.partnerOfferingId ? { partnerOfferingId: input.partnerOfferingId } : {}),
   })
   const signinUrl = creatorUrl('/api/dev/login', {
     email,

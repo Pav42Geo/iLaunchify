@@ -122,6 +122,45 @@ export async function GET(req: NextRequest) {
       },
       select: { id: true },
     })
+
+    // Slice C8.2 — carry the marketplace decoration pick into the product as a
+    // primary PackagingComponent (mirrors launch-actions.ts). Skip silently if
+    // the offering is missing/inactive so the canvas redirect never breaks.
+    const partnerOfferingId = params.get('partnerOfferingId')
+    if (partnerOfferingId) {
+      try {
+        const offering = await prisma.partnerPackagingOffering.findFirst({
+          where: { id: partnerOfferingId, status: 'ACTIVE' },
+          select: {
+            id: true,
+            packagingTypeId: true,
+            dielineId: true,
+            decorationMethod: true,
+          },
+        })
+        if (offering) {
+          await prisma.packagingComponent.create({
+            data: {
+              productId: product.id,
+              tier: 'PRIMARY',
+              role: 'CONTAINER',
+              packagingTypeId: offering.packagingTypeId,
+              partnerOfferingId: offering.id,
+              dielineId: offering.dielineId,
+              decorationMethod: offering.decorationMethod,
+              unitsPerParent: 1,
+              displayOrder: 0,
+            },
+          })
+        }
+      } catch (compErr) {
+        console.warn(
+          '[launch-after-signin] PackagingComponent seed failed — launch continues:',
+          compErr,
+        )
+      }
+    }
+
     return NextResponse.redirect(
       new URL(`/products/${product.id}/design/canvas`, req.url),
     )

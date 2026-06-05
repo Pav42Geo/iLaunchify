@@ -28,6 +28,7 @@ import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
+import { getDecorationOfferings } from '@/lib/decoration-offerings-db'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -88,6 +89,11 @@ export default async function ProductDetailPage({
   // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
   // the template isn't in the DB yet → chip strips just don't render.
   const taxonomyChips = await getProductTaxonomyChips(template.slug)
+
+  // Slice C8.2 — partner decoration offerings for this template's container
+  // types, grouped into one picker card per decoration method. Empty when no
+  // ACTIVE offering resolves → the picker hides.
+  const decorationOfferings = await getDecorationOfferings(template.slug)
 
   // P3 — real creator price = manufacturer unit cost + tier-discounted platform
   // fee. Tier comes from the signed-in creator's CreatorProfile (Maker for
@@ -214,6 +220,7 @@ export default async function ProductDetailPage({
               pricingRows={pricingRows}
               viewerTier={viewerTier}
               isAuthenticated={isAuthenticated}
+              decorationOfferings={decorationOfferings}
             />
 
             <div className="flex items-center gap-4 mt-4 text-[13px] text-ink-600">

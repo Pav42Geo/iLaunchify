@@ -2334,9 +2334,15 @@ model ProductTemplateVariant {
   dieCutTemplateId String?
   isActive         Boolean @default(true)
 
+  // ---- C8 — canonical container link (drives marketplace decoration offerings) ----
+  // Optional FK to the PackagingType catalog. When set, the marketplace surfaces
+  // the PartnerPackagingOfferings for this container type (decoration choices).
+  packagingTypeId String?
+
   // Relations
   productTemplate ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
   dieCutTemplate  DieCutTemplate? @relation(fields: [dieCutTemplateId], references: [id])
+  packagingType   PackagingType?  @relation(fields: [packagingTypeId], references: [id])
   products        Product[]
   createdAt       DateTime        @default(now())
 
@@ -3200,6 +3206,8 @@ model PackagingType {
   components         PackagingComponent[]
   // Slice C8 — partner offerings on this container type
   packagingOfferings PartnerPackagingOffering[]
+  // Slice C8 Phase 2 — template variants that use this container type
+  templateVariants   ProductTemplateVariant[]
 }
 
 // Partner-owned packaging system — links optionally to a canonical PackagingType.

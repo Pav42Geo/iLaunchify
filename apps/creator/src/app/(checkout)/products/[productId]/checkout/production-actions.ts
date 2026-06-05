@@ -160,6 +160,12 @@ export interface CostBreakdown {
   // C7.h — per-unit surcharge from selected packaging-component variants
   // (custom cap, branded seal, …). 0 when every slot uses its default.
   componentsUnitCents: number
+  // C8.2 — decoration method on the primary container (from the marketplace
+  // picker), null when the product has no offering-linked primary component.
+  decorationMethod: string | null
+  // C8.2 — per-unit decoration cost from the partner offering's tiered pricing,
+  // selected for the current quantity. 0 when no offering is linked.
+  decorationUnitCents: number
   // Setup fees that don't scale with quantity (cents).
   setupCents: number
   // Order-level totals (cents).
@@ -227,21 +233,61 @@ export async function estimateProductionCost(
   // (non-default) variant adds its per-unit surcharge, scaled by unitsPerParent
   // (variety multipacks hold N of a flavor). Default-included variants add $0,
   // so this is 0 until partners list upgrade variants.
+  //
+  // C8.2 — the PRIMARY/CONTAINER component may carry a partnerOfferingId from
+  // the marketplace decoration picker. When it does, we price that container's
+  // decoration from the offering's tiered pricing (NOT the variant surcharge),
+  // so the priced primary is excluded from the component-surcharge sum below to
+  // avoid double counting.
   const components = await prisma.packagingComponent.findMany({
     where: { productId: input.productId },
     select: {
+      id: true,
+      tier: true,
+      role: true,
       unitsPerParent: true,
+      partnerOfferingId: true,
+      decorationMethod: true,
       selectedVariant: { select: { baseSurchargePerUnit: true } },
+      partnerOffering: { select: { pricingTiers: true } },
     },
   })
+
+  // Pick the priced primary container: PRIMARY tier, CONTAINER role, with an
+  // offering link. (At most one per launch from the picker.)
+  const primaryContainer = components.find(
+    (c) =>
+      c.tier === 'PRIMARY' &&
+      c.role === 'CONTAINER' &&
+      c.partnerOfferingId != null &&
+      c.partnerOffering != null,
+  )
+
+  let decorationMethod: string | null = null
+  let decorationUnitCents = 0
+  if (primaryContainer?.partnerOffering) {
+    decorationMethod = primaryContainer.decorationMethod ?? null
+    decorationUnitCents = pickTierPriceCents(
+      primaryContainer.partnerOffering.pricingTiers,
+      qty,
+    )
+  }
+
   let componentsUnitCents = 0
   for (const c of components) {
+    // Skip the offering-priced primary — its cost is decorationUnitCents.
+    if (primaryContainer && c.id === primaryContainer.id) continue
     if (!c.selectedVariant) continue
     const surchargeCents = Math.round(Number(c.selectedVariant.baseSurchargePerUnit) * 100)
     componentsUnitCents += surchargeCents * (c.unitsPerParent || 1)
   }
 
-  const perUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents + componentsUnitCents
+  const perUnitCents =
+    labelUnitCents +
+    packagingUnitCents +
+    finishUnitCents +
+    componentsUnitCents +
+    decorationUnitCents
   const subtotalCents = perUnitCents * qty + setupCents
 
   // Platform fee — use the current effective PlatformFeeConfig row.
@@ -263,11 +309,45 @@ export async function estimateProductionCost(
       packagingUnitCents,
       finishUnitCents,
       componentsUnitCents,
+      decorationMethod,
+      decorationUnitCents,
       setupCents,
       subtotalCents,
       platformFeeCents,
       totalBeforeShippingAndTaxCents: subtotalCents + platformFeeCents,
     },
   }
+}
+
+// -----------------------------------------------------------------------------
+// pickTierPriceCents — C8.2 tiered decoration pricing.
+//
+// pricingTiers is a Json column shaped [{minQty, pricePerUnitCents}]. Pick the
+// tier whose minQty is the largest value <= quantity (volume break). Falls back
+// to the lowest tier when the quantity is below every breakpoint. Returns 0
+// when the tiers array is empty / malformed.
+// -----------------------------------------------------------------------------
+
+interface PricingTier {
+  minQty: number
+  pricePerUnitCents: number
+}
+
+function pickTierPriceCents(raw: unknown, quantity: number): number {
+  if (!Array.isArray(raw) || raw.length === 0) return 0
+  const tiers = (raw as PricingTier[])
+    .filter(
+      (t) =>
+        typeof t?.minQty === 'number' &&
+        typeof t?.pricePerUnitCents === 'number',
+    )
+    .sort((a, b) => a.minQty - b.minQty)
+  if (tiers.length === 0) return 0
+  let chosen = tiers[0]!
+  for (const t of tiers) {
+    if (t.minQty <= quantity) chosen = t
+    else break
+  }
+  return chosen.pricePerUnitCents
 }
 

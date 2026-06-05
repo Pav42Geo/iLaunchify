@@ -27,6 +27,10 @@ interface Props {
    *  variants. Both guests and authed creators see "Start Launching"
    *  on the CTA per Pavel. */
   isAuthenticated: boolean
+  /** Slice C8.2 — chosen decoration offering, carried into product creation
+   *  so checkout can price the primary container. Null when none picked. */
+  decorationMethod?: string | null
+  partnerOfferingId?: string | null
 }
 
 export function LaunchCtaCluster({
@@ -37,6 +41,8 @@ export function LaunchCtaCluster({
   packagingId,
   quantity,
   isAuthenticated: _isAuthenticated,
+  decorationMethod = null,
+  partnerOfferingId = null,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +57,10 @@ export function LaunchCtaCluster({
         size: sizeKey,
         packaging: packagingId,
         quantity,
+        ...(decorationMethod
+          ? { decorationMethod: decorationMethod as never }
+          : {}),
+        ...(partnerOfferingId ? { partnerOfferingId } : {}),
       })
       if (result.ok) {
         window.location.href = result.url
@@ -109,6 +119,10 @@ export function LaunchCtaCluster({
           size: sizeKey,
           packaging: packagingId,
           quantity,
+          ...(decorationMethod
+            ? { decorationMethod: decorationMethod as never }
+            : {}),
+          ...(partnerOfferingId ? { partnerOfferingId } : {}),
         }}
       />
     </div>

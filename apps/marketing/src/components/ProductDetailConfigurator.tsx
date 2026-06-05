@@ -13,6 +13,8 @@ import {
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
+import type { DecorationOfferingCard } from '@/lib/decoration-offerings-db'
+import { DecorationPicker, type DecorationSelection } from './DecorationPicker'
 import { LaunchCtaCluster } from './LaunchCtaCluster'
 
 /**
@@ -46,6 +48,9 @@ export interface ProductDetailConfiguratorProps {
    * selection carried as query params. When false (default), it lands on
    * /start, which converts the visitor into a signed-up creator first. */
   isAuthenticated?: boolean
+  /** Slice C8.2 — resolved partner decoration offerings (one card per method).
+   * Empty array hides the picker (most templates have no offering yet). */
+  decorationOfferings?: DecorationOfferingCard[]
 }
 
 export function ProductDetailConfigurator({
@@ -54,6 +59,7 @@ export function ProductDetailConfigurator({
   pricingRows,
   viewerTier = 'maker',
   isAuthenticated = false,
+  decorationOfferings = [],
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
 
@@ -65,6 +71,10 @@ export function ProductDetailConfigurator({
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
   const [quantity, setQuantity] = React.useState<number>(template.minUnits)
+  // Slice C8.2 — chosen decoration offering (null until a card is picked).
+  const [decoration, setDecoration] = React.useState<DecorationSelection | null>(
+    null,
+  )
 
   // ----- Pricing math (V1 demo) -----
   // Per-unit price by quantity band comes from the server (real
@@ -207,6 +217,15 @@ export function ProductDetailConfigurator({
         leadTimeLabel={`${leadTimeDays}–${leadTimeDays + 4} days door-to-door`}
       />
 
+      {/* Slice C8.2 — decoration picker. Renders nothing when no partner
+       * offerings resolve for this template's container types. The chosen
+       * offering is carried into the launch CTA below. */}
+      <DecorationPicker
+        offerings={decorationOfferings}
+        selectedOfferingId={decoration?.partnerOfferingId ?? null}
+        onSelect={setDecoration}
+      />
+
       {/* Primary CTAs — R5 wires Start Launching to a server action
        * that materialises the Product row + redirects cross-app to
        * /products/{id}/design/canvas. R4 opens an inline guest-gate
@@ -221,6 +240,8 @@ export function ProductDetailConfigurator({
         packagingId={packagingId}
         quantity={quantity}
         isAuthenticated={isAuthenticated}
+        decorationMethod={decoration?.decorationMethod ?? null}
+        partnerOfferingId={decoration?.partnerOfferingId ?? null}
       />
     </div>
   )

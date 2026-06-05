@@ -117,6 +117,16 @@ export function OrderSummary({
           }
           dimmed={state.production.finishPartnerFinishIds.length === 0}
         />
+        {hasEstimate && estimate.decorationUnitCents > 0 && (
+          <Row
+            label={`Decoration${
+              estimate.decorationMethod
+                ? ` (${formatDecorationMethod(estimate.decorationMethod)})`
+                : ''
+            }${qty ? ` × ${qty}` : ''}`}
+            value={formatCents(estimate.decorationUnitCents * estimate.quantity)}
+          />
+        )}
         {hasEstimate && estimate.componentsUnitCents > 0 && (
           <Row
             label={`Component upgrades${qty ? ` × ${qty}` : ''}`}
@@ -248,4 +258,11 @@ function Row({
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
+}
+
+// C8.2 — turn a DecorationMethod enum value (DIRECT_PRINT) into a readable
+// label ("Direct print") for the Order Summary line.
+function formatDecorationMethod(method: string): string {
+  const lower = method.replace(/_/g, ' ').toLowerCase()
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
 }
