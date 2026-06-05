@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@ilaunchify/ui'
-import { Plus, Box } from 'lucide-react'
+import { Plus, Box, Layers } from 'lucide-react'
 import { STATUS_LABELS, topologyLabel } from './constants'
 
 export const dynamic = 'force-dynamic'
@@ -49,11 +49,18 @@ export default async function PackagingListPage() {
             to creators when they pick packaging for a product.
           </p>
         </div>
-        <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-          <Link href="/packaging/new">
-            <Plus className="mr-1.5 h-4 w-4" /> Add packaging
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/packaging/offerings">
+              <Layers className="mr-1.5 h-4 w-4" /> Decoration offerings
+            </Link>
+          </Button>
+          <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+            <Link href="/packaging/new">
+              <Plus className="mr-1.5 h-4 w-4" /> Add packaging
+            </Link>
+          </Button>
+        </div>
       </header>
 
       {partner.packagingSystems.length === 0 ? (

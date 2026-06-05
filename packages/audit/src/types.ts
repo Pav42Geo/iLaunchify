@@ -57,6 +57,10 @@ export const AUDIT_ENTITY_TYPES = [
   'PhraseRule',
   // B.4 — order cancellation
   'CancellationRequest',
+  // C8 — admin-curated decoration × container compatibility matrix
+  'PackagingDecorationCompatibility',
+  // C8 — partner-owned packaging offerings (container × decoration tuples)
+  'PartnerPackagingOffering',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -147,6 +151,11 @@ export const AUDIT_ACTIONS = [
   // 2026-06-05 — per-product label-phrase suggestion engine (partner card)
   'PRODUCT_TEMPLATE_PHRASES_UPDATED',
   'PRODUCT_TEMPLATE_PHRASE_FACTS_UPDATED',
+  // C8 — partner packaging offering CRUD (container × decoration tuples)
+  'PARTNER_PACKAGING_OFFERING_CREATED',
+  'PARTNER_PACKAGING_OFFERING_UPDATED',
+  'PARTNER_PACKAGING_OFFERING_DELETED',
+  'PARTNER_PACKAGING_OFFERING_STATUS_CHANGED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

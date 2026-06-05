@@ -38,6 +38,7 @@ import { seedNicheRules } from './seed-niche-rules'
 import { seedLabelFormatRules } from './seed-label-format-rules'
 import { seedMandatoryPhrases } from './seed-mandatory-phrases'
 import { seedPhraseRules } from './seed-phrase-rules'
+import { seedDecorationCompatibility } from './seed-decoration-compatibility'
 
 const prisma = new PrismaClient()
 
@@ -87,6 +88,8 @@ async function main() {
   await seedMandatoryPhrases(prisma)
   // --- Phrase rules (per-product suggestion engine; needs phrases above) ---
   await seedPhraseRules(prisma)
+  // --- Decoration compatibility matrix (C8 — container category × method) ---
+  await seedDecorationCompatibility(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,

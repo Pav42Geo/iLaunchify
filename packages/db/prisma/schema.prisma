@@ -788,6 +788,8 @@ model PartnerService {
   // V1.5+ Phase F — print finishes this service offers (printer/label-printing
   // services only; hidden on the creator side until ≥1 ACTIVE row exists).
   partnerFinishes                  PartnerFinish[]
+  // Slice C8 — packaging offerings (container × decoration × dieline tuples).
+  packagingOfferings               PartnerPackagingOffering[]
   // Phase G3 — typed substrate + packaging-material declarations. Drives
   // the creator-side ProductionStep pickers + marketplace partner
   // matching (#153). Empty arrays mean "uses platform defaults."
@@ -1233,6 +1235,9 @@ model FinishType {
   // partner doesn't override.
   defaultPrinterSpec String?
   status             BrandLibraryStatus @default(ACTIVE) // DRAFT | ACTIVE | DEPRECATED
+  // Slice C8 — maps an accent finish to a decoration method (foil/emboss/etc.).
+  // Null for general (non-accent) finishes. See _V1_DECORATION_METHODS.md
+  decorationMethod   DecorationMethod?
   // Relations
   partnerFinishes    PartnerFinish[]
   createdAt          DateTime           @default(now())
@@ -3176,23 +3181,25 @@ enum FlavorPresetStatus {
 // as admin clusters partner-contributed PackagingSystems via the promotion
 // queue (task #135).
 model PackagingType {
-  id                String               @id @default(cuid())
-  slug              String               @unique // 'hdpe-jar-16oz-wide-mouth'
-  displayName       String // canonical name shown publicly
-  imageFileId       String? // admin-curated reference photo (Asset/PartnerFile soft FK)
-  defaultTopology   PackagingTopology
+  id                 String                     @id @default(cuid())
+  slug               String                     @unique // 'hdpe-jar-16oz-wide-mouth'
+  displayName        String // canonical name shown publicly
+  imageFileId        String? // admin-curated reference photo (Asset/PartnerFile soft FK)
+  defaultTopology    PackagingTopology
   // Slice C7.c — explicit container category (defaultTopology is too coarse to derive
   // which component slots CONTAINER/CLOSURE/SEAL a product implies). Nullable: admins
   // set it during curation; no existing PackagingType rows to backfill.
-  containerCategory ContainerCategory?
-  defaultDimensions Json? // { lengthMm, widthMm, heightMm }
-  defaultSurfaces   Json? // [{ name, defaultBleedMm }]
-  status            PackagingTypeStatus  @default(ACTIVE)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  systems           PackagingSystem[]
+  containerCategory  ContainerCategory?
+  defaultDimensions  Json? // { lengthMm, widthMm, heightMm }
+  defaultSurfaces    Json? // [{ name, defaultBleedMm }]
+  status             PackagingTypeStatus        @default(ACTIVE)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  systems            PackagingSystem[]
   // Slice C7.a — multi-component packaging
-  components        PackagingComponent[]
+  components         PackagingComponent[]
+  // Slice C8 — partner offerings on this container type
+  packagingOfferings PartnerPackagingOffering[]
 }
 
 // Partner-owned packaging system — links optionally to a canonical PackagingType.
@@ -3297,6 +3304,76 @@ enum OfferingStatus {
   ARCHIVED
 }
 
+// -----------------------------------------------------------------------------
+// DECORATION OFFERINGS (Slice C8) — supply-side. A partner declares which
+// (container type × decoration × dieline) tuples they offer, at what MOQ /
+// price / lead-time, and via which fulfillment mode. Accent decorations layer
+// on top of a component's primary decoration. Admin curates which decoration
+// methods are valid per container category.
+// Spec: docs/builds/_V1_DECORATION_METHODS.md
+// -----------------------------------------------------------------------------
+
+enum FulfillmentMode {
+  BULK_PRODUCTION
+  ON_DEMAND
+  BOTH
+}
+
+// A 3-tuple a partner offers: container type × decoration × dieline, at
+// MOQ/price/lead-time. dielineId is a soft FK until typed PackagingDieline
+// ships in C9/C10.
+model PartnerPackagingOffering {
+  id               String           @id @default(uuid())
+  partnerServiceId String
+  packagingTypeId  String
+  decorationMethod DecorationMethod
+  dielineId        String? // soft FK — typed PackagingDieline is C9/C10; nullable for now
+  moq              Int              @default(1)
+  leadTimeDays     Int              @default(14)
+  pricingTiers     Json             @default("[]") // [{minQty:Int, pricePerUnitCents:Int}] — single Json (Cockroach-safe)
+  fulfillmentMode  FulfillmentMode  @default(BOTH)
+  status           OfferingStatus   @default(DRAFT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  partnerService PartnerService       @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  packagingType  PackagingType        @relation(fields: [packagingTypeId], references: [id])
+  components     PackagingComponent[] // back-relation — components that selected this offering
+
+  @@unique([partnerServiceId, packagingTypeId, decorationMethod])
+  @@index([packagingTypeId, status])
+}
+
+// Accent decoration layered on a component (foil / emboss / deboss / spot-UV).
+// decorationMethod expected one of FOIL_STAMP/EMBOSS/DEBOSS/SPOT_UV — enforced
+// in app code (enum spans both primary + accent methods).
+model AccentDecoration {
+  id                   String           @id @default(uuid())
+  packagingComponentId String
+  decorationMethod     DecorationMethod
+  surchargePerUnit     Decimal          @default(0) @db.Decimal(10, 4)
+  partnerFinishId      String? // optional soft FK to PartnerFinish for pricing linkage
+  createdAt            DateTime         @default(now())
+
+  packagingComponent PackagingComponent @relation(fields: [packagingComponentId], references: [id], onDelete: Cascade)
+
+  @@index([packagingComponentId])
+}
+
+// Admin-curated valid (container category × decoration method) combos. Keyed by
+// container category (not packagingTypeId) — category-level matches the spec
+// matrix and stays cleaner.
+model PackagingDecorationCompatibility {
+  containerCategory ContainerCategory
+  decorationMethod  DecorationMethod
+  notes             String?
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@id([containerCategory, decorationMethod])
+}
+
 model PackagingComponent {
   id        String  @id @default(uuid())
   productId String
@@ -3309,8 +3386,9 @@ model PackagingComponent {
   packagingTypeId String
   packagingType   PackagingType @relation(fields: [packagingTypeId], references: [id])
 
-  // Who makes it (selected at marketplace time) — soft FK to PartnerPackagingOffering
+  // Who makes it (selected at marketplace time) — FK to PartnerPackagingOffering (Slice C8)
   partnerOfferingId String?
+  partnerOffering   PartnerPackagingOffering? @relation(fields: [partnerOfferingId], references: [id])
 
   // Which decoration variant (closure: plain vs custom; seal: foil vs shrink band)
   selectedVariantId String?
@@ -3339,6 +3417,9 @@ model PackagingComponent {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Slice C8 — accent decorations (foil/emboss/deboss/spot-UV) layered on this component
+  accentDecorations AccentDecoration[]
 
   @@index([productId])
   @@index([parentComponentId])
