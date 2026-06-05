@@ -34,6 +34,7 @@ export const AUDIT_ENTITY_TYPES = [
   'LabelingSymbol',
   'PartnerCertificateInstance',
   'RulePack',
+  'LabelFormatRule',
   // R15.c — admin tier management module
   'CreatorProfile',
   'SubscriptionPlan',

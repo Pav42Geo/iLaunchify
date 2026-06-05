@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { LabelFormat, LabelingType, PanelOrientation } from '@ilaunchify/db'
+import { LabelFormatPreferenceEditor } from './LabelFormatPreferenceEditor'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Label-format preset — Admin' }
@@ -143,26 +144,17 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Preference + notes */}
-      <section className="rounded-2xl border border-ink-200 bg-white p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
-            Preference score
-          </h2>
-          <span className="font-display text-[20px] font-bold tabular-nums text-ink-900">
-            {rule.preferenceScore}
-          </span>
-        </div>
-        {rule.notes && (
-          <p className="mt-3 border-t border-ink-100 pt-3 text-[13px] leading-relaxed text-ink-700">
-            {rule.notes}
-          </p>
-        )}
-      </section>
+      {/* Preference + notes — admin-editable */}
+      <LabelFormatPreferenceEditor
+        format={rule.format}
+        labelingType={rule.labelingType}
+        preferenceScore={rule.preferenceScore}
+        notes={rule.notes}
+      />
 
       <p className="text-[11.5px] text-ink-400">
-        This preset is seed-curated and read-only. Editable per-category defaults and a live
-        sample render are planned follow-ons.
+        Regulatory facts (CFR citation, thresholds, capabilities) are fixed by the rule. A live
+        sample render is a planned follow-on.
       </p>
     </div>
   )
