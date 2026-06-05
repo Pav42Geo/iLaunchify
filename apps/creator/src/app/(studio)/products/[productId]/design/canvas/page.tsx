@@ -22,6 +22,7 @@ import {
 import { CanvasLayoutShell } from './CanvasLayoutShell'
 import { loadDesignJson } from './actions'
 import { loadProductCertBadges } from './cert-badge-actions'
+import { resolveProductPhrases } from './phrase-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -163,6 +164,23 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
     variant: product.variant,
   })
 
+  // Per-product required (locked-mandatory) phrases — the compliance scanner
+  // flags any whose text is missing from the canvas. Reuses the same resolver
+  // the Phrases drawer uses (engine + live recipe).
+  const resolvedPhrases = await resolveProductPhrases(
+    product.id,
+    product.productTemplate?.labelingType ?? 'FOOD',
+  )
+  const lockedPhrases = resolvedPhrases
+    .filter((p) => p.locked)
+    .map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      body: p.body,
+      citation: p.cfrCitation,
+    }))
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -171,7 +189,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
       certBadges={certBadges}
-      productCtx={productCtx}
+      productCtx={{ ...productCtx, lockedPhrases }}
       labelingType={product.productTemplate?.labelingType ?? 'FOOD'}
       creatorTier={creatorTier}
     />

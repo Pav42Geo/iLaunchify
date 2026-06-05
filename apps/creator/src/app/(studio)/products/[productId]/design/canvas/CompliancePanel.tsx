@@ -49,6 +49,13 @@ interface Props {
     allergens: string[]
     bioengineered: boolean
     netQuantity: string | null
+    lockedPhrases?: Array<{
+      id: string
+      slug: string
+      title: string
+      body: string
+      citation?: string | null
+    }>
   }
   /** Verified certs available to this product (for the "unused claims" nudge). */
   certBadges?: CertBadge[]

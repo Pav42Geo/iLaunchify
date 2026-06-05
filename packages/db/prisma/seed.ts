@@ -37,6 +37,7 @@ import { seedLifestyleTags } from './seed-lifestyle-tags'
 import { seedNicheRules } from './seed-niche-rules'
 import { seedLabelFormatRules } from './seed-label-format-rules'
 import { seedMandatoryPhrases } from './seed-mandatory-phrases'
+import { seedPhraseRules } from './seed-phrase-rules'
 
 const prisma = new PrismaClient()
 
@@ -84,6 +85,8 @@ async function main() {
 
   // --- Mandatory label phrases (admin-managed compliance catalog) ---
   await seedMandatoryPhrases(prisma)
+  // --- Phrase rules (per-product suggestion engine; needs phrases above) ---
+  await seedPhraseRules(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,

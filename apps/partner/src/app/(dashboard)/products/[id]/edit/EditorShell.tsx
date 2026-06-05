@@ -36,10 +36,12 @@ import {
   Weight,
   MessageSquare,
   FileText,
+  Quote,
 } from 'lucide-react'
 import type { ProductTemplateStatus, IngredientSource, RecipeEntryMode } from '@ilaunchify/db'
 import type { NicheSuggestion } from '@ilaunchify/marketplace'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
+import { SubmitReadiness, type ReadinessCheck } from './SubmitReadiness'
 import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
 import { AllergensCard } from './cards/AllergensCard'
 import { VariantsCard, type VariantRow } from './cards/VariantsCard'
@@ -66,7 +68,9 @@ import {
   type NicheOption,
   type LifestyleTagOption,
 } from './cards/NichesAndTagsCard'
+import { LabelPhrasesCard } from './cards/LabelPhrasesCard'
 import type { NutrientOverrideRow, IngredientGroupRow } from './card-actions'
+import type { PhraseSuggestion, PhraseFactFlag } from '@ilaunchify/marketplace'
 
 // -----------------------------------------------------------------------------
 // Props
@@ -132,6 +136,12 @@ interface EditorShellProps {
   nicheSuggestions: NicheSuggestion[]
   lifestyleTags: LifestyleTagOption[]
   selectedLifestyleTagIds: string[]
+  // 2026-06-05 — per-product label-phrase suggestion engine
+  phraseFactFlags: PhraseFactFlag[]
+  phraseFacts: Record<string, boolean>
+  phraseSuggestions: PhraseSuggestion[]
+  phraseRawHits: Array<{ ruleId: string; phraseId: string; matched: boolean }>
+  selectedPhraseIds: string[]
 }
 
 // -----------------------------------------------------------------------------
@@ -162,6 +172,11 @@ export function EditorShell({
   nicheSuggestions,
   lifestyleTags,
   selectedLifestyleTagIds,
+  phraseFactFlags,
+  phraseFacts,
+  phraseSuggestions,
+  phraseRawHits,
+  selectedPhraseIds,
 }: EditorShellProps) {
   const router = useRouter()
 
@@ -181,6 +196,7 @@ export function EditorShell({
     nichesAndTags: true,
     ingredients: true,
     allergens: true,
+    labelPhrases: true,
     packaging: true,
     pricing: true,
     certificates: false,
@@ -255,7 +271,82 @@ export function EditorShell({
   }
 
   const isDraft = template.status === 'DRAFT' || template.status === 'NEEDS_CHANGES'
-  const canSubmit = isDraft
+
+  // -------- Submit readiness (UX rail) --------
+  // Required rows mirror submitProductForReview()'s server gates 1:1 — the
+  // server remains the source of truth; this just surfaces the gates BEFORE
+  // the click instead of one rejection toast at a time. Recommended rows are
+  // what makes a listing actually sellable.
+  const readinessChecks: ReadinessCheck[] = [
+    {
+      key: 'ingredients',
+      label: 'At least one base ingredient',
+      done: ingredientSlots.length > 0,
+      required: true,
+      cardKey: 'ingredients',
+    },
+    {
+      key: 'packaging',
+      label: 'At least one packaging system',
+      done: packagingLinks.length > 0,
+      required: true,
+      cardKey: 'packaging',
+    },
+    {
+      key: 'variants',
+      label: 'At least one variant (container size)',
+      done: variants.length > 0,
+      required: true,
+      cardKey: 'pricing',
+    },
+    {
+      key: 'name',
+      label: 'Product name (2+ characters)',
+      done: name.trim().length >= 2,
+      required: false,
+      cardKey: 'basics',
+    },
+    {
+      key: 'price',
+      label: 'Base price above $0',
+      done: Number.parseFloat(priceFloorDollars) > 0,
+      required: false,
+      cardKey: 'basics',
+    },
+    {
+      key: 'description',
+      label: 'Marketplace description',
+      done: description.trim().length > 0,
+      required: false,
+      cardKey: 'basics',
+    },
+    {
+      key: 'hero',
+      label: 'Hero image',
+      done: !!heroAssetId,
+      required: false,
+      cardKey: 'media',
+    },
+    {
+      key: 'niches',
+      label: 'At least one niche',
+      done: selectedNicheIds.length > 0,
+      required: false,
+      cardKey: 'nichesAndTags',
+    },
+  ]
+  const requiredMissing = readinessChecks.filter((c) => c.required && !c.done)
+  const canSubmit = isDraft && requiredMissing.length === 0
+
+  function jumpToCard(cardKey: string) {
+    setOpenCards((prev) => ({ ...prev, [cardKey]: true }))
+    // Wait a frame so a just-opened card has rendered its content.
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`section-${cardKey}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,320px]">
@@ -388,6 +479,28 @@ export function EditorShell({
           />
         </EditorCard>
 
+        {/* ③b Label phrases — 2026-06-05 phrase suggestion engine */}
+        <EditorCard
+          id="labelPhrases"
+          icon={Quote}
+          title="Label phrases"
+          subtitle="Answer product facts — regulatory phrases auto-attach for the label"
+          open={!!openCards.labelPhrases}
+          onToggle={() => toggleCard('labelPhrases')}
+          reapprovalRequired
+        >
+          <LabelPhrasesCard
+            productTemplateId={template.id}
+            labelingType={labelingType}
+            factFlags={phraseFactFlags}
+            initialFacts={phraseFacts}
+            suggestions={phraseSuggestions}
+            rawHits={phraseRawHits}
+            selectedPhraseIds={selectedPhraseIds}
+            isDraft={isDraft}
+          />
+        </EditorCard>
+
         {/* ④ Packaging */}
         <EditorCard
           id="packaging"
@@ -498,15 +611,19 @@ export function EditorShell({
         </EditorCard>
       </div>
 
-      {/* Sticky sidebar — actions + live label preview placeholder */}
+      {/* Sticky sidebar — readiness rail + actions + live label preview placeholder */}
       <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+        {isDraft && <SubmitReadiness checks={readinessChecks} onJump={jumpToCard} />}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Actions</CardTitle>
             <CardDescription>
-              {isDraft
-                ? 'Submit for admin review when the draft is ready.'
-                : 'This template is in admin review. Edits are blocked until decision.'}
+              {!isDraft
+                ? 'This template is in admin review. Edits are blocked until decision.'
+                : requiredMissing.length > 0
+                  ? 'Finish the required checklist items above to enable Submit.'
+                  : 'Submit for admin review when the draft is ready.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -624,7 +741,9 @@ function EditorCard({
   children: React.ReactNode
 }) {
   return (
-    <Card>
+    // section-${id} is the scroll anchor for the readiness rail's jump links —
+    // it must live on the wrapper (always in the DOM), not the open-only body.
+    <Card id={`section-${id}`}>
       <button
         type="button"
         onClick={onToggle}

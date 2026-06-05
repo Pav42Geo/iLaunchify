@@ -154,6 +154,13 @@ interface Props {
     bioengineered: boolean
     netQuantity: string | null
     netQuantityKind: 'solid' | 'liquid' | 'count'
+    lockedPhrases?: Array<{
+      id: string
+      slug: string
+      title: string
+      body: string
+      citation?: string | null
+    }>
   }
   /**
    * DS-70b — when the bound print partner has ≥ 1 ACTIVE PartnerFinish
@@ -403,6 +410,7 @@ export function CanvasLayoutShell({
       bioengineered: serverProductCtx.bioengineered,
       netQuantity: serverProductCtx.netQuantity,
       netQuantityKind: serverProductCtx.netQuantityKind,
+      lockedPhrases: serverProductCtx.lockedPhrases ?? [],
     }),
     [
       productName,
@@ -411,6 +419,7 @@ export function CanvasLayoutShell({
       serverProductCtx.bioengineered,
       serverProductCtx.netQuantity,
       serverProductCtx.netQuantityKind,
+      serverProductCtx.lockedPhrases,
     ],
   )
   const basePxPerMm = 3.0
@@ -1110,7 +1119,9 @@ function ToolDrawer({
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool === 'graphics' && <GraphicsDrawer canvas={canvas} />}
         {tool === 'pattern' && <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />}
-        {tool === 'phrases' && <PhrasesDrawer canvas={canvas} labelingType={labelingType ?? 'FOOD'} />}
+        {tool === 'phrases' && (
+          <PhrasesDrawer canvas={canvas} productId={productId} labelingType={labelingType ?? 'FOOD'} />
+        )}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&

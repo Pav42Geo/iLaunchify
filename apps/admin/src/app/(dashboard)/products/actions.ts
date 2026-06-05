@@ -16,7 +16,8 @@
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { recordNicheAssignment } from '@ilaunchify/marketplace'
+import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
+import type { PhraseRequirement } from '@ilaunchify/db'
 import { revalidatePath } from 'next/cache'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 
@@ -412,6 +413,129 @@ export async function adminSetProductNiches(
     entityType: 'ProductTemplate',
     entityId: productTemplateId,
     action: 'niches.override',
+    payload: {
+      name: tpl.name,
+      added: toAdd,
+      removed: toRemove,
+      finalIds: desired,
+    },
+  })
+
+  revalidatePath(`/products/${productTemplateId}`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Per-product label-phrase overrides (admin product review page).
+//
+// Mirrors adminSetProductNiches. Admin can override the MandatoryPhrase rows a
+// manufacturer pinned (or that the auto-suggest phrase engine inferred). This
+// action:
+//   • gates `requireRole('ADMIN')`
+//   • re-runs suggestPhrases → force-includes every locked (mandatory) phrase
+//     so admin can never drop a locked one (paranoid server-side check)
+//   • validates every requested id is an active MandatoryPhrase
+//   • diffs against existing ProductTemplatePhrase + mutates inside a txn
+//     (createMany with the phrase's catalog requirement + source ADMIN /
+//     deleteMany), then emits one PhraseAssignmentAudit row per add/remove
+//   • emits one platform AuditLog row (PRODUCT_TEMPLATE_PHRASES_UPDATED)
+// -----------------------------------------------------------------------------
+
+export async function adminSetProductPhrases(
+  productTemplateId: string,
+  mandatoryPhraseIds: string[],
+): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: {
+      id: true,
+      name: true,
+      phrases: { select: { mandatoryPhraseId: true } },
+    },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+
+  // Re-run the engine to derive the locked (mandatory) phrase ids. Admin also
+  // cannot drop a locked mandatory — force-include every locked id below.
+  const suggestion = await suggestPhrases({ productTemplateId })
+  const lockedPhraseIds = suggestion.suggestions
+    .filter((s) => s.isLocked)
+    .map((s) => s.phraseId)
+
+  // Sanitize input — uniq + non-empty strings only — then union the locked set.
+  const desired = Array.from(
+    new Set([
+      ...mandatoryPhraseIds.filter((s) => typeof s === 'string' && s.length > 0),
+      ...lockedPhraseIds,
+    ]),
+  )
+  const current = new Set(tpl.phrases.map((p) => p.mandatoryPhraseId))
+  const wanted = new Set(desired)
+
+  const toAdd = desired.filter((id) => !current.has(id))
+  const toRemove = Array.from(current).filter((id) => !wanted.has(id))
+
+  if (toAdd.length === 0 && toRemove.length === 0) return { ok: true }
+
+  // Validate every id (added OR retained) is an active MandatoryPhrase, and
+  // grab each row's catalog `requirement` so new junction rows persist it.
+  const phraseRows = await prisma.mandatoryPhrase.findMany({
+    where: { id: { in: desired }, isActive: true },
+    select: { id: true, requirement: true },
+  })
+  if (phraseRows.length !== desired.length) {
+    return { ok: false, error: 'One or more phrases are invalid or inactive.' }
+  }
+  const requirementById = new Map<string, PhraseRequirement>(
+    phraseRows.map((p) => [p.id, p.requirement] as const),
+  )
+
+  await prisma.$transaction(async (tx) => {
+    if (toRemove.length > 0) {
+      await tx.productTemplatePhrase.deleteMany({
+        where: { productTemplateId, mandatoryPhraseId: { in: toRemove } },
+      })
+    }
+    if (toAdd.length > 0) {
+      await tx.productTemplatePhrase.createMany({
+        data: toAdd.map((mandatoryPhraseId) => ({
+          productTemplateId,
+          mandatoryPhraseId,
+          requirement: requirementById.get(mandatoryPhraseId) ?? 'MANDATORY',
+          source: 'ADMIN' as const,
+        })),
+        skipDuplicates: true,
+      })
+    }
+  })
+
+  // Per-phrase audit rows (PhraseAssignmentAudit). Outside the txn so a logging
+  // hiccup never rolls back the user's mutation.
+  for (const mandatoryPhraseId of toAdd) {
+    await recordPhraseAssignment({
+      productTemplateId,
+      mandatoryPhraseId,
+      source: 'ADMIN',
+      actorUserId: admin.id,
+      applied: true,
+    })
+  }
+  for (const mandatoryPhraseId of toRemove) {
+    await recordPhraseAssignment({
+      productTemplateId,
+      mandatoryPhraseId,
+      source: 'ADMIN',
+      actorUserId: admin.id,
+      applied: false,
+    })
+  }
+
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'PRODUCT_TEMPLATE_PHRASES_UPDATED',
     payload: {
       name: tpl.name,
       added: toAdd,

@@ -25,6 +25,10 @@
 
 export { suggestNiches } from './suggestNiches'
 export { recordNicheAssignment } from './recordNicheAssignment'
+export { suggestPhrases } from './suggestPhrases'
+export { recordPhraseAssignment } from './recordPhraseAssignment'
+export { PHRASE_FACT_FLAGS, PHRASE_FACT_KEYS } from './phraseFacts'
+export type { PhraseFactFlag } from './phraseFacts'
 
 export type {
   NicheSuggestion,
@@ -33,4 +37,12 @@ export type {
   NicheRuleCondition,
   NicheRuleConditionKind,
   RecordNicheAssignmentInput,
+  // Phrase auto-suggestion engine
+  PhraseSuggestion,
+  SuggestPhrasesInput,
+  SuggestPhrasesResult,
+  PhraseRecipeContext,
+  PhraseRuleCondition,
+  PhraseRuleConditionKind,
+  RecordPhraseAssignmentInput,
 } from './types'

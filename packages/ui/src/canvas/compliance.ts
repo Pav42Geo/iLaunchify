@@ -56,6 +56,19 @@ export interface LabelScanContext {
    * inferNetQuantityKind in netQuantity.ts.
    */
   netQuantityKind?: NetQuantityKind
+  /**
+   * Required (locked-mandatory) label phrases resolved per-product by the
+   * phrase engine (@ilaunchify/marketplace). The scan flags any whose text is
+   * not present on the canvas. Phrases that overlap an existing required-section
+   * / allergen / BE / nutrition check are skipped here to avoid double-flagging.
+   */
+  lockedPhrases?: Array<{
+    id: string
+    slug: string
+    title: string
+    body: string
+    citation?: string | null
+  }>
 }
 
 export type ScanSeverity = 'BLOCKING' | 'WARNING' | 'INFO'
@@ -346,6 +359,33 @@ export function scanLabelCompliance(
   }
 
   // --------------------------------------------------------------------
+  // Required (locked-mandatory) phrases — flag any whose text isn't on the
+  // canvas. Skips phrases already covered by the section / allergen / BE /
+  // nutrition checks above so we don't double-flag the same requirement.
+  // --------------------------------------------------------------------
+  if (ctx.lockedPhrases?.length) {
+    const canvasText = objects
+      .map((o) => (o as { text?: string }).text ?? '')
+      .join(' \n ')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+    for (const phrase of ctx.lockedPhrases) {
+      if (PHRASE_CHECK_SKIP.has(phrase.slug)) continue
+      const sig = phraseSignature(phrase.body) || phrase.title.toLowerCase()
+      if (sig.length < 5) continue
+      if (canvasText.includes(sig)) continue
+      findings.push({
+        id: `missing-phrase-${phrase.id}`,
+        severity: 'WARNING',
+        title: `Required phrase not on label: ${phrase.title}`,
+        detail: `This product requires "${truncatePhrase(phrase.body)}". It isn't on the label yet.`,
+        citation: phrase.citation ?? undefined,
+        suggestedFix: `Open the Phrases drawer → find "${phrase.title}" → click Add.`,
+      })
+    }
+  }
+
+  // --------------------------------------------------------------------
   // Roll up counts + outcome.
   // --------------------------------------------------------------------
   const counts = {
@@ -361,6 +401,43 @@ export function scanLabelCompliance(
         : 'PASS'
 
   return { counts, outcome, findings, scannedAt: new Date() }
+}
+
+/**
+ * Phrase slugs whose presence is already validated by another check above
+ * (required sections, allergen statement, BE disclosure, nutrition panel) —
+ * skipped by the locked-phrase check to avoid emitting two findings for the
+ * same requirement.
+ */
+const PHRASE_CHECK_SKIP = new Set<string>([
+  'statement-of-identity',
+  'net-quantity-statement',
+  'ingredient-statement',
+  'manufacturer-distributor-statement',
+  'allergen-contains-statement',
+  'bioengineered-disclosure',
+  'nutrition-facts-panel',
+])
+
+/**
+ * Distinctive lowercase signature for a phrase body, used to test presence on
+ * the canvas. Strips bracketed placeholders (e.g. "[list each allergen]") so a
+ * creator's filled-in values don't break the match, collapses whitespace, and
+ * takes a leading chunk long enough to be specific.
+ */
+function phraseSignature(body: string): string {
+  const cleaned = body
+    .replace(/\[[^\]]*\]/g, ' ') // drop [bracketed placeholders]
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned.slice(0, 24).trim()
+}
+
+/** Truncate a phrase body for the finding detail line. */
+function truncatePhrase(body: string): string {
+  const s = body.replace(/\s+/g, ' ').trim()
+  return s.length > 80 ? `${s.slice(0, 77)}…` : s
 }
 
 /**

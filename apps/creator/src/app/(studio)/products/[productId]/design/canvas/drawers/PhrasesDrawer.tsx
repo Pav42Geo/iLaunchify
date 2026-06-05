@@ -8,10 +8,10 @@
 // the creator's to fill. Replaces the old hardcoded phrase chips.
 
 import * as React from 'react'
-import { Plus, Loader2, ScrollText, ShieldAlert } from 'lucide-react'
+import { Plus, Loader2, ScrollText, ShieldAlert, Lock } from 'lucide-react'
 import { addText, type FabricCanvas } from '@ilaunchify/ui'
 import { InfoTip } from '../InfoTip'
-import { listMandatoryPhrases, type StudioPhrase } from '../phrase-actions'
+import { resolveProductPhrases, type StudioPhrase } from '../phrase-actions'
 
 // FTC enforcement-magnet claims (Made in USA, carbon-neutral, "sustainably
 // sourced", biodegradable, dermatologist-tested, …). The admin catalog marks
@@ -66,9 +66,11 @@ const REQ_HINT: Record<string, string> = {
 
 export function PhrasesDrawer({
   canvas,
+  productId,
   labelingType,
 }: {
   canvas: FabricCanvas | null
+  productId: string
   labelingType: string
 }) {
   const [phrases, setPhrases] = React.useState<StudioPhrase[] | null>(null)
@@ -78,13 +80,13 @@ export function PhrasesDrawer({
   React.useEffect(() => {
     let alive = true
     setPhrases(null)
-    listMandatoryPhrases(labelingType).then((r) => {
+    resolveProductPhrases(productId, labelingType).then((r) => {
       if (alive) setPhrases(r)
     })
     return () => {
       alive = false
     }
-  }, [labelingType])
+  }, [productId, labelingType])
 
   async function add(p: StudioPhrase) {
     if (!canvas) return
@@ -191,10 +193,22 @@ export function PhrasesDrawer({
                   {g.items.map((p) => (
                     <li
                       key={p.id}
-                      className="flex items-start gap-2 rounded-md border border-ink-200 bg-white px-2.5 py-2"
+                      className={
+                        'flex items-start gap-2 rounded-md border bg-white px-2.5 py-2 ' +
+                        (p.locked ? 'border-rose-200 ring-1 ring-rose-100' : 'border-ink-200')
+                      }
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {p.locked && (
+                            <span
+                              title="Required for this product — auto-attached by a compliance rule. The Studio will flag it if it's not on the label."
+                              className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-rose-700"
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Required
+                            </span>
+                          )}
                           <span className="text-[12.5px] font-semibold text-ink-900">{p.title}</span>
                           {(p.cfrCitation || p.appliesWhen) && (
                             <InfoTip

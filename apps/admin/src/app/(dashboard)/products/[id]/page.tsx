@@ -58,7 +58,7 @@ import type {
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
-import { suggestNiches } from '@ilaunchify/marketplace'
+import { suggestNiches, suggestPhrases } from '@ilaunchify/marketplace'
 import { ProductReviewer } from './ProductReviewer'
 import { MarketplacePlacementPanel } from './MarketplacePlacementPanel'
 import type {
@@ -66,6 +66,11 @@ import type {
   LifestyleTagOption,
   RuleHit,
 } from './MarketplacePlacementPanel'
+import { PhrasePlacementPanel } from './PhrasePlacementPanel'
+import type {
+  PhraseOption,
+  PhraseRuleHit,
+} from './PhrasePlacementPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -251,6 +256,8 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
       // 2026-06-02 Slice 3C — admin marketplace placement panel.
       niches: { include: { niche: true } },
       lifestyleTags: { include: { lifestyleTag: true } },
+      // 2026-06-05 — admin label-phrase placement panel.
+      phrases: { select: { mandatoryPhraseId: true } },
     },
   })
   if (!template) notFound()
@@ -413,6 +420,89 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
   const lockedNicheIds = suggestion.suggestions
     .filter((s) => s.isLocked)
     .map((s) => s.nicheId)
+
+  // -------------------------------------------------------------------------
+  // Label-phrase placement panel data (mirrors the niche block above).
+  //
+  // 1. suggestPhrases result — drives the chip list + "Why these phrases?".
+  // 2. Existing ProductTemplatePhrase ids — the persisted selection.
+  // 3. Latest PhraseAssignmentAudit rows (take 50) — drive the source pill.
+  // -------------------------------------------------------------------------
+
+  const [phraseSuggestion, phraseAuditRows] = await Promise.all([
+    suggestPhrases({ productTemplateId: template.id }),
+    prisma.phraseAssignmentAudit.findMany({
+      where: { productTemplateId: template.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { mandatoryPhraseId: true, source: true, applied: true },
+    }),
+  ])
+
+  const suggestedPhrases: PhraseOption[] = phraseSuggestion.suggestions.map(
+    (s) => ({
+      id: s.phraseId,
+      slug: s.phraseSlug,
+      title: s.title,
+      body: s.body,
+      category: s.category,
+      requirement: s.requirement === 'RECOMMENDED' ? 'RECOMMENDED' : 'MANDATORY',
+      cfrCitation: s.cfrCitation,
+      appliesWhen: s.appliesWhen,
+      isLocked: s.isLocked,
+    }),
+  )
+  const assignedPhraseIds = template.phrases.map((p) => p.mandatoryPhraseId)
+  const lockedPhraseIds = phraseSuggestion.suggestions
+    .filter((s) => s.isLocked)
+    .map((s) => s.phraseId)
+  // Most-recent audit per phrase where applied=true (iterate DESC, first hit).
+  const phraseSourceById: Record<
+    string,
+    'AUTO_RULE' | 'MANUFACTURER' | 'ADMIN'
+  > = {}
+  for (const row of phraseAuditRows) {
+    if (!row.applied) continue
+    if (phraseSourceById[row.mandatoryPhraseId]) continue
+    phraseSourceById[row.mandatoryPhraseId] = row.source
+  }
+  // Hydrate rule metadata (slug/description/weight/isLocked/title) for every
+  // rawHit so the disclosure panel can show matched + missed rules.
+  const phraseRuleIdsInHits = phraseSuggestion.rawHits.map((h) => h.ruleId)
+  const phraseRuleMetaRows = phraseRuleIdsInHits.length
+    ? await prisma.phraseRule.findMany({
+        where: { id: { in: phraseRuleIdsInHits } },
+        select: {
+          id: true,
+          slug: true,
+          description: true,
+          weight: true,
+          isLocked: true,
+          mandatoryPhrase: { select: { title: true } },
+        },
+      })
+    : []
+  const phraseRuleMetaById = new Map(
+    phraseRuleMetaRows.map((r) => [r.id, r] as const),
+  )
+  const phraseRuleHits: PhraseRuleHit[] = phraseSuggestion.rawHits
+    .map((h): PhraseRuleHit => {
+      const meta = phraseRuleMetaById.get(h.ruleId)
+      return {
+        ruleId: h.ruleId,
+        ruleSlug: meta?.slug ?? h.ruleId.slice(0, 8),
+        description: meta?.description ?? '',
+        weight: meta?.weight ?? 0,
+        phraseId: h.phraseId,
+        phraseTitle: meta?.mandatoryPhrase.title ?? '',
+        matched: h.matched,
+        isLocked: meta?.isLocked ?? false,
+      }
+    })
+    .sort((a, b) => {
+      if (a.matched !== b.matched) return a.matched ? -1 : 1
+      return b.weight - a.weight
+    })
 
   // Tone + label resolution (strict-TS bang on Record<EnumKey, T>).
   const tone = STATUS_TONE[template.status]!
@@ -1254,6 +1344,17 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             suggestedNicheIds={suggestedNicheIds}
             lockedNicheIds={lockedNicheIds}
             ruleHits={ruleHits}
+          />
+
+          {/* Label phrases — admin can override the per-product label-phrase
+              engine's MANDATORY/RECOMMENDED suggestions + see its reasoning. */}
+          <PhrasePlacementPanel
+            productTemplateId={template.id}
+            suggestedPhrases={suggestedPhrases}
+            assignedPhraseIds={assignedPhraseIds}
+            lockedPhraseIds={lockedPhraseIds}
+            phraseSourceById={phraseSourceById}
+            ruleHits={phraseRuleHits}
           />
 
           {/* Partner Constraints — the surface Pavel asked for. Walks every

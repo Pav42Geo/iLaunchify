@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { suggestNiches } from '@ilaunchify/marketplace'
+import { suggestNiches, suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
 import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { ArrowLeft } from 'lucide-react'
 import { EditorShell } from './EditorShell'
@@ -112,6 +112,8 @@ export default async function ProductEditPage({ params }: PageProps) {
     lifestyleCatalog,
     selectedLifestyleTags,
     nicheSuggestion,
+    selectedPhrases,
+    phraseSuggestion,
   ] = await Promise.all([
     prisma.packagingSystem.findMany({
       where: { partnerId: partner.id, status: 'ACTIVE' },
@@ -148,8 +150,23 @@ export default async function ProductEditPage({ params }: PageProps) {
       select: { lifestyleTagId: true },
     }),
     suggestNiches({ productTemplateId: id }),
+    prisma.productTemplatePhrase.findMany({
+      where: { productTemplateId: id },
+      select: { mandatoryPhraseId: true },
+    }),
+    suggestPhrases({ productTemplateId: id }),
   ])
   const nameByAuthor = new Map(noteAuthors.map((u) => [u.id, u.name ?? u.email] as const))
+
+  // 2026-06-05 — phrase fact flags relevant to this template's labeling regime,
+  // plus the current yes/no answers stored on ProductTemplate.phraseFacts.
+  const phraseFactFlags = PHRASE_FACT_FLAGS.filter((f) =>
+    f.labelingTypes.includes(template.labelingType),
+  )
+  const phraseFacts =
+    template.phraseFacts && typeof template.phraseFacts === 'object' && !Array.isArray(template.phraseFacts)
+      ? (template.phraseFacts as Record<string, boolean>)
+      : {}
 
   // Recipal-parity JSON fields (§4a.5c + §4a.5d) — defensively coerce.
   const nutrientOverrides = Array.isArray(template.nutrientOverrides)
@@ -288,6 +305,11 @@ export default async function ProductEditPage({ params }: PageProps) {
         nicheSuggestions={nicheSuggestion.suggestions}
         lifestyleTags={lifestyleCatalog}
         selectedLifestyleTagIds={selectedLifestyleTags.map((t) => t.lifestyleTagId)}
+        phraseFactFlags={phraseFactFlags}
+        phraseFacts={phraseFacts}
+        phraseSuggestions={phraseSuggestion.suggestions}
+        phraseRawHits={phraseSuggestion.rawHits}
+        selectedPhraseIds={selectedPhrases.map((p) => p.mandatoryPhraseId)}
       />
     </div>
   )

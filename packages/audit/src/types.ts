@@ -53,6 +53,8 @@ export const AUDIT_ENTITY_TYPES = [
   'Niche',
   'NicheRule',
   'LifestyleTag',
+  // 2026-06-05 — per-product label-phrase suggestion engine (admin-managed rules)
+  'PhraseRule',
   // B.4 — order cancellation
   'CancellationRequest',
 ] as const
@@ -142,6 +144,9 @@ export const AUDIT_ACTIONS = [
   'RECIPE_PARSE_RATE_LIMITED',
   'RECIPE_PARSE_COMMIT',
   'DECLARE_NUTRITION_PANEL',
+  // 2026-06-05 — per-product label-phrase suggestion engine (partner card)
+  'PRODUCT_TEMPLATE_PHRASES_UPDATED',
+  'PRODUCT_TEMPLATE_PHRASE_FACTS_UPDATED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

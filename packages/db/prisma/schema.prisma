@@ -2194,6 +2194,10 @@ model ProductTemplate {
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
+  // Phrase engine (2026-06-05) — free-form manufacturer-answered product-fact
+  // flags, e.g. {makesStructureFunctionClaims:true}. Consumed by PhraseRule
+  // conditions of kind PRODUCT_FACT.
+  phraseFacts                Json?
   // Relations
   subcategory                Subcategory                   @relation(fields: [subcategoryId], references: [id])
   manufacturerService        PartnerService?               @relation(fields: [manufacturerServiceId], references: [id])
@@ -2213,6 +2217,9 @@ model ProductTemplate {
   // 2026-06-02 V1.1 marketplace taxonomy — Layer 4 lifestyle tags
   lifestyleTags              ProductTemplateLifestyleTag[]
   nicheAssignmentAudits      NicheAssignmentAudit[]
+  // Phrase engine (2026-06-05)
+  phrases                    ProductTemplatePhrase[]
+  phraseAssignmentAudits     PhraseAssignmentAudit[]
   createdAt                  DateTime                      @default(now())
   updatedAt                  DateTime                      @updatedAt
 
@@ -4468,19 +4475,97 @@ enum PhraseRequirement {
 }
 
 model MandatoryPhrase {
-  id            String                  @id @default(uuid())
-  slug          String                  @unique // stable key, e.g. "dshea-disclaimer"
-  title         String // admin label, e.g. "DSHEA Disclaimer"
-  body          String // the actual phrase text (can be long — bare String, NOT @db.Text)
-  category      MandatoryPhraseCategory
-  requirement   PhraseRequirement       @default(MANDATORY)
-  labelingTypes String[] // FOOD / DIETARY_SUPPLEMENT / OTC / PET_PRODUCT / BEVERAGE / COSMETIC (slug-style strings, NOT the LabelingType enum)
-  cfrCitation   String? // e.g. "21 CFR 101.93(b)"
-  appliesWhen   String? // trigger condition free-text, e.g. "iron-containing product"
-  isActive      Boolean                 @default(true)
-  displayOrder  Int                     @default(0)
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
+  id                     String                  @id @default(uuid())
+  slug                   String                  @unique // stable key, e.g. "dshea-disclaimer"
+  title                  String // admin label, e.g. "DSHEA Disclaimer"
+  body                   String // the actual phrase text (can be long — bare String, NOT @db.Text)
+  category               MandatoryPhraseCategory
+  requirement            PhraseRequirement       @default(MANDATORY)
+  labelingTypes          String[] // FOOD / DIETARY_SUPPLEMENT / OTC / PET_PRODUCT / BEVERAGE / COSMETIC (slug-style strings, NOT the LabelingType enum)
+  cfrCitation            String? // e.g. "21 CFR 101.93(b)"
+  appliesWhen            String? // trigger condition free-text, e.g. "iron-containing product"
+  isActive               Boolean                 @default(true)
+  displayOrder           Int                     @default(0)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  // Phrase engine (2026-06-05) — back-relations
+  rules                  PhraseRule[]
+  productTemplatePhrases ProductTemplatePhrase[]
+  assignmentAudits       PhraseAssignmentAudit[]
 
   @@index([isActive, displayOrder])
+}
+
+// =============================================================================
+// PER-PRODUCT LABEL-PHRASE SUGGESTION ENGINE (2026-06-05)
+// =============================================================================
+// Mirrors the NicheRule / ProductTemplateNiche / NicheAssignmentAudit system.
+// PhraseRule = deterministic engine that suggests MandatoryPhrase rows for a
+// ProductTemplate based on AND-of-conditions (OR within each condition's
+// values). ProductTemplatePhrase = the resolved per-product assignment.
+// PhraseAssignmentAudit = one row per assign/remove for forensic + admin UI.
+// =============================================================================
+
+enum PhraseRuleConditionKind {
+  LABELING_TYPE // ProductTemplate.labelingType in values
+  PRODUCT_CATEGORY // Product.category enum in values
+  MARKETPLACE_CATEGORY // ProductTemplate.subcategory.categoryId in values
+  ALLERGEN_PRESENT // any recipe ingredient allergenFlag in values
+  BIOENGINEERED // any ingredient bioengineeredStatus=BIOENGINEERED (values ignored / ['true'])
+  INGREDIENT_MATCH // any recipe ingredient name/labelDeclarationName matches a value (substring, lowercased)
+  PACKING_TYPE // ProductTemplateVariant.packingType in values
+  NUTRIENT_SOURCE // ProductTemplate.nutrientSource in values
+  PRODUCT_FACT // a key in ProductTemplate.phraseFacts is true (values = fact keys)
+}
+
+enum PhraseAssignmentSource {
+  AUTO_RULE
+  MANUFACTURER
+  ADMIN
+}
+
+model PhraseRule {
+  id                String          @id @default(uuid())
+  slug              String          @unique
+  mandatoryPhraseId String
+  description       String
+  isActive          Boolean         @default(true)
+  isLocked          Boolean         @default(false) // true = mandatory, manufacturer cannot remove
+  weight            Int             @default(50) // 0..100
+  conditions        Json // [{kind, values:[...]}] — AND across array, OR within values
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  mandatoryPhrase   MandatoryPhrase @relation(fields: [mandatoryPhraseId], references: [id], onDelete: Cascade)
+
+  @@index([mandatoryPhraseId, isActive])
+}
+
+model ProductTemplatePhrase {
+  productTemplateId String
+  mandatoryPhraseId String
+  requirement       PhraseRequirement      @default(MANDATORY)
+  source            PhraseAssignmentSource @default(AUTO_RULE)
+  acknowledgedAt    DateTime? // manufacturer acknowledged a locked mandatory phrase
+  createdAt         DateTime               @default(now())
+  productTemplate   ProductTemplate        @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  mandatoryPhrase   MandatoryPhrase        @relation(fields: [mandatoryPhraseId], references: [id], onDelete: Cascade)
+
+  @@id([productTemplateId, mandatoryPhraseId])
+  @@index([mandatoryPhraseId])
+}
+
+model PhraseAssignmentAudit {
+  id                String                 @id @default(uuid())
+  productTemplateId String
+  mandatoryPhraseId String
+  source            PhraseAssignmentSource
+  ruleId            String? // present when source=AUTO_RULE
+  actorUserId       String? // present when source=MANUFACTURER or ADMIN
+  applied           Boolean // true=assigned, false=removed
+  createdAt         DateTime               @default(now())
+  productTemplate   ProductTemplate        @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  mandatoryPhrase   MandatoryPhrase        @relation(fields: [mandatoryPhraseId], references: [id], onDelete: Cascade)
+
+  @@index([productTemplateId, createdAt])
+  @@index([mandatoryPhraseId])
 }

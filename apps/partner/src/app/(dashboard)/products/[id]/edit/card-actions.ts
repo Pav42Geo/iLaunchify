@@ -8,13 +8,18 @@
 // templates are refused. Most actions trigger revalidatePath on the editor.
 
 import { prisma, findFirstBannedIngredient } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerActor, decideTemplateAccess } from '@ilaunchify/auth'
+import { z, parseActionInput } from '@ilaunchify/types'
 import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 import {
   suggestNiches,
   recordNicheAssignment,
+  suggestPhrases,
+  recordPhraseAssignment,
+  PHRASE_FACT_KEYS,
   type SuggestNichesResult,
+  type SuggestPhrasesResult,
 } from '@ilaunchify/marketplace'
 import { revalidatePath } from 'next/cache'
 
@@ -27,34 +32,49 @@ type Result<T = void> =
 // Returns the partner row + the template id if the partner owns it.
 // -----------------------------------------------------------------------------
 
+// Tier 1.1 (docs/SECURITY_ARCHITECTURE.md): the actor check + the allow/deny
+// decision are centralized in @ilaunchify/auth (requirePartnerActor +
+// decideTemplateAccess — table-tested in ownership.test.ts). The template
+// SELECT stays local so this file can pull extra fields (recipeEntryMode)
+// without widening the shared guard. Historical return shape preserved.
 async function authorize(productTemplateId: string) {
-  const user = await requireUser()
-  if (user.role !== 'PARTNER') {
-    return { user: null, partner: null, template: null, error: 'NOT_A_PARTNER' as const }
+  const actor = await requirePartnerActor()
+  if (!actor.ok) {
+    return { user: null, partner: null, template: null, error: actor.error }
   }
-  const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
-    select: { id: true },
-  })
-  if (!partner) {
-    return { user, partner: null, template: null, error: 'PARTNER_NOT_FOUND' as const }
-  }
+
   const template = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
-    select: { id: true, manufacturerServiceId: true, status: true, recipeEntryMode: true },
+    select: {
+      id: true,
+      manufacturerServiceId: true,
+      status: true,
+      recipeEntryMode: true,
+      manufacturerService: { select: { partnerId: true } },
+    },
   })
-  if (!template) return { user, partner, template: null, error: 'TEMPLATE_NOT_FOUND' as const }
-  if (template.status === 'REJECTED') {
-    return { user, partner, template: null, error: 'TEMPLATE_REJECTED' as const }
+
+  const decision = decideTemplateAccess({
+    role: actor.user.role,
+    requesterPartnerId: actor.partnerId,
+    template: {
+      exists: !!template,
+      status: template?.status ?? null,
+      ownerPartnerId: template?.manufacturerService?.partnerId ?? null,
+      hasManufacturerService: !!template?.manufacturerServiceId,
+    },
+  })
+  if (!decision.allowed) {
+    return {
+      user: actor.user,
+      partner: { id: actor.partnerId },
+      template: null,
+      error: decision.reason,
+    }
   }
-  if (template.manufacturerServiceId) {
-    const owned = await prisma.partnerService.findFirst({
-      where: { id: template.manufacturerServiceId, partnerId: partner.id },
-      select: { id: true },
-    })
-    if (!owned) return { user, partner, template: null, error: 'NOT_YOUR_TEMPLATE' as const }
-  }
-  return { user, partner, template, error: null as null }
+
+  const { manufacturerService: _ms, ...tpl } = template!
+  return { user: actor.user, partner: { id: actor.partnerId }, template: tpl, error: null as null }
 }
 
 // -----------------------------------------------------------------------------
@@ -425,38 +445,47 @@ export async function removeReplacement(replacementId: string): Promise<Result> 
 // VARIANTS — container/serving/MOQ/lead-time per SKU
 // -----------------------------------------------------------------------------
 
-export interface AddVariantInput {
-  productTemplateId: string
-  flavor: string | null
-  containerFormat: string
-  containerSizeG: number | null
-  servingsPerContainer: number
-  servingSizeG: number
-  servingSizeDesc: string | null
-  moqMin: number
-  moqMax: number
-  leadTimeDays: number
-  unitCostCentsOverride: number | null
-}
+// REFERENCE CONVERSION for docs/ZOD_ACTION_BOUNDARIES.md (Tier 1.2) — this is
+// the pattern every mutating action converts to. Notes that matter:
+//   - The schema is NOT exported: 'use server' modules may only export async
+//     functions. The TYPE export (z.infer) is fine — types are erased.
+//   - Order is authorize → parse: don't reveal validation behavior to callers
+//     who couldn't act anyway.
+//   - Error messages are preserved verbatim from the manual checks they
+//     replace — the UI shows them as toasts.
+const AddVariantSchema = z
+  .object({
+    productTemplateId: z.string().min(1),
+    flavor: z.string().nullable(),
+    containerFormat: z.string().trim().min(1, 'Container format is required.'),
+    containerSizeG: z.number().nullable(),
+    servingsPerContainer: z.number().int().min(1, 'Servings must be ≥ 1.'),
+    servingSizeG: z.number().gt(0, 'Serving size must be > 0g.'),
+    servingSizeDesc: z.string().nullable(),
+    moqMin: z.number().int().min(1, 'MOQ range invalid (min ≥ 1, max ≥ min).'),
+    moqMax: z.number().int(),
+    leadTimeDays: z.number().int().min(0),
+    unitCostCentsOverride: z.number().int().nullable(),
+  })
+  .refine((v) => v.moqMax >= v.moqMin, {
+    message: 'MOQ range invalid (min ≥ 1, max ≥ min).',
+  })
 
-export async function addVariant(input: AddVariantInput): Promise<Result<{ variantId: string }>> {
-  const { error, template } = await authorize(input.productTemplateId)
+export type AddVariantInput = z.infer<typeof AddVariantSchema>
+
+export async function addVariant(raw: AddVariantInput): Promise<Result<{ variantId: string }>> {
+  const { error, template } = await authorize(raw.productTemplateId)
   if (error) return { ok: false, error }
 
-  if (!input.containerFormat.trim()) {
-    return { ok: false, error: 'Container format is required.' }
-  }
-  if (input.servingsPerContainer < 1) return { ok: false, error: 'Servings must be ≥ 1.' }
-  if (input.servingSizeG <= 0) return { ok: false, error: 'Serving size must be > 0g.' }
-  if (input.moqMin < 1 || input.moqMax < input.moqMin) {
-    return { ok: false, error: 'MOQ range invalid (min ≥ 1, max ≥ min).' }
-  }
+  const parsed = parseActionInput(AddVariantSchema, raw)
+  if (!parsed.ok) return { ok: false, error: parsed.error }
+  const input = parsed.data
 
   const variant = await prisma.productTemplateVariant.create({
     data: {
       productTemplateId: template.id,
       flavor: input.flavor?.trim() || null,
-      containerFormat: input.containerFormat.trim(),
+      containerFormat: input.containerFormat, // already trimmed by the schema
       containerSizeG: input.containerSizeG ?? null,
       servingsPerContainer: input.servingsPerContainer,
       servingSizeG: input.servingSizeG,
@@ -1300,4 +1329,211 @@ export async function saveProductLifestyleTags(
 
   revalidatePath(`/products/${template.id}/edit`)
   return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// LABEL PHRASES — 2026-06-05 per-product label-phrase suggestion engine.
+// Mirrors the Niches card: a deterministic engine (@ilaunchify/marketplace
+// suggestPhrases) computes which regulatory phrases apply to this product.
+// Two write paths:
+//   • saveProductPhraseFacts — the manufacturer answers yes/no FACTS about the
+//     product (DSHEA claims, aerosol, tamper-evident, …). These feed the engine
+//     so a handful of MANDATORY phrases trigger deterministically.
+//   • saveProductPhrases — the manufacturer toggles RECOMMENDED phrases on/off.
+//     MANDATORY/locked phrases are force-included server-side and cannot be
+//     dropped.
+//
+// **Approval map** — both writes re-gate a PUBLISHED template to
+// PENDING_EDIT_REVIEW (label phrases are compliance-bearing). Draft /
+// NEEDS_CHANGES rows stay put.
+// -----------------------------------------------------------------------------
+
+const PHRASE_FACT_KEY_SET = new Set<string>(PHRASE_FACT_KEYS)
+
+export async function saveProductPhraseFacts(
+  productTemplateId: string,
+  facts: Record<string, boolean>,
+): Promise<Result<{ suggestions: SuggestPhrasesResult['suggestions'] }>> {
+  const { user, partner, error, template } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Sanitize: keep only known PHRASE_FACT_FLAGS keys with boolean values. A
+  // hand-crafted POST can't smuggle arbitrary JSON into the column.
+  const cleaned: Record<string, boolean> = {}
+  for (const [key, value] of Object.entries(facts ?? {})) {
+    if (PHRASE_FACT_KEY_SET.has(key) && typeof value === 'boolean') {
+      cleaned[key] = value
+    }
+  }
+
+  // Approval-map — published templates flip to PENDING_EDIT_REVIEW on fact edits.
+  const shouldGateForReview = template.status === 'PUBLISHED'
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.productTemplate.update({
+        where: { id: template.id },
+        data: { phraseFacts: cleaned },
+      })
+      if (shouldGateForReview) {
+        await tx.productTemplate.update({
+          where: { id: template.id },
+          data: { status: 'PENDING_EDIT_REVIEW' },
+        })
+      }
+    })
+  } catch (err) {
+    return { ok: false, error: `Could not save product facts: ${(err as Error).message}` }
+  }
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_PHRASE_FACTS_UPDATED',
+    fromValue: template.status,
+    toValue: shouldGateForReview ? 'PENDING_EDIT_REVIEW' : template.status,
+    payload: { partnerId: partner.id, facts: cleaned, gatedForReview: shouldGateForReview },
+  })
+
+  // Re-run the engine post-write so the client re-renders against fresh facts.
+  const suggestion = await suggestPhrases({ productTemplateId: template.id })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true, data: { suggestions: suggestion.suggestions } }
+}
+
+export async function saveProductPhrases(
+  productTemplateId: string,
+  mandatoryPhraseIds: string[],
+): Promise<Result<{ suggestions: SuggestPhrasesResult['suggestions'] }>> {
+  const { user, partner, error, template } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Re-run the engine — locked/mandatory phrases cannot be deselected. We need
+  // this regardless to (a) enforce the locked invariant server-side and (b)
+  // return fresh suggestions to the client.
+  const suggestion = await suggestPhrases({ productTemplateId: template.id })
+  const lockedPhraseIds = new Set(
+    suggestion.suggestions.filter((s) => s.isLocked).map((s) => s.phraseId),
+  )
+  // Map phraseId → engine-suggested rule id (for the AUTO_RULE-ish audit trail)
+  // and the rule's requirement so created rows carry the right catalog value.
+  const ruleIdByPhraseId = new Map<string, string>()
+  for (const s of suggestion.suggestions) ruleIdByPhraseId.set(s.phraseId, s.ruleId)
+
+  // Dedupe + normalise input, then force-include every locked phrase — the
+  // manufacturer cannot drop a mandatory phrase.
+  const desired = new Set(
+    mandatoryPhraseIds.filter((id) => typeof id === 'string' && id.length > 0),
+  )
+  for (const lockedId of lockedPhraseIds) desired.add(lockedId)
+
+  // Validate every desired id is an active MandatoryPhrase (defence in depth).
+  const desiredArr = Array.from(desired)
+  const phraseRows = desiredArr.length
+    ? await prisma.mandatoryPhrase.findMany({
+        where: { id: { in: desiredArr }, isActive: true },
+        select: { id: true, requirement: true },
+      })
+    : []
+  const requirementByPhraseId = new Map(phraseRows.map((p) => [p.id, p.requirement]))
+  for (const id of desired) {
+    if (!requirementByPhraseId.has(id)) {
+      return { ok: false, error: 'One or more phrases are invalid.' }
+    }
+  }
+
+  // Current state — what's already linked.
+  const current = await prisma.productTemplatePhrase.findMany({
+    where: { productTemplateId: template.id },
+    select: { mandatoryPhraseId: true },
+  })
+  const currentIds = new Set(current.map((c) => c.mandatoryPhraseId))
+
+  const toAdd = desiredArr.filter((id) => !currentIds.has(id))
+  const toRemove = Array.from(currentIds).filter((id) => !desired.has(id))
+
+  // Refuse to remove any locked phrase (paranoid — the desired-set logic above
+  // already re-adds locked, but a client racing the engine could submit stale).
+  for (const id of toRemove) {
+    if (lockedPhraseIds.has(id)) {
+      return { ok: false, error: 'A required phrase cannot be removed.' }
+    }
+  }
+
+  if (toAdd.length === 0 && toRemove.length === 0) {
+    return { ok: true, data: { suggestions: suggestion.suggestions } }
+  }
+
+  // Approval-map — published templates flip to PENDING_EDIT_REVIEW on edits.
+  const shouldGateForReview = template.status === 'PUBLISHED'
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (toAdd.length > 0) {
+        await tx.productTemplatePhrase.createMany({
+          data: toAdd.map((mandatoryPhraseId) => ({
+            productTemplateId: template.id,
+            mandatoryPhraseId,
+            requirement: requirementByPhraseId.get(mandatoryPhraseId) ?? 'RECOMMENDED',
+            source: 'MANUFACTURER' as const,
+          })),
+          skipDuplicates: true,
+        })
+      }
+      if (toRemove.length > 0) {
+        await tx.productTemplatePhrase.deleteMany({
+          where: { productTemplateId: template.id, mandatoryPhraseId: { in: toRemove } },
+        })
+      }
+      if (shouldGateForReview) {
+        await tx.productTemplate.update({
+          where: { id: template.id },
+          data: { status: 'PENDING_EDIT_REVIEW' },
+        })
+      }
+    })
+  } catch (err) {
+    return { ok: false, error: `Could not save phrases: ${(err as Error).message}` }
+  }
+
+  // Audit — one PhraseAssignmentAudit row per delta (outside the txn), plus a
+  // single product-level AuditLog summarising the change.
+  for (const mandatoryPhraseId of toAdd) {
+    await recordPhraseAssignment({
+      productTemplateId: template.id,
+      mandatoryPhraseId,
+      source: 'MANUFACTURER',
+      ruleId: ruleIdByPhraseId.get(mandatoryPhraseId) ?? null,
+      actorUserId: user.id,
+      applied: true,
+    })
+  }
+  for (const mandatoryPhraseId of toRemove) {
+    await recordPhraseAssignment({
+      productTemplateId: template.id,
+      mandatoryPhraseId,
+      source: 'MANUFACTURER',
+      ruleId: null,
+      actorUserId: user.id,
+      applied: false,
+    })
+  }
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PRODUCT_TEMPLATE_PHRASES_UPDATED',
+    fromValue: template.status,
+    toValue: shouldGateForReview ? 'PENDING_EDIT_REVIEW' : template.status,
+    payload: {
+      partnerId: partner.id,
+      added: toAdd,
+      removed: toRemove,
+      lockedPhrases: Array.from(lockedPhraseIds),
+      gatedForReview: shouldGateForReview,
+    },
+  })
+
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true, data: { suggestions: suggestion.suggestions } }
 }
