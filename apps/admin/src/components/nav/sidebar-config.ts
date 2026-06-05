@@ -196,7 +196,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Labeling Symbols', icon: ScrollText, href: '/assets/labeling-symbols' },
         { kind: 'item', label: 'Bulk import (assets)', icon: FileText, href: '/assets/import' },
         { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Die-lines', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats' },
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
