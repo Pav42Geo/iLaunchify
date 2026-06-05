@@ -4407,3 +4407,71 @@ model LabelFormatRule {
   @@id([format, labelingType])
   @@index([labelingType])
 }
+
+// =============================================================================
+// RATE LIMITING (2026-06-05) — docs/SECURITY_ARCHITECTURE.md Tier 0.3
+// =============================================================================
+// DB-backed fixed-window counters (no Redis in the stack by design). One row
+// per (scope, principal, window); key embeds the window index so an upsert +
+// increment is the whole algorithm. Rows are garbage after expiresAt —
+// checkRateLimit() in @ilaunchify/auth deletes expired rows opportunistically.
+
+model RateLimitBucket {
+  /// "<scope>:<principal>:<windowIndex>" e.g. "signup:ip:203.0.113.7:489211"
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+// =============================================================================
+// WEBHOOK DEDUPE (2026-06-05) — docs/SECURITY_ARCHITECTURE.md Tier 1.4
+// =============================================================================
+// Global provider-event-id claim table. handleStripeEvent() claims the event
+// id before dispatch (releases the claim if the handler throws, so provider
+// retries can reprocess). Complements — does not replace — the per-domain
+// idempotency checks inside each handler.
+
+model ProcessedWebhookEvent {
+  /// Provider event id (e.g. Stripe "evt_...").
+  id          String   @id
+  source      String // "stripe"
+  type        String // provider event type, for forensics
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
+}
+
+// =============================================================================
+// MANDATORY PHRASES (2026-06-05) — admin-managed catalog of required label phrases
+// =============================================================================
+// Allergen "Contains:" lines, DSHEA disclaimer, iron warning, statement of
+// identity, directions, etc. labelingTypes mirrors CertificateType's slug-array
+// pattern (NOT the LabelingType enum) so it ingests the locked vocab verbatim.
+
+enum MandatoryPhraseCategory {
+  ALLERGEN
+  DISCLAIMER
+  WARNING
+  IDENTITY
+  DIRECTIONS
+  OTHER
+}
+
+model MandatoryPhrase {
+  id            String                  @id @default(uuid())
+  slug          String                  @unique // stable key, e.g. "dshea-disclaimer"
+  title         String // admin label, e.g. "DSHEA Disclaimer"
+  body          String // the actual phrase text (can be long — bare String, NOT @db.Text)
+  category      MandatoryPhraseCategory
+  labelingTypes String[] // FOOD / DIETARY_SUPPLEMENT / OTC / PET_PRODUCT / BEVERAGE / COSMETIC (slug-style strings, NOT the LabelingType enum)
+  cfrCitation   String? // e.g. "21 CFR 101.93(b)"
+  appliesWhen   String? // trigger condition free-text, e.g. "iron-containing product"
+  isActive      Boolean                 @default(true)
+  displayOrder  Int                     @default(0)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([isActive, displayOrder])
+}
