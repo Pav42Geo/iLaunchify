@@ -8,10 +8,17 @@
 // the creator's to fill. Replaces the old hardcoded phrase chips.
 
 import * as React from 'react'
-import { Plus, Loader2, ScrollText } from 'lucide-react'
+import { Plus, Loader2, ScrollText, ShieldAlert } from 'lucide-react'
 import { addText, type FabricCanvas } from '@ilaunchify/ui'
 import { InfoTip } from '../InfoTip'
 import { listMandatoryPhrases, type StudioPhrase } from '../phrase-actions'
+
+// FTC enforcement-magnet claims (Made in USA, carbon-neutral, "sustainably
+// sourced", biodegradable, dermatologist-tested, …). The admin catalog marks
+// these by prefixing the phrase's appliesWhen note with "HIGH-RISK".
+function isHighRisk(p: StudioPhrase): boolean {
+  return (p.appliesWhen ?? '').toUpperCase().includes('HIGH-RISK')
+}
 
 const CAT_ORDER = [
   'ALLERGEN',
@@ -187,12 +194,21 @@ export function PhrasesDrawer({
                       className="flex items-start gap-2 rounded-md border border-ink-200 bg-white px-2.5 py-2"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-[12.5px] font-semibold text-ink-900">{p.title}</span>
                           {(p.cfrCitation || p.appliesWhen) && (
                             <InfoTip
                               text={[p.cfrCitation, p.appliesWhen].filter(Boolean).join(' · ')}
                             />
+                          )}
+                          {isHighRisk(p) && (
+                            <span
+                              title="FTC enforcement-magnet claim — only use with documentation on file (substantiation, certificate, or test data)."
+                              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-amber-800"
+                            >
+                              <ShieldAlert className="h-3 w-3" />
+                              Substantiation required
+                            </span>
                           )}
                         </div>
                         <p className="mt-0.5 line-clamp-3 text-[11px] leading-[1.4] text-ink-500">

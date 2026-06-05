@@ -772,12 +772,12 @@ const PHRASES: PhraseSeed[] = [
     ['recyclable-packaging', 'Recyclable Packaging', '16 CFR 260.12', 'Unqualified only if recycling facilities reach ≥60% of consumers where sold. Otherwise qualify: "This package may not be recyclable in your area."'],
     ['made-with-recycled-materials', 'Made with Recycled Materials', '16 CFR 260.13', 'Unqualified only if the entire item is recycled; otherwise state %-by-weight, e.g. "Made from 30% recycled material." Pre-consumer content must be substantiated.'],
     ['carbon-neutral-shipping', 'Carbon-Neutral Shipping', '16 CFR 260.5 + 260.4', 'HIGH-RISK. Needs competent scientific + accounting proof; disclose if reductions occur ≥2 years out; cannot count legally-required reductions. No FTC safe-harbor wording.'],
-    ['compostable', 'Compostable', '16 CFR 260.7', 'Needs scientific evidence all materials compost safely + timely. Disclose if not home-compostable and if facilities are not available to a substantial majority.'],
+    ['compostable', 'Compostable', '16 CFR 260.7', 'HIGH-RISK. Needs scientific evidence all materials compost safely + timely. Disclose if not home-compostable and if facilities are not available to a substantial majority.'],
     ['biodegradable', 'Biodegradable', '16 CFR 260.8', 'HIGH-RISK. Unqualified claim requires complete breakdown within ~1 year after customary disposal; per se deceptive for items landfilled/incinerated/recycled.'],
     ['non-toxic', 'Non-Toxic', '16 CFR 260.10', 'Conveys non-toxic to BOTH humans AND the environment; needs competent scientific evidence for both, or a clear qualifier.'],
     ['plant-based-ingredients', 'Plant-Based Ingredients', '16 CFR 260.4 (general benefit)', 'Substantiate the % plant-derived; avoid implying a broad unqualified environmental benefit.'],
     ['sustainably-sourced', 'Sustainably Sourced', '16 CFR 260.4', 'HIGH-RISK. FTC declines to define "sustainable" — an unqualified general-benefit claim. Narrow to a specific substantiated attribute.'],
-    ['cruelty-free', 'Cruelty-Free', 'FTC §5 (deception)', 'Needs a documented no-animal-testing policy across the supply chain (incl. ingredients + foreign-required testing). Leaping Bunny/PETA are private marks.'],
+    ['cruelty-free', 'Cruelty-Free', 'FTC §5 (deception)', 'HIGH-RISK. Needs a documented no-animal-testing policy across the supply chain (incl. ingredients + foreign-required testing). Leaping Bunny/PETA are private marks.'],
     ['bpa-free', 'BPA-Free', '16 CFR 260.9 (free-of)', 'HIGH-RISK. Deceptive if a same-risk substitute is used (e.g. BPS) or if BPA was never in this product category.'],
     ['fair-trade-certified', 'Fair Trade Certified', '16 CFR 260.6 + §255', 'Requires a valid certificate from a genuine independent certifier on file before the mark renders.'],
   ] as const).map(([slug, title, cfrCitation, appliesWhen]): PhraseSeed => ({
@@ -803,7 +803,7 @@ const PHRASES: PhraseSeed[] = [
     ['halal', 'Halal', 'Private certification', 'Requires a valid halal certification; not a government standard.', ['FOOD', 'DIETARY_SUPPLEMENT', 'BEVERAGE']],
     ['made-in-usa', 'Made in USA', '16 CFR Part 323 (enforceable rule)', 'HIGH-RISK — civil penalties. Requires "all or virtually all" of the product made + sourced in the US, final + significant processing in the US. Use qualified claims otherwise.', ['FOOD', 'DIETARY_SUPPLEMENT', 'OTC', 'PET_PRODUCT', 'BEVERAGE', 'COSMETIC']],
     ['hypoallergenic', 'Hypoallergenic', 'No FDA standard — §5', 'No FDA definition; substantiate the reduced-allergen basis.', ['COSMETIC']],
-    ['dermatologist-tested', 'Dermatologist Tested', '16 CFR 255.3 (expert endorsement)', 'Requires real evaluation by qualified dermatologist(s) + disclosure of any material connection (255.5).', ['COSMETIC']],
+    ['dermatologist-tested', 'Dermatologist Tested', '16 CFR 255.3 (expert endorsement)', 'HIGH-RISK. Requires real evaluation by qualified dermatologist(s) + disclosure of any material connection (255.5).', ['COSMETIC']],
   ] as const).map(([slug, title, cfrCitation, appliesWhen, lt]): PhraseSeed => ({
     slug,
     title,
