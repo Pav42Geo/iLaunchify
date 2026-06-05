@@ -198,7 +198,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Die-Cut Shapes (+ compliance grids)', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Nutrition Facts Labels', icon: FileText, href: '/label-formats?labelingType=FOOD' },
+        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats' },
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
