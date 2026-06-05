@@ -36,6 +36,7 @@ import { seedNicheSubcategories } from './seed-niche-subcategories'
 import { seedLifestyleTags } from './seed-lifestyle-tags'
 import { seedNicheRules } from './seed-niche-rules'
 import { seedLabelFormatRules } from './seed-label-format-rules'
+import { seedMandatoryPhrases } from './seed-mandatory-phrases'
 
 const prisma = new PrismaClient()
 
@@ -80,6 +81,9 @@ async function main() {
   // One LabelFormatRule per (LabelFormat × LabelingType) — drives format
   // auto-recommendation (C4). Starter constants; refined by the rule-pack work.
   await seedLabelFormatRules(prisma)
+
+  // --- Mandatory label phrases (admin-managed compliance catalog) ---
+  await seedMandatoryPhrases(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,

@@ -16,6 +16,7 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerVerificationSection',
   'PartnerFile',
   'User',
+  'Session', // Tier 1 Security & Access — admin session revocation (2026-06-05)
   'Lead',
   'Order',
   'OrderDispatch',
@@ -35,6 +36,7 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerCertificateInstance',
   'RulePack',
   'LabelFormatRule',
+  'MandatoryPhrase',
   // R15.c — admin tier management module
   'CreatorProfile',
   'SubscriptionPlan',

@@ -199,7 +199,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packaging Types', icon: Package, href: '/asset-management/packaging-types', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats' },
-        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/asset-management/mandatory-phrases', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
