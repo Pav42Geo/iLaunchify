@@ -142,10 +142,13 @@ export async function addSupplementFactsPanel(
     const indent = (row.indent ?? 0) * 8
     children.push(
       text(`${row.label} ${row.value}`, pad + indent, y, {
-        fontSize: 9,
+        fontSize: 8,
         fontWeight: row.bold ? 700 : 400,
         fill: ink,
-        width: width - 2 * pad - 30,
+        // Reserve the right column for the % Daily Value (wide enough for a
+        // 5-digit percentage like "20833%") + a gap, so long ingredient names
+        // never butt up against the DV figure.
+        width: width - 2 * pad - 42 - indent,
       }),
     )
     if (row.dvPercent !== undefined) {
@@ -153,7 +156,7 @@ export async function addSupplementFactsPanel(
       if (row.dvPercent === null) anyDaggered = true
       children.push(
         text(dv, width - pad, y, {
-          fontSize: 9,
+          fontSize: 8,
           fontWeight: 700,
           fill: ink,
           textAlign: 'right',
