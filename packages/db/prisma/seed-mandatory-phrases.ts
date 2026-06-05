@@ -13,6 +13,8 @@ interface PhraseSeed {
   title: string
   body: string
   category: MandatoryPhraseCategory
+  /** MANDATORY = regulatory requirement; RECOMMENDED = optional marketing/advisory. Defaults MANDATORY. */
+  requirement?: 'MANDATORY' | 'RECOMMENDED'
   labelingTypes: string[]
   cfrCitation?: string
   appliesWhen?: string
@@ -178,6 +180,106 @@ const PHRASES: PhraseSeed[] = [
     cfrCitation: '21 CFR 101.4',
     appliesWhen: 'Multi-ingredient products.',
   },
+  {
+    slug: 'sulfites-declaration',
+    title: 'Sulfites Declaration',
+    body: 'Contains Sulfites.',
+    category: 'ALLERGEN',
+    labelingTypes: ['FOOD', 'BEVERAGE'],
+    cfrCitation: '21 CFR 130.9',
+    appliesWhen: '≥10 ppm sulfites in the finished product.',
+  },
+
+  // ===========================================================================
+  // RECOMMENDED — optional marketing / advisory copy (was hardcoded in the
+  // Studio TextDrawer chips). Print only when accurate + substantiated.
+  // ===========================================================================
+
+  // ---- Nutrient-content claims (only if the product meets the FDA threshold) ----
+  ...[
+    ['high-in-protein', 'High in Protein'],
+    ['excellent-source-of-fiber', 'Excellent Source of Fiber'],
+    ['low-sugar', 'Low Sugar'],
+    ['no-added-sugar', 'No Added Sugar'],
+    ['sugar-free', 'Sugar-Free'],
+    ['zero-calories', 'Zero Calories'],
+    ['zero-trans-fat', '0g Trans Fat'],
+    ['naturally-sweetened', 'Naturally Sweetened'],
+    ['high-in-vitamin-c', 'High in Vitamin C'],
+    ['caffeine-free', 'Caffeine-Free'],
+  ].map(([slug, title]): PhraseSeed => ({
+    slug: slug!,
+    title: title!,
+    body: title!,
+    category: 'CLAIM',
+    requirement: 'RECOMMENDED',
+    labelingTypes: ['FOOD', 'DIETARY_SUPPLEMENT', 'BEVERAGE'],
+    cfrCitation: '21 CFR 101.13/101.54 (nutrient content claims)',
+    appliesWhen: 'Only if the product meets the FDA threshold for this claim.',
+  })),
+
+  // ---- Sustainability ----
+  ...[
+    ['made-with-recycled-materials', 'Made with Recycled Materials'],
+    ['recyclable-packaging', 'Recyclable Packaging'],
+    ['carbon-neutral-shipping', 'Carbon-Neutral Shipping'],
+    ['plant-based-ingredients', 'Plant-Based Ingredients'],
+    ['sustainably-sourced', 'Sustainably Sourced'],
+    ['cruelty-free', 'Cruelty-Free'],
+    ['bpa-free', 'BPA-Free'],
+    ['fair-trade-certified', 'Fair Trade Certified'],
+  ].map(([slug, title]): PhraseSeed => ({
+    slug: slug!,
+    title: title!,
+    body: title!,
+    category: 'SUSTAINABILITY',
+    requirement: 'RECOMMENDED',
+    labelingTypes: ['FOOD', 'DIETARY_SUPPLEMENT', 'OTC', 'PET_PRODUCT', 'BEVERAGE', 'COSMETIC'],
+    appliesWhen: 'Claim must be substantiated (FTC Green Guides).',
+  })),
+
+  // ---- Storage & usage directions ----
+  ...[
+    ['storage-do-not-freeze', 'Do Not Freeze', 'Do not freeze.'],
+    ['storage-below-25c', 'Store Below 25°C', 'Store below 25°C (77°F).'],
+    ['storage-use-within-14-days', 'Use Within 14 Days', 'Use within 14 days of opening.'],
+    ['storage-shake-well', 'Shake Well Before Use', 'Shake well before use.'],
+    ['storage-best-within-30-days', 'Best Within 30 Days', 'Best consumed within 30 days of opening.'],
+    ['storage-avoid-sunlight', 'Avoid Direct Sunlight', 'Avoid direct sunlight.'],
+    ['usage-mix-powder', 'Mix Directions (Powder)', 'Mix one scoop with 8 fl oz of cold water.'],
+    ['usage-capsule-dose', 'Dosage (Capsule)', 'Take [N] capsules daily with food.'],
+    ['usage-best-cold', 'Best Enjoyed Cold', 'Best enjoyed cold.'],
+    ['usage-ready-to-drink', 'Ready to Drink', 'Ready to drink — no mixing required.'],
+    ['usage-serving-suggestion', 'Serving Suggestion', 'Add to smoothies, yogurt, or oats.'],
+  ].map(([slug, title, body]): PhraseSeed => ({
+    slug: slug!,
+    title: title!,
+    body: body!,
+    category: 'DIRECTIONS',
+    requirement: 'RECOMMENDED',
+    labelingTypes: ['FOOD', 'DIETARY_SUPPLEMENT', 'BEVERAGE'],
+  })),
+
+  // ---- Marketing / audience ----
+  ...[
+    ['not-for-children-under-18', 'Not for Children Under 18', 'Not intended for children under 18.', ['DIETARY_SUPPLEMENT']],
+    ['allergen-free-facility', 'Allergen-Free Facility', 'Produced in an allergen-free facility.', ['FOOD', 'DIETARY_SUPPLEMENT']],
+    ['drink-responsibly', 'Drink Responsibly', 'Please drink responsibly.', ['BEVERAGE']],
+    ['21-plus-id-required', '21+ · ID Required', '21+ · ID required.', ['BEVERAGE']],
+    ['please-recycle', 'Please Recycle', 'Please recycle.', ['FOOD', 'DIETARY_SUPPLEMENT', 'OTC', 'PET_PRODUCT', 'BEVERAGE', 'COSMETIC']],
+    ['for-ages-6-months', 'For Ages 6+ Months', 'For ages 6+ months.', ['FOOD']],
+    ['pediatrician-recommended', 'Pediatrician Recommended', 'Pediatrician recommended.', ['FOOD', 'DIETARY_SUPPLEMENT']],
+    ['no-artificial-colors-flavors', 'No Artificial Colors or Flavors', 'No artificial colors or flavors.', ['FOOD', 'DIETARY_SUPPLEMENT', 'BEVERAGE']],
+    ['first-foods', 'First Foods', 'First foods.', ['FOOD']],
+    ['for-sensitive-skin', 'For Sensitive Skin', 'For sensitive skin.', ['COSMETIC']],
+  ].map(([slug, title, body, lt]): PhraseSeed => ({
+    slug: slug as string,
+    title: title as string,
+    body: body as string,
+    category: 'MARKETING',
+    requirement: 'RECOMMENDED',
+    labelingTypes: lt as string[],
+  })),
 ]
 
 export async function seedMandatoryPhrases(prisma: PrismaClient): Promise<void> {
@@ -190,6 +292,7 @@ export async function seedMandatoryPhrases(prisma: PrismaClient): Promise<void> 
         title: p.title,
         body: p.body,
         category: p.category,
+        requirement: p.requirement ?? 'MANDATORY',
         labelingTypes: p.labelingTypes,
         cfrCitation: p.cfrCitation ?? null,
         appliesWhen: p.appliesWhen ?? null,
@@ -200,6 +303,7 @@ export async function seedMandatoryPhrases(prisma: PrismaClient): Promise<void> 
         title: p.title,
         body: p.body,
         category: p.category,
+        requirement: p.requirement ?? 'MANDATORY',
         labelingTypes: p.labelingTypes,
         cfrCitation: p.cfrCitation ?? null,
         appliesWhen: p.appliesWhen ?? null,

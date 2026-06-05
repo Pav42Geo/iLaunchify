@@ -4457,6 +4457,14 @@ enum MandatoryPhraseCategory {
   IDENTITY
   DIRECTIONS
   OTHER
+  CLAIM
+  SUSTAINABILITY
+  MARKETING
+}
+
+enum PhraseRequirement {
+  MANDATORY
+  RECOMMENDED
 }
 
 model MandatoryPhrase {
@@ -4465,6 +4473,7 @@ model MandatoryPhrase {
   title         String // admin label, e.g. "DSHEA Disclaimer"
   body          String // the actual phrase text (can be long — bare String, NOT @db.Text)
   category      MandatoryPhraseCategory
+  requirement   PhraseRequirement       @default(MANDATORY)
   labelingTypes String[] // FOOD / DIETARY_SUPPLEMENT / OTC / PET_PRODUCT / BEVERAGE / COSMETIC (slug-style strings, NOT the LabelingType enum)
   cfrCitation   String? // e.g. "21 CFR 101.93(b)"
   appliesWhen   String? // trigger condition free-text, e.g. "iron-containing product"

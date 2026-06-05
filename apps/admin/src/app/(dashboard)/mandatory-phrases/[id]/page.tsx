@@ -33,6 +33,7 @@ export default async function EditPhrasePage({ params }: { params: Promise<{ id:
           title: phrase.title,
           body: phrase.body,
           category: phrase.category,
+          requirement: phrase.requirement,
           labelingTypes: phrase.labelingTypes,
           cfrCitation: phrase.cfrCitation,
           appliesWhen: phrase.appliesWhen,

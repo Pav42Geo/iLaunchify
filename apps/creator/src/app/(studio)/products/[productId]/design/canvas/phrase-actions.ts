@@ -15,6 +15,7 @@ export interface StudioPhrase {
   title: string
   body: string
   category: string
+  requirement: string
   cfrCitation: string | null
   appliesWhen: string | null
 }
@@ -23,12 +24,13 @@ export async function listMandatoryPhrases(labelingType: string): Promise<Studio
   await requireUser()
   return prisma.mandatoryPhrase.findMany({
     where: { isActive: true, labelingTypes: { has: labelingType } },
-    orderBy: [{ category: 'asc' }, { displayOrder: 'asc' }],
+    orderBy: [{ requirement: 'asc' }, { category: 'asc' }, { displayOrder: 'asc' }],
     select: {
       id: true,
       title: true,
       body: true,
       category: true,
+      requirement: true,
       cfrCitation: true,
       appliesWhen: true,
     },

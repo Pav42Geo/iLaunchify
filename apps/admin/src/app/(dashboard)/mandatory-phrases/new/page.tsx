@@ -25,6 +25,7 @@ export default async function NewPhrasePage() {
           title: '',
           body: '',
           category: '',
+          requirement: 'MANDATORY',
           labelingTypes: [],
           cfrCitation: null,
           appliesWhen: null,

@@ -4,7 +4,13 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Save } from 'lucide-react'
-import { createMandatoryPhrase, updateMandatoryPhrase, PHRASE_CATEGORIES, PHRASE_LABELING_TYPES } from './actions'
+import {
+  createMandatoryPhrase,
+  updateMandatoryPhrase,
+  PHRASE_CATEGORIES,
+  PHRASE_LABELING_TYPES,
+  PHRASE_REQUIREMENTS,
+} from './actions'
 
 const LABELING_LABEL: Record<string, string> = {
   FOOD: 'Food',
@@ -20,6 +26,7 @@ export interface PhraseInitial {
   title: string
   body: string
   category: string
+  requirement: string
   labelingTypes: string[]
   cfrCitation: string | null
   appliesWhen: string | null
@@ -73,7 +80,17 @@ export function PhraseForm({ mode, initial }: { mode: 'create' | 'edit'; initial
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label className={label}>Requirement</label>
+          <select name="requirement" defaultValue={initial.requirement || 'MANDATORY'} required className={field}>
+            {PHRASE_REQUIREMENTS.map((r) => (
+              <option key={r} value={r}>
+                {r.charAt(0) + r.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className={label}>Category</label>
           <select name="category" defaultValue={initial.category || ''} required className={field}>

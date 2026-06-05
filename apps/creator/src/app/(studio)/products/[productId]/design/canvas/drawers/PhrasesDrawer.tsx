@@ -13,22 +13,48 @@ import { addText, type FabricCanvas } from '@ilaunchify/ui'
 import { InfoTip } from '../InfoTip'
 import { listMandatoryPhrases, type StudioPhrase } from '../phrase-actions'
 
-const CAT_ORDER = ['ALLERGEN', 'WARNING', 'DISCLAIMER', 'DIRECTIONS', 'IDENTITY', 'OTHER']
+const CAT_ORDER = [
+  'ALLERGEN',
+  'WARNING',
+  'DISCLAIMER',
+  'IDENTITY',
+  'DIRECTIONS',
+  'CLAIM',
+  'SUSTAINABILITY',
+  'MARKETING',
+  'OTHER',
+]
 const CAT_LABEL: Record<string, string> = {
   ALLERGEN: 'Allergen statements',
   WARNING: 'Warnings',
   DISCLAIMER: 'Disclaimers',
-  DIRECTIONS: 'Storage & directions',
   IDENTITY: 'Identity & net quantity',
+  DIRECTIONS: 'Storage & directions',
+  CLAIM: 'Claims',
+  SUSTAINABILITY: 'Sustainability',
+  MARKETING: 'Marketing',
   OTHER: 'Other',
 }
 const CAT_BADGE: Record<string, string> = {
   ALLERGEN: 'bg-orange-100 text-orange-700',
   WARNING: 'bg-rose-100 text-rose-700',
   DISCLAIMER: 'bg-sky-100 text-sky-700',
-  DIRECTIONS: 'bg-emerald-100 text-emerald-700',
   IDENTITY: 'bg-violet-100 text-violet-700',
+  DIRECTIONS: 'bg-emerald-100 text-emerald-700',
+  CLAIM: 'bg-indigo-100 text-indigo-700',
+  SUSTAINABILITY: 'bg-teal-100 text-teal-700',
+  MARKETING: 'bg-pink-100 text-pink-700',
   OTHER: 'bg-ink-100 text-ink-600',
+}
+
+const REQ_ORDER = ['MANDATORY', 'RECOMMENDED'] as const
+const REQ_LABEL: Record<string, string> = {
+  MANDATORY: 'Mandatory',
+  RECOMMENDED: 'Recommended',
+}
+const REQ_HINT: Record<string, string> = {
+  MANDATORY: 'Required on the label per FDA / regulatory rules for this product type.',
+  RECOMMENDED: 'Optional claims, sustainability + marketing language — only if you can substantiate it.',
 }
 
 export function PhrasesDrawer({
@@ -40,6 +66,7 @@ export function PhrasesDrawer({
 }) {
   const [phrases, setPhrases] = React.useState<StudioPhrase[] | null>(null)
   const [adding, setAdding] = React.useState<string | null>(null)
+  const [reqFilter, setReqFilter] = React.useState<'ALL' | 'MANDATORY' | 'RECOMMENDED'>('ALL')
 
   React.useEffect(() => {
     let alive = true
@@ -62,18 +89,56 @@ export function PhrasesDrawer({
     }
   }
 
-  const groups = React.useMemo(() => {
-    const by = new Map<string, StudioPhrase[]>()
-    for (const p of phrases ?? []) by.set(p.category, [...(by.get(p.category) ?? []), p])
-    return CAT_ORDER.filter((c) => by.has(c)).map((c) => ({ category: c, items: by.get(c)! }))
+  const reqGroups = React.useMemo(() => {
+    const visible = (phrases ?? []).filter(
+      (p) => reqFilter === 'ALL' || (p.requirement || 'MANDATORY') === reqFilter,
+    )
+    return REQ_ORDER.map((req) => {
+      const by = new Map<string, StudioPhrase[]>()
+      for (const p of visible) {
+        if ((p.requirement || 'MANDATORY') !== req) continue
+        by.set(p.category, [...(by.get(p.category) ?? []), p])
+      }
+      const cats = CAT_ORDER.filter((c) => by.has(c)).map((c) => ({ category: c, items: by.get(c)! }))
+      return { requirement: req, cats }
+    }).filter((g) => g.cats.length > 0)
+  }, [phrases, reqFilter])
+
+  const counts = React.useMemo(() => {
+    const list = phrases ?? []
+    return {
+      ALL: list.length,
+      MANDATORY: list.filter((p) => (p.requirement || 'MANDATORY') === 'MANDATORY').length,
+      RECOMMENDED: list.filter((p) => (p.requirement || 'MANDATORY') === 'RECOMMENDED').length,
+    }
   }, [phrases])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1.5 text-[12px] leading-[1.45] text-ink-500">
-        Required statements for this product — tap to drop on the label as editable text.
-        <InfoTip text="From the admin-managed mandatory-phrase catalog, filtered to this product's labeling type. Bracketed placeholders (net weight, allergen list, [N] days…) are yours to fill in. Not legal advice — confirm against your formulation + market." />
+        Label phrases for this product — tap to drop on the label as editable text.
+        <InfoTip text="From the admin-managed phrase library, filtered to this product's labeling type. Mandatory = required by FDA/regulatory rules; Recommended = optional claims, sustainability + marketing language. Bracketed placeholders (net weight, allergen list, [N] days…) are yours to fill in. Not legal advice — confirm against your formulation + market." />
       </div>
+
+      {phrases !== null && phrases.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(['ALL', 'MANDATORY', 'RECOMMENDED'] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setReqFilter(r)}
+              className={
+                'rounded-full px-2.5 py-1 text-[11px] font-medium ' +
+                (reqFilter === r
+                  ? 'bg-ink-900 text-white'
+                  : 'border border-ink-200 text-ink-600 hover:bg-ink-100')
+              }
+            >
+              {r === 'ALL' ? 'All' : REQ_LABEL[r]} ({counts[r]})
+            </button>
+          ))}
+        </div>
+      )}
 
       {phrases === null ? (
         <div className="flex items-center gap-2 text-[12px] text-ink-500">
@@ -86,53 +151,74 @@ export function PhrasesDrawer({
             No mandatory phrases catalogued for this labeling type yet.
           </p>
         </div>
+      ) : reqGroups.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50/40 px-4 py-6 text-center text-[12px] text-ink-500">
+          No {reqFilter === 'MANDATORY' ? 'mandatory' : 'recommended'} phrases for this labeling type.
+        </div>
       ) : (
-        groups.map((g) => (
-          <section key={g.category}>
-            <div className="mb-1.5 flex items-center gap-1.5">
+        reqGroups.map((rg) => (
+          <div key={rg.requirement} className="space-y-3">
+            <div className="flex items-center gap-1.5 border-b border-ink-200 pb-1">
               <span
-                className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide ${CAT_BADGE[g.category] ?? CAT_BADGE.OTHER}`}
+                className={
+                  'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                  (rg.requirement === 'MANDATORY'
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-sky-100 text-sky-700')
+                }
               >
-                {CAT_LABEL[g.category] ?? g.category}
+                {REQ_LABEL[rg.requirement]}
               </span>
+              <InfoTip text={REQ_HINT[rg.requirement] ?? ''} />
             </div>
-            <ul className="space-y-1.5">
-              {g.items.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-start gap-2 rounded-md border border-ink-200 bg-white px-2.5 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12.5px] font-semibold text-ink-900">{p.title}</span>
-                      {(p.cfrCitation || p.appliesWhen) && (
-                        <InfoTip
-                          text={[p.cfrCitation, p.appliesWhen].filter(Boolean).join(' · ')}
-                        />
-                      )}
-                    </div>
-                    <p className="mt-0.5 line-clamp-3 text-[11px] leading-[1.4] text-ink-500">
-                      {p.body}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => add(p)}
-                    disabled={!canvas || adding === p.id}
-                    title="Add to label"
-                    className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md bg-ink-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-black disabled:opacity-40"
+            {rg.cats.map((g) => (
+              <section key={g.category}>
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide ${CAT_BADGE[g.category] ?? CAT_BADGE.OTHER}`}
                   >
-                    {adding === p.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Plus className="h-3 w-3" />
-                    )}
-                    Add
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+                    {CAT_LABEL[g.category] ?? g.category}
+                  </span>
+                </div>
+                <ul className="space-y-1.5">
+                  {g.items.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-start gap-2 rounded-md border border-ink-200 bg-white px-2.5 py-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12.5px] font-semibold text-ink-900">{p.title}</span>
+                          {(p.cfrCitation || p.appliesWhen) && (
+                            <InfoTip
+                              text={[p.cfrCitation, p.appliesWhen].filter(Boolean).join(' · ')}
+                            />
+                          )}
+                        </div>
+                        <p className="mt-0.5 line-clamp-3 text-[11px] leading-[1.4] text-ink-500">
+                          {p.body}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => add(p)}
+                        disabled={!canvas || adding === p.id}
+                        title="Add to label"
+                        className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md bg-ink-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-black disabled:opacity-40"
+                      >
+                        {adding === p.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Plus className="h-3 w-3" />
+                        )}
+                        Add
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         ))
       )}
     </div>

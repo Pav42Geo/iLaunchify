@@ -4,7 +4,7 @@
 // mutation is admin-gated + audited.
 
 import { prisma } from '@ilaunchify/db'
-import type { MandatoryPhraseCategory } from '@ilaunchify/db'
+import type { MandatoryPhraseCategory, PhraseRequirement } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -19,8 +19,13 @@ export const PHRASE_CATEGORIES: MandatoryPhraseCategory[] = [
   'WARNING',
   'IDENTITY',
   'DIRECTIONS',
+  'CLAIM',
+  'SUSTAINABILITY',
+  'MARKETING',
   'OTHER',
 ]
+
+export const PHRASE_REQUIREMENTS: PhraseRequirement[] = ['MANDATORY', 'RECOMMENDED']
 
 export const PHRASE_LABELING_TYPES = [
   'FOOD',
@@ -43,6 +48,7 @@ function parse(formData: FormData) {
   const title = String(formData.get('title') ?? '').trim()
   const body = String(formData.get('body') ?? '').trim()
   const category = String(formData.get('category') ?? '') as MandatoryPhraseCategory
+  const requirement = (String(formData.get('requirement') ?? 'MANDATORY') as PhraseRequirement)
   const cfrCitation = String(formData.get('cfrCitation') ?? '').trim() || null
   const appliesWhen = String(formData.get('appliesWhen') ?? '').trim() || null
   const isActive = formData.get('isActive') === 'on'
@@ -50,13 +56,14 @@ function parse(formData: FormData) {
     .getAll('labelingTypes')
     .map(String)
     .filter((t) => (PHRASE_LABELING_TYPES as readonly string[]).includes(t))
-  return { title, body, category, cfrCitation, appliesWhen, isActive, labelingTypes }
+  return { title, body, category, requirement, cfrCitation, appliesWhen, isActive, labelingTypes }
 }
 
 function validate(p: ReturnType<typeof parse>): string | null {
   if (!p.title) return 'Title is required.'
   if (!p.body) return 'Phrase body is required.'
   if (!PHRASE_CATEGORIES.includes(p.category)) return 'Pick a category.'
+  if (!PHRASE_REQUIREMENTS.includes(p.requirement)) return 'Pick mandatory or recommended.'
   if (p.labelingTypes.length === 0) return 'Pick at least one labeling type.'
   return null
 }
@@ -84,6 +91,7 @@ export async function createMandatoryPhrase(formData: FormData): Promise<Result<
       title: p.title,
       body: p.body,
       category: p.category,
+      requirement: p.requirement,
       labelingTypes: p.labelingTypes,
       cfrCitation: p.cfrCitation,
       appliesWhen: p.appliesWhen,
@@ -121,6 +129,7 @@ export async function updateMandatoryPhrase(
       title: p.title,
       body: p.body,
       category: p.category,
+      requirement: p.requirement,
       labelingTypes: p.labelingTypes,
       cfrCitation: p.cfrCitation,
       appliesWhen: p.appliesWhen,
@@ -132,7 +141,7 @@ export async function updateMandatoryPhrase(
     entityType: 'MandatoryPhrase',
     entityId: id,
     action: 'update',
-    payload: { category: p.category },
+    payload: { category: p.category, requirement: p.requirement },
   })
   revalidatePath('/mandatory-phrases')
   revalidatePath(`/mandatory-phrases/${id}`)
