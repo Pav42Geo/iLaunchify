@@ -86,6 +86,7 @@ import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { GraphicsDrawer } from './drawers/GraphicsDrawer'
 import { PatternsDrawer } from './drawers/PatternsDrawer'
+import { PhrasesDrawer } from './drawers/PhrasesDrawer'
 import { CertConsentModal } from './CertConsentModal'
 import { recordLabelClaimConsent } from './claim-consent-actions'
 import { toast } from 'sonner'
@@ -102,6 +103,7 @@ import {
   Barcode,
   Layers,
   Boxes,
+  ScrollText,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -184,6 +186,7 @@ type ToolKey =
   | 'layers'
   | 'finishes'
   | 'components'
+  | 'phrases'
 
 /**
  * `conditional` tools (DS-70b) only appear in the rail when the runtime
@@ -210,6 +213,7 @@ const TOOLS: Array<{
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
   { key: 'components', label: 'Components', icon: Boxes, v1: true },
+  { key: 'phrases', label: 'Phrases', icon: ScrollText, v1: true },
   // Conditional — only renders when partnerOffersFinishes flag is true.
   {
     key: 'finishes',
@@ -1046,6 +1050,7 @@ function ToolDrawer({
     layers: 'Layers',
     finishes: 'Finishes',
     components: 'Components',
+    phrases: 'Mandatory phrases',
   }
 
   return (
@@ -1105,6 +1110,7 @@ function ToolDrawer({
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool === 'graphics' && <GraphicsDrawer canvas={canvas} />}
         {tool === 'pattern' && <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {tool === 'phrases' && <PhrasesDrawer canvas={canvas} labelingType={labelingType ?? 'FOOD'} />}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'text' &&
@@ -1116,7 +1122,8 @@ function ToolDrawer({
           tool !== 'finishes' &&
           tool !== 'components' &&
           tool !== 'graphics' &&
-          tool !== 'pattern' && <ComingSoonStub label={titles[tool]} />}
+          tool !== 'pattern' &&
+          tool !== 'phrases' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
   )
