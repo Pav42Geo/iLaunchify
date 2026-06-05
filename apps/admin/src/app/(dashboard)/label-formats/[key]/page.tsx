@@ -24,6 +24,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import type { LabelFormat, LabelingType, PanelOrientation } from '@ilaunchify/db'
 import { LabelFormatPreferenceEditor } from './LabelFormatPreferenceEditor'
+import { FactsPanelPreview } from './FactsPanelPreview'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Label-format preset — Admin' }
@@ -114,6 +115,17 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
         </p>
       </div>
 
+      {/* Live sample render */}
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          Sample render
+        </h2>
+        <p className="mt-1 mb-3 text-[12px] text-ink-500">
+          This format rendered with placeholder values — the same renderer the creator Studio uses.
+        </p>
+        <FactsPanelPreview labelingType={rule.labelingType} format={rule.format} />
+      </section>
+
       {/* Dimensional thresholds */}
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
         <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
@@ -153,8 +165,8 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
       />
 
       <p className="text-[11.5px] text-ink-400">
-        Regulatory facts (CFR citation, thresholds, capabilities) are fixed by the rule. A live
-        sample render is a planned follow-on.
+        Regulatory facts (CFR citation, thresholds, capabilities) are fixed by the rule; the
+        preference + notes above are admin-tunable.
       </p>
     </div>
   )

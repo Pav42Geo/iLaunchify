@@ -104,6 +104,7 @@ export {
   type LabelSectionRole,
 } from './canvas/objects'
 export { addIconFromUrl } from './canvas/graphics'
+export { renderFactsPreview, type FactsPreviewOpts } from './canvas/factsPreview'
 export {
   PATTERN_TILES,
   patternTileDataUrl,
