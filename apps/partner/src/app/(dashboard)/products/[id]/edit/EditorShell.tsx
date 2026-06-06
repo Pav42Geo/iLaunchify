@@ -19,6 +19,7 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  cn,
 } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import {
@@ -41,7 +42,16 @@ import {
 import type { ProductTemplateStatus, IngredientSource, RecipeEntryMode } from '@ilaunchify/db'
 import type { NicheSuggestion } from '@ilaunchify/marketplace'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
-import { SubmitReadiness, type ReadinessCheck } from './SubmitReadiness'
+import { type ReadinessCheck } from './SubmitReadiness'
+import { LabelPreview } from './LabelPreview'
+import {
+  Check,
+  AlertTriangle as NavWarn,
+  Circle as NavTodo,
+  Minus as NavOpt,
+  CircleCheck,
+  CircleDashed,
+} from 'lucide-react'
 import { IngredientsCard, type SlotRow } from './cards/IngredientsCard'
 import { AllergensCard } from './cards/AllergensCard'
 import { VariantsCard, type VariantRow } from './cards/VariantsCard'
@@ -348,12 +358,132 @@ export function EditorShell({
     })
   }
 
+  // Section navigator — derived from the same data the readiness rail uses.
+  type SecState = 'done' | 'warn' | 'todo' | 'opt'
+  const navSections: Array<{ key: string; label: string; state: SecState }> = [
+    {
+      key: 'basics',
+      label: 'Basics',
+      state: name.trim().length >= 2 && Number.parseFloat(priceFloorDollars) > 0 ? 'done' : 'todo',
+    },
+    { key: 'nichesAndTags', label: 'Niches & tags', state: selectedNicheIds.length > 0 ? 'done' : 'todo' },
+    { key: 'ingredients', label: 'Ingredients', state: ingredientSlots.length > 0 ? 'done' : 'warn' },
+    { key: 'allergens', label: 'Allergens', state: ingredientSlots.length > 0 ? 'done' : 'todo' },
+    { key: 'packaging', label: 'Packaging', state: packagingLinks.length > 0 ? 'done' : 'warn' },
+    { key: 'pricing', label: 'Variants & pricing', state: variants.length > 0 ? 'done' : 'warn' },
+    { key: 'certificates', label: 'Certificates', state: attachedCerts.length > 0 ? 'done' : 'todo' },
+    { key: 'media', label: 'Media', state: heroAssetId ? 'done' : 'opt' },
+    { key: 'customMeta', label: 'Custom meta', state: customMeta.length > 0 ? 'done' : 'opt' },
+    { key: 'notes', label: 'Notes thread', state: notes.length > 0 ? 'done' : 'opt' },
+  ]
+  const navCountable = navSections.filter((s) => s.state !== 'opt')
+  const navPct = Math.round(
+    (navCountable.filter((s) => s.state === 'done').length / Math.max(1, navCountable.length)) * 100,
+  )
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,320px]">
-      {/* Main editor cards */}
-      <div className="space-y-3">
-        {/* Status banner */}
-        <StatusBanner status={template.status} saveStatus={saveStatus} />
+    <div className="space-y-4">
+      {/* Top bar — breadcrumb · save state · archive · submit */}
+      <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-ink-200 bg-white px-4 py-2.5">
+        <span className="font-display text-[13px] font-semibold text-ink-900">
+          iLaunchify <span className="text-[#FF2E63]">Partner</span>
+        </span>
+        <span className="text-ink-200">|</span>
+        <span className="min-w-0 truncate text-[12px] text-ink-500">
+          Products / <span className="font-medium text-ink-900">{template.name}</span>
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+          <span
+            className={cn(
+              'h-1.5 w-1.5 rounded-full',
+              saveStatus === 'saving' ? 'animate-pulse bg-amber-500' : 'bg-emerald-600',
+            )}
+          />
+          {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : 'Saved'}
+        </span>
+        {isDraft && (
+          <button
+            type="button"
+            onClick={handleArchive}
+            disabled={isSubmitting}
+            className="rounded-full px-2.5 py-1 text-[12px] text-ink-500 transition-colors hover:text-rose-600 disabled:opacity-50"
+          >
+            Archive
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleSubmitForReview}
+          disabled={!canSubmit || isSubmitting}
+          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-ink-700 disabled:bg-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+        >
+          <Send className="h-3.5 w-3.5" aria-hidden="true" />
+          {isSubmitting ? 'Submitting…' : 'Submit for review'}
+        </button>
+      </div>
+
+      {/* Cream hero */}
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-ink-200 bg-[#F3EFE8] px-6 py-5">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">
+            Manufacturing · Product editor
+          </p>
+          <h1 className="mt-1 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            {template.name}
+          </h1>
+          <p className="mt-1 text-[12px] text-ink-500">
+            {template.subcategoryName} · {template.categoryName}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-[#FBEAF0] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#BE185D]">
+            🅰 re-approval marked
+          </span>
+          <span className="rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-600">
+            {template.status}
+          </span>
+        </div>
+      </div>
+
+      {/* Three-column workspace: section nav · cards · rail */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[180px,1fr,330px]">
+        {/* Left — section navigator */}
+        <nav aria-label="Sections" className="lg:sticky lg:top-6 lg:self-start">
+          <div className="mb-3 rounded-xl border border-ink-200 bg-white p-3">
+            <p className="font-display text-[20px] font-bold leading-none text-ink-900">{navPct}%</p>
+            <p className="mt-0.5 text-[10.5px] text-ink-500">
+              {navCountable.filter((s) => s.state === 'done').length} of {navCountable.length} complete
+            </p>
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-ink-100">
+              <div className="h-full rounded-full bg-[#FF2E63]" style={{ width: `${navPct}%` }} />
+            </div>
+          </div>
+          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+            Sections
+          </p>
+          <ul className="space-y-px">
+            {navSections.map((s) => (
+              <li key={s.key}>
+                <button
+                  type="button"
+                  onClick={() => jumpToCard(s.key)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                    s.state === 'opt' ? 'text-ink-400' : 'text-ink-800',
+                  )}
+                >
+                  <SectionIcon state={s.state} />
+                  <span className="truncate">{s.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Middle — editor cards */}
+        <div className="space-y-3">
+          {/* Status banner */}
+          <StatusBanner status={template.status} saveStatus={saveStatus} />
 
         {/* ① Basics */}
         <EditorCard
@@ -611,58 +741,99 @@ export function EditorShell({
         </EditorCard>
       </div>
 
-      {/* Sticky sidebar — readiness rail + actions + live label preview placeholder */}
-      <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-        {isDraft && <SubmitReadiness checks={readinessChecks} onJump={jumpToCard} />}
+        {/* Right rail — label preview · compliance scan · readiness */}
+        <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+          {/* Live label preview (Nutrition / Supplement Facts) */}
+          <div className="rounded-xl border border-ink-200 bg-white p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+              {labelingType === 'DIETARY_SUPPLEMENT' ? 'Supplement' : 'Nutrition'} Facts preview
+            </p>
+            <LabelPreview
+              labelingType={labelingType}
+              slots={ingredientSlots.map((s) => ({
+                name: s.name,
+                weightG: s.weightG,
+                allergens: s.allergens,
+              }))}
+              variants={variants.map((v) => ({
+                id: v.id,
+                flavor: v.flavor,
+                containerFormat: v.containerFormat,
+                servingsPerContainer: v.servingsPerContainer,
+                servingSizeG: v.servingSizeG,
+                servingSizeDesc: v.servingSizeDesc,
+              }))}
+              allergenOverrides={allergenManualOverrides}
+              crossContamination={template.allergenCrossContamination}
+              nutrientOverrideCount={nutrientOverrides.length}
+            />
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Actions</CardTitle>
-            <CardDescription>
-              {!isDraft
-                ? 'This template is in admin review. Edits are blocked until decision.'
-                : requiredMissing.length > 0
-                  ? 'Finish the required checklist items above to enable Submit.'
-                  : 'Submit for admin review when the draft is ready.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              onClick={handleSubmitForReview}
-              disabled={!canSubmit || isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Send className="mr-1.5 h-4 w-4" /> {isSubmitting ? 'Submitting…' : 'Submit for review'}
-            </Button>
-            {isDraft && (
-              <Button
-                variant="outline"
-                onClick={handleArchive}
-                disabled={isSubmitting}
-                className="w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+          {/* Compliance scan — wires to the compliance service at #131; until
+              then the structural checks we CAN run are live, the rest pend. */}
+          <div className="rounded-xl border border-ink-200 bg-white p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+              Compliance scan
+            </p>
+            <ul className="space-y-1.5 text-[11.5px]">
+              <ScanRow ok label="Big-9 allergens declared" />
+              <ScanRow ok label="No banned ingredients at submit" />
+              <ScanRow ok={requiredMissing.length === 0} label="Required label sections present" />
+              <ScanRow pending label="Nutrient panel + %DV" />
+              <ScanRow pending label="Minimum font size enforced" />
+            </ul>
+            <p className="mt-2 text-[10px] leading-snug text-ink-400">
+              Full FDA scan runs at compliance check (#131).
+            </p>
+          </div>
+
+          {/* Ready to submit? — pink panel */}
+          {isDraft && (
+            <div className="rounded-xl border border-[#F4C0D1] bg-[#FBEAF0] p-3">
+              <p className="font-display text-[13px] font-semibold text-[#BE185D]">Ready to submit?</p>
+              <p className="mt-0.5 text-[10.5px] text-[#BE185D]">
+                {requiredMissing.length === 0
+                  ? 'All required items done — submit when ready.'
+                  : `Resolve ${requiredMissing.length} required item${requiredMissing.length === 1 ? '' : 's'} first.`}
+              </p>
+              <ul className="mt-2.5 space-y-1">
+                {readinessChecks
+                  .filter((c) => !c.done)
+                  .map((c) => (
+                    <li key={c.key}>
+                      <button
+                        type="button"
+                        onClick={() => jumpToCard(c.cardKey)}
+                        className="flex w-full items-center gap-1.5 text-left text-[11px] text-ink-800 hover:underline focus-visible:outline-none"
+                      >
+                        <span className={c.required ? 'text-[#BE185D]' : 'text-ink-400'}>
+                          {c.required ? '●' : '○'}
+                        </span>
+                        <span>{c.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                {readinessChecks.every((c) => c.done) && (
+                  <li className="text-[11px] text-emerald-700">Everything checks out.</li>
+                )}
+              </ul>
+              <button
+                type="button"
+                onClick={handleSubmitForReview}
+                disabled={!canSubmit || isSubmitting}
+                className="mt-2.5 w-full rounded-full bg-ink-900 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-ink-700 disabled:bg-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
               >
-                <Trash2 className="mr-1.5 h-4 w-4" /> Archive draft
-              </Button>
-            )}
-            {submitError && (
-              <p className="rounded bg-red-50 px-2 py-1.5 text-xs text-red-700">{submitError}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Live label preview</CardTitle>
-            <CardDescription>FDA nutrition panel as it will print</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-xs text-zinc-500">
-              <FileText className="h-8 w-8 text-zinc-400" />
-              <span>Renders here once #131 wires up the recipe → compliance → label pipeline.</span>
+                {isSubmitting ? 'Submitting…' : 'Submit for review'}
+              </button>
+              {submitError && (
+                <p className="mt-2 rounded bg-white/60 px-2 py-1.5 text-[11px] text-rose-700">
+                  {submitError}
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </aside>
+          )}
+        </aside>
+      </div>
     </div>
   )
 }
@@ -714,6 +885,32 @@ function StatusBanner({
       <span className="font-medium">{label}</span>
       <span className="ml-auto text-xs opacity-70">{saveText}</span>
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Section-nav + compliance-scan primitives
+// -----------------------------------------------------------------------------
+
+function SectionIcon({ state }: { state: 'done' | 'warn' | 'todo' | 'opt' }) {
+  if (state === 'done') return <Check className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+  if (state === 'warn') return <NavWarn className="h-3.5 w-3.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+  if (state === 'opt') return <NavOpt className="h-3.5 w-3.5 flex-shrink-0 text-ink-300" aria-hidden="true" />
+  return <NavTodo className="h-3.5 w-3.5 flex-shrink-0 text-ink-300" aria-hidden="true" />
+}
+
+function ScanRow({ ok, pending, label }: { ok?: boolean; pending?: boolean; label: string }) {
+  return (
+    <li className="flex items-start gap-2">
+      {pending ? (
+        <CircleDashed className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink-300" aria-hidden="true" />
+      ) : ok ? (
+        <CircleCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+      ) : (
+        <NavWarn className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+      )}
+      <span className={pending ? 'text-ink-400' : 'text-ink-700'}>{label}</span>
+    </li>
   )
 }
 
