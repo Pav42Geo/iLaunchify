@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { ArrowLeft, Sparkles } from 'lucide-react'
-import { Card, CardContent, CardDescription } from '@ilaunchify/ui'
 import { TemplatePicker } from '../TemplatePicker'
 
 export const dynamic = 'force-dynamic'
@@ -29,32 +28,30 @@ export default async function StarterPickerPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <div className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-6 py-5">
         <Link
           href="/products/new"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-500 transition-colors hover:text-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to start options
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Back to start options
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          <Sparkles className="-mt-1 mr-1 inline h-5 w-5 text-emerald-600" />
+        <p className="mt-3 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">
+          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Manufacturing · New product · Starter
+        </p>
+        <h1 className="mt-1 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           iLaunchify starter templates
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
           Pick one to clone as your draft. Comes pre-loaded with example slots + a default
           variant. You&apos;ll add your own packaging + certifications after cloning.
         </p>
-      </header>
+      </div>
 
       {starters.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-zinc-500">
-            <CardDescription>
-              No starters seeded yet. Ask admin to run{' '}
-              <code className="rounded bg-zinc-100 px-1 text-xs">pnpm seed:starter-templates</code>.
-            </CardDescription>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-ink-200 bg-white py-10 text-center text-[13px] text-ink-500">
+          No starters seeded yet. Ask admin to run{' '}
+          <code className="rounded bg-ink-100 px-1 text-[12px]">pnpm seed:starter-templates</code>.
+        </div>
       ) : (
         <TemplatePicker
           source="STARTER"

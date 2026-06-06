@@ -50,8 +50,17 @@ async function requirePartner() {
 // -----------------------------------------------------------------------------
 
 export interface StepperIngredient {
+  /**
+   * Picked from the unified ingredient search (USDA / Library / partner-
+   * private) — the preferred path since 2026-06-05. When present the slot
+   * points at this real Ingredient row (with nutrition + allergen flags).
+   */
+  ingredientId?: string | null
+  /** Display name; also the legacy free-text path when ingredientId is null. */
   name: string
   weightG: number
+  /** UI-only — source chip in the stepper row. Ignored server-side. */
+  source?: string
 }
 
 export interface CreateDraftInput {
@@ -120,15 +129,48 @@ export async function createDraftFromStepper(
   })
   if (!subcat) return { ok: false, error: 'Subcategory not found.' }
 
+  // Validate picked ingredient ids (the unified-picker path) — USDA + LIBRARY
+  // are open to everyone; PARTNER_PRIVATE must belong to this partner. Same
+  // visibility rule as addIngredientSlot / searchIngredients.
+  const pickedIds = [
+    ...new Set(
+      input.ingredients.map((i) => i.ingredientId).filter((v): v is string => !!v),
+    ),
+  ]
+  if (pickedIds.length > 0) {
+    const visible = await prisma.ingredient.findMany({
+      where: {
+        id: { in: pickedIds },
+        isDeclaredPanelSynthetic: false,
+        OR: [
+          { source: 'USDA' },
+          { source: 'LIBRARY' },
+          { source: 'PARTNER_PRIVATE', ownerPartnerId: partner.id },
+        ],
+      },
+      select: { id: true },
+    })
+    if (visible.length !== pickedIds.length) {
+      return { ok: false, error: 'One or more picked ingredients are unavailable.' }
+    }
+  }
+
   // -------- Transactional create --------
   let created: { id: string; slug: string }
   try {
     created = await prisma.$transaction(async (tx) => {
-      // 1. Create partner-private Ingredient rows for each stepper ingredient.
-      //    These are SELF_ATTESTED — partner can promote to library later via #138/#140.
+      // 1. Resolve an Ingredient FK per stepper row. Picker rows (2026-06-05)
+      //    point at REAL ingredients — USDA/Library nutrition + allergen flags
+      //    flow into the label from minute one. Name-only rows keep the legacy
+      //    SELF_ATTESTED partner-private create (back-compat; promote later
+      //    via #138/#140).
       const ingredientIds: string[] = []
       for (const ing of input.ingredients) {
-        const created = await tx.ingredient.create({
+        if (ing.ingredientId) {
+          ingredientIds.push(ing.ingredientId) // validated above
+          continue
+        }
+        const createdIng = await tx.ingredient.create({
           data: {
             name: ing.name.trim(),
             internalName: ing.name.trim(),
@@ -141,7 +183,7 @@ export async function createDraftFromStepper(
             allergenFlags: [],
           },
         })
-        ingredientIds.push(created.id)
+        ingredientIds.push(createdIng.id)
       }
 
       // 2. Create the ProductTemplate

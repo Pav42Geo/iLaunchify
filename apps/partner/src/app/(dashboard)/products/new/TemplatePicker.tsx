@@ -48,23 +48,23 @@ export function TemplatePicker({ source, templates }: TemplatePickerProps) {
             key={t.id}
             type="button"
             onClick={() => setSelected(t)}
-            className="flex h-full flex-col rounded-md border border-zinc-200 bg-white p-4 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/30"
+            className="flex h-full flex-col rounded-2xl border border-ink-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold text-zinc-900">{t.name}</h3>
+              <h3 className="font-display text-[15px] font-semibold text-ink-900">{t.name}</h3>
               {t.statusBadge && STATUS_LABEL[t.statusBadge] && (
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-600">
+                <span className="shrink-0 rounded-full border border-ink-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
                   {STATUS_LABEL[t.statusBadge]}
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-zinc-500">
+            <p className="mt-0.5 text-[11.5px] text-ink-500">
               {t.categoryName} · {t.subcategoryName}
             </p>
             {t.description && (
-              <p className="mt-2 line-clamp-3 text-sm text-zinc-600">{t.description}</p>
+              <p className="mt-2 line-clamp-3 text-[12.5px] text-ink-600">{t.description}</p>
             )}
-            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-ink-500">
               <span className="inline-flex items-center gap-1">
                 <Beaker className="h-3.5 w-3.5" /> {t.ingredientCount} ingredient
                 {t.ingredientCount === 1 ? '' : 's'}
@@ -182,7 +182,7 @@ function CloneModal({
           <Button
             onClick={clone}
             disabled={isPending || !newName.trim()}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="rounded-full bg-ink-900 hover:bg-ink-700"
           >
             {isPending ? 'Cloning…' : 'Clone + open editor'}
           </Button>

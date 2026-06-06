@@ -18,6 +18,8 @@ import { Button, Input, Label } from '@ilaunchify/ui'
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createDraftFromStepper, type StepperIngredient } from '../actions'
+import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
+import type { IngredientResult } from '../[id]/edit/ingredient-actions'
 
 interface CategoryOption {
   id: string
@@ -65,7 +67,7 @@ const BLANK: StepperState = {
   name: '',
   categoryId: '',
   subcategoryId: '',
-  ingredients: [{ name: '', weightG: 0 }],
+  ingredients: [], // rows come from the unified ingredient picker (2026-06-05)
   packagingSystemIds: [],
   priceFloorDollars: '',
   containerFormat: '',
@@ -118,7 +120,9 @@ export function NewProductStepper({
       const result = await createDraftFromStepper({
         name: state.name,
         subcategoryId: state.subcategoryId,
-        ingredients: state.ingredients.filter((i) => i.name.trim() && i.weightG > 0),
+        ingredients: state.ingredients.filter(
+          (i) => (i.ingredientId || i.name.trim()) && i.weightG > 0,
+        ),
         packagingSystemIds: state.packagingSystemIds,
         priceFloorCents: Number.isFinite(priceCents) ? priceCents : 0,
         containerFormat: state.containerFormat,
@@ -295,6 +299,17 @@ function Step1({
 // Step 2 — How it's made
 // -----------------------------------------------------------------------------
 
+// Step 2 uses the SAME unified ingredient module as the editor (2026-06-05):
+// USDA + curated Library + this partner's private rows, ranked by recency,
+// with the built-in "Add private ingredient" modal for true unknowns. Picked
+// rows carry a real Ingredient FK, so nutrition + allergen flags flow into
+// the draft (and the label preview) from minute one — no more free-text rows.
+const SOURCE_CHIP: Record<string, { label: string; cls: string }> = {
+  USDA: { label: 'USDA', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
+  LIBRARY: { label: 'Library', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  PARTNER_PRIVATE: { label: 'Private', cls: 'bg-zinc-100 text-zinc-600 ring-zinc-200' },
+}
+
 function Step2({
   state,
   patch,
@@ -302,8 +317,15 @@ function Step2({
   state: StepperState
   patch: <K extends keyof StepperState>(k: K, v: StepperState[K]) => void
 }) {
-  function addRow() {
-    patch('ingredients', [...state.ingredients, { name: '', weightG: 0 }])
+  function addPicked(ing: IngredientResult) {
+    if (state.ingredients.some((r) => r.ingredientId === ing.id)) {
+      toast.error(`${ing.internalName} is already in the recipe.`)
+      return
+    }
+    patch('ingredients', [
+      ...state.ingredients,
+      { ingredientId: ing.id, name: ing.internalName, weightG: 0, source: ing.source },
+    ])
   }
   function removeRow(i: number) {
     patch(
@@ -311,13 +333,9 @@ function Step2({
       state.ingredients.filter((_, idx) => idx !== i),
     )
   }
-  function updateRow(i: number, field: keyof StepperIngredient, value: string) {
+  function updateGrams(i: number, value: string) {
     const next = [...state.ingredients]
-    if (field === 'weightG') {
-      next[i] = { ...next[i]!, weightG: parseFloat(value) || 0 }
-    } else {
-      next[i] = { ...next[i]!, name: value }
-    }
+    next[i] = { ...next[i]!, weightG: parseFloat(value) || 0 }
     patch('ingredients', next)
   }
 
@@ -325,49 +343,66 @@ function Step2({
     <div className="space-y-5">
       <h2 className="text-lg font-semibold text-zinc-900">How is it made?</h2>
       <p className="-mt-3 text-sm text-zinc-500">
-        List your base ingredients. You can refine these later in the editor with USDA
-        nutrition matches and ingredient swaps.
+        Search USDA, the iLaunchify library, and your own ingredients — picked rows bring
+        real nutrition + allergen data with them. Can&apos;t find it? Add a private
+        ingredient right from the search.
       </p>
 
-      <ul className="space-y-2">
-        {state.ingredients.map((ing, i) => (
-          <li key={i} className="flex items-end gap-2">
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">Ingredient</Label>
-              <Input
-                value={ing.name}
-                onChange={(e) => updateRow(i, 'name', e.target.value)}
-                placeholder={i === 0 ? 'e.g. Whey Protein Concentrate' : 'Ingredient name'}
-              />
-            </div>
-            <div className="w-32 space-y-1">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">Grams</Label>
-              <Input
-                type="number"
-                min={0}
-                step={0.1}
-                value={ing.weightG || ''}
-                onChange={(e) => updateRow(i, 'weightG', e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            {state.ingredients.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeRow(i)}
-                className="text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+      <div className="space-y-1">
+        <Label className="text-xs uppercase tracking-wider text-zinc-500">
+          Add an ingredient
+        </Label>
+        <IngredientPicker
+          onPick={addPicked}
+          placeholder="Search e.g. whey protein concentrate…"
+          autoFocus={state.ingredients.length === 0}
+        />
+      </div>
 
-      <Button variant="outline" size="sm" onClick={addRow}>
-        <Plus className="mr-1.5 h-4 w-4" /> Add ingredient
-      </Button>
+      {state.ingredients.length > 0 && (
+        <ul className="space-y-2">
+          {state.ingredients.map((ing, i) => {
+            const chip = ing.source ? SOURCE_CHIP[ing.source] : undefined
+            return (
+              <li
+                key={ing.ingredientId ?? `${ing.name}-${i}`}
+                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-zinc-900">{ing.name}</p>
+                  {chip && (
+                    <span
+                      className={`mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${chip.cls}`}
+                    >
+                      {chip.label}
+                    </span>
+                  )}
+                </div>
+                <div className="w-28">
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={ing.weightG || ''}
+                    onChange={(e) => updateGrams(i, e.target.value)}
+                    placeholder="grams"
+                    aria-label={`${ing.name} weight in grams`}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeRow(i)}
+                  className="text-red-600 hover:bg-red-50"
+                  aria-label={`Remove ${ing.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       <p className="text-xs text-zinc-500">
         💡 Each ingredient becomes a slot the creator can optionally swap in alternatives for
@@ -572,7 +607,7 @@ function validateStep1(s: StepperState): { ok: boolean; reason: string | null } 
   return { ok: true, reason: null }
 }
 function validateStep2(s: StepperState): { ok: boolean; reason: string | null } {
-  const valid = s.ingredients.filter((i) => i.name.trim() && i.weightG > 0)
+  const valid = s.ingredients.filter((i) => (i.ingredientId || i.name.trim()) && i.weightG > 0)
   if (valid.length === 0) return { ok: false, reason: 'Add at least one ingredient with grams.' }
   return { ok: true, reason: null }
 }
