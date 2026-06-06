@@ -117,6 +117,16 @@ export async function createPackagingOffering(
   const validated = validatePricingTiers(input.pricingTiers)
   if (!validated.ok) return { ok: false, error: validated.error }
 
+  // If a dieline was chosen, it must be the partner's own + match this exact
+  // (container type, decoration) + be offering-eligible.
+  const dielineCheck = await assertDielineBindable(
+    ctx.serviceIds,
+    input.dielineId,
+    input.packagingTypeId,
+    input.decorationMethod,
+  )
+  if (!dielineCheck.ok) return { ok: false, error: dielineCheck.error }
+
   let offering
   try {
     offering = await prisma.partnerPackagingOffering.create({
@@ -184,9 +194,21 @@ export async function updatePackagingOffering(
   // Ownership: row must belong to one of this partner's services.
   const existing = await prisma.partnerPackagingOffering.findFirst({
     where: { id, partnerServiceId: { in: ctx.serviceIds } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, packagingTypeId: true, decorationMethod: true },
   })
   if (!existing) return { ok: false, error: 'Offering not found.' }
+
+  // A re-pointed dieline must still be the partner's own + match the offering's
+  // (immutable) type + decoration.
+  if (patch.dielineId !== undefined) {
+    const dielineCheck = await assertDielineBindable(
+      ctx.serviceIds,
+      patch.dielineId,
+      existing.packagingTypeId,
+      existing.decorationMethod,
+    )
+    if (!dielineCheck.ok) return { ok: false, error: dielineCheck.error }
+  }
 
   const data: Prisma.PartnerPackagingOfferingUpdateInput = {}
 
@@ -204,7 +226,10 @@ export async function updatePackagingOffering(
   }
   if (patch.fulfillmentMode !== undefined) data.fulfillmentMode = patch.fulfillmentMode
   if (patch.status !== undefined) data.status = patch.status
-  if (patch.dielineId !== undefined) data.dielineId = patch.dielineId?.trim() || null
+  if (patch.dielineId !== undefined) {
+    const next = patch.dielineId?.trim() || null
+    data.dieline = next ? { connect: { id: next } } : { disconnect: true }
+  }
   if (patch.pricingTiers !== undefined) {
     const validated = validatePricingTiers(patch.pricingTiers)
     if (!validated.ok) return { ok: false, error: validated.error }
@@ -307,6 +332,36 @@ export async function deletePackagingOffering(id: string): Promise<Result> {
 // Compatibility check — a decoration is offerable on a container type only if an
 // active PackagingDecorationCompatibility row exists for the type's category.
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Dieline binding guard (C9 Phase 1) — a chosen dieline must (a) belong to one of
+// the partner's own services, (b) match the offering's exact container type +
+// decoration, and (c) be offering-eligible (ACTIVE or PARTNER_CONFIRMED). Empty /
+// null means "no dieline" and always passes.
+// -----------------------------------------------------------------------------
+
+async function assertDielineBindable(
+  serviceIds: string[],
+  dielineId: string | null | undefined,
+  packagingTypeId: string,
+  decorationMethod: DecorationMethod,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = dielineId?.trim()
+  if (!trimmed) return { ok: true }
+
+  const dieline = await prisma.packagingDieline.findFirst({
+    where: { id: trimmed, partnerServiceId: { in: serviceIds } },
+    select: { packagingTypeId: true, decorationMethod: true, status: true },
+  })
+  if (!dieline) return { ok: false, error: 'That dieline is not yours.' }
+  if (dieline.packagingTypeId !== packagingTypeId || dieline.decorationMethod !== decorationMethod) {
+    return { ok: false, error: "That dieline doesn't match this container and decoration." }
+  }
+  if (dieline.status !== 'ACTIVE' && dieline.status !== 'PARTNER_CONFIRMED') {
+    return { ok: false, error: 'Confirm or activate the dieline before binding it to an offering.' }
+  }
+  return { ok: true }
+}
 
 async function assertDecorationCompatible(
   containerCategory: import('@ilaunchify/db').ContainerCategory | null,

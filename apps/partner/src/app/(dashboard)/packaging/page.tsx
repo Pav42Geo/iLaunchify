@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@ilaunchify/ui'
-import { Plus, Box, Layers } from 'lucide-react'
+import { Plus, Box, Layers, FileBox } from 'lucide-react'
 import { STATUS_LABELS, topologyLabel } from './constants'
 
 export const dynamic = 'force-dynamic'
@@ -53,6 +53,11 @@ export default async function PackagingListPage() {
           <Button asChild variant="outline">
             <Link href="/packaging/offerings">
               <Layers className="mr-1.5 h-4 w-4" /> Decoration offerings
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/packaging/dielines">
+              <FileBox className="mr-1.5 h-4 w-4" /> Dielines
             </Link>
           </Button>
           <Button asChild className="bg-emerald-600 hover:bg-emerald-700">

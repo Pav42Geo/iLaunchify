@@ -55,6 +55,7 @@ export default async function EditOfferingPage({
         offeringId={offering.id}
         services={ctx.services}
         packagingTypes={ctx.packagingTypes}
+        dielines={ctx.dielines}
         initial={{
           partnerServiceId: offering.partnerServiceId,
           packagingTypeId: offering.packagingTypeId,

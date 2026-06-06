@@ -25,6 +25,7 @@ import {
   type PricingTier,
 } from './constants'
 import { createPackagingOffering, updatePackagingOffering } from './offering-actions'
+import type { DielineOption } from '../dielines/data'
 
 export interface ServiceOption {
   id: string
@@ -48,6 +49,8 @@ interface OfferingFormProps {
   mode: 'create' | 'edit'
   services: ServiceOption[]
   packagingTypes: PackagingTypeOption[]
+  /** Partner's offering-eligible dielines (ACTIVE / PARTNER_CONFIRMED). */
+  dielines: DielineOption[]
   offeringId?: string
   initial?: {
     partnerServiceId: string
@@ -68,6 +71,7 @@ export function OfferingForm({
   mode,
   services,
   packagingTypes,
+  dielines,
   offeringId,
   initial,
 }: OfferingFormProps) {
@@ -106,6 +110,16 @@ export function OfferingForm({
   // Decoration options narrow to the chosen type's compatible methods.
   const decorationOptions: DecorationMethod[] = selectedType?.compatibleMethods ?? []
 
+  // Dieline dropdown: only the partner's dielines that match BOTH the chosen
+  // container type and decoration method (plus a "— none —" option). Empties out
+  // until both are picked, which keeps a partner from binding a mismatched cut.
+  const eligibleDielines = useMemo(() => {
+    if (!packagingTypeId || !decorationMethod) return []
+    return dielines.filter(
+      (d) => d.packagingTypeId === packagingTypeId && d.decorationMethod === decorationMethod,
+    )
+  }, [dielines, packagingTypeId, decorationMethod])
+
   function onTypeChange(id: string) {
     setPackagingTypeId(id)
     const next = packagingTypes.find((t) => t.id === id)
@@ -113,6 +127,14 @@ export function OfferingForm({
     if (decorationMethod && next && !next.compatibleMethods.includes(decorationMethod)) {
       setDecorationMethod('')
     }
+    // A bound dieline is type+decoration specific — drop it when the type changes.
+    setDielineId('')
+  }
+
+  function onDecorationChange(m: DecorationMethod | '') {
+    setDecorationMethod(m)
+    // Drop a bound dieline that no longer matches the decoration.
+    setDielineId('')
   }
 
   function updateTier(i: number, key: keyof TierRow, value: string) {
@@ -257,7 +279,7 @@ export function OfferingForm({
             <select
               id="decoration"
               value={decorationMethod}
-              onChange={(e) => setDecorationMethod(e.target.value as DecorationMethod)}
+              onChange={(e) => onDecorationChange(e.target.value as DecorationMethod)}
               disabled={isPending || !packagingTypeId}
               className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
             >
@@ -389,18 +411,41 @@ export function OfferingForm({
         </Button>
       </div>
 
-      {/* Dieline (soft FK, optional) */}
+      {/* Dieline binding (optional) — only the partner's own dielines that match
+          this exact (container type, decoration method) and are live/confirmed. */}
       <div className="space-y-1.5">
         <Label htmlFor="dieline" className="text-sm font-medium text-zinc-900">
-          Dieline reference (optional)
+          Dieline (optional)
         </Label>
-        <Input
+        <select
           id="dieline"
           value={dielineId}
           onChange={(e) => setDielineId(e.target.value)}
-          placeholder="Dieline id / SKU (typed dielines ship later)"
-          disabled={isPending}
-        />
+          disabled={isPending || !packagingTypeId || !decorationMethod}
+          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
+        >
+          <option value="">— none —</option>
+          {eligibleDielines.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.label}
+              {d.status === 'PARTNER_CONFIRMED' ? ' (confirmed)' : ''}
+            </option>
+          ))}
+        </select>
+        {packagingTypeId && decorationMethod && eligibleDielines.length === 0 ? (
+          <p className="text-xs text-zinc-500">
+            No confirmed or active dielines match this container and decoration yet.{' '}
+            <a href="/packaging/dielines/new" className="underline hover:text-zinc-700">
+              Add one
+            </a>
+            .
+          </p>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            Link a prepress dieline so creators print to the right cut. Confirm or activate a
+            dieline first to make it selectable.
+          </p>
+        )}
       </div>
 
       {/* Status */}

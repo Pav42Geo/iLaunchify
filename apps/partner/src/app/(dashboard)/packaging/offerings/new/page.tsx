@@ -27,7 +27,12 @@ export default async function NewOfferingPage() {
         </p>
       </header>
 
-      <OfferingForm mode="create" services={ctx.services} packagingTypes={ctx.packagingTypes} />
+      <OfferingForm
+        mode="create"
+        services={ctx.services}
+        packagingTypes={ctx.packagingTypes}
+        dielines={ctx.dielines}
+      />
     </div>
   )
 }

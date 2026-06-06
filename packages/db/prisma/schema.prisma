@@ -790,6 +790,8 @@ model PartnerService {
   partnerFinishes                  PartnerFinish[]
   // Slice C8 — packaging offerings (container × decoration × dieline tuples).
   packagingOfferings               PartnerPackagingOffering[]
+  // Slice C9 Phase 1 — typed packaging dielines offered by this service.
+  dielines                         PackagingDieline[]
   // Phase G3 — typed substrate + packaging-material declarations. Drives
   // the creator-side ProductionStep pickers + marketplace partner
   // matching (#153). Empty arrays mean "uses platform defaults."
@@ -2428,6 +2430,8 @@ model PartnerFile {
   partner    Partner                     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   section    PartnerVerificationSection? @relation(fields: [sectionId], references: [id])
   uploadedBy User                        @relation("PartnerFileUploader", fields: [uploadedById], references: [id])
+  // Slice C9 Phase 1 — dielines whose original uploaded file links here.
+  dielines   PackagingDieline[]
 
   @@index([partnerId, sectionType])
   @@index([partnerId, kind])
@@ -3208,6 +3212,8 @@ model PackagingType {
   packagingOfferings PartnerPackagingOffering[]
   // Slice C8 Phase 2 — template variants that use this container type
   templateVariants   ProductTemplateVariant[]
+  // Slice C9 Phase 1 — typed packaging dielines for this container type
+  dielines           PackagingDieline[]
 }
 
 // Partner-owned packaging system — links optionally to a canonical PackagingType.
@@ -3335,7 +3341,7 @@ model PartnerPackagingOffering {
   partnerServiceId String
   packagingTypeId  String
   decorationMethod DecorationMethod
-  dielineId        String? // soft FK — typed PackagingDieline is C9/C10; nullable for now
+  dielineId        String? // C9 Phase 1 — typed FK to PackagingDieline; nullable
   moq              Int              @default(1)
   leadTimeDays     Int              @default(14)
   pricingTiers     Json             @default("[]") // [{minQty:Int, pricePerUnitCents:Int}] — single Json (Cockroach-safe)
@@ -3347,9 +3353,78 @@ model PartnerPackagingOffering {
   partnerService PartnerService       @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
   packagingType  PackagingType        @relation(fields: [packagingTypeId], references: [id])
   components     PackagingComponent[] // back-relation — components that selected this offering
+  // C9 Phase 1 — typed dieline relation (was a soft FK). SetNull: offering
+  // survives if the dieline is removed.
+  dieline        PackagingDieline?    @relation(fields: [dielineId], references: [id], onDelete: SetNull)
 
   @@unique([partnerServiceId, packagingTypeId, decorationMethod])
   @@index([packagingTypeId, status])
+}
+
+// -----------------------------------------------------------------------------
+// PACKAGING DIELINE (Slice C9 Phase 1) — typed, structured prepress dieline a
+// partner offers per (service × container × decoration). Replaces the prior
+// dielineId soft FK on PartnerPackagingOffering. Phase 1 = schema + original
+// file link + partner-entered structured spec. SpotColor / PmsBook /
+// PartnerPrintOutputSpec / colorProfile are deferred to later phases.
+// Spec: docs/builds/_V1_DIELINE_NORMALIZATION.md
+// -----------------------------------------------------------------------------
+
+enum DielineFileFormat {
+  AI
+  PDF
+  SVG
+  DXF
+}
+
+enum DielineStatus {
+  UPLOADED // partner uploaded the original file; structured spec not yet confirmed
+  PARSED // (future) auto-parse done, awaiting confirmation
+  PARTNER_CONFIRMED // structured spec confirmed by the partner
+  ADMIN_VERIFIED // (future) admin spot-checked
+  ACTIVE // available for offering selection
+  ARCHIVED // superseded
+}
+
+model PackagingDieline {
+  id               String           @id @default(uuid())
+  partnerServiceId String
+  packagingTypeId  String
+  decorationMethod DecorationMethod
+
+  // Original uploaded file (R2 via PartnerFile)
+  partnerFileId      String?
+  originalFileFormat DielineFileFormat?
+
+  // Structured prepress spec (partner-entered; nullable until confirmed)
+  widthMm     Decimal? @db.Decimal(10, 3)
+  heightMm    Decimal? @db.Decimal(10, 3)
+  depthMm     Decimal? @db.Decimal(10, 3)
+  bleedMm     Decimal  @default(3.0) @db.Decimal(10, 3)
+  trimBox     Json? // {x,y,w,h}
+  safeAreaBox Json? // {x,y,w,h}
+  foldLines   Json? // [{x1,y1,x2,y2,type}]
+  surfaces    Json? // [{name, trimBox}]
+
+  // Forward-compat nullable fields (populated in later phases — cheap to add now)
+  normalizedSvgKey   String?
+  thumbnailKey       String?
+  parseAccuracyScore Decimal?  @db.Decimal(3, 2)
+  adminVerifiedAt    DateTime?
+  adminVerifiedById  String?
+
+  status             DielineStatus @default(UPLOADED)
+  uploadedAt         DateTime      @default(now())
+  partnerConfirmedAt DateTime?
+  updatedAt          DateTime      @updatedAt
+
+  partnerService PartnerService             @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  packagingType  PackagingType              @relation(fields: [packagingTypeId], references: [id])
+  partnerFile    PartnerFile?               @relation(fields: [partnerFileId], references: [id])
+  offerings      PartnerPackagingOffering[]
+
+  @@index([partnerServiceId, packagingTypeId, decorationMethod])
+  @@index([status])
 }
 
 // Accent decoration layered on a component (foil / emboss / deboss / spot-UV).

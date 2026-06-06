@@ -9,6 +9,7 @@ import {
   CONTAINER_CATEGORY_LABELS,
 } from './constants'
 import type { ServiceOption, PackagingTypeOption } from './OfferingForm'
+import { loadEligibleDielines, type DielineOption } from '../dielines/data'
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
@@ -22,6 +23,8 @@ export interface OfferingsContext {
   serviceIds: string[]
   services: ServiceOption[]
   packagingTypes: PackagingTypeOption[]
+  /** C9 Phase 1 — partner's offering-eligible dielines for the binding dropdown. */
+  dielines: DielineOption[]
 }
 
 /**
@@ -76,13 +79,17 @@ export async function loadOfferingsContext(): Promise<OfferingsContext | null> {
     }
   })
 
+  const serviceIds = services.map((s) => s.id)
+  const dielines = await loadEligibleDielines(serviceIds)
+
   return {
     partnerId: actor.partnerId,
-    serviceIds: services.map((s) => s.id),
+    serviceIds,
     services: services.map((s) => ({
       id: s.id,
       label: SERVICE_TYPE_LABELS[s.type] ?? s.type,
     })),
     packagingTypes,
+    dielines,
   }
 }
