@@ -8,33 +8,13 @@ import type { MandatoryPhraseCategory, PhraseRequirement } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+// Constants live in a plain module (NOT this 'use server' file) so the client
+// PhraseForm can import them — a 'use server' module only exposes async functions.
+import { PHRASE_CATEGORIES, PHRASE_REQUIREMENTS, PHRASE_LABELING_TYPES } from './constants'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
   | { ok: false; error: string }
-
-export const PHRASE_CATEGORIES: MandatoryPhraseCategory[] = [
-  'ALLERGEN',
-  'DISCLAIMER',
-  'WARNING',
-  'IDENTITY',
-  'DIRECTIONS',
-  'CLAIM',
-  'SUSTAINABILITY',
-  'MARKETING',
-  'OTHER',
-]
-
-export const PHRASE_REQUIREMENTS: PhraseRequirement[] = ['MANDATORY', 'RECOMMENDED']
-
-export const PHRASE_LABELING_TYPES = [
-  'FOOD',
-  'DIETARY_SUPPLEMENT',
-  'OTC',
-  'PET_PRODUCT',
-  'BEVERAGE',
-  'COSMETIC',
-] as const
 
 function slugify(s: string): string {
   return s

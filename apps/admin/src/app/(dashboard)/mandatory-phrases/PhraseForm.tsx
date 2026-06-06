@@ -4,13 +4,8 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Save } from 'lucide-react'
-import {
-  createMandatoryPhrase,
-  updateMandatoryPhrase,
-  PHRASE_CATEGORIES,
-  PHRASE_LABELING_TYPES,
-  PHRASE_REQUIREMENTS,
-} from './actions'
+import { createMandatoryPhrase, updateMandatoryPhrase } from './actions'
+import { PHRASE_CATEGORIES, PHRASE_LABELING_TYPES, PHRASE_REQUIREMENTS } from './constants'
 
 const LABELING_LABEL: Record<string, string> = {
   FOOD: 'Food',
