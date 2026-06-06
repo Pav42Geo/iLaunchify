@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package, Gift } from 'lucide-react'
+import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package, Gift, Printer } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 
 interface NavItem {
@@ -18,6 +18,7 @@ const FULL_NAV: NavItem[] = [
   { href: '/products',        label: 'Products',        icon: Package },
   { href: '/services',        label: 'Services',        icon: Wrench },
   { href: '/packaging',       label: 'Packaging',       icon: Box },
+  { href: '/print-spec',      label: 'Prepress output', icon: Printer },
   { href: '/accessories',     label: 'Accessories',     icon: Gift },
   { href: '/certifications',  label: 'Certifications',  icon: Award },
   { href: '/payments',        label: 'Payments',        icon: DollarSign },

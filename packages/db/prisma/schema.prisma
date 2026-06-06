@@ -801,6 +801,8 @@ model PartnerService {
   // per-product-template, per-packaging-size pointer set by manufacturer/admin
   // when fill/assembly is sourced through a different partner service.
   coPackerAssignments              ProductTemplatePackaging[]        @relation("CoPackerAssignment")
+  // Slice C9 — prepress output preferences (source of truth for export bundles).
+  printOutputSpec                  PartnerPrintOutputSpec?
   partner                          Partner                           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
@@ -1516,6 +1518,8 @@ model Substrate {
   status                   BrandLibraryStatus        @default(ACTIVE)
   // Relations
   partnerServiceSubstrates PartnerServiceSubstrate[]
+  // Slice C9 — services that default to this substrate in their print output spec.
+  printOutputSpecs         PartnerPrintOutputSpec[]
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 }
@@ -1555,6 +1559,78 @@ enum SustainabilityTier {
   RECYCLED // post-consumer recycled content
   COMPOSTABLE // certified compostable
   BIODEGRADABLE // biodegradable but not compostable
+}
+
+// =============================================================================
+// SLICE C9 — PARTNER PRINT OUTPUT SPEC (dieline normalization)
+// Prepress output preferences, one row per PartnerService. Documented source
+// of truth for export bundle generation. See docs/builds/_V1_DIELINE_NORMALIZATION.md
+// =============================================================================
+
+enum FileFormat {
+  PDF_X1A
+  PDF_X4
+  TIFF
+  EPS_AI
+}
+
+enum ColorSpace {
+  CMYK
+  RGB
+  CMYK_OGV
+  GRAYSCALE
+}
+
+enum FontPolicy {
+  EMBED
+  OUTLINE_TO_PATHS
+  EITHER
+}
+
+enum DielineDelivery {
+  SEPARATE_FILE
+  LAYERED_IN_PDF
+  BOTH
+}
+
+enum ManifestFormat {
+  JSON_STANDARD
+  CUSTOM_XML
+  NONE
+}
+
+enum PmsBook {
+  COATED
+  UNCOATED
+  MATTE
+  NEON
+  METALLIC
+  PASTEL
+}
+
+model PartnerPrintOutputSpec {
+  id                    String          @id @default(uuid())
+  partnerServiceId      String          @unique
+  preferredFileFormat   FileFormat      @default(PDF_X4)
+  colorSpace            ColorSpace      @default(CMYK)
+  iccProfile            String?
+  tacLimitPct           Int             @default(300)
+  spotColorsAccepted    Boolean         @default(true)
+  spotColorLibrary      PmsBook         @default(COATED)
+  specialChannelNaming  Json            @default("{}") // {white, varnish, foil}
+  minDpi                Int             @default(300)
+  bleedMm               Decimal         @default(3.0) @db.Decimal(5, 2)
+  fontPolicy            FontPolicy      @default(EMBED)
+  dielineDeliveryFormat DielineDelivery @default(SEPARATE_FILE)
+  dielineLayerName      String?
+  defaultSubstrateId    String?
+  manifestFormat        ManifestFormat  @default(JSON_STANDARD)
+  exportInstructions    String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  partnerService   PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  defaultSubstrate Substrate?     @relation(fields: [defaultSubstrateId], references: [id])
 }
 
 // Junction — which substrates a LABEL_PRINTING partner service supports,

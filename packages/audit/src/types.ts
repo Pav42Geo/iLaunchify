@@ -63,6 +63,8 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerPackagingOffering',
   // C9 Phase 1 — partner-owned packaging dielines (file + structured spec)
   'PackagingDieline',
+  // C9 Phase 2 — partner-owned prepress output spec (one per PartnerService)
+  'PartnerPrintOutputSpec',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -164,6 +166,8 @@ export const AUDIT_ACTIONS = [
   'PARTNER_DIELINE_CONFIRMED',
   'PARTNER_DIELINE_STATUS_CHANGED',
   'PARTNER_DIELINE_DELETED',
+  // C9 Phase 2 — partner prepress output spec (one per PartnerService)
+  'PARTNER_PRINT_SPEC_UPDATED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 
