@@ -40,6 +40,7 @@ import { seedMandatoryPhrases } from './seed-mandatory-phrases'
 import { seedPhraseRules } from './seed-phrase-rules'
 import { seedDecorationCompatibility } from './seed-decoration-compatibility'
 import { seedPackagingOfferingFixtures } from './seed-packaging-offerings-fixtures'
+import { seedSpotColors } from './seed-spot-colors'
 
 const prisma = new PrismaClient()
 
@@ -93,6 +94,8 @@ async function main() {
   await seedDecorationCompatibility(prisma)
   // --- C8 Phase 2 fixtures: variant→type backfill + sample offerings ---
   await seedPackagingOfferingFixtures(prisma)
+  // --- C9 SpotColor reference catalog (PANTONE C/U/M + special channels) ---
+  await seedSpotColors(prisma)
 
   // --- Print finishes catalog (Phase F1) ---
   // 31 starter FinishType rows across 5 active categories — surface, foil,

@@ -4809,3 +4809,34 @@ model PhraseAssignmentAudit {
   @@index([productTemplateId, createdAt])
   @@index([mandatoryPhraseId])
 }
+
+// -----------------------------------------------------------------------------
+// SPOT COLOR CATALOG (Slice C9) — standalone PANTONE/spot reference catalog used
+// for prepress soft-proofing. cmykApprox / rgbApprox are on-screen approximations
+// only, never production color. Reuses the existing PmsBook enum.
+// Spec: docs/builds/_V1_DIELINE_NORMALIZATION.md ("SpotColor" model)
+// -----------------------------------------------------------------------------
+
+enum SpotColorCategory {
+  STANDARD // regular PANTONE PLUS Solid C/U/M
+  NEON
+  METALLIC
+  PASTEL
+  WHITE_INK // for printing on transparent/dark substrates
+  SPOT_VARNISH // selective varnish channel
+  FOIL // foil channel
+}
+
+model SpotColor {
+  id          String            @id @default(uuid())
+  pmsNumber   String // "185"
+  bookVersion PmsBook // C / U / M etc.
+  fullSpec    String            @unique // "PMS 185 C"
+  cmykApprox  Json // {c,m,y,k} closest CMYK — soft-proof only
+  rgbApprox   String // hex, on-screen rendering only
+  category    SpotColorCategory @default(STANDARD)
+  createdAt   DateTime          @default(now())
+
+  @@index([category])
+  @@index([pmsNumber])
+}
