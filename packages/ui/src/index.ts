@@ -111,6 +111,7 @@ export {
   type PreflightSeverity,
   type PreflightBox,
 } from './canvas/preflight'
+export { extractPreflightSummary } from './canvas/preflightExtract'
 export {
   addText,
   addTextCombo,

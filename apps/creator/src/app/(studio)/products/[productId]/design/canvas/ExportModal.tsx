@@ -29,12 +29,17 @@ import {
   snapshotCanvasAsPng,
   snapshotCanvasTrimmed,
   suggestedPdfFilename,
+  extractPreflightSummary,
+  runPreflight,
   type DieCutSpec,
   type FabricCanvas,
   type LabelScanContext,
   type LabelScanResult,
   type ScanFinding,
+  type PreflightResult,
+  type PreflightFinding,
 } from '@ilaunchify/ui'
+import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -59,6 +64,13 @@ interface Props {
   productCtx: LabelScanContext
   /** Switch the right-side panel to Compliance so the user can review. */
   onOpenCompliance?: () => void
+  /**
+   * C9 — the bound print partner's output spec. When present, the modal runs
+   * prepress pre-flight (runPreflight) and gates export on any ERROR findings
+   * alongside the compliance scan. Null (almost all products today) → no
+   * pre-flight, no gate change.
+   */
+  partnerPrintSpec?: PreflightPartnerSpecResolved | null
 }
 
 /**
@@ -98,6 +110,7 @@ export function ExportModal({
   onExported,
   productCtx,
   onOpenCompliance,
+  partnerPrintSpec,
 }: Props) {
   const [format, setFormat] = React.useState<Format>('pdf')
   const [includeBleed, setIncludeBleed] = React.useState(true)
@@ -106,6 +119,10 @@ export function ExportModal({
   const [lastExportedAt, setLastExportedAt] = React.useState<Date | null>(null)
   const [acknowledged, setAcknowledged] = React.useState(false)
   const [beAcknowledged, setBeAcknowledged] = React.useState(false)
+  // C9 — prepress pre-flight ack. Separate from the compliance ack (FDA) and
+  // the BE ack (USDA): pre-flight is the print partner's spec, a distinct
+  // regime, so it gets its own "export at my risk" checkbox.
+  const [preflightAck, setPreflightAck] = React.useState(false)
 
   // DS-69a — fresh scan every time the modal opens so the user always
   // sees the current state, not a cached count from a prior open.
@@ -115,6 +132,7 @@ export function ExportModal({
       setScan(null)
       setAcknowledged(false)
       setBeAcknowledged(false)
+      setPreflightAck(false)
       return
     }
     try {
@@ -124,6 +142,41 @@ export function ExportModal({
       setScan(null)
     }
   }, [open, canvas, productCtx])
+
+  // C9 — prepress pre-flight. Runs only when the product is routed to a print
+  // partner with an output spec (partnerPrintSpec != null). Extracts a design
+  // summary from the canvas and validates against the partner's spec. Null
+  // partnerPrintSpec → no pre-flight (no section, no gate change).
+  const [preflight, setPreflight] = React.useState<PreflightResult | null>(null)
+  React.useEffect(() => {
+    if (!open || !canvas || !partnerPrintSpec) {
+      setPreflight(null)
+      return
+    }
+    try {
+      const design = extractPreflightSummary(canvas, pxPerMm)
+      const result = runPreflight({
+        design,
+        dieline: {
+          bleedExtent: {
+            w: dieCut.widthMm + 2 * dieCut.bleedMm,
+            h: dieCut.heightMm + 2 * dieCut.bleedMm,
+          },
+          safeBox: {
+            x: dieCut.safeAreaMm,
+            y: dieCut.safeAreaMm,
+            w: dieCut.widthMm - 2 * dieCut.safeAreaMm,
+            h: dieCut.heightMm - 2 * dieCut.safeAreaMm,
+          },
+        },
+        spec: partnerPrintSpec,
+      })
+      setPreflight(result)
+    } catch (err) {
+      console.warn('[ExportModal] pre-flight failed:', err)
+      setPreflight(null)
+    }
+  }, [open, canvas, partnerPrintSpec, dieCut, pxPerMm])
 
   const blockingFindings: ScanFinding[] = scan
     ? scan.findings.filter((f) => f.severity === 'BLOCKING')
@@ -135,9 +188,22 @@ export function ExportModal({
   const beFinding: ScanFinding | null =
     scan?.findings.find((f) => f.id === 'be-disclosure') ?? null
   const hasBE = beFinding !== null
-  // Generate is gated when there are unacked blockings OR an unacked BE
-  // disclosure. Clean designs proceed instantly.
-  const generateBlocked = (hasBlockings && !acknowledged) || (hasBE && !beAcknowledged)
+
+  // C9 — split pre-flight findings by severity. ERRORs gate export (behind the
+  // pre-flight ack); WARNINGs are surfaced but never block.
+  const preflightErrors: PreflightFinding[] =
+    preflight?.findings.filter((f) => f.severity === 'ERROR') ?? []
+  const preflightWarnings: PreflightFinding[] =
+    preflight?.findings.filter((f) => f.severity === 'WARNING') ?? []
+  const hasPreflightErrors = preflightErrors.length > 0
+
+  // Generate is gated when there are unacked compliance blockings OR an unacked
+  // BE disclosure OR unacked prepress pre-flight ERRORs. Clean designs proceed
+  // instantly. Products with no bound print partner have no pre-flight at all.
+  const generateBlocked =
+    (hasBlockings && !acknowledged) ||
+    (hasBE && !beAcknowledged) ||
+    (hasPreflightErrors && !preflightAck)
 
   // When the user flips format, reset bleed to the format-typical default.
   React.useEffect(() => {
@@ -198,6 +264,20 @@ export function ExportModal({
           severity: f.severity,
           citation: f.citation,
         }))
+        // C9 — record acked prepress pre-flight ERRORs too. Map the pre-flight
+        // ERROR/WARNING severity onto the ExportAck BLOCKING/WARNING union and
+        // carry the partner-spec field as the citation so the receipt is
+        // self-describing.
+        if (hasPreflightErrors && preflightAck) {
+          for (const f of preflightErrors) {
+            ackedFindings.push({
+              id: f.id,
+              title: f.title,
+              severity: 'BLOCKING',
+              citation: f.specField,
+            })
+          }
+        }
         const ack: ExportAck = ackedFindings.length
           ? { acknowledged: true, ackedAt: new Date().toISOString(), ackedFindings }
           : { acknowledged: false }
@@ -266,6 +346,19 @@ export function ExportModal({
               finding={beFinding}
               acknowledged={beAcknowledged}
               onToggleAck={() => setBeAcknowledged((v) => !v)}
+            />
+          )}
+
+          {/* C9 — prepress pre-flight findings against the bound partner's
+              output spec. ERRORs gate export behind the pre-flight ack;
+              WARNINGs are advisory. Only renders when there's ≥1 finding. */}
+          {(hasPreflightErrors || preflightWarnings.length > 0) && (
+            <PreflightWarning
+              errors={preflightErrors}
+              warnings={preflightWarnings}
+              partnerName={partnerPrintSpec?.partnerName}
+              acknowledged={preflightAck}
+              onToggleAck={() => setPreflightAck((v) => !v)}
             />
           )}
 
@@ -424,7 +517,9 @@ export function ExportModal({
                   onExported handler change. See AUTO_RECOGNITION_PLAN.md. */}
               {generating
                 ? 'Generating…'
-                : (hasBlockings && acknowledged) || (hasBE && beAcknowledged)
+                : (hasBlockings && acknowledged) ||
+                    (hasBE && beAcknowledged) ||
+                    (hasPreflightErrors && preflightAck)
                   ? 'Export at my risk'
                   : 'Generate + Download'}
             </button>
@@ -614,6 +709,132 @@ function BioengineeredAck({
               <span className="text-ink-600">Recorded on the design version.</span>
             </span>
           </label>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================================
+// PreflightWarning — C9 prepress pre-flight gate. ERRORs (red) block export
+// behind the ack; WARNINGs (amber) are advisory. Mirrors BlockingWarning's
+// shape but is keyed off the bound partner's print-output spec rather than FDA.
+// ============================================================================
+
+function PreflightWarning({
+  errors,
+  warnings,
+  partnerName,
+  acknowledged,
+  onToggleAck,
+}: {
+  errors: PreflightFinding[]
+  warnings: PreflightFinding[]
+  partnerName?: string
+  acknowledged: boolean
+  onToggleAck: () => void
+}) {
+  const hasErrors = errors.length > 0
+  // Top few findings — errors first, then warnings.
+  const shown: PreflightFinding[] = [...errors, ...warnings].slice(0, 4)
+  const moreCount = errors.length + warnings.length - shown.length
+  const who = partnerName ? `${partnerName}'s` : "your print partner's"
+
+  return (
+    <section
+      className={
+        'rounded-md border p-3.5 ' +
+        (!hasErrors
+          ? 'border-amber-300 bg-amber-50/60'
+          : acknowledged
+            ? 'border-amber-300 bg-amber-50/60'
+            : 'border-pink-500 bg-pink-50')
+      }
+      role="alert"
+    >
+      <div className="flex items-start gap-2.5">
+        {hasErrors ? (
+          <AlertOctagon
+            className={
+              'h-4 w-4 flex-shrink-0 mt-0.5 ' +
+              (acknowledged ? 'text-amber-700' : 'text-pink-700')
+            }
+          />
+        ) : (
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-700" />
+        )}
+        <div className="flex-1">
+          <div className="text-[12.5px] font-bold text-ink-900">
+            {hasErrors
+              ? `${errors.length} prepress ${errors.length === 1 ? 'error' : 'errors'}`
+              : `${warnings.length} prepress ${warnings.length === 1 ? 'warning' : 'warnings'}`}
+            {warnings.length > 0 && hasErrors && (
+              <span className="ml-1 font-medium text-ink-600">
+                · {warnings.length} warning{warnings.length === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[11.5px] text-ink-700 leading-[1.5]">
+            Checked against {who} print spec. Fixing these before export avoids a
+            file kickback at the printer — or proceed at your own risk if a pro
+            prepared the artwork.
+          </p>
+
+          <ul className="mt-2 space-y-0.5 text-[11px] text-ink-700">
+            {shown.map((f) => (
+              <li key={f.id} className="flex gap-1.5">
+                <span
+                  className={
+                    'font-bold ' +
+                    (f.severity === 'ERROR' ? 'text-pink-700' : 'text-amber-600')
+                  }
+                >
+                  •
+                </span>
+                <span>
+                  <span className="font-semibold">{f.title}</span>
+                  <span className="block text-ink-500 text-[10.5px] leading-[1.4]">
+                    {f.detail}
+                  </span>
+                </span>
+              </li>
+            ))}
+            {moreCount > 0 && (
+              <li className="text-ink-500 italic pl-3">+ {moreCount} more</li>
+            )}
+          </ul>
+
+          {/* Ack checkbox — only when there are blocking ERRORs. */}
+          {hasErrors && (
+            <label className="mt-3 flex items-start gap-2 cursor-pointer">
+              <button
+                type="button"
+                onClick={onToggleAck}
+                aria-pressed={acknowledged}
+                className={
+                  'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
+                  (acknowledged
+                    ? 'bg-amber-500 border-amber-500'
+                    : 'border-pink-500 bg-white hover:border-pink-700')
+                }
+              >
+                {acknowledged && (
+                  <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold">
+                    ✓
+                  </span>
+                )}
+              </button>
+              <span className="text-[11.5px] text-ink-900 leading-[1.45]">
+                <span className="font-semibold">
+                  I&apos;ve reviewed the prepress issues and accept responsibility
+                  for print-readiness.
+                </span>{' '}
+                <span className="text-ink-600">
+                  Recorded on the design version.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
       </div>
     </section>

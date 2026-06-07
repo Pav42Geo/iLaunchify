@@ -37,6 +37,7 @@ import {
   addCertBadge,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
+import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
 import type { LabelingType } from '@ilaunchify/db'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
@@ -177,6 +178,14 @@ interface Props {
    * in page.tsx).
    */
   creatorTier?: TierKey
+  /**
+   * C9 — the bound print partner's resolved output spec, when the product's
+   * PRIMARY packaging component is routed to a partner service with a
+   * PartnerPrintOutputSpec. Null for almost all products today → the export
+   * modal skips prepress pre-flight entirely. Resolved server-side in
+   * page.tsx#resolvePartnerPrintSpec.
+   */
+  partnerPrintSpec?: PreflightPartnerSpecResolved | null
 }
 
 type ToolKey =
@@ -242,6 +251,7 @@ export function CanvasLayoutShell({
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
   creatorTier = 'maker',
+  partnerPrintSpec = null,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -777,6 +787,7 @@ export function CanvasLayoutShell({
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         productCtx={productCtx}
+        partnerPrintSpec={partnerPrintSpec}
         onOpenCompliance={() => setComplianceOpen(true)}
         onExported={async (ack) => {
           await recordDesignExport(productId, ack)

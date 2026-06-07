@@ -23,6 +23,7 @@ import { CanvasLayoutShell } from './CanvasLayoutShell'
 import { loadDesignJson } from './actions'
 import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
+import { resolvePartnerPrintSpec } from './partner-spec-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -181,6 +182,12 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       citation: p.cfrCitation,
     }))
 
+  // C9 — resolve the bound print partner's output spec (if any) so the export
+  // modal can run prepress pre-flight. Null for almost all products today
+  // (no PRIMARY component bound to an offering with a print-output spec) →
+  // pre-flight simply skips, no export-gate change.
+  const partnerPrintSpec = await resolvePartnerPrintSpec(product.id)
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -192,6 +199,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       productCtx={{ ...productCtx, lockedPhrases }}
       labelingType={product.productTemplate?.labelingType ?? 'FOOD'}
       creatorTier={creatorTier}
+      partnerPrintSpec={partnerPrintSpec}
     />
   )
 }
