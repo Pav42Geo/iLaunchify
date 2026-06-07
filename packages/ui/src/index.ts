@@ -99,6 +99,18 @@ export {
   type DielineFold,
   type DielineSurface,
 } from './canvas/dielineSvg'
+// C9 — prepress pre-flight engine (partner-spec-driven export validation)
+export {
+  runPreflight,
+  type PreflightInput,
+  type PreflightResult,
+  type PreflightFinding,
+  type PreflightDesignSummary,
+  type PreflightDieline,
+  type PreflightPartnerSpec,
+  type PreflightSeverity,
+  type PreflightBox,
+} from './canvas/preflight'
 export {
   addText,
   addTextCombo,
