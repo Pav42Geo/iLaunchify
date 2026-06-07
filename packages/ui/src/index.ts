@@ -59,6 +59,8 @@ export * from './components/PricingTierModal'
 export * from './components/pricing-tier-data'
 export * from './components/PartnerTypeCard'
 export * from './components/ProductSpecGrid'
+export * from './components/ProductionManifestView'
+export * from './components/ViewToggle'
 export * from './components/FlavorSwatch'
 export * from './components/PackagingPicker'
 export * from './components/IngredientsList'
@@ -89,6 +91,14 @@ export * from './nutrition/NutritionFactsRenderer'
 export * from './canvas/types'
 export { Stage } from './canvas/Stage'
 export { DieCutFrame, DieCutLegend } from './canvas/DieCutFrame'
+// C9 — normalized dieline SVG generator (from a PackagingDieline structured spec)
+export {
+  dielineSvgFromSpec,
+  type DielineSpecInput,
+  type DielineBox,
+  type DielineFold,
+  type DielineSurface,
+} from './canvas/dielineSvg'
 export {
   addText,
   addTextCombo,
