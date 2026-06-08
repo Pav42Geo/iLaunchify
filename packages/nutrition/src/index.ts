@@ -46,3 +46,55 @@ export function previewSelection(rows: RecipeRow[]): IngredientInput[] {
   for (const o of rows.filter((r) => r.category === 'optional' && r.selected)) out.push(o)
   return out
 }
+
+// ---------------------------------------------------------------------------
+// Configured-SKU selection (Product Configurator — docs/PRODUCT_CONFIGURATOR_
+// CONSTRAINTS.md §12b). A label-affecting option value applies one ingredient
+// operation to the base recipe; the engine recomputes Facts + allergens from the
+// resolved list. Additive on top of publicSelection — does NOT touch
+// calculateLabel. Allergens propagate for free (calculateLabel derives them from
+// the ingredient list).
+// ---------------------------------------------------------------------------
+
+export type OverlayOpKind = 'SWAP' | 'ADD' | 'REMOVE'
+
+/** One resolved overlay operation against the base recipe.
+ *  SWAP   → replace base slot `slotId` with `ingredient`.
+ *  ADD    → append `ingredient`.
+ *  REMOVE → drop base slot `slotId`. */
+export interface OptionOverlay {
+  op: OverlayOpKind
+  /** SWAP/REMOVE target = the base row id (the bound slot). */
+  slotId?: string
+  /** SWAP replacement / ADD new ingredient (already resolved to nutrients). */
+  ingredient?: IngredientInput
+}
+
+/**
+ * Resolve the ingredient list for ONE configured SKU. Starts from the public
+ * (base) recipe, then applies the flavor overlay, then the selected option
+ * overlays. Precedence on a shared slotId = application order, so options (passed
+ * last) win over flavor over base. Feed the result straight to calculateLabel.
+ */
+export function resolveConfiguredSelection(
+  rows: RecipeRow[],
+  flavorOverlay: OptionOverlay[] = [],
+  optionOverlays: OptionOverlay[] = [],
+): IngredientInput[] {
+  let list: IngredientInput[] = publicSelection(rows).map((i) => ({ ...i }))
+  for (const ov of [...flavorOverlay, ...optionOverlays]) {
+    if (ov.op === 'REMOVE' && ov.slotId) {
+      list = list.filter((i) => i.id !== ov.slotId)
+    } else if (ov.op === 'SWAP' && ov.slotId && ov.ingredient) {
+      // Keep the SLOT id so later overlays (and stacking flavor→option) stay
+      // addressable; only the slot's CONTENTS (name/nutrients/qty) change.
+      const filled = { ...ov.ingredient, id: ov.slotId }
+      const idx = list.findIndex((i) => i.id === ov.slotId)
+      if (idx >= 0) list[idx] = filled
+      else list.push(filled)
+    } else if (ov.op === 'ADD' && ov.ingredient) {
+      list.push({ ...ov.ingredient })
+    }
+  }
+  return list
+}
