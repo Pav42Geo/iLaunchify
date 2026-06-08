@@ -32,6 +32,7 @@
       "@ilaunchify/storage": ["./packages/storage/src"],
       "@ilaunchify/compliance-client": ["./packages/compliance-client/src"],
       "@ilaunchify/marketplace": ["./packages/marketplace/src"],
+      "@ilaunchify/academy": ["./packages/academy/src"],
       "@ilaunchify/nutrition": ["./packages/nutrition/src"]
     }
   },
