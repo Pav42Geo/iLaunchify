@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Heart } from 'lucide-react'
+import { Heart, ShieldAlert } from 'lucide-react'
 import {
   Button,
   CertStrip,
@@ -29,6 +29,7 @@ import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getDecorationOfferings } from '@/lib/decoration-offerings-db'
+import { getProductRestrictions } from '@/lib/product-restrictions'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -114,6 +115,10 @@ export default async function ProductDetailPage({
   const earnedCertBadges = await getProductCertBadges(template.slug)
   // Slice 4 — DECLARED products show the manufacturer-attestation disclosure.
   const nutrientSource = await getProductNutrientSource(template.slug)
+  // Restricted-category eligibility (labeling ≠ licensing). Non-empty → a
+  // "not available for production yet" notice so a creator never starts
+  // designing a product they can't order.
+  const restrictionLabels = await getProductRestrictions(template.slug)
   const certs =
     earnedCertBadges.length > 0
       ? earnedCertBadges.map((b) => ({
@@ -144,6 +149,29 @@ export default async function ProductDetailPage({
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         <Breadcrumb category={category} categoryTitle={row.title} title={template.title} />
+
+        {/* Restricted-category notice (labeling ≠ licensing) — this product
+            falls into a category iLaunchify doesn't support yet, so it can't be
+            taken to production. Shown before the configurator so creators don't
+            invest effort in something they can't order. */}
+        {restrictionLabels.length > 0 && (
+          <div
+            role="alert"
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-900"
+          >
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-[13px] font-semibold">
+                Not available for production yet — {restrictionLabels.join(', ')}
+              </p>
+              <p className="text-[12px] leading-relaxed text-amber-800">
+                This category requires licensing or permitting iLaunchify
+                doesn&rsquo;t support yet, so it can&rsquo;t be ordered. This is
+                not legal advice.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* HERO — 3-column: gallery (bigger, sticky w/ thumbs + certs) /
             configurator (col 2) / customize rail (col 3, R3) */}

@@ -20,6 +20,7 @@ import {
   extractCount,
   extractCountUnit,
 } from '@ilaunchify/ui'
+import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
 import { loadDesignJson } from './actions'
 import { loadProductCertBadges } from './cert-badge-actions'
@@ -69,6 +70,8 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
             select: {
               ingredient: {
                 select: {
+                  name: true,
+                  labelDeclarationName: true,
                   allergenFlags: true,
                   allergens: true, // legacy field, fall back when allergenFlags empty
                   bioengineeredStatus: true,
@@ -86,7 +89,8 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       },
       // C4.b — labeling type drives label-format recommendation. Lives on the
       // manufacturer template; default to FOOD when unbound.
-      productTemplate: { select: { labelingType: true } },
+      // phraseFacts also feeds the restricted-category eligibility check.
+      productTemplate: { select: { labelingType: true, phraseFacts: true } },
     },
   })
   if (!product) notFound()
@@ -196,6 +200,18 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // pre-flight simply skips, no export-gate change.
   const partnerPrintSpec = await resolvePartnerPrintSpec(product.id)
 
+  // Restricted-category eligibility (labeling ≠ licensing). Surfaced as a
+  // Studio top-bar banner so a creator learns their product can't be ordered
+  // BEFORE investing design effort — not at the final checkout step. Uses the
+  // resolved regime (so an OTC product trips too) + manufacturer facts + recipe.
+  const restrictionLabels = evaluateProductRestrictions({
+    labelingType,
+    phraseFacts: (product.productTemplate?.phraseFacts ?? null) as Record<string, unknown> | null,
+    ingredientNames: (product.recipe?.ingredients ?? []).map(
+      (ri) => ri.ingredient.labelDeclarationName ?? ri.ingredient.name,
+    ),
+  }).map((h) => h.label)
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -208,6 +224,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       labelingType={labelingType}
       creatorTier={creatorTier}
       partnerPrintSpec={partnerPrintSpec}
+      restrictionLabels={restrictionLabels}
     />
   )
 }

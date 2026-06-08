@@ -114,6 +114,7 @@ import {
   Undo2,
   Redo2,
   ShieldCheck,
+  ShieldAlert,
   Eye,
   Download,
   Wand2,
@@ -186,6 +187,13 @@ interface Props {
    * page.tsx#resolvePartnerPrintSpec.
    */
   partnerPrintSpec?: PreflightPartnerSpecResolved | null
+  /**
+   * Restricted-category labels (labeling ≠ licensing). Non-empty → a top-bar
+   * banner warns the creator the product can't be ordered (alcohol / hemp-CBD /
+   * tobacco / OTC / kratom). Same evaluator the checkout gate uses; surfaced
+   * here so the block isn't a surprise at the final Pay step.
+   */
+  restrictionLabels?: string[]
 }
 
 type ToolKey =
@@ -252,6 +260,7 @@ export function CanvasLayoutShell({
   partnerOffersFinishes = false,
   creatorTier = 'maker',
   partnerPrintSpec = null,
+  restrictionLabels = [],
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -602,6 +611,26 @@ export function CanvasLayoutShell({
         }}
         exportLocked={isMakerLocked}
       />
+
+      {/* Restricted-category banner (labeling ≠ licensing) — the product trips
+          a category iLaunchify doesn't support yet, so it can't be ordered.
+          Surfaced here so the creator learns it before investing design time. */}
+      {restrictionLabels.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-900"
+        >
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <p className="text-[12px] leading-relaxed">
+            <span className="font-semibold">
+              This product can&rsquo;t be ordered: {restrictionLabels.join(', ')}.
+            </span>{' '}
+            It&rsquo;s in a category that requires licensing iLaunchify doesn&rsquo;t
+            support yet — you can keep designing, but checkout is disabled. This is
+            not legal advice.
+          </p>
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
