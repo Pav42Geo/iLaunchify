@@ -36,3 +36,19 @@ export {
 } from './manifest'
 export type { ProductionManifest } from './manifest'
 export { recomputeAggregateApprovalStatus } from './aggregate-approval'
+export {
+  exportBundleFilename,
+  assembleSpecSheet,
+  buildExportBundleManifest,
+  EXPORT_BUNDLE_MANIFEST_VERSION,
+} from './exportBundle'
+export type {
+  BundleFilenameParts,
+  SpecSheetInput,
+  SpecSheet,
+  BundleFileEntry,
+  BundleFileKind,
+  BundleAcks,
+  ExportBundleManifest,
+  BuildManifestInput,
+} from './exportBundle'
