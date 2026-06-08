@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, type FeeInput } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, type FeeInput } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -206,6 +206,8 @@ function SharedProduction({ draftId, facilities, baseSku }: { draftId: string | 
   const [capacity, setCapacity] = useState(50000)
   const [leadRepeat, setLeadRepeat] = useState(21)
   const [leadFirstRun, setLeadFirstRun] = useState(35)
+  const [shelfLife, setShelfLife] = useState(365)
+  const [lotTracking, setLotTracking] = useState(true)
   const [storageClass, setStorageClass] = useState<'AMBIENT' | 'CHILLED' | 'FROZEN'>('AMBIENT')
   const [tempMin, setTempMin] = useState<number | ''>(55)
   const [tempMax, setTempMax] = useState<number | ''>(75)
@@ -234,6 +236,26 @@ function SharedProduction({ draftId, facilities, baseSku }: { draftId: string | 
   const effInc = onDemand ? 1 : increment
   const capacityTooLow = !onDemand && capacity > 0 && effMoq > capacity
 
+  // Persist production spec onto the draft's default variant (#35) — debounced.
+  const fulfillmentEnum = fulfillment === 'mto' ? 'ON_DEMAND' : fulfillment === 'both' ? 'BOTH' : 'BULK_PRODUCTION'
+  const prodTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (prodTimer.current) clearTimeout(prodTimer.current)
+    prodTimer.current = setTimeout(() => {
+      void saveProduction(draftId, {
+        fulfillmentMode: fulfillmentEnum,
+        moqMin: effMoq,
+        orderIncrement: effInc,
+        monthlyCapacity: capacity || null,
+        shelfLifeDays: shelfLife,
+        lotTracking,
+      })
+    }, 800)
+    return () => { if (prodTimer.current) clearTimeout(prodTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, draftId])
+
   return (
     <>
       <div className="section-title"><span className="ic">▦</span> Production &amp; availability</div>
@@ -258,7 +280,7 @@ function SharedProduction({ draftId, facilities, baseSku }: { draftId: string | 
           <input className="input" type="number" min={0} value={leadFirstRun} onChange={(e) => setLeadFirstRun(Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
         <Field label="Monthly capacity"><input className="input" type="number" min={0} value={capacity} onChange={(e) => setCapacity(Math.max(0, parseInt(e.target.value, 10) || 0))} /></Field>
-        <Field label="Shelf life (days)"><input className="input" type="number" min={1} defaultValue={365} /></Field>
+        <Field label="Shelf life (days)"><input className="input" type="number" min={1} value={shelfLife} onChange={(e) => setShelfLife(Math.max(1, parseInt(e.target.value, 10) || 1))} /></Field>
         <Field label="Storage class">
           <select className="sel" value={storageClass} onChange={(e) => setStorageClass(e.target.value as 'AMBIENT' | 'CHILLED' | 'FROZEN')}>
             <option value="AMBIENT">Ambient (shelf-stable)</option>
@@ -269,7 +291,7 @@ function SharedProduction({ draftId, facilities, baseSku }: { draftId: string | 
         <Field label="Storage temp °F · min"><input className="input" type="number" value={tempMin} onChange={(e) => setTempMin(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
         <Field label="Storage temp °F · max"><input className="input" type="number" value={tempMax} onChange={(e) => setTempMax(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
         <Field label="Base SKU"><input className="input" defaultValue={baseSku} /></Field>
-        <Field label="Lot / batch tracking"><select className="sel"><option>On (recommended)</option><option>Off</option></select></Field>
+        <Field label="Lot / batch tracking"><select className="sel" value={lotTracking ? 'on' : 'off'} onChange={(e) => setLotTracking(e.target.value === 'on')}><option value="on">On (recommended)</option><option value="off">Off</option></select></Field>
         <Field label="Facility · Manufactured by">
           <select className="sel">
             {facilities.length === 0 && <option>Onboarding address (default)</option>}

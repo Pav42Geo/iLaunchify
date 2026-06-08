@@ -223,6 +223,94 @@ export async function saveOptionAxes(productTemplateId: string, axes: OptionAxis
   }
 }
 
+export interface PricingTierInput {
+  minQty: number
+  maxQty: number | null
+  perUnitCostCents: number
+  perUnitFloorCents: number
+  leadTimeDays: number | null
+  sortOrder: number
+}
+
+/** Replace the draft's volume pricing tiers (#35). ProductTemplatePricingTier is
+ *  a pre-existing model, so no cast needed. */
+export async function savePricingTiers(productTemplateId: string, tiers: PricingTierInput[]): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const clean = tiers
+      .filter((t) => t.minQty > 0 && t.perUnitCostCents > 0)
+      .map((t, i) => ({
+        minQty: Math.max(1, Math.floor(t.minQty)),
+        maxQty: t.maxQty == null ? null : Math.max(t.minQty, Math.floor(t.maxQty)),
+        perUnitCostCents: Math.max(0, Math.floor(t.perUnitCostCents)),
+        perUnitFloorCents: Math.max(0, Math.floor(t.perUnitFloorCents)),
+        leadTimeDays: t.leadTimeDays == null ? null : Math.max(0, Math.floor(t.leadTimeDays)),
+        sortOrder: i,
+      }))
+
+    await prisma.$transaction([
+      prisma.productTemplatePricingTier.deleteMany({ where: { productTemplateId } }),
+      ...clean.map((t) => prisma.productTemplatePricingTier.create({ data: { productTemplateId, ...t } })),
+    ])
+    return { ok: true }
+  } catch (err) {
+    console.error('[savePricingTiers] failed:', err)
+    return { ok: false, error: `Could not save pricing: ${(err as Error).message}` }
+  }
+}
+
+export interface ProductionInput {
+  fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH'
+  moqMin: number
+  orderIncrement: number
+  monthlyCapacity: number | null
+  shelfLifeDays: number | null
+  lotTracking: boolean
+}
+
+/** Persist the draft's production spec onto its default variant (#35). Creates
+ *  the default variant if none exists (geometry filled later by Recipe/Packaging).
+ *  Cast-guarded — some variant columns post-date the generated client. */
+export async function saveProduction(productTemplateId: string, input: ProductionInput): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const data = {
+      fulfillmentMode: input.fulfillmentMode,
+      moqMin: Math.max(1, Math.floor(input.moqMin || 1)),
+      orderIncrement: Math.max(1, Math.floor(input.orderIncrement || 1)),
+      monthlyCapacity: input.monthlyCapacity == null ? null : Math.max(0, Math.floor(input.monthlyCapacity)),
+      shelfLifeDays: input.shelfLifeDays == null ? null : Math.max(1, Math.floor(input.shelfLifeDays)),
+      lotTracking: input.lotTracking,
+    }
+    const existing = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId }, select: { id: true } })
+    if (existing) {
+      await prisma.productTemplateVariant.update({ where: { id: existing.id }, data: data as never })
+    } else {
+      await prisma.productTemplateVariant.create({
+        data: { productTemplateId, containerFormat: 'Default', servingsPerContainer: 1, servingSizeG: 1, ...data } as never,
+      })
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveProduction] failed:', err)
+    return { ok: false, error: `Could not save production: ${(err as Error).message}` }
+  }
+}
+
 export interface ChangeApprovalRuleInput {
   changeType: 'LABEL_COPY' | 'FLAVOR_ADD' | 'RECIPE_CHANGE' | 'PACKAGING_CHANGE' | 'PRICE_CHANGE'
   requiredApprover: 'BRAND_OPS' | 'MANUFACTURER_QA' | 'LEGAL' | 'PRODUCTION_SCHEDULING'

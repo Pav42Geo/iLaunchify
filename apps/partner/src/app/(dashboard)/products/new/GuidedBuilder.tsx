@@ -16,6 +16,7 @@ import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
 import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
+import { PricingTiersCard } from './PricingTiersCard'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -316,25 +317,7 @@ export function GuidedBuilder({
           {/* ===== STEP 5 — COST & PRICING ===== */}
           {cur === 4 && (
             <section>
-              <div className="two">
-                <div className="card">
-                  <div className="section-title" style={{ fontSize: 15 }}><span className="ic">$</span> Volume price tiers</div>
-                  <table style={{ marginTop: 12 }}>
-                    <thead><tr><th>Quantity</th><th>Per unit</th><th>Hard floor</th><th>Lead time</th></tr></thead>
-                    <tbody>
-                      <tr><td>500 – 2,499</td><td><input className="input" defaultValue="$1.10" style={{ width: 80 }} /></td><td>$0.95</td><td>21d</td></tr>
-                      <tr><td>2,500 – 9,999</td><td><input className="input" defaultValue="$0.98" style={{ width: 80 }} /></td><td>$0.90</td><td>18d</td></tr>
-                      <tr><td>10,000 +</td><td><input className="input" defaultValue="$0.86" style={{ width: 80 }} /></td><td>$0.82</td><td>28d</td></tr>
-                    </tbody>
-                  </table>
-                  <button className="btn sm" style={{ marginTop: 10 }}>+ Add tier</button>
-                </div>
-                <div>
-                  <div className="card"><div className="eyebrow">Snapshot</div>
-                    <div className="grid" style={{ marginTop: 10 }}><div className="kpi"><div className="l">Ingredient cost / unit</div><div className="v">$0.07</div></div><div className="kpi"><div className="l">Floor price</div><div className="v">$0.82</div></div><div className="kpi"><div className="l">Margin @ $1.10</div><div className="v" style={{ color: '#085041' }}>94%</div></div></div>
-                  </div>
-                </div>
-              </div>
+              <PricingTiersCard draftId={draftId} />
               <NavBtns onBack={() => go(3)} onNext={() => go(5)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Review →" />
             </section>
           )}
