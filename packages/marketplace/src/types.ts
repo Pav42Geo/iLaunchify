@@ -136,6 +136,14 @@ export interface SuggestPhrasesInput {
   productTemplateId: string
   /** Live context from the creator's product/recipe (Studio). Omit for the template baseline. */
   recipeContext?: PhraseRecipeContext
+  /**
+   * Override the labeling regime the LABELING_TYPE rules evaluate against. The
+   * creator's resolver passes a category-robust value here (a SUPPLEMENT-category
+   * product → DIETARY_SUPPLEMENT) so phrase suggestions stay correct even when a
+   * manufacturer template carries a stale/wrong labelingType (e.g. FOOD on a
+   * supplement). When omitted, the template's own labelingType is used.
+   */
+  labelingTypeOverride?: string
 }
 
 /**

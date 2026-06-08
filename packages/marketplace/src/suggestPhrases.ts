@@ -59,6 +59,7 @@ interface PhraseFacts {
 async function loadPhraseFacts(
   productTemplateId: string,
   recipeContext: PhraseRecipeContext | undefined,
+  labelingTypeOverride: string | undefined,
 ): Promise<PhraseFacts | null> {
   const template = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
@@ -114,7 +115,7 @@ async function loadPhraseFacts(
   for (const [k, v] of Object.entries(rawFlags)) flags[k] = v === true
 
   return {
-    labelingType: template.labelingType,
+    labelingType: labelingTypeOverride ?? template.labelingType,
     productCategory: recipeContext?.productCategory ?? null,
     marketplaceCategorySlug: template.subcategory?.category?.slug ?? null,
     packingTypes: new Set(template.variants.map((v) => v.packingType)),
@@ -189,7 +190,11 @@ function evaluateCondition(cond: PhraseRuleCondition, facts: PhraseFacts): boole
 export async function suggestPhrases(
   input: SuggestPhrasesInput,
 ): Promise<SuggestPhrasesResult> {
-  const facts = await loadPhraseFacts(input.productTemplateId, input.recipeContext)
+  const facts = await loadPhraseFacts(
+    input.productTemplateId,
+    input.recipeContext,
+    input.labelingTypeOverride,
+  )
   if (!facts) return { suggestions: [], rawHits: [] }
 
   const rules = await prisma.phraseRule.findMany({

@@ -39,7 +39,10 @@ function uniqLower(values: string[]): string[] {
  */
 export async function resolveProductPhrases(
   productId: string,
-  labelingTypeFallback = 'FOOD',
+  // The category-robust labeling regime (resolveLabelingRegime upstream): a
+  // SUPPLEMENT product passes DIETARY_SUPPLEMENT here even when its template
+  // carries a stale FOOD labelingType — so supplements get supplement phrases.
+  labelingType = 'FOOD',
 ): Promise<StudioPhrase[]> {
   const user = await requireUser()
 
@@ -71,7 +74,6 @@ export async function resolveProductPhrases(
 
   // Fallback: no product / no template → labeling-type filter (legacy behavior).
   if (!product || !product.productTemplateId) {
-    const labelingType = product?.productTemplate?.labelingType ?? labelingTypeFallback
     return listByLabelingType(labelingType)
   }
 
@@ -90,6 +92,9 @@ export async function resolveProductPhrases(
 
   const { suggestions } = await suggestPhrases({
     productTemplateId: product.productTemplateId,
+    // Category-robust regime override — supplements get supplement phrases even
+    // when the manufacturer template's labelingType is a stale FOOD.
+    labelingTypeOverride: labelingType,
     recipeContext: {
       allergens: uniqLower(allergens),
       bioengineered,
