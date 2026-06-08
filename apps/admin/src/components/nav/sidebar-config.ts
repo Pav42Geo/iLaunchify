@@ -28,6 +28,9 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   LayoutDashboard,
+  GraduationCap,
+  PlaySquare,
+  BookOpen,
   Inbox,
   ShoppingBag,
   Package,
@@ -177,6 +180,17 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
         { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
+      ],
+    },
+    {
+      kind: 'group',
+      label: 'Academy',
+      icon: BookOpen,
+      children: [
+        { kind: 'item', label: 'Overview', icon: LayoutDashboard, href: '/academy', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Courses', icon: GraduationCap, href: '/academy/courses', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Lessons', icon: PlaySquare, href: '/academy/lessons', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Topics', icon: Tag, href: '/academy/categories', hiddenUntilBuilt: false },
       ],
     },
     {
