@@ -125,6 +125,10 @@ export const AUDIT_ACTIONS = [
   'PRODUCT_TEMPLATE_BANNED_BLOCK',
   // Banned-product-category gate (FDA_REGULATORY_POSTURE §5 item 14 / risk #9)
   'PRODUCT_BANNED_CATEGORY_BLOCK',
+  // Restricted-category gate at submit (labeling ≠ licensing): facts
+  // (alcohol/hemp-CBD/tobacco) + OTC labeling type that the term/ingredient
+  // dictionaries can't see. Blocks the DRAFT → PENDING_REVIEW transition.
+  'PRODUCT_TEMPLATE_RESTRICTED_BLOCK',
   // Payments (mostly SYSTEM actor from webhooks)
   'CHARGE_SUCCEEDED',
   'TRANSFER_QUEUED',

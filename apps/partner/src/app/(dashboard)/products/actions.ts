@@ -10,6 +10,7 @@
 //                                   → submitForReview when ready
 
 import { prisma, findFirstBannedIngredient, findBannedProductTerm } from '@ilaunchify/db'
+import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -435,6 +436,43 @@ export async function submitProductForReview(productTemplateId: string): Promise
     return {
       ok: false,
       error: `Cannot submit: ${bannedCategory.label} is a prohibited product category — ${bannedCategory.reason}`,
+    }
+  }
+
+  // Restricted-category gate (labeling ≠ licensing) — the authoritative source
+  // block. The two checks above are term/ingredient-based, so they can't see a
+  // restriction declared via a FACT (isAlcoholBeverage / isHempCbd /
+  // isTobaccoNicotine) or the OTC labeling type. This evaluator does — the same
+  // one every downstream surface uses. A restricted formulation must never reach
+  // PENDING_REVIEW: blocking it here means it's never published, so it never
+  // appears in the marketplace, the Design Studio, or checkout.
+  const restrictionHits = evaluateProductRestrictions({
+    labelingType: tpl.labelingType,
+    phraseFacts: (tpl.phraseFacts ?? null) as Record<string, unknown> | null,
+    ingredientNames,
+  })
+  if (restrictionHits.length > 0) {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_TEMPLATE_RESTRICTED_BLOCK',
+      fromValue: tpl.status,
+      payload: {
+        name: tpl.name,
+        partnerId: partner.id,
+        restrictions: restrictionHits.map((h) => ({
+          code: h.code,
+          matchedBy: h.matchedBy,
+          evidence: h.evidence,
+        })),
+      },
+    })
+    const labels = restrictionHits.map((h) => h.label).join(', ')
+    return {
+      ok: false,
+      error:
+        `Cannot submit: ${labels} — this category requires licensing iLaunchify ` +
+        `doesn't support yet, so it can't be produced on the platform. This is not legal advice.`,
     }
   }
 
