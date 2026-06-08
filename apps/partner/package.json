@@ -19,6 +19,7 @@
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/marketplace": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
+    "@ilaunchify/nutrition": "workspace:*",
     "@ilaunchify/orders": "workspace:*",
     "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/payments": "workspace:*",

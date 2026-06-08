@@ -1,0 +1,142 @@
+import { describe, it, expect } from 'vitest'
+import { calculateLabel, resolveGeometry, sumBatch, type IngredientInput } from './engine'
+import { toPanelData } from './panel-adapter'
+import {
+  roundCalories, roundFat, roundGramMacro, roundCholSodium, roundMicro,
+  roundServingsPerContainer, formatServingsPerContainer, formatNetWeight,
+} from './rounding'
+
+// A clean reference ingredient: 100 g carries exactly these per-100g values.
+const REF: IngredientInput = {
+  id: 'ref', name: 'Reference', quantity: 100, unit: 'g',
+  per100g: {
+    calories: 100, protein: 10, totalFat: 5, saturatedFat: 2, sodium: 200,
+    totalCarbohydrate: 20, dietaryFiber: 4, totalSugars: 5, calcium: 100,
+  },
+}
+
+describe('per-serving basis (by serving size)', () => {
+  const r = calculateLabel([REF], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+  it('splits the recipe into total servings = yield / serving', () => {
+    expect(r.geometry.rawMassG).toBe(100)
+    expect(r.geometry.yieldG).toBe(100)
+    expect(r.geometry.totalServings).toBe(2) // 100 / 50
+    expect(r.geometry.servingsPerContainer).toBe(2)
+  })
+  it('per serving = batch ÷ total servings, FDA-rounded', () => {
+    expect(r.perServing.calories).toBe(50)        // 100 / 2
+    expect(r.perServing.totalFat.amount).toBe(2.5) // 5 / 2
+    expect(r.perServing.protein.amount).toBe(5)
+    expect(r.perServing.sodium.amount).toBe(100)
+    expect(r.perServing.totalCarbohydrate.amount).toBe(10)
+    expect(r.perServing.dietaryFiber.amount).toBe(2)
+  })
+  it('%DV is computed from exact values', () => {
+    expect(r.perServing.totalFat.dv).toBe(3)   // 2.5/78 = 3.2 → 3
+    expect(r.perServing.sodium.dv).toBe(4)     // 100/2300 = 4.3 → 4
+    expect(r.perServing.dietaryFiber.dv).toBe(7) // 2/28 = 7.1 → 7
+    expect(r.perServing.calcium.dv).toBe(4)    // 50/1300 = 3.8 → 4
+  })
+})
+
+describe('by package size resolves identically', () => {
+  it('derives serving size from package and gives the same total servings', () => {
+    const r = calculateLabel([REF], { basis: 'package', packageSizeG: 100, numPackages: 1, servingsPerPackage: 2 })
+    expect(r.geometry.servingSizeG).toBe(50)   // 100 / 2
+    expect(r.geometry.totalServings).toBe(2)   // 2 × 1
+    expect(r.geometry.netWeightG).toBe(100)
+    expect(r.perServing.calories).toBe(50)
+  })
+})
+
+describe('moisture loss concentrates nutrients (water only)', () => {
+  const base = { basis: 'serving' as const, servingSizeG: 50, servingsPerPackage: 1 }
+  it('0% moisture → 50 cal/serving; 50% moisture → 100 cal/serving', () => {
+    const dry = calculateLabel([REF], { ...base, moistureLossPct: 0 })
+    expect(dry.geometry.totalServings).toBe(2) // yield 100 / 50
+    expect(dry.perServing.calories).toBe(50)
+
+    const baked = calculateLabel([REF], { ...base, moistureLossPct: 50 })
+    expect(baked.geometry.yieldG).toBe(50)
+    expect(baked.geometry.totalServings).toBe(1) // yield 50 / 50
+    expect(baked.perServing.calories).toBe(100)  // same nutrients, fewer servings
+  })
+})
+
+describe('FDA rounding rules', () => {
+  it('calories', () => {
+    expect(roundCalories(4)).toBe(0)
+    expect(roundCalories(7)).toBe(5)
+    expect(roundCalories(52)).toBe(50)
+    expect(roundCalories(237)).toBe(240)
+  })
+  it('fat', () => {
+    expect(roundFat(0.4)).toBe(0)
+    expect(roundFat(2.7)).toBe(2.5)
+    expect(roundFat(6.2)).toBe(6)
+  })
+  it('cholesterol / sodium', () => {
+    expect(roundCholSodium(4)).toBe(0)
+    expect(roundCholSodium(143)).toBe(140)
+    expect(roundCholSodium(100)).toBe(100)
+  })
+  it('macros + micros', () => {
+    expect(roundGramMacro(0.4)).toBe(0)
+    expect(roundGramMacro(4.3)).toBe(4.5)
+    expect(roundMicro(1.74)).toBeCloseTo(1.7)
+  })
+})
+
+describe('servings-per-container rounding + display', () => {
+  it('rounds per FDA bands', () => {
+    expect(roundServingsPerContainer(1.1)).toBe(1)
+    expect(roundServingsPerContainer(3.4)).toBe(3.5)
+    expect(roundServingsPerContainer(7.2)).toBe(7)
+  })
+  it('prefixes "about" for non-round', () => {
+    expect(formatServingsPerContainer(2)).toBe('2')
+    expect(formatServingsPerContainer(2.2)).toBe('about 2')
+  })
+})
+
+describe('net weight (front-of-pack, not in panel)', () => {
+  it('formats dual', () => {
+    expect(formatNetWeight(200)).toBe('7.1 oz (200 g)')
+  })
+})
+
+describe('Atwater fallback when calories absent', () => {
+  it('computes 4/4/9 (+2 fiber)', () => {
+    const ing: IngredientInput = {
+      id: 'a', name: 'a', quantity: 100, unit: 'g',
+      per100g: { protein: 10, totalCarbohydrate: 20, dietaryFiber: 5, totalFat: 5 },
+    }
+    const { batch } = sumBatch([ing])
+    // 4*10 + 4*(20-5) + 2*5 + 9*5 = 40 + 60 + 10 + 45 = 155
+    expect(batch.calories).toBe(155)
+  })
+})
+
+describe('density-aware volume conversion', () => {
+  it('uses density for ml', () => {
+    const oil: IngredientInput = {
+      id: 'oil', name: 'oil', quantity: 100, unit: 'ml', densityGPerMl: 0.92,
+      per100g: { calories: 884, totalFat: 100 },
+    }
+    const g = resolveGeometry(sumBatch([oil]).rawMassG, { basis: 'serving', servingSizeG: 92, servingsPerPackage: 1 })
+    expect(g.rawMassG).toBeCloseTo(92) // 100 ml × 0.92
+    expect(g.totalServings).toBeCloseTo(1)
+  })
+})
+
+describe('panel adapter → NutritionFactsRenderer PanelData', () => {
+  const r = calculateLabel([REF], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+  const panel = toPanelData(r, { suggestedServing: '1 piece' })
+  it('produces a calories row + serving strings', () => {
+    expect(panel.format).toBe('STANDARD')
+    expect(panel.servingSize).toBe('1 piece (50g)')
+    expect(panel.servingsPerContainer).toBe('2')
+    expect(panel.rows[0]).toMatchObject({ id: 'calories', amount: 50 })
+    expect(panel.rows.find((x) => x.id === 'sodium')).toMatchObject({ amount: 100, percentDailyValue: 4, unit: 'mg' })
+  })
+})

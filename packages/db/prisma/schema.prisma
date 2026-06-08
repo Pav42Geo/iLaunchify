@@ -2274,6 +2274,22 @@ model ProductTemplate {
   // Drives rule pack selection + which "Facts" panel renders. Default FOOD because
   // the catalog skews food/beverage; partners flip to SUPPLEMENT or PET in the editor.
   labelingType               LabelingType                  @default(FOOD)
+  // labelingType lock (2026-06-07). The panel regime is DERIVED from the
+  // template's ProductCategory (FOOD→Nutrition Facts, DIETARY_SUPPLEMENT→
+  // Supplement Facts, OTC→Drug Facts, COSMETIC→INCI, PET_PRODUCT→Guaranteed
+  // Analysis) and locked in the editor so partners can't pick a mismatched
+  // panel. true = control disabled, value follows category. An admin override
+  // sets this false and may hand-set labelingType.
+  labelingTypeLocked         Boolean                       @default(true)
+  // ---- Retail identity (template level) ----
+  // Default FDA Statement of Identity (the food's common/usual name, 21 CFR
+  // 101.3) for templates with no flavors. Per-flavor SoI overrides live on
+  // FlavorPreset. Intentionally distinct from `name` (the marketplace title).
+  statementOfIdentity        String?
+  // Optional manufacturer product-family / style code grouping sibling
+  // templates+variants (e.g. "PRO-WHEY"). Not a retail identifier — purely
+  // the manufacturer's internal grouping. Nullable, non-unique.
+  familyCode                 String?
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
@@ -2307,6 +2323,7 @@ model ProductTemplate {
   updatedAt                  DateTime                      @updatedAt
 
   @@index([subcategoryId, status])
+  @@index([familyCode])
 }
 
 // One slot per BASE ingredient. The base is the default; replacements[] are
@@ -2401,6 +2418,14 @@ model ProductTemplateVariant {
   // Free-form extras (retail-display dimensions, refill-pod ml, etc.)
   packingConfig        Json?
 
+  // ---- Retail identity (per sellable SKU configuration) ----
+  // The SKU/GTIN belong here, not on FlavorPreset: a single can vs a 6-pack of
+  // the SAME flavor are different sellable units. SoI (the food's common name)
+  // is per-recipe and lives on FlavorPreset / ProductTemplate.
+  sku        String? // manufacturer stock-keeping unit for this exact config
+  gtin       String?    @unique // UPC-A(12)/EAN-13(13)/EAN-8(8)/ITF-14(14)
+  gtinSource GtinSource @default(USER_PROVIDED)
+
   // ---- Commercial ----
   moqMin                Int  @default(500)
   moqMax                Int  @default(5000)
@@ -2424,6 +2449,7 @@ model ProductTemplateVariant {
   products        Product[]
   createdAt       DateTime        @default(now())
 
+  @@unique([productTemplateId, sku])
   @@index([productTemplateId, isActive])
   @@index([packingType])
 }
@@ -3940,22 +3966,27 @@ model ProductTemplatePricingTier {
 // -----------------------------------------------------------------------------
 
 model FlavorPreset {
-  id                String             @id @default(cuid())
-  productTemplateId String
-  name              String // 'Chocolate', 'Vanilla', 'Strawberry'
-  swatchHex         String? // '#5C3317' for picker
-  swatchImageFileId String? // small jar/scoop photo for picker
+  id                  String             @id @default(cuid())
+  productTemplateId   String
+  name                String // 'Chocolate', 'Vanilla', 'Strawberry'
+  // Per-flavor FDA Statement of Identity (21 CFR 101.3) — e.g. "Chocolate
+  // Flavored Whey Protein Powder". Unique per recipe; overrides the template's
+  // default SoI; always distinct from the marketplace product name. Null falls
+  // back to ProductTemplate.statementOfIdentity.
+  statementOfIdentity String?
+  swatchHex           String? // '#5C3317' for picker
+  swatchImageFileId   String? // small jar/scoop photo for picker
   // The overlay — defines which slot picks apply for this flavor + flavor-only extras
-  slotResolution    Json // [{ slotId, optionId | { customIngredientId, qty, unit } }]
-  extras            Json? // [{ name, ingredientId, qty, unit }] flavor-only ingredients
-  priceDeltaCents   Int                @default(0) // additive to per-size base price
-  status            FlavorPresetStatus @default(ACTIVE)
-  sortOrder         Int                @default(0)
+  slotResolution      Json // [{ slotId, optionId | { customIngredientId, qty, unit } }]
+  extras              Json? // [{ name, ingredientId, qty, unit }] flavor-only ingredients
+  priceDeltaCents     Int                @default(0) // additive to per-size base price
+  status              FlavorPresetStatus @default(ACTIVE)
+  sortOrder           Int                @default(0)
   // V1 — per-flavor nutrient overrides (e.g., strawberry adds water content; shifts moisture)
-  nutrientOverrides Json? // [{ nutrient, value, reason }] — preset overrides win on conflict with ProductTemplate.nutrientOverrides
-  productTemplate   ProductTemplate    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  nutrientOverrides   Json? // [{ nutrient, value, reason }] — preset overrides win on conflict with ProductTemplate.nutrientOverrides
+  productTemplate     ProductTemplate    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@index([productTemplateId, status, sortOrder])
 }

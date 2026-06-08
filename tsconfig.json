@@ -31,7 +31,8 @@
       "@ilaunchify/payments": ["./packages/payments/src"],
       "@ilaunchify/storage": ["./packages/storage/src"],
       "@ilaunchify/compliance-client": ["./packages/compliance-client/src"],
-      "@ilaunchify/marketplace": ["./packages/marketplace/src"]
+      "@ilaunchify/marketplace": ["./packages/marketplace/src"],
+      "@ilaunchify/nutrition": ["./packages/nutrition/src"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
