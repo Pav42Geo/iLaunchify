@@ -21,6 +21,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { updateBasics, saveFlavors, saveFees, type FeeInput } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
+import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
 
 interface FacilityOption { id: string; name: string }
@@ -160,6 +161,12 @@ export function VariantsPacksStep({
 
       {/* Configurable axes beyond flavor (sweetener / strength / caffeine / …) */}
       {selected && <OptionAxesCard axes={axes} onAxes={onAxes} />}
+
+      {/* Cross-option compatibility rules (#5) — only when ≥2 option values exist */}
+      {selected && <CompatibilityRulesCard draftId={draftId} axes={axes} />}
+
+      {/* Approval triggers (#7) */}
+      {selected && <ApprovalTriggersCard draftId={draftId} />}
 
       <style>{`
         .gb .pt-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 14px;font:inherit;color:var(--ink-900);cursor:pointer;transition:.12s}

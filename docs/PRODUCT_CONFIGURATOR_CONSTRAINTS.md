@@ -324,7 +324,9 @@ Review & submit step
 - **Phase 2 — high-value UI in Variants/Production.** Storage class + lead-time
   split + Fees card (#3,#4); Configurable-options card = permission toggle + per-value
   deltas, FLAVOR axis first, then "+ Add axis" (#1,#2). Autosave like the rest of the step.
-- **Phase 3 — compatibility-rule builder (#5) + approval-trigger editor (#7).**
+- **Phase 3 — compatibility-rule builder (#5) + approval-trigger editor (#7). ✅ built 2026-06-08**
+  (`AdvancedRulesCard.tsx`; `saveOptionRules` / `saveChangeApprovalRules`). Rule
+  endpoints use stable `axisKey:valueLabel` composite keys (id-churn-safe).
 - **Phase 4 — PSS generation at submit (#6) + marketplace configurator + quote engine (§9).**
 
 ## 12b. Label-affecting options — overlay binding + engine merge (added 2026-06-08)

@@ -223,6 +223,71 @@ export async function saveOptionAxes(productTemplateId: string, axes: OptionAxis
   }
 }
 
+export interface ChangeApprovalRuleInput {
+  changeType: 'LABEL_COPY' | 'FLAVOR_ADD' | 'RECIPE_CHANGE' | 'PACKAGING_CHANGE' | 'PRICE_CHANGE'
+  requiredApprover: 'BRAND_OPS' | 'MANUFACTURER_QA' | 'LEGAL' | 'PRODUCTION_SCHEDULING'
+  sortOrder: number
+}
+
+/** Replace the draft's per-template approval-trigger overrides (#7). Cast-guarded. */
+export async function saveChangeApprovalRules(productTemplateId: string, rules: ChangeApprovalRuleInput[]): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const p = prisma as unknown as { productChangeApprovalRule: { deleteMany: (a: unknown) => Promise<unknown>; createMany: (a: unknown) => Promise<unknown> } }
+    await p.productChangeApprovalRule.deleteMany({ where: { productTemplateId } })
+    if (rules.length) {
+      await p.productChangeApprovalRule.createMany({
+        data: rules.map((r, i) => ({ productTemplateId, changeType: r.changeType, requiredApprover: r.requiredApprover, sortOrder: r.sortOrder ?? i })),
+      })
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveChangeApprovalRules] failed:', err)
+    return { ok: false, error: `Could not save approval rules: ${(err as Error).message}` }
+  }
+}
+
+export interface OptionRuleInput {
+  kind: 'EXCLUDE' | 'REQUIRE'
+  whenValueId: string // composite "axisKey:valueLabel" (whenValueId/targetValueId are plain strings)
+  targetValueId: string
+  message: string | null
+}
+
+/** Replace the draft's cross-option compatibility rules (#5). Endpoints are
+ *  composite axisKey:valueLabel keys (id-churn-safe). Cast-guarded. */
+export async function saveOptionRules(productTemplateId: string, rules: OptionRuleInput[]): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const clean = rules.filter((r) => r.whenValueId && r.targetValueId && r.whenValueId !== r.targetValueId)
+    const p = prisma as unknown as { productOptionRule: { deleteMany: (a: unknown) => Promise<unknown>; createMany: (a: unknown) => Promise<unknown> } }
+    await p.productOptionRule.deleteMany({ where: { productTemplateId } })
+    if (clean.length) {
+      await p.productOptionRule.createMany({
+        data: clean.map((r) => ({ productTemplateId, kind: r.kind, whenValueId: r.whenValueId, targetValueId: r.targetValueId, message: r.message?.trim() || null })),
+      })
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveOptionRules] failed:', err)
+    return { ok: false, error: `Could not save compatibility rules: ${(err as Error).message}` }
+  }
+}
+
 export interface FeeInput {
   label: string
   basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'
