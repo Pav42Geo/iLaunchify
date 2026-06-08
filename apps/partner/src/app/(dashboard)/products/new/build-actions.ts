@@ -64,6 +64,18 @@ export interface InitialDraft {
   lifestyleTagIds: string[]
   flavors: Array<{ name: string; soi: string }>
   axes: InitialDraftAxis[]
+  // Production (default variant) + storage/lead (template) — #35 full load-back.
+  storageClass: 'AMBIENT' | 'CHILLED' | 'FROZEN' | null
+  storageTempMinF: number | null
+  storageTempMaxF: number | null
+  leadTimeRepeatDays: number | null
+  leadTimeFirstRunDays: number | null
+  production: {
+    fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH' | null
+    moqMin: number; orderIncrement: number; monthlyCapacity: number | null
+    shelfLifeDays: number | null; lotTracking: boolean
+  } | null
+  pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null }>
 }
 
 /** Load an existing DRAFT for the guided builder to resume (#35 load-back). Returns
@@ -79,10 +91,14 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       id: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null
+      storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
+      leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
       flavorPresets: Array<{ name: string; statementOfIdentity: string | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
+      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean }>
+      pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null }>
       optionAxes: Array<{
         key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
         values: Array<{ label: string; isDefault: boolean; leadTimeDeltaDays: number; unitCostDeltaCents: number; moqOverride: number | null; overlayOp: string; recipeOverlay: unknown }>
@@ -95,10 +111,14 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       select: {
         id: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
+        storageClass: true, storageTempMinF: true, storageTempMaxF: true,
+        leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
         flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
+        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true } },
+        pricingTiers: { orderBy: { sortOrder: 'asc' }, select: { minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true } },
         optionAxes: {
           orderBy: { sortOrder: 'asc' },
           select: {
@@ -137,6 +157,22 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
           }
         }),
       })),
+      storageClass: (tpl.storageClass as InitialDraft['storageClass']) ?? null,
+      storageTempMinF: tpl.storageTempMinF,
+      storageTempMaxF: tpl.storageTempMaxF,
+      leadTimeRepeatDays: tpl.leadTimeRepeatDays,
+      leadTimeFirstRunDays: tpl.leadTimeFirstRunDays,
+      production: tpl.variants[0]
+        ? {
+            fulfillmentMode: (tpl.variants[0].fulfillmentMode as 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH' | null) ?? null,
+            moqMin: tpl.variants[0].moqMin,
+            orderIncrement: tpl.variants[0].orderIncrement,
+            monthlyCapacity: tpl.variants[0].monthlyCapacity,
+            shelfLifeDays: tpl.variants[0].shelfLifeDays,
+            lotTracking: tpl.variants[0].lotTracking,
+          }
+        : null,
+      pricingTiers: tpl.pricingTiers ?? [],
     }
   } catch (err) {
     console.error('[loadDraft] failed:', err)

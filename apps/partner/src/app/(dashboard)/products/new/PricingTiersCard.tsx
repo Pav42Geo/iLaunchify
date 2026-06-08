@@ -21,12 +21,20 @@ const toCents = (s: string) => Math.round((parseFloat(s.replace(/[^0-9.]/g, ''))
 const MAKER_FEE_PCT = 15
 const marketplaceCents = (perUnitCents: number) => perUnitCents + Math.round((perUnitCents * MAKER_FEE_PCT) / 100)
 
-export function PricingTiersCard({ draftId }: { draftId: string | null }) {
-  const [tiers, setTiers] = useState<TierRow[]>([
-    { minQty: 500, maxQty: 2499, perUnitCents: 110, floorCents: 95, leadTimeDays: 21 },
-    { minQty: 2500, maxQty: 9999, perUnitCents: 98, floorCents: 90, leadTimeDays: 18 },
-    { minQty: 10000, maxQty: null, perUnitCents: 86, floorCents: 82, leadTimeDays: 28 },
-  ])
+interface InitialTier { minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null }
+
+const DEFAULT_TIERS: TierRow[] = [
+  { minQty: 500, maxQty: 2499, perUnitCents: 110, floorCents: 95, leadTimeDays: 21 },
+  { minQty: 2500, maxQty: 9999, perUnitCents: 98, floorCents: 90, leadTimeDays: 18 },
+  { minQty: 10000, maxQty: null, perUnitCents: 86, floorCents: 82, leadTimeDays: 28 },
+]
+
+export function PricingTiersCard({ draftId, initialTiers }: { draftId: string | null; initialTiers?: InitialTier[] }) {
+  const [tiers, setTiers] = useState<TierRow[]>(
+    initialTiers && initialTiers.length
+      ? initialTiers.map((t) => ({ minQty: t.minQty, maxQty: t.maxQty, perUnitCents: t.perUnitCostCents, floorCents: t.perUnitFloorCents, leadTimeDays: t.leadTimeDays }))
+      : DEFAULT_TIERS,
+  )
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {

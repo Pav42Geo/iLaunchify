@@ -240,6 +240,7 @@ export function GuidedBuilder({
                 onFlavors={setFlavors}
                 axes={axes}
                 onAxes={setAxes}
+                initial={initial}
               />
               <NavBtns onBack={() => go(0)} onNext={() => go(2)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Recipe →" nextDisabled={!profile} />
             </section>
@@ -326,7 +327,7 @@ export function GuidedBuilder({
           {/* ===== STEP 5 — COST & PRICING ===== */}
           {cur === 4 && (
             <section>
-              <PricingTiersCard draftId={draftId} />
+              <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} />
               <NavBtns onBack={() => go(3)} onNext={() => go(5)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Review →" />
             </section>
           )}

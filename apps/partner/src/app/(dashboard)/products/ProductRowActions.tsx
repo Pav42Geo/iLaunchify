@@ -102,6 +102,13 @@ export function ProductRowActions({
         </RowActionItem>
       )}
 
+      {/* DRAFT: resume the guided builder where it left off (load-back). */}
+      {status === 'DRAFT' && (
+        <RowActionItem href={`/products/new?draft=${id}`} icon={FileStack}>
+          Resume in builder
+        </RowActionItem>
+      )}
+
       {/* Authoring: move it forward */}
       {authoring && (
         <RowActionItem href={`/products/${id}/edit`} icon={Send}>

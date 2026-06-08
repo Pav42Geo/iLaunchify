@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, saveProduction, type FeeInput } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, type FeeInput, type InitialDraft } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -38,7 +38,7 @@ const PACK_STRUCTS = ['OUTER_WITH_INNERS', 'INDIVIDUAL_IN_OUTER', 'CUSTOMIZABLE'
 export interface Flavor { name: string; ingId: string; soi: string }
 
 export function VariantsPacksStep({
-  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes,
+  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial,
 }: {
   packingProfiles: PackingProfileOption[]
   facilities: FacilityOption[]
@@ -50,6 +50,7 @@ export function VariantsPacksStep({
   onFlavors: (f: Flavor[]) => void
   axes: OptionAxisUI[]
   onAxes: (a: OptionAxisUI[]) => void
+  initial?: InitialDraft | null
 }) {
   const [, start] = useTransition()
   const [open, setOpen] = useState(false)
@@ -135,7 +136,7 @@ export function VariantsPacksStep({
       {/* Shared production block — applies to EVERY product type */}
       {selected && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} />
+          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} initial={initial} />
         </div>
       )}
 
@@ -150,7 +151,7 @@ export function VariantsPacksStep({
       {kind && (
         <div className="card">
           {kind === 'single' && <SinglePack />}
-          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} />}
+          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} />}
           {kind === 'pack' && <MultiPack />}
 
           {/* Conditional add-ons (stack under the base config) */}
@@ -199,18 +200,20 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 /** Production & availability — shared across all product types. Fulfillment mode
  *  drives MOQ/increment; capacity vs MOQ raises a warning. */
-function SharedProduction({ draftId, facilities, baseSku }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string }) {
-  const [fulfillment, setFulfillment] = useState<'bulk' | 'mto' | 'both'>('bulk')
-  const [moq, setMoq] = useState(500)
-  const [increment, setIncrement] = useState(100)
-  const [capacity, setCapacity] = useState(50000)
-  const [leadRepeat, setLeadRepeat] = useState(21)
-  const [leadFirstRun, setLeadFirstRun] = useState(35)
-  const [shelfLife, setShelfLife] = useState(365)
-  const [lotTracking, setLotTracking] = useState(true)
-  const [storageClass, setStorageClass] = useState<'AMBIENT' | 'CHILLED' | 'FROZEN'>('AMBIENT')
-  const [tempMin, setTempMin] = useState<number | ''>(55)
-  const [tempMax, setTempMax] = useState<number | ''>(75)
+function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; initial?: InitialDraft | null }) {
+  const p = initial?.production
+  const fmInit: 'bulk' | 'mto' | 'both' = p?.fulfillmentMode === 'ON_DEMAND' ? 'mto' : p?.fulfillmentMode === 'BOTH' ? 'both' : 'bulk'
+  const [fulfillment, setFulfillment] = useState<'bulk' | 'mto' | 'both'>(fmInit)
+  const [moq, setMoq] = useState(p?.moqMin ?? 500)
+  const [increment, setIncrement] = useState(p?.orderIncrement ?? 100)
+  const [capacity, setCapacity] = useState(p?.monthlyCapacity ?? 50000)
+  const [leadRepeat, setLeadRepeat] = useState(initial?.leadTimeRepeatDays ?? 21)
+  const [leadFirstRun, setLeadFirstRun] = useState(initial?.leadTimeFirstRunDays ?? 35)
+  const [shelfLife, setShelfLife] = useState(p?.shelfLifeDays ?? 365)
+  const [lotTracking, setLotTracking] = useState(p?.lotTracking ?? true)
+  const [storageClass, setStorageClass] = useState<'AMBIENT' | 'CHILLED' | 'FROZEN'>(initial?.storageClass ?? 'AMBIENT')
+  const [tempMin, setTempMin] = useState<number | ''>(initial?.storageTempMinF ?? 55)
+  const [tempMax, setTempMax] = useState<number | ''>(initial?.storageTempMaxF ?? 75)
 
   // Persist ProductTemplate-level fields (storage + lead split) — debounced.
   const t = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -387,12 +390,12 @@ function SinglePack() {
   )
 }
 
-function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void }) {
+function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null }) {
   const list = flavors.length ? flavors : [{ name: '', ingId: 'cane', soi: '' }]
   const [perFlavorCap, setPerFlavorCap] = useState(false)
   // Manufacturer's ceiling: how many DISTINCT flavors a Creator may combine into
   // a single pack. null = no cap (Creator can use the whole pool).
-  const [maxPerPack, setMaxPerPack] = useState<number | null>(null)
+  const [maxPerPack, setMaxPerPack] = useState<number | null>(initialMax ?? null)
   const pool = list.length
   const effCap = Math.min(maxPerPack ?? pool, pool)
   function set(i: number, p: Partial<Flavor>) {
