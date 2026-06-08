@@ -7,7 +7,7 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import { Plus, Upload, Trash2, Pencil, X, ExternalLink } from 'lucide-react'
+import { Plus, Upload, Trash2, Pencil, X, ExternalLink, FileText } from 'lucide-react'
 import {
   createLabelingSymbolVariant,
   updateLabelingSymbolVariant,
@@ -29,6 +29,8 @@ export interface LblVariantView {
   pngUrl: string | null
   hasSvg: boolean
   hasPng: boolean
+  /** True when the vector slot holds a PDF (vs an SVG) — renders as a link, not <img>. */
+  svgIsPdf: boolean
 }
 
 export function LabelingVariantsManager({
@@ -112,7 +114,7 @@ function VariantRow({ variant: v, onEdit }: { variant: LblVariantView; onEdit: (
     <div className="rounded-lg border border-zinc-200 bg-white p-4">
       <div className="flex items-start gap-4">
         <div className="flex gap-2">
-          <AssetThumb url={v.svgUrl} label="SVG" />
+          <AssetThumb url={v.svgUrl} label={v.svgIsPdf ? 'PDF' : 'SVG'} isPdf={v.svgIsPdf} />
           <AssetThumb url={v.pngUrl} label="PNG" />
         </div>
         <div className="min-w-0 flex-1">
@@ -136,10 +138,10 @@ function VariantRow({ variant: v, onEdit }: { variant: LblVariantView; onEdit: (
           {v.notes && <p className="mt-2 text-xs text-zinc-500">{v.notes}</p>}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <input ref={svgRef} type="file" accept="image/svg+xml,.svg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'SVG') }} />
+            <input ref={svgRef} type="file" accept="image/svg+xml,.svg,application/pdf,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'SVG') }} />
             <input ref={pngRef} type="file" accept="image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'PNG') }} />
             <Button variant="outline" size="sm" onClick={() => svgRef.current?.click()} disabled={isPending}>
-              <Upload className="mr-1 h-3.5 w-3.5" /> {v.hasSvg ? 'Replace SVG' : 'Upload SVG'}
+              <Upload className="mr-1 h-3.5 w-3.5" /> {v.hasSvg ? 'Replace vector' : 'Upload vector (SVG/PDF)'}
             </Button>
             <Button variant="outline" size="sm" onClick={() => pngRef.current?.click()} disabled={isPending}>
               <Upload className="mr-1 h-3.5 w-3.5" /> {v.hasPng ? 'Replace PNG' : 'Upload PNG'}
@@ -157,16 +159,26 @@ function VariantRow({ variant: v, onEdit }: { variant: LblVariantView; onEdit: (
   )
 }
 
-function AssetThumb({ url, label }: { url: string | null; label: string }) {
+function AssetThumb({ url, label, isPdf }: { url: string | null; label: string; isPdf?: boolean }) {
+  const tile = !url ? (
+    <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-[9px] text-zinc-400">
+      {label}
+    </div>
+  ) : isPdf ? (
+    <div className="flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-md border border-zinc-200 bg-white text-rose-600">
+      <FileText className="h-5 w-5" />
+      <span className="text-[8px] font-bold uppercase">PDF</span>
+    </div>
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={`${label} preview`} className="h-12 w-12 rounded-md border border-zinc-200 bg-white object-contain p-1" />
+  )
   return (
     <div className="flex flex-col items-center gap-1">
       {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={`${label} preview`} className="h-12 w-12 rounded-md border border-zinc-200 bg-white object-contain p-1" />
+        <a href={url} target="_blank" rel="noopener noreferrer" title={`Open ${label}`}>{tile}</a>
       ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-[9px] text-zinc-400">
-          {label}
-        </div>
+        tile
       )}
       <span className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</span>
     </div>

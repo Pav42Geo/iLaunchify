@@ -26,6 +26,14 @@ export default async function EditLabelingSymbolPage({ params }: PageProps) {
   const assetIds = sym.variants.flatMap((v) => [v.svgFileId, v.pngFileId])
   const urls = await resolveCertBadgeUrls(assetIds)
 
+  // The vector slot accepts SVG or PDF — resolve its mime so the UI renders a
+  // PDF as a link tile rather than a broken <img>.
+  const svgIds = sym.variants.map((v) => v.svgFileId).filter((x): x is string => !!x)
+  const svgAssets = svgIds.length
+    ? await prisma.asset.findMany({ where: { id: { in: svgIds } }, select: { id: true, mimeType: true } })
+    : []
+  const svgMime = new Map(svgAssets.map((a) => [a.id, a.mimeType]))
+
   const variants = sym.variants.map((v) => ({
     id: v.id,
     label: v.label,
@@ -39,6 +47,7 @@ export default async function EditLabelingSymbolPage({ params }: PageProps) {
     pngUrl: v.pngFileId ? (urls.get(v.pngFileId) ?? null) : null,
     hasSvg: !!v.svgFileId,
     hasPng: !!v.pngFileId,
+    svgIsPdf: v.svgFileId ? svgMime.get(v.svgFileId) === 'application/pdf' : false,
   }))
 
   return (

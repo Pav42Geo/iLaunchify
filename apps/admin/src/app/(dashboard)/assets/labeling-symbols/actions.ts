@@ -227,8 +227,10 @@ export async function deleteLabelingSymbolVariant(id: string): Promise<Result> {
   return { ok: true }
 }
 
+// The vector slot accepts SVG *or* PDF (both print-ready); the raster slot takes
+// PNG/WebP. Asset.mimeType records which format was actually uploaded.
 const ACCEPT: Record<'SVG' | 'PNG', string[]> = {
-  SVG: ['image/svg+xml'],
+  SVG: ['image/svg+xml', 'application/pdf'],
   PNG: ['image/png', 'image/webp'],
 }
 
@@ -239,9 +241,13 @@ export async function uploadLabelingVariantAsset(formData: FormData, kind: 'SVG'
   if (!variantId) return { ok: false, error: 'Missing variant id.' }
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No file provided.' }
   if (file.size > 5 * 1024 * 1024) return { ok: false, error: 'File too large (max 5 MB).' }
+  const name = file.name.toLowerCase()
   const looksRight =
-    ACCEPT[kind].includes(file.type) || (kind === 'SVG' && file.name.toLowerCase().endsWith('.svg'))
-  if (!looksRight) return { ok: false, error: `Wrong file type — upload a ${kind} file.` }
+    ACCEPT[kind].includes(file.type) ||
+    (kind === 'SVG' && (name.endsWith('.svg') || name.endsWith('.pdf')))
+  if (!looksRight) {
+    return { ok: false, error: `Wrong file type — upload ${kind === 'SVG' ? 'an SVG or PDF' : 'a PNG'} file.` }
+  }
 
   const variant = await prisma.labelingSymbolVariant.findUnique({
     where: { id: variantId },
@@ -249,7 +255,9 @@ export async function uploadLabelingVariantAsset(formData: FormData, kind: 'SVG'
   })
   if (!variant) return { ok: false, error: 'Variant not found.' }
 
-  const contentType = file.type || (kind === 'SVG' ? 'image/svg+xml' : 'image/png')
+  const contentType =
+    file.type ||
+    (kind === 'PNG' ? 'image/png' : name.endsWith('.pdf') ? 'application/pdf' : 'image/svg+xml')
   const buffer = Buffer.from(await file.arrayBuffer())
   let upload
   try {

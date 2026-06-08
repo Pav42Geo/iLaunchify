@@ -19,7 +19,7 @@ export default function NewLabelingSymbolPage() {
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">New labeling symbol</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Add the symbol, then upload approved artwork variants on the next screen.
+          Add the symbol, then upload approved artwork — SVG, PNG, or PDF — as variants on the next screen.
         </p>
       </header>
       <LabelingSymbolForm />
