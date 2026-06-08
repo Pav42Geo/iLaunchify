@@ -27,6 +27,11 @@ interface StarterDef {
   name: string
   description: string
   subcategorySlug: string // matches Subcategory.slug from the FOD catalog import
+  // Regulatory labeling regime — drives Nutrition Facts vs Supplement Facts and
+  // the mandatory-phrase set. MUST be set explicitly for dietary supplements
+  // (protein/pre-workout/greens/vitamins) so they don't fall through to the
+  // schema default FOOD and mis-render Nutrition Facts. Omit → FOOD.
+  labelingType?: 'FOOD' | 'DIETARY_SUPPLEMENT' | 'PET' | 'OTC' | 'COSMETIC'
   priceFloorCents: number
   unitCostCents: number
   ingredients: StarterIngredient[]
@@ -49,6 +54,7 @@ const STARTERS: StarterDef[] = [
     description:
       'Classic whey protein concentrate base. Ready for flavor customization (chocolate / vanilla / unflavored). Default recipe yields ~24g protein per scoop.',
     subcategorySlug: 'protein-powders',
+    labelingType: 'DIETARY_SUPPLEMENT',
     priceFloorCents: 350,
     unitCostCents: 350,
     ingredients: [
@@ -75,6 +81,7 @@ const STARTERS: StarterDef[] = [
     description:
       'Caffeine + beta-alanine + citrulline base. Stim formula ready for flavoring. ~200mg caffeine per scoop.',
     subcategorySlug: 'pre-workouts',
+    labelingType: 'DIETARY_SUPPLEMENT',
     priceFloorCents: 280,
     unitCostCents: 280,
     ingredients: [
@@ -102,6 +109,7 @@ const STARTERS: StarterDef[] = [
     description:
       'Daily greens blend with spirulina, chlorella, and barley grass. Aimed at the daily-wellness market.',
     subcategorySlug: 'greens-superfoods',
+    labelingType: 'DIETARY_SUPPLEMENT',
     priceFloorCents: 480,
     unitCostCents: 480,
     ingredients: [
@@ -155,6 +163,7 @@ const STARTERS: StarterDef[] = [
     description:
       'Pectin-based daily multivitamin gummies. Adult formula with A/C/D/E + B-complex. Sugar-coated for shelf stability.',
     subcategorySlug: 'gummies-chewables',
+    labelingType: 'DIETARY_SUPPLEMENT',
     priceFloorCents: 380,
     unitCostCents: 380,
     ingredients: [
@@ -243,6 +252,7 @@ export async function seedStarterTemplates(prisma: PrismaClient) {
           name: def.name,
           description: def.description,
           subcategoryId: subId,
+          labelingType: def.labelingType ?? 'FOOD',
           priceFloorCents: def.priceFloorCents,
           unitCostCents: def.unitCostCents,
         },
@@ -293,6 +303,7 @@ export async function seedStarterTemplates(prisma: PrismaClient) {
           name: def.name,
           description: def.description,
           subcategoryId: subId,
+          labelingType: def.labelingType ?? 'FOOD',
           manufacturerServiceId: null, // platform-curated; not owned by a partner
           status: 'DRAFT',
           priceFloorCents: def.priceFloorCents,

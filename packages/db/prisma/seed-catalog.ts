@@ -286,6 +286,7 @@ export async function seedCatalog(opts: { manufacturerServiceId: string }) {
       subcategoryId: subBy('whey-protein').id,
       manufacturerServiceId: opts.manufacturerServiceId,
       status: 'PUBLISHED',
+      labelingType: 'DIETARY_SUPPLEMENT',
       name: 'Whey Protein Powder',
       description:
         'Classic whey isolate base. Swap the sweetener, swap the protein source, or add functional extras.',
@@ -406,6 +407,7 @@ export async function seedCatalog(opts: { manufacturerServiceId: string }) {
       subcategoryId: subBy('multivitamins').id,
       manufacturerServiceId: opts.manufacturerServiceId,
       status: 'PUBLISHED',
+      labelingType: 'DIETARY_SUPPLEMENT',
       name: 'Daily Multivitamin (Capsule)',
       description: 'Comprehensive A-Z multivitamin in a vegetable capsule.',
       priceFloorCents: 1999,
