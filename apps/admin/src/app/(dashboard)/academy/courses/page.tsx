@@ -3,7 +3,7 @@
 // RowActionsMenu + paginator.
 
 import Link from 'next/link'
-import { GraduationCap, Clock } from 'lucide-react'
+import { GraduationCap, Clock, Plus } from 'lucide-react'
 import {
   loadCoursesData,
   buildCoursesHref,
@@ -45,6 +45,14 @@ export default async function AcademyCoursesPage({ searchParams }: PageProps) {
         groupLabel="Academy · Courses"
         title="Courses"
         subtitle="Every course across the Creator and Partner academies. Pick an audience, sequence lessons, and move through the publish workflow."
+        action={
+          <Link
+            href="/academy/courses/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" /> New course
+          </Link>
+        }
       >
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
           <KpiCard href={buildCoursesHref(filters, { status: null, audience: null, page: 1 })} label="All courses" value={total} icon={GraduationCap} tone="pink" active={!filters.status && !filters.audience} />

@@ -13,11 +13,13 @@ export function AcademyHero({
   groupLabel,
   title,
   subtitle,
+  action,
   children,
 }: {
   groupLabel: string
   title: string
   subtitle: string
+  action?: React.ReactNode
   children?: React.ReactNode
 }) {
   return (
@@ -28,6 +30,7 @@ export function AcademyHero({
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">{title}</h1>
           <p className="mt-1 max-w-2xl text-[13px] text-ink-600">{subtitle}</p>
         </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </div>

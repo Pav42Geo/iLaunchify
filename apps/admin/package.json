@@ -11,6 +11,7 @@
     "clean": "rm -rf .next .turbo node_modules"
   },
   "dependencies": {
+    "@ilaunchify/academy": "workspace:*",
     "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
     "@sentry/nextjs": "^8.45.0",
