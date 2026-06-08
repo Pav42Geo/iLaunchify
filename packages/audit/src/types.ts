@@ -65,6 +65,10 @@ export const AUDIT_ENTITY_TYPES = [
   'PackagingDieline',
   // C9 Phase 2 — partner-owned prepress output spec (one per PartnerService)
   'PartnerPrintOutputSpec',
+  // iLaunchify Academy (Phase A) — admin-managed learning content (ACADEMY_SPEC §9)
+  'AcademyCategory',
+  'AcademyCourse',
+  'AcademyLesson',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -129,6 +133,8 @@ export const AUDIT_ACTIONS = [
   // (alcohol/hemp-CBD/tobacco) + OTC labeling type that the term/ingredient
   // dictionaries can't see. Blocks the DRAFT → PENDING_REVIEW transition.
   'PRODUCT_TEMPLATE_RESTRICTED_BLOCK',
+  // iLaunchify Academy — content status FSM (DRAFT→IN_REVIEW→PUBLISHED→ARCHIVED)
+  'ACADEMY_STATUS_CHANGE',
   // Payments (mostly SYSTEM actor from webhooks)
   'CHARGE_SUCCEEDED',
   'TRANSFER_QUEUED',

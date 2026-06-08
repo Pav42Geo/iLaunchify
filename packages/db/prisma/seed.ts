@@ -41,6 +41,7 @@ import { seedPhraseRules } from './seed-phrase-rules'
 import { seedDecorationCompatibility } from './seed-decoration-compatibility'
 import { seedPackagingOfferingFixtures } from './seed-packaging-offerings-fixtures'
 import { seedSpotColors } from './seed-spot-colors'
+import { seedAcademy } from './seed-academy'
 
 const prisma = new PrismaClient()
 
@@ -670,6 +671,11 @@ async function main() {
     })
   }
   console.log(`Seeded ${channelSeeds.length} channels.`)
+
+  // --- iLaunchify Academy (ACADEMY_SPEC §10) ---
+  // Two flagship courses + topic grids, PUBLISHED so both public academies
+  // (Creator /academy, Partner /business/academy) render content on a fresh DB.
+  await seedAcademy(prisma)
 
   console.log('Seed complete.')
 }

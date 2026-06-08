@@ -4840,3 +4840,119 @@ model SpotColor {
   @@index([category])
   @@index([pmsNumber])
 }
+
+// -----------------------------------------------------------------------------
+// iLAUNCHIFY ACADEMY (Phase A) — two public learning sites (Creator + Partner)
+// sharing one CMS + one three-level model (Home → Course → Lesson). Additive
+// only. CockroachDB-safe: uuid ids, bare String for unbounded text (no @db.Text).
+// Spec: docs/ACADEMY_SPEC.md §9. AcademyModule is dormant/optional in V1.
+// -----------------------------------------------------------------------------
+
+enum AcademyAudience {
+  CREATOR
+  PARTNER
+}
+
+enum AcademyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum AcademyStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AcademyLessonType {
+  VIDEO
+  ARTICLE
+  INTERACTIVE
+}
+
+enum AcademyVideoProvider {
+  MUX
+  YOUTUBE
+  VIMEO
+  CLOUDFLARE
+  SELF
+}
+
+model AcademyCategory {
+  id          String          @id @default(uuid())
+  slug        String          @unique
+  name        String
+  description String?
+  audience    AcademyAudience
+  iconKey     String?
+  order       Int             @default(0)
+  status      AcademyStatus   @default(DRAFT)
+  courses     AcademyCourse[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([audience, slug])
+}
+
+model AcademyCourse {
+  id               String           @id @default(uuid())
+  slug             String
+  title            String
+  subtitle         String?
+  summary          String
+  audience         AcademyAudience
+  level            AcademyLevel     @default(BEGINNER)
+  categoryId       String?
+  category         AcademyCategory? @relation(fields: [categoryId], references: [id])
+  heroImageUrl     String?
+  estimatedMinutes Int?
+  status           AcademyStatus    @default(DRAFT)
+  order            Int              @default(0)
+  publishedAt      DateTime?
+  metaTitle        String?
+  metaDescription  String?
+  ogImageUrl       String?
+  createdById      String?
+  updatedById      String?
+  tags             String[]
+  modules          AcademyModule[]
+  lessons          AcademyLesson[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([audience, slug])
+}
+
+model AcademyModule {
+  id       String          @id @default(uuid())
+  courseId String
+  course   AcademyCourse   @relation(fields: [courseId], references: [id])
+  title    String
+  order    Int             @default(0)
+  lessons  AcademyLesson[]
+}
+
+model AcademyLesson {
+  id              String                @id @default(uuid())
+  courseId        String
+  course          AcademyCourse         @relation(fields: [courseId], references: [id])
+  moduleId        String?
+  module          AcademyModule?        @relation(fields: [moduleId], references: [id])
+  slug            String
+  title           String
+  type            AcademyLessonType     @default(VIDEO)
+  summary         String?
+  bodyMdx         String?
+  durationSeconds Int?
+  videoProvider   AcademyVideoProvider?
+  videoAssetId    String?
+  order           Int                   @default(0)
+  status          AcademyStatus         @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([courseId, slug])
+}
