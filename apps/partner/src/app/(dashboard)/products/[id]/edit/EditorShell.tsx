@@ -47,6 +47,7 @@ import { RecipeLabelPanel, type LabelIngredient, type LabelVariant } from './Rec
 import { NutritionBreakdownPanel } from './NutritionBreakdownPanel'
 import { FlavorPresetsPanel, type FlavorPresetRow } from './cards/FlavorPresetsPanel'
 import { createFlavorPreset, updateFlavorPreset, removeFlavorPreset } from './flavor-actions'
+import { FinishedWeightPanel } from './cards/FinishedWeightPanel'
 import {
   Check,
   AlertTriangle as NavWarn,
@@ -755,11 +756,21 @@ export function EditorShell({
           id="weight"
           icon={Weight}
           title="Finished-product weight"
-          subtitle="Derived from slots + flavor presets; used for shipping calc"
+          subtitle="Derived from slots + variants; used for shipping calc"
           open={!!openCards.weight}
           onToggle={() => toggleCard('weight')}
         >
-          <Stub note="Auto-derived from ingredient slots once #131 ships." />
+          <FinishedWeightPanel
+            slots={ingredientSlots.map((s) => ({ name: s.name, weightG: s.weightG }))}
+            variants={variants.map((v) => ({
+              id: v.id,
+              flavor: v.flavor,
+              containerFormat: v.containerFormat,
+              containerSizeG: v.containerSizeG,
+              servingSizeG: v.servingSizeG,
+              servingsPerContainer: v.servingsPerContainer,
+            }))}
+          />
         </EditorCard>
 
         {/* ⑩ Notes thread */}
@@ -1032,13 +1043,6 @@ function Field({
   )
 }
 
-function Stub({ note }: { note: string }) {
-  return (
-    <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-      <span className="font-semibold uppercase tracking-wider text-zinc-500">Stub:</span> {note}
-    </div>
-  )
-}
 
 function sourceLabel(s: IngredientSource | null): string {
   if (!s) return 'Unspecified source'
