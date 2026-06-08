@@ -103,6 +103,10 @@ export default async function ProductEditPage({ params }: PageProps) {
         },
       },
       notes: { orderBy: { createdAt: 'asc' } },
+      flavorPresets: {
+        orderBy: { sortOrder: 'asc' },
+        select: { id: true, name: true, statementOfIdentity: true, swatchHex: true, priceDeltaCents: true, status: true, sortOrder: true },
+      },
     },
   })
   if (!template) notFound()
@@ -322,6 +326,8 @@ export default async function ProductEditPage({ params }: PageProps) {
         }))}
         labelIngredients={labelIngredients}
         labelVariants={labelVariants}
+        flavorPresets={template.flavorPresets}
+        flavorDefaultSoI={template.statementOfIdentity}
         allergenManualOverrides={
           Array.isArray(template.allergenManualOverrides)
             ? (template.allergenManualOverrides as Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>)

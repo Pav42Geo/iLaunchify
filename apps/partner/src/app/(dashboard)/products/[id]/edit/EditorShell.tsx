@@ -45,6 +45,8 @@ import { saveProductFields, submitProductForReview, archiveDraft } from '../../a
 import { type ReadinessCheck } from './SubmitReadiness'
 import { RecipeLabelPanel, type LabelIngredient, type LabelVariant } from './RecipeLabelPanel'
 import { NutritionBreakdownPanel } from './NutritionBreakdownPanel'
+import { FlavorPresetsPanel, type FlavorPresetRow } from './cards/FlavorPresetsPanel'
+import { createFlavorPreset, updateFlavorPreset, removeFlavorPreset } from './flavor-actions'
 import {
   Check,
   AlertTriangle as NavWarn,
@@ -132,6 +134,9 @@ interface EditorShellProps {
   /** Engine-fed label data (base + replacements + optionals) for RecipeLabelPanel. */
   labelIngredients: LabelIngredient[]
   labelVariants: LabelVariant[]
+  /** Flavor presets + the template-level default Statement of Identity. */
+  flavorPresets: FlavorPresetRow[]
+  flavorDefaultSoI: string | null
   allergenManualOverrides: Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>
   availablePackaging: AvailablePackagingOption[]
   attachedCerts: AttachedCertRow[]
@@ -171,6 +176,8 @@ export function EditorShell({
   ingredientSlots,
   labelIngredients,
   labelVariants,
+  flavorPresets,
+  flavorDefaultSoI,
   packagingLinks,
   variants,
   allergenManualOverrides,
@@ -669,6 +676,27 @@ export function EditorShell({
             productTemplateId={template.id}
             initialVariants={variants}
             isDraft={isDraft}
+          />
+        </EditorCard>
+
+        {/* ⑤b Flavor presets */}
+        <EditorCard
+          id="flavors"
+          icon={Sparkles}
+          title="Flavor presets"
+          subtitle={`${flavorPresets.length} flavor${flavorPresets.length === 1 ? '' : 's'} · per-flavor name, statement of identity, swatch, price delta`}
+          open={!!openCards.flavors}
+          onToggle={() => toggleCard('flavors')}
+          reapprovalRequired
+        >
+          <FlavorPresetsPanel
+            initial={flavorPresets}
+            isDraft={isDraft}
+            productName={template.name}
+            defaultStatementOfIdentity={flavorDefaultSoI}
+            onAdd={(name) => createFlavorPreset({ productTemplateId: template.id, name })}
+            onUpdate={(id, patch) => updateFlavorPreset({ flavorPresetId: id, patch })}
+            onRemove={(id) => removeFlavorPreset(id)}
           />
         </EditorCard>
 
