@@ -43,7 +43,8 @@ import type { ProductTemplateStatus, IngredientSource, RecipeEntryMode } from '@
 import type { NicheSuggestion } from '@ilaunchify/marketplace'
 import { saveProductFields, submitProductForReview, archiveDraft } from '../../actions'
 import { type ReadinessCheck } from './SubmitReadiness'
-import { LabelPreview } from './LabelPreview'
+import { RecipeLabelPanel, type LabelIngredient, type LabelVariant } from './RecipeLabelPanel'
+import { NutritionBreakdownPanel } from './NutritionBreakdownPanel'
 import {
   Check,
   AlertTriangle as NavWarn,
@@ -128,6 +129,9 @@ interface EditorShellProps {
   ingredientSlots: IngredientSlot[]
   packagingLinks: PackagingLinkRow[]
   variants: VariantRow[]
+  /** Engine-fed label data (base + replacements + optionals) for RecipeLabelPanel. */
+  labelIngredients: LabelIngredient[]
+  labelVariants: LabelVariant[]
   allergenManualOverrides: Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>
   availablePackaging: AvailablePackagingOption[]
   attachedCerts: AttachedCertRow[]
@@ -165,6 +169,8 @@ export function EditorShell({
   declareAvailable,
   labelingType,
   ingredientSlots,
+  labelIngredients,
+  labelVariants,
   packagingLinks,
   variants,
   allergenManualOverrides,
@@ -743,31 +749,19 @@ export function EditorShell({
 
         {/* Right rail — label preview · compliance scan · readiness */}
         <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-          {/* Live label preview (Nutrition / Supplement Facts) */}
-          <div className="rounded-xl border border-ink-200 bg-white p-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-              {labelingType === 'DIETARY_SUPPLEMENT' ? 'Supplement' : 'Nutrition'} Facts preview
-            </p>
-            <LabelPreview
-              labelingType={labelingType}
-              slots={ingredientSlots.map((s) => ({
-                name: s.name,
-                weightG: s.weightG,
-                allergens: s.allergens,
-              }))}
-              variants={variants.map((v) => ({
-                id: v.id,
-                flavor: v.flavor,
-                containerFormat: v.containerFormat,
-                servingsPerContainer: v.servingsPerContainer,
-                servingSizeG: v.servingSizeG,
-                servingSizeDesc: v.servingSizeDesc,
-              }))}
-              allergenOverrides={allergenManualOverrides}
-              crossContamination={template.allergenCrossContamination}
-              nutrientOverrideCount={nutrientOverrides.length}
-            />
-          </div>
+          {/* Live FDA label — computed by @ilaunchify/nutrition from the recipe's
+              real nutrient panels (Phase 2 wiring; replaces the structural
+              placeholder). Public-vs-Preview split handled inside the panel. */}
+          <RecipeLabelPanel
+            labelingType={labelingType}
+            ingredients={labelIngredients}
+            variants={labelVariants}
+            priceFloorCents={template.priceFloorCents}
+          />
+
+          {/* QA breakdown — unrounded per-serving, %DV-from-exact, per-100g,
+              batch totals. The engineering view behind the rounded label. */}
+          <NutritionBreakdownPanel ingredients={labelIngredients} variants={labelVariants} />
 
           {/* Compliance scan — wires to the compliance service at #131; until
               then the structural checks we CAN run are live, the rest pend. */}

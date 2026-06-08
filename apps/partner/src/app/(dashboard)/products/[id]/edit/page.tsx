@@ -63,11 +63,26 @@ export default async function ProductEditPage({ params }: PageProps) {
               labelDeclarationName: true,
               allergenFlags: true,
               source: true,
+              // Nutrient panel + density feed the live FDA-label engine.
+              nutritionPer100g: true,
+              densityGPerML: true,
             },
           },
           replacements: {
-            include: { ingredient: { select: { name: true } } },
+            include: {
+              ingredient: {
+                select: { id: true, name: true, nutritionPer100g: true, densityGPerML: true },
+              },
+            },
             orderBy: { displayOrder: 'asc' },
+          },
+        },
+        orderBy: { displayOrder: 'asc' },
+      },
+      optionalIngredients: {
+        include: {
+          ingredient: {
+            select: { id: true, name: true, nutritionPer100g: true, densityGPerML: true },
           },
         },
         orderBy: { displayOrder: 'asc' },
@@ -186,17 +201,63 @@ export default async function ProductEditPage({ params }: PageProps) {
     weightG: Number(s.weightG),
   }))
 
+  // Engine-fed label data (Phase 2 wiring) — base slots + replaceable alternates
+  // + optional pool, each carrying the ingredient's nutrient panel + density so
+  // @ilaunchify/nutrition computes the real FDA label. The Public-vs-Preview
+  // split (public = base only; preview = base + ticked swaps/optionals) is
+  // handled inside RecipeLabelPanel; defaults here are unselected.
+  const asPer100g = (v: unknown): Record<string, number> =>
+    v && typeof v === 'object' ? (v as Record<string, number>) : {}
+  const labelIngredients = [
+    ...template.ingredientSlots.map((s) => ({
+      id: s.id,
+      name: s.baseIngredient.name,
+      weightG: Number(s.weightG),
+      per100g: asPer100g(s.baseIngredient.nutritionPer100g),
+      densityGPerMl: s.baseIngredient.densityGPerML,
+      category: 'base' as const,
+    })),
+    ...template.ingredientSlots.flatMap((s) =>
+      s.replacements.map((r) => ({
+        id: r.id,
+        name: r.ingredient.name,
+        weightG: r.weightGOverride != null ? Number(r.weightGOverride) : Number(s.weightG),
+        per100g: asPer100g(r.ingredient.nutritionPer100g),
+        densityGPerMl: r.ingredient.densityGPerML,
+        category: 'base' as const,
+        parentId: s.id,
+        selected: false,
+      })),
+    ),
+    ...template.optionalIngredients.map((o) => ({
+      id: o.id,
+      name: o.ingredient.name,
+      weightG: Number(o.weightG),
+      per100g: asPer100g(o.ingredient.nutritionPer100g),
+      densityGPerMl: o.ingredient.densityGPerML,
+      category: 'optional' as const,
+      selected: false,
+    })),
+  ]
+  const labelVariants = template.variants.map((v) => ({
+    id: v.id,
+    label: `${v.containerFormat}${v.flavor ? ' · ' + v.flavor : ''}`,
+    servingsPerContainer: v.servingsPerContainer,
+    servingSizeG: Number(v.servingSizeG),
+    servingSizeDesc: v.servingSizeDesc,
+  }))
+
   return (
     <div className="space-y-6">
       <header>
         <Link
           href="/products"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to products
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">{template.name}</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           {template.subcategory.category.name} · {template.subcategory.name}
         </p>
       </header>
@@ -259,6 +320,8 @@ export default async function ProductEditPage({ params }: PageProps) {
           leadTimeDays: v.leadTimeDays,
           unitCostCentsOverride: v.unitCostCentsOverride,
         }))}
+        labelIngredients={labelIngredients}
+        labelVariants={labelVariants}
         allergenManualOverrides={
           Array.isArray(template.allergenManualOverrides)
             ? (template.allergenManualOverrides as Array<{ allergen: string; action: 'ADD' | 'REMOVE'; reason: string }>)
