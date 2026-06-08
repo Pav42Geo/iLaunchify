@@ -1,0 +1,240 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>iLaunchify — Recipe Builder · the 4 missing tabs (design)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--g:#FF2E63;--g2:#C71350;--g-50:#FCEEF3;--g-bd:#F4C0D1;--ink:#1f2a24;--mut:#6b746e;--bd:#e3e7e4;--bg:#f6f8f7;--red:#e24b4a;--amber:#b8860b;--blue:#2563a8}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);font-size:13px;background:#fff}
+.wrap{max-width:1140px;margin:0 auto;padding:18px}
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--bd);overflow:auto}
+.tab{padding:12px 2px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab.on{color:var(--g2);border-color:var(--g)}
+.panel{display:none;padding-top:18px} .panel.on{display:block}
+.card{border:1px solid var(--bd);border-radius:12px;background:#fff;padding:16px;margin-bottom:16px}
+.h{display:flex;align-items:center;gap:8px;color:var(--g2);font-weight:700;font-size:16px;margin-bottom:4px}
+.sub{color:var(--mut);font-size:12px;margin:2px 0 12px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;padding:8px 6px;border-bottom:1px solid var(--bd)}
+td{padding:8px 6px;border-bottom:1px solid #f0f2f0;vertical-align:middle;font-size:12.5px}
+input,select,textarea{border:1px solid var(--bd);border-radius:8px;padding:7px 9px;font:inherit;font-size:12.5px;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-50)}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;border:1px solid var(--bd)}
+.pill.on{background:var(--amber);color:#fff;border-color:var(--amber)}
+.pill.g{background:var(--g-50);color:var(--g2);border-color:var(--g-bd)}
+.pill.r{background:#fde9e9;color:var(--red);border-color:#f3b8b8}
+.pill.b{background:#e8f1fb;color:var(--blue);border-color:#bcd6f0}
+.allerg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.acell{border:1px solid var(--bd);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px;cursor:pointer}
+.acell.det{border-color:var(--amber);background:#fdf6e4} .acell.det .s{color:var(--amber)}
+.acell .s{font-size:11px;color:var(--mut);font-weight:500}
+.stmt{background:var(--bg);border:1px dashed var(--g-bd);border-radius:10px;padding:12px;font-size:13px;line-height:1.6}
+.btn{background:var(--g);color:#fff;border:0;border-radius:8px;padding:7px 13px;font-weight:600;font-size:12.5px;cursor:pointer}
+.btn.o{background:#fff;color:var(--g2);border:1px solid var(--g-bd)} .btn.sm{padding:5px 10px;font-size:12px}
+.toggle{width:40px;height:22px;border-radius:999px;background:var(--bd);position:relative;cursor:pointer;display:inline-block}
+.toggle.on{background:var(--g)} .toggle .k{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:.15s}.toggle.on .k{left:21px}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:999px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
+.seg button.on{background:var(--g);color:#fff}
+.two{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.facts{border:2px solid #000;border-radius:4px;padding:9px;font-family:Helvetica,Arial,sans-serif;color:#000;font-size:11px}
+.facts h2{font-size:22px;margin:0;font-weight:800}.b8{border-bottom:8px solid #000}.b4{border-bottom:4px solid #000}.b1{border-bottom:1px solid #000}
+.fr{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:1px 0}.fr.in{padding-left:12px}.fr b{font-weight:700}
+.muted{color:var(--mut)} .f{display:block;font-size:10.5px;color:var(--mut);margin-bottom:3px}
+.flavcards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.flav{border:1px solid var(--bd);border-radius:12px;padding:14px;position:relative}
+.flav.base{border-color:var(--g-bd);background:var(--g-50)}
+.sw{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:6px;border:1px solid rgba(0,0,0,.1)}
+.note{font-size:11.5px;color:var(--blue);background:#e8f1fb;border:1px solid #bcd6f0;border-radius:10px;padding:9px 12px;margin-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+</style></head><body>
+<div class="wrap">
+  <div class="tabs" id="tabs">
+    <div class="tab" data-t="build">🍽 BUILD RECIPE</div>
+    <div class="tab on" data-t="ingredients">≣ INGREDIENTS</div>
+    <div class="tab" data-t="allergens">⛨ ALLERGENS</div>
+    <div class="tab" data-t="cost">$ COST</div>
+    <div class="tab" data-t="label">🏷 LABEL</div>
+    <div class="tab" data-t="myrecipes">🏷 MY RECIPES</div>
+    <div class="tab" data-t="templates">▦ FLAVORS &amp; TEMPLATES</div>
+  </div>
+
+  <!-- stubs for the already-built tabs -->
+  <div class="panel" data-p="build"><div class="card"><div class="h">🍽 Build Recipe</div><p class="muted">Already designed &amp; working in <b>recipe-builder-demo.html</b> (ingredient search, replaceables, packaging→label, accurate engine).</p></div></div>
+  <div class="panel" data-p="cost"><div class="card"><div class="h">$ Cost</div><p class="muted">Cost workspace (price tiers + ingredient cost + margin) — lives in the Build Recipe right rail + the pricing step.</p></div></div>
+  <div class="panel" data-p="myrecipes"><div class="card"><div class="h">🏷 My Recipes</div><p class="muted">Saved recipes table (Recipe · Ingredients · Calories · Created · Actions) with rename / duplicate / delete — the only one of these that the legacy actually built.</p></div></div>
+
+  <!-- ============ 1. INGREDIENTS ============ -->
+  <div class="panel on" data-p="ingredients">
+    <div class="card">
+      <div class="h">≣ Ingredient statement <span class="pill g" style="margin-left:6px">auto-ordered by weight</span></div>
+      <div class="sub">FDA requires ingredients listed in descending order of weight, using the <b>label-declaration name</b> (not your internal/supplier name). This statement is generated live and flows to the label + the Design-Studio frame.</div>
+      <div class="stmt"><b>Ingredients:</b> Almond Milk (Filtered Water, Almonds), Whey Protein Isolate (<u>Milk</u>), Cocoa (processed with alkali), Cane Sugar, Natural Flavor, Sea Salt, Monk Fruit Extract.</div>
+    </div>
+    <div class="card">
+      <div class="h" style="font-size:15px">Ingredients (7)</div>
+      <div class="sub">Map each internal ingredient to how it prints on the label. Compound ingredients expand their sub-parts in parentheses.</div>
+      <table>
+        <thead><tr><th>#</th><th>Internal / supplier name</th><th>Label declaration name</th><th>% wt</th><th>Allergen</th><th>Source · risk</th><th>BE</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Symrise Almond Base 22-A</td><td><input value="Almond Milk (Filtered Water, Almonds)" style="width:240px"></td><td>41%</td><td><span class="pill r">Tree nuts</span></td><td><span class="pill b">USDA</span></td><td>—</td><td>✎ 🗑</td></tr>
+          <tr><td>2</td><td>Glanbia WPI 9410</td><td><input value="Whey Protein Isolate (Milk)" style="width:240px"></td><td>28%</td><td><span class="pill r">Milk</span></td><td><span class="pill g">Verified</span></td><td>—</td><td>✎ 🗑</td></tr>
+          <tr><td>3</td><td>Cargill Cocoa DA</td><td><input value="Cocoa (processed with alkali)" style="width:240px"></td><td>12%</td><td>—</td><td><span class="pill b">Library</span></td><td>—</td><td>✎ 🗑</td></tr>
+          <tr><td>4</td><td>Domino Cane Sugar</td><td><input value="Cane Sugar" style="width:240px"></td><td>10%</td><td>—</td><td><span class="pill b">USDA</span></td><td><span class="pill on">BE</span></td><td>✎ 🗑</td></tr>
+          <tr><td>5</td><td>Symrise Flavor 67-B</td><td><input value="Natural Flavor" style="width:240px"></td><td>5%</td><td>—</td><td><span class="pill" style="background:#fff7e6;border-color:#f0d27a;color:#8a6d12">Self-attested</span></td><td>—</td><td>✎ 🗑</td></tr>
+        </tbody>
+      </table>
+      <div class="row" style="margin-top:12px;justify-content:space-between">
+        <div class="row"><span class="toggle on"><span class="k"></span></span> <span>Bioengineered (BE) disclosure required — auto-flagged from BE ingredients</span></div>
+        <button class="btn o sm">+ Add compound sub-ingredient</button>
+      </div>
+      <div class="note">Internal vs label name is the [[ingredient-sourcing]] two-name model: <b>internalName</b> drives recipe/cost/COA matching; <b>labelDeclarationName</b> is what prints. Editing here never changes the recipe math.</div>
+    </div>
+  </div>
+
+  <!-- ============ 2. ALLERGENS ============ -->
+  <div class="panel" data-p="allergens">
+    <div class="card">
+      <div class="h">⛨ Allergen detection</div>
+      <div class="sub">Auto-detected from your ingredients (highlighted). Click any to toggle a manual override. The "Contains" line is generated for the label.</div>
+      <div class="allerg">
+        <div class="acell det">Milk <span class="s">detected · WPI</span></div>
+        <div class="acell det">Tree nuts <span class="s">detected · almond</span></div>
+        <div class="acell">Eggs <span class="s">add</span></div>
+        <div class="acell">Fish <span class="s">add</span></div>
+        <div class="acell">Shellfish <span class="s">add</span></div>
+        <div class="acell">Peanuts <span class="s">add</span></div>
+        <div class="acell">Wheat <span class="s">add</span></div>
+        <div class="acell">Soybeans <span class="s">add</span></div>
+        <div class="acell">Sesame <span class="s">add</span></div>
+      </div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <div class="h" style="font-size:15px">Advisory / cross-contamination</div>
+        <div class="sub">Voluntary "may contain" statement for shared lines / facilities.</div>
+        <textarea rows="2" style="width:100%">May contain: Peanuts. Made in a facility that also processes peanuts and soy.</textarea>
+        <div style="margin-top:12px" class="h" style="font-size:15px">Derived dietary flags</div>
+        <div class="row" style="margin-top:6px">
+          <span class="pill g">Vegetarian ✓</span><span class="pill g">Gluten-free ✓</span>
+          <span class="pill r">Not vegan (Milk)</span><span class="pill">Keto —</span>
+        </div>
+        <div class="note">Auto-derived from ingredients; these feed the marketplace lifestyle-tag filter so a buyer can filter "gluten-free / dairy-free / vegan".</div>
+      </div>
+      <div class="card">
+        <div class="h" style="font-size:15px">Label "Contains" line</div>
+        <div class="stmt" style="margin-top:6px"><b>Contains:</b> Milk, Tree Nuts (Almond).</div>
+        <p class="muted" style="font-size:11.5px;margin-top:10px">Big-9 (Sesame added Jan 2023). Detection keywords map ingredient names → allergen groups; the compliance scan blocks publish if a detected allergen isn't declared.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. LABEL ============ -->
+  <div class="panel" data-p="label">
+    <div class="card">
+      <div class="h">🏷 Label assembly</div>
+      <div class="sub">The complete print-ready label = Facts panel + statement of identity + net quantity + ingredients + contains + manufacturer. This is exactly what the Packaging label-editor places into frames and the Design Studio locks.</div>
+      <div class="row" style="gap:18px;margin-top:6px;align-items:flex-end">
+        <div><span class="f">Category · labeling type <span class="muted">(set in Basics — shown here for the demo)</span></span>
+          <select id="labCat">
+            <option value="FOOD">Food / Beverage</option>
+            <option value="DIETARY_SUPPLEMENT">Dietary supplement</option>
+            <option value="OTC">OTC drug</option>
+            <option value="COSMETIC">Cosmetic</option>
+            <option value="PET_PRODUCT">Pet food</option>
+          </select>
+        </div>
+        <div><span class="f">Packaging <span class="muted">(from Packaging step)</span></span>
+          <select id="labPack"><option value="single">Single unit</option><option value="multi">Multi-unit / variety pack</option></select>
+        </div>
+        <div><span class="f">Panel — locked to category</span>
+          <div><span id="regimeBadge" class="pill g" style="font-size:13px;padding:6px 12px">🔒 Nutrition Facts</span></div>
+        </div>
+        <div><span class="f">Format <span id="fmtFor" class="muted"></span></span><div class="seg" id="fmtSeg"></div></div>
+      </div>
+      <div class="note" id="labNote">The panel type is <b>not a free choice</b> — it's derived from the product category so a Supplement can never ship a Nutrition Facts panel. Only formats valid for that panel appear. Admin can override with a logged reason; the compliance scan is the final backstop before the Design Studio ever sees it.</div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <div class="h" style="font-size:15px">Elements</div>
+        <table>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Statement of Identity</b></td><td class="muted">"High-Protein Almond Cocoa Drink"</td></tr>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Net Quantity</b></td><td class="muted">Net Wt 3.5 oz (100 g)</td></tr>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Nutrition Facts</b></td><td class="muted">from recipe engine</td></tr>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Ingredient statement</b></td><td class="muted">auto-ordered</td></tr>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Contains (allergens)</b></td><td class="muted">Milk, Tree Nuts</td></tr>
+          <tr><td><span class="toggle on"><span class="k"></span></span></td><td><b>Manufacturer + address</b></td><td class="muted">from facility</td></tr>
+          <tr><td><span class="toggle"><span class="k"></span></span></td><td>Voluntary nutrients</td><td class="muted">+ Vitamin A, C…</td></tr>
+        </table>
+        <div class="note">Each enabled element becomes a required <b>frame</b> in the Packaging label editor, auto-bound to this data. The compliance scan checks all required frames are present + in-bounds before publish.</div>
+      </div>
+      <div class="card">
+        <div class="h" style="font-size:15px">Assembled label preview</div>
+        <div style="border:1px solid var(--bd);border-radius:10px;padding:12px;margin-top:6px;font-size:11px;line-height:1.5">
+          <div style="font-weight:800;font-size:13px">High-Protein Almond Cocoa Drink</div>
+          <div class="facts" style="margin-top:8px">
+            <h2 class="b8" id="previewTitle">Nutrition Facts</h2>
+            <div class="b1">3 servings per container</div>
+            <div class="b4" style="display:flex;justify-content:space-between;font-weight:700"><span>Serving size</span><span>1 oz (28 g)</span></div>
+            <div class="fr" style="border:0;font-weight:800;font-size:15px"><span>Calories</span><span style="font-size:22px">96</span></div>
+            <div class="fr"><b>Total Fat 3.1g</b><b>4%</b></div>
+            <div class="fr"><b>Protein 9.2g</b><b></b></div>
+            <div class="fr"><b>Total Carbohydrate 7.4g</b><b>3%</b></div>
+          </div>
+          <div style="margin-top:8px"><b>Ingredients:</b> Almond Milk (Filtered Water, Almonds), Whey Protein Isolate (Milk), Cocoa…</div>
+          <div style="margin-top:4px"><b>Contains:</b> Milk, Tree Nuts (Almond).</div>
+          <div style="margin-top:4px">Net Wt 3.5 oz (100 g)</div>
+          <div style="margin-top:4px" class="muted">Manufactured for: Acme Foods Co., Austin TX 78701.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 4. FLAVORS & TEMPLATES ============ -->
+  <div class="panel" data-p="templates">
+    <div class="card">
+      <div class="h">▦ Flavors &amp; templates</div>
+      <div class="sub">Recommendation: there's no separate "Recipe Templates" concept — a flavor IS a preset overlay on the base recipe (swap one ingredient). Duplicate a recipe here to spin a new flavor; it inherits the base and you change only the flavor ingredient.</div>
+      <div class="flavcards" style="margin-top:8px">
+        <div class="flav base"><div><span class="sw" style="background:#efe6d8"></span><b>Vanilla (base)</b></div><div class="muted" style="margin:6px 0">7 ingredients · 96 cal · editing</div><span class="pill g">Complete</span></div>
+        <div class="flav"><div><span class="sw" style="background:#5c3317"></span><b>Chocolate</b></div><div class="muted" style="margin:6px 0">preset · cocoa swap · 102 cal</div><span class="pill on">In progress</span></div>
+        <div class="flav"><div><span class="sw" style="background:#d4537e"></span><b>Strawberry</b></div><div class="muted" style="margin:6px 0">preset · +strawberry · 94 cal</div><span class="pill g">Complete</span></div>
+        <div class="flav" style="border-style:dashed;display:grid;place-items:center;color:var(--mut);cursor:pointer"><div style="text-align:center">＋<br>Duplicate as new flavor</div></div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn o sm">⤓ Save as reusable template</button><button class="btn o sm">↥ Start from a saved template</button></div>
+      <div class="note">Saving a template stores the recipe shape (slots + packaging + costs) so the next product starts pre-filled. Flavors stay as presets on one product (one marketplace listing with a flavor selector) — never separate products.</div>
+    </div>
+  </div>
+</div>
+<script>
+const tabs=document.getElementById('tabs');
+tabs.addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
+ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
+ document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.dataset.p===t.dataset.t));
+});
+document.querySelectorAll('.toggle').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+document.querySelectorAll('.acell').forEach(a=>a.addEventListener('click',()=>a.classList.toggle('det')));
+document.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;s.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}));
+
+// Label panel: category → locked regime + valid formats (data-driven by seed-label-format-rules)
+const PANEL={
+  FOOD:{regime:'Nutrition Facts',formats:['Standard','Tabular','Linear'],multi:['Dual-column (per serving + per container)','Tri-column (variety / multi-serve)']},
+  DIETARY_SUPPLEMENT:{regime:'Supplement Facts',formats:['Standard','Linear']},
+  OTC:{regime:'Drug Facts',formats:['Standard']},
+  COSMETIC:{regime:'Ingredient list (INCI)',formats:['INCI list']},
+  PET_PRODUCT:{regime:'Guaranteed Analysis (AAFCO)',formats:['Standard']},
+};
+function applyLabelCategory(){
+  const cat=document.getElementById('labCat').value, pack=document.getElementById('labPack').value, p=PANEL[cat];
+  let formats=p.formats.slice();
+  if(pack==='multi'&&p.multi) formats=formats.concat(p.multi); // dual/tri-column only for multi-unit packs
+  document.getElementById('regimeBadge').textContent='🔒 '+p.regime;
+  document.getElementById('previewTitle').textContent=p.regime;
+  document.getElementById('fmtFor').textContent='· '+p.regime+(pack==='multi'&&p.multi?' · multi-pack adds column formats':'');
+  document.getElementById('fmtSeg').innerHTML=formats.map((f,i)=>`<button class="${i===0?'on':''}">${f}</button>`).join('');
+  document.querySelectorAll('#fmtSeg button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#fmtSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}));
+}
+document.getElementById('labCat').addEventListener('change',applyLabelCategory);
+document.getElementById('labPack').addEventListener('change',applyLabelCategory);
+applyLabelCategory();
+</script>
+</body></html>

@@ -47,8 +47,8 @@ export function AccessoryForm({
     })
   }
 
-  const field = 'w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200'
-  const label = 'block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1'
+  const field = 'w-full rounded-md border border-ink-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200'
+  const label = 'block text-xs font-semibold uppercase tracking-wide text-ink-500 mb-1'
 
   return (
     <form onSubmit={onSubmit} className="max-w-2xl space-y-5">
@@ -109,7 +109,7 @@ export function AccessoryForm({
         <div className="sm:col-span-2">
           <label className={label}>Image (PNG / JPEG / WebP, max 10 MB)</label>
           <div className="flex items-center gap-3">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-ink-300 px-3 py-2 text-sm hover:bg-ink-50">
               <Upload className="h-4 w-4" /> Choose image
               <input
                 name="imageFile"
@@ -125,14 +125,14 @@ export function AccessoryForm({
             </label>
             {preview && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="" className="h-12 w-12 rounded-md border border-zinc-200 object-cover" />
+              <img src={preview} alt="" className="h-12 w-12 rounded-md border border-ink-200 object-cover" />
             )}
           </div>
         </div>
 
         <div className="sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm text-zinc-700">
-            <input type="checkbox" name="isCustomizable" className="h-4 w-4 rounded border-zinc-300" />
+          <label className="flex items-center gap-2 text-sm text-ink-700">
+            <input type="checkbox" name="isCustomizable" className="h-4 w-4 rounded border-ink-300" />
             Customizable (engraving text, color, etc.)
           </label>
         </div>
@@ -144,7 +144,7 @@ export function AccessoryForm({
               {packagingSystems.map((p) => (
                 <label
                   key={p.id}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-2.5 py-1 text-sm"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1 text-sm"
                 >
                   <input type="checkbox" name="applicableOfferingIds" value={p.id} className="h-3.5 w-3.5" />
                   {p.name}
@@ -156,7 +156,7 @@ export function AccessoryForm({
       </div>
 
       <div className="flex items-center gap-3 pt-1">
-        <Button type="submit" disabled={pending} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={pending} className="bg-ink-900 hover:bg-ink-700">
           {pending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
           Submit for review
         </Button>

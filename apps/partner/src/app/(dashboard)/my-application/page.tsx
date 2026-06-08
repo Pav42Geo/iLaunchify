@@ -12,6 +12,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import type {
   PartnerFile,
@@ -55,7 +56,7 @@ function statusBadgeClass(status: VerificationSectionStatus): string {
       return 'bg-red-50 text-red-700 ring-1 ring-red-200'
     case 'PENDING':
     default:
-      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+      return 'bg-ink-100 text-ink-700 ring-1 ring-ink-200'
   }
 }
 
@@ -73,6 +74,12 @@ export default async function MyApplicationPage() {
       files: { orderBy: { uploadedAt: 'desc' } },
     },
   })
+
+  // Once approved, the application is closed for the partner — the record is
+  // retained in the admin console only. Send active partners to their dashboard.
+  if (partner && (partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED')) {
+    redirect('/dashboard')
+  }
 
   if (!partner) {
     return (
@@ -95,11 +102,16 @@ export default async function MyApplicationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Application</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Manufacturing · My application
+        </p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          My application
+        </h1>
+        <p className="mt-1 text-[13px] text-ink-600">
           {partner.companyName} · Partner status:{' '}
-          <span className="font-medium">{partner.status}</span>
+          <span className="font-medium text-ink-900">{partner.status}</span>
         </p>
       </div>
 
@@ -167,12 +179,12 @@ export default async function MyApplicationPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {partner.services.length === 0 ? (
-            <p className="text-zinc-500">No services added yet.</p>
+            <p className="text-ink-500">No services added yet.</p>
           ) : (
             partner.services.map((s) => (
-              <div key={s.id} className="rounded border border-zinc-200 p-3">
+              <div key={s.id} className="rounded border border-ink-200 p-3">
                 <div className="font-medium">{s.type}</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-ink-500">
                   {s.status} · Disclosure: {s.disclosureLevel}
                 </div>
               </div>
@@ -182,7 +194,7 @@ export default async function MyApplicationPage() {
       </Card>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
           Verification sections
         </h2>
         <div className="space-y-3">
@@ -237,7 +249,7 @@ export default async function MyApplicationPage() {
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="grid grid-cols-[140px,1fr] items-baseline gap-2">
-      <span className="text-xs uppercase text-zinc-500">{label}</span>
+      <span className="text-xs uppercase text-ink-500">{label}</span>
       <span>{value || '—'}</span>
     </div>
   )

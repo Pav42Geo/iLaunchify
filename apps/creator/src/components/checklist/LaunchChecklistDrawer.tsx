@@ -105,20 +105,20 @@ export function LaunchChecklistDrawer() {
       }}
     >
       {/* Semi-transparent backdrop — clicks close the drawer */}
-      <div className="flex-1 bg-zinc-900/20" />
+      <div className="flex-1 bg-ink-900/20" />
 
       {/* Slide-out panel */}
-      <aside className="flex w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-2xl">
+      <aside className="flex w-full max-w-md flex-col border-l border-ink-200 bg-white shadow-2xl">
         {/* Header */}
-        <header className="flex items-start justify-between border-b border-zinc-200 p-6">
+        <header className="flex items-start justify-between border-b border-ink-200 p-6">
           <div>
-            <h2 id="launch-checklist-title" className="text-lg font-bold text-zinc-900">
+            <h2 id="launch-checklist-title" className="text-lg font-bold text-ink-900">
               Steps to complete
             </h2>
-            <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <p className="mt-2 text-xs font-medium uppercase tracking-wider text-ink-500">
               Your progress
             </p>
-            <p className="mt-1 text-sm text-zinc-700">
+            <p className="mt-1 text-sm text-ink-700">
               {doneCount} of {ITEMS.length} completed
             </p>
             <div className="mt-2 flex gap-1.5">
@@ -126,7 +126,7 @@ export function LaunchChecklistDrawer() {
                 <span
                   key={item.id}
                   className={`h-1.5 flex-1 rounded-full ${
-                    completion[item.id] ? 'bg-emerald-500' : 'bg-zinc-200'
+                    completion[item.id] ? 'bg-emerald-500' : 'bg-ink-200'
                   }`}
                   aria-hidden
                 />
@@ -137,7 +137,7 @@ export function LaunchChecklistDrawer() {
             type="button"
             onClick={close}
             aria-label="Close checklist"
-            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+            className="rounded-md p-1 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -158,7 +158,7 @@ export function LaunchChecklistDrawer() {
         </div>
 
         {/* Footer: small reassurance */}
-        <footer className="border-t border-zinc-200 bg-zinc-50 px-6 py-3 text-xs text-zinc-500">
+        <footer className="border-t border-ink-200 bg-ink-50 px-6 py-3 text-xs text-ink-500">
           {pendingChecklistCount(snapshot) === 0 ? (
             <>🎉 All set — you can close this drawer for good.</>
           ) : (
@@ -188,14 +188,14 @@ function ChecklistRow({
   const rowClassName = `flex items-start gap-3 rounded-lg border p-3 transition-colors ${
     isDone
       ? 'border-emerald-200 bg-emerald-50/50'
-      : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+      : 'border-ink-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
   }`
 
   const body = (
     <>
       <span
         className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-          isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+          isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-600'
         }`}
       >
         {isDone ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
@@ -203,20 +203,20 @@ function ChecklistRow({
       <div className="min-w-0 flex-1">
         <div
           className={`font-semibold ${
-            isDone ? 'text-zinc-500 line-through' : 'text-zinc-900'
+            isDone ? 'text-ink-500 line-through' : 'text-ink-900'
           }`}
         >
           {item.title}
         </div>
         <p
-          className={`mt-0.5 text-xs ${isDone ? 'text-zinc-400 line-through' : 'text-zinc-500'}`}
+          className={`mt-0.5 text-xs ${isDone ? 'text-ink-400 line-through' : 'text-ink-500'}`}
         >
           {item.description}
         </p>
       </div>
       {!isDone && (
         <span
-          className="ml-2 mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500"
+          className="ml-2 mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-ink-200 text-ink-500"
           aria-hidden
         >
           <ArrowRight className="h-3.5 w-3.5" />

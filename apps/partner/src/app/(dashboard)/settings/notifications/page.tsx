@@ -29,9 +29,14 @@ export default async function NotificationPreferencesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Notification preferences</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Manufacturing · Settings · Notifications
+        </p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Notification preferences
+        </h1>
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
           Choose which notifications you receive and on which channel. Quiet hours apply to
           email only — in-app notifications always appear in your bell.
         </p>

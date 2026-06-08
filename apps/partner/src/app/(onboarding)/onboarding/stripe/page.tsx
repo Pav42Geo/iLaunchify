@@ -30,10 +30,10 @@ export default async function StripeStep() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-ink-600">
               Click below to complete Stripe&apos;s onboarding form. Takes ~10 minutes. You&apos;ll provide:
             </p>
-            <ul className="ml-5 list-disc text-sm text-zinc-600 space-y-1">
+            <ul className="ml-5 list-disc text-sm text-ink-600 space-y-1">
               <li>Business legal entity + EIN</li>
               <li>Beneficial owner identity verification</li>
               <li>Bank account for payouts</li>

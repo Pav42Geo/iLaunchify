@@ -40,7 +40,7 @@ CockroachDB Serverless via Prisma. Schema at `packages/db/prisma/schema.prisma`.
 - Cockroach rejects `@db.Text` — use bare `String` (it's already unbounded) or `@db.String(N)` for caps. `prisma generate` fails with P1012 otherwise.
 - `id` is `String @id @default(uuid())` not `cuid()` and not autoincrement (no sequential hotspots).
 - Every mutating action writes an `AuditLog` row via `packages/audit`. Every product/partner state change goes through an FSM helper, never inline `prisma.update`.
-- After running `prisma migrate dev` you must restart `next dev` — Next caches the Prisma client in memory across hot reloads.
+- After running `prisma migrate dev`, the Prisma client can go stale in THREE layers (2026-06-05, cost a debugging session): process memory, `node_modules`, and the `.next` webpack cache (because `@ilaunchify/db` is in `transpilePackages`, the old client gets BUNDLED into `.next`). "Property X does not exist" at typecheck or `prisma.<model> is undefined` at runtime after a successful migrate = stale client. Full incantation: `pnpm db:generate` → `rm -rf apps/*/.next` → restart `next dev`.
 
 ## Design system (LOCKED 2026-05-27)
 
@@ -91,7 +91,7 @@ Use the `marketplace-taxonomy-guardian` subagent before adding any new taxonomy 
 ## Gotchas
 
 1. **Legacy FOD frontend squats port 3000** — Pavel's Mac runs an old `ilaunchify-frontend` Docker container on 3000. ANY localhost:3000 weirdness → check `docker ps | grep frontend` FIRST.
-2. **Restart Next after Prisma migrate** — see Database section.
+2. **Stale Prisma client after migrate (3 layers: memory, node_modules, `.next` cache)** — `pnpm db:generate` → `rm -rf apps/*/.next` → restart. See Database section.
 3. **Cross-app links** — see Architecture section.
 4. **No `@db.Text`** on CockroachDB.
 5. **No function-shaped props across RSC boundary** — Next 15 / React 19 rejects passing Lucide icon refs from server → client. Import icons inside the client component instead.
@@ -118,6 +118,7 @@ Larger specs in `docs/`:
 - `MULTI_PARTNER_APPROVAL_WORKFLOW.md` — H1 spec
 - `MANUFACTURER_PRODUCT_BUILDER.md` — partner editor card spec
 - `DESIGN_SYSTEM.md` — full tokens + components
+- `SECURITY_ARCHITECTURE.md` — LOCKED 2026-06-05 · threat model + Tier 0/1/2 plan. Tenant isolation is threat #1; new server actions use centralized ownership guards (`packages/auth`), never ad-hoc checks.
 
 ## Available subagents
 

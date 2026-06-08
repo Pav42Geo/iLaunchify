@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify — New Product flow (turnkey partner) — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pink:#FF2E63; --pink-700:#C71350; --pink-50:#FBEAF0; --pink-100:#F4C0D1;
+  --ink-900:#18181A; --ink-800:#232327; --ink-700:#33343C; --ink-600:#474954;
+  --ink-500:#6B6D78; --ink-400:#9A9CA6; --ink-300:#CBCCD3; --ink-200:#E0E1E5; --ink-100:#EEEFF1; --ink-50:#F8F8F9;
+  --cream:#FCEEF3; --neon:#B5FF3D; --green:#1D9E75; --green-50:#E1F5EE; --amber:#BA7517; --amber-50:#FAEEDA; --sky:#185FA5; --sky-50:#E6F1FB; --rose:#A32D2D; --rose-50:#FCEBEB;
+  --r:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink-900);background:#fff;font-size:13px;line-height:1.5}
+.display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
+h1,h2,h3{margin:0}
+a{color:inherit}
+.eyebrow{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
+.muted{color:var(--ink-500)} .small{font-size:11.5px} .tiny{font-size:10.5px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;border:1px solid var(--ink-200);background:#fff}
+.pill.green{background:var(--green-50);color:#085041;border-color:#9FE1CB}
+.pill.amber{background:var(--amber-50);color:#633806;border-color:#FAC775}
+.pill.sky{background:var(--sky-50);color:#0C447C;border-color:#B5D4F4}
+.pill.pink{background:var(--pink-50);color:var(--pink-700);border-color:var(--pink-100)}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--ink-200);background:#fff;color:var(--ink-800);transition:.15s}
+.btn:hover{border-color:var(--ink-400)}
+.btn.primary{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.btn.primary:hover{background:var(--ink-700)}
+.btn.pink{background:var(--pink);color:#fff;border-color:var(--pink)}
+.btn.sm{padding:6px 12px;font-size:12px}
+.card{border:1px solid var(--ink-200);border-radius:18px;background:#fff;padding:18px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--ink-600);margin-bottom:5px}
+.input,.sel,textarea{width:100%;border:1px solid var(--ink-200);border-radius:12px;padding:9px 12px;font:inherit;font-size:13px;color:var(--ink-900);background:#fff}
+.input:focus,.sel:focus,textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.grid{display:grid;gap:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--ink-200);padding:5px 11px;font-size:12px;cursor:pointer;background:#fff;color:var(--ink-700)}
+.chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.chip.pinkon{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--ink-100)}
+td{padding:9px 10px;border-bottom:1px solid var(--ink-50);vertical-align:middle}
+.note{font-size:11px;color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);border-radius:10px;padding:7px 10px}
+.note.grey{color:var(--ink-600);background:var(--ink-50);border-color:var(--ink-200)}
+
+/* shell */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 22px;background:#fff;border-bottom:1px solid var(--ink-200)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700}
+.logo .dot{width:26px;height:26px;border-radius:8px;background:var(--pink);display:grid;place-items:center;color:#fff;font-weight:800}
+.shell{display:grid;grid-template-columns:248px 1fr;min-height:calc(100vh - 56px)}
+.rail{border-right:1px solid var(--ink-200);padding:18px 14px;background:#fff}
+.rail h3{font-size:15px}
+.step{display:flex;gap:11px;align-items:flex-start;padding:11px;border-radius:14px;cursor:pointer;border:1px solid transparent}
+.step.active{border-color:var(--pink-100);background:var(--pink-50)}
+.step .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink-500);flex:none}
+.step.active .n{background:var(--pink);border-color:var(--pink);color:#fff}
+.step.done .n{background:var(--green);border-color:var(--green);color:#fff}
+.step .t{font-weight:600;font-size:13px}
+.step .d{font-size:11px;color:var(--ink-500)}
+.main{padding:24px 28px;max-width:1180px}
+.hero{border:1px solid var(--pink-100);background:var(--cream);border-radius:24px;padding:20px 22px;margin-bottom:18px}
+.stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.sbead{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-500)}
+.sbead .b{width:20px;height:20px;border-radius:50%;background:var(--ink-100);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--ink-500)}
+.sbead.active{color:var(--ink-900);font-weight:600} .sbead.active .b{background:var(--pink);color:#fff}
+.sbead.done .b{background:var(--green);color:#fff}
+.sline{width:26px;height:1.5px;background:var(--ink-200)}
+.screen{display:none} .screen.show{display:block}
+.section-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:600}
+.section-title .ic{width:28px;height:28px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center}
+.two{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.imgslot{border:1.5px dashed var(--ink-300);border-radius:12px;aspect-ratio:1;display:grid;place-items:center;color:var(--ink-400);font-size:11px;text-align:center}
+.imgslot.video{border-color:var(--pink-100);color:var(--pink-700)}
+.toggle{width:42px;height:24px;border-radius:999px;background:var(--ink-200);position:relative;cursor:pointer;flex:none}
+.toggle.on{background:var(--pink)} .toggle .k{width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on .k{left:21px}
+.seg{display:inline-flex;border:1px solid var(--ink-200);border-radius:999px;padding:3px;background:#fff;gap:3px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-600);cursor:pointer}
+.seg button.on{background:var(--ink-900);color:#fff}
+.navbtns{display:flex;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid var(--ink-100)}
+.iconbtn{width:30px;height:30px;border-radius:9px;border:1px solid var(--ink-200);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink-600)}
+.iconbtn:hover{border-color:var(--ink-400)}
+.facts{border:2px solid #000;border-radius:6px;padding:10px;font-family:Helvetica,Arial,sans-serif;color:#000;font-size:11px;background:#fff}
+.facts .big{font-size:24px;font-weight:800;border-bottom:6px solid #000;margin:0 0 2px}
+.facts .r{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:2px 0}
+/* recipe drawer */
+.studio{display:grid;grid-template-columns:1fr 230px;gap:0;border:1px solid var(--ink-200);border-radius:18px;overflow:hidden;min-height:480px}
+.studio .canvas{padding:18px;background:var(--ink-50)}
+.studio .drawer{border-left:1px solid var(--ink-200);background:#fff;padding:12px}
+.drawer .ditem{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:11px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--ink-600)}
+.drawer .ditem.on{background:var(--pink-50);color:var(--pink-700)} .drawer .ditem:hover{background:var(--ink-50)}
+.dpanel{display:none} .dpanel.show{display:block}
+/* packaging studio */
+.pacshell{display:grid;grid-template-columns:240px 1fr 250px;border:1px solid var(--ink-200);border-radius:18px;overflow:hidden;min-height:520px}
+.pacshell .lib{border-right:1px solid var(--ink-200);padding:12px;background:#fff;overflow:auto;max-height:560px}
+.pacshell .stage{background:linear-gradient(180deg,#fafafa,#eee);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.pacshell .insp{border-left:1px solid var(--ink-200);padding:12px;background:#fff}
+.cat{font-size:11px;font-weight:700;color:var(--ink-700);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.subcat{font-size:12px;color:var(--ink-600);padding:5px 8px;border-radius:8px;cursor:pointer}
+.subcat:hover{background:var(--ink-50)} .subcat.on{background:var(--pink-50);color:var(--pink-700);font-weight:600}
+.can3d{width:150px;height:230px;border-radius:14px;background:linear-gradient(90deg,#cfd3d6,#f4f6f7 30%,#e6e9eb 55%,#c2c6c9);box-shadow:inset 0 0 0 1px #b9bdc0;position:relative;display:grid;place-items:center;color:#9aa;text-align:center;font-size:12px}
+.compbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.compcard{border:1px solid var(--ink-200);border-radius:12px;padding:9px 11px;font-size:12px;min-width:150px}
+.frame{position:absolute;border:1.5px dashed var(--pink);border-radius:6px;background:rgba(255,46,99,.06);font-size:9px;color:var(--pink-700);padding:2px 4px;font-weight:600}
+.die{position:relative;width:300px;height:380px;background:#fff;border:1.5px solid var(--ink-300);border-radius:8px;margin:0 auto}
+.palrow{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--ink-200);border-radius:10px;margin-bottom:7px;font-size:12px;cursor:grab}
+.palrow .b{width:8px;height:8px;border-radius:50%;background:var(--pink)}
+hr.div{border:0;border-top:1px solid var(--ink-100);margin:18px 0}
+.kpi{border:1px solid var(--ink-200);border-radius:14px;padding:11px 13px;background:#fff}
+.kpi .l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-500)}
+.kpi .v{font-family:"Bricolage Grotesque",Inter;font-weight:800;font-size:20px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-500);margin-top:8px}
+.banner{display:flex;gap:10px;align-items:center;border:1px solid var(--sky-50);background:var(--sky-50);color:#0C447C;border-radius:14px;padding:10px 14px;font-size:12.5px;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="dot">i</span> iLaunchify · <span class="muted" style="font-weight:500">New product</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="pill green">● Manufacturing</span>
+    <span class="pill green">● Packing</span>
+    <span class="pill green">● Printing</span>
+    <span class="muted small">Turnkey partner — full flow</span>
+    <button class="btn sm">Save draft</button>
+    <button class="btn primary sm">Submit for review →</button>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- LEFT STEP RAIL -->
+  <aside class="rail">
+    <h3 class="display">Product Builder</h3>
+    <p class="muted small" style="margin:4px 0 14px">Track progress & review each step.</p>
+    <div id="rail"></div>
+    <div class="note grey" style="margin-top:16px">
+      Modules shown depend on your services. A <b>Manufacturing-only</b> partner skips Packaging &amp; Printing; a <b>Packing/Printing-only</b> partner gets a different flow.
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- top stepper -->
+    <div class="stepper" id="stepper"></div>
+
+    <!-- ================= STEP 1 — BASICS ================= -->
+    <section class="screen show" data-step="0">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · New product</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px">Basics</h1>
+        <p class="muted" style="margin-top:4px">Identity, marketplace copy, media, and the product type. These fields feed the marketplace card, the detail page, and the filter facets.</p>
+      </div>
+
+      <div class="two">
+        <div class="grid" style="grid-template-columns:1fr 1fr">
+          <div class="field" style="grid-column:1/3"><label>Product name <span class="muted">· appears in the marketplace</span></label><input class="input" value="Sparkling Yuzu Soda" /></div>
+          <div class="field"><label>SKU (internal)</label><input class="input" value="SODA-YUZU" /></div>
+          <div class="field"><label>GTIN / UPC <span class="muted">· optional</span></label><input class="input" placeholder="0 8600 00000 0" /></div>
+          <div class="field"><label>Category</label><select class="sel"><option>Beverages</option><option>Snacks &amp; confectionery</option><option>Supplements</option></select></div>
+          <div class="field"><label>Subcategory</label><select class="sel"><option>Sparkling / soda</option><option>Cold brew</option></select></div>
+          <div class="field" style="grid-column:1/3">
+            <label>Niches <span class="muted">· 1 primary + up to 2 secondary (locked taxonomy)</span></label>
+            <div class="row" style="gap:7px">
+              <span class="chip pinkon">★ Better-for-you ✕</span><span class="chip on">Functional ✕</span>
+              <span class="chip">Clean label +</span><span class="chip">Sports +</span><span class="chip">Pet +</span>
+            </div>
+          </div>
+          <div class="field" style="grid-column:1/3">
+            <label>Lifestyle tags <span class="muted">· admin-curated, feed the marketplace filter</span></label>
+            <div class="row" style="gap:7px">
+              <span class="chip on">Vegan ✕</span><span class="chip on">Sugar-free ✕</span><span class="chip on">Gluten-free ✕</span>
+              <span class="chip">Keto +</span><span class="chip">Energy +</span><span class="chip">Immunity +</span>
+            </div>
+          </div>
+          <div class="field" style="grid-column:1/3"><label>Short description <span class="muted">· marketplace detail page</span></label><input class="input" value="Crisp Japanese yuzu, lightly sparkling, zero sugar." /></div>
+          <div class="field" style="grid-column:1/3"><label>Detailed description</label><textarea rows="3">A bright, citrus-forward sparkling soda made with real yuzu juice and a touch of monk fruit…</textarea></div>
+          <div class="field" style="grid-column:1/3">
+            <label>Custom meta fields <span class="muted">· appear here once admin creates them</span></label>
+            <table><tr><td style="width:40%"><input class="input" value="Caffeine"></td><td><input class="input" value="0 mg"></td><td style="width:30px"><span class="iconbtn">🗑</span></td></tr></table>
+            <button class="btn sm" style="margin-top:8px">+ Add field</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="eyebrow">Media · up to 6 images + 1 video</div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px">
+              <div class="imgslot" style="aspect-ratio:1;background:#f5e9ee">Hero</div>
+              <div class="imgslot">＋ image</div>
+              <div class="imgslot">＋ image</div>
+              <div class="imgslot">＋ image</div>
+              <div class="imgslot">＋ image</div>
+              <div class="imgslot video">▶ video</div>
+            </div>
+            <p class="tiny muted" style="margin-top:8px">Drag to reorder. First image = marketplace hero.</p>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="eyebrow">Product type</div>
+            <div class="seg" style="margin-top:10px" id="ptype">
+              <button class="on" data-pt="single">Single</button>
+              <button data-pt="multi">Multi-flavor</button>
+              <button data-pt="pack">Multi-pack / variety</button>
+            </div>
+            <p class="tiny muted" style="margin-top:9px">Multi-flavor = <b>one</b> marketplace product with a flavor selector (flavors are recipe presets, not separate products).</p>
+          </div>
+        </div>
+      </div>
+      <div class="navbtns"><span></span><button class="btn primary" onclick="go(1)">Next: Variants & packs →</button></div>
+    </section>
+
+    <!-- ================= STEP 2 — VARIANTS ================= -->
+    <section class="screen" data-step="1">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · Variants &amp; packs</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px">Variants, packs &amp; production</h1>
+        <p class="muted" style="margin-top:4px">Physical &amp; commercial spec per variant. Net weight, format, MOQ and lead time live here — <b>not</b> in the recipe builder. Recipe = formulation only.</p>
+      </div>
+
+      <!-- SINGLE -->
+      <div id="pt-single">
+        <div class="card">
+          <div class="section-title"><span class="ic">▦</span> Production &amp; availability</div>
+          <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:14px">
+            <div class="field"><label>Format / container</label><input class="input" value="12 oz slim can"></div>
+            <div class="field"><label>Net weight / volume</label><input class="input" value="355 ml"></div>
+            <div class="field"><label>Servings / container</label><input class="input" value="1"></div>
+            <div class="field"><label>Fulfillment mode</label><select class="sel"><option>Make-to-order (on-demand)</option><option>Bulk production</option><option>Both</option></select></div>
+            <div class="field"><label>MOQ</label><input class="input" value="500"></div>
+            <div class="field"><label>Order increment / step</label><input class="input" value="100"></div>
+            <div class="field"><label>Lead time (days)</label><input class="input" value="21"></div>
+            <div class="field"><label>Monthly capacity cap</label><input class="input" value="50,000"></div>
+            <div class="field"><label>Shelf life / best-by</label><input class="input" value="12 months"></div>
+            <div class="field"><label>SKU</label><input class="input" value="SODA-YUZU"></div>
+            <div class="field"><label>GTIN / barcode</label><input class="input" placeholder="—"></div>
+            <div class="field"><label>Lot / batch tracking</label><select class="sel"><option>On (recommended for food)</option><option>Off</option></select></div>
+          </div>
+          <div class="row" style="margin-top:8px;gap:18px">
+            <label class="row" style="gap:7px;align-items:center"><input type="checkbox" checked> Track quantity</label>
+            <label class="row" style="gap:7px;align-items:center"><input type="checkbox"> Continue selling when out of stock</label>
+          </div>
+          <div class="note" style="margin-top:12px">Suggested additions vs. a retail builder: <b>MOQ, increment, lead time, capacity cap, shelf-life, lot tracking</b> — these make it effective for CPG production.</div>
+        </div>
+      </div>
+
+      <!-- MULTI-FLAVOR -->
+      <div id="pt-multi" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="section-title"><span class="ic">❀</span> Flavors / variants <span class="muted" style="font-weight:400;font-size:13px">· one product, multi-flavor in the marketplace</span></div>
+            <button class="btn primary sm">+ Add flavor</button>
+          </div>
+          <table style="margin-top:14px">
+            <thead><tr><th>#</th><th>Variant / flavor</th><th>Image</th><th>Net wt</th><th>Statement of Identity</th><th>Facility</th><th>MOQ</th><th>Price</th><th>Tiers</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td><b>Yuzu</b> · 12oz can</td><td>🖼</td><td>355 ml</td><td>Sparkling yuzu soda</td><td>Plant A — Austin</td><td>500</td><td>$1.10</td><td><span class="pill sky">3 tiers</span></td><td><span class="iconbtn">✎</span> <span class="iconbtn">🗑</span></td></tr>
+              <tr><td>2</td><td><b>Blood orange</b> · 12oz can</td><td>🖼</td><td>355 ml</td><td>Sparkling blood-orange soda</td><td>Plant A — Austin</td><td>500</td><td>$1.10</td><td><span class="pill sky">3 tiers</span></td><td><span class="iconbtn">✎</span> <span class="iconbtn">🗑</span></td></tr>
+              <tr><td>3</td><td><b>Grapefruit</b> · 12oz can</td><td>🖼</td><td>355 ml</td><td>Sparkling grapefruit soda</td><td>Plant B — Reno</td><td>500</td><td>$1.15</td><td><span class="pill sky">3 tiers</span></td><td><span class="iconbtn">✎</span> <span class="iconbtn">🗑</span></td></tr>
+            </tbody>
+          </table>
+          <div class="note grey" style="margin-top:12px">
+            <b>Where the label-mandatory fields come from:</b> <b>Statement of Identity</b> = per variant (default from name+category, editable). <b>Manufacturer + address</b> = the selected <b>Facility</b> (new <code>PartnerFacility</code> — dropdown only appears when a partner has &gt;1 facility; otherwise auto-uses the onboarding address). <b>Net weight</b> drives the label's net-quantity statement.
+          </div>
+        </div>
+      </div>
+
+      <!-- MULTI-PACK -->
+      <div id="pt-pack" style="display:none">
+        <div class="card">
+          <div class="section-title"><span class="ic">▣</span> Pack composition</div>
+          <p class="muted small" style="margin-top:8px">Define the pack structure. Each component can carry its own die-line in Packaging; components with no print are flagged "not decorated".</p>
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+            <div class="field"><label>Pack type</label><select class="sel"><option>Variety multipack</option><option>Single-flavor multipack</option><option>Sampler</option></select></div>
+            <div class="field"><label>Outer pack</label><select class="sel"><option>Paper carton (printed)</option><option>Shrink (no print)</option></select></div>
+            <div class="field"><label>Units per outer</label><input class="input" value="12 (4 flavors × 3)"></div>
+          </div>
+          <div class="compbar">
+            <div class="compcard"><b>PRIMARY · Can</b><div class="muted small">printed · die-line required</div></div>
+            <div class="compcard"><b>SECONDARY · Carton</b><div class="muted small">printed · die-line required</div></div>
+            <div class="compcard" style="opacity:.7"><b>TERTIARY · Shipper</b><div class="muted small">not decorated · no die-line</div></div>
+          </div>
+          <div class="note" style="margin-top:12px">This models your examples: "3 juice cans + paper box" = 3 can components + 1 carton; "cookies in clear bags inside a box" = bag component flagged <b>not decorated</b>, only the box needs a die-line.</div>
+        </div>
+      </div>
+
+      <div class="navbtns"><button class="btn" onclick="go(0)">← Back</button><button class="btn primary" onclick="go(2)">Next: Recipe builder →</button></div>
+    </section>
+
+    <!-- ================= STEP 3 — RECIPE / FORMULATION ================= -->
+    <section class="screen" data-step="2">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · <span id="rbType">Recipe</span> builder</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px"><span id="rbTitle">Recipe Builder</span></h1>
+        <p class="muted" style="margin-top:4px">Title switches by labeling type: Food / Beverage / Pet / Baby → <b>Recipe</b>; Supplement / Cosmetic / OTC → <b>Formulation</b>. Build the <b>base</b> once; each flavor is a preset overlay.</p>
+        <div class="seg" style="margin-top:12px" id="ltype">
+          <button class="on" data-lt="Recipe">Food / Beverage</button>
+          <button data-lt="Formulation">Supplement</button>
+          <button data-lt="Formulation">Cosmetic</button>
+        </div>
+      </div>
+
+      <!-- variant cards -->
+      <div class="row" style="margin-bottom:14px">
+        <div class="card" style="padding:12px 14px;min-width:160px;border-color:var(--pink-100);background:var(--pink-50)"><b>Yuzu (base)</b><div class="tiny muted">editing</div></div>
+        <div class="card" style="padding:12px 14px;min-width:160px"><b>Blood orange</b><div class="tiny muted">preset · inherits base</div></div>
+        <div class="card" style="padding:12px 14px;min-width:160px"><b>Grapefruit</b><div class="tiny muted">preset · inherits base</div></div>
+        <button class="btn sm" style="align-self:center">+ Duplicate as new flavor</button>
+      </div>
+
+      <!-- studio: canvas + right drawer (like Design Studio) -->
+      <div class="studio">
+        <div class="canvas">
+          <!-- BUILD RECIPE / INGREDIENTS -->
+          <div class="dpanel show" data-dp="build">
+            <div class="section-title" style="font-size:15px"><span class="ic">🍽</span> Add ingredients</div>
+            <div class="row" style="margin:12px 0;gap:8px">
+              <input class="input" placeholder="Search USDA + library + your private ingredients…" style="flex:1">
+              <button class="btn sm">⌕</button><button class="btn sm">✨ AI parse label</button>
+            </div>
+            <div class="card" style="padding:0">
+              <table>
+                <thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Waste %</th><th>Grams</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td>Carbonated water</td><td><input class="input" value="320" style="width:64px"></td><td><select class="sel" style="width:90px"><option>ml</option><option>g</option></select></td><td><input class="input" value="0" style="width:52px"></td><td>320</td><td><span class="iconbtn">🗑</span></td></tr>
+                  <tr><td>Yuzu juice concentrate <span class="pill pink" style="padding:1px 7px">flavor</span></td><td><input class="input" value="18" style="width:64px"></td><td><select class="sel" style="width:90px"><option>ml</option></select></td><td><input class="input" value="0" style="width:52px"></td><td>18</td><td><span class="iconbtn">🗑</span></td></tr>
+                  <tr><td>Monk fruit extract</td><td><input class="input" value="0.3" style="width:64px"></td><td><select class="sel" style="width:90px"><option>g</option></select></td><td><input class="input" value="0" style="width:52px"></td><td>0.3</td><td><span class="iconbtn">🗑</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="tiny muted" style="margin-top:8px">"flavor" rows are what a preset overlays — duplicate the base, swap the flavor ingredient, done.</p>
+          </div>
+          <!-- ALLERGENS -->
+          <div class="dpanel" data-dp="allergens">
+            <div class="section-title" style="font-size:15px"><span class="ic">⚠</span> Allergens</div>
+            <p class="muted small" style="margin:10px 0">Auto-detected from ingredients + manual overrides. Drives the label "Contains:" line.</p>
+            <div class="row" style="gap:7px"><span class="pill amber">None detected</span><span class="chip">+ Milk</span><span class="chip">+ Soy</span><span class="chip">+ Tree nuts</span></div>
+            <div class="field" style="margin-top:12px"><label>Cross-contamination statement</label><input class="input" placeholder="May contain…"></div>
+          </div>
+          <!-- COST -->
+          <div class="dpanel" data-dp="cost">
+            <div class="section-title" style="font-size:15px"><span class="ic">$</span> Cost</div>
+            <div class="note grey" style="margin:10px 0">Keep it lean: ingredient-cost estimate + your price tiers + margin. Drop heavy labor/overhead accounting — the platform fee &amp; shipping are added by the pricing engine for the creator.</div>
+            <div class="row"><div class="kpi"><div class="l">Ingredient cost</div><div class="v">$0.07</div></div><div class="kpi"><div class="l">Your unit price</div><div class="v">$1.10</div></div><div class="kpi"><div class="l">Margin</div><div class="v" style="color:#085041">94%</div></div></div>
+          </div>
+          <!-- CERTIFICATES -->
+          <div class="dpanel" data-dp="certs">
+            <div class="section-title" style="font-size:15px"><span class="ic">🛡</span> Certificates</div>
+            <p class="muted small" style="margin:10px 0"><b>Attach</b> your already-verified certs (uploaded once in /certifications) — don't re-upload per product.</p>
+            <div class="row" style="gap:7px"><span class="pill green">✓ Organic</span><span class="pill green">✓ Non-GMO</span><span class="chip">+ Attach another</span><span class="chip">⤴ Upload new → verification queue</span></div>
+          </div>
+          <!-- MY RECIPES -->
+          <div class="dpanel" data-dp="myrecipes">
+            <div class="section-title" style="font-size:15px"><span class="ic">≣</span> Product recipes</div>
+            <table style="margin-top:10px"><thead><tr><th>Recipe</th><th>Type</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Yuzu (base)</td><td>Base</td><td><span class="pill green">Complete</span></td><td><span class="iconbtn">✎</span> <span class="iconbtn">⧉</span></td></tr>
+              <tr><td>Blood orange</td><td>Flavor preset</td><td><span class="pill amber">In progress</span></td><td><span class="iconbtn">✎</span> <span class="iconbtn">⧉</span></td></tr>
+            </tbody></table>
+            <div class="note grey" style="margin-top:10px">No separate "Recipe Templates" section — duplicating here (⧉) <b>is</b> the flavor-template flow.</div>
+          </div>
+          <!-- COMPLIANCE -->
+          <div class="dpanel" data-dp="compliance">
+            <div class="section-title" style="font-size:15px"><span class="ic">✓</span> Compliance scan</div>
+            <p class="muted small" style="margin:10px 0">Runs FDA rule packs + label phrases on the recipe + label.</p>
+            <div class="row" style="gap:7px"><span class="pill green">Nutrition panel ✓</span><span class="pill green">Allergens ✓</span><span class="pill amber">Net-quantity format · review</span></div>
+          </div>
+        </div>
+
+        <!-- right drawer menu -->
+        <div class="drawer">
+          <div class="eyebrow" style="padding:4px 8px 10px">Builder</div>
+          <div class="ditem on" data-go="build">🍽 Build recipe</div>
+          <div class="ditem" data-go="build">≡ Ingredients</div>
+          <div class="ditem" data-go="allergens">⚠ Allergens</div>
+          <div class="ditem" data-go="cost">$ Cost</div>
+          <div class="ditem" data-go="certs">🛡 Certificates</div>
+          <div class="ditem" data-go="myrecipes">≣ My recipes</div>
+          <hr class="div" style="margin:10px 0">
+          <div class="ditem" data-go="compliance">✓ Compliance scan</div>
+          <div class="card" style="margin-top:12px;padding:10px">
+            <div class="eyebrow">Live label preview</div>
+            <div class="facts" style="margin-top:8px">
+              <div class="big">Nutrition Facts</div>
+              <div class="tiny">3 servings · Net 12 oz</div>
+              <div class="r"><b>Calories</b><b>5</b></div>
+              <div class="r"><span>Total Sugars</span><span>0 g</span></div>
+              <div class="r"><span>Sodium</span><span>10 mg</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="navbtns"><button class="btn" onclick="go(1)">← Back</button><button class="btn primary" onclick="go(3)">Next: Packaging studio →</button></div>
+    </section>
+
+    <!-- ================= STEP 4 — PACKAGING STUDIO ================= -->
+    <section class="screen" data-step="3">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · Packaging studio</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px">Packaging &amp; die-lines</h1>
+        <p class="muted" style="margin-top:4px">Pick packaging from the platform library (3D + die-line ready), or upload custom for admin to normalize. Each printable surface gets a die-line; place the mandatory-element frames the Creator's Design Studio will lock onto.</p>
+      </div>
+
+      <div class="banner">ℹ︎ <b>Platform library is the default.</b> Admin curates 3D mockups + normalized die-lines (via Pacdora). Custom uploads route to an admin verification queue and the product can't go LIVE until die-lines are verified — so the Design Studio always gets clean assets.</div>
+
+      <div class="pacshell">
+        <!-- library -->
+        <div class="lib">
+          <div class="row" style="gap:6px;margin-bottom:8px"><span class="chip on" style="font-size:11px">Library</span><span class="chip" style="font-size:11px">My uploads</span></div>
+          <input class="input" placeholder="Search packaging…" style="font-size:12px;padding:7px 10px">
+          <div class="cat">Cans</div>
+          <div class="subcat on">Drink can ✓</div><div class="subcat">Food can</div><div class="subcat">Coffee can</div><div class="subcat">Tin can</div>
+          <div class="cat">Boxes</div>
+          <div class="subcat">Food box</div><div class="subcat">Product box</div><div class="subcat">Tuck-end box</div><div class="subcat">Box w/ window</div><div class="subcat">Display box</div>
+          <div class="cat">Bottles</div><div class="subcat">Drink bottle</div><div class="subcat">Supplement bottle</div><div class="subcat">Dropper bottle</div>
+          <div class="cat">Pouches &amp; bags</div><div class="subcat">Stand-up pouch</div><div class="subcat">Sachet</div><div class="subcat">Paper bag</div>
+          <div class="cat">Jars · Tubes · Containers</div><div class="subcat">Glass jar</div><div class="subcat">Cosmetic tube</div><div class="subcat">Food container</div>
+        </div>
+
+        <!-- 3D stage -->
+        <div class="stage">
+          <div class="can3d">12 oz<br>slim can<br><span class="tiny">3D mockup</span></div>
+          <div class="row" style="margin-top:14px"><button class="btn sm">3D</button><button class="btn sm">2D flat</button><button class="btn sm">⤓ Upload die-line</button><button class="btn pink sm">✎ Open label editor</button></div>
+          <div class="legend"><span>● admin-supplied 3D</span><span>● your die-line</span></div>
+        </div>
+
+        <!-- inspector: components + die-lines -->
+        <div class="insp">
+          <div class="eyebrow">Components &amp; die-lines</div>
+          <div class="compcard" style="margin-top:10px"><b>Can — body wrap</b><div class="muted small">1 surface · die-line ✓</div><div class="tiny" style="color:#085041">label layout saved</div></div>
+          <div class="compcard" style="margin-top:8px"><b>Carton — 6 panels</b><div class="muted small">die-line ✓ · 1 of 6 laid out</div></div>
+          <div class="compcard" style="margin-top:8px;opacity:.7"><b>Shipper</b><div class="muted small">not decorated</div></div>
+          <button class="btn sm" style="margin-top:10px;width:100%">+ Add component</button>
+          <hr class="div">
+          <div class="eyebrow">Pack rules</div>
+          <p class="tiny muted" style="margin-top:6px">"Big box holds only 3 flavors" type constraints captured here per pack.</p>
+        </div>
+      </div>
+
+      <!-- LABEL EDITOR mock -->
+      <div class="card" style="margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="section-title" style="font-size:15px"><span class="ic">▭</span> Label editor — mandatory-element frames <span class="muted" style="font-weight:400;font-size:12px">· Fabric.js · saved as JSON layout, not PDF</span></div>
+          <span class="pill amber">Compliance: 1 required frame empty</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 240px;gap:16px;margin-top:14px">
+          <div style="background:var(--ink-50);border-radius:14px;padding:18px;display:grid;place-items:center">
+            <div class="die">
+              <div class="frame" style="left:30px;top:20px;width:150px;height:30px">Statement of Identity</div>
+              <div class="frame" style="left:30px;top:60px;width:120px;height:90px">Nutrition Facts</div>
+              <div class="frame" style="left:170px;top:60px;width:110px;height:60px">Ingredients</div>
+              <div class="frame" style="left:170px;top:135px;width:110px;height:40px">Allergens</div>
+              <div class="frame" style="left:30px;top:300px;width:150px;height:30px">Manufacturer + address</div>
+              <div class="frame" style="left:195px;top:300px;width:85px;height:50px;border-style:dotted;opacity:.6">Net quantity (empty)</div>
+              <div class="frame" style="left:30px;top:250px;width:80px;height:38px">Certs</div>
+            </div>
+          </div>
+          <div>
+            <div class="eyebrow">Element palette</div>
+            <div style="margin-top:10px">
+              <div class="palrow"><span class="b"></span> Statement of Identity</div>
+              <div class="palrow"><span class="b"></span> Net Quantity</div>
+              <div class="palrow"><span class="b"></span> Nutrition / Supplement Facts</div>
+              <div class="palrow"><span class="b"></span> Ingredients</div>
+              <div class="palrow"><span class="b"></span> Allergens</div>
+              <div class="palrow"><span class="b"></span> Manufacturer + address</div>
+              <div class="palrow"><span class="b"></span> Certificates</div>
+              <div class="palrow"><span class="b"></span> Symbols &amp; phrases ▸</div>
+            </div>
+          </div>
+        </div>
+        <div class="note" style="margin-top:14px">
+          The maker positions <b>frames</b> (the dotted boxes), not final art. Each frame <b>auto-binds</b> to product data (Facts ← computed panel · Manufacturer ← facility · Ingredients ← recipe statement · Net wt ← variant). Saved as JSON: <code>{surfaceId, frames:[{type,bbox,required,binding}]}</code>. The Creator's Design Studio reads it, shows the dotted frames, and drops each locked element exactly there. Compliance = every <code>required</code> frame filled &amp; in-bounds.
+        </div>
+      </div>
+
+      <div class="navbtns"><button class="btn" onclick="go(2)">← Back</button><button class="btn primary" onclick="go(4)">Next: Cost &amp; pricing →</button></div>
+    </section>
+
+    <!-- ================= STEP 5 — COST & PRICING ================= -->
+    <section class="screen" data-step="4">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · Cost &amp; pricing</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px">Cost &amp; volume pricing</h1>
+        <p class="muted" style="margin-top:4px">You set your per-unit price &amp; volume tiers. iLaunchify adds the platform fee, shipping and accessories to compute the creator's landed price — you don't.</p>
+      </div>
+      <div class="two">
+        <div class="card">
+          <div class="section-title" style="font-size:15px"><span class="ic">$</span> Volume price tiers</div>
+          <table style="margin-top:12px">
+            <thead><tr><th>Quantity</th><th>Per unit</th><th>Hard floor</th><th>Lead time</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>500 – 2,499</td><td><input class="input" value="$1.10" style="width:80px"></td><td>$0.95</td><td>21d</td><td><span class="iconbtn">🗑</span></td></tr>
+              <tr><td>2,500 – 9,999</td><td><input class="input" value="$0.98" style="width:80px"></td><td>$0.90</td><td>18d</td><td><span class="iconbtn">🗑</span></td></tr>
+              <tr><td>10,000 +</td><td><input class="input" value="$0.86" style="width:80px"></td><td>$0.82</td><td>28d</td><td><span class="iconbtn">🗑</span></td></tr>
+            </tbody>
+          </table>
+          <button class="btn sm" style="margin-top:10px">+ Add tier</button>
+        </div>
+        <div>
+          <div class="card"><div class="eyebrow">Snapshot</div>
+            <div class="grid" style="margin-top:10px"><div class="kpi"><div class="l">Ingredient cost / unit</div><div class="v">$0.07</div></div><div class="kpi"><div class="l">Floor price</div><div class="v">$0.82</div></div><div class="kpi"><div class="l">Margin @ $1.10</div><div class="v" style="color:#085041">94%</div></div></div>
+          </div>
+          <div class="note grey" style="margin-top:12px">Production type (bulk vs on-demand) carries over from the variant step; it's surfaced to creators as a filter facet.</div>
+        </div>
+      </div>
+      <div class="navbtns"><button class="btn" onclick="go(3)">← Back</button><button class="btn primary" onclick="go(5)">Next: Review →</button></div>
+    </section>
+
+    <!-- ================= STEP 6 — REVIEW ================= -->
+    <section class="screen" data-step="5">
+      <div class="hero">
+        <div class="eyebrow">Manufacturing · Review &amp; submit</div>
+        <h1 class="display" style="font-size:26px;margin-top:4px">Review &amp; submit for approval</h1>
+        <p class="muted" style="margin-top:4px">Everything below is verified before the product goes LIVE. Die-lines + mandatory frames are required for printed components.</p>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="card"><div class="eyebrow">Basics</div><h3 class="display" style="font-size:18px;margin:6px 0">Sparkling Yuzu Soda</h3><p class="muted small">Beverages · Sparkling · 3 flavors · 6 media</p><span class="pill green">✓ complete</span></div>
+        <div class="card"><div class="eyebrow">Recipe / formulation</div><h3 style="margin:6px 0">Base + 2 flavor presets</h3><span class="pill amber">1 preset in progress</span></div>
+        <div class="card"><div class="eyebrow">Packaging</div><h3 style="margin:6px 0">Can + carton</h3><span class="pill amber">Carton: 1 of 6 panels laid out</span></div>
+        <div class="card"><div class="eyebrow">Compliance</div><h3 style="margin:6px 0">FDA scan</h3><span class="pill amber">Net-quantity format · review</span></div>
+        <div class="card"><div class="eyebrow">Pricing</div><h3 style="margin:6px 0">3 tiers · from $0.86</h3><span class="pill green">✓ set</span></div>
+        <div class="card"><div class="eyebrow">Marketplace facets</div><p class="muted small" style="margin-top:6px">Category, niche, tags, packaging type, format, allergens, certs, MOQ, lead time, fulfillment mode — all structured &amp; filter-ready.</p></div>
+      </div>
+      <div class="navbtns"><button class="btn" onclick="go(4)">← Back</button><button class="btn primary">Submit for review →</button></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const STEPS=[
+ {t:'Basics',d:'Identity, media, type'},
+ {t:'Variants & packs',d:'Net wt, MOQ, facility'},
+ {t:'Recipe / Formulation',d:'Ingredients, allergens, cost'},
+ {t:'Packaging studio',d:'3D, die-lines, label frames'},
+ {t:'Cost & pricing',d:'Volume tiers'},
+ {t:'Review & submit',d:'Verify & send'}
+];
+let cur=0;
+const rail=document.getElementById('rail'), stepper=document.getElementById('stepper');
+function render(){
+  rail.innerHTML=STEPS.map((s,i)=>`<div class="step ${i===cur?'active':''} ${i<cur?'done':''}" onclick="go(${i})"><div class="n">${i<cur?'✓':i+1}</div><div><div class="t">${s.t}</div><div class="d">${s.d}</div></div></div>`).join('');
+  stepper.innerHTML=STEPS.map((s,i)=>`<div class="sbead ${i===cur?'active':''} ${i<cur?'done':''}"><span class="b">${i<cur?'✓':i+1}</span>${s.t}</div>${i<STEPS.length-1?'<span class="sline"></span>':''}`).join('');
+  document.querySelectorAll('.screen').forEach(el=>el.classList.toggle('show', +el.dataset.step===cur));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function go(i){cur=Math.max(0,Math.min(STEPS.length-1,i));render();}
+render();
+
+// product type toggle
+document.getElementById('ptype').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#ptype button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  ['single','multi','pack'].forEach(k=>document.getElementById('pt-'+k).style.display=(k===b.dataset.pt?'block':'none'));
+});
+// labeling type → recipe/formulation name
+document.getElementById('ltype').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#ltype button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  document.getElementById('rbType').textContent=b.dataset.lt;
+  document.getElementById('rbTitle').textContent=b.dataset.lt+' Builder';
+});
+// recipe drawer
+document.querySelector('.drawer').addEventListener('click',e=>{
+  const d=e.target.closest('.ditem'); if(!d)return;
+  document.querySelectorAll('.drawer .ditem').forEach(x=>x.classList.remove('on')); d.classList.add('on');
+  document.querySelectorAll('.dpanel').forEach(p=>p.classList.toggle('show',p.dataset.dp===d.dataset.go));
+});
+// packaging subcat
+document.querySelectorAll('.subcat').forEach(s=>s.addEventListener('click',()=>{document.querySelectorAll('.subcat').forEach(x=>x.classList.remove('on'));s.classList.add('on');}));
+</script>
+</body>
+</html>

@@ -24,7 +24,7 @@ const STRENGTH_BADGE: Record<ClaimStrength, string> = {
   excellent: 'bg-emerald-100 text-emerald-800',
   low: 'bg-teal-100 text-teal-800',
   good: 'bg-amber-100 text-amber-800',
-  none: 'bg-zinc-100 text-zinc-600',
+  none: 'bg-ink-100 text-ink-600',
 }
 
 const STRENGTH_ORDER: Record<ClaimStrength, number> = {

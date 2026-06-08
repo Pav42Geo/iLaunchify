@@ -29,7 +29,7 @@ export default async function PayoutsSettingsPage() {
               ✓ Payouts enabled.
             </div>
           ) : (
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-ink-600">
               You&apos;ll be redirected to Stripe to provide your identity, address, and bank account.
               Takes about 5 minutes.
             </p>

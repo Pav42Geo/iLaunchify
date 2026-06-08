@@ -14,3 +14,5 @@ export * from './compliance'
 export * from './service-capabilities'
 export * from './brand'
 export * from './payments'
+// Tier 1.2 (docs/SECURITY_ARCHITECTURE.md) — Zod at server-action boundaries.
+export * from './action-input'

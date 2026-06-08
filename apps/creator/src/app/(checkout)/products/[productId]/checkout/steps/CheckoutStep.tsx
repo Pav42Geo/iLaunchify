@@ -160,7 +160,7 @@ export function CheckoutStep({
         {/* 4 · Promo + compliance ack + Place order */}
         <Section title="Review & place order" stepNumber={4}>
           {/* Promo code */}
-          <div className="rounded-lg border border-ink-200 bg-white p-4">
+          <div className="rounded-xl border border-ink-200 bg-white p-4">
             <label className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
               Promo code (optional)
             </label>
@@ -173,7 +173,7 @@ export function CheckoutStep({
                   })
                 }
                 placeholder="LAUNCH50"
-                className="block w-48 rounded-md border border-ink-200 px-3 py-1.5 text-sm uppercase tracking-wider focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+                className="block w-48 rounded-xl border border-ink-200 px-3 py-2 text-[13px] uppercase tracking-wider focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
               />
               {state.promoCode && (
                 <span className="text-[11px] text-ink-500">
@@ -210,7 +210,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-xl border border-ink-200 bg-white">
+    <section className="rounded-2xl border border-ink-200 bg-white">
       <header className="flex items-center gap-3 border-b border-ink-100 px-5 py-3">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-[11px] font-bold text-white">
           {stepNumber}
@@ -296,7 +296,7 @@ function ShipToPicker({
                 })
               }
               className={
-                'flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ' +
+                'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
                 (selected
                   ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
                   : 'border-ink-200 bg-white hover:bg-ink-50/40')
@@ -318,7 +318,7 @@ function ShipToPicker({
 
       {/* Expanded block for the selected mode */}
       {state.shipToType && (
-        <div className="rounded-lg border border-ink-100 bg-ink-50/40 p-4">
+        <div className="rounded-xl border border-ink-100 bg-ink-50/40 p-4">
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin text-ink-400" />
           ) : state.shipToType === 'CLOSEST_WAREHOUSE' ? (
@@ -355,7 +355,7 @@ function ShipToPicker({
 
 function ShippingMethodCard() {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-ink-200 bg-white p-4">
+    <div className="flex items-start gap-3 rounded-xl border border-ink-200 bg-white p-4">
       <Truck className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ function ShippingMethodCard() {
 
 function PaymentSummary() {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-ink-200 bg-white p-4">
+    <div className="flex items-start gap-3 rounded-xl border border-ink-200 bg-white p-4">
       <CreditCard className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -473,7 +473,7 @@ function WarehouseCard({
       type="button"
       onClick={onClick}
       className={
-        'flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors ' +
+        'flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors ' +
         (selected
           ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
           : 'border-ink-200 bg-white hover:bg-ink-50/40')
@@ -550,7 +550,7 @@ function SavedAddressCard({
       type="button"
       onClick={onClick}
       className={
-        'flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors ' +
+        'flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors ' +
         (selected
           ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
           : 'border-ink-200 bg-white hover:bg-ink-50/40')
@@ -649,7 +649,7 @@ function NewAddressBlock({
             value={addr.label ?? ''}
             onChange={(e) => setField('label', e.target.value)}
             placeholder="Home / Studio / 3PL"
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
         <Field label="Recipient name *" htmlFor={`${fieldId}-name`}>
@@ -659,7 +659,7 @@ function NewAddressBlock({
             required
             value={addr.contactName}
             onChange={(e) => setField('contactName', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
         <Field label="Phone (optional)" htmlFor={`${fieldId}-phone`}>
@@ -669,7 +669,7 @@ function NewAddressBlock({
             autoComplete="tel"
             value={addr.contactPhone ?? ''}
             onChange={(e) => setField('contactPhone', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
         <Field label="Country" htmlFor={`${fieldId}-country`}>
@@ -679,7 +679,7 @@ function NewAddressBlock({
             autoComplete="country"
             value={addr.country}
             onChange={(e) => setField('country', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
       </div>
@@ -717,7 +717,7 @@ function NewAddressBlock({
             autoComplete="address-level2"
             value={addr.city}
             onChange={(e) => setField('city', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
         <Field label="State / region" htmlFor={`${fieldId}-state`}>
@@ -727,7 +727,7 @@ function NewAddressBlock({
             autoComplete="address-level1"
             value={addr.state ?? ''}
             onChange={(e) => setField('state', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
         <Field label="Postal code *" htmlFor={`${fieldId}-postal`}>
@@ -738,7 +738,7 @@ function NewAddressBlock({
             autoComplete="postal-code"
             value={addr.postalCode}
             onChange={(e) => setField('postalCode', e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-xl border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </Field>
       </div>
@@ -758,9 +758,9 @@ function NewAddressBlock({
             type="button"
             onClick={persist}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-black disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-60"
           >
-            <Plus className="h-3 w-3" /> Save address
+            <Plus className="h-3.5 w-3.5" /> Save address
           </button>
         )}
       </div>
@@ -809,7 +809,7 @@ function BlockingAckPanel({
       role="alert"
       aria-labelledby="compliance-ack-heading"
       className={
-        'rounded-md border p-4 ' +
+        'rounded-xl border p-4 ' +
         (acknowledged
           ? 'border-amber-300 bg-amber-50/60'
           : 'border-pink-500 bg-pink-50')

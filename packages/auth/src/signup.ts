@@ -14,6 +14,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import type { UserRole } from '@ilaunchify/db'
+import { checkRateLimit, requestIp } from './rate-limit'
 
 /** Result of a signup attempt. */
 export type SignupResult =
@@ -25,6 +26,7 @@ export type SignupError =
   | 'INVALID_EMAIL'
   | 'INVALID_INPUT'
   | 'ADMIN_SIGNUP_FORBIDDEN'
+  | 'RATE_LIMITED'
   | 'DB_ERROR'
 
 /** Input shape varies slightly per role — partner needs company info, creator brand info. */
@@ -68,6 +70,21 @@ export async function createUserWithRole(input: SignupInput): Promise<SignupResu
 
   if (input.role === 'PARTNER' && !input.companyName?.trim()) {
     return { ok: false, error: 'INVALID_INPUT', message: 'Company name is required for partners.' }
+  }
+
+  // --- Rate limits (docs/SECURITY_ARCHITECTURE.md Tier 0.3) ---
+  // Per-IP catches scripted mass-signup; per-email catches retry hammering.
+  const ip = await requestIp()
+  const [ipLimit, emailLimit] = await Promise.all([
+    checkRateLimit({ scope: 'signup:ip', id: ip, limit: 10, windowSec: 3600 }),
+    checkRateLimit({ scope: 'signup:email', id: email, limit: 3, windowSec: 3600 }),
+  ])
+  if (!ipLimit.ok || !emailLimit.ok) {
+    return {
+      ok: false,
+      error: 'RATE_LIMITED',
+      message: 'Too many signup attempts. Please try again in a little while.',
+    }
   }
 
   // --- Check for existing user ---

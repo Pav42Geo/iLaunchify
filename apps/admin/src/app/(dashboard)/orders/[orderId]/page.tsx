@@ -38,7 +38,8 @@ import {
   ArrowRightLeft,
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
-import { cn } from '@ilaunchify/ui'
+import { cn, ProductionManifestView } from '@ilaunchify/ui'
+import type { ProductionManifest } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
 
@@ -435,6 +436,8 @@ function DispatchesCard({
     declineNotes: string | null
     manifestVersion: number
     acceptedManifestVersion: number | null
+    finishManifestJson: unknown
+    bundleStatus: string
     partnerService: {
       type: string
       partner: { companyName: string }
@@ -527,6 +530,23 @@ function DispatchesCard({
                         />
                       )}
                     </dl>
+
+                    {/* Production manifest — same view the partner sees, with a
+                        downloadable manifest. Collapsed to keep the list scannable. */}
+                    <details className="group mt-3">
+                      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-ink-500 [&::-webkit-details-marker]:hidden">
+                        <FileText className="h-3 w-3" aria-hidden="true" />
+                        Production manifest
+                        <span className="font-normal text-ink-400 group-open:hidden">· show</span>
+                      </summary>
+                      <div className="mt-2">
+                        <ProductionManifestView
+                          manifest={(d.finishManifestJson as unknown as ProductionManifest | null) ?? null}
+                          status={d.bundleStatus as 'PENDING_GENERATION' | 'READY' | 'FAILED'}
+                          manifestDownloadHref={`/api/manifest/${d.id}`}
+                        />
+                      </div>
+                    </details>
                   </div>
                 </div>
               </li>

@@ -22,7 +22,7 @@ export default async function ChannelsSettingsPage() {
 
   if (!profile) {
     return (
-      <div className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+      <div className="rounded-md border border-ink-200 bg-white p-6 text-sm text-ink-600">
         Your creator profile is missing — contact support.
       </div>
     )
@@ -37,13 +37,13 @@ export default async function ChannelsSettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
           Step 3 of 5
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           Where will customers buy your products?
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           iLaunchify is the production layer — your customers check out on your own channel.
           Tell us which one so we can size shipping and packaging correctly.
         </p>
@@ -51,7 +51,7 @@ export default async function ChannelsSettingsPage() {
 
       <ChannelForm initialChannel={initialChannel} initialUrl={initialUrl} />
 
-      <div className="rounded-md bg-zinc-50 px-4 py-3 text-xs text-zinc-600">
+      <div className="rounded-md bg-ink-50 px-4 py-3 text-xs text-ink-600">
         💡 Heads up — real Shopify / Amazon push integration ships in a later release. For now
         this just records your intent so we can prepare the right shipping + packaging defaults.
       </div>

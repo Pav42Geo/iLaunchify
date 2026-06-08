@@ -55,11 +55,11 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
   const isPending = status === 'PENDING' || status === 'RESTRICTED'
 
   return (
-    <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
+    <section className="space-y-3 rounded-lg border border-ink-200 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-zinc-900">Stripe Connect for payouts</h3>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h3 className="text-base font-semibold text-ink-900">Stripe Connect for payouts</h3>
+          <p className="mt-1 text-sm text-ink-500">
             We use Stripe Connect Express. Stripe owns KYB collection and bank verification —
             your bank details never touch our servers.
           </p>
@@ -74,7 +74,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
         </div>
       ) : (
         <>
-          <div className="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+          <div className="rounded-md bg-ink-50 px-3 py-2 text-sm text-ink-700">
             Stripe&apos;s hosted form (~10&nbsp;min) collects:
             <ul className="ml-5 mt-1 list-disc">
               <li>Business legal entity + EIN / tax ID</li>
@@ -103,7 +103,7 @@ function StatusBadge({ status }: { status: StripeStatus }) {
     REJECTED: 'Rejected',
   }[status]
   const cls = {
-    NONE: 'bg-zinc-100 text-zinc-700',
+    NONE: 'bg-ink-100 text-ink-700',
     PENDING: 'bg-amber-100 text-amber-800',
     ACTIVE: 'bg-emerald-100 text-emerald-800',
     RESTRICTED: 'bg-amber-100 text-amber-800',
@@ -168,12 +168,12 @@ function ContractCard({
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-zinc-200 p-5">
+    <section className="space-y-4 rounded-lg border border-ink-200 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-zinc-900">{state.contract.name}</h3>
-          <p className="mt-1 text-sm text-zinc-500">
-            Version <code className="rounded bg-zinc-100 px-1 text-xs">{state.contract.version}</code> —{' '}
+          <h3 className="text-base font-semibold text-ink-900">{state.contract.name}</h3>
+          <p className="mt-1 text-sm text-ink-500">
+            Version <code className="rounded bg-ink-100 px-1 text-xs">{state.contract.version}</code> —{' '}
             {state.contract.description}
           </p>
         </div>
@@ -182,7 +182,7 @@ function ContractCard({
             ✓ Signed
           </span>
         ) : (
-          <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700">
+          <span className="shrink-0 rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-medium text-ink-700">
             Not signed
           </span>
         )}
@@ -200,11 +200,11 @@ function ContractCard({
         </div>
       ) : (
         <>
-          <details className="rounded-md border border-zinc-200">
-            <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
+          <details className="rounded-md border border-ink-200">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
               Read the agreement summary
             </summary>
-            <div className="space-y-2 border-t border-zinc-200 px-3 py-3 text-sm text-zinc-700">
+            <div className="space-y-2 border-t border-ink-200 px-3 py-3 text-sm text-ink-700">
               <p>
                 The standard agreement covers payment timing, dispute resolution, failure
                 responsibility (creator-cause vs. partner-cause vs. shared), and the platform&apos;s
@@ -224,7 +224,7 @@ function ContractCard({
 
           <div className="space-y-3">
             <div>
-              <Label htmlFor="signerName" className="text-sm font-medium text-zinc-900">
+              <Label htmlFor="signerName" className="text-sm font-medium text-ink-900">
                 Full legal name
               </Label>
               <Input
@@ -235,7 +235,7 @@ function ContractCard({
                 className="mt-1"
                 disabled={isPending}
               />
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-ink-500">
                 Acts as your digital signature — recorded in our audit log.
               </p>
             </div>
@@ -248,7 +248,7 @@ function ContractCard({
                 disabled={isPending}
                 className="mt-1"
               />
-              <span className="text-sm text-zinc-700">
+              <span className="text-sm text-ink-700">
                 I have authority to bind my company and I accept the terms of the{' '}
                 <strong>{state.contract.name}</strong> ({state.contract.version}).
               </span>
@@ -260,7 +260,7 @@ function ContractCard({
               <Button
                 onClick={handleAccept}
                 disabled={isPending || !signerName.trim() || !agreed}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-ink-900 hover:bg-ink-700"
               >
                 {isPending ? 'Signing…' : 'Sign agreement'}
               </Button>

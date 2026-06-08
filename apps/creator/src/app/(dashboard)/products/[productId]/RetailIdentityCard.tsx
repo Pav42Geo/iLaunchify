@@ -85,18 +85,18 @@ export function RetailIdentityCard({ productId, initial }: Props) {
   const modeError = check?.errors.find((e) => e.field === 'barcodeMode')
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white">
+    <section className="rounded-xl border border-ink-200 bg-white">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-50 rounded-xl transition-colors"
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-ink-50 rounded-xl transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-md bg-zinc-100 flex items-center justify-center">
-            <Barcode className="h-4 w-4 text-zinc-700" />
+          <span className="w-8 h-8 rounded-md bg-ink-100 flex items-center justify-center">
+            <Barcode className="h-4 w-4 text-ink-700" />
           </span>
           <div>
-            <div className="font-semibold text-sm text-zinc-900">
+            <div className="font-semibold text-sm text-ink-900">
               Retail identity
               {initial.gtin && (
                 <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
@@ -109,21 +109,21 @@ export function RetailIdentityCard({ productId, initial }: Props) {
                 </span>
               )}
             </div>
-            <div className="text-[11.5px] text-zinc-500 mt-0.5">
+            <div className="text-[11.5px] text-ink-500 mt-0.5">
               Optional — needed for Amazon / Walmart / retail
             </div>
           </div>
         </div>
-        <span className="text-[11px] text-zinc-500">{open ? 'Hide' : 'Configure'}</span>
+        <span className="text-[11px] text-ink-500">{open ? 'Hide' : 'Configure'}</span>
       </button>
 
       {open && (
-        <div className="border-t border-zinc-200 p-5 space-y-5">
+        <div className="border-t border-ink-200 p-5 space-y-5">
           {/* GTIN */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
               GTIN / UPC / EAN
-              <span className="ml-2 text-zinc-400 normal-case font-normal tracking-normal">
+              <span className="ml-2 text-ink-400 normal-case font-normal tracking-normal">
                 · 8, 12, 13, or 14 digits
               </span>
             </label>
@@ -133,7 +133,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               onChange={(e) => setGtin(e.target.value)}
               placeholder="012345678905"
               spellCheck={false}
-              className="w-full h-10 px-3 text-sm font-mono tabular-nums border border-zinc-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15"
+              className="w-full h-10 px-3 text-sm font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15"
             />
             {gtinClient.ok && gtinClient.normalized && gtinClient.format && (
               <p className="mt-1.5 text-[11.5px] text-emerald-700 flex items-center gap-1.5">
@@ -153,7 +153,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
                 {gtinWarning.message}
               </p>
             )}
-            <p className="mt-1.5 text-[11px] text-zinc-500 flex items-start gap-1">
+            <p className="mt-1.5 text-[11px] text-ink-500 flex items-start gap-1">
               <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
               For retail (Amazon, Walmart, Target), register at{' '}
               <a
@@ -170,9 +170,9 @@ export function RetailIdentityCard({ productId, initial }: Props) {
 
           {/* Internal SKU */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
               Internal SKU
-              <span className="ml-2 text-zinc-400 normal-case font-normal tracking-normal">
+              <span className="ml-2 text-ink-400 normal-case font-normal tracking-normal">
                 · for warehouse routing + pre-launch
               </span>
             </label>
@@ -182,7 +182,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               onChange={(e) => setSku(e.target.value.toUpperCase())}
               placeholder="KINDRED-VAN-30CT"
               spellCheck={false}
-              className="w-full h-10 px-3 text-sm font-mono tabular-nums border border-zinc-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15"
+              className="w-full h-10 px-3 text-sm font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15"
             />
             {skuError && (
               <p className="mt-1.5 text-[11.5px] text-pink-700">{skuError.message}</p>
@@ -191,7 +191,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
 
           {/* Barcode mode */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block mb-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
               What prints on packaging
             </label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -205,15 +205,15 @@ export function RetailIdentityCard({ productId, initial }: Props) {
                     'rounded-md border p-2.5 text-left transition-all ' +
                     (mode === m
                       ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
-                      : 'border-zinc-200 bg-white hover:border-zinc-400')
+                      : 'border-ink-200 bg-white hover:border-ink-400')
                   }
                 >
-                  <div className="font-bold text-[12.5px] text-zinc-900">
+                  <div className="font-bold text-[12.5px] text-ink-900">
                     {m === 'NONE' && 'No barcode'}
                     {m === 'RETAIL_UPC' && 'Retail UPC'}
                     {m === 'INTERNAL_SKU' && 'Internal SKU'}
                   </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">
+                  <div className="text-[10px] text-ink-500 mt-0.5">
                     {m === 'NONE' && 'Skip the barcode area'}
                     {m === 'RETAIL_UPC' && 'Print the GTIN above'}
                     {m === 'INTERNAL_SKU' && 'Code 128 + "INTERNAL"'}
@@ -232,7 +232,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               type="button"
               onClick={handleSave}
               disabled={saving || (check ? !check.ok : false)}
-              className="h-10 px-5 inline-flex items-center justify-center text-sm font-semibold bg-zinc-900 text-white rounded-md hover:bg-black disabled:opacity-40 transition-colors"
+              className="h-10 px-5 inline-flex items-center justify-center text-sm font-semibold bg-ink-900 text-white rounded-md hover:bg-ink-700 disabled:opacity-40 transition-colors"
             >
               {saving ? 'Saving…' : 'Save identity'}
             </button>

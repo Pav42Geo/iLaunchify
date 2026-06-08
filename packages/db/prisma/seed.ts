@@ -32,6 +32,7 @@ import { seedNiches } from './seed-niches'
 import { seedTicketCategories } from './seed-ticket-categories'
 // 2026-06-02 V1.1 marketplace taxonomy — locked 4-layer model.
 import { seedCategoriesLocked } from './seed-categories-locked'
+import { seedPackingTypes } from './seed-packing-types'
 import { seedNicheSubcategories } from './seed-niche-subcategories'
 import { seedLifestyleTags } from './seed-lifestyle-tags'
 import { seedNicheRules } from './seed-niche-rules'
@@ -121,6 +122,7 @@ async function main() {
   // so the partner packaging picker is populated and multi-component slot
   // derivation has real data.
   await seedPackagingTypes(prisma)
+  await seedPackingTypes(prisma) // 14-group product packing taxonomy (turnkey builder)
 
   // --- Marketplace taxonomy (V1.1 — 2026-06-02 locked 4-layer model) ---
   // Layer 2 — 13 LOCKED categories + 121 subcategories (per

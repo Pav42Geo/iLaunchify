@@ -115,17 +115,17 @@ export function IngredientGroupingPanel({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white">
+    <div className="rounded-md border border-ink-200 bg-white">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-zinc-50"
+        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-ink-50"
         aria-expanded={open}
       >
         <div className="flex items-center gap-2">
-          <span className="font-medium text-zinc-900">
+          <span className="font-medium text-ink-900">
             Ingredient grouping{' '}
-            <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-normal text-zinc-600">
+            <span className="ml-1 rounded bg-ink-100 px-1.5 py-0.5 text-xs font-normal text-ink-600">
               label statement
             </span>
           </span>
@@ -136,12 +136,12 @@ export function IngredientGroupingPanel({
           )}
         </div>
         <ChevronDown
-          className={`h-4 w-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {open && (
-        <div className="space-y-4 border-t border-zinc-100 px-4 py-4">
-          <p className="text-xs text-zinc-500">
+        <div className="space-y-4 border-t border-ink-100 px-4 py-4">
+          <p className="text-xs text-ink-500">
             Bundle base ingredients under an FDA-permitted category name (21 CFR 101.4).
             One group renders as a single entry on the printed ingredient statement.
           </p>
@@ -153,7 +153,7 @@ export function IngredientGroupingPanel({
           )}
 
           {groups.length === 0 ? (
-            <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+            <p className="rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-500">
               No groups. The ingredient statement will list each base ingredient by name.
             </p>
           ) : (
@@ -168,16 +168,16 @@ export function IngredientGroupingPanel({
                 return (
                   <div
                     key={index}
-                    className="space-y-3 rounded-md border border-zinc-200 p-3"
+                    className="space-y-3 rounded-md border border-ink-200 p-3"
                   >
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr,180px,160px,auto]">
                       <div>
-                        <Label className="text-xs text-zinc-500">Group name</Label>
+                        <Label className="text-xs text-ink-500">Group name</Label>
                         <select
                           value={group.groupName}
                           onChange={(e) => updateGroup(index, { groupName: e.target.value })}
                           onBlur={() => commitName(index)}
-                          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                          className="mt-1 block w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm"
                           disabled={!isDraft || isPending}
                         >
                           {ALLOWED_GROUP_NAMES.map((n) => (
@@ -188,7 +188,7 @@ export function IngredientGroupingPanel({
                         </select>
                       </div>
                       <div>
-                        <Label className="text-xs text-zinc-500">Display mode</Label>
+                        <Label className="text-xs text-ink-500">Display mode</Label>
                         <select
                           value={group.displayMode}
                           onChange={(e) => {
@@ -204,7 +204,7 @@ export function IngredientGroupingPanel({
                               0,
                             )
                           }}
-                          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                          className="mt-1 block w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm"
                           disabled={!isDraft || isPending}
                         >
                           <option value="CATEGORY_ONLY">Category only</option>
@@ -212,7 +212,7 @@ export function IngredientGroupingPanel({
                         </select>
                       </div>
                       <div>
-                        <Label className="text-xs text-zinc-500">Sort as</Label>
+                        <Label className="text-xs text-ink-500">Sort as</Label>
                         <select
                           value={group.sortAs}
                           onChange={(e) => {
@@ -228,7 +228,7 @@ export function IngredientGroupingPanel({
                               0,
                             )
                           }}
-                          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                          className="mt-1 block w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm"
                           disabled={!isDraft || isPending}
                         >
                           <option value="byWeight">By group weight</option>
@@ -239,7 +239,7 @@ export function IngredientGroupingPanel({
                         <button
                           type="button"
                           onClick={() => removeGroup(index)}
-                          className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-md p-1.5 text-ink-400 hover:bg-red-50 hover:text-red-600"
                           title="Remove group"
                           disabled={!isDraft || isPending}
                         >
@@ -249,7 +249,7 @@ export function IngredientGroupingPanel({
                     </div>
 
                     <div>
-                      <Label className="text-xs text-zinc-500">Base ingredients in this group</Label>
+                      <Label className="text-xs text-ink-500">Base ingredients in this group</Label>
                       <div className="mt-1.5 flex flex-wrap gap-2">
                         {baseIngredients.map((b) => {
                           const checked = group.ingredientIds.includes(b.ingredientId)
@@ -259,10 +259,10 @@ export function IngredientGroupingPanel({
                               key={b.ingredientId}
                               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
                                 blockedBySibling && !checked
-                                  ? 'cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-400'
+                                  ? 'cursor-not-allowed border-ink-200 bg-ink-50 text-ink-400'
                                   : checked
                                     ? 'border-blue-300 bg-blue-50 text-blue-900'
-                                    : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50'
+                                    : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
                               }`}
                             >
                               <input
@@ -298,7 +298,7 @@ export function IngredientGroupingPanel({
               type="button"
               onClick={addGroup}
               disabled={groups.length >= ALLOWED_GROUP_NAMES.length || isPending}
-              className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-ink-300 px-3 py-1.5 text-xs text-ink-700 hover:border-ink-400 hover:bg-ink-50 disabled:opacity-50"
             >
               <Plus className="h-3.5 w-3.5" /> Add group
             </button>

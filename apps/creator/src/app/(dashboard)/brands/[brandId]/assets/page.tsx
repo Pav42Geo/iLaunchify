@@ -73,15 +73,15 @@ export default async function BrandAssetsPage({ params }: PageProps) {
       <header>
         <Link
           href="/dashboard"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </Link>
-        <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-500">
           Brand Assets
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{brand.name}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mt-1 max-w-2xl text-sm text-ink-500">
           Your logos, colors, fonts, and tagline. These appear automatically inside the Design
           Studio canvas — logos in the Images drawer, colors in every color picker, fonts at the
           top of the text font dropdown.

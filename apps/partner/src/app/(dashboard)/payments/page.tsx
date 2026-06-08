@@ -1,18 +1,16 @@
 // Partner-facing Payments page.
-// Earnings KPI tiles + payouts list + refunds/clawbacks list. All read-only.
-// Data sources:
-//   - Earnings = sum of Transfer.amountCents WHERE destinationUserId = user.id
-//                AND status in (PENDING, IN_TRANSIT, PAID)
-//   - Payouts = same rows, listed
-//   - Refunds/clawbacks = PartnerClawback rows
+// Earnings KPI tiles + payouts table (filterable + sortable) + refunds list.
 //
-// Stripe Connect Express handles the actual money movement; this page is the
-// partner's view of "what's owed / paid to me by iLaunchify."
+// Partner-v2 surface (Pavel 2026-06-05): same interface family as /products —
+// cream hero + KPI strip + URL-driven status filter chips + sortable columns
+// on the payouts table. Data sources + math unchanged.
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
-import { DollarSign, ArrowDownToLine, AlertCircle } from 'lucide-react'
+import { cn } from '@ilaunchify/ui'
+import Link from 'next/link'
+import { DollarSign, ArrowDownToLine, AlertCircle, ArrowUpDown, type LucideIcon } from 'lucide-react'
+import { PaymentRowActions } from './PaymentRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Payments — Partner' }
@@ -21,25 +19,51 @@ function fmtCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
-export default async function PaymentsPage() {
+const PAYOUT_TABS = ['all', 'PAID', 'PENDING', 'IN_TRANSIT', 'FAILED'] as const
+type PayoutTab = (typeof PAYOUT_TABS)[number]
+const TAB_LABEL: Record<PayoutTab, string> = {
+  all: 'All',
+  PAID: 'Paid',
+  PENDING: 'Pending',
+  IN_TRANSIT: 'In transit',
+  FAILED: 'Failed',
+}
+type SortKey = 'date' | 'amount'
+
+function buildHref(p: { tab?: PayoutTab; sort?: SortKey; dir?: 'asc' | 'desc' }): string {
+  const q = new URLSearchParams()
+  if (p.tab && p.tab !== 'all') q.set('tab', p.tab)
+  if (p.sort && p.sort !== 'date') q.set('sort', p.sort)
+  if (p.dir && p.dir !== 'desc') q.set('dir', p.dir)
+  const s = q.toString()
+  return s ? `/payments?${s}` : '/payments'
+}
+
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; sort?: string; dir?: string }>
+}) {
+  const sp = await searchParams
+  const tab: PayoutTab = (PAYOUT_TABS as readonly string[]).includes(sp.tab ?? '')
+    ? (sp.tab as PayoutTab)
+    : 'all'
+  const sort: SortKey = sp.sort === 'amount' ? 'amount' : 'date'
+  const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
+
   const user = await requireUser()
   if (user.role !== 'PARTNER') return null
-
   const partner = await prisma.partner.findUnique({ where: { userId: user.id } })
   if (!partner) return null
 
-  // 30-day window
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-  // Pull all transfers + clawbacks in parallel
   const [transfers, clawbacks, transfers30d] = await Promise.all([
     prisma.transfer.findMany({
       where: { destinationUserId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 100,
-      include: {
-        charge: { select: { orderId: true } },
-      },
+      include: { charge: { select: { orderId: true } } },
     }),
     prisma.partnerClawback.findMany({
       where: { partnerId: partner.id },
@@ -48,191 +72,249 @@ export default async function PaymentsPage() {
       include: { refund: true, dispute: true },
     }),
     prisma.transfer.findMany({
-      where: {
-        destinationUserId: user.id,
-        createdAt: { gte: thirtyDaysAgo },
-      },
+      where: { destinationUserId: user.id, createdAt: { gte: thirtyDaysAgo } },
       select: { amountCents: true, status: true },
     }),
   ])
 
-  // KPIs
-  const lifetimeEarnedCents = transfers
-    .filter((t) => t.status !== 'CANCELED')
-    .reduce((acc, t) => acc + t.amountCents, 0)
-  const earned30dCents = transfers30d
-    .filter((t) => t.status !== 'CANCELED')
-    .reduce((acc, t) => acc + t.amountCents, 0)
-  const pendingCents = transfers
-    .filter((t) => t.status === 'PENDING')
-    .reduce((acc, t) => acc + t.amountCents, 0)
-  const clawedBackCents = clawbacks.reduce((acc, c) => acc + c.amountCents, 0)
+  const lifetimeEarnedCents = transfers.filter((t) => t.status !== 'CANCELED').reduce((a, t) => a + t.amountCents, 0)
+  const earned30dCents = transfers30d.filter((t) => t.status !== 'CANCELED').reduce((a, t) => a + t.amountCents, 0)
+  const pendingCents = transfers.filter((t) => t.status === 'PENDING').reduce((a, t) => a + t.amountCents, 0)
+  const clawedBackCents = clawbacks.reduce((a, c) => a + c.amountCents, 0)
 
-  const stripeConnected =
-    user.role === 'PARTNER'
-      ? await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { stripeAccountId: true, stripeAccountStatus: true },
-        })
-      : null
+  const stripeConnected = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { stripeAccountId: true, stripeAccountStatus: true },
+  })
+  const stripeActive = !!stripeConnected?.stripeAccountId && stripeConnected.stripeAccountStatus === 'ACTIVE'
+
+  const countFor = (st: string) => transfers.filter((t) => t.status === st).length
+  const visibleTransfers = (tab === 'all' ? transfers : transfers.filter((t) => t.status === tab)).slice()
+  visibleTransfers.sort((a, b) => {
+    const flip = dir === 'asc' ? 1 : -1
+    if (sort === 'amount') return (a.amountCents - b.amountCents) * flip
+    return (a.createdAt.getTime() - b.createdAt.getTime()) * flip
+  })
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+      {/* Cream hero + KPI strip */}
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Manufacturing · Payments
+        </p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Payments
+        </h1>
+        <p className="mt-1 text-[13px] text-ink-600">
           Your earnings, payouts, and refund debits. Money moves through Stripe Connect.
         </p>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Kpi label="Earned · 30 days" value={fmtCents(earned30dCents)} icon={DollarSign} tone="pink" />
+          <Kpi label="Lifetime earned" value={fmtCents(lifetimeEarnedCents)} icon={DollarSign} tone="ink" />
+          <Kpi label="Pending payout" value={fmtCents(pendingCents)} icon={ArrowDownToLine} tone="sky" />
+          <Kpi label="Clawbacks" value={fmtCents(clawedBackCents)} icon={AlertCircle} tone={clawedBackCents > 0 ? 'amber' : 'ink'} />
+        </div>
       </div>
 
-      {(!stripeConnected?.stripeAccountId || stripeConnected.stripeAccountStatus !== 'ACTIVE') && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader>
-            <CardTitle className="text-base">Stripe Connect not active</CardTitle>
-            <CardDescription className="text-amber-800">
-              You won&apos;t receive payouts until your Stripe Connect account is fully onboarded.
-              Status: <span className="font-medium">{stripeConnected?.stripeAccountStatus ?? 'NONE'}</span>.
-              Finish onboarding in Settings.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      {!stripeActive && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+          <p className="font-semibold">Stripe Connect not active</p>
+          <p className="mt-0.5 text-amber-800">
+            You won&apos;t receive payouts until your Stripe Connect account is fully onboarded.
+            Status: <span className="font-medium">{stripeConnected?.stripeAccountStatus ?? 'NONE'}</span>.
+            Finish onboarding in Settings.
+          </p>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <KpiCard label="Earned (30 days)" value={fmtCents(earned30dCents)} icon={DollarSign} />
-        <KpiCard label="Lifetime earned" value={fmtCents(lifetimeEarnedCents)} icon={DollarSign} />
-        <KpiCard label="Pending payout" value={fmtCents(pendingCents)} icon={ArrowDownToLine} />
-        <KpiCard label="Clawbacks (refunds)" value={fmtCents(clawedBackCents)} icon={AlertCircle} tone={clawedBackCents > 0 ? 'warn' : 'neutral'} />
-      </div>
+      {/* Payout status filter chips */}
+      {transfers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {PAYOUT_TABS.map((t) => {
+            const c = t === 'all' ? transfers.length : countFor(t)
+            if (t !== 'all' && c === 0 && tab !== t) return null
+            return (
+              <Link
+                key={t}
+                href={buildHref({ tab: t, sort, dir })}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                  tab === t ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
+                )}
+              >
+                {TAB_LABEL[t]}
+                <span className={cn('tabular-nums', tab === t ? 'text-white/70' : 'text-ink-400')}>{c}</span>
+              </Link>
+            )
+          })}
+        </div>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Payouts</h2>
-        <Card className="overflow-hidden">
-          {transfers.length === 0 ? (
-            <div className="p-6 text-center text-sm text-zinc-500">
-              No payouts yet. They&apos;ll appear here as you ship dispatches.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Order</th>
-                  <th className="px-4 py-3">Reason</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
+      {/* Payouts table */}
+      <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+          <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">Payouts</h2>
+        </header>
+        {transfers.length === 0 ? (
+          <p className="px-4 py-8 text-center text-[12.5px] text-ink-500">
+            No payouts yet. They&apos;ll appear here as you ship dispatches.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <SortTh label="Date" k="date" sort={sort} dir={dir} tab={tab} className="px-4" />
+                  <th className="px-4 py-2.5 font-semibold">Order</th>
+                  <th className="px-4 py-2.5 font-semibold">Reason</th>
+                  <th className="px-4 py-2.5 font-semibold">Status</th>
+                  <SortTh label="Amount" k="amount" sort={sort} dir={dir} tab={tab} align="right" />
+                  <th className="px-4 py-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {transfers.map((t) => (
-                  <tr key={t.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-zinc-600">
-                      {new Date(t.createdAt).toLocaleDateString()}
+              <tbody>
+                {visibleTransfers.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[12px] text-ink-500">Nothing in “{TAB_LABEL[tab]}”.</td></tr>
+                )}
+                {visibleTransfers.map((t) => (
+                  <tr key={t.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-ink-600">{new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5 font-mono text-[11.5px]">#{t.charge.orderId.slice(-8)}</td>
+                    <td className="px-4 py-2.5 text-[11.5px] uppercase text-ink-500">{t.reason.replace(/_/g, ' ').toLowerCase()}</td>
+                    <td className="px-4 py-2.5"><TransferStatusBadge status={t.status} /></td>
+                    <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmtCents(t.amountCents)}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex justify-end">
+                        <PaymentRowActions transferId={t.id} orderId={t.charge.orderId} />
+                      </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      #{t.charge.orderId.slice(-8)}
-                    </td>
-                    <td className="px-4 py-3 text-xs uppercase text-zinc-500">
-                      {t.reason.replace(/_/g, ' ').toLowerCase()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <TransferStatusBadge status={t.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">{fmtCents(t.amountCents)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </Card>
+          </div>
+        )}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Refund debits
-        </h2>
-        <Card className="overflow-hidden">
-          {clawbacks.length === 0 ? (
-            <div className="p-6 text-center text-sm text-zinc-500">No refund clawbacks.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Reason</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
+      {/* Refund debits */}
+      <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+          <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">Refund debits</h2>
+        </header>
+        {clawbacks.length === 0 ? (
+          <p className="px-4 py-8 text-center text-[12.5px] text-ink-500">No refund clawbacks.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <th className="px-4 py-2.5 font-semibold">Date</th>
+                  <th className="px-4 py-2.5 font-semibold">Reason</th>
+                  <th className="px-4 py-2.5 font-semibold">Status</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody>
                 {clawbacks.map((c) => (
-                  <tr key={c.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-zinc-600">
-                      {new Date(c.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-zinc-700">{c.reason}</td>
-                    <td className="px-4 py-3 text-xs uppercase text-zinc-600">{c.status}</td>
-                    <td className="px-4 py-3 text-right font-medium text-red-700">
-                      −{fmtCents(c.amountCents)}
-                    </td>
+                  <tr key={c.id} className="border-b border-ink-50 last:border-0">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-ink-600">{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5 text-ink-700">{c.reason}</td>
+                    <td className="px-4 py-2.5 text-[11.5px] uppercase text-ink-600">{c.status}</td>
+                    <td className="px-4 py-2.5 text-right font-medium tabular-nums text-rose-700">−{fmtCents(c.amountCents)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </Card>
+          </div>
+        )}
       </section>
     </div>
   )
 }
 
-function KpiCard({
+// -----------------------------------------------------------------------------
+
+function Kpi({
   label,
   value,
   icon: Icon,
-  tone = 'neutral',
+  tone,
 }: {
   label: string
   value: string
-  icon: typeof DollarSign
-  tone?: 'neutral' | 'warn'
+  icon: LucideIcon
+  tone: 'ink' | 'sky' | 'pink' | 'amber'
 }) {
+  const iconTone: Record<typeof tone, string> = {
+    ink: 'bg-ink-100 text-ink-700',
+    sky: 'bg-sky-100 text-sky-700',
+    pink: 'bg-pink-100 text-pink-700',
+    amber: 'bg-amber-100 text-amber-700',
+  }
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              {label}
-            </div>
-            <div
-              className={`mt-1 text-2xl font-semibold ${tone === 'warn' ? 'text-amber-700' : 'text-zinc-900'}`}
-            >
-              {value}
-            </div>
-          </div>
-          <Icon
-            className={`h-8 w-8 ${tone === 'warn' ? 'text-amber-400' : 'text-zinc-300'}`}
-          />
+    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
+          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="font-display text-[20px] font-bold leading-none tabular-nums text-ink-900">{value}</p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-function TransferStatusBadge({ status }: { status: string }) {
-  const cls =
-    status === 'PAID'
-      ? 'bg-green-50 text-green-700'
-      : status === 'PENDING'
-      ? 'bg-amber-50 text-amber-700'
-      : status === 'IN_TRANSIT'
-      ? 'bg-blue-50 text-blue-700'
-      : status === 'FAILED' || status === 'CANCELED'
-      ? 'bg-red-50 text-red-700'
-      : 'bg-zinc-100 text-zinc-700'
+function SortTh({
+  label,
+  k,
+  sort,
+  dir,
+  tab,
+  align,
+  className,
+}: {
+  label: string
+  k: SortKey
+  sort: SortKey
+  dir: 'asc' | 'desc'
+  tab: PayoutTab
+  align?: 'right'
+  className?: string
+}) {
+  const isActive = sort === k
+  const nextDir = isActive && dir === 'desc' ? 'asc' : 'desc'
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium uppercase ${cls}`}>
+    <th className={cn('px-4 py-2.5 font-semibold', align === 'right' && 'text-right', className)}>
+      <Link
+        href={buildHref({ tab, sort: k, dir: nextDir })}
+        className={cn(
+          'inline-flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+          isActive ? 'text-ink-900' : 'hover:text-ink-700',
+        )}
+      >
+        {label}
+        <ArrowUpDown className={cn('h-3 w-3', isActive ? 'opacity-100' : 'opacity-40')} aria-hidden="true" />
+      </Link>
+    </th>
+  )
+}
+
+const TRANSFER_PILL: Record<string, string> = {
+  PAID: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  PENDING: 'border-amber-200 bg-amber-50 text-amber-800',
+  IN_TRANSIT: 'border-sky-200 bg-sky-50 text-sky-800',
+  FAILED: 'border-rose-200 bg-rose-50 text-rose-800',
+  CANCELED: 'border-rose-200 bg-rose-50 text-rose-800',
+}
+
+function TransferStatusBadge({ status }: { status: string }) {
+  const cls = TRANSFER_PILL[status] ?? 'border-ink-200 bg-ink-100 text-ink-700'
+  return (
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', cls)}>
       {status.toLowerCase()}
     </span>
   )

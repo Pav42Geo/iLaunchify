@@ -269,13 +269,96 @@ This pattern is required by GDPR Article 7 (conditions for consent) and best pra
 
 ## Recommended counsel review timeline
 
-| Document | Counsel review priority | Estimated review time |
-|---|---|---|
-| Privacy Policy + Sub-processor list | **High — V1-blocking** | 4-8 hours |
-| Partner Agreement (with new Schedule X) | **High — V1-blocking before partner onboarding** | 8-12 hours |
-| Creator Agreement | **High — V1-blocking** | 6-10 hours |
-| ToS | **Medium — V1-blocking** | 6-10 hours |
-| Breach runbook | **Medium — pre-launch** | 4 hours |
-| LEGAL_AUTHORITIES.md | **Low — reference only** | optional review |
+| Document | Counsel review priority | Estimated review time | Counsel type |
+|---|---|---|---|
+| Privacy Policy + Sub-processor list | **High — V1-blocking** | 4-8 hours | Privacy / GDPR specialist |
+| Partner Agreement (with new Schedule X) | **High — V1-blocking before partner onboarding** | 8-12 hours | CPG / FDA + commercial |
+| Creator Agreement | **High — V1-blocking** | 6-10 hours | CPG / FDA + commercial |
+| ToS | **Medium — V1-blocking** | 6-10 hours | Commercial / SaaS |
+| Breach runbook | **Medium — pre-launch** | 4 hours | Privacy / cybersecurity |
+| LEGAL_AUTHORITIES.md | **Low — reference only** | optional review | All counsel as briefing material |
+| Cert + asset library trademark + licensing | **V1.5 — before C7 ships** | 4-8 hours | **IP / trademark counsel** |
 
-Total counsel budget: ~30-45 hours for the first full pass. Use a CPG / FDA-experienced lawyer + a privacy / GDPR specialist (often the same firm if mid-sized). Expect $10K-$25K depending on counsel's rates and complexity of revisions.
+Total counsel budget: ~30-45 hours for the first full pass + 4-8 hours IP for the cert library. Use a CPG / FDA-experienced lawyer + a privacy / GDPR specialist + IP / trademark counsel (often three different specialists, possibly within the same firm if mid-sized). Expect $10K-$25K for the V1 contract pass; another $2K-$5K for the IP / cert library pass.
+
+## V1.5 add-on — Cert library trademark + licensing pass
+
+Separate counsel agenda from the V1 contract pass — typically a different specialist (IP / trademark, not FDA / privacy). Triggered by C7 (Asset Library schema) before the cert variant library goes live to creators.
+
+Hand to IP counsel along with `docs/legal/LEGAL_AUTHORITIES.md` §13 and the master cert catalog at `docs/builds/_certificates-master-catalog.json`.
+
+### Decision asks for IP counsel
+
+1. **Which posture per cert?** Option B (platform library; partners use under existing cert-body license) is the default; identify certs where Option B fails and either Option A (partner uploads their own artwork) or Option C (platform negotiates direct license) is required. Priority focus: Non-GMO Project, Kosher OU, Fair Trade USA, USDA Organic.
+
+2. **Partner Agreement warranty language sufficient?** Counsel confirms that Schedule X + Partner Agreement §Cert Misrepresentation properly shift cert-license-validity risk to the partner.
+
+3. **Brand standards enforcement sufficient?** Counsel reviews `docs/design/COMPLIANCE_UX_PRINCIPLES.md` + `docs/builds/certificates-c8-design-studio-asset-rules.md` canvas object rules (aspect lock, size enforcement, clear space, color lock, required co-text) and confirms enforcement matches cert body brand standards requirements adequately.
+
+4. **iLaunchify trademark registration.** Counsel advises whether to file USPTO trademark applications for "iLaunchify," logo, slogans. ~$350/class filing + counsel fees.
+
+5. **Direct contact + negotiation with high-priority cert bodies.** For any cert flagged as Option C (platform license required), counsel leads outreach to the cert body's licensing contact. Likely candidates per LEGAL_AUTHORITIES §13: Non-GMO Project.
+
+6. **Per-cert license-fee budget.** Estimate platform-level licensing fees for the first 20 priority certs.
+
+7. **Cert renewal / brand-standards-update tracking.** Recommendation on how often iLaunchify must re-verify each cert body's current brand standards (annual? on-change-notification?).
+
+### Pre-meeting prep checklist
+
+Hand to IP counsel 48 hours before the meeting:
+
+- [ ] `docs/legal/LEGAL_AUTHORITIES.md` §13 (trademark + license analysis)
+- [ ] `docs/builds/_certificates-master-catalog.json` (the 85-cert library being built)
+- [ ] `docs/builds/certificates-variant-research-spec.md` (contractor brief for variants)
+- [ ] `docs/legal/Partner_Agreement.docx` (with Schedule X already redlined)
+- [ ] `docs/design/COMPLIANCE_UX_PRINCIPLES.md` (the enforcement framework)
+- [ ] List of cert bodies where iLaunchify already has any prior contact / agreement
+
+### 60-minute meeting agenda for IP counsel
+
+- 0-10 min: business model walkthrough + cert library purpose (Pavel reads the C7/C8 brief summary)
+- 10-25 min: per-cert posture (Options A / B / C) — counsel categorizes the 85 certs into the three options
+- 25-35 min: Partner Agreement warranty + indemnification adequacy review for cert claims
+- 35-45 min: brand standards enforcement adequacy (canvas object rules + variant chooser + compliance scanner)
+- 45-55 min: iLaunchify own trademark registration timeline + cost
+- 55-60 min: next-step commitments + escalation list (which cert bodies to contact + by when)
+
+### Decision tracker
+
+| Cert | Recommended posture (A/B/C) | Rationale | Action / Owner | Date |
+|---|---|---|---|---|
+| usda-organic | | | | |
+| non-gmo-project-verified | | | | |
+| kosher-ou | | | | |
+| fair-trade-usa | | | | |
+| b-corp | | | | |
+| nsf-certified-sport | | | | |
+| ... (remaining 79 priority + long-tail) | | | | |
+
+### Follow-up email template (within 24h)
+
+```
+Subject: iLaunchify IP / cert library counsel decisions — [DATE]
+
+Per our call today:
+
+Decisions locked:
+- [Per-cert posture decisions, list 5-10 highest priority]
+- [Partner Agreement language adjustments needed]
+- [Brand standards enforcement adjustments needed]
+
+Action items for iLaunchify:
+- [Per-cert outreach scheduled]
+- [USPTO trademark filing initiated by [date]]
+- [Variant research priorities adjusted per posture decisions]
+
+Action items for counsel:
+- [Per-cert outreach initiated]
+- [Partner Agreement redline returned by [date]]
+
+Open questions for next session:
+- [Anything unresolved]
+
+Thanks,
+Pavel
+```

@@ -104,7 +104,7 @@ export function IngredientPicker({
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <Input
           value={query}
           onChange={(e) => {
@@ -125,7 +125,7 @@ export function IngredientPicker({
               e.preventDefault()
               setQuery('')
             }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600"
             aria-label="Clear"
           >
             <X className="h-3.5 w-3.5" />
@@ -134,16 +134,16 @@ export function IngredientPicker({
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-80 overflow-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-80 overflow-auto rounded-md border border-ink-200 bg-white shadow-lg">
           {loading && (
-            <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs text-ink-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Searching…
             </div>
           )}
 
           {!loading && results.length === 0 && (
-            <div className="px-3 py-4 text-center text-xs text-zinc-500">
+            <div className="px-3 py-4 text-center text-xs text-ink-500">
               {isEmptyState ? (
                 'Search for an ingredient by name.'
               ) : (
@@ -168,14 +168,14 @@ export function IngredientPicker({
                     handlePick(ing)
                   }}
                   onMouseEnter={() => setActiveIndex(idx)}
-                  className={`flex w-full items-start gap-3 border-b border-zinc-50 px-3 py-2 text-left text-sm last:border-0 ${
+                  className={`flex w-full items-start gap-3 border-b border-ink-50 px-3 py-2 text-left text-sm last:border-0 ${
                     idx === activeIndex ? 'bg-pink-50/40' : ''
                   }`}
                 >
-                <Beaker className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-400" />
+                <Beaker className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-400" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-zinc-900">{ing.internalName}</span>
+                    <span className="truncate font-medium text-ink-900">{ing.internalName}</span>
                     <SourceChip source={ing.source} verificationStatus={ing.verificationStatus} />
                     {ing.recentlyUsed && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
@@ -183,10 +183,10 @@ export function IngredientPicker({
                       </span>
                     )}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-500">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-ink-500">
                     {ing.labelDeclarationName !== ing.internalName && (
                       <span>
-                        Label: <em className="not-italic text-zinc-700">{ing.labelDeclarationName}</em>
+                        Label: <em className="not-italic text-ink-700">{ing.labelDeclarationName}</em>
                       </span>
                     )}
                     {ing.allergenFlags.length > 0 && (
@@ -212,13 +212,13 @@ export function IngredientPicker({
               setShowAddModal(true)
             }}
             onMouseEnter={() => setActiveIndex(results.length)}
-            className={`flex w-full items-center gap-2 border-t border-zinc-200 px-3 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50 ${
+            className={`flex w-full items-center gap-2 border-t border-ink-200 px-3 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50 ${
               activeIndex === results.length ? 'bg-pink-50/60' : ''
             }`}
           >
             <Plus className="h-4 w-4" />
             Create new private ingredient
-            {query && <span className="text-xs font-normal text-zinc-500">&ldquo;{query}&rdquo;</span>}
+            {query && <span className="text-xs font-normal text-ink-500">&ldquo;{query}&rdquo;</span>}
           </button>
         </div>
       )}
@@ -239,7 +239,7 @@ export function IngredientPicker({
 
 function GroupHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-zinc-50/60 px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+    <div className="bg-ink-50/60 px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
       {children}
     </div>
   )
@@ -260,14 +260,14 @@ function SourceChip({
     ? 'bg-blue-50 text-blue-700 border-blue-200'
     : isLib
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+      : 'bg-ink-100 text-ink-700 border-ink-200'
   return (
     <span
       className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${classes}`}
     >
       {label}
       {isPriv && verificationStatus === 'SELF_ATTESTED' && (
-        <span className="ml-1 text-zinc-500" title="Self-attested by partner">
+        <span className="ml-1 text-ink-500" title="Self-attested by partner">
           •SA
         </span>
       )}

@@ -1,0 +1,14 @@
+# Secret scan — docs/SECURITY_ARCHITECTURE.md Tier 1.3 (LOCKED 2026-06-05).
+# Graceful no-op when gitleaks isn't installed so commits never hard-block on
+# tooling; install with `brew install gitleaks` to activate.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --no-banner --config .gitleaks.toml || {
+    echo ""
+    echo "✖ gitleaks: potential secret in staged changes."
+    echo "  Remove it (and rotate it if it was ever real), or add a"
+    echo "  considered allowlist entry in .gitleaks.toml."
+    exit 1
+  }
+else
+  echo "ℹ gitleaks not installed — skipping secret scan (brew install gitleaks)"
+fi

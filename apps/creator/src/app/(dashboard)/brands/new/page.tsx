@@ -35,7 +35,7 @@ export default async function NewBrandPage() {
 
   if (!profile) {
     return (
-      <div className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+      <div className="rounded-md border border-ink-200 bg-white p-6 text-sm text-ink-600">
         Your creator profile is missing — contact support.
       </div>
     )
@@ -46,32 +46,32 @@ export default async function NewBrandPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
           Step 4 of 5
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
           Create your brand
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Just the basics so we can render your label. You can upload additional logo variants,
           add more colors, and pick your fonts after creation in <strong>Brand Assets</strong>.
         </p>
       </header>
 
       {profile.brands.length > 0 && (
-        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm">
-          <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <div className="rounded-md border border-ink-200 bg-ink-50 p-4 text-sm">
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
             Existing brands
           </div>
           <ul className="mt-2 space-y-1">
             {profile.brands.map((b) => (
               <li key={b.id} className="flex items-center justify-between gap-2">
-                <span className="font-medium text-zinc-900">{b.name}</span>
-                <span className="text-xs text-zinc-500">/{b.handle}</span>
+                <span className="font-medium text-ink-900">{b.name}</span>
+                <span className="text-xs text-ink-500">/{b.handle}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-ink-500">
             Most creators run a single brand. If you&apos;re launching a second one, fill in
             the form below — they can run side-by-side.
           </p>
@@ -83,7 +83,7 @@ export default async function NewBrandPage() {
         defaultName={profile.displayName}
       />
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         Need a refresher?{' '}
         <Link href="/dashboard" className="underline">
           Back to dashboard

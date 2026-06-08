@@ -27,7 +27,7 @@ export function ContinueSetupButton() {
       onClick={handleClick}
       disabled={isPending}
       size="lg"
-      className="bg-emerald-600 hover:bg-emerald-700"
+      className="bg-ink-900 hover:bg-ink-700"
     >
       {isPending ? 'Opening…' : 'Continue setup'}
       <ArrowRight className="ml-2 h-4 w-4" />

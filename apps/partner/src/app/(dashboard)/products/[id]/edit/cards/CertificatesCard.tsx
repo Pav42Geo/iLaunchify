@@ -86,7 +86,7 @@ export function CertificatesCard({
     <div className="space-y-3">
       {/* Attached list */}
       {attached.length === 0 ? (
-        <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-4 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-4 text-center text-sm text-ink-500">
           No certificates attached yet. Optional — but verified certs become public badges.
         </div>
       ) : (
@@ -94,13 +94,13 @@ export function CertificatesCard({
           {attached.map((a) => (
             <li
               key={a.instanceId}
-              className="flex items-start justify-between gap-3 rounded-md border border-zinc-200 bg-white p-3"
+              className="flex items-start justify-between gap-3 rounded-md border border-ink-200 bg-white p-3"
             >
               <div className="flex items-start gap-2">
                 <Award className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
                 <div>
-                  <div className="font-medium text-zinc-900">{a.certName}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <div className="font-medium text-ink-900">{a.certName}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
                     {a.certificateNumber && <span>#{a.certificateNumber}</span>}
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
                       Verified
@@ -129,18 +129,18 @@ export function CertificatesCard({
       {/* Pickable VERIFIED instances */}
       {isDraft && verifiedPickable.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
             Add a certificate
           </div>
           <ul className="space-y-1.5">
             {verifiedPickable.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-md border border-ink-200 bg-ink-50 px-3 py-2 text-sm"
               >
                 <div>
-                  <div className="font-medium text-zinc-900">{c.certName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <div className="font-medium text-ink-900">{c.certName}</div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
                     {c.certificateNumber && <span>#{c.certificateNumber}</span>}
                     <CertExpiryBadge expiryDate={c.expiryDate} />
                   </div>
@@ -149,7 +149,7 @@ export function CertificatesCard({
                   size="sm"
                   onClick={() => attach(c.id)}
                   disabled={isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-ink-900 hover:bg-ink-700"
                 >
                   <Plus className="mr-1 h-3.5 w-3.5" /> Attach
                 </Button>
@@ -172,8 +172,8 @@ export function CertificatesCard({
 
       {/* No certs at all */}
       {availableInstances.length === 0 && isDraft && (
-        <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-          <AlertTriangle className="-mt-0.5 mr-1 inline h-3.5 w-3.5 text-zinc-500" />
+        <div className="rounded-md border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+          <AlertTriangle className="-mt-0.5 mr-1 inline h-3.5 w-3.5 text-ink-500" />
           You haven&apos;t claimed any certifications yet.{' '}
           <Link href="/certifications" className="font-medium text-emerald-700 underline">
             Claim NSF / USDA Organic / etc.
@@ -182,7 +182,7 @@ export function CertificatesCard({
         </div>
       )}
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         💡 Verified certs render as branded badges on the public product detail page (creator
         marketplace). PDFs stay private to admin.{' '}
         <Link href="/certifications" className="text-emerald-700 hover:underline">

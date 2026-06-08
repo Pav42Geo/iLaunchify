@@ -52,14 +52,14 @@ export default async function PublishStubPage({
     <div className="space-y-6">
       <Link
         href={`/products/${productId}`}
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+        className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Back to product
       </Link>
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Push to channels</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           List {product.name} on your external sales channels. iLaunchify pushes the listing —
           consumer purchases happen on the channel.
         </p>
@@ -67,7 +67,7 @@ export default async function PublishStubPage({
 
       <Card>
         <CardHeader className="flex-row items-center gap-3 space-y-0">
-          <Truck className="h-8 w-8 shrink-0 text-zinc-400" />
+          <Truck className="h-8 w-8 shrink-0 text-ink-400" />
           <div>
             <CardTitle className="text-base">Production order status</CardTitle>
             <CardDescription>
@@ -108,7 +108,7 @@ export default async function PublishStubPage({
         </Card>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
             Available channels
           </h2>
           {channels.map((c) => {
@@ -118,7 +118,7 @@ export default async function PublishStubPage({
               <Card key={c.id}>
                 <CardHeader className="flex-row items-center justify-between space-y-0">
                   <div className="flex items-center gap-3">
-                    <Plug className="h-5 w-5 shrink-0 text-zinc-400" />
+                    <Plug className="h-5 w-5 shrink-0 text-ink-400" />
                     <div>
                       <CardTitle className="text-base">{c.displayName}</CardTitle>
                       <CardDescription>
@@ -154,7 +154,7 @@ export default async function PublishStubPage({
               </Card>
             )
           })}
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             All connect / push actions become live in V1.1 once each channel's OAuth credentials
             are wired up by admin. The listing model + admin enable/disable is live now so
             creators can plan their channel strategy.

@@ -284,7 +284,7 @@ function QualityCheckPanel({ dispatchId }: { dispatchId: string }) {
               onChange={(e) => setNotes(e.target.value)}
               maxLength={1000}
               placeholder="What failed? e.g. color drift on 8% of units, label adhesion poor in batch."
-              className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="block w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
             />
             <div className="flex gap-2">
               <Button
@@ -519,7 +519,7 @@ function RequestChangesForm({
           {FLAGGABLE_FIELDS.map((f) => (
             <label
               key={f.value}
-              className="flex cursor-pointer items-start gap-2 rounded border border-zinc-200 p-2 hover:bg-zinc-50"
+              className="flex cursor-pointer items-start gap-2 rounded border border-ink-200 p-2 hover:bg-ink-50"
             >
               <input
                 type="checkbox"
@@ -528,8 +528,8 @@ function RequestChangesForm({
                 className="mt-0.5"
               />
               <span className="flex-1">
-                <span className="block text-sm font-medium text-zinc-900">{f.label}</span>
-                <span className="block text-xs text-zinc-500">{f.hint}</span>
+                <span className="block text-sm font-medium text-ink-900">{f.label}</span>
+                <span className="block text-xs text-ink-500">{f.hint}</span>
               </span>
             </label>
           ))}
@@ -544,9 +544,9 @@ function RequestChangesForm({
           onChange={(e) => setPartnerNote(e.target.value)}
           maxLength={1000}
           placeholder="Explain what needs to change so the creator can adjust the order."
-          className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          className="block w-full rounded-md border border-ink-300 px-3 py-2 text-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
         />
-        <p className="text-[10.5px] text-zinc-500">
+        <p className="text-[10.5px] text-ink-500">
           {partnerNote.length}/1000 characters
         </p>
       </div>
@@ -629,7 +629,7 @@ function WithdrawPanel({
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={1000}
                 placeholder="Brief explanation for the creator + iLaunchify admin."
-                className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                className="block w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
               />
             </div>
             <div className="flex gap-2">

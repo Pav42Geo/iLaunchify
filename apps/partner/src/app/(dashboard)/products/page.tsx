@@ -10,7 +10,7 @@
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { cn } from '@ilaunchify/ui'
+import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
 import {
   Plus,
   Package,
@@ -23,6 +23,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
+import { ProductRowActions } from './ProductRowActions'
+import { LiveToggle } from './LiveToggle'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -36,8 +38,8 @@ const STATUS_PILL: Partial<Record<ProductTemplateStatus, { label: string; cls: s
   PENDING_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
   PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
   NEEDS_CHANGES: { label: 'Needs changes', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-zinc-100 text-ink-700' },
-  PAUSED: { label: 'Paused', cls: 'border-ink-200 bg-zinc-100 text-ink-700' },
+  DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
+  PAUSED: { label: 'Paused', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
   REJECTED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
   UNDER_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
   ARCHIVED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
@@ -70,11 +72,12 @@ function isTab(s: string | undefined): s is Tab {
   return !!s && s in TAB_LABEL
 }
 
-function buildHref(params: { tab?: Tab; sort?: SortKey; dir?: 'asc' | 'desc' }): string {
+function buildHref(params: { tab?: Tab; sort?: SortKey; dir?: 'asc' | 'desc'; view?: ViewMode }): string {
   const q = new URLSearchParams()
   if (params.tab && params.tab !== 'all') q.set('tab', params.tab)
   if (params.sort && params.sort !== 'updated') q.set('sort', params.sort)
   if (params.dir && params.dir !== 'desc') q.set('dir', params.dir)
+  if (params.view === 'cards') q.set('view', params.view)
   const s = q.toString()
   return s ? `/products?${s}` : '/products'
 }
@@ -97,12 +100,13 @@ type Row = {
 export default async function ProductsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sort?: string; dir?: string }>
+  searchParams: Promise<{ tab?: string; sort?: string; dir?: string; view?: string }>
 }) {
   const sp = await searchParams
   const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
   const sort: SortKey = sp.sort === 'name' || sp.sort === 'price' ? sp.sort : 'updated'
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
+  const view: ViewMode = sp.view === 'cards' ? 'cards' : 'table' // Partner default: table
 
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
@@ -206,36 +210,41 @@ export default async function ProductsListPage({
         </div>
       </div>
 
-      {/* Status chips — URL-driven */}
-      <div className="flex flex-wrap gap-1.5">
-        {(Object.keys(TAB_LABEL) as Tab[]).map((t) => {
-          const count =
-            t === 'all' ? templates.length : countFor(t as Exclude<Tab, 'all'>)
-          if (t !== 'all' && count === 0 && tab !== t) return null
-          return (
-            <Link
-              key={t}
-              href={buildHref({ tab: t, sort, dir })}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
-                tab === t
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
-              )}
-            >
-              {TAB_LABEL[t]}
-              <span className={cn('tabular-nums', tab === t ? 'text-white/70' : 'text-ink-400')}>
-                {count}
-              </span>
-            </Link>
-          )
-        })}
+      {/* Status chips — URL-driven — + view toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(TAB_LABEL) as Tab[]).map((t) => {
+            const count =
+              t === 'all' ? templates.length : countFor(t as Exclude<Tab, 'all'>)
+            if (t !== 'all' && count === 0 && tab !== t) return null
+            return (
+              <Link
+                key={t}
+                href={buildHref({ tab: t, sort, dir, view })}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                  tab === t
+                    ? 'border-ink-900 bg-ink-900 text-white'
+                    : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
+                )}
+              >
+                {TAB_LABEL[t]}
+                <span className={cn('tabular-nums', tab === t ? 'text-white/70' : 'text-ink-400')}>
+                  {count}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+        <ViewToggle value={view} defaultMode="table" />
       </div>
 
-      {/* Table */}
+      {/* Table / cards */}
       {templates.length === 0 ? (
         <EmptyState />
+      ) : view === 'cards' ? (
+        <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} />
       ) : (
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <div className="overflow-x-auto">
@@ -262,12 +271,17 @@ export default async function ProductsListPage({
                 {visible.map((r) => {
                   const pill = STATUS_PILL[r.status] ?? {
                     label: r.status,
-                    cls: 'border-ink-200 bg-zinc-100 text-ink-700',
+                    cls: 'border-ink-200 bg-ink-100 text-ink-700',
                   }
                   return (
-                    <tr key={r.id} className="border-b border-ink-50 last:border-0 hover:bg-zinc-50/60">
+                    <tr key={r.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
                       <td className="px-5 py-3 font-medium text-ink-900">
-                        {r.name}
+                        <Link
+                          href={`/products/${r.id}/preview`}
+                          className="rounded text-ink-900 hover:text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                        >
+                          {r.name}
+                        </Link>
                         {r.certRefreshNeededAt && (
                           <Link
                             href="/certifications"
@@ -279,14 +293,18 @@ export default async function ProductsListPage({
                         )}
                       </td>
                       <td className="px-3 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',
-                            pill.cls,
-                          )}
-                        >
-                          {pill.label}
-                        </span>
+                        {r.status === 'PUBLISHED' || r.status === 'PAUSED' ? (
+                          <LiveToggle id={r.id} name={r.name} status={r.status} />
+                        ) : (
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',
+                              pill.cls,
+                            )}
+                          >
+                            {pill.label}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-ink-700">{r.subcategory.name}</td>
                       <td className="px-3 py-3 text-[12px] tabular-nums text-ink-600">
@@ -299,13 +317,15 @@ export default async function ProductsListPage({
                       <td className="px-3 py-3 text-[12px] tabular-nums text-ink-500">
                         {new Date(r.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        <Link
-                          href={`/products/${r.id}/edit`}
-                          className="text-[13px] font-medium text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-                        >
-                          Edit →
-                        </Link>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end">
+                          <ProductRowActions
+                            id={r.id}
+                            name={r.name}
+                            status={r.status}
+                            certRefreshNeeded={!!r.certRefreshNeededAt}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )
@@ -423,5 +443,66 @@ function EmptyState() {
         <Plus className="h-4 w-4" aria-hidden="true" /> Create your first
       </Link>
     </section>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Card view (?view=cards)
+// -----------------------------------------------------------------------------
+
+function ProductCards({ rows, tabLabel }: { rows: Row[]; tabLabel: string }) {
+  if (rows.length === 0) {
+    return (
+      <section className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center text-[12px] text-ink-500">
+        Nothing in “{tabLabel}”.
+      </section>
+    )
+  }
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {rows.map((r) => {
+        const pill = STATUS_PILL[r.status] ?? { label: r.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
+        return (
+          <div key={r.id} className="flex flex-col rounded-2xl border border-ink-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              {r.status === 'PUBLISHED' || r.status === 'PAUSED' ? (
+                <LiveToggle id={r.id} name={r.name} status={r.status} />
+              ) : (
+                <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
+                  {pill.label}
+                </span>
+              )}
+              <ProductRowActions id={r.id} name={r.name} status={r.status} certRefreshNeeded={!!r.certRefreshNeededAt} />
+            </div>
+
+            <Link
+              href={`/products/${r.id}/preview`}
+              className="mt-2.5 rounded font-display text-[15px] font-semibold leading-snug text-ink-900 hover:text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              {r.name}
+            </Link>
+            <p className="mt-0.5 text-[12px] text-ink-500">{r.subcategory.name}</p>
+
+            {r.certRefreshNeededAt && (
+              <Link
+                href="/certifications"
+                className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+              >
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
+              </Link>
+            )}
+
+            <div className="mt-auto flex items-center justify-between border-t border-ink-50 pt-3">
+              <span className="font-display text-[16px] font-bold tabular-nums text-ink-900">
+                ${(r.priceFloorCents / 100).toFixed(2)}
+              </span>
+              <span className="text-[11px] tabular-nums text-ink-500">
+                {r._count.ingredientSlots} slots · {r._count.packagingSystems} pkg · {r._count.variants} var
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }

@@ -36,6 +36,7 @@ import {
   Shuffle,
   ArrowRight,
 } from 'lucide-react'
+import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — iLaunchify' }
@@ -76,8 +77,14 @@ const SERVICE_LABEL: Record<string, string> = {
   WAREHOUSE: 'Fulfillment',
 }
 
-export default async function OrdersListPage() {
+export default async function OrdersListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>
+}) {
   const user = await requireUser()
+  const sp = await searchParams
+  const view: ViewMode = sp.view === 'table' ? 'table' : 'cards' // Creator default: cards
   const orders = await prisma.order.findMany({
     where: { creatorUserId: user.id },
     orderBy: { createdAt: 'desc' },
@@ -105,17 +112,17 @@ export default async function OrdersListPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Orders</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Orders</h1>
+        <p className="mt-1 text-sm text-ink-500">
           Production orders across all your brands. Tap an order for the full per-partner
           timeline.
         </p>
       </header>
 
       {orders.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 p-12 text-center">
-          <Package className="mx-auto h-7 w-7 text-zinc-400" />
-          <p className="mt-3 text-sm text-zinc-600">
+        <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-12 text-center">
+          <Package className="mx-auto h-7 w-7 text-ink-400" />
+          <p className="mt-3 text-sm text-ink-600">
             No orders yet. Open a product and place your first production batch.
           </p>
           <Link
@@ -126,11 +133,24 @@ export default async function OrdersListPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3.5">
-          {orders.map((o) => (
-            <OrderCard key={o.id} order={o} />
-          ))}
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12px] text-ink-500">
+              {orders.length} order{orders.length === 1 ? '' : 's'}
+            </p>
+            <ViewToggle value={view} defaultMode="cards" />
+          </div>
+
+          {view === 'table' ? (
+            <OrderTable orders={orders} />
+          ) : (
+            <div className="space-y-3.5">
+              {orders.map((o) => (
+                <OrderCard key={o.id} order={o} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -176,17 +196,17 @@ function OrderCard({ order: o }: { order: OrderRow }) {
 
   return (
     <article
-      className="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+      className="overflow-hidden rounded-xl border border-ink-200 bg-white"
       data-order-id={o.id}
     >
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-zinc-200 bg-[#F3EFE8] px-4 py-2.5 text-[12px] text-zinc-700">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
         <StatusPill palette={palette} />
         <span>
-          <span className="text-zinc-500">Order</span>{' '}
+          <span className="text-ink-500">Order</span>{' '}
           <span className="font-mono text-[11.5px]">{shortId(o.id)}</span>
         </span>
         <span>
-          <span className="text-zinc-500">Placed</span>{' '}
+          <span className="text-ink-500">Placed</span>{' '}
           {new Date(o.createdAt).toLocaleDateString(undefined, {
             month: 'short',
             day: 'numeric',
@@ -212,10 +232,10 @@ function OrderCard({ order: o }: { order: OrderRow }) {
       <div className="flex items-start gap-5 px-5 pb-2 pt-4">
         <Thumbnail name={productName} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-medium leading-tight text-zinc-900">
+          <div className="truncate text-[15px] font-medium leading-tight text-ink-900">
             {productName}
           </div>
-          <div className="mt-0.5 text-[12.5px] text-zinc-500">
+          <div className="mt-0.5 text-[12.5px] text-ink-500">
             {o.brand.name} · {totalUnits(o)} units
             {tracking?.deliveredAt
               ? ` · Delivered ${formatDate(tracking.deliveredAt)}`
@@ -225,12 +245,12 @@ function OrderCard({ order: o }: { order: OrderRow }) {
           </div>
 
           <div className="mt-3">
-            <div className="mb-1 flex items-center gap-1 text-[10.5px] uppercase tracking-[0.05em] text-zinc-500">
+            <div className="mb-1 flex items-center gap-1 text-[10.5px] uppercase tracking-[0.05em] text-ink-500">
               {(['Approvals', 'Production', 'Shipping', 'Delivered'] as const).map(
                 (lbl, i) => (
-                  <span key={lbl} className={i + 1 <= phase ? 'text-zinc-700' : ''}>
+                  <span key={lbl} className={i + 1 <= phase ? 'text-ink-700' : ''}>
                     {lbl}
-                    {i < 3 && <span className="mx-1 text-zinc-300">·</span>}
+                    {i < 3 && <span className="mx-1 text-ink-300">·</span>}
                   </span>
                 ),
               )}
@@ -259,7 +279,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
       </div>
 
       {/* Footer action rail */}
-      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
         <ActionLink href={`/orders/${o.id}#thread`} icon={MessageCircle}>
           Ask partner
         </ActionLink>
@@ -287,11 +307,11 @@ function OrderCard({ order: o }: { order: OrderRow }) {
             </ActionLink>
           </>
         )}
-        <span className="ml-auto flex items-center gap-3 text-[11px] text-zinc-500">
+        <span className="ml-auto flex items-center gap-3 text-[11px] text-ink-500">
           {tracking?.trackingNumber && (
             <span className="inline-flex items-center gap-1">
               <Truck className="h-3 w-3" />
-              <span className="font-medium text-zinc-700">{tracking.trackingCarrier ?? 'Carrier'}</span>
+              <span className="font-medium text-ink-700">{tracking.trackingCarrier ?? 'Carrier'}</span>
               <span className="font-mono">{tracking.trackingNumber}</span>
             </span>
           )}
@@ -299,7 +319,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
           {delivered && (
             <Link
               href={`/checkout?adjust=${o.id}`}
-              className="inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-3 py-1.5 text-[12px] font-medium text-zinc-900 hover:bg-[#9be62a]"
+              className="inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-3 py-1.5 text-[12px] font-medium text-ink-900 hover:bg-[#9be62a]"
             >
               <RotateCw className="h-3.5 w-3.5" /> Reorder
             </Link>
@@ -307,6 +327,77 @@ function OrderCard({ order: o }: { order: OrderRow }) {
         </span>
       </footer>
     </article>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Table view (?view=table) — v2 plain table
+// -----------------------------------------------------------------------------
+
+function OrderTable({ orders }: { orders: OrderRow[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-[13px]">
+          <thead>
+            <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+              <th className="px-5 py-2.5 font-semibold">Order</th>
+              <th className="px-3 py-2.5 font-semibold">Product</th>
+              <th className="px-3 py-2.5 font-semibold">Status</th>
+              <th className="px-3 py-2.5 font-semibold">Total</th>
+              <th className="px-3 py-2.5 font-semibold">Placed</th>
+              <th className="px-5 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => {
+              const status = deriveOrderStatus(o)
+              const palette = STATUS[status]
+              const productName = o.items[0]?.product?.name ?? 'Untitled product'
+              return (
+                <tr key={o.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
+                  <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">{shortId(o.id)}</td>
+                  <td className="px-3 py-3">
+                    <div className="font-medium text-ink-900">{productName}</div>
+                    <div className="text-[11px] text-ink-400">
+                      {o.brand.name} · {totalUnits(o)} units
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ background: palette.bg, color: palette.fg, borderColor: palette.border }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: palette.dot }} />
+                      {palette.label}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 tabular-nums text-ink-900">
+                    ${(o.totalCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-3 py-3 text-[12px] tabular-nums text-ink-500">
+                    {new Date(o.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <Link
+                        href={`/orders/${o.id}`}
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-[12px] font-medium text-ink-700 transition-colors hover:bg-ink-50',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                        )}
+                      >
+                        <Eye className="h-3.5 w-3.5" aria-hidden="true" /> View
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 
@@ -338,14 +429,14 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
 
   return (
     <div className="flex w-[180px] flex-shrink-0 flex-col items-end">
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-500">
         Total
       </div>
-      <div className="font-display text-[26px] font-semibold leading-none tracking-[-0.02em] text-zinc-900 tabular-nums">
+      <div className="font-display text-[26px] font-semibold leading-none tracking-[-0.02em] text-ink-900 tabular-nums">
         ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </div>
       {unitCount > 0 && (
-        <div className="mt-0.5 text-[11px] text-zinc-500 tabular-nums">
+        <div className="mt-0.5 text-[11px] text-ink-500 tabular-nums">
           ${perUnit.toFixed(2)} / unit
         </div>
       )}
@@ -355,31 +446,31 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
           See breakdown
           <span className="transition-transform group-open:rotate-180">▾</span>
         </summary>
-        <dl className="mt-2 w-full rounded-md border border-zinc-200 bg-[#FBFAF7] px-3 py-2 text-[11.5px]">
+        <dl className="mt-2 w-full rounded-md border border-ink-200 bg-[#FBFAF7] px-3 py-2 text-[11.5px]">
           {partnerBreakdown.length > 0 && (
             <>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-zinc-500">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-500">
                 Production
               </div>
               {partnerBreakdown.map((p, i) => (
                 <div key={i} className="flex items-baseline justify-between gap-3 py-[2px]">
-                  <dt className="min-w-0 truncate text-zinc-700">
-                    <span className="text-zinc-500">{p.label}</span> · {p.partner}
+                  <dt className="min-w-0 truncate text-ink-700">
+                    <span className="text-ink-500">{p.label}</span> · {p.partner}
                   </dt>
-                  <dd className="tabular-nums text-zinc-900">${p.amount.toFixed(2)}</dd>
+                  <dd className="tabular-nums text-ink-900">${p.amount.toFixed(2)}</dd>
                 </div>
               ))}
-              <div className="my-1.5 h-px bg-zinc-200" />
+              <div className="my-1.5 h-px bg-ink-200" />
             </>
           )}
           <Row label="Subtotal" amount={subtotal} />
           <Row label="Shipping" amount={shipping} />
           <Row label="Tax" amount={tax} />
           {platformFee > 0.005 && <Row label="Platform fee" amount={platformFee} />}
-          <div className="my-1.5 h-px bg-zinc-300" />
+          <div className="my-1.5 h-px bg-ink-300" />
           <div className="flex items-baseline justify-between gap-3 py-[2px]">
-            <dt className="font-semibold text-zinc-900">Total</dt>
-            <dd className="font-semibold tabular-nums text-zinc-900">${total.toFixed(2)}</dd>
+            <dt className="font-semibold text-ink-900">Total</dt>
+            <dd className="font-semibold tabular-nums text-ink-900">${total.toFixed(2)}</dd>
           </div>
         </dl>
       </details>
@@ -390,8 +481,8 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
 function Row({ label, amount }: { label: string; amount: number }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-[2px]">
-      <dt className="text-zinc-600">{label}</dt>
-      <dd className="tabular-nums text-zinc-900">${amount.toFixed(2)}</dd>
+      <dt className="text-ink-600">{label}</dt>
+      <dd className="tabular-nums text-ink-900">${amount.toFixed(2)}</dd>
     </div>
   )
 }
@@ -452,13 +543,13 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
         <span className="min-w-[6rem] text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[#854F0B]">
           {role}
         </span>
-        <span className="flex-1 truncate text-zinc-900">
+        <span className="flex-1 truncate text-ink-900">
           <strong className="font-medium">{partnerName}</strong>{' '}
           <span className="text-[#854F0B]">needs a label revision before they can run</span>
         </span>
         <Link
           href={`/checkout?adjust=${orderId}`}
-          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-zinc-900 px-3 py-1 text-[11.5px] font-medium text-white hover:bg-zinc-800"
+          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-ink-900 px-3 py-1 text-[11.5px] font-medium text-white hover:bg-ink-800"
         >
           Open revision <ArrowRight className="h-3 w-3" />
         </Link>
@@ -467,19 +558,19 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
   }
 
   const Icon = accepted ? CircleCheck : Circle
-  const iconCls = accepted ? 'text-emerald-700' : 'text-zinc-400'
+  const iconCls = accepted ? 'text-emerald-700' : 'text-ink-400'
 
   return (
     <div className="flex items-center gap-3 rounded-lg bg-[#FBFAF7] px-3 py-2 text-[12.5px]">
       <Icon className={`h-4 w-4 flex-shrink-0 ${iconCls}`} />
-      <span className="min-w-[6rem] text-[10.5px] font-semibold uppercase tracking-[0.04em] text-zinc-500">
+      <span className="min-w-[6rem] text-[10.5px] font-semibold uppercase tracking-[0.04em] text-ink-500">
         {role}
       </span>
-      <span className="flex-1 truncate text-zinc-900">{partnerName}</span>
+      <span className="flex-1 truncate text-ink-900">{partnerName}</span>
       <DispatchStatusLabel status={d.status} />
       {isManufacturer ? (
         <span
-          className="flex-shrink-0 p-1 text-zinc-400"
+          className="flex-shrink-0 p-1 text-ink-400"
           title="Manufacturer can't be re-routed once production starts"
           aria-label="Manufacturer locked"
         >
@@ -488,7 +579,7 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
       ) : !['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(d.status) ? (
         <button
           type="button"
-          className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-[3px] text-[11px] font-medium text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-[3px] text-[11px] font-medium text-ink-700 hover:bg-ink-50"
         >
           <Shuffle className="h-3 w-3" /> Re-route
         </button>
@@ -499,7 +590,7 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
 
 function DispatchStatusLabel({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    PENDING_ACCEPT: { label: 'Awaiting', cls: 'text-zinc-500' },
+    PENDING_ACCEPT: { label: 'Awaiting', cls: 'text-ink-500' },
     ACCEPTED: { label: 'Approved', cls: 'text-emerald-700 font-medium' },
     PRODUCING: { label: 'Producing', cls: 'text-blue-700 font-medium' },
     QUALITY_CHECK: { label: 'QC', cls: 'text-blue-700 font-medium' },
@@ -510,10 +601,10 @@ function DispatchStatusLabel({ status }: { status: string }) {
     DECLINED: { label: 'Declined', cls: 'text-pink-700 font-medium' },
     TIMED_OUT: { label: 'Timed out', cls: 'text-pink-700 font-medium' },
     WITHDRAWN: { label: 'Withdrew', cls: 'text-pink-700 font-medium' },
-    CANCELLED: { label: 'Cancelled', cls: 'text-zinc-500' },
+    CANCELLED: { label: 'Cancelled', cls: 'text-ink-500' },
     FAILED_QC: { label: 'QC failed', cls: 'text-pink-700 font-medium' },
   }
-  const m = map[status] ?? { label: status, cls: 'text-zinc-500' }
+  const m = map[status] ?? { label: status, cls: 'text-ink-500' }
   return <span className={`text-[12px] ${m.cls}`}>{m.label}</span>
 }
 
@@ -538,7 +629,7 @@ function ActionLink({
 }
 
 function Sep() {
-  return <span className="text-zinc-300">·</span>
+  return <span className="text-ink-300">·</span>
 }
 
 function Thumbnail({ name }: { name: string }) {

@@ -120,7 +120,7 @@ export function CertConsentModal({
           <Button
             onClick={() => onConfirm(selectedVariant)}
             disabled={!agreed || isPending}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-ink-900 hover:bg-ink-700"
           >
             {isPending ? 'Recording…' : 'Consent & add badge'}
           </Button>

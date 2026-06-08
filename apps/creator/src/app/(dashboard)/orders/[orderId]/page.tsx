@@ -202,15 +202,15 @@ export default async function OrderDetailPage({
   return (
     <div className="space-y-6">
       {/* Cream header band — mirrors R10 list-card header */}
-      <header className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-zinc-200 bg-[#F3EFE8] px-5 py-3 text-[12px] text-zinc-700">
+      <header className="overflow-hidden rounded-xl border border-ink-200 bg-white">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-cream px-5 py-3 text-[12px] text-ink-700">
           <Link
             href="/orders"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-zinc-900"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-500 hover:text-ink-900"
           >
             <ArrowLeft className="h-3 w-3" aria-hidden="true" /> All orders
           </Link>
-          <span className="h-3 w-px bg-zinc-300" aria-hidden="true" />
+          <span className="h-3 w-px bg-ink-300" aria-hidden="true" />
           <span
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
             style={{
@@ -226,22 +226,22 @@ export default async function OrderDetailPage({
             {palette.label}
           </span>
           <span>
-            <span className="text-zinc-500">Order</span> &nbsp;#{order.id.slice(-8)}
+            <span className="text-ink-500">Order</span> &nbsp;#{order.id.slice(-8)}
           </span>
-          <span className="ml-auto text-zinc-500">
+          <span className="ml-auto text-ink-500">
             Placed {new Date(order.createdAt).toLocaleDateString()}
           </span>
         </div>
 
         <div className="grid gap-3 px-5 py-5 sm:grid-cols-[1fr,auto] sm:items-end">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.06em] text-zinc-500">
+            <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
               {order.brand.name}
             </p>
-            <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-zinc-900">
+            <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
               {product?.name ?? 'Order'}
             </h1>
-            <p className="mt-1.5 text-[12.5px] text-zinc-600">
+            <p className="mt-1.5 text-[12.5px] text-ink-600">
               {order.dispatches.length === 0
                 ? 'Dispatches will appear once payment processes and routing finds partners.'
                 : `${order.dispatches.length} partner ${order.dispatches.length === 1 ? 'gate' : 'gates'} · ${humanAggregate(aggregate)}`}
@@ -265,11 +265,11 @@ export default async function OrderDetailPage({
       {/* Two-column body — dispatch timeline left, sticky rail right */}
       <div className="grid gap-6 lg:grid-cols-[1fr,340px]">
         <section className="min-w-0 space-y-3">
-          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
             Partner gates
           </h2>
           {order.dispatches.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50/40 p-6 text-sm text-zinc-500">
+            <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50/40 p-6 text-sm text-ink-500">
               Dispatches will appear here once payment processes and routing
               finds your partners.
             </div>
@@ -373,9 +373,9 @@ function ChangesRequestedBanner({
                   key={d.id}
                   className="rounded-md border border-[#FAC775] bg-white/80 p-3"
                 >
-                  <p className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-600">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-600">
                     {SERVICE_LABEL[d.type] ?? d.type} ·{' '}
-                    <span className="text-zinc-800">{d.partnerName}</span>
+                    <span className="text-ink-800">{d.partnerName}</span>
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {d.request.flaggedFields.map((f) => (
@@ -387,7 +387,7 @@ function ChangesRequestedBanner({
                       </span>
                     ))}
                   </div>
-                  <p className="mt-2 rounded bg-zinc-50 p-2 text-[12px] italic leading-snug text-zinc-700">
+                  <p className="mt-2 rounded bg-ink-50 p-2 text-[12px] italic leading-snug text-ink-700">
                     &ldquo;{d.request.partnerNote}&rdquo;
                   </p>
                 </div>
@@ -442,11 +442,11 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
     <article
       className={
         'overflow-hidden rounded-xl border bg-white ' +
-        (needsChange ? 'border-[#FAC775] ring-1 ring-[#FAC775]/40' : 'border-zinc-200')
+        (needsChange ? 'border-[#FAC775] ring-1 ring-[#FAC775]/40' : 'border-ink-200')
       }
     >
       <header
-        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-zinc-100 px-4 py-2.5 text-[12px] text-zinc-700"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-ink-100 px-4 py-2.5 text-[12px] text-ink-700"
         style={{
           background: needsChange ? '#FDF6E8' : '#FAF8F2',
         }}
@@ -465,34 +465,34 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           />
           {palette.label}
         </span>
-        <span className="inline-flex items-center gap-1.5 font-medium text-zinc-800">
-          <Icon className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 font-medium text-ink-800">
+          <Icon className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
           {serviceLabel}
         </span>
         {isManufacturer && (
           <span
-            className="inline-flex items-center gap-1 text-[11px] text-zinc-500"
+            className="inline-flex items-center gap-1 text-[11px] text-ink-500"
             title="The manufacturer is locked to this order — partner is set when production begins"
           >
             <Lock className="h-3 w-3" aria-hidden="true" />
             Locked
           </span>
         )}
-        <span className="ml-auto font-mono text-[11px] text-zinc-400">
+        <span className="ml-auto font-mono text-[11px] text-ink-400">
           DSP-{d.id.slice(-6)}
         </span>
       </header>
 
       <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             Partner
           </p>
-          <p className="mt-0.5 truncate text-[14px] font-semibold text-zinc-900">
+          <p className="mt-0.5 truncate text-[14px] font-semibold text-ink-900">
             {d.partnerName}
           </p>
           {isPending && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-zinc-600">
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-ink-600">
               <Clock className="h-3 w-3 text-amber-700" aria-hidden="true" />
               Decision needed by{' '}
               {new Date(d.acceptDeadlineAt).toLocaleString(undefined, {
@@ -521,29 +521,29 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           )}
         </div>
         <div className="text-right">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             Cost
           </p>
-          <p className="text-[15px] font-semibold tabular-nums text-zinc-900">
+          <p className="text-[15px] font-semibold tabular-nums text-ink-900">
             ${(d.costCents / 100).toFixed(2)}
           </p>
         </div>
       </div>
 
       {/* Footer action rail — same idea as R10 cards */}
-      <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 bg-zinc-50/50 px-5 py-2.5 text-[11.5px]">
+      <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ink-100 bg-ink-50/50 px-5 py-2.5 text-[11.5px]">
         <button
           type="button"
           disabled
           title="Partner messaging is V1.1+"
-          className="inline-flex items-center gap-1 text-zinc-500 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 text-ink-500 disabled:cursor-not-allowed"
         >
           <MessageSquare className="h-3 w-3" aria-hidden="true" />
           Ask partner
         </button>
         <Link
           href={`/orders/${d.id}/dispatch/${d.id}/manifest`}
-          className="inline-flex items-center gap-1 text-zinc-600 hover:text-zinc-900"
+          className="inline-flex items-center gap-1 text-ink-600 hover:text-ink-900"
         >
           <ExternalLink className="h-3 w-3" aria-hidden="true" />
           View manifest
@@ -553,7 +553,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
             type="button"
             disabled
             title="Manual re-route lands in V1.1 — auto re-route is already running"
-            className="inline-flex items-center gap-1 text-zinc-500 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 text-ink-500 disabled:cursor-not-allowed"
           >
             <RefreshCcw className="h-3 w-3" aria-hidden="true" />
             Re-route
@@ -620,7 +620,7 @@ function DispatchTimeline({ dispatch: d }: { dispatch: DispatchView }) {
   const lastIdx = completed.length - 1
 
   return (
-    <ol className="mt-3 space-y-1.5 border-l border-zinc-200 pl-3">
+    <ol className="mt-3 space-y-1.5 border-l border-ink-200 pl-3">
       {completed.map((step, idx) => {
         const isLast = idx === lastIdx
         return (
@@ -639,12 +639,12 @@ function DispatchTimeline({ dispatch: d }: { dispatch: DispatchView }) {
             />
             <span
               className={
-                isLast ? 'font-semibold text-zinc-900' : 'text-zinc-700'
+                isLast ? 'font-semibold text-ink-900' : 'text-ink-700'
               }
             >
               {step.label}
             </span>
-            <span className="text-zinc-500">
+            <span className="text-ink-500">
               {new Date(step.at!).toLocaleString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -653,7 +653,7 @@ function DispatchTimeline({ dispatch: d }: { dispatch: DispatchView }) {
               })}
             </span>
             {step.detail && (
-              <span className="ml-1 truncate font-mono text-[10.5px] text-zinc-500">
+              <span className="ml-1 truncate font-mono text-[10.5px] text-ink-500">
                 · {step.detail}
               </span>
             )}
@@ -686,7 +686,7 @@ function ActionsCard({
   // hasTier(creatorTier, 'builder') call. Admin flips the row in
   // /admin/tiers and this card honours it on the next reload.
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
       {/* Adjust takes top spot when needed — that's the only action that
           actually moves the order forward in that state. */}
       {needsAdjust && productId ? (
@@ -698,13 +698,13 @@ function ActionsCard({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             What you can do
           </p>
           {isDelivered && productId && (
             <Link
               href={`/products/${productId}/checkout`}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#B5FF3D] px-4 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-zinc-900 shadow-sm hover:bg-[#A4F127] focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#B5FF3D] px-4 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-ink-900 shadow-sm hover:bg-[#A4F127] focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               Reorder
@@ -713,7 +713,7 @@ function ActionsCard({
         </div>
       )}
 
-      <div className="my-3 h-px bg-zinc-100" />
+      <div className="my-3 h-px bg-ink-100" />
 
       <ul className="space-y-2 text-[12.5px]">
         <li>
@@ -721,7 +721,7 @@ function ActionsCard({
             type="button"
             disabled
             title="Partner messaging is V1.1+"
-            className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-zinc-500 disabled:cursor-not-allowed"
+            className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-ink-500 disabled:cursor-not-allowed"
           >
             <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
             Ask a partner
@@ -731,7 +731,7 @@ function ActionsCard({
           {supportUnlocked ? (
             <Link
               href="/help"
-              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-ink-700 hover:bg-ink-50 hover:text-ink-900"
             >
               <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
               Get product support
@@ -743,7 +743,7 @@ function ActionsCard({
             // for this CTA.
             <Link
               href="/settings/plan?upgrade=builder"
-              className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50/50 px-2 py-1.5 text-zinc-700 hover:bg-pink-50 hover:text-zinc-900"
+              className="inline-flex w-full items-center justify-between gap-2 rounded-md border border-pink-200 bg-pink-50/50 px-2 py-1.5 text-ink-700 hover:bg-pink-50 hover:text-ink-900"
               title="Concierge product support is included with Builder + Agency plans"
             >
               <span className="inline-flex items-center gap-2">
@@ -761,7 +761,7 @@ function ActionsCard({
           <li>
             <Link
               href={`/products/${productId}`}
-              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-ink-700 hover:bg-ink-50 hover:text-ink-900"
             >
               <Package className="h-3.5 w-3.5" aria-hidden="true" />
               View product
@@ -790,12 +790,12 @@ function TotalsCard({
 }) {
   return (
     <div
-      className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+      className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm"
       aria-labelledby="order-totals-heading"
     >
       <h3
         id="order-totals-heading"
-        className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500"
+        className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
       >
         Order totals
       </h3>
@@ -804,14 +804,14 @@ function TotalsCard({
         <Line label="Shipping" value={order.shippingCents} dimmed={order.shippingCents === 0} />
         <Line label="Tax" value={order.taxCents} dimmed={order.taxCents === 0} />
       </dl>
-      <div className="my-3 h-px bg-zinc-100" />
+      <div className="my-3 h-px bg-ink-100" />
       <div className="flex items-center justify-between">
-        <span className="text-[12.5px] font-semibold text-zinc-900">Total paid</span>
-        <span className="font-display text-[18px] font-bold tabular-nums text-zinc-900">
+        <span className="text-[12.5px] font-semibold text-ink-900">Total paid</span>
+        <span className="font-display text-[18px] font-bold tabular-nums text-ink-900">
           ${(order.totalCents / 100).toFixed(2)}
         </span>
       </div>
-      <p className="mt-3 inline-flex items-center gap-1 text-[11px] text-zinc-500">
+      <p className="mt-3 inline-flex items-center gap-1 text-[11px] text-ink-500">
         <ShieldCheck className="h-3 w-3" aria-hidden="true" />
         Payment held until every partner accepts the manifest.
       </p>
@@ -832,7 +832,7 @@ function Line({
     <div
       className={
         'flex items-center justify-between gap-2 ' +
-        (dimmed ? 'text-zinc-400' : 'text-zinc-700')
+        (dimmed ? 'text-ink-400' : 'text-ink-700')
       }
     >
       <dt>{label}</dt>

@@ -109,8 +109,8 @@ export function AllergensCard({
       {/* Effective contains-list */}
       <section className="space-y-2">
         <div className="flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-zinc-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+          <ShieldAlert className="h-4 w-4 text-ink-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-500">
             Contains (FDA Big-9)
           </h3>
         </div>
@@ -139,7 +139,7 @@ export function AllergensCard({
             })}
           </div>
         )}
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Auto-derived from your ingredient slots&apos; allergen flags. The contains-list
           prints on the FDA label.
         </p>
@@ -148,8 +148,8 @@ export function AllergensCard({
       {/* Manual overrides */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-zinc-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+          <AlertTriangle className="h-4 w-4 text-ink-500" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-ink-500">
             Manual overrides ({overrides.length})
           </h3>
         </div>
@@ -159,21 +159,21 @@ export function AllergensCard({
             {overrides.map((o) => (
               <li
                 key={o.allergen}
-                className="flex items-start justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+                className="flex items-start justify-between gap-2 rounded-md border border-ink-200 bg-white px-3 py-2 text-sm"
               >
                 <div>
-                  <div className="font-medium text-zinc-900">
+                  <div className="font-medium text-ink-900">
                     {o.action === 'ADD' ? '+ Add ' : '− Remove '}
                     {humanize(o.allergen)}
                   </div>
-                  <div className="mt-0.5 text-xs text-zinc-500">{o.reason}</div>
+                  <div className="mt-0.5 text-xs text-ink-500">{o.reason}</div>
                 </div>
                 {isDraft && (
                   <button
                     type="button"
                     onClick={() => removeOverride(o.allergen)}
                     disabled={isPending}
-                    className="text-zinc-400 hover:text-red-600"
+                    className="text-ink-400 hover:text-red-600"
                     aria-label="Remove override"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -189,10 +189,10 @@ export function AllergensCard({
 
       {/* Cross-contamination statement */}
       <section className="space-y-2">
-        <Label className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+        <Label className="text-sm font-semibold uppercase tracking-wider text-ink-500">
           Cross-contamination statement
         </Label>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Optional statement printed on the label (e.g., shared facility warnings).
         </p>
         <textarea
@@ -201,7 +201,7 @@ export function AllergensCard({
           onBlur={saveCrossContamination}
           rows={2}
           placeholder='e.g. "Manufactured in a facility that also processes peanuts and tree nuts."'
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={!isDraft || isPending}
         />
         {crossSaveStatus !== 'idle' && (
@@ -234,14 +234,14 @@ function AddOverrideForm({
   // We don't force this — partner can override.
 
   return (
-    <div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+    <div className="space-y-2 rounded-md border border-ink-200 bg-ink-50 p-3">
       <div className="grid gap-2 sm:grid-cols-[140px,100px,1fr]">
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Allergen</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Allergen</Label>
           <select
             value={allergen}
             onChange={(e) => setAllergen(e.target.value)}
-            className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm focus:border-ink-400 focus:outline-none"
           >
             {BIG_9.map((a) => (
               <option key={a} value={a}>
@@ -252,11 +252,11 @@ function AddOverrideForm({
           </select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Action</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Action</Label>
           <select
             value={action}
             onChange={(e) => setAction(e.target.value as 'ADD' | 'REMOVE')}
-            className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm focus:border-ink-400 focus:outline-none"
           >
             <option value="ADD">Add</option>
             <option value="REMOVE" disabled={!isInAutoDerived}>
@@ -265,7 +265,7 @@ function AddOverrideForm({
           </select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Reason</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Reason</Label>
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -286,7 +286,7 @@ function AddOverrideForm({
             setReason('')
           }}
           disabled={!reason.trim()}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           <Plus className="mr-1 h-3.5 w-3.5" /> Add override
         </Button>

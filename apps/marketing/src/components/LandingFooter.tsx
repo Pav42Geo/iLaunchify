@@ -7,10 +7,15 @@ import { partnerUrl } from '@/lib/app-urls'
  * surface (home, pricing, how-it-works, contact-sales).
  *
  * Four columns:
- *   - Platform   (Marketplace · How it works · Pricing)
- *   - Partners   (For partners · Apply to join · Partner login · Sales)
+ *   - Platform   (Marketplace · How it works · Pricing · Influencers)
+ *   - Business   (Why iLaunchify · Apply to join · Partner login · Sales)
  *   - Niches     (top four niches as a sampler)
- *   - Company    (Terms · Privacy)
+ *   - Company    (Terms · Privacy · Agreements)
+ *
+ * Naming note: "Business" replaces the previous "Partners" column label
+ * (per Pavel 2026-06-03 rename). Influencer-program link lives under
+ * Platform because it's a marketing/affiliate surface, not a manufacturer
+ * partner surface.
  *
  * Neon-500 uppercase eyebrow per column. Ink-900 bg with neon accents
  * stays inside the "dark surface = neon accent" rule. White wordmark at
@@ -35,10 +40,11 @@ export function LandingFooter() {
             <FooterLink href="/marketplace">Marketplace</FooterLink>
             <FooterLink href="/how-it-works">How it works</FooterLink>
             <FooterLink href="/pricing">Pricing</FooterLink>
+            <FooterLink href="/influencers">Influencer program</FooterLink>
           </FooterCol>
 
-          <FooterCol title="Partners">
-            <FooterLink href="/business">For partners</FooterLink>
+          <FooterCol title="Business">
+            <FooterLink href="/business">Why iLaunchify</FooterLink>
             <FooterLink href={partnerUrl('/signup')} external>
               Apply to join
             </FooterLink>

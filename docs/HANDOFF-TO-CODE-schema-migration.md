@@ -109,3 +109,57 @@ Both panels are pure (props→render), mood-board styled, and already handle the
 ## 2d. Optional VariantsCard enhancement (don't duplicate — it already persists serving geometry)
 
 `VariantsCard` already persists `servingsPerContainer` / `servingSizeG` / `servingSizeDesc` / `containerSizeG` via `updateVariant`. The ReciPal "by serving size vs by package size" toggle + `i` info-icon help text + "makes about N packages" readout should be added **inside** `VariantsCard` (by-package mode derives `servingSizeG = packageSizeG / servingsPerContainer` before commit), not as a separate card. Moisture-loss is a preview-only control (lives on `RecipeLabelPanel`); persist it only if you add a column/`packingConfig` key.
+
+## 3. Additive column — ProductTemplate.maxFlavorsPerPack (2026-06-08)
+
+`ProductTemplate.maxFlavorsPerPack Int?` — multi-flavor variety cap. The
+manufacturer lists the full flavor pool (FlavorPreset rows) but caps how many
+DISTINCT flavors a Creator may combine in one pack. Null = no cap.
+
+- Written by the guided builder via `updateBasics({ maxFlavorsPerPack })`
+  (apps/partner/.../products/new/build-actions.ts).
+- Flavor pool persists via new `saveFlavors(draftId, flavors[])` → replaces
+  FlavorPreset rows (name + statementOfIdentity + sortOrder, slotResolution `[]`).
+- TODO downstream: marketplace pack-builder reads `maxFlavorsPerPack` and
+  enforces the limit when a Creator assembles a variety pack at checkout.
+
+Migration (run on Mac — additive + nullable, safe):
+```
+cd packages/db
+pnpm exec dotenv -e ../../.env.local -- prisma db push --accept-data-loss
+cd ../.. && pnpm db:generate && rm -rf apps/*/.next
+```
+
+## 4. Product Configurator & Constraints — Phase 1 substrate (2026-06-08)
+
+Full design: `docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md`. Phase 1 is **additive
+schema only** — no app code references these models yet (UI ships Phase 2+), so
+the partner app already typechecks without casts.
+
+Added to `packages/db/prisma/schema.prisma`:
+- **Enums:** OptionAxisKey, OptionLayer, OptionValueStatus, OptionRuleKind,
+  FeeBasis, StorageClass, SpecSheetStatus, ProductChangeType, ApproverRole.
+- **Models:** ProductOptionAxis, ProductOptionValue, ProductOptionRule,
+  ProductTemplateFee, ProductSpecSheet, ProductChangeApprovalRule.
+- **ProductTemplate scalars:** leadTimeRepeatDays, leadTimeFirstRunDays,
+  storageClass (default AMBIENT), storageTempMinF, storageTempMaxF.
+- **ProductTemplate back-relations:** optionAxes, optionRules, fees, specSheets,
+  changeApprovalRules.
+
+Notes:
+- FLAVOR axis is canonical; ProductOptionValue.flavorPresetId bridges to the
+  existing FlavorPreset (honors "flavors are presets"). substrateId /
+  packagingTypeId bridge packaging axes.
+- ProductOptionRule.whenValueId / targetValueId are plain Strings (cross-axis,
+  app-resolved) — intentionally no FK relation.
+- Could NOT run `prisma validate` in the Cowork sandbox (Prisma engine download
+  is network-blocked). Verified manually: braces balanced, every @relation has a
+  matching back-relation, no enum/model name collisions. **Pavel's `db push` is
+  the validation gate.**
+
+Migration (run on Mac — additive + nullable/defaulted, safe):
+```
+cd packages/db
+pnpm exec dotenv -e ../../.env.local -- prisma db push --accept-data-loss
+cd ../.. && pnpm db:generate && rm -rf apps/*/.next
+```

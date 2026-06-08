@@ -103,7 +103,7 @@ export function CancelButton() {
             }
           })
         }}
-        className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-300 bg-white px-4 text-[12px] font-semibold uppercase tracking-wider text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-9 items-center justify-center rounded-full border border-ink-300 bg-white px-4 text-[12px] font-semibold uppercase tracking-wider text-ink-700 transition hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? 'Scheduling…' : 'Cancel subscription'}
       </button>

@@ -104,10 +104,10 @@ export function ProductionManifestCard({ manifest, status }: Props) {
               {manifest.finishes.map((f) => (
                 <li
                   key={f.partnerFinishId}
-                  className="rounded border border-zinc-200 bg-zinc-50/50 p-2"
+                  className="rounded border border-ink-200 bg-ink-50/50 p-2"
                 >
-                  <div className="font-medium text-zinc-900">{f.finishName}</div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="font-medium text-ink-900">{f.finishName}</div>
+                  <div className="text-xs text-ink-500">
                     {humanFinishCategory(f.category)} · pricing: {f.pricingMode}
                   </div>
                 </li>
@@ -163,8 +163,8 @@ export function ProductionManifestCard({ manifest, status }: Props) {
         </Section>
 
         {/* Download button — V1.5 worker fills this in */}
-        <div className="flex items-center justify-between border-t border-zinc-100 pt-4">
-          <div className="text-xs text-zinc-500">
+        <div className="flex items-center justify-between border-t border-ink-100 pt-4">
+          <div className="text-xs text-ink-500">
             Manifest v{manifest.manifestVersion} ·{' '}
             {new Date(manifest.generatedAt).toLocaleString()}
           </div>
@@ -172,7 +172,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
             type="button"
             disabled
             title="Print-ready PDF + die-line SVG render lands in V1.5 (headless-browser worker)."
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500"
+            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 bg-ink-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-500"
           >
             <Download className="h-3 w-3" />
             Download bundle (V1.5)
@@ -196,7 +196,7 @@ function Section({
 }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <h4 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
         {title}
       </h4>
       <div className="space-y-1">{children}</div>
@@ -207,8 +207,8 @@ function Section({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[140px,1fr] items-baseline gap-2 text-sm">
-      <span className="text-xs uppercase text-zinc-500">{label}</span>
-      <span className="text-zinc-800">{value}</span>
+      <span className="text-xs uppercase text-ink-500">{label}</span>
+      <span className="text-ink-800">{value}</span>
     </div>
   )
 }

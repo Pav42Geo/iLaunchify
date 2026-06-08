@@ -37,14 +37,14 @@ export default async function EditOfferingPage({
       <header>
         <Link
           href="/packaging/offerings"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to offerings
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           {offering.packagingType.displayName}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Container type and decoration are fixed for this offering — adjust pricing, lead time,
           fulfillment, and status below.
         </p>

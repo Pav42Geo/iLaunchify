@@ -42,7 +42,7 @@ export default async function EditDielinePage({
       <header>
         <Link
           href="/packaging/dielines"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dielines
         </Link>
@@ -56,7 +56,7 @@ export default async function EditDielinePage({
             {badge.label}
           </span>
         </div>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Container type and decoration are fixed for this dieline — adjust dimensions, surface
           name, and replace the source file below. Confirm / activate from the dielines list.
         </p>

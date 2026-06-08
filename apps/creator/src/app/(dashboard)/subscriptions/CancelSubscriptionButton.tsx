@@ -31,7 +31,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-[11.5px] font-medium text-zinc-700 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[11.5px] font-medium text-ink-700 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
       >
         Cancel subscription
       </button>
@@ -57,7 +57,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
         rows={2}
         placeholder="Reason (optional, helps us improve)"
         disabled={pending}
-        className="mt-2 block w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-[11.5px] focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
+        className="mt-2 block w-full rounded-md border border-ink-200 bg-white px-2 py-1.5 text-[11.5px] focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
       />
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
         <button
@@ -68,7 +68,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
           }}
           disabled={pending}
           aria-label="Keep subscription"
-          className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[10.5px] font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
+          className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[10.5px] font-medium text-ink-600 hover:bg-ink-100 disabled:opacity-50"
         >
           <X className="h-3 w-3" aria-hidden="true" />
           Keep it

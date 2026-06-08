@@ -44,10 +44,10 @@ export function ModeChooser({
 }: ModeChooserProps) {
   if (collapsed) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-[#F3EFE8] px-3 py-2 text-xs text-zinc-600">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-cream px-3 py-2 text-xs text-ink-600">
         <span>
           Built with:{' '}
-          <strong className="font-semibold text-zinc-900">
+          <strong className="font-semibold text-ink-900">
             {MODE_LABELS[currentMode ?? 'SEARCH_BUILD']}
           </strong>
         </span>
@@ -128,21 +128,21 @@ function ModeTile({
       className={
         'relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ' +
         (disabled
-          ? 'cursor-not-allowed border-zinc-200 bg-[#F3EFE8] opacity-60'
+          ? 'cursor-not-allowed border-ink-200 bg-cream opacity-60'
           : active
             ? 'border-[1.5px] border-pink-500 bg-[#FFF8FA]'
-            : 'border-zinc-200 bg-[#F3EFE8] hover:border-pink-300 hover:bg-[#FFF8FA]')
+            : 'border-ink-200 bg-cream hover:border-pink-300 hover:bg-[#FFF8FA]')
       }
     >
       {badge && (
-        <span className="absolute right-2 top-2 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
+        <span className="absolute right-2 top-2 rounded-full bg-ink-900/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
           {badge}
         </span>
       )}
-      <Icon className={`h-4 w-4 ${active ? 'text-pink-600' : 'text-zinc-500'}`} />
-      <span className="text-[13px] font-semibold text-zinc-900">{title}</span>
-      <span className="text-[11px] leading-snug text-zinc-500">{sub}</span>
-      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+      <Icon className={`h-4 w-4 ${active ? 'text-pink-600' : 'text-ink-500'}`} />
+      <span className="text-[13px] font-semibold text-ink-900">{title}</span>
+      <span className="text-[11px] leading-snug text-ink-500">{sub}</span>
+      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-400">
         {when}
       </span>
     </button>

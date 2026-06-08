@@ -7,7 +7,7 @@ export default function ManufacturersLanding() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-4xl font-bold tracking-tight">Manufacturing Partners</h1>
-      <p className="mt-4 text-lg text-zinc-600">
+      <p className="mt-4 text-lg text-ink-600">
         Fill your production capacity with recurring, pre-qualified orders from creator brands.
       </p>
 
@@ -32,7 +32,7 @@ export default function ManufacturersLanding() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-500">
+      <p className="mt-6 text-center text-xs text-ink-500">
         Curated onboarding. We review every application before invitation.
       </p>
     </main>
@@ -43,7 +43,7 @@ function Block({ title, body }: { title: string; body: string }) {
   return (
     <div>
       <h2 className="text-xl font-semibold">{title}</h2>
-      <p className="mt-2 text-zinc-600">{body}</p>
+      <p className="mt-2 text-ink-600">{body}</p>
     </div>
   )
 }

@@ -18,8 +18,9 @@ import {
   CardTitle,
   CertExpiryBadge,
   certExpiryTone,
+  cn,
 } from '@ilaunchify/ui'
-import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
+import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock, type LucideIcon } from 'lucide-react'
 import { CertificationsClient } from './CertificationsClient'
 import { RenewCertButton } from './RenewCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
@@ -82,28 +83,37 @@ export default async function CertificationsPage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Certifications</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Industry certs you carry (NSF, USDA Organic, cGMP, Kosher, etc.). Upload the
-          original PDF — only iLaunchify admin sees it. Verified certs show as branded
-          badges on your public partner page and on creator product detail pages.
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Manufacturing · Certifications
         </p>
-      </header>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Certifications
+        </h1>
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          Industry certs you carry (NSF, USDA Organic, cGMP, Kosher, etc.). Upload the original
+          PDF — only iLaunchify admin sees it. Verified certs show as branded badges publicly.
+        </p>
+        {instances.length > 0 && (
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            <Kpi label="Verified" value={verified.length} icon={CheckCircle2} tone="ink" />
+            <Kpi label="Pending review" value={pending.length} icon={Clock} tone="amber" />
+            <Kpi label="Needs attention" value={issues.length} icon={AlertTriangle} tone="pink" />
+          </div>
+        )}
+      </div>
 
       {instances.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="rounded-full bg-emerald-50 p-3">
-              <ShieldCheck className="h-7 w-7 text-emerald-600" />
-            </div>
-            <CardTitle className="text-base">No certifications yet</CardTitle>
-            <CardDescription className="max-w-md text-sm">
-              Claim a certification below to start the verification process. Admin reviews
-              each within 1-2 business days.
-            </CardDescription>
-          </CardContent>
-        </Card>
+        <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
+            <ShieldCheck className="h-6 w-6 text-pink-700" aria-hidden="true" />
+          </div>
+          <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No certifications yet</h2>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
+            Claim a certification below to start the verification process. Admin reviews each
+            within 1-2 business days.
+          </p>
+        </section>
       ) : (
         <div className="space-y-4">
           {verified.length > 0 && (
@@ -171,12 +181,12 @@ export default async function CertificationsPage({
             <CertificationsClient availableTypes={availableTypes} />
           </CardContent>
         )}
-        <CardContent className="border-t border-zinc-100 pt-4">
-          <p className="text-sm text-zinc-500">
+        <CardContent className="border-t border-ink-100 pt-4">
+          <p className="text-sm text-ink-500">
             Carry a certification that isn&apos;t listed?{' '}
             <Link
               href="/certifications/request"
-              className="font-medium text-emerald-700 underline-offset-2 hover:underline"
+              className="font-medium text-pink-700 underline-offset-2 hover:underline"
             >
               Request a new cert type →
             </Link>
@@ -193,6 +203,39 @@ export default async function CertificationsPage({
 
 import type { ComponentType } from 'react'
 
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: number
+  icon: LucideIcon
+  tone: 'ink' | 'amber' | 'pink'
+}) {
+  const iconTone: Record<typeof tone, string> = {
+    ink: 'bg-ink-100 text-ink-700',
+    amber: 'bg-amber-100 text-amber-700',
+    pink: 'bg-pink-100 text-pink-700',
+  }
+  return (
+    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
+          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
+            {value.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CertSection({
   title,
   count,
@@ -207,16 +250,16 @@ function CertSection({
   children: React.ReactNode
 }) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className={`h-4 w-4 ${iconClass}`} />
+    <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <header className="flex items-center gap-2 border-b border-ink-100 bg-cream px-4 py-2.5">
+        <Icon className={`h-4 w-4 ${iconClass}`} aria-hidden="true" />
+        <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           {title}
-          <span className="ml-1 text-sm font-normal text-zinc-500">{count}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2 pt-0">{children}</CardContent>
-    </Card>
+        </h2>
+        <span className="text-[12px] font-normal text-ink-500">{count}</span>
+      </header>
+      <div className="space-y-2 p-3">{children}</div>
+    </section>
   )
 }
 
@@ -250,26 +293,26 @@ function CertRow({
     (inst.status === 'VERIFIED' && (tone === 'soon' || tone === 'urgent'))
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-xl border border-ink-200 bg-white p-3">
       <div className="flex items-start gap-3">
         {badgeUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={badgeUrl}
             alt=""
-            className="h-9 w-9 flex-shrink-0 rounded-md border border-zinc-200 bg-white object-contain p-1"
+            className="h-9 w-9 flex-shrink-0 rounded-md border border-ink-200 bg-white object-contain p-1"
           />
         ) : (
-          <div className="rounded-md bg-zinc-100 p-2">
-            <FileText className="h-4 w-4 text-zinc-500" />
+          <div className="rounded-md bg-ink-100 p-2">
+            <FileText className="h-4 w-4 text-ink-500" />
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-zinc-900">{inst.certificateType.name}</div>
+            <div className="font-medium text-ink-900">{inst.certificateType.name}</div>
             <CertExpiryBadge expiryDate={inst.expiryDate} />
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
+          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}
             {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
             <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>

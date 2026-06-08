@@ -14,7 +14,7 @@ export function LaunchChecklistTrigger() {
     <button
       type="button"
       onClick={open}
-      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-600 transition-colors hover:bg-ink-50"
     >
       <Rocket className="h-4 w-4" />
       <span className="flex-1 text-left">Launch Checklist</span>

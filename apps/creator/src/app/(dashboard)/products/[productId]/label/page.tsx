@@ -39,7 +39,7 @@ export default async function LabelPage({ params }: { params: Promise<{ productI
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Label — {product.name}</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-ink-500">
             Step 3 of 3: design + final compliance check. Visual editor lands in Week 6-7.
           </p>
         </div>
@@ -62,7 +62,7 @@ export default async function LabelPage({ params }: { params: Promise<{ productI
             {panelData ? (
               <NutritionFactsRenderer data={panelData} widthPx={280} />
             ) : (
-              <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-zinc-300 text-sm text-zinc-500">
+              <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-ink-300 text-sm text-ink-500">
                 No compliance check yet.
               </div>
             )}
@@ -75,7 +75,7 @@ export default async function LabelPage({ params }: { params: Promise<{ productI
             <CardDescription>Fabric.js canvas with die-cut frame + compliance overlay (Week 6-7).</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-zinc-300 text-sm text-zinc-500">
+            <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-ink-300 text-sm text-ink-500">
               Coming in Week 6-7
             </div>
           </CardContent>

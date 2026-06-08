@@ -1,15 +1,18 @@
 # Recipe Builder roadmap + Claude Code orchestration guide
 
+> **STATUS: NOT YET STARTED. ZERO of Slices 1–4 are shipped. This is a TODO list, not a retrospective.**
+> Every slice below describes work that still needs to happen. Read the [ ] checkbox in the status column as "not done." When a slice ships, flip the box to [x]. Do NOT assume any slice is complete based on prose framing in this document — only the checkbox column is authoritative.
+
 Single-page reference. Read top-to-bottom in one sitting. Bookmark for the duration of the build cycle.
 
 ## The four slices at a glance
 
-| # | Slice | Brief | Lift | Schema? | New deps? | Pavel housekeeping |
-|---|---|---|---|---|---|---|
-| 1 | Ingredients pre-work | `docs/builds/ingredients-prework-slice-1.md` | ~½ day | No | No | none (just typecheck) |
-| 2 | Mode chooser shell | `docs/builds/ingredients-mode-chooser-slice-2.md` | ~½ day | Yes (additive enum) | No | prisma generate + restart next dev |
-| 3 | AI Recipe Parser (Mode 2) | `docs/builds/ingredients-ai-parser-slice-3.md` | ~2 days | No (just PlanFeature reseed) | Yes (`@ilaunchify/ai`, `@anthropic-ai/sdk`) | `ANTHROPIC_API_KEY` in env + pnpm install + prisma db seed + restart |
-| 4 | Declare panel (Mode 3) | `docs/builds/ingredients-declared-panel-slice-4.md` | ~2 days | Yes (additive enum + boolean) | No | prisma generate + prisma db seed + restart |
+| Status | # | Slice | Brief | Lift | Schema? | New deps? | Pavel housekeeping |
+|---|---|---|---|---|---|---|---|
+| [ ] | 1 | Ingredients pre-work | `docs/builds/ingredients-prework-slice-1.md` | ~½ day | No | No | none (just typecheck) |
+| [ ] | 2 | Mode chooser shell | `docs/builds/ingredients-mode-chooser-slice-2.md` | ~½ day | Yes (additive enum) | No | prisma generate + restart next dev |
+| [ ] | 3 | AI Recipe Parser (Mode 2) | `docs/builds/ingredients-ai-parser-slice-3.md` | ~2 days | No (just PlanFeature reseed) | Yes (`@ilaunchify/ai`, `@anthropic-ai/sdk`) | `ANTHROPIC_API_KEY` in env + pnpm install + prisma db seed + restart |
+| [ ] | 4 | Declare panel (Mode 3) | `docs/builds/ingredients-declared-panel-slice-4.md` | ~2 days | Yes (additive enum + boolean) | No | prisma generate + prisma db seed + restart |
 
 **Total: ~5 days of focused work for an experienced contributor. Each slice is independently shippable; nothing waits more than 24h on a previous slice's housekeeping.**
 
@@ -64,6 +67,8 @@ You should see CLAUDE.md auto-loaded. If you have not yet copied the auto-memory
 
 ### Slice 1 — paste this
 
+**Status:** [ ] NOT SHIPPED — to do.
+
 ```
 Ship Slice 1 of the Partner Ingredients pre-work — three changes in one PR.
 Full brief at docs/builds/ingredients-prework-slice-1.md.
@@ -92,6 +97,8 @@ Then /ship "Slice 1 ingredients pre-work — banned-list save-time enforcement
 **Wait for Claude Code to finish and ship. Read the diff. Manually smoke-test in dev.** Then move to Slice 2.
 
 ### Slice 2 — paste this
+
+**Status:** [ ] NOT SHIPPED — to do.
 
 ```
 Ship Slice 2 — Mode chooser shell on the Partner IngredientsCard. Brief:
@@ -128,6 +135,8 @@ pnpm --filter @ilaunchify/db prisma generate
 ```
 
 ### Slice 3 — set env, then paste
+
+**Status:** [ ] NOT SHIPPED — to do. (Blocked by Slices 1 + 2.)
 
 Before pasting: set the Anthropic key.
 
@@ -194,6 +203,8 @@ pnpm --filter @ilaunchify/db prisma db seed        # refreshes PlanFeature rows
 ```
 
 ### Slice 4 — paste this
+
+**Status:** [ ] NOT SHIPPED — to do. (Blocked by Slice 2.)
 
 ```
 Ship Slice 4 — Mode 3 Declare panel. Brief:

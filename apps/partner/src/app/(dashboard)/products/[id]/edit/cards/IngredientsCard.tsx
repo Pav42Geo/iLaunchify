@@ -171,7 +171,7 @@ export function IngredientsCard({
         />
       )}
       {slots.length === 0 ? (
-        <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
           No ingredient slots yet. Add at least one base ingredient before submitting.
         </div>
       ) : (
@@ -207,7 +207,7 @@ export function IngredientsCard({
         </Button>
       ) : null}
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         💡 Each ingredient is a SLOT — creators can swap in alternatives you list as
         replacements. Lock a slot if it&apos;s structural (filler, binder).
       </p>
@@ -284,7 +284,7 @@ function SlotItem({
   }
 
   return (
-    <li className="rounded-md border border-zinc-200 bg-white">
+    <li className="rounded-md border border-ink-200 bg-white">
       <div className="flex items-center gap-3 p-3">
         <button
           type="button"
@@ -292,12 +292,12 @@ function SlotItem({
           className="flex flex-1 items-start gap-3 text-left"
           aria-expanded={expanded}
         >
-          <Beaker className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-500" />
+          <Beaker className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-zinc-900">{slot.name}</span>
+              <span className="font-medium text-ink-900">{slot.name}</span>
               {!slot.allowReplacement && (
-                <span title="Locked from swapping" className="text-zinc-400">
+                <span title="Locked from swapping" className="text-ink-400">
                   <Lock className="h-3.5 w-3.5" />
                 </span>
               )}
@@ -307,7 +307,7 @@ function SlotItem({
                 </span>
               )}
             </div>
-            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
+            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-ink-500">
               <span>{slot.weightG}g</span>
               {slot.allergens.length > 0 && (
                 <span className="text-amber-700">{slot.allergens.join(', ')}</span>
@@ -315,7 +315,7 @@ function SlotItem({
             </div>
           </div>
           <ChevronDown
-            className={`h-4 w-4 flex-shrink-0 text-zinc-400 transition-transform ${
+            className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${
               expanded ? 'rotate-180' : ''
             }`}
           />
@@ -323,11 +323,11 @@ function SlotItem({
       </div>
 
       {expanded && (
-        <div className="space-y-4 border-t border-zinc-100 bg-zinc-50/30 p-3">
+        <div className="space-y-4 border-t border-ink-100 bg-ink-50/30 p-3">
           {/* Weight + lock inline */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-500">
                 Weight (g)
               </Label>
               <Input
@@ -380,7 +380,7 @@ function SlotItem({
           />
 
           {!slot.allowReplacement && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-ink-500">
               <Lock className="-mt-0.5 mr-1 inline h-3 w-3" /> Unlock the slot above to add
               alternatives.
             </p>
@@ -422,14 +422,14 @@ function ReplacementsList({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Layers className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <Layers className="h-3.5 w-3.5 text-ink-500" />
+        <span className="text-xs font-medium uppercase tracking-wider text-ink-500">
           Replacements ({slot.replacements.length})
         </span>
       </div>
 
       {slot.replacements.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-500">
+        <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
           No alternatives yet. Add one so creators can swap.
         </p>
       ) : (
@@ -437,13 +437,13 @@ function ReplacementsList({
           {slot.replacements.map((r) => (
             <li
               key={r.id}
-              className="flex items-start justify-between gap-2 rounded border border-zinc-100 bg-white px-3 py-2 text-sm"
+              className="flex items-start justify-between gap-2 rounded border border-ink-100 bg-white px-3 py-2 text-sm"
             >
               <div className="min-w-0">
-                <div className="font-medium text-zinc-900">{r.name}</div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
+                <div className="font-medium text-ink-900">{r.name}</div>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-ink-500">
                   {r.weightGOverride != null && <span>→ {r.weightGOverride}g override</span>}
-                  {r.calloutText && <em className="text-zinc-600">{r.calloutText}</em>}
+                  {r.calloutText && <em className="text-ink-600">{r.calloutText}</em>}
                 </div>
               </div>
               {isDraft && (
@@ -451,7 +451,7 @@ function ReplacementsList({
                   type="button"
                   onClick={() => removeOne(r.id, r.name)}
                   disabled={isPending}
-                  className="text-zinc-400 hover:text-red-600"
+                  className="text-ink-400 hover:text-red-600"
                   aria-label={`Remove ${r.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -514,7 +514,7 @@ function AddReplacementForm({
   return (
     <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50/40 p-3">
       <div className="space-y-1">
-        <Label className="text-xs uppercase tracking-wider text-zinc-500">
+        <Label className="text-xs uppercase tracking-wider text-ink-500">
           Replacement ingredient
         </Label>
         {picked ? (
@@ -522,7 +522,7 @@ function AddReplacementForm({
             <div className="min-w-0 flex-1 truncate">
               <span className="font-medium">{picked.internalName}</span>
               {picked.labelDeclarationName !== picked.internalName && (
-                <span className="ml-1.5 text-xs text-zinc-500">
+                <span className="ml-1.5 text-xs text-ink-500">
                   → label: {picked.labelDeclarationName}
                 </span>
               )}
@@ -530,7 +530,7 @@ function AddReplacementForm({
             <button
               type="button"
               onClick={() => setPicked(null)}
-              className="text-xs text-zinc-500 hover:text-zinc-700"
+              className="text-xs text-ink-500 hover:text-ink-700"
             >
               Change
             </button>
@@ -545,7 +545,7 @@ function AddReplacementForm({
       </div>
       <div className="grid gap-2 sm:grid-cols-[1fr,1fr]">
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">
+          <Label className="text-xs uppercase tracking-wider text-ink-500">
             Weight override (g)
           </Label>
           <Input
@@ -559,7 +559,7 @@ function AddReplacementForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">
+          <Label className="text-xs uppercase tracking-wider text-ink-500">
             Callout (optional)
           </Label>
           <Input
@@ -578,7 +578,7 @@ function AddReplacementForm({
           size="sm"
           onClick={add}
           disabled={isPending || !picked}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Adding…' : 'Add'}
         </Button>
@@ -626,7 +626,7 @@ function AddSlotForm({
   return (
     <div className="space-y-2 rounded-md border border-emerald-200 bg-emerald-50/40 p-3">
       <div className="space-y-1">
-        <Label className="text-xs uppercase tracking-wider text-zinc-500">
+        <Label className="text-xs uppercase tracking-wider text-ink-500">
           Ingredient
         </Label>
         {picked ? (
@@ -634,7 +634,7 @@ function AddSlotForm({
             <div className="min-w-0 flex-1 truncate">
               <span className="font-medium">{picked.internalName}</span>
               {picked.labelDeclarationName !== picked.internalName && (
-                <span className="ml-1.5 text-xs text-zinc-500">
+                <span className="ml-1.5 text-xs text-ink-500">
                   → label: {picked.labelDeclarationName}
                 </span>
               )}
@@ -647,7 +647,7 @@ function AddSlotForm({
             <button
               type="button"
               onClick={() => setPicked(null)}
-              className="text-xs text-zinc-500 hover:text-zinc-700"
+              className="text-xs text-ink-500 hover:text-ink-700"
             >
               Change
             </button>
@@ -663,7 +663,7 @@ function AddSlotForm({
       <div className="grid gap-2 sm:grid-cols-[1fr,90px]">
         <div />
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Grams</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Grams</Label>
           <Input
             type="number"
             min={0}
@@ -688,7 +688,7 @@ function AddSlotForm({
           size="sm"
           onClick={add}
           disabled={isPending || !picked || !weightG}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Adding…' : 'Add slot'}
         </Button>

@@ -97,7 +97,7 @@ export function LabelPreview({
 
   if (slots.length === 0 && variants.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-4 text-center text-xs text-zinc-500">
+      <p className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-4 text-center text-xs text-ink-500">
         Add an ingredient and a variant — the label builds itself as you go.
       </p>
     )
@@ -118,7 +118,7 @@ export function LabelPreview({
         <select
           value={variant?.id ?? ''}
           onChange={(e) => setVariantId(e.target.value)}
-          className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
+          className="w-full rounded-md border border-ink-200 bg-white px-2 py-1.5 text-xs text-ink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
           aria-label="Preview variant"
         >
           {variants.map((v) => (
@@ -146,7 +146,7 @@ export function LabelPreview({
               </p>
             </>
           ) : (
-            <p className="italic text-zinc-500">Add a variant to set serving size</p>
+            <p className="italic text-ink-500">Add a variant to set serving size</p>
           )}
         </div>
 
@@ -181,7 +181,7 @@ export function LabelPreview({
           {MICROS.map((m) => (
             <p
               key={m}
-              className="flex justify-between border-b border-zinc-400 py-[2px] text-[10px] leading-tight last:border-b-0"
+              className="flex justify-between border-b border-ink-400 py-[2px] text-[10px] leading-tight last:border-b-0"
             >
               <span>{m} —</span>
               <span className="tabular-nums">—%</span>
@@ -198,17 +198,17 @@ export function LabelPreview({
 
       {/* Ingredient statement + allergens — real data, label-adjacent copy */}
       {ingredientStatement && (
-        <p className="text-[10px] leading-snug text-zinc-800">
+        <p className="text-[10px] leading-snug text-ink-800">
           <span className="font-bold uppercase">Ingredients:</span> {ingredientStatement}.
         </p>
       )}
       {containsList.length > 0 && (
-        <p className="text-[10px] font-bold uppercase leading-snug text-zinc-900">
+        <p className="text-[10px] font-bold uppercase leading-snug text-ink-900">
           Contains: {containsList.map(titleCase).join(', ')}.
         </p>
       )}
       {crossContamination && (
-        <p className="text-[10px] italic leading-snug text-zinc-600">{crossContamination}</p>
+        <p className="text-[10px] italic leading-snug text-ink-600">{crossContamination}</p>
       )}
     </div>
   )

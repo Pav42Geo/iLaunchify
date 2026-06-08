@@ -160,8 +160,8 @@ export function NichesAndTagsCard({
       {/* Section 1 — Niches */}
       <section>
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-900">Niches</h3>
-          <p className="text-xs text-zinc-500">
+          <h3 className="text-sm font-semibold text-ink-900">Niches</h3>
+          <p className="text-xs text-ink-500">
             Where this product appears across the marketplace
           </p>
         </header>
@@ -182,7 +182,7 @@ export function NichesAndTagsCard({
                     'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
                     isSelected
                       ? 'border-pink-300 bg-pink-50 text-pink-900'
-                      : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50',
+                      : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:bg-ink-50',
                     !isDraft || isPending ? 'cursor-not-allowed opacity-60' : '',
                   ].join(' ')}
                 >
@@ -217,32 +217,32 @@ export function NichesAndTagsCard({
 
         {/* Why these suggestions disclosure */}
         {matchedSuggestions.length > 0 && (
-          <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50">
+          <div className="mt-3 rounded-md border border-ink-200 bg-ink-50">
             <button
               type="button"
               onClick={() => setShowWhy((v) => !v)}
               aria-expanded={showWhy}
-              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:text-zinc-900"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-ink-700 hover:text-ink-900"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-pink-500" />
                 Why these suggestions?
               </span>
               <ChevronDown
-                className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${
+                className={`h-3.5 w-3.5 text-ink-500 transition-transform ${
                   showWhy ? 'rotate-180' : ''
                 }`}
               />
             </button>
             {showWhy && (
-              <ul className="space-y-1.5 border-t border-zinc-200 px-3 py-2 text-xs text-zinc-600">
+              <ul className="space-y-1.5 border-t border-ink-200 px-3 py-2 text-xs text-ink-600">
                 {matchedSuggestions.map((s) => (
                   <li key={s.ruleId} className="flex items-start gap-2">
-                    <span className="mt-0.5 inline-block min-w-[2.5rem] rounded bg-white px-1 py-0.5 text-center font-mono text-[10px] font-semibold text-zinc-700 ring-1 ring-zinc-200">
+                    <span className="mt-0.5 inline-block min-w-[2.5rem] rounded bg-white px-1 py-0.5 text-center font-mono text-[10px] font-semibold text-ink-700 ring-1 ring-ink-200">
                       {s.weight}
                     </span>
                     <span>
-                      <span className="font-medium text-zinc-800">{s.nicheName}</span>
+                      <span className="font-medium text-ink-800">{s.nicheName}</span>
                       {' — '}
                       {s.ruleDescription}
                       {s.isLocked && (
@@ -260,10 +260,10 @@ export function NichesAndTagsCard({
       {/* Section 2 — Lifestyle tags */}
       <section>
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-900">
+          <h3 className="text-sm font-semibold text-ink-900">
             Lifestyle, audience, and trend tags
           </h3>
-          <p className="text-xs text-zinc-500">Multi-select — these power filter chips on the marketplace</p>
+          <p className="text-xs text-ink-500">Multi-select — these power filter chips on the marketplace</p>
         </header>
         <div className="space-y-3">
           <TagGroup
@@ -291,7 +291,7 @@ export function NichesAndTagsCard({
       </section>
 
       {/* Footnote — explains the approval-map gating to the partner */}
-      <p className="text-[11px] leading-relaxed text-zinc-500">
+      <p className="text-[11px] leading-relaxed text-ink-500">
         Editing niches on a published product sends the change to admin
         review (your live listing keeps serving until approved). Lifestyle
         tag changes ship live.
@@ -320,7 +320,7 @@ function TagGroup({
   if (tags.length === 0) return null
   return (
     <div>
-      <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+      <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
         {label}
       </h4>
       <ul className="flex flex-wrap gap-1.5">
@@ -337,7 +337,7 @@ function TagGroup({
                   'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors',
                   isSelected
                     ? 'border-pink-300 bg-pink-50 text-pink-900'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50',
+                    : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:bg-ink-50',
                   isDisabled ? 'cursor-not-allowed opacity-60' : '',
                 ].join(' ')}
               >

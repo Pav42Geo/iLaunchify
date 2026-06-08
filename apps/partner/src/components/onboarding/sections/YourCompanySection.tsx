@@ -94,7 +94,7 @@ export function YourCompanySection({
 
       {/* Legal entity */}
       <section className="space-y-4">
-        <h3 className="text-base font-semibold text-zinc-900">Legal entity</h3>
+        <h3 className="text-base font-semibold text-ink-900">Legal entity</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="companyName" label="Doing-business-as (DBA)" required>
             <Input
@@ -138,8 +138,8 @@ export function YourCompanySection({
 
       {/* Address */}
       <section className="space-y-4">
-        <h3 className="text-base font-semibold text-zinc-900">Primary facility address</h3>
-        <p className="-mt-2 text-sm text-zinc-500">
+        <h3 className="text-base font-semibold text-ink-900">Primary facility address</h3>
+        <p className="-mt-2 text-sm text-ink-500">
           Where production happens. Used for shipping coordination and tax forms.
         </p>
 
@@ -201,8 +201,8 @@ export function YourCompanySection({
 
       {/* Documents */}
       <section className="space-y-4">
-        <h3 className="text-base font-semibold text-zinc-900">Verification documents</h3>
-        <p className="-mt-2 text-sm text-zinc-500">
+        <h3 className="text-base font-semibold text-ink-900">Verification documents</h3>
+        <p className="-mt-2 text-sm text-ink-500">
           PDF, PNG, JPEG, or WebP — up to 20&nbsp;MB each. Files are stored privately on
           Cloudflare R2 and only seen by the iLaunchify admin reviewing your application.
         </p>
@@ -256,7 +256,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline gap-2">
-        <Label htmlFor={id} className="text-sm font-medium text-zinc-900">
+        <Label htmlFor={id} className="text-sm font-medium text-ink-900">
           {label}
         </Label>
         {required && (
@@ -265,7 +265,7 @@ function Field({
           </span>
         )}
       </div>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )
@@ -282,7 +282,7 @@ function SaveIndicator({
   const display = pending ? 'saving' : status
   const text = { saving: 'Saving…', saved: '✓ Saved', error: '⚠ Save failed', idle: '' }[display]
   const cls = {
-    saving: 'text-zinc-500',
+    saving: 'text-ink-500',
     saved: 'text-emerald-600',
     error: 'text-red-600',
     idle: '',

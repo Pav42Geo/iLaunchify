@@ -4,7 +4,7 @@
 // Every field from PartnerPrintOutputSpec, grouped into sections:
 //   Output format / Color management / Resolution & bleed / Fonts /
 //   Dieline delivery / Manifest & notes.
-// Matches the partner-app packaging surface style (settings card, NOT admin v2).
+// Partner-v2 chrome (Pavel 2026-06-05): v2 form panel + tokens + pink focus.
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -94,7 +94,7 @@ const MANIFEST_FORMAT_OPTIONS: { value: ManifestFormat; label: string }[] = [
 ]
 
 const selectCls =
-  'w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50 disabled:text-zinc-500'
+  'w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 transition-colors focus:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:bg-ink-50 disabled:text-ink-500'
 
 function Section({
   title,
@@ -106,10 +106,10 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="space-y-4 border-t border-zinc-100 pt-6 first:border-0 first:pt-0">
+    <section className="space-y-4 border-t border-ink-100 pt-6 first:border-0 first:pt-0">
       <div>
-        <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
-        {hint && <p className="mt-0.5 text-xs text-zinc-500">{hint}</p>}
+        <h2 className="font-display text-[14px] font-semibold tracking-tight text-ink-900">{title}</h2>
+        {hint && <p className="mt-0.5 text-[12px] text-ink-500">{hint}</p>}
       </div>
       {children}
     </section>
@@ -193,7 +193,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6"
+      className="space-y-6 rounded-2xl border border-ink-200 bg-white p-6"
     >
       {/* Output format */}
       <Section
@@ -202,7 +202,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="fileFormat" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="fileFormat" className="text-[13px] font-medium text-ink-900">
               Preferred file format
             </Label>
             <select
@@ -229,7 +229,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="colorSpace" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="colorSpace" className="text-[13px] font-medium text-ink-900">
               Color space
             </Label>
             <select
@@ -247,7 +247,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="icc" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="icc" className="text-[13px] font-medium text-ink-900">
               ICC profile
             </Label>
             <Input
@@ -259,7 +259,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="tac" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="tac" className="text-[13px] font-medium text-ink-900">
               Total area coverage limit (%)
             </Label>
             <Input
@@ -271,10 +271,10 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
               onChange={(e) => setTacLimitPct(e.target.value)}
               disabled={isPending}
             />
-            <p className="text-xs text-zinc-500">Max total ink density, 100–400%.</p>
+            <p className="text-[12px] text-ink-500">Max total ink density, 100–400%.</p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pms" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="pms" className="text-[13px] font-medium text-ink-900">
               Spot-color library
             </Label>
             <select
@@ -293,25 +293,25 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
           </div>
         </div>
 
-        <label className="flex items-center gap-2.5 text-sm text-zinc-700">
+        <label className="flex items-center gap-2.5 text-[13px] text-ink-700">
           <input
             type="checkbox"
             checked={spotColorsAccepted}
             onChange={(e) => setSpotColorsAccepted(e.target.checked)}
             disabled={isPending}
-            className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+            className="h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
           />
           Accept spot (Pantone) colors
         </label>
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-zinc-900">Special channel naming</Label>
-          <p className="text-xs text-zinc-500">
+          <Label className="text-[13px] font-medium text-ink-900">Special channel naming</Label>
+          <p className="text-[12px] text-ink-500">
             How non-process channels should be named in the file. Leave blank if not used.
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <span className="text-xs text-zinc-500">White ink</span>
+              <span className="text-[12px] text-ink-500">White ink</span>
               <Input
                 value={channelWhite}
                 onChange={(e) => setChannelWhite(e.target.value)}
@@ -320,7 +320,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
               />
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs text-zinc-500">Spot varnish</span>
+              <span className="text-[12px] text-ink-500">Spot varnish</span>
               <Input
                 value={channelVarnish}
                 onChange={(e) => setChannelVarnish(e.target.value)}
@@ -329,7 +329,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
               />
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs text-zinc-500">Foil channel</span>
+              <span className="text-[12px] text-ink-500">Foil channel</span>
               <Input
                 value={channelFoil}
                 onChange={(e) => setChannelFoil(e.target.value)}
@@ -345,7 +345,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       <Section title="Resolution & bleed" hint="Minimum raster resolution and bleed margin.">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="dpi" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="dpi" className="text-[13px] font-medium text-ink-900">
               Minimum DPI
             </Label>
             <Input
@@ -358,7 +358,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="bleed" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="bleed" className="text-[13px] font-medium text-ink-900">
               Bleed (mm)
             </Label>
             <Input
@@ -378,7 +378,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       {/* Fonts */}
       <Section title="Fonts" hint="How type should be supplied in the artwork.">
         <div className="space-y-1.5 sm:max-w-xs">
-          <Label htmlFor="fontPolicy" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="fontPolicy" className="text-[13px] font-medium text-ink-900">
             Font policy
           </Label>
           <select
@@ -404,7 +404,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="dielineDelivery" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="dielineDelivery" className="text-[13px] font-medium text-ink-900">
               Delivery format
             </Label>
             <select
@@ -422,7 +422,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="dielineLayer" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="dielineLayer" className="text-[13px] font-medium text-ink-900">
               Dieline layer name
             </Label>
             <Input
@@ -443,7 +443,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="substrate" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="substrate" className="text-[13px] font-medium text-ink-900">
               Default substrate
             </Label>
             <select
@@ -462,7 +462,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="manifest" className="text-sm font-medium text-zinc-900">
+            <Label htmlFor="manifest" className="text-[13px] font-medium text-ink-900">
               Manifest format
             </Label>
             <select
@@ -481,7 +481,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="instructions" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="instructions" className="text-[13px] font-medium text-ink-900">
             Export instructions
           </Label>
           <textarea
@@ -491,19 +491,23 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
             disabled={isPending}
             rows={4}
             placeholder="Anything a creator's prepress team should know before exporting for this service."
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
+            className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 transition-colors focus:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:bg-ink-50"
           />
         </div>
       </Section>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           {error}
         </div>
       )}
 
-      <div className="flex justify-end gap-2 border-t border-zinc-100 pt-6">
-        <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+      <div className="flex justify-end gap-2 border-t border-ink-100 pt-6">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 focus-visible:ring-2 focus-visible:ring-pink-500"
+        >
           {isPending ? 'Saving…' : 'Save print spec'}
         </Button>
       </div>

@@ -17,7 +17,6 @@
 // Shipping + tax remain placeholders here — they land in G4 (fulfillment
 // + carrier rates) and G5 (tax computation at My cart).
 
-import { Repeat } from 'lucide-react'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 
@@ -71,7 +70,7 @@ export function OrderSummary({
           (which already shows the cadence, runs, and discount). The
           OrderSummary just owns the price breakdown now. */}
       <div
-        className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm"
+        className="rounded-2xl border border-ink-200 bg-white p-5"
         aria-labelledby="order-summary-heading"
       >
       {/* R9.b — h3 keeps StepShell's h1 and CheckoutStep's h2 sections
@@ -171,60 +170,6 @@ export function OrderSummary({
             ? 'Pick a ship-to at Checkout to add shipping. Tax calculates there too.'
             : 'Live cost lights up once you pick a quantity in step 2.'}
       </p>
-      </div>
-    </div>
-  )
-}
-
-// =============================================================================
-// SubscribedSummary — confirmation readout once the offer is accepted (G6.c)
-//
-// Note: an earlier `SubscribeAndSaveStub` upsell-card used to sit above
-// this block. It was removed on 2026-05-30 because the G6.c picker in
-// Step 2's body already shows the unlock state — keeping a second
-// lock-card here just duplicated the message. Re-introduce a right-rail
-// surface only if we have something genuinely additive to say (e.g.
-// once we ship a "tier upgrade" inline modal).
-// =============================================================================
-
-function SubscribedSummary({
-  cadence,
-  runCount,
-  discountBp,
-}: {
-  cadence: 'MONTHLY' | 'QUARTERLY'
-  runCount: number | null
-  discountBp: number
-}) {
-  const cadenceLabel = cadence === 'QUARTERLY' ? 'every 3 months' : 'every month'
-  const runsLabel = runCount ? `${runCount} runs` : 'open-ended'
-  const pctOff = (discountBp / 100).toFixed(0)
-  return (
-    <div className="rounded-xl border border-pink-300 bg-gradient-to-br from-pink-50/80 to-white p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-pink-500 text-white"
-        >
-          <Repeat className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <p className="text-[12.5px] font-semibold text-ink-900">
-              Subscribed
-            </p>
-            <span className="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-emerald-700">
-              {pctOff}% off
-            </span>
-          </div>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-700">
-            {cadenceLabel} · {runsLabel}
-          </p>
-          <p className="mt-2 text-[11px] text-ink-500">
-            First charge with this order. Recurring billing begins after this
-            run lands. Manage from your account anytime.
-          </p>
-        </div>
       </div>
     </div>
   )

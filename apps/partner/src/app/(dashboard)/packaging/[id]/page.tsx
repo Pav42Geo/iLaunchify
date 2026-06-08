@@ -8,11 +8,17 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { ArrowLeft } from 'lucide-react'
-import { Card, CardContent } from '@ilaunchify/ui'
+import { cn } from '@ilaunchify/ui'
 import { PackagingForm } from '../PackagingForm'
 import { SurfacesPanel, type SurfaceRow } from '../SurfacesPanel'
 import { PackagingStatusToggle } from './PackagingStatusToggle'
-import { STATUS_LABELS } from '../constants'
+
+// v2 status pill — semantic tones
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
+  RETIRED: { label: 'Retired', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -78,51 +84,56 @@ export default async function PackagingEditPage({ params }: PageProps) {
     maxWeightG: system.maxWeightG != null ? String(system.maxWeightG) : '',
   }
 
-  const statusBadge = STATUS_LABELS[system.status] ?? {
+  const statusPill = STATUS_PILL[system.status] ?? {
     label: system.status,
-    cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
+    cls: 'border-ink-200 bg-ink-100 text-ink-700',
   }
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link
-            href="/packaging"
-            className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
-          </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{system.partnerName}</h1>
-          <span
-            className={`mt-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${statusBadge.cls}`}
-          >
-            {statusBadge.label}
-          </span>
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <Link
+              href="/packaging"
+              className="mb-2 inline-flex items-center gap-1 text-[12px] text-ink-500 transition-colors hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
+            </Link>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+              Manufacturing · Packaging
+            </p>
+            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+              {system.partnerName}
+            </h1>
+            <span
+              className={cn(
+                'mt-2 inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',
+                statusPill.cls,
+              )}
+            >
+              {statusPill.label}
+            </span>
+          </div>
+          <PackagingStatusToggle
+            packagingSystemId={system.id}
+            currentStatus={system.status}
+            hasSurfaces={system.surfaces.length > 0}
+          />
         </div>
-        <PackagingStatusToggle
-          packagingSystemId={system.id}
-          currentStatus={system.status}
-          hasSurfaces={system.surfaces.length > 0}
-        />
-      </header>
+      </div>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
+      <section className="space-y-3">
+        <h2 className="font-display text-[14px] font-semibold tracking-tight text-ink-900">
           Core fields
         </h2>
         <PackagingForm mode="edit" packagingSystemId={system.id} initial={initial} />
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          Surfaces
-        </h2>
-        <Card>
-          <CardContent className="pt-6">
-            <SurfacesPanel packagingSystemId={system.id} initialSurfaces={initialSurfaces} />
-          </CardContent>
-        </Card>
+      <section className="space-y-3">
+        <div className="rounded-2xl border border-ink-200 bg-white p-6">
+          <SurfacesPanel packagingSystemId={system.id} initialSurfaces={initialSurfaces} />
+        </div>
       </section>
     </div>
   )

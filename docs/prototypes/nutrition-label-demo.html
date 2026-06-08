@@ -1,0 +1,172 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>iLaunchify — accurate Nutrition Facts engine (live demo)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FCEEF3;--ink-900:#18181A;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--green:#1D9E75}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink-900);background:#fff;font-size:13px}
+.display{font-family:"Bricolage Grotesque",Inter;letter-spacing:-.02em}
+.wrap{max-width:1100px;margin:0 auto;padding:22px}
+.hero{border:1px solid #F4C0D1;background:var(--pink-50);border-radius:22px;padding:18px 20px;margin-bottom:18px}
+.eyebrow{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
+.grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.card{border:1px solid var(--ink-200);border-radius:16px;background:#fff;padding:16px}
+input,select{border:1px solid var(--ink-200);border-radius:10px;padding:7px 9px;font:inherit;font-size:12.5px}
+input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+.btn{border:0;background:var(--ink-900);color:#fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.chip{border:1px solid var(--ink-200);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;background:#fff;display:inline-flex;gap:6px;align-items:center;margin:0 5px 6px 0}
+.chip:hover{border-color:var(--pink);color:var(--pink-700)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500);padding:6px;border-bottom:1px solid var(--ink-100)}
+td{padding:6px;border-bottom:1px solid var(--ink-50)}
+.facts{border:2px solid #000;border-radius:6px;padding:9px;font-family:Helvetica,Arial,sans-serif;color:#000;background:#fff}
+.facts h2{font-size:26px;margin:0;font-weight:800;letter-spacing:-.5px}
+.bar{border-bottom:8px solid #000} .barm{border-bottom:4px solid #000} .bars{border-bottom:1px solid #000}
+.fr{display:flex;justify-content:space-between;padding:1px 0;border-bottom:1px solid #000;font-size:12px}
+.fr.in{padding-left:14px;font-weight:400} .fr b{font-weight:700}
+.cal{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid #000;padding:2px 0}
+.cal .n{font-size:30px;font-weight:800}
+.note{font-size:11px;color:var(--ink-600);background:var(--ink-50);border:1px solid var(--ink-200);border-radius:10px;padding:8px 10px;margin-top:10px}
+.diag{font-size:11px;color:var(--ink-500);margin-top:8px}
+.netw{font-family:"Bricolage Grotesque";font-weight:800;font-size:18px;color:var(--pink-700)}
+label.f{display:block;font-size:10.5px;font-weight:600;color:var(--ink-600);margin-bottom:3px}
+</style></head><body>
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">iLaunchify · Recipe builder</div>
+    <h1 class="display" style="font-size:24px;margin:4px 0">Accurate Nutrition Facts — live</h1>
+    <p style="color:var(--ink-600);margin:0">Add ingredients, change amounts, serving size, or yield loss — the FDA label recomputes from one net mass + one nutrient total, so per-serving values and servings/container can never disagree.</p>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <b>Search ingredients</b> <span style="color:var(--ink-500)">· demo USDA set</span>
+        <div style="margin:8px 0"><input id="q" placeholder="oats, milk, banana, oil, sugar…" style="width:100%"/></div>
+        <div id="results"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <b>Recipe ingredients</b>
+        <table style="margin-top:8px"><thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Trim %</th><th>Grams</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" style="color:var(--ink-400);padding:14px">No ingredients yet — search above.</td></tr></tbody></table>
+        <div class="diag" id="diag"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <b>Packaging &amp; serving</b>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px">
+          <div><label class="f">Serving size (g)</label><input id="serv" type="number" value="55" style="width:100%"></div>
+          <div><label class="f">Yield / moisture loss (%)</label><input id="yield" type="number" value="0" style="width:100%"></div>
+          <div><label class="f">Net weight (g) · blank = auto</label><input id="netw" type="number" placeholder="auto" style="width:100%"></div>
+        </div>
+        <div class="note">Trim loss removes nutrients (peeling). Yield/moisture loss removes only water — nutrients stay, density rises. These are modeled separately, unlike the legacy double-waste.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="eyebrow">Net weight</div>
+        <div class="netw" id="netlabel">—</div>
+        <div style="margin-top:12px" id="label"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- demo ingredient set: per 100 g + density (g/ml) + gramsPerPiece ----
+const DB=[
+ {id:'oats',name:'Rolled oats',d:0.41,per:{calories:389,protein:16.9,totalFat:6.9,saturatedFat:1.2,transFat:0,cholesterol:0,sodium:2,totalCarbohydrate:66.3,dietaryFiber:10.6,totalSugars:0,addedSugars:0,vitaminD:0,calcium:54,iron:4.7,potassium:429}},
+ {id:'milk',name:'Whole milk',d:1.03,per:{calories:61,protein:3.2,totalFat:3.3,saturatedFat:1.9,transFat:0.1,cholesterol:10,sodium:43,totalCarbohydrate:4.8,dietaryFiber:0,totalSugars:5.1,addedSugars:0,vitaminD:1.3,calcium:113,iron:0,potassium:132}},
+ {id:'banana',name:'Banana (raw)',d:1,gp:118,per:{calories:89,protein:1.1,totalFat:0.3,saturatedFat:0.1,transFat:0,cholesterol:0,sodium:1,totalCarbohydrate:22.8,dietaryFiber:2.6,totalSugars:12.2,addedSugars:0,vitaminD:0,calcium:5,iron:0.3,potassium:358}},
+ {id:'almond',name:'Almond butter',d:1,per:{calories:614,protein:20.9,totalFat:55.5,saturatedFat:4.2,transFat:0,cholesterol:0,sodium:7,totalCarbohydrate:18.8,dietaryFiber:10.3,totalSugars:4.4,addedSugars:0,vitaminD:0,calcium:347,iron:3.5,potassium:748}},
+ {id:'sugar',name:'Cane sugar',d:0.85,per:{calories:387,protein:0,totalFat:0,saturatedFat:0,transFat:0,cholesterol:0,sodium:1,totalCarbohydrate:100,dietaryFiber:0,totalSugars:100,addedSugars:100,vitaminD:0,calcium:1,iron:0,potassium:2}},
+ {id:'oil',name:'Olive oil',d:0.92,per:{calories:884,protein:0,totalFat:100,saturatedFat:13.8,transFat:0,cholesterol:0,sodium:2,totalCarbohydrate:0,dietaryFiber:0,totalSugars:0,addedSugars:0,vitaminD:0,calcium:1,iron:0.6,potassium:1}},
+ {id:'water',name:'Water',d:1,per:{calories:0,protein:0,totalFat:0,saturatedFat:0,transFat:0,cholesterol:0,sodium:0,totalCarbohydrate:0,dietaryFiber:0,totalSugars:0,addedSugars:0,vitaminD:0,calcium:0,iron:0,potassium:0}},
+ {id:'choc',name:'Dark chocolate chips',d:0.6,per:{calories:480,protein:4.2,totalFat:30,saturatedFat:18,transFat:0,cholesterol:5,sodium:11,totalCarbohydrate:61,dietaryFiber:7,totalSugars:48,addedSugars:46,vitaminD:0,calcium:32,iron:8,potassium:340}},
+];
+const MASS={g:1,kg:1000,oz:28.3495,lb:453.592}, VOL={ml:1,l:1000,fl_oz:29.5735,cup:240,tbsp:14.7868,tsp:4.92892}, COUNT=new Set(['each','piece','slice']);
+function toGrams(q,u,ing){u=u.toLowerCase();if(u in MASS)return q*MASS[u];if(u in VOL)return q*VOL[u]*(ing.d??1);if(COUNT.has(u))return q*(ing.gp??50);return q;}
+function kcal(n){if(n.calories>0)return n.calories;const dc=Math.max(0,n.totalCarbohydrate-n.dietaryFiber);return 4*n.protein+4*dc+2*n.dietaryFiber+9*n.totalFat;}
+const DV={totalFat:78,saturatedFat:20,cholesterol:300,sodium:2300,totalCarbohydrate:275,dietaryFiber:28,addedSugars:50,protein:50,vitaminD:20,calcium:1300,iron:18,potassium:4700};
+const rt=(v,s)=>Math.round(v/s)*s;
+const rCal=v=>v<5?0:(v<=50?rt(v,5):rt(v,10));
+const rMac=v=>v<0.5?0:(v<5?rt(v,0.5):Math.round(v));
+const rChol=v=>v<5?0:(v<=140?rt(v,5):rt(v,10));
+const rMic=v=>v<0.5?0:(v<=2?rt(v,0.1):Math.round(v));
+const rServ=x=>x<2?Math.round(x*4)/4:(x<=5?Math.round(x*2)/2:Math.round(x));
+const KEYS=['calories','protein','totalFat','saturatedFat','transFat','cholesterol','sodium','totalCarbohydrate','dietaryFiber','totalSugars','addedSugars','vitaminD','calcium','iron','potassium'];
+
+let recipe=[]; // {ref, qty, unit, trim}
+const $=id=>document.getElementById(id);
+
+function renderResults(){
+  const t=$('q').value.toLowerCase().trim();
+  $('results').innerHTML = !t ? '<span style="color:var(--ink-400);font-size:12px">Type to search…</span>'
+   : DB.filter(d=>d.name.toLowerCase().includes(t)).map(d=>`<span class="chip" onclick="add('${d.id}')">+ ${d.name}</span>`).join('') || '<span style="color:var(--ink-400)">No matches.</span>';
+}
+function add(id){const ref=DB.find(d=>d.id===id);recipe.push({ref,qty:100,unit:'g',trim:0});$('q').value='';renderResults();render();}
+function del(i){recipe.splice(i,1);render();}
+function upd(i,k,v){recipe[i][k]=k==='unit'?v:parseFloat(v||'0');render();}
+
+function compute(){
+  const batch={};KEYS.forEach(k=>batch[k]=0);let raw=0;
+  recipe.forEach(r=>{const g=toGrams(r.qty,r.unit,r.ref)*(1-(r.trim||0)/100);if(g<=0)return;raw+=g;const f=g/100;const n=r.ref.per;
+    batch.calories+=kcal(n)*f;['protein','totalFat','saturatedFat','transFat','cholesterol','sodium','totalCarbohydrate','dietaryFiber','totalSugars','addedSugars','vitaminD','calcium','iron','potassium'].forEach(k=>batch[k]+=(n[k]||0)*f);});
+  const yld=parseFloat($('yield').value||'0'); const net=raw*(1-yld/100);
+  const nw=parseFloat($('netw').value||'')||net;
+  const serv=parseFloat($('serv').value||'55');
+  const dens={};KEYS.forEach(k=>dens[k]=net>0?batch[k]/net:0);
+  const ps=k=>dens[k]*serv; const dv=(v,r)=>r>0?Math.round(v/r*100):0;
+  return {raw,net,nw,serv,spc:rServ(nw/serv),ps,dv};
+}
+function render(){
+  $('rows').innerHTML = recipe.length? recipe.map((r,i)=>{
+    const g=toGrams(r.qty,r.unit,r.ref)*(1-(r.trim||0)/100);
+    return `<tr><td>${r.ref.name}</td>
+      <td><input type="number" value="${r.qty}" style="width:60px" oninput="upd(${i},'qty',this.value)"></td>
+      <td><select style="width:74px" onchange="upd(${i},'unit',this.value)">${['g','kg','oz','lb','ml','cup','tbsp','tsp','each'].map(u=>`<option ${u===r.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+      <td><input type="number" value="${r.trim}" style="width:48px" oninput="upd(${i},'trim',this.value)"></td>
+      <td style="color:var(--green);font-weight:600">${g.toFixed(1)} g</td>
+      <td><span class="chip sm" style="margin:0" onclick="del(${i})">🗑</span></td></tr>`;}).join('')
+    : '<tr><td colspan="6" style="color:var(--ink-400);padding:14px">No ingredients yet — search above.</td></tr>';
+
+  if(!recipe.length){$('label').innerHTML='<span style="color:var(--ink-400);font-size:12px">Add ingredients to see the label.</span>';$('netlabel').textContent='—';$('diag').textContent='';return;}
+  const c=compute();
+  $('netlabel').textContent=`${(c.nw/28.3495).toFixed(1)} oz (${Math.round(c.nw)} g)`;
+  $('diag').textContent=`Batch raw mass ${c.raw.toFixed(0)} g · net ${c.net.toFixed(0)} g · ${c.spc} servings/container @ ${c.serv} g`;
+  const row=(lbl,amt,unit,dvv,bold,ind)=>`<div class="fr ${ind?'in':''}">${bold?`<b>${lbl} ${amt}${unit}</b>`:`<span>${lbl} ${amt}${unit}</span>`}${dvv!=null?`<b>${dvv}%</b>`:''}</div>`;
+  $('label').innerHTML=`<div class="facts">
+    <h2 class="bar">Nutrition Facts</h2>
+    <div class="bars" style="font-size:12px">${c.spc} servings per container</div>
+    <div class="barm" style="display:flex;justify-content:space-between;font-weight:700;font-size:13px"><span>Serving size</span><span>${c.serv} g</span></div>
+    <div style="font-size:11px;margin-top:4px">Amount per serving</div>
+    <div class="cal"><span style="font-weight:800;font-size:18px">Calories</span><span class="n">${rCal(c.ps('calories'))}</span></div>
+    <div style="text-align:right;font-size:11px;font-weight:700;border-bottom:1px solid #000">% Daily Value*</div>
+    ${row('Total Fat',rMac(c.ps('totalFat')),'g',c.dv(c.ps('totalFat'),DV.totalFat),1)}
+    ${row('Saturated Fat',rMac(c.ps('saturatedFat')),'g',c.dv(c.ps('saturatedFat'),DV.saturatedFat),0,1)}
+    ${row('<i>Trans</i> Fat',rMac(c.ps('transFat')),'g',null,0,1)}
+    ${row('Cholesterol',rChol(c.ps('cholesterol')),'mg',c.dv(c.ps('cholesterol'),DV.cholesterol),1)}
+    ${row('Sodium',rChol(c.ps('sodium')),'mg',c.dv(c.ps('sodium'),DV.sodium),1)}
+    ${row('Total Carbohydrate',rMac(c.ps('totalCarbohydrate')),'g',c.dv(c.ps('totalCarbohydrate'),DV.totalCarbohydrate),1)}
+    ${row('Dietary Fiber',rMac(c.ps('dietaryFiber')),'g',c.dv(c.ps('dietaryFiber'),DV.dietaryFiber),0,1)}
+    ${row('Total Sugars',rMac(c.ps('totalSugars')),'g',null,0,1)}
+    ${row('Includes Added Sugars',rMac(c.ps('addedSugars')),'g',c.dv(c.ps('addedSugars'),DV.addedSugars),0,1)}
+    ${row('Protein',rMac(c.ps('protein')),'g',null,1)}
+    <div class="barm"></div>
+    ${row('Vitamin D',rMic(c.ps('vitaminD')),'mcg',c.dv(c.ps('vitaminD'),DV.vitaminD))}
+    ${row('Calcium',rMic(c.ps('calcium')),'mg',c.dv(c.ps('calcium'),DV.calcium))}
+    ${row('Iron',rMic(c.ps('iron')),'mg',c.dv(c.ps('iron'),DV.iron))}
+    ${row('Potassium',rMic(c.ps('potassium')),'mg',c.dv(c.ps('potassium'),DV.potassium))}
+    <div style="font-size:9.5px;margin-top:6px;border-top:4px solid #000;padding-top:4px">* The % Daily Value tells you how much a nutrient in a serving contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.</div>
+  </div>`;
+}
+$('q').addEventListener('input',renderResults);
+['serv','yield','netw'].forEach(id=>$(id).addEventListener('input',render));
+// seed example
+add('oats');recipe[0].qty=80;add('milk');recipe[1].qty=200;recipe[1].unit='ml';add('banana');recipe[2].qty=1;recipe[2].unit='each';add('choc');recipe[3].qty=20;
+renderResults();render();
+</script>
+</body></html>

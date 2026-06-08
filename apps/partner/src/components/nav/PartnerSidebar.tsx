@@ -22,7 +22,9 @@ const FULL_NAV: NavItem[] = [
   { href: '/accessories',     label: 'Accessories',     icon: Gift },
   { href: '/certifications',  label: 'Certifications',  icon: Award },
   { href: '/payments',        label: 'Payments',        icon: DollarSign },
-  { href: '/my-application',  label: 'My Application',  icon: FileCheck2 },
+  // /my-application is intentionally absent here — once a partner is ACTIVE the
+  // application is closed; the record lives in the admin console. It only shows
+  // in RESTRICTED_NAV (pre-approval applicants).
   { href: '/settings',        label: 'Settings',        icon: Settings },
 ]
 
@@ -51,7 +53,7 @@ function statusBadge(status: PartnerStatus): { label: string; className: string 
     case 'DRAFT':
     case 'INVITED':
     default:
-      return { label: status, className: 'bg-zinc-100 text-zinc-700 ring-zinc-200' }
+      return { label: status, className: 'bg-ink-100 text-ink-700 ring-ink-200' }
   }
 }
 
@@ -61,9 +63,9 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
   const badge = statusBadge(status)
 
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-zinc-200 bg-white p-4 lg:block">
+    <aside data-partner-sidebar className="hidden w-56 shrink-0 border-r border-ink-200 bg-white p-4 lg:block">
       <div className="mb-6 px-2">
-        <div className="text-xs font-medium text-zinc-500">Partner portal</div>
+        <div className="text-xs font-medium text-ink-500">Partner portal</div>
         <span
           className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
         >
@@ -80,7 +82,7 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
               href={href}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                active ? 'bg-zinc-100 font-medium text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50',
+                active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -90,7 +92,7 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
         })}
       </nav>
       {restricted && (
-        <p className="mt-6 px-2 text-xs text-zinc-500">
+        <p className="mt-6 px-2 text-xs text-ink-500">
           {status === 'UNDER_REVIEW' && (
             <>Your application is being reviewed. We&apos;ll email you when there&apos;s an update.</>
           )}

@@ -56,29 +56,29 @@ export function MediaCard({ productTemplateId, isDraft, currentHeroAssetId }: Me
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={!isDraft || isPending}
-        className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-zinc-300 bg-zinc-50 p-4 text-left transition-colors hover:border-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-ink-300 bg-ink-50 p-4 text-left transition-colors hover:border-ink-400 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {currentHeroAssetId ? (
           <>
             <FileImage className="h-5 w-5 text-emerald-600" />
             <div className="flex-1 text-sm">
-              <div className="font-medium text-zinc-900">Hero image uploaded</div>
-              <div className="text-xs text-zinc-500">
+              <div className="font-medium text-ink-900">Hero image uploaded</div>
+              <div className="text-xs text-ink-500">
                 Click to replace with a new photo.
               </div>
             </div>
           </>
         ) : (
           <>
-            <Upload className="h-5 w-5 text-zinc-400" />
+            <Upload className="h-5 w-5 text-ink-400" />
             <div className="flex-1 text-sm">
-              <div className="font-medium text-zinc-900">Upload hero image</div>
-              <div className="text-xs text-zinc-500">PNG, JPEG, WebP · up to 10 MB</div>
+              <div className="font-medium text-ink-900">Upload hero image</div>
+              <div className="text-xs text-ink-500">PNG, JPEG, WebP · up to 10 MB</div>
             </div>
           </>
         )}
       </button>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         💡 The hero image shows on the creator marketplace card + product detail page.
         Multi-photo galleries ship in a follow-up.
       </p>

@@ -59,6 +59,10 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
   const welcomeSeen = progress.welcomeSeen === true
 
+  // Resolve the request path once (set by middleware) for the status guard below.
+  const hdrs = await headers()
+  const pathname = hdrs.get('x-pathname') ?? hdrs.get('x-invoke-path') ?? ''
+
   // First-visit detection: pre-submit + haven't seen Welcome yet
   if (PRE_SUBMIT_STATUSES.has(partner.status) && !welcomeSeen) {
     redirect('/onboarding/welcome')
@@ -71,10 +75,6 @@ export default async function PartnerDashboardLayout({ children }: { children: R
 
   // Post-submit but not yet ACTIVE → status page
   if (POST_SUBMIT_STATUSES.has(partner.status)) {
-    // Use the request path to avoid infinite redirects when the status page
-    // links here on activation. headers() is async in Next 15.
-    const hdrs = await headers()
-    const pathname = hdrs.get('x-pathname') ?? hdrs.get('x-invoke-path') ?? ''
     // Only redirect if not already on the status page (defensive — the
     // status page lives outside (dashboard)/ so this branch is mostly a
     // safety net for direct /dashboard hits).
@@ -92,9 +92,13 @@ export default async function PartnerDashboardLayout({ children }: { children: R
     <div className="flex min-h-screen flex-col">
       <PartnerTopbar user={user} companyName={partner.companyName} />
       <div className="flex flex-1">
+        {/* The /products/new builder hides the sidebar + neutralizes this
+            padding via a body.gb-active class (mount-scoped, so it reverts on
+            navigation). data-* hooks let it target these without per-route
+            layout logic — the shared layout doesn't re-run on client nav. */}
         <PartnerSidebar status={partner.status} restricted={restricted} />
-        <main className="flex-1 overflow-y-auto bg-zinc-50 p-6">
-          <div className="mx-auto max-w-6xl">{children}</div>
+        <main data-partner-shell-main className="flex-1 overflow-y-auto bg-ink-50 p-6">
+          <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
     </div>

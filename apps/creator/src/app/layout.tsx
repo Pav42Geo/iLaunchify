@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white text-zinc-900 antialiased">
+      <body className="bg-white text-ink-900 antialiased">
         <QueryProvider>
           {children}
           <Toaster />

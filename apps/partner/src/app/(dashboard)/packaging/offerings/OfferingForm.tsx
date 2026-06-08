@@ -212,11 +212,11 @@ export function OfferingForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6"
+      className="space-y-6 rounded-2xl border border-ink-200 bg-white p-6"
     >
       {/* Service */}
       <div className="space-y-1.5">
-        <Label htmlFor="service" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="service" className="text-sm font-medium text-ink-900">
           Service
         </Label>
         <select
@@ -224,7 +224,7 @@ export function OfferingForm({
           value={partnerServiceId}
           onChange={(e) => setPartnerServiceId(e.target.value)}
           disabled={isPending || mode === 'edit'}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50 disabled:text-zinc-500"
+          className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm disabled:bg-ink-50 disabled:text-ink-500"
         >
           {services.map((s) => (
             <option key={s.id} value={s.id}>
@@ -237,14 +237,14 @@ export function OfferingForm({
       {/* Container type + decoration */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="type" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="type" className="text-sm font-medium text-ink-900">
             Container type
           </Label>
           {mode === 'edit' ? (
             <Input
               value={selectedType?.displayName ?? '—'}
               disabled
-              className="bg-zinc-50 text-zinc-500"
+              className="bg-ink-50 text-ink-500"
             />
           ) : (
             <select
@@ -252,7 +252,7 @@ export function OfferingForm({
               value={packagingTypeId}
               onChange={(e) => onTypeChange(e.target.value)}
               disabled={isPending}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">Select a container…</option>
               {packagingTypes.map((t) => (
@@ -266,14 +266,14 @@ export function OfferingForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="decoration" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="decoration" className="text-sm font-medium text-ink-900">
             Decoration method
           </Label>
           {mode === 'edit' ? (
             <Input
               value={initial ? DECORATION_LABELS[initial.decorationMethod] : '—'}
               disabled
-              className="bg-zinc-50 text-zinc-500"
+              className="bg-ink-50 text-ink-500"
             />
           ) : (
             <select
@@ -281,7 +281,7 @@ export function OfferingForm({
               value={decorationMethod}
               onChange={(e) => onDecorationChange(e.target.value as DecorationMethod)}
               disabled={isPending || !packagingTypeId}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
+              className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm disabled:bg-ink-50"
             >
               <option value="">
                 {packagingTypeId ? 'Select a method…' : 'Pick a container first'}
@@ -304,7 +304,7 @@ export function OfferingForm({
       {/* MOQ + lead time */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="moq" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="moq" className="text-sm font-medium text-ink-900">
             MOQ (units)
           </Label>
           <Input
@@ -317,7 +317,7 @@ export function OfferingForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="lead" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="lead" className="text-sm font-medium text-ink-900">
             Lead time (days)
           </Label>
           <Input
@@ -333,7 +333,7 @@ export function OfferingForm({
 
       {/* Fulfillment mode */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Fulfillment mode</Label>
+        <Label className="text-sm font-medium text-ink-900">Fulfillment mode</Label>
         <div className="grid gap-2 sm:grid-cols-3">
           {FULFILLMENT_OPTIONS.map((opt) => {
             const selected = fulfillmentMode === opt.value
@@ -343,14 +343,14 @@ export function OfferingForm({
                 type="button"
                 onClick={() => setFulfillmentMode(opt.value)}
                 disabled={isPending}
-                className={`rounded-md border p-3 text-left transition-colors ${
+                className={`rounded-xl border p-3 text-left transition-colors ${
                   selected
-                    ? 'border-emerald-500 bg-emerald-50'
-                    : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                    ? 'border-ink-900 bg-ink-900/[0.04] ring-1 ring-ink-900'
+                    : 'border-ink-200 bg-white hover:border-ink-400'
                 }`}
               >
-                <div className="font-medium text-zinc-900">{opt.label}</div>
-                <div className="mt-0.5 text-xs text-zinc-500">{opt.hint}</div>
+                <div className="font-medium text-ink-900">{opt.label}</div>
+                <div className="mt-0.5 text-xs text-ink-500">{opt.hint}</div>
               </button>
             )
           })}
@@ -359,15 +359,15 @@ export function OfferingForm({
 
       {/* Pricing tiers */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Pricing tiers</Label>
-        <p className="text-xs text-zinc-500">
+        <Label className="text-sm font-medium text-ink-900">Pricing tiers</Label>
+        <p className="text-xs text-ink-500">
           At least one tier. Each is a quantity breakpoint and the per-unit price at that volume.
         </p>
         <div className="space-y-2">
           {tiers.map((t, i) => (
             <div key={i} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <span className="text-xs text-zinc-500">Min qty</span>
+                <span className="text-xs text-ink-500">Min qty</span>
                 <Input
                   type="number"
                   min={1}
@@ -377,7 +377,7 @@ export function OfferingForm({
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <span className="text-xs text-zinc-500">Price / unit ($)</span>
+                <span className="text-xs text-ink-500">Price / unit ($)</span>
                 <Input
                   type="number"
                   min={0}
@@ -393,7 +393,7 @@ export function OfferingForm({
                 onClick={() => removeTier(i)}
                 disabled={isPending || tiers.length <= 1}
                 title={tiers.length <= 1 ? 'At least one tier is required' : 'Remove tier'}
-                className="flex h-11 w-11 items-center justify-center rounded-md border border-zinc-300 text-zinc-500 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-ink-300 text-ink-500 transition-colors hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -414,7 +414,7 @@ export function OfferingForm({
       {/* Dieline binding (optional) — only the partner's own dielines that match
           this exact (container type, decoration method) and are live/confirmed. */}
       <div className="space-y-1.5">
-        <Label htmlFor="dieline" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="dieline" className="text-sm font-medium text-ink-900">
           Dieline (optional)
         </Label>
         <select
@@ -422,7 +422,7 @@ export function OfferingForm({
           value={dielineId}
           onChange={(e) => setDielineId(e.target.value)}
           disabled={isPending || !packagingTypeId || !decorationMethod}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
+          className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm disabled:bg-ink-50"
         >
           <option value="">— none —</option>
           {eligibleDielines.map((d) => (
@@ -433,15 +433,15 @@ export function OfferingForm({
           ))}
         </select>
         {packagingTypeId && decorationMethod && eligibleDielines.length === 0 ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             No confirmed or active dielines match this container and decoration yet.{' '}
-            <a href="/packaging/dielines/new" className="underline hover:text-zinc-700">
+            <a href="/packaging/dielines/new" className="underline hover:text-ink-700">
               Add one
             </a>
             .
           </p>
         ) : (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Link a prepress dieline so creators print to the right cut. Confirm or activate a
             dieline first to make it selectable.
           </p>
@@ -450,7 +450,7 @@ export function OfferingForm({
 
       {/* Status */}
       <div className="space-y-1.5">
-        <Label htmlFor="status" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="status" className="text-sm font-medium text-ink-900">
           Status
         </Label>
         <select
@@ -458,7 +458,7 @@ export function OfferingForm({
           value={status}
           onChange={(e) => setStatus(e.target.value as OfferingStatus)}
           disabled={isPending}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+          className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -466,7 +466,7 @@ export function OfferingForm({
             </option>
           ))}
         </select>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           {STATUS_OPTIONS.find((o) => o.value === status)?.hint}
         </p>
       </div>
@@ -478,7 +478,7 @@ export function OfferingForm({
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={isPending} className="bg-ink-900 hover:bg-ink-700">
           {isPending ? 'Saving…' : mode === 'create' ? 'Create offering' : 'Save changes'}
         </Button>
       </div>

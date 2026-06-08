@@ -48,7 +48,7 @@ export default async function NewProductPage({
   return (
     <div className="space-y-6">
       <div>
-        <nav className="mb-2 text-xs text-zinc-500">
+        <nav className="mb-2 text-xs text-ink-500">
           {/* Back to the public marketplace detail page on apps/marketing. */}
           <a
             href={marketingUrl(`/marketplace/${template.subcategory.category.slug}/${template.subcategory.slug}/${template.slug}`)}
@@ -60,7 +60,7 @@ export default async function NewProductPage({
         <h1 className="text-2xl font-semibold tracking-tight">
           Pick a variant of {template.name}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Each variant has its own flavor, container, packing topology, MOQ, and lead time. You can
           customize ingredients in the next step.
         </p>

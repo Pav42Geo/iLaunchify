@@ -149,13 +149,13 @@ export function DeclaredPanelPanel({
     <div className="space-y-3 rounded-md border border-pink-200 bg-white p-3">
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-pink-600" />
-        <span className="text-sm font-semibold text-zinc-900">
+        <span className="text-sm font-semibold text-ink-900">
           Declare the {isSupplement ? 'Supplement' : 'Nutrition'} Facts
         </span>
       </div>
 
-      <div className="rounded-md border border-pink-200 bg-pink-50/60 p-2.5 text-[12px] leading-snug text-zinc-700">
-        <strong className="font-semibold text-zinc-900">Entered by you — not computed by iLaunchify.</strong>{' '}
+      <div className="rounded-md border border-pink-200 bg-pink-50/60 p-2.5 text-[12px] leading-snug text-ink-700">
+        <strong className="font-semibold text-ink-900">Entered by you — not computed by iLaunchify.</strong>{' '}
         These values publish as “Declared by manufacturer” on the public detail page. You
         attest to their accuracy (Creator Agreement §3).
       </div>
@@ -183,7 +183,7 @@ export function DeclaredPanelPanel({
           </div>
 
           <div>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
               Per serving
             </div>
             <div className="space-y-1">
@@ -193,9 +193,9 @@ export function DeclaredPanelPanel({
                   className="grid grid-cols-[1fr_80px_64px] items-center gap-2"
                   style={{ paddingLeft: (f.indent ?? 0) * 12 }}
                 >
-                  <span className="text-[12.5px] text-zinc-700">
+                  <span className="text-[12.5px] text-ink-700">
                     {f.label}
-                    {f.unit && <span className="text-zinc-400"> ({f.unit})</span>}
+                    {f.unit && <span className="text-ink-400"> ({f.unit})</span>}
                   </span>
                   <Input
                     type="number"
@@ -208,7 +208,7 @@ export function DeclaredPanelPanel({
                     className="h-8"
                   />
                   {f.noDv ? (
-                    <span className="text-center text-[10px] text-zinc-300">—</span>
+                    <span className="text-center text-[10px] text-ink-300">—</span>
                   ) : (
                     <Input
                       type="number"
@@ -232,12 +232,12 @@ export function DeclaredPanelPanel({
               rows={3}
               placeholder="Carbonated water, cane sugar, mango purée, citric acid, natural flavor."
               disabled={isSaving}
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+              className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
             />
           </Field>
 
           <div>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
               Contains (allergens)
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -251,7 +251,7 @@ export function DeclaredPanelPanel({
                     'rounded-pill border px-2.5 py-0.5 text-[11px] font-medium transition-colors ' +
                     (allergens.includes(a)
                       ? 'border-amber-300 bg-amber-100 text-amber-900'
-                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-amber-300')
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-amber-300')
                   }
                 >
                   {a}
@@ -304,14 +304,14 @@ export function DeclaredPanelPanel({
 
         {/* Right — live preview */}
         <div className="lg:justify-self-end">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
             Live preview
           </div>
           <NutritionFactsRenderer data={panel} widthPx={300} declaredByManufacturer />
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-zinc-100 pt-3">
+      <div className="flex justify-end gap-2 border-t border-ink-100 pt-3">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
@@ -319,7 +319,7 @@ export function DeclaredPanelPanel({
           size="sm"
           onClick={handleSaveClick}
           disabled={isSaving}
-          className="bg-zinc-900 text-white hover:bg-zinc-800"
+          className="bg-ink-900 text-white hover:bg-ink-700"
         >
           {isSaving ? (
             <>
@@ -335,8 +335,8 @@ export function DeclaredPanelPanel({
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-            <h3 className="text-base font-semibold text-zinc-900">Switch to a declared panel?</h3>
-            <p className="mt-2 text-sm text-zinc-600">
+            <h3 className="text-base font-semibold text-ink-900">Switch to a declared panel?</h3>
+            <p className="mt-2 text-sm text-ink-600">
               You currently have {existingSlotCount} ingredient slot
               {existingSlotCount === 1 ? '' : 's'}. Saving will replace them with a single
               declared panel based on your typed values. You can switch back to Search &amp;
@@ -353,7 +353,7 @@ export function DeclaredPanelPanel({
                   doSave()
                 }}
                 disabled={isSaving}
-                className="bg-zinc-900 text-white hover:bg-zinc-800"
+                className="bg-ink-900 text-white hover:bg-ink-700"
               >
                 Switch and continue
               </Button>
@@ -368,7 +368,7 @@ export function DeclaredPanelPanel({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs uppercase tracking-wider text-zinc-500">{label}</Label>
+      <Label className="text-xs uppercase tracking-wider text-ink-500">{label}</Label>
       {children}
     </div>
   )

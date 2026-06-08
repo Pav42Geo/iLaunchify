@@ -31,31 +31,31 @@ export function SectionShell({
   return (
     <section
       className={`rounded-lg border bg-white transition-colors ${
-        isStartHere && !isOpen ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-zinc-200'
+        isStartHere && !isOpen ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-ink-200'
       }`}
     >
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-zinc-50"
+        className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-ink-50"
         aria-expanded={isOpen}
         aria-controls={`section-${id}-body`}
       >
         <StatusPills status={status} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-zinc-900">{title}</h2>
+            <h2 className="font-semibold text-ink-900">{title}</h2>
             {isStartHere && status === 'NOT_STARTED' && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
                 Start here
               </span>
             )}
           </div>
-          {subtitle && <p className="mt-0.5 text-sm text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-sm text-ink-500">{subtitle}</p>}
         </div>
         <StatusLabel status={status} />
         <ChevronDown
-          className={`h-5 w-5 flex-shrink-0 text-zinc-400 transition-transform ${
+          className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -64,7 +64,7 @@ export function SectionShell({
       {isOpen && (
         <div
           id={`section-${id}-body`}
-          className="border-t border-zinc-200 px-6 py-6"
+          className="border-t border-ink-200 px-6 py-6"
         >
           {children}
         </div>
@@ -91,9 +91,9 @@ function StatusPills({ status }: { status: SectionStatus }) {
       ? 'bg-emerald-500'
       : status === 'NEEDS_CHANGES'
         ? 'bg-red-500'
-        : 'bg-zinc-400'
+        : 'bg-ink-400'
 
-  const emptyColor = status === 'NEEDS_CHANGES' ? 'border-red-300' : 'border-zinc-300'
+  const emptyColor = status === 'NEEDS_CHANGES' ? 'border-red-300' : 'border-ink-300'
 
   return (
     <div className="flex flex-shrink-0 gap-1" aria-hidden>
@@ -111,7 +111,7 @@ function StatusPills({ status }: { status: SectionStatus }) {
 
 function StatusLabel({ status }: { status: SectionStatus }) {
   const labels: Record<SectionStatus, { text: string; cls: string }> = {
-    NOT_STARTED: { text: 'NOT STARTED', cls: 'text-zinc-400' },
+    NOT_STARTED: { text: 'NOT STARTED', cls: 'text-ink-400' },
     IN_PROGRESS: { text: 'IN PROGRESS', cls: 'text-amber-600' },
     COMPLETE: { text: 'COMPLETE', cls: 'text-emerald-600' },
     NEEDS_CHANGES: { text: 'NEEDS CHANGES', cls: 'text-red-600' },

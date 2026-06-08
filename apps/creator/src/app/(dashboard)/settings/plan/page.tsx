@@ -154,18 +154,18 @@ export default async function PlanPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <header className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        <div className="flex flex-wrap items-end justify-between gap-3 bg-[#F3EFE8] px-5 py-4">
+      <header className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.06em] text-zinc-500">
-              Subscription
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+              Creator · Subscription
             </p>
-            <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-zinc-900">
+            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Your iLaunchify plan
             </h1>
-            <p className="mt-1 max-w-xl text-[12.5px] text-zinc-600">
+            <p className="mt-1 max-w-xl text-[13px] text-ink-600">
               You&rsquo;re currently on{' '}
-              <span className="font-semibold capitalize text-zinc-900">
+              <span className="font-semibold capitalize text-ink-900">
                 {currentTier}
               </span>
               .{' '}
@@ -178,7 +178,7 @@ export default async function PlanPage({ searchParams }: PageProps) {
           </div>
           <Link
             href="/subscriptions"
-            className="rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-zinc-700 hover:bg-zinc-100"
+            className="inline-flex items-center rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-700 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
             View production subscriptions
           </Link>
@@ -273,15 +273,15 @@ function TierCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-xl border bg-white transition ${
+      className={`overflow-hidden rounded-2xl border bg-white transition ${
         isCurrent
           ? 'border-pink-300 shadow-[0_8px_24px_-12px_rgba(255,46,99,0.25)]'
-          : 'border-zinc-200'
+          : 'border-ink-200'
       }`}
     >
       {/* Header band */}
       <header
-        className="flex flex-wrap items-center gap-2 border-b border-zinc-100 px-5 py-3 text-[12px]"
+        className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3 text-[12px]"
         style={{
           background: meta.accent.bg,
           color: meta.accent.fg,
@@ -302,24 +302,24 @@ function TierCard({
 
       {/* Price + tagline */}
       <div className="px-5 pt-4">
-        <p className="text-[12px] text-zinc-600">{meta.tagline}</p>
+        <p className="text-[12px] text-ink-600">{meta.tagline}</p>
         <div className="mt-3 flex items-baseline gap-1">
-          <span className="font-display text-3xl font-bold tabular-nums text-zinc-900">
+          <span className="font-display text-3xl font-bold tabular-nums text-ink-900">
             {price}
           </span>
           {monthlyPriceCents > 0 && (
-            <span className="text-[12px] text-zinc-500">/ month</span>
+            <span className="text-[12px] text-ink-500">/ month</span>
           )}
         </div>
         {description && (
-          <p className="mt-1 text-[11.5px] italic text-zinc-500">
+          <p className="mt-1 text-[11.5px] italic text-ink-500">
             {description}
           </p>
         )}
       </div>
 
       {/* Features */}
-      <ul className="mt-4 space-y-1.5 px-5 text-[12.5px] text-zinc-700">
+      <ul className="mt-4 space-y-1.5 px-5 text-[12.5px] text-ink-700">
         {meta.features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             <Check
@@ -332,12 +332,12 @@ function TierCard({
       </ul>
 
       {/* CTA — state machine */}
-      <div className="mt-5 border-t border-zinc-100 px-5 py-4">
+      <div className="mt-5 border-t border-ink-100 px-5 py-4">
         {isCurrent ? (
           pendingCancel ? (
             <CurrentWithPendingCancel periodEnd={periodEnd} />
           ) : meta.key === 'maker' ? (
-            <p className="text-center text-[11.5px] text-zinc-500">
+            <p className="text-center text-[11.5px] text-ink-500">
               You&rsquo;re on the free plan.
             </p>
           ) : (
@@ -365,7 +365,7 @@ function TierCard({
 function CurrentWithPendingCancel({ periodEnd }: { periodEnd: Date | null }) {
   return (
     <div className="space-y-2 text-center">
-      <p className="text-[11.5px] text-zinc-700">
+      <p className="text-[11.5px] text-ink-700">
         Cancels on{' '}
         <span className="font-semibold">
           {periodEnd ? formatDate(periodEnd) : 'period end'}
@@ -378,7 +378,7 @@ function CurrentWithPendingCancel({ periodEnd }: { periodEnd: Date | null }) {
 
 function DowngradeExplainer({ agency = false }: { agency?: boolean }) {
   return (
-    <p className="text-center text-[11.5px] leading-snug text-zinc-500">
+    <p className="text-center text-[11.5px] leading-snug text-ink-500">
       {agency
         ? 'To switch from Agency to Builder, cancel your current subscription, then re-subscribe at the lower tier.'
         : 'Cancel your current subscription to drop back to Maker at the end of the billing period.'}
@@ -426,8 +426,8 @@ function ResultBanner({
 
 function FooterCallout() {
   return (
-    <aside className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 px-5 py-4 text-[12px] text-zinc-600">
-      <p className="font-semibold text-zinc-900">Questions about pricing?</p>
+    <aside className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 px-5 py-4 text-[12px] text-ink-600">
+      <p className="font-semibold text-ink-900">Questions about pricing?</p>
       <p className="mt-1">
         Plans are billed monthly through Stripe and you can cancel any time —
         you&rsquo;ll keep your tier until the end of the current period. Need

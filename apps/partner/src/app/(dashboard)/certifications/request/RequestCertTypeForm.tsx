@@ -42,8 +42,8 @@ export function RequestCertTypeForm() {
     return (
       <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-6 text-center">
         <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
-        <h3 className="mt-2 font-semibold text-zinc-900">Request submitted</h3>
-        <p className="mt-1 text-sm text-zinc-600">
+        <h3 className="mt-2 font-semibold text-ink-900">Request submitted</h3>
+        <p className="mt-1 text-sm text-ink-600">
           An admin will review <span className="font-medium">{name.trim()}</span> and add it to the
           library if approved. You&apos;ll be able to claim it once it&apos;s live.
         </p>
@@ -71,7 +71,7 @@ export function RequestCertTypeForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6"
+      className="space-y-4 rounded-lg border border-ink-200 bg-white p-6"
     >
       <Field label="Certificate name" required hint="e.g. Regenerative Organic Certified">
         <Input
@@ -95,7 +95,7 @@ export function RequestCertTypeForm() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
@@ -118,7 +118,7 @@ export function RequestCertTypeForm() {
         <Button
           type="submit"
           disabled={isPending || name.trim().length < 2}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Submitting…' : 'Submit request'}
         </Button>
@@ -140,7 +140,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-zinc-900">
+      <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
           <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
@@ -148,7 +148,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

@@ -1,11 +1,12 @@
 // Slice C9 Phase 2 — partner prepress output spec editor. One
 // PartnerPrintOutputSpec row per PartnerService. Service-scoped: we resolve the
 // signed-in partner's own service ids and only ever load/edit a spec for one of
-// them. Matches the partner-app packaging surface style (NOT admin v2).
+// them. Partner-v2 chrome (Pavel 2026-06-05): cream hero + v2 panels.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requirePartnerActor } from '@ilaunchify/auth'
+import { cn } from '@ilaunchify/ui'
 import { ArrowLeft, Printer } from 'lucide-react'
 import type {
   ColorSpace,
@@ -73,42 +74,45 @@ export default async function PrintSpecPage({
   })
 
   const header = (
-    <header className="space-y-1">
+    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <Link
         href="/packaging"
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+        className="inline-flex items-center gap-1 rounded text-[12px] font-medium text-ink-500 transition-colors hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Packaging catalog
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Packaging catalog
       </Link>
-      <div className="flex items-center gap-2">
-        <Printer className="h-5 w-5 text-zinc-400" />
-        <h1 className="text-2xl font-semibold tracking-tight">Prepress output</h1>
-      </div>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-2 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        Manufacturing · Prepress
+      </p>
+      <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+        Prepress output
+      </h1>
+      <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
         Your prepress export preferences for each service — file format, color management,
         resolution, bleed, dieline delivery, and the manifest format used to build export bundles.
       </p>
-    </header>
+    </div>
   )
 
   if (services.length === 0) {
     return (
       <div className="space-y-6">
         {header}
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 py-14 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-            <Printer className="h-5 w-5 text-zinc-400" />
-          </span>
-          <p className="max-w-md text-sm text-zinc-500">
+        <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
+            <Printer className="h-6 w-6 text-pink-700" aria-hidden="true" />
+          </div>
+          <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No services yet</h2>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
             Add a service first — a print output spec attaches to one of your services.
           </p>
           <Link
             href="/services"
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
             Go to services
           </Link>
-        </div>
+        </section>
       </div>
     )
   }
@@ -167,8 +171,8 @@ export default async function PrintSpecPage({
 
       {services.length > 1 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Service</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">Service</p>
+          <div className="flex flex-wrap gap-1.5">
             {services.map((s) => {
               const active = s.id === selectedId
               const label = SERVICE_TYPE_LABELS[s.type] ?? s.type
@@ -176,11 +180,13 @@ export default async function PrintSpecPage({
                 <Link
                   key={s.id}
                   href={`/print-spec?serviceId=${s.id}`}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
                     active
-                      ? 'border-emerald-500 bg-emerald-50 font-medium text-emerald-800'
-                      : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                  }`}
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
+                  )}
                 >
                   {label}
                 </Link>

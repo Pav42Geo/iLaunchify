@@ -131,11 +131,11 @@ export function DielineForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6"
+      className="space-y-6 rounded-2xl border border-ink-200 bg-white p-6"
     >
       {/* Service */}
       <div className="space-y-1.5">
-        <Label htmlFor="service" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="service" className="text-sm font-medium text-ink-900">
           Service
         </Label>
         <select
@@ -143,7 +143,7 @@ export function DielineForm({
           value={partnerServiceId}
           onChange={(e) => setPartnerServiceId(e.target.value)}
           disabled={isPending || mode === 'edit'}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50 disabled:text-zinc-500"
+          className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm disabled:bg-ink-50 disabled:text-ink-500"
         >
           {services.map((s) => (
             <option key={s.id} value={s.id}>
@@ -156,14 +156,14 @@ export function DielineForm({
       {/* Container type + decoration */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="type" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="type" className="text-sm font-medium text-ink-900">
             Container type
           </Label>
           {mode === 'edit' ? (
             <Input
               value={selectedType?.displayName ?? '—'}
               disabled
-              className="bg-zinc-50 text-zinc-500"
+              className="bg-ink-50 text-ink-500"
             />
           ) : (
             <select
@@ -171,7 +171,7 @@ export function DielineForm({
               value={packagingTypeId}
               onChange={(e) => onTypeChange(e.target.value)}
               disabled={isPending}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">Select a container…</option>
               {packagingTypes.map((t) => (
@@ -185,14 +185,14 @@ export function DielineForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="decoration" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="decoration" className="text-sm font-medium text-ink-900">
             Decoration method
           </Label>
           {mode === 'edit' ? (
             <Input
               value={initial ? DECORATION_LABELS[initial.decorationMethod] : '—'}
               disabled
-              className="bg-zinc-50 text-zinc-500"
+              className="bg-ink-50 text-ink-500"
             />
           ) : (
             <select
@@ -200,7 +200,7 @@ export function DielineForm({
               value={decorationMethod}
               onChange={(e) => setDecorationMethod(e.target.value as DecorationMethod)}
               disabled={isPending || !packagingTypeId}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-50"
+              className="w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm disabled:bg-ink-50"
             >
               <option value="">
                 {packagingTypeId ? 'Select a method…' : 'Pick a container first'}
@@ -222,21 +222,21 @@ export function DielineForm({
 
       {/* Original artwork file */}
       <div className="space-y-1.5">
-        <Label htmlFor="file" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="file" className="text-sm font-medium text-ink-900">
           Original dieline file {mode === 'edit' ? '(replace — optional)' : '(optional)'}
         </Label>
-        <div className="flex items-center gap-3 rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-3">
-          <UploadCloud className="h-5 w-5 shrink-0 text-zinc-400" />
+        <div className="flex items-center gap-3 rounded-md border border-dashed border-ink-300 bg-ink-50 px-3 py-3">
+          <UploadCloud className="h-5 w-5 shrink-0 text-ink-400" />
           <input
             ref={fileRef}
             id="file"
             type="file"
             accept={ACCEPT}
             disabled={isPending}
-            className="block w-full text-sm text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-zinc-700"
+            className="block w-full text-sm text-ink-600 file:mr-3 file:rounded-md file:border-0 file:bg-ink-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-ink-700"
           />
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           AI, PDF, SVG, or DXF · up to 20 MB.{' '}
           {mode === 'edit' && initial?.originalFilename
             ? `Current: ${initial.originalFilename}`
@@ -246,10 +246,10 @@ export function DielineForm({
 
       {/* Structured spec — dimensions in mm */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Dimensions (mm)</Label>
+        <Label className="text-sm font-medium text-ink-900">Dimensions (mm)</Label>
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-1">
-            <span className="text-xs text-zinc-500">Width</span>
+            <span className="text-xs text-ink-500">Width</span>
             <Input
               type="number"
               min={0}
@@ -261,7 +261,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-zinc-500">Height</span>
+            <span className="text-xs text-ink-500">Height</span>
             <Input
               type="number"
               min={0}
@@ -273,7 +273,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-zinc-500">Depth (optional)</span>
+            <span className="text-xs text-ink-500">Depth (optional)</span>
             <Input
               type="number"
               min={0}
@@ -285,7 +285,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-zinc-500">Bleed</span>
+            <span className="text-xs text-ink-500">Bleed</span>
             <Input
               type="number"
               min={0}
@@ -296,14 +296,14 @@ export function DielineForm({
             />
           </div>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Width and height are required before you can confirm the spec. Bleed defaults to 3 mm.
         </p>
       </div>
 
       {/* Optional single surface name (full prepress editor ships later) */}
       <div className="space-y-1.5">
-        <Label htmlFor="surface" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="surface" className="text-sm font-medium text-ink-900">
           Surface name (optional)
         </Label>
         <Input
@@ -313,7 +313,7 @@ export function DielineForm({
           placeholder="e.g. Front panel"
           disabled={isPending}
         />
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Trim / safe-area / fold geometry ship in a later phase.
         </p>
       </div>
@@ -328,7 +328,7 @@ export function DielineForm({
         <Button
           type="submit"
           disabled={isPending}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Saving…' : mode === 'create' ? 'Create dieline' : 'Save changes'}
         </Button>

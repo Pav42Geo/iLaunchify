@@ -99,17 +99,17 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white">
+    <div className="rounded-md border border-ink-200 bg-white">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-zinc-50"
+        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-ink-50"
         aria-expanded={open}
       >
         <div className="flex items-center gap-2">
-          <span className="font-medium text-zinc-900">
+          <span className="font-medium text-ink-900">
             Nutrient overrides{' '}
-            <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-normal text-zinc-600">
+            <span className="ml-1 rounded bg-ink-100 px-1.5 py-0.5 text-xs font-normal text-ink-600">
               advanced
             </span>
           </span>
@@ -120,18 +120,18 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
           )}
         </div>
         <ChevronDown
-          className={`h-4 w-4 text-zinc-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {open && (
-        <div className="space-y-3 border-t border-zinc-100 px-4 py-4">
-          <p className="text-xs text-zinc-500">
+        <div className="space-y-3 border-t border-ink-100 px-4 py-4">
+          <p className="text-xs text-ink-500">
             Override a final per-serving value after the recipe sums. Applied before FDA
             rounding. Captured for audit — re-triggers admin review on live products.
           </p>
 
           {rows.length === 0 ? (
-            <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+            <p className="rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-500">
               No overrides. The calculated nutrition will be used as-is.
             </p>
           ) : (
@@ -144,10 +144,10 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
                 return (
                   <div
                     key={index}
-                    className="grid grid-cols-1 gap-2 rounded-md border border-zinc-200 p-3 sm:grid-cols-[170px,140px,1fr,auto]"
+                    className="grid grid-cols-1 gap-2 rounded-md border border-ink-200 p-3 sm:grid-cols-[170px,140px,1fr,auto]"
                   >
                     <div>
-                      <Label className="text-xs text-zinc-500">Nutrient</Label>
+                      <Label className="text-xs text-ink-500">Nutrient</Label>
                       <select
                         value={row.nutrient}
                         onChange={(e) => {
@@ -155,7 +155,7 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
                           // Re-commit on change since shape is final
                           setTimeout(() => commitRow(index), 0)
                         }}
-                        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                        className="mt-1 block w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-sm"
                         disabled={!isDraft || isPending}
                       >
                         {NUTRIENT_OPTIONS.map((n) => (
@@ -170,7 +170,7 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
                       </select>
                     </div>
                     <div>
-                      <Label className="text-xs text-zinc-500">Value ({unit})</Label>
+                      <Label className="text-xs text-ink-500">Value ({unit})</Label>
                       <Input
                         type="number"
                         min={0}
@@ -184,7 +184,7 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-zinc-500">Reason (required)</Label>
+                      <Label className="text-xs text-ink-500">Reason (required)</Label>
                       <Input
                         value={row.reason}
                         onChange={(e) => updateRow(index, { reason: e.target.value })}
@@ -198,7 +198,7 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
                       <button
                         type="button"
                         onClick={() => removeRow(index)}
-                        className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                        className="rounded-md p-1.5 text-ink-400 hover:bg-red-50 hover:text-red-600"
                         title="Remove override"
                         disabled={!isDraft || isPending}
                       >
@@ -216,7 +216,7 @@ export function NutrientOverridesPanel({ productTemplateId, initial, isDraft }: 
               type="button"
               onClick={addRow}
               disabled={rows.length >= NUTRIENT_OPTIONS.length || isPending}
-              className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-ink-300 px-3 py-1.5 text-xs text-ink-700 hover:border-ink-400 hover:bg-ink-50 disabled:opacity-50"
             >
               <Plus className="h-3.5 w-3.5" /> Add override
             </button>

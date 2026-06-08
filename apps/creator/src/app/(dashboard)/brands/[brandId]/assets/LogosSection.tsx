@@ -39,10 +39,10 @@ export function LogosSection({ brandId, primary, icon, horizontal }: Props) {
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6">
+    <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-zinc-900">Logos</h2>
-        <p className="mt-0.5 text-sm text-zinc-500">
+        <h2 className="text-base font-semibold text-ink-900">Logos</h2>
+        <p className="mt-0.5 text-sm text-ink-500">
           Upload up to three logo variants. They appear under <strong>My Brand</strong> in the
           Design Studio Images drawer.
         </p>
@@ -97,7 +97,7 @@ function LogoSlot({
   }
 
   return (
-    <div className="flex flex-col rounded-md border border-zinc-200">
+    <div className="flex flex-col rounded-md border border-ink-200">
       <input
         ref={fileInputRef}
         type="file"
@@ -110,7 +110,7 @@ function LogoSlot({
         }}
         disabled={isPending}
       />
-      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-t-md bg-zinc-50 p-4">
+      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-t-md bg-ink-50 p-4">
         {asset?.publicUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -119,19 +119,19 @@ function LogoSlot({
             className="h-full w-full object-contain"
           />
         ) : (
-          <div className="text-center text-xs text-zinc-400">
+          <div className="text-center text-xs text-ink-400">
             <Upload className="mx-auto mb-1 h-5 w-5" />
             No {variant.label.toLowerCase()} yet
           </div>
         )}
       </div>
       <div className="flex-1 space-y-1.5 p-3">
-        <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
           {variant.label}
         </Label>
-        <p className="text-xs text-zinc-500">{variant.description}</p>
+        <p className="text-xs text-ink-500">{variant.description}</p>
       </div>
-      <div className="flex gap-1.5 border-t border-zinc-200 p-2">
+      <div className="flex gap-1.5 border-t border-ink-200 p-2">
         <Button
           type="button"
           variant="outline"
@@ -150,7 +150,7 @@ function LogoSlot({
             onClick={onRemove}
             disabled={isPending}
             aria-label={`Remove ${variant.label}`}
-            className="text-zinc-500 hover:text-red-600"
+            className="text-ink-500 hover:text-red-600"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

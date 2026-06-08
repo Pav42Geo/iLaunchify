@@ -156,7 +156,7 @@ export function ProductionStep({
     >
       <div className="space-y-5">
         {/* Cart line item */}
-        <article className="rounded-xl border border-ink-200 bg-white">
+        <article className="rounded-2xl border border-ink-200 bg-white">
           <div className="grid gap-5 p-5 sm:grid-cols-[120px,minmax(0,1fr)]">
             {/* Thumbnail (V1: placeholder — design preview hook lands in
                 V1.1 when we have a server-side snapshot endpoint). */}

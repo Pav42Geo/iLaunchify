@@ -14,12 +14,12 @@ export default function NewPackagingPage() {
       <header>
         <Link
           href="/packaging"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Add packaging</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Capture the core fields now — you&apos;ll add surfaces (Front, Lid, etc.) on the
           next screen.
         </p>

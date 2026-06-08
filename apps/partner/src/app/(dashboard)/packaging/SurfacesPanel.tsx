@@ -40,8 +40,8 @@ export function SurfacesPanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Surfaces</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <h2 className="text-base font-semibold text-ink-900">Surfaces</h2>
+          <p className="mt-0.5 text-xs text-ink-500">
             Each printable face of the packaging. E.g., a jar might have Front, Back, and Lid.
           </p>
         </div>
@@ -68,7 +68,7 @@ export function SurfacesPanel({
       )}
 
       {surfaces.length === 0 && !showNew && (
-        <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
           No surfaces yet — add at least one before activating this packaging.
         </div>
       )}
@@ -145,14 +145,14 @@ function AddSurfaceForm({
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
+    <div className="rounded-md border border-ink-200 bg-ink-50 p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Name</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} disabled={isPending} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Area (sq in)</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Area (sq in)</Label>
           <Input
             type="number"
             min={0}
@@ -163,7 +163,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Bleed (mm)</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Bleed (mm)</Label>
           <Input
             type="number"
             min={0}
@@ -174,7 +174,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">DPI</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">DPI</Label>
           <Input
             type="number"
             min={0}
@@ -184,12 +184,12 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-zinc-500">Color mode</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-500">Color mode</Label>
           <select
             value={colorMode}
             onChange={(e) => setColorMode(e.target.value)}
             disabled={isPending}
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
           >
             {COLOR_MODE_OPTIONS.map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -205,7 +205,7 @@ function AddSurfaceForm({
           size="sm"
           onClick={handleAdd}
           disabled={isPending || !name.trim()}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Adding…' : 'Add surface'}
         </Button>
@@ -258,11 +258,11 @@ function SurfaceRow({
   }
 
   return (
-    <li className="rounded-md border border-zinc-200 bg-white p-3">
+    <li className="rounded-md border border-ink-200 bg-white p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-medium text-zinc-900">{surface.name}</div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
+          <div className="font-medium text-ink-900">{surface.name}</div>
+          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-500">
             {surface.printableAreaSqIn != null && <span>{surface.printableAreaSqIn} sq in</span>}
             <span>{surface.bleedMm} mm bleed</span>
             {surface.printDpi != null && <span>{surface.printDpi} dpi</span>}
@@ -311,7 +311,7 @@ function SurfaceRow({
         </div>
       </div>
       {surface.dieLineFilename && (
-        <div className="mt-2 rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
+        <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
           ✓ {surface.dieLineFilename}
         </div>
       )}

@@ -22,7 +22,7 @@ export function OnboardingNav({
 }) {
   const pathname = usePathname()
   return (
-    <nav className="flex flex-wrap gap-2 border-b border-zinc-200 pb-3">
+    <nav className="flex flex-wrap gap-2 border-b border-ink-200 pb-3">
       {STEPS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         return (
@@ -31,7 +31,7 @@ export function OnboardingNav({
             href={href}
             className={cn(
               'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
-              active ? 'bg-zinc-900 font-medium text-white' : 'text-zinc-600 hover:bg-zinc-100',
+              active ? 'bg-ink-900 font-medium text-white' : 'text-ink-600 hover:bg-ink-100',
             )}
           >
             <Icon className="h-4 w-4" />

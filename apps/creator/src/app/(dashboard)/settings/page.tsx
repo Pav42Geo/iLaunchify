@@ -1,6 +1,5 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, normalizeTier } from '@ilaunchify/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -24,50 +23,62 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Creator · Settings
+        </p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Settings
+        </h1>
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          Manage your plan, payouts, and account preferences.
+        </p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Plan</CardTitle>
-          <CardDescription>
-            {tier === 'maker'
-              ? 'Upgrade to unlock Subscribe & save, print-ready Design Studio export, and priority support.'
-              : pendingCancel
-                ? `You're on ${tierLabel} but the plan is scheduled to cancel at the end of the period.`
-                : `You're on the ${tierLabel} plan — manage billing or switch tiers any time.`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm">
-            Current tier: <span className="font-medium">{tierLabel}</span>
-          </p>
-          <Link
-            href="/settings/plan"
-            className="mt-3 inline-block text-sm text-brand-primary underline"
-          >
-            {tier === 'maker' ? 'See upgrade options →' : 'Manage plan →'}
-          </Link>
-        </CardContent>
-      </Card>
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[17px] font-semibold tracking-tight text-ink-900">
+          Plan
+        </h2>
+        <p className="mt-1 text-[13px] text-ink-600">
+          {tier === 'maker'
+            ? 'Upgrade to unlock Subscribe & save, print-ready Design Studio export, and priority support.'
+            : pendingCancel
+              ? `You're on ${tierLabel} but the plan is scheduled to cancel at the end of the period.`
+              : `You're on the ${tierLabel} plan — manage billing or switch tiers any time.`}
+        </p>
+        <p className="mt-3 text-[13px] text-ink-700">
+          Current tier: <span className="font-semibold text-ink-900">{tierLabel}</span>
+        </p>
+        <Link
+          href="/settings/plan"
+          className="mt-3 inline-block text-[13px] font-semibold text-pink-700 hover:text-pink-800"
+        >
+          {tier === 'maker' ? 'See upgrade options →' : 'Manage plan →'}
+        </Link>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Payouts (Stripe Connect)</CardTitle>
-          <CardDescription>
-            {dbUser?.stripeAccountStatus === 'ACTIVE'
-              ? 'Payouts enabled — Stripe will deposit your share after each consumer order ships and the returns window passes.'
-              : 'Set up payouts before publishing your first product.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm">
-            Status: <span className="font-medium">{dbUser?.stripeAccountStatus ?? 'NONE'}</span>
-          </p>
-          <Link href="/settings/payouts" className="mt-3 inline-block text-sm text-brand-primary underline">
-            {dbUser?.stripeAccountStatus === 'ACTIVE' ? 'Open Stripe dashboard' : 'Connect payouts →'}
-          </Link>
-        </CardContent>
-      </Card>
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[17px] font-semibold tracking-tight text-ink-900">
+          Payouts (Stripe Connect)
+        </h2>
+        <p className="mt-1 text-[13px] text-ink-600">
+          {dbUser?.stripeAccountStatus === 'ACTIVE'
+            ? 'Payouts enabled — Stripe will deposit your share after each consumer order ships and the returns window passes.'
+            : 'Set up payouts before publishing your first product.'}
+        </p>
+        <p className="mt-3 text-[13px] text-ink-700">
+          Status:{' '}
+          <span className="font-semibold text-ink-900">
+            {dbUser?.stripeAccountStatus ?? 'NONE'}
+          </span>
+        </p>
+        <Link
+          href="/settings/payouts"
+          className="mt-3 inline-block text-[13px] font-semibold text-pink-700 hover:text-pink-800"
+        >
+          {dbUser?.stripeAccountStatus === 'ACTIVE' ? 'Open Stripe dashboard' : 'Connect payouts →'}
+        </Link>
+      </section>
     </div>
   )
 }

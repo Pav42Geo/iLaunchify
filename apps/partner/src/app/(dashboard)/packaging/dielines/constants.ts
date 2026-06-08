@@ -4,7 +4,7 @@
 import type { DielineStatus, DielineFileFormat } from '@ilaunchify/db'
 
 export const DIELINE_STATUS_LABELS: Record<DielineStatus, { label: string; cls: string }> = {
-  UPLOADED: { label: 'Uploaded', cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200' },
+  UPLOADED: { label: 'Uploaded', cls: 'bg-ink-100 text-ink-700 ring-ink-200' },
   PARSED: { label: 'Parsed', cls: 'bg-sky-100 text-sky-800 ring-sky-200' },
   PARTNER_CONFIRMED: {
     label: 'Confirmed',
@@ -12,7 +12,7 @@ export const DIELINE_STATUS_LABELS: Record<DielineStatus, { label: string; cls: 
   },
   ADMIN_VERIFIED: { label: 'Admin verified', cls: 'bg-violet-100 text-violet-800 ring-violet-200' },
   ACTIVE: { label: 'Active', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-200' },
-  ARCHIVED: { label: 'Archived', cls: 'bg-zinc-100 text-zinc-500 ring-zinc-200' },
+  ARCHIVED: { label: 'Archived', cls: 'bg-ink-100 text-ink-500 ring-ink-200' },
 }
 
 // File extension → DielineFileFormat. Used to validate uploads + infer the

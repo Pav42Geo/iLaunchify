@@ -150,7 +150,7 @@ export default async function DocumentsStep() {
 
       {SLOTS.map((section) => (
         <section key={section.sectionType} className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
             {section.sectionLabel}
           </h2>
           <div className="space-y-3">

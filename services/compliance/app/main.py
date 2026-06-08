@@ -22,12 +22,19 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
+from app.config import settings
+
 log = structlog.get_logger()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("compliance.startup")
+    if not settings.service_token and settings.environment != "development":
+        log.error(
+            "compliance.startup.no_service_token",
+            hint="Set COMPLIANCE_SERVICE_TOKEN — /v1 routes will return 503 until configured.",
+        )
     # TODO: connect Prisma client, warm USDA lookups
     yield
     log.info("compliance.shutdown")
@@ -51,8 +58,12 @@ async def readyz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Routers — wired up as we build them
+# Routers — wired up as we build them. EVERY /v1 router MUST carry the
+# service-token dependency (docs/SECURITY_ARCHITECTURE.md Tier 0.4) —
+# /healthz + /readyz are the only unauthenticated routes.
+# from fastapi import Depends
+# from app.security import verify_service_token
 # from app.routers import nutrition, compliance, labels
-# app.include_router(nutrition.router, prefix="/v1")
-# app.include_router(compliance.router, prefix="/v1")
-# app.include_router(labels.router, prefix="/v1")
+# app.include_router(nutrition.router, prefix="/v1", dependencies=[Depends(verify_service_token)])
+# app.include_router(compliance.router, prefix="/v1", dependencies=[Depends(verify_service_token)])
+# app.include_router(labels.router, prefix="/v1", dependencies=[Depends(verify_service_token)])

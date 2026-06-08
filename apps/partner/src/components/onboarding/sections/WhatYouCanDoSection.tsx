@@ -72,7 +72,7 @@ export function WhatYouCanDoSection({
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-zinc-200" role="tablist">
+      <div className="flex flex-wrap gap-2 border-b border-ink-200" role="tablist">
         {selectedTypes.map((t) => (
           <button
             key={t}
@@ -83,7 +83,7 @@ export function WhatYouCanDoSection({
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === t
                 ? 'border-emerald-500 text-emerald-700'
-                : 'border-transparent text-zinc-500 hover:text-zinc-900'
+                : 'border-transparent text-ink-500 hover:text-ink-900'
             }`}
           >
             {TYPE_LABELS[t]}
@@ -401,10 +401,10 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-medium text-zinc-900">
+      <Label htmlFor={id} className="text-sm font-medium text-ink-900">
         {label}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

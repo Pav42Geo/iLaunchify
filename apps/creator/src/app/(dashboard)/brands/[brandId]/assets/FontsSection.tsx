@@ -62,11 +62,11 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
     : catalog
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6">
+    <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Fonts</h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
+          <h2 className="text-base font-semibold text-ink-900">Fonts</h2>
+          <p className="mt-0.5 text-sm text-ink-500">
             Pick 1–3 from the curated catalog. Typically a heading font + a body font + an
             optional accent. These pin to the top of the font dropdown in the Design Studio
             canvas text tools.
@@ -93,16 +93,16 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
                     style={{
                       fontFamily: font.webfontUrl ? `'${font.family}', system-ui` : 'system-ui',
                     }}
-                    className="font-medium text-zinc-900"
+                    className="font-medium text-ink-900"
                   >
                     {font.family}{' '}
-                    <span className="text-xs font-normal text-zinc-500">{font.weight}</span>
+                    <span className="text-xs font-normal text-ink-500">{font.weight}</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => toggle(id)}
                     disabled={isPending}
-                    className="text-xs text-zinc-500 hover:text-red-600"
+                    className="text-xs text-ink-500 hover:text-red-600"
                   >
                     Remove
                   </button>
@@ -114,14 +114,14 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
       )}
 
       <div className="mb-3 flex items-center gap-2">
-        <Search className="h-3.5 w-3.5 text-zinc-400" />
+        <Search className="h-3.5 w-3.5 text-ink-400" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search fonts…"
           className="max-w-sm"
         />
-        <span className="text-xs text-zinc-400">
+        <span className="text-xs text-ink-400">
           {filtered.length} of {catalog.length}
         </span>
       </div>
@@ -138,7 +138,7 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
                 className={`flex w-full items-center justify-between gap-2 rounded-md border p-3 text-left transition-colors ${
                   isSelected
                     ? 'border-emerald-500 bg-emerald-50'
-                    : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+                    : 'border-ink-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
                 }`}
               >
                 <div className="min-w-0">
@@ -150,7 +150,7 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
                   >
                     {font.family}
                   </div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
+                  <div className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-400">
                     {font.weight} · {font.style}
                   </div>
                 </div>
@@ -162,7 +162,7 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
       </ul>
 
       {filtered.length === 0 && (
-        <div className="rounded-md border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-200 p-6 text-center text-sm text-ink-500">
           No fonts match &quot;{query}&quot;.
         </div>
       )}
@@ -187,6 +187,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-zinc-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

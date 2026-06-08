@@ -7,7 +7,7 @@ export default function PrintLanding() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-4xl font-bold tracking-tight">Print Partners</h1>
-      <p className="mt-4 text-lg text-zinc-600">
+      <p className="mt-4 text-lg text-ink-600">
         We deliver print-ready PDF/X-1a files with embedded ICC profiles. You print and ship.
       </p>
 
@@ -39,7 +39,7 @@ function Block({ title, body }: { title: string; body: string }) {
   return (
     <div>
       <h2 className="text-xl font-semibold">{title}</h2>
-      <p className="mt-2 text-zinc-600">{body}</p>
+      <p className="mt-2 text-ink-600">{body}</p>
     </div>
   )
 }

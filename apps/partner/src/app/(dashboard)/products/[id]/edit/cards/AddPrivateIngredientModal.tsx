@@ -119,7 +119,7 @@ export function AddPrivateIngredientModal({
         <div className="space-y-4 py-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-500">
                 Internal name *
               </Label>
               <Input
@@ -128,12 +128,12 @@ export function AddPrivateIngredientModal({
                 placeholder="Symrise Natural Vanilla 67-B"
                 disabled={isPending}
               />
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-ink-500">
                 Used in recipe editor + costing. Your view.
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-500">
                 Label declaration name
               </Label>
               <Input
@@ -142,14 +142,14 @@ export function AddPrivateIngredientModal({
                 placeholder="Natural Flavor"
                 disabled={isPending}
               />
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-ink-500">
                 What prints on the FDA label. Defaults to internal name.
               </p>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-zinc-500">
+            <Label className="text-xs uppercase tracking-wider text-ink-500">
               Allergens (Big-9)
             </Label>
             <div className="flex flex-wrap gap-1.5">
@@ -164,7 +164,7 @@ export function AddPrivateIngredientModal({
                     className={`rounded-full border px-2.5 py-1 text-xs ${
                       active
                         ? 'border-amber-300 bg-amber-100 text-amber-900'
-                        : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'
+                        : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'
                     }`}
                   >
                     {a.label}
@@ -172,14 +172,14 @@ export function AddPrivateIngredientModal({
                 )
               })}
             </div>
-            <p className="text-[10px] text-zinc-500">
+            <p className="text-[10px] text-ink-500">
               Drives the Allergens card auto-derive + label allergen statement.
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-500">
                 Bioengineered status
               </Label>
               <select
@@ -188,7 +188,7 @@ export function AddPrivateIngredientModal({
                   setBioengineeredStatus(e.target.value as typeof bioengineeredStatus)
                 }
                 disabled={isPending}
-                className="block w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+                className="block w-full rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
               >
                 {BE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -198,7 +198,7 @@ export function AddPrivateIngredientModal({
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-zinc-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-500">
                 Density (g/mL)
               </Label>
               <Input
@@ -210,12 +210,12 @@ export function AddPrivateIngredientModal({
                 placeholder="e.g. 1.05"
                 disabled={isPending}
               />
-              <p className="text-[10px] text-zinc-500">Optional — used for volume↔mass.</p>
+              <p className="text-[10px] text-ink-500">Optional — used for volume↔mass.</p>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-zinc-500">
+            <Label className="text-xs uppercase tracking-wider text-ink-500">
               Compliance notes
             </Label>
             <Input

@@ -46,7 +46,7 @@ export function VariantsCard({ productTemplateId, initialVariants, isDraft }: Va
   return (
     <div className="space-y-3">
       {variants.length === 0 ? (
-        <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
           No variants yet. Add at least one container size before submitting.
         </div>
       ) : (
@@ -82,7 +82,7 @@ export function VariantsCard({ productTemplateId, initialVariants, isDraft }: Va
         </Button>
       ) : null}
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         💡 One variant per SKU — different container size or flavor = different variant.
         Per-size volume tier pricing lives on the Packaging card.
       </p>
@@ -224,24 +224,24 @@ function VariantItem({
   }
 
   return (
-    <li className="rounded-md border border-zinc-200 bg-white">
+    <li className="rounded-md border border-ink-200 bg-white">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-start gap-3 p-3 text-left"
         aria-expanded={expanded}
       >
-        <Package className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-500" />
+        <Package className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-zinc-900">{variant.containerFormat}</span>
+            <span className="font-medium text-ink-900">{variant.containerFormat}</span>
             {variant.flavor && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
                 {variant.flavor}
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-ink-500">
             <span>
               {variant.servingsPerContainer} × {variant.servingSizeG}g servings
             </span>
@@ -255,14 +255,14 @@ function VariantItem({
           </div>
         </div>
         <ChevronDown
-          className={`h-4 w-4 flex-shrink-0 text-zinc-400 transition-transform ${
+          className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${
             expanded ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-zinc-100 bg-zinc-50/30 p-3">
+        <div className="space-y-4 border-t border-ink-100 bg-ink-50/30 p-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Container format" required>
               <Input
@@ -355,8 +355,8 @@ function VariantItem({
               />
             </Field>
             <Field label="Per-variant cost override (USD)" hint="Blank uses ProductTemplate.unitCostCents">
-              <div className="flex items-stretch overflow-hidden rounded-md border border-zinc-300">
-                <span className="flex items-center bg-zinc-50 px-3 text-xs text-zinc-500">$</span>
+              <div className="flex items-stretch overflow-hidden rounded-md border border-ink-300">
+                <span className="flex items-center bg-ink-50 px-3 text-xs text-ink-500">$</span>
                 <input
                   type="number"
                   min={0}
@@ -372,7 +372,7 @@ function VariantItem({
           </div>
 
           {isDraft && canRemove && (
-            <div className="flex justify-end border-t border-zinc-100 pt-3">
+            <div className="flex justify-end border-t border-ink-100 pt-3">
               <Button
                 variant="ghost"
                 size="sm"
@@ -512,7 +512,7 @@ function AddVariantForm({
           size="sm"
           onClick={add}
           disabled={isPending || !containerFormat.trim()}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Adding…' : 'Add variant'}
         </Button>
@@ -538,7 +538,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs uppercase tracking-wider text-zinc-500">
+      <Label className="text-xs uppercase tracking-wider text-ink-500">
         {label}
         {required && (
           <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
@@ -546,7 +546,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-[11px] text-zinc-500">{hint}</p>}
+      {hint && <p className="text-[11px] text-ink-500">{hint}</p>}
       {children}
     </div>
   )

@@ -84,7 +84,7 @@ export default async function OrderSuccessPage({
               </>
             )}
           </p>
-          <p className="text-zinc-500">
+          <p className="text-ink-500">
             Production typically takes 4–6 weeks. We&apos;ll update you at each milestone. After
             delivery, you can push the finished SKU to your sales channels.
           </p>
@@ -117,7 +117,7 @@ export default async function OrderSuccessPage({
 //
 // Two cards side-by-side on >sm, stacked on mobile. Same visual language as
 // the rest of the dashboard:
-//   - cream header band + zinc-200 border (matches /orders, /products)
+//   - cream header band + ink-200 border (matches /orders, /products)
 //   - neon-green "Coming next" pill (signature accent on dark/teaser surfaces
 //     per [[ilaunchify-design-system-v1]])
 //   - pink-700 "Notify me when it ships" link CTA (no-op in V1; the link
@@ -135,11 +135,11 @@ function WhatsNextCards() {
       <header className="flex items-baseline justify-between">
         <h2
           id="whats-next-heading"
-          className="font-display text-lg font-semibold tracking-tight text-zinc-900"
+          className="font-display text-lg font-semibold tracking-tight text-ink-900"
         >
           Coming next
         </h2>
-        <p className="text-[11.5px] text-zinc-500">
+        <p className="text-[11.5px] text-ink-500">
           On the roadmap for the months ahead
         </p>
       </header>
@@ -174,22 +174,22 @@ function ComingNextCard({
   body: string
 }) {
   return (
-    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-zinc-100 bg-[#F3EFE8] px-4 py-2.5 text-[12px] text-zinc-700">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-white">
+    <article className="overflow-hidden rounded-xl border border-ink-200 bg-white">
+      <div className="flex items-center gap-2 border-b border-ink-100 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-white">
           {icon}
         </span>
-        <span className="font-semibold text-zinc-900">{title}</span>
+        <span className="font-semibold text-ink-900">{title}</span>
         <span
-          className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-zinc-900"
+          className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-900"
           aria-label={`Available in ${tag}`}
         >
           {tag} · Coming next
         </span>
       </div>
       <div className="space-y-3 px-4 py-3">
-        <p className="text-[12.5px] leading-snug text-zinc-700">{body}</p>
-        <p className="text-[11.5px] text-zinc-500">
+        <p className="text-[12.5px] leading-snug text-ink-700">{body}</p>
+        <p className="text-[11.5px] text-ink-500">
           We&rsquo;ll let you know when it ships.{' '}
           <span className="inline-flex items-center gap-0.5 font-semibold text-pink-700">
             On your account by default

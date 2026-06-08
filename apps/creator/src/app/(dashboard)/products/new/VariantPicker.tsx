@@ -93,7 +93,7 @@ export function VariantPicker({
               type="button"
               onClick={() => setSelected(v.id)}
               className={`text-left transition-all ${
-                isSelected ? 'ring-2 ring-brand-primary' : 'hover:bg-zinc-50'
+                isSelected ? 'ring-2 ring-brand-primary' : 'hover:bg-ink-50'
               }`}
             >
               <Card className={isSelected ? 'border-brand-primary' : ''}>
@@ -107,11 +107,11 @@ export function VariantPicker({
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex flex-wrap gap-1">
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs">
+                    <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs">
                       {PACKING_LABELS[v.packingType] ?? v.packingType}
                     </span>
                     {v.innerPacksPerOuter > 1 && (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs">
                         {v.innerPacksPerOuter}-pack
                       </span>
                     )}
@@ -127,17 +127,17 @@ export function VariantPicker({
                     )}
                   </div>
                   {v.assortmentFlavors && v.assortmentFlavors.length > 0 && (
-                    <p className="text-xs text-zinc-600">
+                    <p className="text-xs text-ink-600">
                       Includes:{' '}
                       {v.assortmentFlavors.map((a) => `${a.flavor} ×${a.qty}`).join(', ')}
                     </p>
                   )}
-                  <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
+                  <div className="grid grid-cols-2 gap-2 text-xs text-ink-500">
                     <div>MOQ {v.moqMin.toLocaleString()}–{v.moqMax.toLocaleString()}</div>
                     <div>Lead {v.leadTimeDays}d</div>
                   </div>
                   {v.dieCutName && (
-                    <p className="text-xs text-zinc-500">Label format: {v.dieCutName}</p>
+                    <p className="text-xs text-ink-500">Label format: {v.dieCutName}</p>
                   )}
                 </CardContent>
               </Card>

@@ -437,7 +437,7 @@ export function EditorShell({
       </div>
 
       {/* Cream hero */}
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-ink-200 bg-[#F3EFE8] px-6 py-5">
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-ink-200 bg-cream px-6 py-5">
         <div className="min-w-0">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">
             Manufacturing · Product editor
@@ -523,14 +523,14 @@ export function EditorShell({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+                className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
                 placeholder="A short pitch for creators browsing the marketplace…"
                 disabled={!isDraft}
               />
             </Field>
             <Field label="Base unit price (USD)" reapprove>
-              <div className="flex max-w-xs items-stretch overflow-hidden rounded-md border border-zinc-300">
-                <span className="flex items-center bg-zinc-50 px-3 text-sm text-zinc-500">$</span>
+              <div className="flex max-w-xs items-stretch overflow-hidden rounded-md border border-ink-300">
+                <span className="flex items-center bg-ink-50 px-3 text-sm text-ink-500">$</span>
                 <input
                   type="number"
                   min={0}
@@ -883,16 +883,16 @@ function StatusBanner({
   saveStatus: 'idle' | 'saving' | 'saved' | 'error'
 }) {
   const tone = ({
-    DRAFT: 'bg-zinc-50 border-zinc-200 text-zinc-700',
+    DRAFT: 'bg-ink-50 border-ink-200 text-ink-700',
     NEEDS_CHANGES: 'bg-amber-50 border-amber-200 text-amber-900',
     PENDING_REVIEW: 'bg-blue-50 border-blue-200 text-blue-900',
     PENDING_EDIT_REVIEW: 'bg-blue-50 border-blue-200 text-blue-900',
     PUBLISHED: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-    PAUSED: 'bg-zinc-50 border-zinc-200 text-zinc-700',
+    PAUSED: 'bg-ink-50 border-ink-200 text-ink-700',
     REJECTED: 'bg-red-50 border-red-200 text-red-900',
     UNDER_REVIEW: 'bg-blue-50 border-blue-200 text-blue-900',
     ARCHIVED: 'bg-red-50 border-red-200 text-red-900',
-  } as Record<ProductTemplateStatus, string>)[status] ?? 'bg-zinc-50 border-zinc-200 text-zinc-700'
+  } as Record<ProductTemplateStatus, string>)[status] ?? 'bg-ink-50 border-ink-200 text-ink-700'
 
   const label = ({
     DRAFT: 'Draft — only you can see this. Autosaving.',
@@ -977,14 +977,14 @@ function EditorCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start gap-3 px-6 py-4 text-left hover:bg-zinc-50"
+        className="flex w-full items-start gap-3 px-6 py-4 text-left hover:bg-ink-50"
         aria-expanded={open}
         aria-controls={`card-${id}`}
       >
-        <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-zinc-500" />
+        <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-ink-500" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-zinc-900">{title}</h2>
+            <h2 className="font-semibold text-ink-900">{title}</h2>
             {reapprovalRequired && (
               <span
                 className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-800"
@@ -995,16 +995,16 @@ function EditorCard({
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>
         </div>
         <ChevronDown
-          className={`h-5 w-5 flex-shrink-0 text-zinc-400 transition-transform ${
+          className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${
             open ? 'rotate-180' : ''
           }`}
         />
       </button>
       {open && (
-        <CardContent id={`card-${id}`} className="border-t border-zinc-100">
+        <CardContent id={`card-${id}`} className="border-t border-ink-100">
           <div className="pt-4">{children}</div>
         </CardContent>
       )}
@@ -1029,7 +1029,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-1.5 text-sm font-medium text-zinc-900">
+      <Label className="flex items-center gap-1.5 text-sm font-medium text-ink-900">
         {label}
         {reapprove && (
           <span className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-800">
@@ -1037,7 +1037,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

@@ -20,6 +20,20 @@ Three new lines to add to the appropriate sections of `.claude/memory/INDEX.md`.
 - `ilaunchify-prepress-terminology.md` — dieline (not die-cut), substrate (not material), PMS C/U/M designation; speak prepress operators' language
 ```
 
+## Under `### Creator system` (append at end) — NEW 2026-06-03
+
+```markdown
+- `ilaunchify-velocity-tiers-on-top-of-subscription.md` — V1.5 on-demand pricing combines subscription tier + per-SKU 30-day velocity discount. Cross-pollination + lower-of + samples-at-Tier-1. Supliful-inspired.
+```
+
+## Under `### Business model + scope` (append at end) — NEW 2026-06-04
+
+```markdown
+- `ilaunchify-bulk-tier-philosophy.md` — V1.5 bulk has full Maker access at higher base fee rate; differentiation is fee % not feature lock. Subscription gates features we pay fixed cost for, NEVER sales mechanisms.
+- `ilaunchify-bulk-vs-velocity-dual-system.md` — V1.5 has TWO tier systems: bulk = per-order quantity, on-demand = per-SKU 30-day velocity. Cross-pollination preserved. Lower-of pricing at quote time.
+- `ilaunchify-partner-tier-progression.md` — Partner tier LOCKED: Verified (free, arrival) → Trusted (paid subscription, commitment) → Anchor (admin-promoted, earned, no subscription). Anchor replaces "Premier" name. Single-dimension narrative-arc model.
+```
+
 ---
 
 ## One-command install

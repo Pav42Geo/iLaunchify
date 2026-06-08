@@ -4,6 +4,26 @@ export { requireRole, requireUser, requireSession } from './guards'
 export type { Session, User, Role } from './types'
 export { createUserWithRole } from './signup'
 export type { SignupInput, SignupResult, SignupError } from './signup'
+// Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — DB-backed rate limiting.
+export { checkRateLimit, requestIp } from './rate-limit'
+export type { RateLimitOptions, RateLimitResult } from './rate-limit'
+// Tier 1.1 (docs/SECURITY_ARCHITECTURE.md) — centralized ownership guards.
+// NEW server actions use these, never ad-hoc checks (see CLAUDE.md).
+export {
+  requirePartnerActor,
+  requirePartnerOwnedTemplate,
+  decidePartnerActor,
+  decideTemplateAccess,
+  creatorOwnedProductWhere,
+  creatorOwnedBrandWhere,
+  creatorOwnedProductScope,
+} from './ownership'
+export type {
+  PartnerActorResult,
+  PartnerActorReason,
+  TemplateAccessResult,
+  TemplateAccessReason,
+} from './ownership'
 // R14.c — subscription-tier helpers shared across surfaces.
 export {
   TIER_RANK,

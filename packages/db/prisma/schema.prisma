@@ -764,8 +764,77 @@ model Partner {
   certificateInstances    PartnerCertificateInstance[]
   certificateTypeRequests CertificateTypeRequest[]      @relation("PartnerCertTypeRequests") // C1
   documents               PartnerDocument[]             @relation("PartnerDocuments") // C6
+  facilities              PartnerFacility[]             @relation("PartnerFacilities")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
+}
+
+// Manufacturing plant / facility (turnkey builder, 2026-06-08). The facility's
+// name + address become the FDA "Manufactured by … / Distributed by …" line on
+// the label. When a partner has only one, it's auto-used; multi-plant partners
+// pick per variant. Defaults seeded from the onboarding address.
+model PartnerFacility {
+  id           String   @id @default(uuid())
+  partnerId    String
+  name         String // "Plant A — Austin"
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  region       String // state / province
+  postalCode   String
+  country      String   @default("US")
+  isDefault    Boolean  @default(false)
+  partner      Partner  @relation("PartnerFacilities", fields: [partnerId], references: [id], onDelete: Cascade)
+  variants     ProductTemplateVariant[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([partnerId, isDefault])
+}
+
+// Top-level product shape, drives the Basics dynamic Product-Type/Variants card.
+enum ProductType {
+  SINGLE // one flavor, one pack
+  MULTI_FLAVOR // one marketplace product, N flavor presets
+  MULTI_PACK // variety / multipack composition
+}
+
+// Admin-curated packing taxonomy (2026-06-08). The structural keystone of the
+// turnkey builder: each row's flags drive the recipe module (one recipe vs base
+// + flavor presets), the label (column count), and pack composition / die-lines.
+// Seeded with the 14 groups; admin manages via /admin/packing-types.
+// Admin-curated packing taxonomy catalog. Reuses the existing `PackingType`
+// enum (the 14-group taxonomy) for `group` and the existing `FlavorMode` enum.
+// Named PackingProfile to avoid colliding with the PackingType enum.
+model PackingProfile {
+  id            String            @id @default(uuid())
+  slug          String            @unique
+  name          String
+  group         PackingType
+  description   String?
+  example       String? // representative example shown in the picker
+  flavorMode    FlavorMode        @default(SINGLE) // SINGLE recipe vs MULTI (base + presets)
+  packStructure PackStructure     @default(SINGLE)
+  labelColumns  Int               @default(1) // 1 / 2 / 3 → dual/triple-column Facts
+  isSubscription Boolean          @default(false)
+  isCustomizable Boolean          @default(false) // build-your-own pick-N
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  products      ProductTemplate[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([group, isActive, sortOrder])
+}
+
+enum PackStructure {
+  SINGLE // one pack
+  MULTI_SAME // N identical packs bundled
+  COMBINED // multiple flavors mixed in one pack
+  COMPARTMENT // multiple flavors in separated compartments
+  INDIVIDUAL_IN_OUTER // each flavor its own pack, all in one outer
+  CUSTOMIZABLE // consumer picks N
+  OUTER_WITH_INNERS // outer pack holding distinct inner packs
 }
 
 model PartnerService {
@@ -2288,8 +2357,34 @@ model ProductTemplate {
   statementOfIdentity        String?
   // Optional manufacturer product-family / style code grouping sibling
   // templates+variants (e.g. "PRO-WHEY"). Not a retail identifier — purely
-  // the manufacturer's internal grouping. Nullable, non-unique.
+  // the manufacturer's internal grouping. Nullable, non-unique. Also the base
+  // SKU that seeds per-variant SKUs in the guided builder.
   familyCode                 String?
+  // Turnkey builder (2026-06-08): coarse derived group (deprecated in favor of
+  // packingType below, the admin-curated source of truth).
+  productType                ProductType                   @default(SINGLE)
+  // Admin-curated packing taxonomy — the structural keystone. Drives the recipe
+  // shape (flavorMode), label columns, and pack structure. Chosen at the first
+  // gate of the builder, then locked once the recipe is authored.
+  packingProfileId           String?
+  packingProfile             PackingProfile?               @relation(fields: [packingProfileId], references: [id])
+  // Multi-flavor variety cap (2026-06-08). For multi-flavor packing types the
+  // manufacturer lists the full flavor pool (FlavorPreset rows) but caps how
+  // many DISTINCT flavors a Creator may combine into one pack. Null = no cap
+  // (Creator can use the whole pool). The marketplace pack-builder enforces it.
+  maxFlavorsPerPack          Int?
+  // ---- Configurator constraints (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md, 2026-06-08) ----
+  // #3 first-run vs repeat economics. Repeat = standard re-order lead time;
+  // firstRun = new-SKU lead time (incl. stability testing). Seed per-variant
+  // leadTimeDays. One-time / per-unit fees live on ProductTemplateFee.
+  leadTimeRepeatDays         Int?
+  leadTimeFirstRunDays       Int?
+  // #4 storage / temperature class — drives WAREHOUSE routing + shipping.
+  storageClass               StorageClass                  @default(AMBIENT)
+  storageTempMinF            Int?
+  storageTempMaxF            Int?
+  // Detail-page long description (Basics short = `description`).
+  longDescription            String?
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
@@ -2310,6 +2405,12 @@ model ProductTemplate {
   reviewItems                ProductReviewItem[]
   notes                      ProductNote[]
   flavorPresets              FlavorPreset[]
+  // Configurator constraints (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md, 2026-06-08)
+  optionAxes                 ProductOptionAxis[]
+  optionRules                ProductOptionRule[]
+  fees                       ProductTemplateFee[]
+  specSheets                 ProductSpecSheet[]
+  changeApprovalRules        ProductChangeApprovalRule[]
   // V1 — product-plan additions 2026-06-01.
   pricingTiers               ProductTemplatePricingTier[]
   niches                     ProductTemplateNiche[]
@@ -2432,6 +2533,18 @@ model ProductTemplateVariant {
   leadTimeDays          Int  @default(28)
   // Per-variant cost override (a 6-pack costs more than a single can to produce)
   unitCostCentsOverride Int?
+
+  // ---- Production & availability (turnkey builder, 2026-06-08) ----
+  // GTIN is intentionally NOT here for the manufacturer flow — retail barcodes
+  // are the Creator's (brand of record). SKU above is the manufacturer's
+  // internal stock-keeping id (production / inventory / lot / fulfillment line).
+  fulfillmentMode  FulfillmentMode?
+  monthlyCapacity  Int? // monthly production capacity cap (units)
+  shelfLifeDays    Int?
+  orderIncrement   Int              @default(1) // order step above MOQ
+  lotTracking      Boolean          @default(true)
+  facilityId       String? // which PartnerFacility produces this variant
+  facility         PartnerFacility? @relation(fields: [facilityId], references: [id])
 
   // ---- Visual ----
   dieCutTemplateId String?
@@ -3989,6 +4102,210 @@ model FlavorPreset {
   updatedAt           DateTime           @updatedAt
 
   @@index([productTemplateId, status, sortOrder])
+}
+
+// =============================================================================
+// Product Configurator & Constraints (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md)
+// Phase 1 substrate — additive, 2026-06-08. UI ships in later phases; the FLAVOR
+// axis is canonical and bridges to FlavorPreset (honors "flavors are presets").
+// =============================================================================
+
+enum OptionAxisKey {
+  FLAVOR
+  SWEETENER
+  STRENGTH
+  CAFFEINE
+  BOTTLE
+  CLOSURE
+  LABEL_FORMAT
+  SUBSTRATE
+  CUSTOM
+}
+
+enum OptionLayer {
+  RECIPE
+  PACKAGING
+}
+
+enum OptionValueStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// The ingredient operation a label-affecting option value applies to the base
+/// recipe (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md §12b). NONE = commercial /
+/// visual only. SWAP/REMOVE act on the axis's boundSlotId; ADD injects.
+enum OverlayOp {
+  NONE
+  SWAP
+  ADD
+  REMOVE
+}
+
+enum OptionRuleKind {
+  EXCLUDE
+  REQUIRE
+}
+
+enum FeeBasis {
+  PER_UNIT
+  PER_SKU_ONE_TIME
+  PER_ORDER
+}
+
+enum StorageClass {
+  AMBIENT
+  CHILLED
+  FROZEN
+}
+
+enum SpecSheetStatus {
+  DRAFT
+  ISSUED
+  SUPERSEDED
+}
+
+enum ProductChangeType {
+  LABEL_COPY
+  FLAVOR_ADD
+  RECIPE_CHANGE
+  PACKAGING_CHANGE
+  PRICE_CHANGE
+}
+
+enum ApproverRole {
+  BRAND_OPS
+  MANUFACTURER_QA
+  LEGAL
+  PRODUCTION_SCHEDULING
+}
+
+/// A configurable dimension the manufacturer exposes on a template. FLAVOR is
+/// canonical (bridges to FlavorPreset); other axes are additional curated
+/// dimensions. NEVER free-form — the manufacturer enumerates every value.
+/// #1 permission matrix = editableByCreator.
+model ProductOptionAxis {
+  id                String               @id @default(cuid())
+  productTemplateId String
+  key               OptionAxisKey
+  label             String // display, e.g. "Sweetener"
+  layer             OptionLayer          @default(RECIPE)
+  editableByCreator Boolean              @default(false) // locked unless true
+  required          Boolean              @default(true)
+  // Does choosing a value change the recipe → the FDA Facts label? When true,
+  // each value carries a recipeOverlay and the nutrition engine recomputes the
+  // label per resolved combination (e.g. Sweetener, Caffeine). When false, the
+  // axis is commercial / visual only and the label is unchanged (e.g. roast
+  // Strength when nutrition-equivalent, or any packaging-layer axis).
+  affectsLabel      Boolean              @default(false)
+  // SWAP/REMOVE axes are bound to one base recipe slot (TemplateIngredientSlot)
+  // — each value fills or clears it. Null for ADD-only or commercial axes.
+  boundSlotId       String?
+  sortOrder         Int                  @default(0)
+  isActive          Boolean              @default(true)
+  productTemplate   ProductTemplate      @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  values            ProductOptionValue[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@unique([productTemplateId, key])
+  @@index([productTemplateId, isActive, sortOrder])
+}
+
+/// One allowed value on an axis + its compositional economics (#2 deltas).
+/// Bridges to the real recipe/packaging row so we never duplicate that data.
+model ProductOptionValue {
+  id                 String            @id @default(cuid())
+  axisId             String
+  label              String // "Vanilla", "Stevia", "Cork Stopper"
+  isDefault          Boolean           @default(false) // exactly one per axis (app-enforced)
+  status             OptionValueStatus @default(ACTIVE)
+  // #2 deltas — applied ON TOP of base SKU economics (see spec §9 formula)
+  leadTimeDeltaDays  Int               @default(0)
+  unitCostDeltaCents Int               @default(0)
+  moqOverride        Int? // raises resolved-SKU MOQ to >= this
+  priceDeltaCents    Int               @default(0) // optional creator-facing price delta
+  // Bridges (set the one matching the axis key/layer):
+  flavorPresetId     String? // key=FLAVOR    → FlavorPreset.id
+  substrateId        String? // key=SUBSTRATE → Substrate.id
+  packagingTypeId    String? // key=BOTTLE/CLOSURE → PackagingType.id
+  // The ingredient operation this value applies when the axis affectsLabel
+  // (docs §12b). NONE = commercial-only. The nutrition engine merges base +
+  // flavor + selected option overlays per SKU → recomputes Facts + allergens.
+  overlayOp          OverlayOp         @default(NONE)
+  // Payload for the op: SWAP {toIngredientId} · ADD {addIngredientId,qty,unit} ·
+  // REMOVE {} (slot comes from axis.boundSlotId) · NONE null.
+  recipeOverlay      Json?
+  sortOrder          Int               @default(0)
+  axis               ProductOptionAxis @relation(fields: [axisId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([axisId, status, sortOrder])
+}
+
+/// #5 cross-option compatibility. EXCLUDE: whenValue ⇒ target unavailable.
+/// REQUIRE: whenValue ⇒ target forced. Value ids reference ProductOptionValue
+/// (app-resolved; no FK relation to keep it lightweight + cross-axis).
+model ProductOptionRule {
+  id                String          @id @default(cuid())
+  productTemplateId String
+  kind              OptionRuleKind
+  whenValueId       String
+  targetValueId     String
+  message           String? // creator-facing popup copy
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@index([productTemplateId])
+}
+
+/// #3 one-time / per-unit / per-order fees. PER_SKU_ONE_TIME fees waive at or
+/// above waivedAboveQty (e.g. QA batch testing waived above 12,500 units).
+model ProductTemplateFee {
+  id                String          @id @default(cuid())
+  productTemplateId String
+  label             String // "Tooling amortization", "QA batch testing"
+  basis             FeeBasis
+  amountCents       Int
+  waivedAboveQty    Int? // PER_SKU_ONE_TIME only
+  sortOrder         Int             @default(0)
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@index([productTemplateId])
+}
+
+/// #6 immutable, versioned product spec sheet snapshot, frozen at submit
+/// (snapshot-for-legal-reproducibility). snapshot = locked core + axes + values
+/// + fees + computed quote inputs.
+model ProductSpecSheet {
+  id                String          @id @default(cuid())
+  productTemplateId String
+  version           Int             @default(1)
+  status            SpecSheetStatus @default(ISSUED)
+  snapshot          Json
+  generatedById     String // User
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@unique([productTemplateId, version])
+  @@index([productTemplateId, status])
+}
+
+/// #7 which change type re-triggers which approver. Platform defaults have a
+/// null productTemplateId; per-template overrides set it. Complements the
+/// order-level dispatch FSM (docs/MULTI_PARTNER_APPROVAL_WORKFLOW.md).
+model ProductChangeApprovalRule {
+  id                String            @id @default(cuid())
+  productTemplateId String? // null = platform default
+  changeType        ProductChangeType
+  requiredApprover  ApproverRole
+  sortOrder         Int               @default(0)
+  productTemplate   ProductTemplate?  @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+
+  @@index([productTemplateId, changeType])
 }
 
 // =============================================================================

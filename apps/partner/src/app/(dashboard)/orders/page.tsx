@@ -1,20 +1,80 @@
+// Partner orders — dispatch inbox.
+//
+// Partner-v2 surface (Pavel 2026-06-05): same interface as /products — cream
+// hero + KPI strip + URL-driven status filter chips + sortable table. Replaces
+// the old grouped-section list. Data wiring unchanged (last 50 dispatches).
+
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
+import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
 import Link from 'next/link'
+import {
+  Inbox,
+  Factory,
+  PackageCheck,
+  Truck,
+  CircleCheck,
+  ArrowUpDown,
+  type LucideIcon,
+} from 'lucide-react'
+import { OrderRowActions } from './OrderRowActions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
 
-const SECTIONS = [
-  { status: ['PENDING_ACCEPT'], label: 'Awaiting your acceptance', deadline: true },
-  { status: ['ACCEPTED', 'PRODUCING'], label: 'In production' },
-  { status: ['READY'], label: 'Ready to ship' },
-  { status: ['SHIPPED', 'IN_TRANSIT'], label: 'In transit' },
-  { status: ['DELIVERED'], label: 'Delivered' },
-]
+type Tab = 'all' | 'awaiting' | 'production' | 'ready' | 'transit' | 'delivered'
 
-export default async function OrdersPage() {
+const TAB_STATUSES: Record<Exclude<Tab, 'all'>, string[]> = {
+  awaiting: ['PENDING_ACCEPT'],
+  production: ['ACCEPTED', 'PRODUCING'],
+  ready: ['READY'],
+  transit: ['SHIPPED', 'IN_TRANSIT'],
+  delivered: ['DELIVERED'],
+}
+const TAB_LABEL: Record<Tab, string> = {
+  all: 'All',
+  awaiting: 'Awaiting',
+  production: 'In production',
+  ready: 'Ready to ship',
+  transit: 'In transit',
+  delivered: 'Delivered',
+}
+type SortKey = 'date' | 'amount'
+
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  PENDING_ACCEPT: { label: 'Awaiting', cls: 'border-pink-200 bg-pink-50 text-pink-800' },
+  ACCEPTED: { label: 'Accepted', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
+  PRODUCING: { label: 'Producing', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  READY: { label: 'Ready', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  SHIPPED: { label: 'Shipped', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
+  IN_TRANSIT: { label: 'In transit', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
+  DELIVERED: { label: 'Delivered', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
+}
+
+function isTab(s: string | undefined): s is Tab {
+  return !!s && s in TAB_LABEL
+}
+function buildHref(p: { tab?: Tab; sort?: SortKey; dir?: 'asc' | 'desc'; view?: ViewMode }): string {
+  const q = new URLSearchParams()
+  if (p.tab && p.tab !== 'all') q.set('tab', p.tab)
+  if (p.sort && p.sort !== 'date') q.set('sort', p.sort)
+  if (p.dir && p.dir !== 'desc') q.set('dir', p.dir)
+  if (p.view === 'cards') q.set('view', p.view)
+  const s = q.toString()
+  return s ? `/orders?${s}` : '/orders'
+}
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; sort?: string; dir?: string; view?: string }>
+}) {
+  const sp = await searchParams
+  const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
+  const sort: SortKey = sp.sort === 'amount' ? 'amount' : 'date'
+  const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
+  const view: ViewMode = sp.view === 'cards' ? 'cards' : 'table' // Partner default: table
+
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -32,67 +92,271 @@ export default async function OrdersPage() {
   })
   if (!partner) return null
 
-  const allDispatches = partner.services.flatMap((s) =>
+  const all = partner.services.flatMap((s) =>
     s.dispatches.map((d) => ({ ...d, serviceType: s.type })),
   )
+  const countFor = (t: Exclude<Tab, 'all'>) => all.filter((d) => TAB_STATUSES[t].includes(d.status as string)).length
+
+  const visible = (
+    tab === 'all' ? all : all.filter((d) => TAB_STATUSES[tab].includes(d.status as string))
+  ).slice()
+  visible.sort((a, b) => {
+    const flip = dir === 'asc' ? 1 : -1
+    if (sort === 'amount') return (a.costCents - b.costCents) * flip
+    return (a.createdAt.getTime() - b.createdAt.getTime()) * flip
+  })
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          {allDispatches.length} dispatches in the last 50 events
+      {/* Cream hero + KPI strip */}
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          Manufacturing · Orders
         </p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+          Orders
+        </h1>
+        <p className="mt-1 text-[13px] text-ink-600">
+          {all.length} dispatch{all.length === 1 ? '' : 'es'} in the last 50 events.
+        </p>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+          <Kpi href={buildHref({ tab: 'awaiting' })} label="Awaiting" value={countFor('awaiting')} icon={Inbox} tone="pink" active={tab === 'awaiting'} />
+          <Kpi href={buildHref({ tab: 'production' })} label="In production" value={countFor('production')} icon={Factory} tone="amber" active={tab === 'production'} />
+          <Kpi href={buildHref({ tab: 'ready' })} label="Ready to ship" value={countFor('ready')} icon={PackageCheck} tone="sky" active={tab === 'ready'} />
+          <Kpi href={buildHref({ tab: 'transit' })} label="In transit" value={countFor('transit')} icon={Truck} tone="ink" active={tab === 'transit'} />
+          <Kpi href={buildHref({ tab: 'delivered' })} label="Delivered" value={countFor('delivered')} icon={CircleCheck} tone="ink" active={tab === 'delivered'} />
+        </div>
       </div>
 
-      {allDispatches.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">No dispatches yet</CardTitle>
-            <CardDescription>
-              Real order routing comes online in Week 8. Once a creator publishes a product that
-              matches your capabilities, dispatches appear here for acceptance.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      {/* Status filter chips + view toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(TAB_LABEL) as Tab[]).map((t) => {
+            const c = t === 'all' ? all.length : countFor(t as Exclude<Tab, 'all'>)
+            if (t !== 'all' && c === 0 && tab !== t) return null
+            return (
+              <Link
+                key={t}
+                href={buildHref({ tab: t, sort, dir, view })}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                  tab === t ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
+                )}
+              >
+                {TAB_LABEL[t]}
+                <span className={cn('tabular-nums', tab === t ? 'text-white/70' : 'text-ink-400')}>{c}</span>
+              </Link>
+            )
+          })}
+        </div>
+        <ViewToggle value={view} defaultMode="table" />
+      </div>
+
+      {/* Table / cards */}
+      {all.length === 0 ? (
+        <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
+            <Inbox className="h-6 w-6 text-pink-700" aria-hidden="true" />
+          </div>
+          <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No dispatches yet</h2>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
+            Once a creator publishes a product that matches your capabilities, dispatches appear
+            here for acceptance.
+          </p>
+        </section>
+      ) : view === 'cards' ? (
+        <OrderCards rows={visible} tabLabel={TAB_LABEL[tab]} />
       ) : (
-        SECTIONS.map(({ status, label, deadline }) => {
-          const items = allDispatches.filter((d) => status.includes(d.status as never))
-          if (items.length === 0) return null
-          return (
-            <section key={label}>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-                {label} ({items.length})
-              </h2>
-              <ul className="space-y-2">
-                {items.map((d) => (
-                  <li key={d.id}>
-                    <Link href={`/orders/${d.id}`}>
-                      <Card className="transition-colors hover:bg-zinc-50">
-                        <CardHeader className="flex-row items-center justify-between space-y-0">
-                          <div>
-                            <CardTitle className="text-base">
-                              {d.type} · {d.order.brand.name}
-                            </CardTitle>
-                            <CardDescription>
-                              Order #{d.order.id.slice(-8)} · ${(d.costCents / 100).toFixed(2)} · {d.serviceType}
-                            </CardDescription>
-                          </div>
-                          {deadline && (
-                            <div className="text-xs text-amber-700">
-                              Respond by {new Date(d.acceptDeadlineAt).toLocaleString()}
-                            </div>
-                          )}
-                        </CardHeader>
-                      </Card>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        })
+        <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <th className="px-5 py-2.5 font-semibold">Order</th>
+                  <th className="px-3 py-2.5 font-semibold">Brand</th>
+                  <th className="px-3 py-2.5 font-semibold">Service</th>
+                  <th className="px-3 py-2.5 font-semibold">Status</th>
+                  <SortTh label="Amount" k="amount" sort={sort} dir={dir} tab={tab} />
+                  <SortTh label="Date" k="date" sort={sort} dir={dir} tab={tab} />
+                  <th className="px-5 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-8 text-center text-[12px] text-ink-500">
+                      Nothing in “{TAB_LABEL[tab]}”.
+                    </td>
+                  </tr>
+                )}
+                {visible.map((d) => {
+                  const pill = STATUS_PILL[d.status as string] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
+                  return (
+                    <tr key={d.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
+                      <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">#{d.order.id.slice(-8)}</td>
+                      <td className="px-3 py-3 font-medium text-ink-900">{d.order.brand.name}</td>
+                      <td className="px-3 py-3 text-[12px] text-ink-600">{d.type} · {d.serviceType}</td>
+                      <td className="px-3 py-3">
+                        <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
+                          {pill.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 tabular-nums text-ink-700">${(d.costCents / 100).toFixed(2)}</td>
+                      <td className="px-3 py-3 text-[12px] tabular-nums text-ink-500">
+                        {d.status === 'PENDING_ACCEPT'
+                          ? `by ${new Date(d.acceptDeadlineAt).toLocaleDateString()}`
+                          : new Date(d.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end">
+                          <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Card view (?view=cards)
+// -----------------------------------------------------------------------------
+
+type DispatchRow = {
+  id: string
+  type: string
+  serviceType: string
+  status: string
+  costCents: number
+  createdAt: Date
+  acceptDeadlineAt: Date
+  order: { id: string; brand: { name: string } }
+}
+
+function OrderCards({ rows, tabLabel }: { rows: DispatchRow[]; tabLabel: string }) {
+  if (rows.length === 0) {
+    return (
+      <section className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center text-[12px] text-ink-500">
+        Nothing in “{tabLabel}”.
+      </section>
+    )
+  }
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {rows.map((d) => {
+        const pill = STATUS_PILL[d.status] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
+        return (
+          <div key={d.id} className="flex flex-col rounded-2xl border border-ink-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-2">
+              <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
+                {pill.label}
+              </span>
+              <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
+            </div>
+
+            <p className="mt-2.5 font-display text-[15px] font-semibold leading-snug text-ink-900">
+              {d.order.brand.name}
+            </p>
+            <p className="mt-0.5 font-mono text-[11.5px] text-ink-500">#{d.order.id.slice(-8)}</p>
+            <p className="mt-0.5 text-[12px] text-ink-600">{d.type} · {d.serviceType}</p>
+
+            <div className="mt-auto flex items-center justify-between border-t border-ink-50 pt-3">
+              <span className="font-display text-[16px] font-bold tabular-nums text-ink-900">
+                ${(d.costCents / 100).toFixed(2)}
+              </span>
+              <span className="text-[11px] tabular-nums text-ink-500">
+                {d.status === 'PENDING_ACCEPT'
+                  ? `by ${new Date(d.acceptDeadlineAt).toLocaleDateString()}`
+                  : new Date(d.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+
+function Kpi({
+  href,
+  label,
+  value,
+  icon: Icon,
+  tone,
+  active,
+}: {
+  href: string
+  label: string
+  value: number
+  icon: LucideIcon
+  tone: 'ink' | 'sky' | 'pink' | 'amber'
+  active?: boolean
+}) {
+  const iconTone: Record<typeof tone, string> = {
+    ink: 'bg-ink-100 text-ink-700',
+    sky: 'bg-sky-100 text-sky-700',
+    pink: 'bg-pink-100 text-pink-700',
+    amber: 'bg-amber-100 text-amber-700',
+  }
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
+        active && 'ring-1 ring-pink-300/60',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
+          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
+            {value.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function SortTh({
+  label,
+  k,
+  sort,
+  dir,
+  tab,
+}: {
+  label: string
+  k: SortKey
+  sort: SortKey
+  dir: 'asc' | 'desc'
+  tab: Tab
+}) {
+  const isActive = sort === k
+  const nextDir = isActive && dir === 'desc' ? 'asc' : 'desc'
+  return (
+    <th className="px-3 py-2.5 font-semibold">
+      <Link
+        href={buildHref({ tab, sort: k, dir: nextDir })}
+        className={cn(
+          'inline-flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+          isActive ? 'text-ink-900' : 'hover:text-ink-700',
+        )}
+      >
+        {label}
+        <ArrowUpDown className={cn('h-3 w-3', isActive ? 'opacity-100' : 'opacity-40')} aria-hidden="true" />
+      </Link>
+    </th>
   )
 }

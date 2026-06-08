@@ -122,7 +122,7 @@ export function ServiceProfileForm({
             <SelectItem value="FULL">Full — &quot;Manufactured by Acme Foods, San Jose, CA&quot;</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           You can override this per-order at routing time.
         </p>
       </div>
@@ -208,7 +208,7 @@ export function ServiceProfileForm({
                   type="button"
                   onClick={() => setCategories(on ? categories.filter((x) => x !== c) : [...categories, c])}
                   className={`rounded-md border px-3 py-1.5 text-sm ${
-                    on ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-300 text-zinc-700'
+                    on ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 text-ink-700'
                   }`}
                 >
                   {c}

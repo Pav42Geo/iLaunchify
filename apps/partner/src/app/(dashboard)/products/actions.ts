@@ -11,6 +11,7 @@
 
 import { prisma, findFirstBannedIngredient, findBannedProductTerm } from '@ilaunchify/db'
 import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
+import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -532,6 +533,97 @@ export async function archiveDraft(productTemplateId: string): Promise<Result> {
     fromValue: tpl.status,
     toValue: 'REJECTED',
     payload: { partnerId: partner.id, name: tpl.name },
+  })
+
+  revalidatePath('/products')
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// PAUSE / RESUME — partner-side marketplace visibility toggle.
+// Per docs/MANUFACTURER_PRODUCT_BUILDER.md §4 + the admin PUBLISHED⇄PAUSED
+// transition. A live (PUBLISHED) template can be pulled from the marketplace
+// by its own manufacturer at any time; PAUSED hides it from creators while
+// preserving everything (recipe, certs, history) so re-listing is one click.
+// Reversible, audited, ownership-checked. We never touch templates that are
+// mid-review (PENDING_*), draft, or archived — only the live⇄paused pair.
+// -----------------------------------------------------------------------------
+
+type LoadedTemplate =
+  | { ok: false; error: string }
+  | {
+      ok: true
+      user: Awaited<ReturnType<typeof requirePartner>>['user']
+      partnerId: string
+      tpl: { id: string; status: ProductTemplateStatus; name: string; manufacturerServiceId: string | null }
+    }
+
+async function loadOwnedTemplate(productTemplateId: string): Promise<LoadedTemplate> {
+  const { user, partner, error } = await requirePartner()
+  if (error || !partner) return { ok: false, error: error ?? 'Not a partner.' }
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: { id: true, status: true, name: true, manufacturerServiceId: true },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+  if (tpl.manufacturerServiceId) {
+    const owned = await prisma.partnerService.findFirst({
+      where: { id: tpl.manufacturerServiceId, partnerId: partner.id },
+      select: { id: true },
+    })
+    if (!owned) return { ok: false, error: 'Not your product.' }
+  }
+  return { ok: true, user, partnerId: partner.id, tpl }
+}
+
+export async function pauseProduct(productTemplateId: string): Promise<Result> {
+  const loaded = await loadOwnedTemplate(productTemplateId)
+  if (!loaded.ok) return { ok: false, error: loaded.error }
+  const { user, partnerId, tpl } = loaded
+
+  if (tpl.status !== 'PUBLISHED') {
+    return { ok: false, error: 'Only live products can be turned off.' }
+  }
+
+  await prisma.productTemplate.update({
+    where: { id: productTemplateId },
+    data: { status: 'PAUSED' },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'PRODUCT_TEMPLATE_PAUSE',
+    fromValue: 'PUBLISHED',
+    toValue: 'PAUSED',
+    payload: { partnerId, name: tpl.name, initiatedBy: 'PARTNER' },
+  })
+
+  revalidatePath('/products')
+  return { ok: true }
+}
+
+export async function resumeProduct(productTemplateId: string): Promise<Result> {
+  const loaded = await loadOwnedTemplate(productTemplateId)
+  if (!loaded.ok) return { ok: false, error: loaded.error }
+  const { user, partnerId, tpl } = loaded
+
+  if (tpl.status !== 'PAUSED') {
+    return { ok: false, error: 'Only paused products can be re-listed.' }
+  }
+
+  await prisma.productTemplate.update({
+    where: { id: productTemplateId },
+    data: { status: 'PUBLISHED' },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'PRODUCT_TEMPLATE_REACTIVATE',
+    fromValue: 'PAUSED',
+    toValue: 'PUBLISHED',
+    payload: { partnerId, name: tpl.name, initiatedBy: 'PARTNER' },
   })
 
   revalidatePath('/products')

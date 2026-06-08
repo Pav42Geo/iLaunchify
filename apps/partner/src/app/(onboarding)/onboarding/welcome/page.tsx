@@ -29,21 +29,21 @@ export default async function WelcomePage() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+        <h1 className="text-4xl font-bold tracking-tight text-ink-900">
           Welcome, {companyName} <span aria-hidden>👋</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-md text-zinc-600">
+        <p className="mx-auto mt-4 max-w-md text-ink-600">
           You&apos;re a few steps away from being an active iLaunchify partner.
         </p>
       </div>
 
       <div className="mt-12 space-y-8">
-        <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <section className="rounded-lg border border-ink-200 bg-white p-6">
           <div className="flex items-start gap-4">
             <CalendarClock className="mt-1 h-6 w-6 flex-shrink-0 text-emerald-600" />
             <div>
-              <h2 className="font-semibold text-zinc-900">Here&apos;s what to expect</h2>
-              <p className="mt-2 text-sm text-zinc-600">
+              <h2 className="font-semibold text-ink-900">Here&apos;s what to expect</h2>
+              <p className="mt-2 text-sm text-ink-600">
                 The form takes about <strong>10–15 minutes</strong> if you have everything ready.
                 Our verification team typically reviews within{' '}
                 <strong>3–5 business days</strong>. You can save your progress and return any
@@ -53,12 +53,12 @@ export default async function WelcomePage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-zinc-200 bg-white p-6">
+        <section className="rounded-lg border border-ink-200 bg-white p-6">
           <div className="flex items-start gap-4">
             <ClipboardList className="mt-1 h-6 w-6 flex-shrink-0 text-emerald-600" />
             <div className="flex-1">
-              <h2 className="font-semibold text-zinc-900">Have these ready before you start</h2>
-              <ul className="mt-3 space-y-2 text-sm text-zinc-600">
+              <h2 className="font-semibold text-ink-900">Have these ready before you start</h2>
+              <ul className="mt-3 space-y-2 text-sm text-ink-600">
                 <PackingItem>Business license / certificate of incorporation</PackingItem>
                 <PackingItem>EIN or other tax ID</PackingItem>
                 <PackingItem>Certificate of liability insurance</PackingItem>
@@ -90,7 +90,7 @@ export default async function WelcomePage() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-500">
+      <p className="mt-6 text-center text-xs text-ink-500">
         <Link href="/help/verification" className="underline">
           How does verification work?
         </Link>{' '}
@@ -109,7 +109,7 @@ export default async function WelcomePage() {
 function PackingItem({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2">
-      <span aria-hidden className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-zinc-400" />
+      <span aria-hidden className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink-400" />
       <span>{children}</span>
     </li>
   )

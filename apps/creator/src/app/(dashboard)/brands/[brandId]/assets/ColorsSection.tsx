@@ -85,11 +85,11 @@ export function ColorsSection({ brandId, initial }: Props) {
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6">
+    <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Colors</h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
+          <h2 className="text-base font-semibold text-ink-900">Colors</h2>
+          <p className="mt-0.5 text-sm text-ink-500">
             Three named swatches + up to two extras. These pin to the top of every color picker
             in the Design Studio canvas.
           </p>
@@ -104,11 +104,11 @@ export function ColorsSection({ brandId, initial }: Props) {
       </div>
 
       {(extras.length > 0 || extras.length < MAX_EXTRA) && (
-        <div className="mt-5 border-t border-zinc-100 pt-4">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        <div className="mt-5 border-t border-ink-100 pt-4">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
             Extra swatches
           </Label>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <p className="mt-0.5 text-xs text-ink-500">
             Optional. Use for secondary brand colors that aren&apos;t primary / accent.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -120,7 +120,7 @@ export function ColorsSection({ brandId, initial }: Props) {
                   onChange={(e) => updateExtra(i, e.target.value)}
                   onBlur={commit}
                   disabled={isPending}
-                  className="h-9 w-12 cursor-pointer rounded border border-zinc-300 bg-white"
+                  className="h-9 w-12 cursor-pointer rounded border border-ink-300 bg-white"
                   aria-label={`Extra swatch ${i + 1}`}
                 />
                 <Input
@@ -136,7 +136,7 @@ export function ColorsSection({ brandId, initial }: Props) {
                   onClick={() => removeExtra(i)}
                   disabled={isPending}
                   aria-label="Remove swatch"
-                  className="rounded p-1 text-zinc-400 hover:text-red-600"
+                  className="rounded p-1 text-ink-400 hover:text-red-600"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -174,8 +174,8 @@ function NamedSwatch({
   disabled: boolean
 }) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
-      <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+    <div className="rounded-md border border-ink-200 bg-white p-3">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
         {label}
       </Label>
       <div className="mt-2 flex items-center gap-2">
@@ -186,7 +186,7 @@ function NamedSwatch({
           onBlur={onCommit}
           disabled={disabled}
           aria-label={`${label} color picker`}
-          className="h-9 w-12 cursor-pointer rounded border border-zinc-300 bg-white"
+          className="h-9 w-12 cursor-pointer rounded border border-ink-300 bg-white"
         />
         <Input
           value={value.toUpperCase()}
@@ -210,6 +210,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-zinc-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

@@ -1,11 +1,15 @@
 // LandingHeader — slim composition over the shared AppHeader primitive
 // (REBUILD R1). Marketing surfaces that aren't actively browsing templates:
-// home, /how-it-works, /pricing, /contact-sales.
+// home, /how-it-works, /pricing, /contact-sales, /influencers.
 //
 // Differs from MarketplaceHeader by:
 //   - dropping the "All Categories" button + search bar
-//   - swapping in the "For creators" / "For partners" centre nav dropdowns
+//   - swapping in the "For creators" / "Business" / "Influencers" centre nav
 //   - dropping the niche subnav row
+//
+// Naming note: "Business" is what we call the manufacturer-partner track in
+// the public marketing nav (per Pavel 2026-06-03 rename from "For partners").
+// The route stays at /business; only the label changes.
 
 import {
   AppHeader,
@@ -73,7 +77,7 @@ export function LandingHeader({
           />
 
           <LandingNavDropdown
-            label="For partners"
+            label="Business"
             href="/business"
             items={[
               {
@@ -98,6 +102,13 @@ export function LandingHeader({
               },
             ]}
           />
+
+          <Link
+            href="/influencers"
+            className="py-1 text-[14px] font-medium text-ink-700 transition-colors hover:text-ink-900"
+          >
+            Influencers
+          </Link>
         </nav>
       }
       right={

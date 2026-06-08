@@ -12,12 +12,20 @@
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from '@ilaunchify/ui'
-import { Plus, Box, Layers, FileBox } from 'lucide-react'
-import { STATUS_LABELS, topologyLabel } from './constants'
+import { cn } from '@ilaunchify/ui'
+import { Plus, Box, Layers, FileBox, CheckCircle2, FileEdit, Archive } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { topologyLabel } from './constants'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Packaging — iLaunchify Partners' }
+
+// v2 status pills — semantic tones (replaces legacy ring badges on this surface)
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
+  RETIRED: { label: 'Retired', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+}
 
 export default async function PackagingListPage() {
   const user = await requireUser()
@@ -40,52 +48,69 @@ export default async function PackagingListPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Packaging catalog</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            The packaging you offer. Each system lists one SKU&apos;s worth of physical
-            packaging (a 16oz jar, a 12oz can, a stick pack, etc.). Active items are visible
-            to creators when they pick packaging for a product.
-          </p>
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+              Manufacturing · Packaging
+            </p>
+            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+              Packaging catalog
+            </h1>
+            <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+              The packaging you offer. Each system lists one SKU&apos;s worth of physical packaging
+              (a 16oz jar, a 12oz can, a stick pack, etc.). Active items are visible to creators
+              when they pick packaging for a product.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/packaging/offerings"
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" /> Decoration offerings
+            </Link>
+            <Link
+              href="/packaging/dielines"
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              <FileBox className="h-3.5 w-3.5" aria-hidden="true" /> Dielines
+            </Link>
+            <Link
+              href="/packaging/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add packaging
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href="/packaging/offerings">
-              <Layers className="mr-1.5 h-4 w-4" /> Decoration offerings
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/packaging/dielines">
-              <FileBox className="mr-1.5 h-4 w-4" /> Dielines
-            </Link>
-          </Button>
-          <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-            <Link href="/packaging/new">
-              <Plus className="mr-1.5 h-4 w-4" /> Add packaging
-            </Link>
-          </Button>
-        </div>
-      </header>
+
+        {partner.packagingSystems.length > 0 && (
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            <Kpi label="Active" value={active.length} icon={CheckCircle2} tone="emerald" />
+            <Kpi label="Drafts" value={drafts.length} icon={FileEdit} tone="ink" />
+            <Kpi label="Retired" value={retired.length} icon={Archive} tone="amber" />
+          </div>
+        )}
+      </div>
 
       {partner.packagingSystems.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="rounded-full bg-emerald-50 p-3">
-              <Box className="h-7 w-7 text-emerald-600" />
-            </div>
-            <CardTitle className="text-base">No packaging yet</CardTitle>
-            <CardDescription className="max-w-md text-sm">
-              Add your first packaging system so creators can pick it when customizing a
-              product. You can save drafts and activate them when ready.
-            </CardDescription>
-            <Button asChild className="mt-2 bg-emerald-600 hover:bg-emerald-700">
-              <Link href="/packaging/new">
-                <Plus className="mr-1.5 h-4 w-4" /> Add your first
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
+            <Box className="h-6 w-6 text-pink-700" aria-hidden="true" />
+          </div>
+          <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No packaging yet</h2>
+          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
+            Add your first packaging system so creators can pick it when customizing a product.
+            You can save drafts and activate them when ready.
+          </p>
+          <Link
+            href="/packaging/new"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" /> Add your first
+          </Link>
+        </section>
       ) : (
         <div className="space-y-6">
           {active.length > 0 && (
@@ -109,6 +134,39 @@ export default async function PackagingListPage() {
   )
 }
 
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: number
+  icon: LucideIcon
+  tone: 'ink' | 'emerald' | 'amber'
+}) {
+  const iconTone: Record<typeof tone, string> = {
+    ink: 'bg-ink-100 text-ink-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    amber: 'bg-amber-100 text-amber-700',
+  }
+  return (
+    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
+          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
+            {value.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Section({
   title,
   count,
@@ -119,14 +177,13 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-baseline justify-between space-y-0 pb-3">
-        <CardTitle className="text-base">
-          {title} <span className="ml-2 text-sm font-normal text-zinc-500">{count}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">{children}</CardContent>
-    </Card>
+    <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+      <header className="flex items-baseline gap-2 border-b border-ink-100 px-5 py-3">
+        <h2 className="font-display text-[14px] font-semibold tracking-tight text-ink-900">{title}</h2>
+        <span className="text-[12px] font-normal tabular-nums text-ink-500">{count}</span>
+      </header>
+      {children}
+    </section>
   )
 }
 
@@ -145,42 +202,48 @@ type Row = {
 function PackagingTable({ rows }: { rows: Row[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-left text-[13px]">
         <thead>
-          <tr className="border-t border-zinc-200 text-left text-xs uppercase tracking-wider text-zinc-500">
-            <th className="px-6 py-2 font-medium">Name</th>
-            <th className="px-3 py-2 font-medium">Topology</th>
-            <th className="px-3 py-2 font-medium">Units / pack</th>
-            <th className="px-3 py-2 font-medium">MOQ</th>
-            <th className="px-3 py-2 font-medium">Surfaces</th>
-            <th className="px-6 py-2 font-medium" />
+          <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+            <th className="px-5 py-2.5 font-semibold">Name</th>
+            <th className="px-3 py-2.5 font-semibold">Topology</th>
+            <th className="px-3 py-2.5 font-semibold">Units / pack</th>
+            <th className="px-3 py-2.5 font-semibold">MOQ</th>
+            <th className="px-3 py-2.5 font-semibold">Surfaces</th>
+            <th className="px-5 py-2.5 font-semibold" />
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => {
-            const badge = STATUS_LABELS[r.status] ?? { label: r.status, cls: 'bg-zinc-100 text-zinc-700 ring-zinc-200' }
+            const pill = STATUS_PILL[r.status] ?? {
+              label: r.status,
+              cls: 'border-ink-200 bg-ink-100 text-ink-700',
+            }
             return (
-              <tr key={r.id} className="border-t border-zinc-100 hover:bg-zinc-50">
-                <td className="px-6 py-3">
-                  <div className="font-medium text-zinc-900">{r.partnerName}</div>
-                  <div className="mt-0.5">
+              <tr key={r.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
+                <td className="px-5 py-3">
+                  <div className="font-medium text-ink-900">{r.partnerName}</div>
+                  <div className="mt-1">
                     <span
-                      className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.cls}`}
+                      className={cn(
+                        'inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',
+                        pill.cls,
+                      )}
                     >
-                      {badge.label}
+                      {pill.label}
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-3 text-zinc-700">{topologyLabel(r.topology)}</td>
-                <td className="px-3 py-3 text-zinc-700">{r.unitCount}</td>
-                <td className="px-3 py-3 text-zinc-700">{r.moq.toLocaleString()}</td>
-                <td className="px-3 py-3 text-zinc-700">{r._count.surfaces}</td>
-                <td className="px-6 py-3 text-right">
+                <td className="px-3 py-3 text-ink-700">{topologyLabel(r.topology)}</td>
+                <td className="px-3 py-3 tabular-nums text-ink-700">{r.unitCount}</td>
+                <td className="px-3 py-3 tabular-nums text-ink-700">{r.moq.toLocaleString()}</td>
+                <td className="px-3 py-3 tabular-nums text-ink-700">{r._count.surfaces}</td>
+                <td className="px-5 py-3 text-right">
                   <Link
                     href={`/packaging/${r.id}`}
-                    className="text-sm font-medium text-emerald-700 hover:underline"
+                    className="inline-flex items-center rounded-full border border-ink-200 bg-white px-3 py-1 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
                   >
-                    Edit →
+                    Edit
                   </Link>
                 </td>
               </tr>

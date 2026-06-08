@@ -47,6 +47,7 @@ cp "$LATEST"/*.md .claude/memory/
 - `ilaunchify-subscription-tiers.md` — Maker/Builder/Agency
 - `ilaunchify-tier-model-update-2026-05-28.md` — Master → Agency rename
 - `ilaunchify-v15-tier-upgrade-shipped.md` — self-serve upgrade flow
+- `ilaunchify-velocity-tiers-on-top-of-subscription.md` — V1.5 on-demand pricing combines subscription tier + per-SKU 30-day velocity discount. Cross-pollination + lower-of + samples-at-Tier-1. Supliful-inspired.
 
 ### Compliance + sourcing
 

@@ -146,11 +146,11 @@ function CandidateList({ candidates }: { candidates: Candidate[] }) {
         return (
           <li
             key={c.id}
-            className="flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm"
+            className="flex items-center justify-between rounded-md border border-ink-200 bg-ink-50 p-3 text-sm"
           >
             <div>
               <div className="font-medium">{c.name}</div>
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-ink-500">
                 {c.city && c.state ? `${c.city}, ${c.state}` : 'US'}
                 {moqMin && ` · MOQ ${moqMin}${moqMax ? `–${moqMax}` : '+'}`}
                 {leadDays && ` · ${leadDays}d lead`}

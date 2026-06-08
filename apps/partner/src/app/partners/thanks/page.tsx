@@ -12,7 +12,7 @@ export default function ThanksPage() {
             We review every application personally. You&apos;ll hear from us within 3 business days.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-zinc-600">
+        <CardContent className="text-sm text-ink-600">
           <p>
             If we&apos;re a fit, we&apos;ll send an invitation link to complete your partner profile and connect
             payouts. Until then, no further action needed.

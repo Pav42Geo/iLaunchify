@@ -81,7 +81,7 @@ export function FileUploadSlot({
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-zinc-900">{label}</h3>
+            <h3 className="text-sm font-semibold text-ink-900">{label}</h3>
             {required && (
               <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-red-700">
                 Required
@@ -89,10 +89,10 @@ export function FileUploadSlot({
             )}
           </div>
           {description && (
-            <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+            <p className="mt-0.5 text-xs text-ink-500">{description}</p>
           )}
         </div>
-        <span className="shrink-0 text-xs text-zinc-400">
+        <span className="shrink-0 text-xs text-ink-400">
           {existingFiles.length} file{existingFiles.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -111,7 +111,7 @@ export function FileUploadSlot({
         className={`rounded-md border-2 border-dashed p-4 text-center transition-colors ${
           dragOver
             ? 'border-brand-primary bg-brand-primary/5'
-            : 'border-zinc-200 hover:border-zinc-300'
+            : 'border-ink-200 hover:border-ink-300'
         }`}
       >
         <input
@@ -124,7 +124,7 @@ export function FileUploadSlot({
           disabled={isPending}
         />
         {isPending ? (
-          <div className="flex items-center justify-center gap-2 text-sm text-zinc-600">
+          <div className="flex items-center justify-center gap-2 text-sm text-ink-600">
             <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
           </div>
         ) : (
@@ -133,11 +133,11 @@ export function FileUploadSlot({
             onClick={() => fileInputRef.current?.click()}
             className="flex w-full flex-col items-center gap-1.5"
           >
-            <Upload className="h-5 w-5 text-zinc-400" />
-            <span className="text-sm font-medium text-zinc-700">
+            <Upload className="h-5 w-5 text-ink-400" />
+            <span className="text-sm font-medium text-ink-700">
               Drop files or click to upload
             </span>
-            <span className="text-xs text-zinc-500">PDF, PNG, JPEG, WebP · up to 20 MB</span>
+            <span className="text-xs text-ink-500">PDF, PNG, JPEG, WebP · up to 20 MB</span>
           </button>
         )}
       </div>
@@ -147,15 +147,15 @@ export function FileUploadSlot({
           {existingFiles.map((file) => (
             <li
               key={file.id}
-              className="flex items-center justify-between gap-2 rounded border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded border border-ink-100 bg-ink-50 px-3 py-2 text-sm"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
+                <FileText className="h-4 w-4 shrink-0 text-ink-400" />
                 <div className="min-w-0">
-                  <div className="truncate font-medium text-zinc-900">
+                  <div className="truncate font-medium text-ink-900">
                     {file.originalFilename}
                   </div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-ink-500">
                     {formatBytes(file.sizeBytes)} ·{' '}
                     {new Date(file.uploadedAt).toLocaleDateString()}
                   </div>
@@ -169,7 +169,7 @@ export function FileUploadSlot({
                 disabled={isPending}
                 className="shrink-0"
               >
-                <Trash2 className="h-4 w-4 text-zinc-500" />
+                <Trash2 className="h-4 w-4 text-ink-500" />
               </Button>
             </li>
           ))}

@@ -35,12 +35,12 @@ export default async function NewAccessoryPage() {
       <div>
         <Link
           href="/accessories"
-          className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-800"
+          className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-800"
         >
           <ChevronLeft className="h-4 w-4" /> Accessories
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">New accessory</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           It enters review before creators can bundle it. Listing it means you fulfill it with the order.
         </p>
       </div>

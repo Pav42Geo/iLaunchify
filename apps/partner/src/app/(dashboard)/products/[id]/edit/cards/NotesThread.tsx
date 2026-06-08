@@ -48,7 +48,7 @@ export function NotesThread({ productTemplateId, notes, isDraft }: NotesThreadPr
   return (
     <div className="space-y-3">
       {notes.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-500">
+        <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
           No messages yet. Use this thread to ask admin questions or share context they should
           see during review.
         </p>
@@ -60,30 +60,30 @@ export function NotesThread({ productTemplateId, notes, isDraft }: NotesThreadPr
               className={`rounded-md border px-3 py-2 text-sm ${
                 n.authorType === 'ADMIN'
                   ? 'border-emerald-200 bg-emerald-50/50'
-                  : 'border-zinc-200 bg-zinc-50'
+                  : 'border-ink-200 bg-ink-50'
               }`}
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
                   {n.authorType} · {n.authorName}
                 </span>
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-[10px] text-ink-400">
                   {new Date(n.createdAt).toLocaleString()}
                 </span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-zinc-800">{n.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-ink-800">{n.body}</p>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="space-y-2 border-t border-zinc-100 pt-3">
+      <div className="space-y-2 border-t border-ink-100 pt-3">
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
           placeholder='e.g. "Updated the cert PDF — please re-verify Section 4 of our application."'
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={!isDraft || isPending}
         />
         <Button
@@ -96,7 +96,7 @@ export function NotesThread({ productTemplateId, notes, isDraft }: NotesThreadPr
           {isPending ? 'Posting…' : 'Post note'}
         </Button>
         {!isDraft && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Read-only — this template is currently in admin review or published.
           </p>
         )}

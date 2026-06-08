@@ -33,14 +33,14 @@ export function CertificationsClient({ availableTypes }: { availableTypes: CertT
               key={t.id}
               type="button"
               onClick={() => setSelectedTypeId(isSelected ? null : t.id)}
-              className={`rounded-md border p-3 text-left transition-colors ${
+              className={`rounded-xl border p-3 text-left transition-colors ${
                 isSelected
-                  ? 'border-emerald-500 bg-emerald-50'
-                  : 'border-zinc-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+                  ? 'border-ink-900 bg-ink-900/[0.04] ring-1 ring-ink-900'
+                  : 'border-ink-200 bg-white hover:border-ink-400'
               }`}
             >
-              <div className="font-medium text-zinc-900">{t.name}</div>
-              <div className="mt-1 line-clamp-2 text-xs text-zinc-500">{t.description}</div>
+              <div className="font-medium text-ink-900">{t.name}</div>
+              <div className="mt-1 line-clamp-2 text-xs text-ink-500">{t.description}</div>
             </button>
           )
         })}
@@ -115,18 +115,18 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50/30 p-5"
+      className="space-y-4 rounded-2xl border border-ink-200 bg-cream/60 p-5"
     >
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-semibold text-zinc-900">Claim {certType.name}</h3>
-          <p className="mt-0.5 text-xs text-zinc-500">{certType.description}</p>
+          <h3 className="font-semibold text-ink-900">Claim {certType.name}</h3>
+          <p className="mt-0.5 text-xs text-ink-500">{certType.description}</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="rounded-md p-1 text-zinc-400 hover:bg-white hover:text-zinc-700"
+          className="rounded-md p-1 text-ink-400 hover:bg-white hover:text-ink-700"
           disabled={isPending}
         >
           <X className="h-4 w-4" />
@@ -172,7 +172,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
           disabled={isPending}
         />
       </Field>
@@ -190,41 +190,41 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-zinc-300 bg-white p-4 text-left hover:border-emerald-300"
+          className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-ink-200 bg-white p-4 text-left transition-colors hover:border-ink-400"
           disabled={isPending}
         >
           {file ? (
             <>
-              <FileText className="h-5 w-5 text-emerald-600" />
+              <FileText className="h-5 w-5 text-pink-700" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-zinc-900">{file.name}</div>
-                <div className="text-xs text-zinc-500">{(file.size / 1024).toFixed(1)} KB</div>
+                <div className="truncate text-sm font-medium text-ink-900">{file.name}</div>
+                <div className="text-xs text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
               </div>
-              <span className="text-xs text-emerald-700">Click to change</span>
+              <span className="text-xs font-medium text-pink-700">Click to change</span>
             </>
           ) : (
             <>
-              <Upload className="h-5 w-5 text-zinc-400" />
-              <div className="text-sm text-zinc-600">
-                <span className="font-medium text-zinc-900">Upload PDF</span>
+              <Upload className="h-5 w-5 text-ink-400" />
+              <div className="text-sm text-ink-600">
+                <span className="font-medium text-ink-900">Upload PDF</span>
                 <span className="ml-1 text-xs">up to 20 MB · PDF / PNG / JPEG / WebP</span>
               </div>
             </>
           )}
         </button>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-ink-500">
           📎 Private — only iLaunchify admin sees the PDF. Public pages show only the verified
           badge.
         </p>
       </Field>
 
-      <label className="flex items-start gap-2 rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-600">
+      <label className="flex items-start gap-2 rounded-xl border border-ink-200 bg-white p-3 text-xs text-ink-600">
         <input
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
           disabled={isPending}
-          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
         />
         <span>{CERT_UPLOAD_CONSENT_TEXT}</span>
       </label>
@@ -242,7 +242,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
         <Button
           type="submit"
           disabled={isPending || !file || !expiryDate || !consent}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Submitting…' : 'Submit for review'}
         </Button>
@@ -264,7 +264,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-zinc-900">
+      <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
           <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
@@ -272,7 +272,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

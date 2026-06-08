@@ -16,7 +16,7 @@
 // products with them (per the "operational trust > margin optimization" memo).
 
 import { prisma, isIngredientBanned } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requirePartnerActor, checkRateLimit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { BioengineeredStatus, IngredientSource, Prisma } from '@ilaunchify/db'
 
@@ -39,19 +39,14 @@ type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
   | { ok: false; error: string }
 
+// Tier 1.1 (docs/SECURITY_ARCHITECTURE.md): delegates to the centralized
+// ownership guard in @ilaunchify/auth. Historical return shape preserved.
 async function authorizePartner() {
-  const user = await requireUser()
-  if (user.role !== 'PARTNER') {
-    return { user: null, partnerId: null as string | null, error: 'NOT_A_PARTNER' as const }
+  const r = await requirePartnerActor()
+  if (!r.ok) {
+    return { user: null, partnerId: null as string | null, error: r.error }
   }
-  const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
-    select: { id: true },
-  })
-  if (!partner) {
-    return { user, partnerId: null, error: 'PARTNER_NOT_FOUND' as const }
-  }
-  return { user, partnerId: partner.id, error: null as null }
+  return { user: r.user, partnerId: r.partnerId, error: null as null }
 }
 
 // -----------------------------------------------------------------------------
@@ -64,6 +59,17 @@ export async function searchIngredients(input: {
 }): Promise<Result<{ results: IngredientResult[] }>> {
   const { partnerId, error } = await authorizePartner()
   if (error) return { ok: false, error }
+
+  // Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — search fires per keystroke, so
+  // the ceiling is generous for humans but stops scripted USDA scraping.
+  // 120/min per partner; fails open on DB hiccups (see checkRateLimit).
+  const rate = await checkRateLimit({
+    scope: 'ingredient-search',
+    id: partnerId,
+    limit: 120,
+    windowSec: 60,
+  })
+  if (!rate.ok) return { ok: false, error: 'RATE_LIMITED' }
 
   const limit = Math.min(input.limit ?? 25, 50)
   const q = input.query.trim()

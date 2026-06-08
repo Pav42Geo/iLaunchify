@@ -36,7 +36,7 @@ export default async function ProfileSettingsPage() {
 
   if (!profile) {
     return (
-      <div className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-zinc-600">
+      <div className="rounded-md border border-ink-200 bg-white p-6 text-sm text-ink-600">
         Your creator profile is missing — contact support.
       </div>
     )
@@ -50,11 +50,11 @@ export default async function ProfileSettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
           Step 1 of 5
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Tell us about you</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           We use this to pick the right label-compliance rules for your products and to
           tailor partner recommendations.
         </p>

@@ -87,7 +87,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-md p-2 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+        className="relative rounded-md p-2 text-ink-600 hover:bg-ink-100 hover:text-ink-900"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -99,15 +99,15 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
+        <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-ink-200 bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
             <h3 className="text-sm font-semibold">Notifications</h3>
             {data.unread > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAll}
                 disabled={isPending}
-                className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900"
+                className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-ink-900"
               >
                 <CheckCheck className="h-3.5 w-3.5" /> Mark all read
               </button>
@@ -116,32 +116,32 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {data.notifications.length === 0 ? (
-              <div className="p-6 text-center text-sm text-zinc-500">
+              <div className="p-6 text-center text-sm text-ink-500">
                 No notifications yet.
               </div>
             ) : (
-              <ul className="divide-y divide-zinc-100">
+              <ul className="divide-y divide-ink-100">
                 {data.notifications.slice(0, 8).map((n) => {
                   const isUnread = !n.readAt
                   const content = (
-                    <div className={`group flex gap-3 px-4 py-3 hover:bg-zinc-50 ${isUnread ? 'bg-blue-50/50' : ''}`}>
+                    <div className={`group flex gap-3 px-4 py-3 hover:bg-ink-50 ${isUnread ? 'bg-blue-50/50' : ''}`}>
                       <div className="mt-1 shrink-0">
                         {isUnread ? (
                           <span className="block h-2 w-2 rounded-full bg-blue-600" />
                         ) : (
-                          <Check className="h-3 w-3 text-zinc-300" />
+                          <Check className="h-3 w-3 text-ink-300" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className={`text-sm ${isUnread ? 'font-semibold text-zinc-900' : 'text-zinc-700'}`}>
+                        <div className={`text-sm ${isUnread ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
                           {n.title}
                         </div>
                         {n.body && (
-                          <div className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
+                          <div className="mt-0.5 line-clamp-2 text-xs text-ink-500">
                             {n.body}
                           </div>
                         )}
-                        <div className="mt-1 text-[11px] text-zinc-400">
+                        <div className="mt-1 text-[11px] text-ink-400">
                           {timeAgo(n.createdAt)}
                         </div>
                       </div>
@@ -163,11 +163,11 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="border-t border-zinc-200 bg-zinc-50 px-4 py-2 text-center">
+          <div className="border-t border-ink-200 bg-ink-50 px-4 py-2 text-center">
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-zinc-700 hover:text-zinc-900"
+              className="text-xs font-medium text-ink-700 hover:text-ink-900"
             >
               View all notifications
             </Link>

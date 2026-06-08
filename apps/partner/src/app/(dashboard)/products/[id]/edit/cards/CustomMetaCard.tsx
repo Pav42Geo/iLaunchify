@@ -68,7 +68,7 @@ export function CustomMetaCard({ productTemplateId, initial, isDraft }: CustomMe
   return (
     <div className="space-y-3">
       {rows.length === 0 ? (
-        <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-500">
+        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-4 text-sm text-ink-500">
           No custom meta fields. Add up to {MAX_ROWS} key/value pairs for product attributes
           that don&apos;t fit the standard schema (e.g., bottle color, batch ID, regional SKU).
         </div>
@@ -77,7 +77,7 @@ export function CustomMetaCard({ productTemplateId, initial, isDraft }: CustomMe
           {rows.map((row, i) => (
             <li key={i} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <Label className="text-xs uppercase tracking-wider text-zinc-500">Key</Label>
+                <Label className="text-xs uppercase tracking-wider text-ink-500">Key</Label>
                 <Input
                   value={row.key}
                   onChange={(e) => update(i, 'key', e.target.value)}
@@ -87,7 +87,7 @@ export function CustomMetaCard({ productTemplateId, initial, isDraft }: CustomMe
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <Label className="text-xs uppercase tracking-wider text-zinc-500">Value</Label>
+                <Label className="text-xs uppercase tracking-wider text-ink-500">Value</Label>
                 <Input
                   value={row.value}
                   onChange={(e) => update(i, 'value', e.target.value)}
@@ -120,7 +120,7 @@ export function CustomMetaCard({ productTemplateId, initial, isDraft }: CustomMe
           </Button>
         )}
         {saveStatus !== 'idle' && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-ink-500">
             {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : '⚠ Save failed'}
           </span>
         )}

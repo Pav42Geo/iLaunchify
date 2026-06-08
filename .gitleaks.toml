@@ -1,0 +1,18 @@
+# gitleaks config — docs/SECURITY_ARCHITECTURE.md Tier 1.3 (LOCKED 2026-06-05).
+# Default ruleset + repo-specific allowlist. Runs from .husky/pre-commit
+# (`gitleaks protect --staged`) and is CI-ready for the Tier 2 SAST gate.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Repo-specific false-positive paths"
+paths = [
+  # Legacy reference tree — read-only FOD archive, never deployed. Anything
+  # secret-shaped in here is historical; the live repo is what we guard.
+  '''FOD-reference/''',
+  # Lockfile hashes trip entropy rules.
+  '''pnpm-lock\.yaml''',
+  # Generated Prisma migrations contain long identifiers, never secrets.
+  '''packages/db/prisma/migrations/''',
+]

@@ -43,7 +43,7 @@ export function PackagingStatusToggle({
         onClick={() => go('ACTIVE')}
         disabled={isPending || !hasSurfaces}
         title={lockedReason}
-        className="bg-emerald-600 hover:bg-emerald-700"
+        className="bg-ink-900 hover:bg-ink-700"
       >
         {isPending ? 'Activating…' : 'Activate'}
       </Button>

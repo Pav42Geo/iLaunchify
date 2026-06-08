@@ -32,8 +32,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 const STATUS_BADGE: Record<string, string> = {
   PENDING_REVIEW: 'bg-amber-100 text-amber-800',
   ACTIVE: 'bg-emerald-100 text-emerald-800',
-  ARCHIVED: 'bg-zinc-100 text-zinc-500',
-  DRAFT: 'bg-zinc-100 text-zinc-600',
+  ARCHIVED: 'bg-ink-100 text-ink-500',
+  DRAFT: 'bg-ink-100 text-ink-600',
 }
 
 function centsLabel(tiers: unknown): string {
@@ -73,34 +73,42 @@ export default async function AccessoriesListPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Accessories</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Branded add-ons creators can bundle onto your products — they ship with your fulfillment.
-          </p>
-        </div>
-        <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-          <Link href="/accessories/new">
-            <Plus className="mr-1.5 h-4 w-4" /> Add accessory
+      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+              Manufacturing · Accessories
+            </p>
+            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+              Accessories
+            </h1>
+            <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+              Branded add-ons creators can bundle onto your products — they ship with your
+              fulfillment.
+            </p>
+          </div>
+          <Link
+            href="/accessories/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" /> Add accessory
           </Link>
-        </Button>
-      </header>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <KpiWidget label="Total" value={total} icon={Gift} tone="ink" />
-        <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" />
-        <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" />
-        <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" />
-        <KpiWidget label="Categories" value={categories} icon={Gift} tone="info" />
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+          <KpiWidget label="Total" value={total} icon={Gift} tone="ink" />
+          <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" />
+          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" />
+          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" />
+          <KpiWidget label="Categories" value={categories} icon={Gift} tone="info" />
+        </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-300 bg-ink-50 py-14 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-            <Gift className="h-5 w-5 text-zinc-400" />
+            <Gift className="h-5 w-5 text-ink-400" />
           </span>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-ink-500">
             No accessories yet. List engraved spoons, ribbons, recipe cards and more for creators to bundle.
           </p>
           <Button asChild variant="outline">
@@ -110,10 +118,10 @@ export default async function AccessoriesListPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200">
+        <div className="overflow-x-auto rounded-xl border border-ink-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-500">
+              <tr className="border-b border-ink-200 bg-ink-50 text-left text-xs uppercase tracking-wider text-ink-500">
                 <th className="px-4 py-2.5 font-semibold">Accessory</th>
                 <th className="px-4 py-2.5 font-semibold">Category</th>
                 <th className="px-4 py-2.5 font-semibold">MOQ</th>
@@ -125,7 +133,7 @@ export default async function AccessoriesListPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/60">
+                <tr key={r.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/60">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
                       {r.imageUrl ? (
@@ -133,28 +141,28 @@ export default async function AccessoriesListPage() {
                         <img
                           src={r.imageUrl}
                           alt=""
-                          className="h-9 w-9 flex-shrink-0 rounded-md border border-zinc-200 bg-white object-cover"
+                          className="h-9 w-9 flex-shrink-0 rounded-md border border-ink-200 bg-white object-cover"
                         />
                       ) : (
-                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50">
-                          <Gift className="h-4 w-4 text-zinc-300" />
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-ink-200 bg-ink-50">
+                          <Gift className="h-4 w-4 text-ink-300" />
                         </span>
                       )}
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-zinc-900">{r.name}</div>
+                        <div className="truncate font-medium text-ink-900">{r.name}</div>
                         {r.isCustomizable && (
                           <div className="text-[11px] text-pink-700">Customizable</div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-zinc-600">{CATEGORY_LABEL[r.category] ?? r.category}</td>
-                  <td className="px-4 py-2.5 text-zinc-600">{r.moq}</td>
-                  <td className="px-4 py-2.5 text-zinc-600">{r.leadTimeDays}d</td>
-                  <td className="px-4 py-2.5 text-zinc-600">{centsLabel(r.pricingTiers)}</td>
+                  <td className="px-4 py-2.5 text-ink-600">{CATEGORY_LABEL[r.category] ?? r.category}</td>
+                  <td className="px-4 py-2.5 text-ink-600">{r.moq}</td>
+                  <td className="px-4 py-2.5 text-ink-600">{r.leadTimeDays}d</td>
+                  <td className="px-4 py-2.5 text-ink-600">{centsLabel(r.pricingTiers)}</td>
                   <td className="px-4 py-2.5">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[r.status] ?? 'bg-zinc-100 text-zinc-600'}`}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[r.status] ?? 'bg-ink-100 text-ink-600'}`}
                     >
                       {r.status.replace('_', ' ').toLowerCase()}
                     </span>

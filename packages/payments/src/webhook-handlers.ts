@@ -32,7 +32,56 @@ import { cancelProductionSubscription } from './subscriptions'
 // Structured logger for the webhook hot path — every line carries app=payments.
 const log = appLogger('payments')
 
-export async function handleStripeEvent(event: Stripe.Event): Promise<{ handled: boolean }> {
+// Tier 1.4 (docs/SECURITY_ARCHITECTURE.md): global event-id dedupe. Claim the
+// event id before dispatch; a concurrent or re-delivered duplicate loses the
+// claim race (P2002) and is skipped. If the handler THROWS, the claim is
+// released so Stripe's retry can reprocess — otherwise a transient failure
+// would permanently swallow the event. Complements the per-domain idempotency
+// checks inside each handler; does not replace them.
+async function claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
+  try {
+    await prisma.processedWebhookEvent.create({
+      data: { id: event.id, source: 'stripe', type: event.type },
+    })
+    return true
+  } catch (err) {
+    if ((err as { code?: string }).code === 'P2002') return false // already claimed
+    // Unknown DB error — process anyway: per-domain idempotency still guards,
+    // and dropping a paid-order event is worse than a rare double-dispatch.
+    log.warn('webhook.claim_failed_processing_anyway', {
+      eventId: event.id,
+      err: (err as Error).message,
+    })
+    return true
+  }
+}
+
+async function releaseWebhookClaim(eventId: string): Promise<void> {
+  try {
+    await prisma.processedWebhookEvent.delete({ where: { id: eventId } })
+  } catch {
+    // Best-effort — worst case the provider retry is skipped and the
+    // per-domain idempotency state decides.
+  }
+}
+
+export async function handleStripeEvent(
+  event: Stripe.Event,
+): Promise<{ handled: boolean; duplicate?: boolean }> {
+  const fresh = await claimWebhookEvent(event)
+  if (!fresh) {
+    log.info('webhook.duplicate_skipped', { eventId: event.id, type: event.type })
+    return { handled: false, duplicate: true }
+  }
+  try {
+    return await dispatchStripeEvent(event)
+  } catch (err) {
+    await releaseWebhookClaim(event.id)
+    throw err
+  }
+}
+
+async function dispatchStripeEvent(event: Stripe.Event): Promise<{ handled: boolean }> {
   switch (event.type) {
     case 'account.updated':
       await onAccountUpdated(event.data.object as Stripe.Account)

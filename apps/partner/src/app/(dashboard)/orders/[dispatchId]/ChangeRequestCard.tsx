@@ -62,7 +62,7 @@ export function ChangeRequestCard({ changeRequest, status }: Props) {
           <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-widest text-amber-700">
             Your note
           </p>
-          <p className="rounded border border-amber-200 bg-white p-2 text-[13px] leading-snug text-zinc-700">
+          <p className="rounded border border-amber-200 bg-white p-2 text-[13px] leading-snug text-ink-700">
             {changeRequest.partnerNote}
           </p>
         </div>
@@ -74,8 +74,8 @@ export function ChangeRequestCard({ changeRequest, status }: Props) {
             <ul className="space-y-0.5 text-[12.5px]">
               {Object.entries(changeRequest.suggestedAlternatives ?? {}).map(([k, v]) => (
                 <li key={k}>
-                  <span className="font-medium text-zinc-700">{FIELD_LABEL[k] ?? k}:</span>{' '}
-                  <span className="text-zinc-600">{v}</span>
+                  <span className="font-medium text-ink-700">{FIELD_LABEL[k] ?? k}:</span>{' '}
+                  <span className="text-ink-600">{v}</span>
                 </li>
               ))}
             </ul>

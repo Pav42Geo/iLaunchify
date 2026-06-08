@@ -12,6 +12,7 @@ import Resend from 'next-auth/providers/resend'
 import Credentials from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@ilaunchify/db'
+import { checkRateLimit } from './rate-limit'
 
 declare module 'next-auth' {
   interface Session {
@@ -103,6 +104,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   providers,
   callbacks: {
+    // Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — throttle sign-in attempts per
+    // identifier. Covers Resend magic-link request spam (each attempt sends an
+    // email) and the dev credentials provider. 10 attempts / 15 min.
+    async signIn({ user, credentials }) {
+      const identifier =
+        user?.email ??
+        (typeof credentials?.email === 'string' ? credentials.email : null)
+      if (!identifier) return true
+      const limit = await checkRateLimit({
+        scope: 'signin:id',
+        id: identifier.toLowerCase().trim(),
+        limit: 10,
+        windowSec: 15 * 60,
+      })
+      return limit.ok
+    },
     async session({ session, user, token }) {
       const userId = user?.id ?? (token?.sub as string | undefined)
       if (!userId || !session.user) return session

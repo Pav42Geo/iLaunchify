@@ -30,7 +30,7 @@ const NAV: Array<{
 export function DashboardSidebar() {
   const pathname = usePathname()
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-zinc-200 bg-white p-4 lg:block">
+    <aside className="hidden w-56 shrink-0 border-r border-ink-200 bg-white p-4 lg:block">
       <nav className="space-y-1">
         {NAV.map(({ href, label, icon: Icon, external }) => {
           const active =
@@ -39,7 +39,7 @@ export function DashboardSidebar() {
               (href !== '/dashboard' && pathname.startsWith(href)))
           const className = cn(
             'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-            active ? 'bg-zinc-100 font-medium text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50',
+            active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
           )
           if (external) {
             return (
@@ -59,7 +59,7 @@ export function DashboardSidebar() {
 
         {/* Launch Checklist trigger — opens the drawer. Lives inside the
             LaunchChecklistProvider context wrapped by (dashboard)/layout.tsx. */}
-        <div className="mt-4 border-t border-zinc-200 pt-4">
+        <div className="mt-4 border-t border-ink-200 pt-4">
           <LaunchChecklistTrigger />
         </div>
       </nav>

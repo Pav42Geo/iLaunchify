@@ -52,7 +52,7 @@ export default async function ApplicationStatusPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8">
-        <p className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
           Application status
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{partner.companyName}</h1>
@@ -67,11 +67,11 @@ export default async function ApplicationStatusPage() {
 
       {/* Per-section breakdown */}
       <section className="mt-8">
-        <h2 className="mb-3 text-base font-semibold text-zinc-900">Section-by-section</h2>
+        <h2 className="mb-3 text-base font-semibold text-ink-900">Section-by-section</h2>
         <div className="space-y-2">
           {partner.verificationSections.length === 0 ? (
             <Card>
-              <CardContent className="py-6 text-sm text-zinc-500">
+              <CardContent className="py-6 text-sm text-ink-500">
                 No verification sections yet. Go back to{' '}
                 <Link href="/onboarding" className="underline">
                   /onboarding
@@ -94,8 +94,8 @@ export default async function ApplicationStatusPage() {
       </section>
 
       {/* Next-steps CTA */}
-      <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-5">
-        <div className="text-sm text-zinc-700">
+      <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 p-5">
+        <div className="text-sm text-ink-700">
           {isActive ? (
             <>
               <span className="font-semibold text-emerald-700">✓ You&apos;re live.</span> Head
@@ -112,7 +112,7 @@ export default async function ApplicationStatusPage() {
             </>
           )}
         </div>
-        <Button asChild className={isActive ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>
+        <Button asChild className={isActive ? 'bg-ink-900 hover:bg-ink-700' : ''}>
           <Link href={isActive ? '/dashboard' : '/onboarding'}>
             {isActive ? 'Go to dashboard →' : 'Edit application'}
           </Link>
@@ -175,8 +175,8 @@ function OverallStatusBanner({
       <CardHeader className="flex-row items-start gap-3 space-y-0">
         <Clock className="mt-0.5 h-5 w-5 text-emerald-700" />
         <div className="flex-1">
-          <CardTitle className="text-zinc-900">Under review</CardTitle>
-          <p className="mt-1 text-sm text-zinc-600">
+          <CardTitle className="text-ink-900">Under review</CardTitle>
+          <p className="mt-1 text-sm text-ink-600">
             {submittedAt ? (
               <>
                 Submitted on <strong>{submittedAt.toLocaleDateString()}</strong>. Our team
@@ -220,7 +220,7 @@ function SectionRow({
         <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm font-semibold text-zinc-900">{meta.label}</div>
+            <div className="text-sm font-semibold text-ink-900">{meta.label}</div>
             <span className={`text-xs font-medium ${color}`}>{label}</span>
           </div>
           {adminNotes && (
@@ -230,7 +230,7 @@ function SectionRow({
             </div>
           )}
           {verifiedAt && (
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-ink-500">
               Verified {verifiedAt.toLocaleDateString()}
             </p>
           )}
@@ -255,6 +255,6 @@ function statusVisual(status: VerificationSectionStatus) {
       return { Icon: AlertTriangle, color: 'text-red-600', label: 'REJECTED' }
     case 'PENDING':
     default:
-      return { Icon: FileText, color: 'text-zinc-500', label: 'PENDING REVIEW' }
+      return { Icon: FileText, color: 'text-ink-500', label: 'PENDING REVIEW' }
   }
 }

@@ -144,15 +144,15 @@ export function LabelPhrasesCard({
       {/* Section 1 — Product facts */}
       <section>
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-900">Product facts</h3>
-          <p className="text-xs text-zinc-500">{labelingType.replace(/_/g, ' ')}</p>
+          <h3 className="text-sm font-semibold text-ink-900">Product facts</h3>
+          <p className="text-xs text-ink-500">{labelingType.replace(/_/g, ' ')}</p>
         </header>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-ink-500">
           Answer these facts — the platform applies the matching regulatory
           phrases automatically.
         </p>
         {factFlags.length === 0 ? (
-          <p className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+          <p className="rounded-md border border-dashed border-ink-300 bg-ink-50 px-3 py-2 text-xs text-ink-500">
             No product facts apply to this labeling type.
           </p>
         ) : (
@@ -170,7 +170,7 @@ export function LabelPhrasesCard({
                       'flex w-full items-start gap-3 rounded-md border px-3 py-2 text-left transition-colors',
                       on
                         ? 'border-pink-300 bg-pink-50'
-                        : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50',
+                        : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50',
                       !isDraft || isPending ? 'cursor-not-allowed opacity-60' : '',
                     ].join(' ')}
                   >
@@ -178,7 +178,7 @@ export function LabelPhrasesCard({
                       aria-hidden
                       className={[
                         'mt-0.5 flex h-4 w-7 flex-shrink-0 items-center rounded-full p-0.5 transition-colors',
-                        on ? 'bg-pink-500' : 'bg-zinc-300',
+                        on ? 'bg-pink-500' : 'bg-ink-300',
                       ].join(' ')}
                     >
                       <span
@@ -189,10 +189,10 @@ export function LabelPhrasesCard({
                       />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-zinc-900">
+                      <span className="block text-sm font-medium text-ink-900">
                         {flag.label}
                       </span>
-                      <span className="block text-xs text-zinc-500">{flag.help}</span>
+                      <span className="block text-xs text-ink-500">{flag.help}</span>
                     </span>
                   </button>
                 </li>
@@ -205,12 +205,12 @@ export function LabelPhrasesCard({
       {/* Section 2 — Phrases */}
       <section>
         <header className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-900">Label phrases</h3>
-          <p className="text-xs text-zinc-500">Regulatory statements for this product</p>
+          <h3 className="text-sm font-semibold text-ink-900">Label phrases</h3>
+          <p className="text-xs text-ink-500">Regulatory statements for this product</p>
         </header>
 
         {suggestions.length === 0 ? (
-          <p className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+          <p className="rounded-md border border-dashed border-ink-300 bg-ink-50 px-3 py-2 text-xs text-ink-500">
             No phrases apply yet. Answer the product facts above to trigger
             regulatory statements.
           </p>
@@ -235,32 +235,32 @@ export function LabelPhrasesCard({
 
         {/* Why these? disclosure */}
         {matchedRules.length > 0 && (
-          <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50">
+          <div className="mt-3 rounded-md border border-ink-200 bg-ink-50">
             <button
               type="button"
               onClick={() => setShowWhy((v) => !v)}
               aria-expanded={showWhy}
-              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:text-zinc-900"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-ink-700 hover:text-ink-900"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-pink-500" />
                 Why these?
               </span>
               <ChevronDown
-                className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${
+                className={`h-3.5 w-3.5 text-ink-500 transition-transform ${
                   showWhy ? 'rotate-180' : ''
                 }`}
               />
             </button>
             {showWhy && (
-              <ul className="space-y-1.5 border-t border-zinc-200 px-3 py-2 text-xs text-zinc-600">
+              <ul className="space-y-1.5 border-t border-ink-200 px-3 py-2 text-xs text-ink-600">
                 {matchedRules.map((s) => (
                   <li key={s.ruleId} className="flex items-start gap-2">
-                    <span className="mt-0.5 inline-block min-w-[2.5rem] rounded bg-white px-1 py-0.5 text-center font-mono text-[10px] font-semibold text-zinc-700 ring-1 ring-zinc-200">
+                    <span className="mt-0.5 inline-block min-w-[2.5rem] rounded bg-white px-1 py-0.5 text-center font-mono text-[10px] font-semibold text-ink-700 ring-1 ring-ink-200">
                       {s.weight}
                     </span>
                     <span>
-                      <span className="font-medium text-zinc-800">{s.title}</span>
+                      <span className="font-medium text-ink-800">{s.title}</span>
                       {' — '}
                       {s.ruleDescription}
                       {s.isLocked && (
@@ -276,7 +276,7 @@ export function LabelPhrasesCard({
       </section>
 
       {/* Footnote — explains the engine + approval-map gating to the partner */}
-      <p className="text-[11px] leading-relaxed text-zinc-500">
+      <p className="text-[11px] leading-relaxed text-ink-500">
         Mandatory phrases are auto-attached from your product facts + recipe. The
         creator&apos;s Design Studio will suggest exactly this set and flag any
         required phrase missing from the label. Editing phrases on a published
@@ -308,7 +308,7 @@ function PhraseGroup({
   if (phrases.length === 0) return null
   return (
     <div>
-      <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+      <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
         {label}
       </h4>
       <ul className="flex flex-wrap gap-1.5">
@@ -328,7 +328,7 @@ function PhraseGroup({
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
                   isSelected
                     ? 'border-pink-300 bg-pink-50 text-pink-900'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50',
+                    : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:bg-ink-50',
                   isDisabled && !isLocked ? 'cursor-not-allowed opacity-60' : '',
                 ].join(' ')}
               >

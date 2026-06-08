@@ -77,13 +77,13 @@ export function ChannelForm({
   }
 
   return (
-    <div className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6">
+    <div className="space-y-6 rounded-lg border border-ink-200 bg-white p-6">
       <div className="flex justify-end">
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Your primary channel</Label>
+        <Label className="text-sm font-medium text-ink-900">Your primary channel</Label>
         <div className="grid gap-2 sm:grid-cols-2">
           {OPTIONS.map((opt) => {
             const Icon = opt.icon
@@ -96,20 +96,20 @@ export function ChannelForm({
                 className={`flex items-start gap-3 rounded-md border p-3 text-left transition-colors ${
                   selected
                     ? 'border-emerald-500 bg-emerald-50'
-                    : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                    : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
                 <span
                   className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md ${
-                    selected ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+                    selected ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-600'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <div className="font-medium text-zinc-900">{opt.label}</div>
+                  <div className="font-medium text-ink-900">{opt.label}</div>
                   <div
-                    className="mt-0.5 text-xs text-zinc-500"
+                    className="mt-0.5 text-xs text-ink-500"
                     // Decorative apostrophe in NOT_SURE description is fine inside button
                     dangerouslySetInnerHTML={{ __html: opt.description }}
                   />
@@ -123,7 +123,7 @@ export function ChannelForm({
       {/* URL only when relevant */}
       {(channel === 'SHOPIFY' || channel === 'AMAZON' || channel === 'BRAND_SITE' || channel === 'OTHER') && (
         <div className="space-y-1.5">
-          <Label htmlFor="channelUrl" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="channelUrl" className="text-sm font-medium text-ink-900">
             Channel URL (optional)
           </Label>
           <Input
@@ -133,7 +133,7 @@ export function ChannelForm({
             onChange={(e) => setUrl(e.target.value)}
             onBlur={() => channel && commit({ channel, url })}
           />
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Just so our team can take a look — never published anywhere.
           </p>
         </div>
@@ -153,7 +153,7 @@ function SaveIndicator({
   const display = pending ? 'saving' : status
   const text = { saving: 'Saving…', saved: '✓ Saved', error: '⚠ Save failed', idle: '' }[display]
   const cls = {
-    saving: 'text-zinc-500',
+    saving: 'text-ink-500',
     saved: 'text-emerald-600',
     error: 'text-red-600',
     idle: '',

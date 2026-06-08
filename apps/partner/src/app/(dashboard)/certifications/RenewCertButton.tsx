@@ -112,8 +112,8 @@ function RenewForm({
     >
       <div className="flex items-start justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-zinc-900">Renew {certName}</h4>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <h4 className="text-sm font-semibold text-ink-900">Renew {certName}</h4>
+          <p className="mt-0.5 text-xs text-ink-500">
             Upload the new certificate. Your products keep the old badge until admin verifies
             this — then attachments move over automatically.
           </p>
@@ -122,7 +122,7 @@ function RenewForm({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="rounded-md p-1 text-zinc-400 hover:bg-white hover:text-zinc-700"
+          className="rounded-md p-1 text-ink-400 hover:bg-white hover:text-ink-700"
           disabled={isPending}
         >
           <X className="h-4 w-4" />
@@ -159,7 +159,7 @@ function RenewForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
@@ -176,23 +176,23 @@ function RenewForm({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-zinc-300 bg-white p-3 text-left hover:border-emerald-300"
+          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-ink-300 bg-white p-3 text-left hover:border-emerald-300"
           disabled={isPending}
         >
           {file ? (
             <>
               <FileText className="h-5 w-5 text-emerald-600" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-zinc-900">{file.name}</div>
-                <div className="text-xs text-zinc-500">{(file.size / 1024).toFixed(1)} KB</div>
+                <div className="truncate text-sm font-medium text-ink-900">{file.name}</div>
+                <div className="text-xs text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
               </div>
               <span className="text-xs text-emerald-700">Change</span>
             </>
           ) : (
             <>
-              <Upload className="h-5 w-5 text-zinc-400" />
-              <div className="text-sm text-zinc-600">
-                <span className="font-medium text-zinc-900">Upload PDF</span>
+              <Upload className="h-5 w-5 text-ink-400" />
+              <div className="text-sm text-ink-600">
+                <span className="font-medium text-ink-900">Upload PDF</span>
                 <span className="ml-1 text-xs">up to 20 MB</span>
               </div>
             </>
@@ -200,13 +200,13 @@ function RenewForm({
         </button>
       </Field>
 
-      <label className="flex items-start gap-2 rounded-md border border-zinc-200 bg-white p-3 text-xs text-zinc-600">
+      <label className="flex items-start gap-2 rounded-md border border-ink-200 bg-white p-3 text-xs text-ink-600">
         <input
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
           disabled={isPending}
-          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-emerald-600 focus:ring-emerald-500"
         />
         <span>{CERT_UPLOAD_CONSENT_TEXT}</span>
       </label>
@@ -224,7 +224,7 @@ function RenewForm({
         <Button
           type="submit"
           disabled={isPending || !file || !expiryDate || !consent}
-          className="bg-emerald-600 hover:bg-emerald-700"
+          className="bg-ink-900 hover:bg-ink-700"
         >
           {isPending ? 'Submitting…' : 'Submit renewal'}
         </Button>
@@ -244,7 +244,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-zinc-900">
+      <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
           <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">

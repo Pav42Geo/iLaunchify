@@ -107,10 +107,10 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-ink-200 bg-white p-6">
       {/* Name */}
       <div className="space-y-1.5">
-        <Label htmlFor="partnerName" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="partnerName" className="text-sm font-medium text-ink-900">
           Internal name <RequiredBadge />
         </Label>
         <Input
@@ -121,14 +121,14 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
           required
           disabled={isPending}
         />
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Just for you and admin — creators see a curated display name (or this as fallback).
         </p>
       </div>
 
       {/* Topology */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Topology</Label>
+        <Label className="text-sm font-medium text-ink-900">Topology</Label>
         <div className="grid gap-2 sm:grid-cols-2">
           {TOPOLOGY_OPTIONS.map((opt) => {
             const selected = state.topology === opt.value
@@ -137,15 +137,15 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 key={opt.value}
                 type="button"
                 onClick={() => patch('topology', opt.value)}
-                className={`rounded-md border p-3 text-left transition-colors ${
+                className={`rounded-xl border p-3 text-left transition-colors ${
                   selected
-                    ? 'border-emerald-500 bg-emerald-50'
-                    : 'border-zinc-200 bg-white hover:bg-zinc-50'
+                    ? 'border-ink-900 bg-ink-900/[0.04] ring-1 ring-ink-900'
+                    : 'border-ink-200 bg-white hover:border-ink-400'
                 }`}
                 disabled={isPending}
               >
-                <div className="font-medium text-zinc-900">{opt.label}</div>
-                <div className="mt-0.5 text-xs text-zinc-500">{opt.hint}</div>
+                <div className="font-medium text-ink-900">{opt.label}</div>
+                <div className="mt-0.5 text-xs text-ink-500">{opt.hint}</div>
               </button>
             )
           })}
@@ -155,7 +155,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
       {/* Unit count + MOQ */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="unitCount" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="unitCount" className="text-sm font-medium text-ink-900">
             Units per pack
           </Label>
           <Input
@@ -166,12 +166,12 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             onChange={(e) => patch('unitCount', e.target.value)}
             disabled={isPending}
           />
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             How many inner containers ship as one packaging unit (1 for a single jar).
           </p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="moq" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="moq" className="text-sm font-medium text-ink-900">
             MOQ (units)
           </Label>
           <Input
@@ -182,18 +182,18 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             onChange={(e) => patch('moq', e.target.value)}
             disabled={isPending}
           />
-          <p className="text-xs text-zinc-500">Minimum order quantity for a single creator batch.</p>
+          <p className="text-xs text-ink-500">Minimum order quantity for a single creator batch.</p>
         </div>
       </div>
 
       {/* Flavor mode + policy */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-zinc-900">Flavor mode</Label>
+          <Label className="text-sm font-medium text-ink-900">Flavor mode</Label>
           {FLAVOR_MODE_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className="flex items-start gap-2 rounded-md border border-zinc-200 p-2 text-sm transition-colors hover:bg-zinc-50"
+              className="flex items-start gap-2 rounded-md border border-ink-200 p-2 text-sm transition-colors hover:bg-ink-50"
             >
               <input
                 type="radio"
@@ -203,18 +203,18 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 className="mt-1"
               />
               <div>
-                <div className="font-medium text-zinc-900">{opt.label}</div>
-                <div className="text-xs text-zinc-500">{opt.hint}</div>
+                <div className="font-medium text-ink-900">{opt.label}</div>
+                <div className="text-xs text-ink-500">{opt.hint}</div>
               </div>
             </label>
           ))}
         </div>
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-zinc-900">Flavor policy</Label>
+          <Label className="text-sm font-medium text-ink-900">Flavor policy</Label>
           {FLAVOR_POLICY_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className="flex items-start gap-2 rounded-md border border-zinc-200 p-2 text-sm transition-colors hover:bg-zinc-50"
+              className="flex items-start gap-2 rounded-md border border-ink-200 p-2 text-sm transition-colors hover:bg-ink-50"
             >
               <input
                 type="radio"
@@ -224,8 +224,8 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 className="mt-1"
               />
               <div>
-                <div className="font-medium text-zinc-900">{opt.label}</div>
-                <div className="text-xs text-zinc-500">{opt.hint}</div>
+                <div className="font-medium text-ink-900">{opt.label}</div>
+                <div className="text-xs text-ink-500">{opt.hint}</div>
               </div>
             </label>
           ))}
@@ -234,7 +234,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
 
       {/* Dimensions */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Dimensions (mm, optional)</Label>
+        <Label className="text-sm font-medium text-ink-900">Dimensions (mm, optional)</Label>
         <div className="grid grid-cols-3 gap-3">
           <Input
             type="number"
@@ -261,12 +261,12 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             disabled={isPending}
           />
         </div>
-        <p className="text-xs text-zinc-500">Used for shipping calculations and label dimension fit.</p>
+        <p className="text-xs text-ink-500">Used for shipping calculations and label dimension fit.</p>
       </div>
 
       {/* Max weight */}
       <div className="space-y-1.5">
-        <Label htmlFor="maxWeightG" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="maxWeightG" className="text-sm font-medium text-ink-900">
           Max contents weight (grams, optional)
         </Label>
         <Input
@@ -286,7 +286,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={isPending} className="bg-ink-900 hover:bg-ink-700">
           {isPending ? 'Saving…' : mode === 'create' ? 'Create packaging' : 'Save changes'}
         </Button>
       </div>

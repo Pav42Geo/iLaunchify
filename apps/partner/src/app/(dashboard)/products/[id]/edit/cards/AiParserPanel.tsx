@@ -108,9 +108,9 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
       <div className="space-y-3 rounded-md border border-pink-200 bg-pink-50/40 p-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-pink-600" />
-          <span className="text-sm font-semibold text-zinc-900">Parse with AI</span>
+          <span className="text-sm font-semibold text-ink-900">Parse with AI</span>
         </div>
-        <p className="text-[12px] text-zinc-500">
+        <p className="text-[12px] text-ink-500">
           Paste your recipe or ingredient statement. We match each line against USDA,
           the curated library, and your private ingredients — you review before anything
           is added.
@@ -122,24 +122,24 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
             rows={6}
             placeholder={'INGREDIENTS: Water, cane sugar, citric acid, natural flavor, sodium benzoate.'}
             disabled={isExtracting}
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
           />
           <div className="flex flex-col gap-2">
             <div
               title="PDF upload — coming in v1.1"
-              className="flex cursor-not-allowed items-center gap-2 rounded-md border border-dashed border-zinc-200 bg-white/60 px-2.5 py-2 text-[11px] text-zinc-400"
+              className="flex cursor-not-allowed items-center gap-2 rounded-md border border-dashed border-ink-200 bg-white/60 px-2.5 py-2 text-[11px] text-ink-400"
             >
               <FileUp className="h-3.5 w-3.5" /> Drop a PDF
-              <span className="ml-auto rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase">
+              <span className="ml-auto rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase">
                 v1.1
               </span>
             </div>
             <div
               title="Photo capture — coming in v1.2"
-              className="flex cursor-not-allowed items-center gap-2 rounded-md border border-dashed border-zinc-200 bg-white/60 px-2.5 py-2 text-[11px] text-zinc-400"
+              className="flex cursor-not-allowed items-center gap-2 rounded-md border border-dashed border-ink-200 bg-white/60 px-2.5 py-2 text-[11px] text-ink-400"
             >
               <Camera className="h-3.5 w-3.5" /> Snap a label
-              <span className="ml-auto rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase">
+              <span className="ml-auto rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase">
                 v1.2
               </span>
             </div>
@@ -153,7 +153,7 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
             size="sm"
             onClick={handleExtract}
             disabled={isExtracting || !rawText.trim()}
-            className="bg-zinc-900 text-white hover:bg-zinc-800"
+            className="bg-ink-900 text-white hover:bg-ink-700"
           >
             {isExtracting ? (
               <>
@@ -181,11 +181,11 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
         <button
           type="button"
           onClick={() => setStep('input')}
-          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
+          className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to paste
         </button>
-        <span className="text-[12px] text-zinc-500">
+        <span className="text-[12px] text-ink-500">
           {lines.length} line{lines.length === 1 ? '' : 's'} · {highConfidence} high-confidence ·{' '}
           {toChoose} to review{blocked > 0 ? ` · ${blocked} blocked` : ''}
         </span>
@@ -197,9 +197,9 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
         ))}
       </ul>
 
-      <div className="flex items-center justify-between gap-2 border-t border-zinc-100 pt-3">
-        <span className="text-[12px] text-zinc-500">
-          Ready to write <strong className="text-zinc-900">{committable.length}</strong> slot
+      <div className="flex items-center justify-between gap-2 border-t border-ink-100 pt-3">
+        <span className="text-[12px] text-ink-500">
+          Ready to write <strong className="text-ink-900">{committable.length}</strong> slot
           {committable.length === 1 ? '' : 's'}
         </span>
         <div className="flex gap-2">
@@ -210,7 +210,7 @@ export function AiParserPanel({ productTemplateId, onCommitted, onCancel }: AiPa
             size="sm"
             onClick={handleCommit}
             disabled={isCommitting || committable.length === 0}
-            className="bg-zinc-900 text-white hover:bg-zinc-800"
+            className="bg-ink-900 text-white hover:bg-ink-700"
           >
             {isCommitting ? (
               <>
@@ -244,7 +244,7 @@ function ReviewRow({
           ? 'border-red-200 bg-red-50/50'
           : line.needsReview
             ? 'border-amber-200 bg-amber-50/40'
-            : 'border-zinc-200 bg-white')
+            : 'border-ink-200 bg-white')
       }
     >
       <div className="flex items-start gap-2.5">
@@ -259,7 +259,7 @@ function ReviewRow({
             'mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border ' +
             (line.accepted
               ? 'border-emerald-500 bg-emerald-500 text-white'
-              : 'border-zinc-300 bg-white text-transparent') +
+              : 'border-ink-300 bg-white text-transparent') +
             (noMatch || banned ? ' cursor-not-allowed opacity-40' : ' hover:border-emerald-400')
           }
         >
@@ -267,15 +267,15 @@ function ReviewRow({
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] text-zinc-700">
-            <span className="text-zinc-400">“</span>
+          <div className="truncate text-[13px] text-ink-700">
+            <span className="text-ink-400">“</span>
             {line.rawText}
-            <span className="text-zinc-400">”</span>
+            <span className="text-ink-400">”</span>
           </div>
 
           {line.match ? (
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="text-[13px] font-medium text-zinc-900">{line.match.name}</span>
+              <span className="text-[13px] font-medium text-ink-900">{line.match.name}</span>
               <SourcePill source={line.match.source} />
               <ConfidenceBadge value={line.match.confidence} />
             </div>
@@ -291,7 +291,7 @@ function ReviewRow({
               {REVIEW_REASON_LABEL[line.reviewReason]}
             </div>
           )}
-          {line.notes && <div className="mt-0.5 text-[11px] text-zinc-500">{line.notes}</div>}
+          {line.notes && <div className="mt-0.5 text-[11px] text-ink-500">{line.notes}</div>}
         </div>
 
         {/* Weight (grams) — editable, only when there's a match to accept. */}
@@ -306,7 +306,7 @@ function ReviewRow({
               placeholder="g"
               className="w-20"
             />
-            <span className="text-[11px] text-zinc-400">g</span>
+            <span className="text-[11px] text-ink-400">g</span>
           </div>
         )}
       </div>
@@ -321,7 +321,7 @@ function SourcePill({ source }: { source: string }) {
       ? 'bg-blue-50 text-blue-700 border-blue-200'
       : source === 'LIBRARY'
         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-        : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+        : 'bg-ink-100 text-ink-700 border-ink-200'
   return (
     <span
       className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${cls}`}
@@ -338,7 +338,7 @@ function ConfidenceBadge({ value }: { value: number }) {
       ? 'bg-emerald-100 text-emerald-800'
       : value >= 0.7
         ? 'bg-amber-100 text-amber-800'
-        : 'bg-zinc-200 text-zinc-700'
+        : 'bg-ink-200 text-ink-700'
   return (
     <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${cls}`}>{pct}%</span>
   )

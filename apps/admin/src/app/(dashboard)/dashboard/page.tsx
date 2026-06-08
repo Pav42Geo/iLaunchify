@@ -43,6 +43,7 @@ import {
   AlertTriangle,
   History,
 } from 'lucide-react'
+import { SecuritySnapshot } from './widgets/SecuritySnapshot'
 import {
   loadReachKpis,
   loadInboxQueue,
@@ -162,6 +163,9 @@ export default async function AdminDashboardPage() {
           span={2}
         />
       </section>
+
+      {/* Row 1b — Security snapshot (Pavel 2026-06-05) — deep-links /security */}
+      <SecuritySnapshot />
 
       {/* Row 2 — Operations health (3 widgets across 12-col grid) */}
       <section

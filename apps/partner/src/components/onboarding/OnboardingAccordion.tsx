@@ -121,16 +121,16 @@ export function OnboardingAccordion({
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Welcome, {companyName}</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           Complete these sections so we can verify your account. You can save your progress
           and return any time.
         </p>
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+          <div className="flex items-center justify-between text-xs text-ink-500">
             <span>Progress</span>
             <span>{progressPct}%</span>
           </div>
-          <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-200">
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-ink-200">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all"
               style={{ width: `${progressPct}%` }}
@@ -221,13 +221,13 @@ export function OnboardingAccordion({
         )}
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Your progress saves automatically. You can leave and come back any time.
           </p>
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-ink-900 hover:bg-ink-700"
             title={canSubmit ? undefined : 'Complete all 4 sections to submit'}
           >
             {isSubmitting ? 'Submitting…' : 'Submit for review →'}

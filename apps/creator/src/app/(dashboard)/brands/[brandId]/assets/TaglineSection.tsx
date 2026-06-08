@@ -34,11 +34,11 @@ export function TaglineSection({ brandId, initial }: Props) {
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6">
+    <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-zinc-900">Tagline</h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
+          <h2 className="text-base font-semibold text-ink-900">Tagline</h2>
+          <p className="mt-0.5 text-sm text-ink-500">
             Short brand line. Can be dropped onto the label as a pre-filled text element from
             the Design Studio canvas.
           </p>
@@ -59,7 +59,7 @@ export function TaglineSection({ brandId, initial }: Props) {
         disabled={isPending}
         className="text-lg"
       />
-      <p className="mt-1 text-[11px] text-zinc-400">{tagline.length} / 120</p>
+      <p className="mt-1 text-[11px] text-ink-400">{tagline.length} / 120</p>
     </section>
   )
 }
@@ -73,6 +73,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-zinc-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
 
+    # Shared bearer token for service-to-service auth (Next.js apps → this
+    # service). Required outside development — /v1 routes return 503 without
+    # it (see app/security.py). Must match COMPLIANCE_SERVICE_TOKEN in the
+    # apps' env. docs/SECURITY_ARCHITECTURE.md Tier 0.4.
+    service_token: str = ""
+
     # Path to rule pack JSON files. Defaults to the bundled directory.
     rule_packs_dir: Path = Path(__file__).parent / "rule_packs"
 

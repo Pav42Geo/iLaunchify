@@ -56,7 +56,7 @@ export function SubmitReadiness({
       <CardContent className="space-y-3">
         {/* Progress bar */}
         <div
-          className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
@@ -77,7 +77,7 @@ export function SubmitReadiness({
               <button
                 type="button"
                 onClick={() => onJump(c.cardKey)}
-                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
                 title="Jump to section"
               >
                 {c.done ? (
@@ -91,9 +91,9 @@ export function SubmitReadiness({
                     aria-hidden="true"
                   />
                 ) : (
-                  <Circle className="h-3.5 w-3.5 flex-shrink-0 text-zinc-300" aria-hidden="true" />
+                  <Circle className="h-3.5 w-3.5 flex-shrink-0 text-ink-300" aria-hidden="true" />
                 )}
-                <span className={c.done ? 'text-zinc-400 line-through' : 'text-zinc-700'}>
+                <span className={c.done ? 'text-ink-400 line-through' : 'text-ink-700'}>
                   {c.label}
                 </span>
                 {c.required && !c.done && (

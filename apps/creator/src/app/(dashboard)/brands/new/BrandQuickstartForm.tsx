@@ -67,11 +67,11 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-zinc-200 bg-white p-6">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-ink-200 bg-white p-6">
       {/* Brand name + handle */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="name" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="name" className="text-sm font-medium text-ink-900">
             Brand name <RequiredBadge />
           </Label>
           <Input
@@ -84,11 +84,11 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="handle" className="text-sm font-medium text-zinc-900">
+          <Label htmlFor="handle" className="text-sm font-medium text-ink-900">
             Handle <RequiredBadge />
           </Label>
-          <div className="flex items-stretch overflow-hidden rounded-md border border-zinc-300">
-            <span className="flex items-center bg-zinc-50 px-3 text-xs text-zinc-500">
+          <div className="flex items-stretch overflow-hidden rounded-md border border-ink-300">
+            <span className="flex items-center bg-ink-50 px-3 text-xs text-ink-500">
               ilaunchify.com/
             </span>
             <input
@@ -104,7 +104,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
               disabled={isPending}
             />
           </div>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Lowercase letters, numbers, and dashes. Used in URLs.
           </p>
         </div>
@@ -112,7 +112,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
 
       {/* Tagline */}
       <div className="space-y-1.5">
-        <Label htmlFor="tagline" className="text-sm font-medium text-zinc-900">
+        <Label htmlFor="tagline" className="text-sm font-medium text-ink-900">
           Tagline (optional)
         </Label>
         <Input
@@ -127,13 +127,13 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
 
       {/* Primary color */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Primary color</Label>
+        <Label className="text-sm font-medium text-ink-900">Primary color</Label>
         <div className="flex flex-wrap items-center gap-3">
           <input
             type="color"
             value={colorPrimary}
             onChange={(e) => setColorPrimary(e.target.value)}
-            className="h-10 w-14 cursor-pointer rounded border border-zinc-300 bg-white"
+            className="h-10 w-14 cursor-pointer rounded border border-ink-300 bg-white"
             disabled={isPending}
             aria-label="Pick primary color"
           />
@@ -150,7 +150,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
                 key={c}
                 type="button"
                 onClick={() => setColorPrimary(c)}
-                className="h-7 w-7 rounded-md border-2 border-zinc-200 transition-transform hover:scale-110"
+                className="h-7 w-7 rounded-md border-2 border-ink-200 transition-transform hover:scale-110"
                 style={{ backgroundColor: c }}
                 aria-label={`Use ${c}`}
                 disabled={isPending}
@@ -158,14 +158,14 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
             ))}
           </div>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Surfaces in the Design Studio canvas color pickers. Add more swatches later in Brand Assets.
         </p>
       </div>
 
       {/* Logo */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-zinc-900">Logo (optional)</Label>
+        <Label className="text-sm font-medium text-ink-900">Logo (optional)</Label>
         <input
           ref={fileInputRef}
           type="file"
@@ -177,29 +177,29 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-zinc-300 bg-zinc-50 p-4 text-left hover:border-zinc-400"
+          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-ink-300 bg-ink-50 p-4 text-left hover:border-ink-400"
           disabled={isPending}
         >
           {logo ? (
             <>
               <FileImage className="h-5 w-5 text-emerald-600" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-zinc-900">{logo.name}</div>
-                <div className="text-xs text-zinc-500">{(logo.size / 1024).toFixed(1)} KB</div>
+                <div className="truncate text-sm font-medium text-ink-900">{logo.name}</div>
+                <div className="text-xs text-ink-500">{(logo.size / 1024).toFixed(1)} KB</div>
               </div>
               <span className="text-xs text-emerald-700">Click to change</span>
             </>
           ) : (
             <>
-              <Upload className="h-5 w-5 text-zinc-400" />
-              <div className="text-sm text-zinc-600">
-                <span className="font-medium text-zinc-900">Upload primary logo</span>
+              <Upload className="h-5 w-5 text-ink-400" />
+              <div className="text-sm text-ink-600">
+                <span className="font-medium text-ink-900">Upload primary logo</span>
                 <span className="ml-1 text-xs">PNG, JPEG, WebP, SVG · up to 5 MB</span>
               </div>
             </>
           )}
         </button>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-ink-500">
           Add icon and horizontal logo variants later in Brand Assets.
         </p>
       </div>
@@ -211,7 +211,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={isPending} className="bg-ink-900 hover:bg-ink-700">
           {isPending ? 'Creating brand…' : 'Create brand'}
         </Button>
       </div>

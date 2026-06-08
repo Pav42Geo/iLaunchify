@@ -253,24 +253,24 @@ export function CustomizePanel({
             {slots.map((slot) => {
               const isLocked = !slot.allowReplacement || slot.replacements.length === 0
               return (
-                <div key={slot.id} className="rounded-md border border-zinc-200 p-3">
+                <div key={slot.id} className="rounded-md border border-ink-200 p-3">
                   <div className="flex items-baseline justify-between">
                     <Label className="text-sm">
                       {slot.label}{' '}
-                      <span className="text-xs text-zinc-500">({slot.weightG}g)</span>
+                      <span className="text-xs text-ink-500">({slot.weightG}g)</span>
                     </Label>
                     {isLocked && (
-                      <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                      <span className="inline-flex items-center gap-1 text-xs text-ink-500">
                         <Lock className="h-3 w-3" />
                         Locked
                       </span>
                     )}
                   </div>
                   {slot.description && (
-                    <p className="mt-1 mb-2 text-xs text-zinc-600">{slot.description}</p>
+                    <p className="mt-1 mb-2 text-xs text-ink-600">{slot.description}</p>
                   )}
                   {isLocked ? (
-                    <div className="rounded bg-zinc-50 px-3 py-2 text-sm">
+                    <div className="rounded bg-ink-50 px-3 py-2 text-sm">
                       {slot.base.name}
                     </div>
                   ) : (
@@ -289,7 +289,7 @@ export function CustomizePanel({
                           <SelectItem key={r.id} value={r.ingredientId}>
                             {r.name}
                             {r.calloutText && (
-                              <span className="ml-2 text-xs text-zinc-500">{r.calloutText}</span>
+                              <span className="ml-2 text-xs text-ink-500">{r.calloutText}</span>
                             )}
                           </SelectItem>
                         ))}
@@ -315,7 +315,7 @@ export function CustomizePanel({
               {optionals.map((opt) => (
                 <label
                   key={opt.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-zinc-200 p-3 hover:bg-zinc-50"
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-ink-200 p-3 hover:bg-ink-50"
                 >
                   <input
                     type="checkbox"
@@ -327,10 +327,10 @@ export function CustomizePanel({
                   />
                   <div className="flex-1">
                     <div className="text-sm font-medium">
-                      {opt.name} <span className="text-xs text-zinc-500">+{opt.weightG}g</span>
+                      {opt.name} <span className="text-xs text-ink-500">+{opt.weightG}g</span>
                     </div>
                     {opt.calloutText && (
-                      <div className="mt-0.5 text-xs text-zinc-600">{opt.calloutText}</div>
+                      <div className="mt-0.5 text-xs text-ink-600">{opt.calloutText}</div>
                     )}
                   </div>
                 </label>
@@ -362,7 +362,7 @@ export function CustomizePanel({
             {livePanel ? (
               <NutritionFactsRenderer data={livePanel} widthPx={280} />
             ) : (
-              <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-zinc-300 text-sm text-zinc-500">
+              <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-ink-300 text-sm text-ink-500">
                 Configure at least one ingredient.
               </div>
             )}

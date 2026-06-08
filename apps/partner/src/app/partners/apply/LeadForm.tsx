@@ -132,7 +132,7 @@ export function LeadForm({ defaultServiceType }: { defaultServiceType: LeadValue
       >
         <textarea
           id="successDescription"
-          className="flex min-h-[100px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+          className="flex min-h-[100px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           {...form.register('successDescription')}
           disabled={busy}
         />
@@ -162,7 +162,7 @@ function Field({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
