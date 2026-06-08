@@ -98,6 +98,8 @@ export const AUDIT_ACTIONS = [
   'ORDER_CREATED',
   'ORDER_PAID',
   'ORDER_CANCELLED',
+  // Restricted-category eligibility gate (labeling ≠ licensing)
+  'ORDER_BLOCKED_RESTRICTED',
   // B.4 — order cancellation paths (locked 2026-05-19)
   'CANCELLATION_REQUESTED',
   'CANCELLATION_APPROVED',

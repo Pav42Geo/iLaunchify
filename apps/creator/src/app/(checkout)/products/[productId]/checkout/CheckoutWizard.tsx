@@ -60,6 +60,8 @@ import { placeOrderFromCheckoutDraft } from './cart-actions'
 import { applyOrderAdjustment } from './adjust-actions'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
+import { RestrictedProductNotice } from './RestrictedProductNotice'
+import type { RestrictionHit } from '@ilaunchify/marketplace'
 
 interface Props {
   productId: string
@@ -80,6 +82,9 @@ interface Props {
   // R16.a — server-resolved Subscribe & save gate via @ilaunchify/plans'
   // hasFeature() lookup, so the toggle is data-driven and admin-editable.
   subscribeAndSaveEnabled: boolean
+  // Restricted-category eligibility hits (labeling ≠ licensing). Non-empty →
+  // notice banner + Pay disabled. The server action hard-blocks regardless.
+  restrictions: RestrictionHit[]
 }
 
 export function CheckoutWizard({
@@ -97,8 +102,10 @@ export function CheckoutWizard({
   headerHasUnreadNotifications,
   creatorTier,
   subscribeAndSaveEnabled,
+  restrictions,
 }: Props) {
   const router = useRouter()
+  const isRestricted = restrictions.length > 0
   const [state, setState] = useState<CheckoutDraftState>(initialState)
   const [currentStep, setCurrentStep] = useState<WizardStepIndex>(initialStep)
   const [completedSteps, setCompletedSteps] = useState<WizardStepIndex[]>(
@@ -117,6 +124,12 @@ export function CheckoutWizard({
   const [isPaying, startPaying] = useTransition()
 
   function placeOrder() {
+    if (isRestricted) {
+      toast.error(
+        'This product is in a restricted category iLaunchify doesn’t support yet.',
+      )
+      return
+    }
     const ready = isReadyToPay(state)
     if (!ready.ok) {
       toast.error(ready.error)
@@ -366,6 +379,14 @@ export function CheckoutWizard({
         </div>
       </header>
 
+      {/* Restricted-category notice — spans both columns above the wizard so
+          it's the first thing the creator sees (labeling ≠ licensing). */}
+      {isRestricted && (
+        <div className="mx-auto max-w-6xl px-6 pt-6">
+          <RestrictedProductNotice restrictions={restrictions} />
+        </div>
+      )}
+
       {/* Body */}
       <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1fr,340px]">
         {/* Active step */}
@@ -443,6 +464,7 @@ export function CheckoutWizard({
             <PlaceOrderCard
               isPaying={isPaying}
               isAdjustment={isAdjustment}
+              isRestricted={isRestricted}
               onPlaceOrder={placeOrder}
             />
           )}
@@ -675,10 +697,12 @@ function ActionsCard({
 function PlaceOrderCard({
   isPaying,
   isAdjustment,
+  isRestricted,
   onPlaceOrder,
 }: {
   isPaying: boolean
   isAdjustment: boolean
+  isRestricted: boolean
   onPlaceOrder: () => void
 }) {
   return (
@@ -686,10 +710,12 @@ function PlaceOrderCard({
       <button
         type="button"
         onClick={onPlaceOrder}
-        disabled={isPaying}
+        disabled={isPaying || isRestricted}
         className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
       >
-        {isPaying ? (
+        {isRestricted ? (
+          'Ordering unavailable'
+        ) : isPaying ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
             {isAdjustment ? 'Resubmitting…' : 'Handing off to Stripe…'}

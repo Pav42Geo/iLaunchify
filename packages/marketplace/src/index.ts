@@ -30,6 +30,15 @@ export { recordPhraseAssignment } from './recordPhraseAssignment'
 export { PHRASE_FACT_FLAGS, PHRASE_FACT_KEYS } from './phraseFacts'
 export type { PhraseFactFlag } from './phraseFacts'
 
+// Restricted-category eligibility evaluator (labeling ≠ licensing).
+export { evaluateProductRestrictions, RESTRICTED_RULES } from './evaluateRestrictions'
+export type {
+  RestrictedRule,
+  RestrictedRuleMatch,
+  RestrictionInput,
+  RestrictionHit,
+} from './evaluateRestrictions'
+
 export type {
   NicheSuggestion,
   SuggestNichesInput,

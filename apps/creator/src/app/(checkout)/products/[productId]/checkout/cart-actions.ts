@@ -27,6 +27,7 @@ import {
 } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { CheckoutDraftState } from './types'
+import { checkProductRestrictions } from './restriction-actions'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -63,6 +64,38 @@ export async function placeOrderFromCheckoutDraft(
     },
   })
   if (!product) return { ok: false, error: 'Product not found.' }
+
+  // --- 1b. Restricted-category HARD GATE (labeling ≠ licensing) --------------
+  //         Block the order outright when the product trips a restricted
+  //         category we don't support (alcohol / hemp-CBD / tobacco-nicotine /
+  //         OTC drug / kratom). This is the server-side enforcement: the
+  //         checkout UI also disables Pay, but a creator who bypasses that
+  //         still cannot place the order here.
+  const restrictions = await checkProductRestrictions(productId)
+  if (restrictions.length > 0) {
+    await logAuditAs(user, {
+      entityType: 'Product',
+      entityId: product.id,
+      action: 'ORDER_BLOCKED_RESTRICTED',
+      payload: {
+        brandId: product.brandId,
+        productId: product.id,
+        restrictions: restrictions.map((r) => ({
+          code: r.code,
+          matchedBy: r.matchedBy,
+          evidence: r.evidence,
+        })),
+        surface: 'checkout-wizard',
+      },
+    })
+    const labels = restrictions.map((r) => r.label).join(', ')
+    return {
+      ok: false,
+      error:
+        `This product can't be ordered: ${labels}. These categories require licensing ` +
+        `iLaunchify doesn't support yet. This is not legal advice.`,
+    }
+  }
 
   const draft = await prisma.checkoutDraft.findUnique({
     where: { creatorUserId_productId: { creatorUserId: user.id, productId } },

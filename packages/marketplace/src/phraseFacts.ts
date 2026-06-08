@@ -105,6 +105,18 @@ export const PHRASE_FACT_FLAGS: PhraseFactFlag[] = [
     labelingTypes: ['BEVERAGE', 'FOOD'],
   },
   {
+    key: 'isHempCbd',
+    label: 'Contains hemp extract / CBD',
+    help: 'Hemp-extract or CBD/cannabinoid content (NOT hemp-seed foods). Restricted — gates the product out of checkout.',
+    labelingTypes: ['FOOD', 'BEVERAGE', 'DIETARY_SUPPLEMENT', 'COSMETIC'],
+  },
+  {
+    key: 'isTobaccoNicotine',
+    label: 'Contains tobacco / nicotine',
+    help: 'Tobacco or nicotine content (FDA Center for Tobacco Products). Restricted — gates the product out of checkout.',
+    labelingTypes: ['FOOD', 'BEVERAGE', 'DIETARY_SUPPLEMENT'],
+  },
+  {
     key: 'isProfessionalUseOnly',
     label: 'Professional-use only (cosmetic)',
     help: 'Triggers the MoCRA professional-use statement.',

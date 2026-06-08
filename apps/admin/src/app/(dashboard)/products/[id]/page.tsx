@@ -58,7 +58,11 @@ import type {
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
-import { suggestNiches, suggestPhrases } from '@ilaunchify/marketplace'
+import {
+  suggestNiches,
+  suggestPhrases,
+  evaluateProductRestrictions,
+} from '@ilaunchify/marketplace'
 import { ProductReviewer } from './ProductReviewer'
 import { MarketplacePlacementPanel } from './MarketplacePlacementPanel'
 import type {
@@ -261,6 +265,17 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     },
   })
   if (!template) notFound()
+
+  // Restricted-category eligibility (labeling ≠ licensing). Read-only signal so
+  // ops can see why a product would be blocked at checkout. Evaluates the
+  // template's labelingType + manufacturer phraseFacts + base ingredient names.
+  const restrictionHits = evaluateProductRestrictions({
+    labelingType: template.labelingType,
+    phraseFacts: (template.phraseFacts ?? null) as Record<string, unknown> | null,
+    ingredientNames: template.ingredientSlots.map(
+      (s) => s.baseIngredient.internalName || s.baseIngredient.name,
+    ),
+  })
 
   // -------------------------------------------------------------------------
   // Cross-cutting lookups — banned-ingredient dictionary + per-slot usage
@@ -718,17 +733,28 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             </p>
           </div>
 
-          <span
-            className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider',
-              tone.bg,
-              tone.text,
-              tone.border,
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {restrictionHits.length > 0 && (
+              <span
+                title={restrictionHits.map((r) => r.label).join(', ')}
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider text-red-700"
+              >
+                <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                Restricted · {restrictionHits.map((r) => r.label).join(', ')}
+              </span>
             )}
-          >
-            <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
-            {statusLabel}
-          </span>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider',
+                tone.bg,
+                tone.text,
+                tone.border,
+              )}
+            >
+              <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
+              {statusLabel}
+            </span>
+          </div>
         </div>
 
         {/* 6-card KPI strip */}

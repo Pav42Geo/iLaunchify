@@ -18,6 +18,7 @@ import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify
 import { CheckoutWizard } from './CheckoutWizard'
 import { loadCheckoutDraft } from './actions'
 import { loadReviewSnapshot } from './review-actions'
+import { checkProductRestrictions } from './restriction-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +81,10 @@ export default async function CheckoutPage({ params }: PageProps) {
     getCreatorTier(user.id),
   ])
 
+  // Restricted-category eligibility (labeling ≠ licensing). When non-empty the
+  // wizard shows the notice + disables Pay; the server action hard-blocks too.
+  const restrictions = await checkProductRestrictions(productId)
+
   // R16.a — Subscribe & save now resolves through the data-driven plans
   // layer. The plan code is derived from the creator's tier; if no plan
   // row exists (seed hasn't run) the feature fails-closed.
@@ -121,6 +126,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       headerHasUnreadNotifications={unreadCount > 0}
       creatorTier={creatorTier}
       subscribeAndSaveEnabled={subscribeAndSaveEnabled}
+      restrictions={restrictions}
     />
   )
 }
