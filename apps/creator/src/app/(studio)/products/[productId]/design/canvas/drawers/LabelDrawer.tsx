@@ -15,7 +15,7 @@
 // snapped to the bound recipe on PDF generation.
 
 import * as React from 'react'
-import { Plus, Check, Target, ShieldCheck, Trash2 } from 'lucide-react'
+import { Plus, Check, Target, ShieldCheck, Trash2, Lock } from 'lucide-react'
 import {
   addNutritionFactsPanel,
   addAggregateNutritionPanel,
@@ -120,6 +120,18 @@ export function LabelDrawer({
           ? 'Drug Facts'
           : 'Nutrition Facts'
   const panelOnCanvas = !!canvasRoles.findPanel(panelType)
+  // Human-readable labeling regime — shown in the locked banner so the creator
+  // can SEE which Facts panel their product type requires (never a free choice).
+  const regimeLabel =
+    labelingType === 'DIETARY_SUPPLEMENT'
+      ? 'Dietary supplement'
+      : labelingType === 'PET_PRODUCT'
+        ? 'Pet product'
+        : labelingType === 'OTC'
+          ? 'OTC drug'
+          : labelingType === 'COSMETIC'
+            ? 'Cosmetic'
+            : 'Food'
 
   async function handleAdd() {
     if (!canvas) return
@@ -305,6 +317,17 @@ export function LabelDrawer({
 
   return (
     <div className="space-y-5">
+      {/* Locked regime banner — the facts panel is fixed by the product's
+          labeling type so a Supplement can never show Nutrition Facts. */}
+      <div className="flex items-start gap-1.5 rounded-md border border-ink-200 bg-ink-50/60 px-2.5 py-2 text-[12px] leading-[1.45] text-ink-600">
+        <Lock className="mt-0.5 h-3 w-3 shrink-0 text-ink-400" />
+        <span>
+          <b className="text-ink-800">{regimeLabel}</b> product — required panel is{' '}
+          <b className="text-ink-800">{panelLabel}</b>, set by the labeling type.
+          <InfoTip text="The facts panel is determined by this product's regulatory labeling type (from its category / manufacturer template) — not a manual choice — so the wrong panel can't be shipped (e.g. Nutrition Facts on a supplement). Only the layout Format below is selectable." />
+        </span>
+      </div>
+
       {/* Facts panel — branched by labeling type, and a toggle: once it's on the
           artboard, the same button removes it. */}
       {panelOnCanvas ? (

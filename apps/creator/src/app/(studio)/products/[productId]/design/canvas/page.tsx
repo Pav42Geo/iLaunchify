@@ -11,6 +11,7 @@
 
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
+import type { LabelingType } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
 import {
@@ -165,13 +166,20 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
     variant: product.variant,
   })
 
+  // The product's labeling REGIME drives which Facts panel + which label formats
+  // the Studio offers (Nutrition vs Supplement vs Drug vs AAFCO) — it is never a
+  // free choice. The manufacturer's template is authoritative; when it hasn't set
+  // a labelingType we DERIVE one from the product category so a Supplement can
+  // NEVER silently fall back to Nutrition Facts (the previous `?? 'FOOD'` did).
+  const labelingType = resolveLabelingRegime(
+    product.productTemplate?.labelingType ?? null,
+    product.category,
+  )
+
   // Per-product required (locked-mandatory) phrases — the compliance scanner
   // flags any whose text is missing from the canvas. Reuses the same resolver
   // the Phrases drawer uses (engine + live recipe).
-  const resolvedPhrases = await resolveProductPhrases(
-    product.id,
-    product.productTemplate?.labelingType ?? 'FOOD',
-  )
+  const resolvedPhrases = await resolveProductPhrases(product.id, labelingType)
   const lockedPhrases = resolvedPhrases
     .filter((p) => p.locked)
     .map((p) => ({
@@ -197,11 +205,33 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       initialDesignJson={initialDesignJson}
       certBadges={certBadges}
       productCtx={{ ...productCtx, lockedPhrases }}
-      labelingType={product.productTemplate?.labelingType ?? 'FOOD'}
+      labelingType={labelingType}
       creatorTier={creatorTier}
       partnerPrintSpec={partnerPrintSpec}
     />
   )
+}
+
+/**
+ * Resolve the regulatory labeling regime that drives the Studio's Facts panel +
+ * label-format options. This must be robust to bad data: a dietary supplement is
+ * legally required to use the Supplement Facts panel (21 CFR 101.36), NOT
+ * Nutrition Facts — so a SUPPLEMENT-category product ALWAYS resolves to the
+ * supplement regime, even when its manufacturer template carries a stale/wrong
+ * `labelingType` of FOOD (a real seed inconsistency: most supplement products
+ * have FOOD on the template). The category — the creator's explicit product
+ * type — wins for that high-risk split, so the wrong panel can never ship.
+ *
+ * For FOOD / BEVERAGE_FUNCTIONAL products the manufacturer template is
+ * authoritative — it's the only place OTC / PET_PRODUCT / COSMETIC (regimes the
+ * V1 ProductCategory enum can't express) come from; default FOOD when unset.
+ */
+function resolveLabelingRegime(
+  templateLabelingType: LabelingType | null,
+  category: 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT',
+): LabelingType {
+  if (category === 'SUPPLEMENT') return 'DIETARY_SUPPLEMENT'
+  return templateLabelingType ?? 'FOOD'
 }
 
 /**
