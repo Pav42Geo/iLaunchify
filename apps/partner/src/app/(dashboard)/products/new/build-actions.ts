@@ -42,6 +42,108 @@ export interface CreateDraftShellInput {
   subcategoryId: string
 }
 
+export interface InitialDraftValue {
+  label: string; isDefault: boolean; leadDelta: number; costDeltaCents: number; moqOverride: number | null
+  overlayOp: 'NONE' | 'SWAP' | 'ADD' | 'REMOVE'; overlayIngId?: string; overlayIngName?: string
+}
+export interface InitialDraftAxis {
+  key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
+  values: InitialDraftValue[]
+}
+export interface InitialDraft {
+  id: string
+  name: string
+  familyCode: string | null
+  description: string | null
+  longDescription: string | null
+  categoryId: string | null
+  subcategoryId: string
+  packingProfileId: string | null
+  maxFlavorsPerPack: number | null
+  nicheIds: string[]
+  lifestyleTagIds: string[]
+  flavors: Array<{ name: string; soi: string }>
+  axes: InitialDraftAxis[]
+}
+
+/** Load an existing DRAFT for the guided builder to resume (#35 load-back). Returns
+ *  null if not found / not owned. Single cast query so new columns + relations
+ *  (packingProfileId, optionAxes, …) resolve before the client is regenerated. */
+export async function loadDraft(productTemplateId: string): Promise<InitialDraft | null> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return null
+    const ownIds = partner.services.map((s) => s.id)
+
+    type Loaded = {
+      id: string; name: string; familyCode: string | null; description: string | null
+      longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
+      packingProfileId: string | null; maxFlavorsPerPack: number | null
+      subcategory: { categoryId: string } | null
+      flavorPresets: Array<{ name: string; statementOfIdentity: string | null }>
+      niches: Array<{ nicheId: string }>
+      lifestyleTags: Array<{ lifestyleTagId: string }>
+      optionAxes: Array<{
+        key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
+        values: Array<{ label: string; isDefault: boolean; leadTimeDeltaDays: number; unitCostDeltaCents: number; moqOverride: number | null; overlayOp: string; recipeOverlay: unknown }>
+      }>
+    }
+    const tpl = await (prisma as unknown as {
+      productTemplate: { findUnique: (a: unknown) => Promise<Loaded | null> }
+    }).productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        id: true, name: true, familyCode: true, description: true, longDescription: true,
+        manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
+        subcategory: { select: { categoryId: true } },
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true } },
+        niches: { select: { nicheId: true } },
+        lifestyleTags: { select: { lifestyleTagId: true } },
+        optionAxes: {
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            key: true, label: true, editableByCreator: true, affectsLabel: true, boundSlotId: true,
+            values: { orderBy: { sortOrder: 'asc' }, select: { label: true, isDefault: true, leadTimeDeltaDays: true, unitCostDeltaCents: true, moqOverride: true, overlayOp: true, recipeOverlay: true } },
+          },
+        },
+      },
+    }).catch(() => null)
+
+    if (!tpl) return null
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return null
+
+    return {
+      id: tpl.id,
+      name: tpl.name,
+      familyCode: tpl.familyCode,
+      description: tpl.description,
+      longDescription: tpl.longDescription,
+      categoryId: tpl.subcategory?.categoryId ?? null,
+      subcategoryId: tpl.subcategoryId,
+      packingProfileId: tpl.packingProfileId,
+      maxFlavorsPerPack: tpl.maxFlavorsPerPack,
+      nicheIds: tpl.niches.map((n) => n.nicheId),
+      lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
+      flavors: tpl.flavorPresets.map((f) => ({ name: f.name, soi: f.statementOfIdentity ?? '' })),
+      axes: (tpl.optionAxes ?? []).map((a) => ({
+        key: a.key, label: a.label, editableByCreator: a.editableByCreator, affectsLabel: a.affectsLabel, boundSlotId: a.boundSlotId,
+        values: a.values.map((v) => {
+          const ov = (v.recipeOverlay ?? {}) as { toIngredientId?: string; addIngredientId?: string }
+          const ingId = ov.toIngredientId ?? ov.addIngredientId
+          return {
+            label: v.label, isDefault: v.isDefault, leadDelta: v.leadTimeDeltaDays, costDeltaCents: v.unitCostDeltaCents,
+            moqOverride: v.moqOverride, overlayOp: (v.overlayOp as InitialDraftValue['overlayOp']) ?? 'NONE',
+            overlayIngId: ingId, overlayIngName: ingId ? '(saved ingredient)' : undefined,
+          }
+        }),
+      })),
+    }
+  } catch (err) {
+    console.error('[loadDraft] failed:', err)
+    return null
+  }
+}
+
 /** Fetch the nutrient panel for a picked ingredient (the IngredientPicker only
  *  returns id/name/density). Feeds the live FDA-label engine in the recipe step. */
 export async function getIngredientNutrition(

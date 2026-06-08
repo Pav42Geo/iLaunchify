@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createDraftShell, saveOptionAxes } from './build-actions'
+import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
@@ -33,6 +33,8 @@ interface GuidedBuilderProps {
   packingProfiles: PackingProfileOption[]
   /** Partner turnkey scope labels, e.g. ['Manufacturing','Packing','Printing']. */
   serviceScopes: string[]
+  /** When resuming a draft (?draft=<id>) — seeds the builder state. */
+  initial?: InitialDraft | null
 }
 
 const STEPS = [
@@ -54,6 +56,7 @@ export function GuidedBuilder({
   lifestyleTags,
   facilities,
   packingProfiles,
+  initial,
 }: GuidedBuilderProps) {
   const router = useRouter()
 
@@ -70,14 +73,18 @@ export function GuidedBuilder({
   const [ptype, setPtype] = useState<ProductType>('single')
   const [ltype, setLtype] = useState<'Recipe' | 'Formulation'>('Recipe')
   const [isPending, startTransition] = useTransition()
-  const [draftId, setDraftId] = useState<string | null>(null)
-  const [profile, setProfile] = useState<PackingProfileOption | null>(null)
+  const [draftId, setDraftId] = useState<string | null>(initial?.id ?? null)
+  const [profile, setProfile] = useState<PackingProfileOption | null>(
+    initial?.packingProfileId ? (packingProfiles.find((p) => p.id === initial.packingProfileId) ?? null) : null,
+  )
   // Shared flavor list — defined in Variants & packs, carried into Recipe so
   // each flavor becomes its own recipe column. One source of truth.
-  const [flavors, setFlavors] = useState<Array<{ name: string; ingId: string; soi: string }>>([])
+  const [flavors, setFlavors] = useState<Array<{ name: string; ingId: string; soi: string }>>(
+    initial?.flavors.map((f) => ({ name: f.name, ingId: 'cane', soi: f.soi })) ?? [],
+  )
   // Configurable option axes (sweetener/strength/caffeine/custom). Shared so the
   // Variants step edits them and the Recipe step binds their label overlays.
-  const [axes, setAxes] = useState<OptionAxisUI[]>([])
+  const [axes, setAxes] = useState<OptionAxisUI[]>((initial?.axes as OptionAxisUI[] | undefined) ?? [])
 
   // Debounced autosave for axes — lives here (not in the card) so it persists
   // from any step, including Recipe-step overlay bindings.
@@ -90,8 +97,9 @@ export function GuidedBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [axes, draftId])
 
-  // Basics state
-  const [name, setName] = useState('')
+  // Basics state (name seeded from the draft so the title shows on resume;
+  // BasicsScreen also receives `initial` to repopulate its form fields).
+  const [name, setName] = useState(initial?.name ?? '')
   const [sku, setSku] = useState('')
   const [gtin, setGtin] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -212,6 +220,7 @@ export function GuidedBuilder({
                 draftId={draftId}
                 onDraftId={setDraftId}
                 onName={setName}
+                initial={initial}
               />
               <NavBtns onNext={() => go(1)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Variants & packs →" nextDisabled={!draftId} />
             </section>

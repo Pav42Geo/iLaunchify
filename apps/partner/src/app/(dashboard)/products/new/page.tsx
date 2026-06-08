@@ -8,6 +8,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { GuidedBuilder } from './GuidedBuilder'
+import { loadDraft } from './build-actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'New product — iLaunchify Partners' }
@@ -19,7 +20,8 @@ const SERVICE_SCOPE: Record<string, string> = {
   WAREHOUSE: 'Fulfillment',
 }
 
-export default async function NewProductPage() {
+export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
+  const { draft } = await searchParams
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -48,6 +50,9 @@ export default async function NewProductPage() {
     orderBy: { sortOrder: 'asc' },
     select: { id: true, name: true, group: true, example: true, flavorMode: true, packStructure: true, labelColumns: true, isSubscription: true, isCustomizable: true },
   }).catch(() => []))
+
+  // Resume an existing draft when ?draft=<id> is present (#35 load-back).
+  const initial = draft ? await loadDraft(draft) : null
 
   const scopeOrder = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
   const serviceScopes = scopeOrder

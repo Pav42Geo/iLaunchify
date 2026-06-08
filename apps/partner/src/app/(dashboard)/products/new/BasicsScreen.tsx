@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { createDraftShell, updateBasics } from './build-actions'
+import { createDraftShell, updateBasics, type InitialDraft } from './build-actions'
 
 interface Opt { id: string; label: string }
 interface CategoryOption { id: string; name: string; mainCategory: string }
@@ -30,23 +30,25 @@ interface BasicsScreenProps {
   draftId: string | null
   onDraftId: (id: string) => void
   onName: (name: string) => void
+  /** Resume — seeds the form fields when reopening an existing draft. */
+  initial?: InitialDraft | null
 }
 
 interface Meta { key: string; value: string }
 
 export function BasicsScreen({
   categories, subcategories, niches, lifestyleTags, facilities,
-  draftId, onDraftId, onName,
+  draftId, onDraftId, onName, initial,
 }: BasicsScreenProps) {
-  const [name, setName] = useState('')
-  const [baseSku, setBaseSku] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [subcategoryId, setSubcategoryId] = useState('')
-  const [shortDesc, setShortDesc] = useState('')
-  const [longDesc, setLongDesc] = useState('')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [baseSku, setBaseSku] = useState(initial?.familyCode ?? '')
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '')
+  const [subcategoryId, setSubcategoryId] = useState(initial?.subcategoryId ?? '')
+  const [shortDesc, setShortDesc] = useState(initial?.description ?? '')
+  const [longDesc, setLongDesc] = useState(initial?.longDescription ?? '')
   const [meta, setMeta] = useState<Meta[]>([])
-  const [selNiches, setSelNiches] = useState<string[]>([])
-  const [selTags, setSelTags] = useState<string[]>([])
+  const [selNiches, setSelNiches] = useState<string[]>(initial?.nicheIds ?? [])
+  const [selTags, setSelTags] = useState<string[]>(initial?.lifestyleTagIds ?? [])
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [, startSave] = useTransition()
 
