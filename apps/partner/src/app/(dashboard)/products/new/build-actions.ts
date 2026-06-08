@@ -42,6 +42,59 @@ export interface CreateDraftShellInput {
   subcategoryId: string
 }
 
+export interface CertRow {
+  productCertificateId: string | null // present only for ATTACHED rows
+  instanceId: string
+  certName: string
+  certificateNumber: string | null
+  expiryDateIso: string
+  status: 'PENDING_REVIEW' | 'VERIFIED' | 'EXPIRED' | 'REJECTED'
+}
+export interface CertData { attached: CertRow[]; available: CertRow[] }
+
+/** Load the draft's attached certificates + the partner's attachable instances
+ *  (#consolidation slice 1). Reuses the editor's data shape; attach/detach use the
+ *  editor's existing `attachCertificate`/`detachCertificate` server actions. */
+export async function loadCertData(productTemplateId: string): Promise<CertData> {
+  const empty: CertData = { attached: [], available: [] }
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return empty
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        manufacturerServiceId: true,
+        certificates: { select: { instance: { select: { id: true, certificateNumber: true, expiryDate: true, status: true, certificateType: { select: { name: true } } } } } },
+      },
+    })
+    if (!tpl) return empty
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return empty
+
+    const available = await prisma.partnerCertificateInstance.findMany({
+      where: { partnerId: partner.id, status: { in: ['VERIFIED', 'PENDING_REVIEW'] } },
+      include: { certificateType: { select: { name: true } } },
+      orderBy: { expiryDate: 'asc' },
+    })
+    const attachedInstanceIds = new Set(tpl.certificates.map((c) => c.instance.id))
+    return {
+      attached: tpl.certificates.map((c) => ({
+        productCertificateId: null, instanceId: c.instance.id, certName: c.instance.certificateType.name,
+        certificateNumber: c.instance.certificateNumber, expiryDateIso: c.instance.expiryDate.toISOString(),
+        status: c.instance.status as CertRow['status'],
+      })),
+      available: available.filter((a) => !attachedInstanceIds.has(a.id)).map((a) => ({
+        productCertificateId: null, instanceId: a.id, certName: a.certificateType.name,
+        certificateNumber: a.certificateNumber, expiryDateIso: a.expiryDate.toISOString(),
+        status: a.status as CertRow['status'],
+      })),
+    }
+  } catch (err) {
+    console.error('[loadCertData] failed:', err)
+    return empty
+  }
+}
+
 export interface InitialDraftValue {
   label: string; isDefault: boolean; leadDelta: number; costDeltaCents: number; moqOverride: number | null
   overlayOp: 'NONE' | 'SWAP' | 'ADD' | 'REMOVE'; overlayIngId?: string; overlayIngName?: string
@@ -52,6 +105,7 @@ export interface InitialDraftAxis {
 }
 export interface InitialDraft {
   id: string
+  status: string // ProductTemplateStatus
   name: string
   familyCode: string | null
   description: string | null
@@ -88,7 +142,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     const ownIds = partner.services.map((s) => s.id)
 
     type Loaded = {
-      id: string; name: string; familyCode: string | null; description: string | null
+      id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
@@ -109,7 +163,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     }).productTemplate.findUnique({
       where: { id: productTemplateId },
       select: {
-        id: true, name: true, familyCode: true, description: true, longDescription: true,
+        id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
@@ -134,6 +188,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
 
     return {
       id: tpl.id,
+      status: tpl.status,
       name: tpl.name,
       familyCode: tpl.familyCode,
       description: tpl.description,
@@ -613,6 +668,40 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
   } catch (err) {
     console.error('[saveFlavors] failed:', err)
     return { ok: false, error: `Could not save flavors: ${(err as Error).message}` }
+  }
+}
+
+export interface NoteRowData { id: string; authorName: string; authorType: string; body: string; createdAtIso: string }
+
+/** Load the admin↔partner notes thread for a draft (consolidation). Posting
+ *  reuses the editor's `postPartnerProductNote`. */
+export async function loadNotes(productTemplateId: string): Promise<NoteRowData[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        manufacturerServiceId: true,
+        notes: { orderBy: { createdAt: 'asc' }, select: { id: true, authorId: true, authorType: true, body: true, createdAt: true } },
+      },
+    })
+    if (!tpl) return []
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return []
+
+    const authorIds = [...new Set(tpl.notes.map((n) => n.authorId))]
+    const users = authorIds.length
+      ? await prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, name: true, email: true } })
+      : []
+    const nameById = new Map(users.map((u) => [u.id, u.name ?? u.email]))
+    return tpl.notes.map((n) => ({
+      id: n.id, authorName: nameById.get(n.authorId) ?? 'Unknown',
+      authorType: String(n.authorType), body: n.body, createdAtIso: n.createdAt.toISOString(),
+    }))
+  } catch (err) {
+    console.error('[loadNotes] failed:', err)
+    return []
   }
 }
 

@@ -11,12 +11,15 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-actions'
+import { archiveDraft } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
 import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
+import { CertificatesCard } from './CertificatesCard'
+import { NotesCard } from './NotesCard'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -142,6 +145,20 @@ export function GuidedBuilder({
     })
   }
 
+  // Product lifecycle status (DRAFT for new; the real status when resuming).
+  const status = initial?.status ?? 'DRAFT'
+
+  function archive() {
+    if (!draftId) return
+    if (!window.confirm('Archive this product? It’s removed from your active list (reversible by admin).')) return
+    startTransition(async () => {
+      const res = await archiveDraft(draftId)
+      if (!res || !res.ok) { toast.error(res?.error ?? 'Could not archive.'); return }
+      toast.success('Product archived')
+      router.push('/products')
+    })
+  }
+
   // Save draft — ensures a draft row exists (later steps already autosave into
   // it). Lives in the bottom nav now, not a top bar.
   function saveDraft() {
@@ -155,6 +172,15 @@ export function GuidedBuilder({
     })
   }
 
+  // Completion % for the rail (like the editor's readiness). A step counts done
+  // once passed, or when its key data is present (Basics name+draft, type chosen).
+  const stepDone = STEPS.map((_, i) =>
+    i < cur ||
+    (i === 0 && name.trim().length >= 2 && !!draftId) ||
+    (i === 1 && !!profile),
+  )
+  const pct = Math.round((stepDone.filter(Boolean).length / STEPS.length) * 100)
+
   return (
     <div className="gb">
       <style>{CSS}</style>
@@ -162,8 +188,13 @@ export function GuidedBuilder({
       <div className="gb-shell">
         {/* LEFT RAIL */}
         <aside className="rail">
-          <h3 className="display">Product Builder</h3>
-          <p className="muted small" style={{ margin: '4px 0 14px' }}>Track progress & review each step.</p>
+          <div className="progress-card">
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', margin: 0 }}>
+              <span className="eyebrow">Completion</span>
+              <b className="display" style={{ fontSize: 20 }}>{pct}%</b>
+            </div>
+            <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
+          </div>
           <div>
             {STEPS.map((s, i) => (
               <div
@@ -206,6 +237,13 @@ export function GuidedBuilder({
               once the manufacturer types it in Basics. */}
           <div className="gb-pagehead">
             <h1 className="display">{name.trim() || 'Add Product'}</h1>
+            <div className="gb-head-meta">
+              {/* Status + Archive only when resuming/editing an existing draft. */}
+              {initial && <StatusChip status={status} />}
+              {status === 'PENDING_EDIT_REVIEW' && <span className="pill amber">🅰 re-approval marked</span>}
+              {draftId && <span className="pill green">✓ Saved</span>}
+              {initial && <button className="btn sm" type="button" onClick={archive} disabled={!draftId || isPending}>Archive</button>}
+            </div>
           </div>
 
           {/* ===== STEP 1 — Basics (pure identity) ===== */}
@@ -335,6 +373,20 @@ export function GuidedBuilder({
           {/* ===== STEP 6 — REVIEW ===== */}
           {cur === 5 && (
             <section>
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="section-title"><span className="ic">✓</span> Ready to submit <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· {stepDone.filter(Boolean).length}/{STEPS.length} steps complete</span></div>
+                <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                  {STEPS.map((s, i) => (
+                    <button key={s.t} type="button" className="rcheck" onClick={() => go(i)}>
+                      <span className={`rdot ${stepDone[i] ? 'on' : ''}`}>{stepDone[i] ? '✓' : i + 1}</span>
+                      <span style={{ fontWeight: 600 }}>{s.t}</span>
+                      <span className="tiny muted" style={{ marginLeft: 'auto' }}>{stepDone[i] ? 'done' : 'review'}</span>
+                    </button>
+                  ))}
+                </div>
+                <style>{`.gb .rcheck{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--ink-200);border-radius:10px;background:#fff;padding:8px 11px;font:inherit;font-size:13px;color:var(--ink-900);cursor:pointer;transition:.12s}.gb .rcheck:hover{border-color:var(--pink-100);background:var(--pink-50)}.gb .rdot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--ink-500);flex:none}.gb .rdot.on{background:var(--green);border-color:var(--green);color:#fff}`}</style>
+              </div>
+
               <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="card"><div className="eyebrow">Basics</div><h3 className="display" style={{ fontSize: 18, margin: '6px 0' }}>{name || 'Untitled product'}</h3><p className="muted small">{selNiches.length} niches · {selTags.length} tags</p><span className="pill green">✓ complete</span></div>
                 <div className="card"><div className="eyebrow">Recipe / formulation</div><h3 style={{ margin: '6px 0' }}>Base + flavor presets</h3><span className="pill amber">1 preset in progress</span></div>
@@ -343,6 +395,12 @@ export function GuidedBuilder({
                 <div className="card"><div className="eyebrow">Pricing</div><h3 style={{ margin: '6px 0' }}>3 tiers · from $0.86</h3><span className="pill green">✓ set</span></div>
                 <div className="card"><div className="eyebrow">Marketplace facets</div><p className="muted small" style={{ marginTop: 6 }}>Category, niche, tags, packaging type, format, allergens, certs, MOQ, lead time, fulfillment mode.</p></div>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+                <CertificatesCard draftId={draftId} />
+                <NotesCard draftId={draftId} />
+              </div>
+
               <NavBtns onBack={() => go(4)} onSaveDraft={saveDraft} saving={isPending}
                 onNext={() => { draftId ? router.push(`/products/${draftId}/edit`) : toast.error('Complete Basics first.') }}
                 nextLabel="Submit for review →" />
@@ -357,6 +415,22 @@ export function GuidedBuilder({
 // ---------------------------------------------------------------------------
 // Small presentational helpers
 // ---------------------------------------------------------------------------
+
+function StatusChip({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    DRAFT: { label: 'Draft', cls: '' },
+    NEEDS_CHANGES: { label: 'Needs changes', cls: 'amber' },
+    PENDING_REVIEW: { label: 'In review', cls: 'sky' },
+    UNDER_REVIEW: { label: 'In review', cls: 'sky' },
+    PENDING_EDIT_REVIEW: { label: 'Edit in review', cls: 'sky' },
+    PUBLISHED: { label: 'Live', cls: 'green' },
+    PAUSED: { label: 'Paused', cls: 'amber' },
+    REJECTED: { label: 'Rejected', cls: 'amber' },
+    ARCHIVED: { label: 'Archived', cls: 'amber' },
+  }
+  const s = map[status] ?? { label: status, cls: '' }
+  return <span className={`pill ${s.cls}`}>{s.label}</span>
+}
 
 function Field({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
   return (
@@ -412,15 +486,19 @@ const CSS = `
 .gb-shell{display:grid;grid-template-columns:248px 1fr;gap:0}
 .gb .rail{border-right:1px solid var(--ink-200);padding:18px 14px;background:#fff}
 .gb .rail h3{font-size:15px}
+.gb .progress-card{border:1px solid var(--ink-200);border-radius:14px;background:var(--ink-50);padding:12px;margin-bottom:14px}
+.gb .pbar{height:6px;border-radius:999px;background:var(--ink-200);margin-top:8px;overflow:hidden}
+.gb .pfill{height:100%;background:var(--pink);border-radius:999px;transition:width .25s ease}
 .gb .step{display:flex;gap:11px;align-items:flex-start;padding:11px;border-radius:14px;cursor:pointer;border:1px solid transparent}
 .gb .step.active{border-color:var(--pink-100);background:var(--pink-50)}
 .gb .step .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink-500);flex:none}
 .gb .step.active .n{background:var(--pink);border-color:var(--pink);color:#fff}
 .gb .step.done .n{background:var(--green);border-color:var(--green);color:#fff}
 .gb .step .t{font-weight:600;font-size:13px} .gb .step .d{font-size:11px;color:var(--ink-500)}
-.gb-main{padding:24px 28px;max-width:1040px;margin:0 auto;width:100%}
-.gb-pagehead{text-align:left;margin-bottom:20px}
+.gb-main{padding:24px 28px;max-width:1200px;margin:0 auto;width:100%}
+.gb-pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 .gb-pagehead h1{font-size:30px}
+.gb-head-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .gb .hero{border:1px solid var(--pink-100);background:var(--cream);border-radius:24px;padding:20px 22px;margin-bottom:18px}
 .gb .stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
 .gb .sbead{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-500)}

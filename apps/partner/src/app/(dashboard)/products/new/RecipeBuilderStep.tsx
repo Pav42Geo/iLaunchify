@@ -292,9 +292,10 @@ export function RecipeBuilderStep({
 
         {/* RIGHT — live label */}
         <div>
-          <div className="seg" style={{ marginBottom: 10 }}>
-            <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public</button>
-            <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Preview</button>
+          <div className="lblseg" style={{ marginBottom: 10 }}>
+            <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
+            <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
+            <style>{`.rb .lblseg{display:inline-flex;background:#EEEFF1;border-radius:10px;padding:3px;gap:3px}.rb .lblseg button{border:0;background:transparent;padding:5px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:600;color:#6B6D78;cursor:pointer;transition:.12s}.rb .lblseg button:hover{color:#18181A}.rb .lblseg button.on{background:#18181A;color:#fff}`}</style>
           </div>
           {flavorMode === 'MULTI' && (
             <div className="flavbar">
