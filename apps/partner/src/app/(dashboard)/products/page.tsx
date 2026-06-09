@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { ProductRowActions } from './ProductRowActions'
+import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSelection'
 import { LiveToggle } from './LiveToggle'
 
 export const dynamic = 'force-dynamic'
@@ -246,12 +247,14 @@ export default async function ProductsListPage({
       ) : view === 'cards' ? (
         <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} />
       ) : (
+        <SelectionProvider allIds={visible.map((r) => r.id)} rows={visible.map((r) => ({ id: r.id, name: r.name, status: r.status }))}>
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
-                  <SortableTh label="Name" k="name" sort={sort} dir={dir} tab={tab} className="px-5" />
+                  <th className="pl-5 pr-2 py-2.5 w-8"><SelectAllCheckbox /></th>
+                  <SortableTh label="Name" k="name" sort={sort} dir={dir} tab={tab} className="px-3" />
                   <th className="px-3 py-2.5 font-semibold">Status</th>
                   <th className="px-3 py-2.5 font-semibold">Subcategory</th>
                   <th className="px-3 py-2.5 font-semibold">Recipe</th>
@@ -263,7 +266,7 @@ export default async function ProductsListPage({
               <tbody>
                 {visible.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-8 text-center text-[12px] text-ink-500">
+                    <td colSpan={8} className="px-5 py-8 text-center text-[12px] text-ink-500">
                       Nothing in “{TAB_LABEL[tab]}”.
                     </td>
                   </tr>
@@ -275,22 +278,33 @@ export default async function ProductsListPage({
                   }
                   return (
                     <tr key={r.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
-                      <td className="px-5 py-3 font-medium text-ink-900">
-                        <Link
-                          href={`/products/${r.id}/preview`}
-                          className="rounded text-ink-900 hover:text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-                        >
-                          {r.name}
-                        </Link>
-                        {r.certRefreshNeededAt && (
-                          <Link
-                            href="/certifications"
-                            title="A certificate attached to this product expired — renew it to restore the badge."
-                            className="ml-2 inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
-                          >
-                            <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
-                          </Link>
-                        )}
+                      <td className="pl-5 pr-2 py-3 align-middle"><RowCheckbox id={r.id} /></td>
+                      <td className="px-3 py-3 font-medium text-ink-900">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-lg bg-pink-50 text-[11px] font-bold uppercase text-pink-700 ring-1 ring-ink-100">
+                            {r.name.slice(0, 2)}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/products/${r.id}/preview`}
+                                className="truncate rounded text-ink-900 hover:text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                              >
+                                {r.name}
+                              </Link>
+                              {r.certRefreshNeededAt && (
+                                <Link
+                                  href="/certifications"
+                                  title="A certificate attached to this product expired — renew it to restore the badge."
+                                  className="inline-flex flex-none items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                >
+                                  <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
+                                </Link>
+                              )}
+                            </div>
+                            <div className="font-mono text-[10.5px] text-ink-400">{r.id}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         {r.status === 'PUBLISHED' || r.status === 'PAUSED' ? (
@@ -334,6 +348,7 @@ export default async function ProductsListPage({
             </table>
           </div>
         </section>
+        </SelectionProvider>
       )}
     </div>
   )

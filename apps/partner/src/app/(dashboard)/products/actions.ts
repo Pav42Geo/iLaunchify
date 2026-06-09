@@ -539,6 +539,57 @@ export async function archiveDraft(productTemplateId: string): Promise<Result> {
   return { ok: true }
 }
 
+/**
+ * Hard-delete a DRAFT (or NEEDS_CHANGES) product — the partner-facing "Discard
+ * draft". Safe because drafts have never been published (no Orders/Products
+ * reference them). If a non-cascading relation blocks the delete, falls back to
+ * a soft archive (status REJECTED) so the draft still leaves the active list.
+ */
+export async function deleteDraft(productTemplateId: string): Promise<Result> {
+  const { user, partner, error } = await requirePartner()
+  if (error) return { ok: false, error }
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: { id: true, status: true, name: true, manufacturerServiceId: true },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+  if (tpl.status !== 'DRAFT' && tpl.status !== 'NEEDS_CHANGES') {
+    return { ok: false, error: 'Only drafts can be discarded.' }
+  }
+  if (tpl.manufacturerServiceId) {
+    const owned = await prisma.partnerService.findFirst({
+      where: { id: tpl.manufacturerServiceId, partnerId: partner.id },
+      select: { id: true },
+    })
+    if (!owned) return { ok: false, error: 'Not your product.' }
+  }
+
+  try {
+    await prisma.productTemplate.delete({ where: { id: productTemplateId } })
+  } catch (err) {
+    // FK / non-cascading child blocked the hard delete — soft-archive instead.
+    console.error('[deleteDraft] hard delete failed; archiving instead:', err)
+    await prisma.productTemplate.update({ where: { id: productTemplateId }, data: { status: 'REJECTED' } })
+  }
+
+  try {
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_TEMPLATE_ARCHIVE',
+      fromValue: tpl.status,
+      toValue: 'DELETED',
+      payload: { partnerId: partner.id, name: tpl.name, discarded: true },
+    })
+  } catch (auditErr) {
+    console.error('[deleteDraft] audit failed (non-fatal):', auditErr)
+  }
+
+  revalidatePath('/products')
+  return { ok: true }
+}
+
 // -----------------------------------------------------------------------------
 // PAUSE / RESUME — partner-side marketplace visibility toggle.
 // Per docs/MANUFACTURER_PRODUCT_BUILDER.md §4 + the admin PUBLISHED⇄PAUSED

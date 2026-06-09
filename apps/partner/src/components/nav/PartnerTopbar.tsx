@@ -20,12 +20,19 @@ export function PartnerTopbar({
     <AppHeader
       brandHref="/dashboard"
       flushLeft
+      // Empty portal targets the product builder injects its Saved chip + Save
+      // Draft (center, next to the logo) and Next button (right, next to the
+      // bell) into. Harmless on every other page.
+      center={<div id="gb-topbar-center" style={{ display: 'contents' }} />}
       right={
-        <PartnerTopbarRight
-          email={user.email}
-          name={user.name ?? null}
-          companyName={companyName}
-        />
+        <>
+          <div id="gb-topbar-right" style={{ display: 'contents' }} />
+          <PartnerTopbarRight
+            email={user.email}
+            name={user.name ?? null}
+            companyName={companyName}
+          />
+        </>
       }
     />
   )

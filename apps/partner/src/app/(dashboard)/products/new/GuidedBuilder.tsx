@@ -8,10 +8,12 @@
 // Submit for review.
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
+import { Menu, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-actions'
-import { archiveDraft } from '../actions'
+import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
@@ -21,6 +23,8 @@ import { PricingTiersCard } from './PricingTiersCard'
 import { CertificatesCard } from './CertificatesCard'
 import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
+import { ComplianceCard } from './ComplianceCard'
+import { AllergensCard } from './AllergensCard'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -182,9 +186,44 @@ export function GuidedBuilder({
   )
   const pct = Math.round((stepDone.filter(Boolean).length / STEPS.length) * 100)
 
+  // Unified Next (the per-step nav now lives in the app topbar).
+  const nextDisabled = (cur === 0 && !draftId) || (cur === 1 && !profile)
+  const lastStep = cur >= STEPS.length - 1
+  const nextLabel = lastStep ? 'Submit for review →' : `Next: ${STEPS[cur + 1]?.t} →`
+  function goNext() {
+    if (lastStep) {
+      if (!draftId) { toast.error('Complete Basics first.'); return }
+      startTransition(async () => {
+        const res = await submitProductForReview(draftId)
+        if (!res || !res.ok) { toast.error(res?.error ?? 'Could not submit.'); return }
+        toast.success('Submitted for review')
+        router.push('/products')
+      })
+      return
+    }
+    go(cur + 1)
+  }
+
+  // Portal Saved + Save Draft (next to the logo) and Next (next to the bell) into
+  // the app topbar — only while the builder is mounted (/products/new).
+  const [topSlots, setTopSlots] = useState<{ left: HTMLElement | null; right: HTMLElement | null }>({ left: null, right: null })
+  useEffect(() => {
+    setTopSlots({ left: document.getElementById('gb-topbar-center'), right: document.getElementById('gb-topbar-right') })
+  }, [])
+
   return (
     <div className="gb">
       <style>{CSS}</style>
+      {topSlots.left && createPortal(
+        <span className="gb gb-topinject">
+          <TopMenu />
+          {draftId && <span className="gb-saveicon" title="All changes save automatically — your draft is up to date"><CheckCircle2 size={18} /></span>}
+          <button className="btn sm" type="button" onClick={saveDraft} disabled={isPending}>Save draft</button>
+        </span>, topSlots.left)}
+      {topSlots.right && createPortal(
+        <span className="gb gb-topinject">
+          <button className="gb-nextbtn" type="button" onClick={goNext} disabled={nextDisabled}>{nextLabel}</button>
+        </span>, topSlots.right)}
 
       <div className="gb-shell">
         {/* LEFT RAIL */}
@@ -234,6 +273,11 @@ export function GuidedBuilder({
             ))}
           </div>
 
+          {/* Back — between the stepper and the title (top of the flow). */}
+          {cur > 0 && (
+            <button className="btn sm" type="button" onClick={() => go(cur - 1)} style={{ marginBottom: 12 }}>← Back</button>
+          )}
+
           {/* Page title — defaults to "Add Product", becomes the product name
               once the manufacturer types it in Basics. */}
           <div className="gb-pagehead">
@@ -242,7 +286,6 @@ export function GuidedBuilder({
               {/* Status + Archive only when resuming/editing an existing draft. */}
               {initial && <StatusChip status={status} />}
               {status === 'PENDING_EDIT_REVIEW' && <span className="pill amber">🅰 re-approval marked</span>}
-              {draftId && <span className="pill green">✓ Saved</span>}
               {initial && <button className="btn sm" type="button" onClick={archive} disabled={!draftId || isPending}>Archive</button>}
             </div>
           </div>
@@ -302,7 +345,9 @@ export function GuidedBuilder({
                 draftId={draftId}
                 axes={axes}
                 onAxes={setAxes}
+                initialRows={initial?.recipeSlots}
               />
+              <AllergensCard draftId={draftId} />
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
             </section>
           )}
@@ -389,6 +434,8 @@ export function GuidedBuilder({
                 <style>{`.gb .rcheck{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--ink-200);border-radius:10px;background:#fff;padding:8px 11px;font:inherit;font-size:13px;color:var(--ink-900);cursor:pointer;transition:.12s}.gb .rcheck:hover{border-color:var(--pink-100);background:var(--pink-50)}.gb .rdot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--ink-500);flex:none}.gb .rdot.on{background:var(--green);border-color:var(--green);color:#fff}`}</style>
               </div>
 
+              <div style={{ marginBottom: 16 }}><ComplianceCard draftId={draftId} /></div>
+
               <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="card"><div className="eyebrow">Basics</div><h3 className="display" style={{ fontSize: 18, margin: '6px 0' }}>{name || 'Untitled product'}</h3><p className="muted small">{selNiches.length} niches · {selTags.length} tags</p><span className="pill green">✓ complete</span></div>
                 <div className="card"><div className="eyebrow">Recipe / formulation</div><h3 style={{ margin: '6px 0' }}>Base + flavor presets</h3><span className="pill amber">1 preset in progress</span></div>
@@ -418,6 +465,26 @@ export function GuidedBuilder({
 // Small presentational helpers
 // ---------------------------------------------------------------------------
 
+// Hamburger menu next to the logo (Pacdora-style), injected into the topbar.
+function TopMenu() {
+  const [o, setO] = useState(false)
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <button className="gb-iconbtn" type="button" aria-label="Menu" onClick={() => setO((v) => !v)}><Menu size={18} /></button>
+      {o && (
+        <>
+          <div onClick={() => setO(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div className="gb-menu" onClick={() => setO(false)}>
+            <a className="gb-menuitem" href="/products/new">New product</a>
+            <a className="gb-menuitem" href="/products">My products</a>
+            <a className="gb-menuitem" href="/dashboard">Dashboard</a>
+          </div>
+        </>
+      )}
+    </span>
+  )
+}
+
 function StatusChip({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     DRAFT: { label: 'Draft', cls: '' },
@@ -443,16 +510,11 @@ function Field({ label, full, children }: { label: string; full?: boolean; child
   )
 }
 
-function NavBtns({ onBack, onNext, onSaveDraft, saving, nextLabel, nextDisabled }: { onBack?: () => void; onNext?: () => void; onSaveDraft?: () => void; saving?: boolean; nextLabel: string; nextDisabled?: boolean }) {
-  return (
-    <div className="navbtns">
-      <div className="navleft">
-        {onBack && <button className="btn" type="button" onClick={onBack}>← Back</button>}
-        {onSaveDraft && <button className="btn" type="button" onClick={onSaveDraft} disabled={saving}>{saving ? 'Saving…' : 'Save draft'}</button>}
-      </div>
-      <button className="btn primary" type="button" onClick={onNext} disabled={nextDisabled}>{nextLabel}</button>
-    </div>
-  )
+// All nav now lives at the top: Back (between stepper + title) and Save draft /
+// Next (app topbar). This bottom component renders nothing — kept so the 6 call
+// sites compile unchanged.
+function NavBtns(_props: { onBack?: () => void; onNext?: () => void; onSaveDraft?: () => void; saving?: boolean; nextLabel?: string; nextDisabled?: boolean }) {
+  return null
 }
 
 // Scoped CSS ported from the prototype, on the locked mood-board tokens.
@@ -501,6 +563,16 @@ const CSS = `
 .gb-pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 .gb-pagehead h1{font-size:30px}
 .gb-head-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gb-topinject{display:inline-flex;align-items:center;gap:8px}
+.gb-iconbtn{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;border:1px solid #E0E1E5;background:#fff;color:#33343C;cursor:pointer;transition:.12s}
+.gb-iconbtn:hover{background:#F8F8F9;border-color:#CBCCD3}
+.gb-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:61;background:#fff;border:1px solid #E0E1E5;border-radius:12px;box-shadow:0 16px 40px -16px rgba(0,0,0,.3);padding:6px;min-width:200px}
+.gb-menuitem{display:block;padding:8px 11px;border-radius:8px;font-size:13px;color:#18181A;text-decoration:none}
+.gb-menuitem:hover{background:#FBEAF0;color:#C71350}
+.gb-saveicon{display:inline-flex;align-items:center;color:#1D9E75}
+.gb-nextbtn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #FF2E63;background:#FF2E63;color:#fff;transition:.15s}
+.gb-nextbtn:hover:not(:disabled){background:#E11D54;border-color:#E11D54}
+.gb-nextbtn:disabled{background:#fff;border-color:#E0E1E5;color:#9A9CA6;cursor:not-allowed}
 .gb .hero{border:1px solid var(--pink-100);background:var(--cream);border-radius:24px;padding:20px 22px;margin-bottom:18px}
 .gb .stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
 .gb .sbead{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-500)}

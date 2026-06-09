@@ -129,6 +129,9 @@ export interface InitialDraft {
   lifestyleTagIds: string[]
   flavors: Array<{ name: string; soi: string }>
   axes: InitialDraftAxis[]
+  // Recipe base slots — restored so editing shows the real recipe (and the
+  // recipe-step autosave round-trips instead of wiping it).
+  recipeSlots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
   // Production (default variant) + storage/lead (template) — #35 full load-back.
   storageClass: 'AMBIENT' | 'CHILLED' | 'FROZEN' | null
   storageTempMinF: number | null
@@ -160,6 +163,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
       flavorPresets: Array<{ name: string; statementOfIdentity: string | null }>
+      ingredientSlots: Array<{ baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
       variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean }>
@@ -180,6 +184,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
         flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true } },
+        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
         variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true } },
@@ -211,6 +216,13 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       nicheIds: tpl.niches.map((n) => n.nicheId),
       lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
       flavors: tpl.flavorPresets.map((f) => ({ name: f.name, soi: f.statementOfIdentity ?? '' })),
+      recipeSlots: tpl.ingredientSlots.map((s) => ({
+        ingId: s.baseIngredientId,
+        name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
+        per100g: (s.baseIngredient?.nutritionPer100g ?? {}) as Record<string, number>,
+        densityGPerMl: s.baseIngredient?.densityGPerML ?? null,
+        weightG: s.weightG ?? 0,
+      })),
       axes: (tpl.optionAxes ?? []).map((a) => ({
         key: a.key, label: a.label, editableByCreator: a.editableByCreator, affectsLabel: a.affectsLabel, boundSlotId: a.boundSlotId,
         values: a.values.map((v) => {
@@ -682,6 +694,37 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
   }
 }
 
+export interface AllergenOverride { allergen: string; action: 'ADD' | 'REMOVE'; reason: string }
+export interface AllergenData { autoDerived: string[]; manualOverrides: AllergenOverride[]; crossContamination: string }
+
+/** Load allergen state for a draft (consolidation — Recipe step). autoDerived =
+ *  union of the base ingredients' allergen flags; overrides + cross-contamination
+ *  persist via saveManualAllergens + updateBasics. */
+export async function loadAllergenData(productTemplateId: string): Promise<AllergenData> {
+  const empty: AllergenData = { autoDerived: [], manualOverrides: [], crossContamination: '' }
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return empty
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        manufacturerServiceId: true, allergenCrossContamination: true, allergenManualOverrides: true,
+        ingredientSlots: { select: { baseIngredient: { select: { allergenFlags: true } } } },
+      },
+    })
+    if (!tpl) return empty
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return empty
+
+    const auto = [...new Set(tpl.ingredientSlots.flatMap((s) => s.baseIngredient?.allergenFlags ?? []))].sort()
+    const overrides = Array.isArray(tpl.allergenManualOverrides) ? (tpl.allergenManualOverrides as unknown as AllergenOverride[]) : []
+    return { autoDerived: auto, manualOverrides: overrides, crossContamination: tpl.allergenCrossContamination ?? '' }
+  } catch (err) {
+    console.error('[loadAllergenData] failed:', err)
+    return empty
+  }
+}
+
 export interface PhraseSuggestionLite { phraseId: string; title: string; body: string; requirement: string; cfrCitation: string | null; isLocked: boolean }
 export interface PhraseData {
   labelingType: string
@@ -743,6 +786,41 @@ export async function loadCertTypes(): Promise<CertTypeOption[]> {
   }
 }
 
+export interface ComplianceCheck { label: string; status: 'ok' | 'fail' | 'pending' }
+
+/** Structural pre-submit compliance checks for a draft (consolidation — Review).
+ *  Mirrors the editor: the checks we CAN run live, the full FDA scan pends (#131). */
+export async function loadComplianceChecks(productTemplateId: string): Promise<ComplianceCheck[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        manufacturerServiceId: true, name: true, statementOfIdentity: true,
+        ingredientSlots: { select: { id: true } },
+        certificates: { select: { instance: { select: { id: true } } } },
+      },
+    })
+    if (!tpl) return []
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return []
+
+    const ok = (b: boolean): ComplianceCheck['status'] => (b ? 'ok' : 'fail')
+    return [
+      { label: 'Statement of identity set', status: ok(!!(tpl.statementOfIdentity?.trim() || tpl.name?.trim())) },
+      { label: 'Recipe ingredients added', status: ok(tpl.ingredientSlots.length > 0) },
+      { label: 'Certificate(s) attached', status: tpl.certificates.length > 0 ? 'ok' : 'pending' },
+      { label: 'Big-9 allergens declared', status: 'pending' },
+      { label: 'Nutrient panel + %DV', status: 'pending' },
+      { label: 'Minimum font size enforced', status: 'pending' },
+    ]
+  } catch (err) {
+    console.error('[loadComplianceChecks] failed:', err)
+    return []
+  }
+}
+
 export interface NoteRowData { id: string; authorName: string; authorType: string; body: string; createdAtIso: string }
 
 /** Load the admin↔partner notes thread for a draft (consolidation). Posting
@@ -791,6 +869,7 @@ export interface BasicsPatch {
   storageTempMaxF?: number | null
   leadTimeRepeatDays?: number | null
   leadTimeFirstRunDays?: number | null
+  allergenCrossContamination?: string | null
   customMeta?: Array<{ key: string; value: string }> | null
 }
 
@@ -834,6 +913,7 @@ export async function updateBasics(
     if (patch.storageTempMaxF !== undefined) data.storageTempMaxF = patch.storageTempMaxF
     if (patch.leadTimeRepeatDays !== undefined) data.leadTimeRepeatDays = patch.leadTimeRepeatDays == null ? null : Math.max(0, Math.floor(patch.leadTimeRepeatDays))
     if (patch.leadTimeFirstRunDays !== undefined) data.leadTimeFirstRunDays = patch.leadTimeFirstRunDays == null ? null : Math.max(0, Math.floor(patch.leadTimeFirstRunDays))
+    if (patch.allergenCrossContamination !== undefined) data.allergenCrossContamination = patch.allergenCrossContamination?.trim() || null
     if (patch.customMeta !== undefined) data.customMeta = patch.customMeta ?? undefined
 
     if (Object.keys(data).length === 0) return { ok: true }

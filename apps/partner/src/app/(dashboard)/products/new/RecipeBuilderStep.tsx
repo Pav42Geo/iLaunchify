@@ -53,6 +53,7 @@ export function RecipeBuilderStep({
   draftId,
   axes = [],
   onAxes,
+  initialRows,
 }: {
   productName: string
   /** From the chosen packing type — SINGLE = one recipe, MULTI = base + presets. */
@@ -67,12 +68,19 @@ export function RecipeBuilderStep({
   /** Shared configurable axes — label-affecting ones bind overlays here (§12b). */
   axes?: OptionAxisUI[]
   onAxes?: (a: OptionAxisUI[]) => void
+  /** Restored base recipe slots (edit mode) — seeds rows so editing shows the
+   *  real recipe and the autosave round-trips instead of wiping it. */
+  initialRows?: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
 }) {
-  const [rows, setRows] = useState<Row[]>([
-    { uid: uid(), ingId: 'water', qty: 320, unit: 'ml', waste: 0, category: 'base', selected: true },
-    { uid: uid(), ingId: 'yuzu', qty: 18, unit: 'ml', waste: 0, category: 'base', selected: true },
-    { uid: uid(), ingId: 'monk', qty: 0.3, unit: 'g', waste: 0, category: 'base', selected: true },
-  ])
+  const [rows, setRows] = useState<Row[]>(() =>
+    initialRows && initialRows.length
+      ? initialRows.map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g', waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined }))
+      : [
+          { uid: uid(), ingId: 'water', qty: 320, unit: 'ml', waste: 0, category: 'base', selected: true },
+          { uid: uid(), ingId: 'yuzu', qty: 18, unit: 'ml', waste: 0, category: 'base', selected: true },
+          { uid: uid(), ingId: 'monk', qty: 0.3, unit: 'g', waste: 0, category: 'base', selected: true },
+        ],
+  )
   const [search, setSearch] = useState('')
   const [addCat, setAddCat] = useState<'base' | 'optional'>('base')
   const [lmode, setLmode] = useState<'package' | 'serving'>('serving')

@@ -39,7 +39,7 @@ import {
   RowActionLabel,
 } from '@ilaunchify/ui'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
-import { pauseProduct, resumeProduct } from './actions'
+import { pauseProduct, resumeProduct, deleteDraft } from './actions'
 
 interface Props {
   id: string
@@ -93,7 +93,7 @@ export function ProductRowActions({
 
       {/* Primary affordance per phase */}
       {authoring ? (
-        <RowActionItem href={`/products/${id}/edit`} icon={Pencil}>
+        <RowActionItem href={`/products/new?draft=${id}`} icon={Pencil}>
           Edit product
         </RowActionItem>
       ) : (
@@ -111,14 +111,14 @@ export function ProductRowActions({
 
       {/* Authoring: move it forward */}
       {authoring && (
-        <RowActionItem href={`/products/${id}/edit`} icon={Send}>
+        <RowActionItem href={`/products/new?draft=${id}`} icon={Send}>
           Open to submit for review
         </RowActionItem>
       )}
 
       {/* Live / paused: propose an edit (goes to review, live keeps serving) */}
       {(isLive || isPaused) && (
-        <RowActionItem href={`/products/${id}/edit`} icon={PencilLine}>
+        <RowActionItem href={`/products/new?draft=${id}`} icon={PencilLine}>
           Propose an edit
         </RowActionItem>
       )}
@@ -173,9 +173,19 @@ export function ProductRowActions({
         Copy product ID
       </RowActionItem>
 
-      {/* Authoring drafts can be discarded; archived can be cloned only */}
+      {/* Authoring drafts can be discarded — deletes immediately after confirm */}
       {authoring && (
-        <RowActionItem href={`/products/${id}/edit`} icon={Trash2} danger>
+        <RowActionItem
+          icon={Trash2}
+          danger
+          onSelect={() =>
+            run(
+              () => deleteDraft(id),
+              `“${name}” discarded`,
+              `Discard “${name}”? This permanently deletes the draft and can’t be undone.`,
+            )
+          }
+        >
           Discard draft
         </RowActionItem>
       )}
