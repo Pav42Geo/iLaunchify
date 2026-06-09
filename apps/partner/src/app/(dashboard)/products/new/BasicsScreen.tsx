@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { createDraftShell, updateBasics, type InitialDraft } from './build-actions'
 import { saveProductNiches, saveProductLifestyleTags } from '../[id]/edit/card-actions'
 import { CertificatesCard } from './CertificatesCard'
+import { MediaUpload } from './MediaUpload'
 
 interface Opt { id: string; label: string }
 interface CategoryOption { id: string; name: string; mainCategory: string }
@@ -166,16 +167,10 @@ export function BasicsScreen({
 
         {/* RIGHT — media · custom meta · certificates */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card">
-            <div className="eyebrow">Media · hero + thumbnails</div>
-            <div className="imgslot" style={{ aspectRatio: '16/10', background: '#f5e9ee', marginTop: 10 }}>Hero image</div>
-            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr', marginTop: 8 }}>
-              {[0, 1, 2, 3].map((i) => <div key={i} className="imgslot" style={{ aspectRatio: 1 }}>＋</div>)}
-              <div className="imgslot video" style={{ aspectRatio: 1 }}>▶</div>
-            </div>
-            <p className="tiny muted" style={{ marginTop: 8 }}>First image = marketplace hero. Drag to reorder.</p>
+          <MediaUpload draftId={draftId} />
 
-            <div className="eyebrow" style={{ marginTop: 16 }}>Custom meta fields · max 10</div>
+          <div className="card">
+            <div className="eyebrow">Custom meta fields · max 10</div>
             <div style={{ marginTop: 8 }}>
               {meta.map((m, i) => (
                 <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>

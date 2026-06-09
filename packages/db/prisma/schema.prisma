@@ -2326,7 +2326,11 @@ model ProductTemplate {
   priceFloorCents            Int                           @default(0)
   // Estimated unit cost to platform (manuf's price for one base unit) — used by routing
   unitCostCents              Int                           @default(0)
-  imageAssetId               String?
+  imageAssetId               String? // hero image (Asset id)
+  // Media gallery (2026-06-08): up to 6 additional images + 1 video. Asset ids;
+  // resolved to URLs for display. Hero (imageAssetId) + these = 8 total.
+  galleryAssetIds            String[]
+  videoAssetId               String?
   // Optional: snapshot of base nutrition (BASE ingredients only) for fast catalog display
   baseNutritionSnapshot      Json?
   // V1 — per docs/MANUFACTURER_PRODUCT_BUILDER.md

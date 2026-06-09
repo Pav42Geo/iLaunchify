@@ -11,6 +11,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
+import { uploadFile, getSignedReadUrl, deleteFile } from '@ilaunchify/storage'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -42,6 +43,122 @@ async function requirePartner() {
 export interface CreateDraftShellInput {
   name: string
   subcategoryId: string
+}
+
+// ---------------------------------------------------------------------------
+// Media — hero + up to 6 gallery images + 1 video (8 total). Uploads to R2 via
+// @ilaunchify/storage, creates an Asset, links it on the ProductTemplate.
+// galleryAssetIds / videoAssetId are new columns → cast-guarded.
+// ---------------------------------------------------------------------------
+
+export type MediaSlot = 'hero' | 'gallery' | 'video'
+export interface MediaItem { assetId: string; url: string }
+export interface MediaData { hero: MediaItem | null; gallery: MediaItem[]; video: MediaItem | null }
+
+const IMG_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+
+async function ownsDraft(productTemplateId: string, partnerServiceIds: string[]): Promise<boolean> {
+  const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+  if (!tpl) return false
+  return !tpl.manufacturerServiceId || partnerServiceIds.includes(tpl.manufacturerServiceId)
+}
+
+export async function uploadProductMedia(formData: FormData): Promise<Result<MediaItem>> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const productTemplateId = String(formData.get('productTemplateId') ?? '')
+    const slot = (String(formData.get('slot') ?? 'gallery')) as MediaSlot
+    const file = formData.get('file')
+    if (!productTemplateId) return { ok: false, error: 'Save the draft first.' }
+    if (!(await ownsDraft(productTemplateId, partner.services.map((s) => s.id)))) return { ok: false, error: 'Not your product.' }
+    if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No file selected.' }
+    const isVideo = slot === 'video'
+    if (isVideo ? !file.type.startsWith('video/') : !IMG_MIME.has(file.type)) {
+      return { ok: false, error: isVideo ? 'Upload a video file (MP4/WebM).' : 'Upload a PNG, JPEG, WebP, or GIF.' }
+    }
+    const MAX = isVideo ? 100 * 1024 * 1024 : 15 * 1024 * 1024
+    if (file.size > MAX) return { ok: false, error: `File too large (max ${isVideo ? '100' : '15'} MB).` }
+
+    const safe = (file.name || 'file').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 48)
+    const key = `products/${productTemplateId}/media/${slot}/${Date.now()}-${safe}`
+    await uploadFile({ key, body: Buffer.from(await file.arrayBuffer()), contentType: file.type })
+
+    const asset = await prisma.asset.create({
+      data: {
+        ownerType: 'PRODUCT', ownerId: productTemplateId,
+        type: isVideo ? 'OTHER' : slot === 'hero' ? 'HERO_IMAGE' : 'PRODUCT_IMAGE',
+        source: 'USER_UPLOAD', storageKey: key, mimeType: file.type, sizeBytes: file.size,
+        isPublic: false, uploadedByUserId: user.id,
+      },
+      select: { id: true },
+    })
+
+    const p = prisma as unknown as { productTemplate: { findUnique: (a: unknown) => Promise<{ galleryAssetIds: string[] } | null>; update: (a: unknown) => Promise<unknown> } }
+    if (slot === 'hero') {
+      await prisma.productTemplate.update({ where: { id: productTemplateId }, data: { imageAssetId: asset.id } })
+    } else if (slot === 'video') {
+      await p.productTemplate.update({ where: { id: productTemplateId }, data: { videoAssetId: asset.id } })
+    } else {
+      const cur = await p.productTemplate.findUnique({ where: { id: productTemplateId }, select: { galleryAssetIds: true } })
+      const next = [...(cur?.galleryAssetIds ?? []), asset.id].slice(0, 6)
+      await p.productTemplate.update({ where: { id: productTemplateId }, data: { galleryAssetIds: next } })
+    }
+    await logAuditAs(user, { entityType: 'ProductTemplate', entityId: productTemplateId, action: 'PRODUCT_TEMPLATE_UPDATE', payload: { media: slot } }).catch(() => {})
+
+    return { ok: true, data: { assetId: asset.id, url: await getSignedReadUrl(key) } }
+  } catch (err) {
+    console.error('[uploadProductMedia] failed:', err)
+    return { ok: false, error: `Upload failed: ${(err as Error).message}` }
+  }
+}
+
+export async function removeProductMedia(productTemplateId: string, slot: MediaSlot, assetId: string): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return { ok: false, error: error ?? 'Partner profile not found.' }
+    if (!(await ownsDraft(productTemplateId, partner.services.map((s) => s.id)))) return { ok: false, error: 'Not your product.' }
+
+    const p = prisma as unknown as { productTemplate: { findUnique: (a: unknown) => Promise<{ galleryAssetIds: string[] } | null>; update: (a: unknown) => Promise<unknown> } }
+    if (slot === 'hero') await prisma.productTemplate.update({ where: { id: productTemplateId }, data: { imageAssetId: null } })
+    else if (slot === 'video') await p.productTemplate.update({ where: { id: productTemplateId }, data: { videoAssetId: null } })
+    else {
+      const cur = await p.productTemplate.findUnique({ where: { id: productTemplateId }, select: { galleryAssetIds: true } })
+      await p.productTemplate.update({ where: { id: productTemplateId }, data: { galleryAssetIds: (cur?.galleryAssetIds ?? []).filter((x) => x !== assetId) } })
+    }
+    // Best-effort: purge the asset + R2 object.
+    const asset = await prisma.asset.findUnique({ where: { id: assetId }, select: { storageKey: true } }).catch(() => null)
+    if (asset?.storageKey) await deleteFile(asset.storageKey).catch(() => {})
+    await prisma.asset.delete({ where: { id: assetId } }).catch(() => {})
+    return { ok: true }
+  } catch (err) {
+    console.error('[removeProductMedia] failed:', err)
+    return { ok: false, error: `Could not remove: ${(err as Error).message}` }
+  }
+}
+
+export async function loadMedia(productTemplateId: string): Promise<MediaData> {
+  const empty: MediaData = { hero: null, gallery: [], video: null }
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return empty
+    const p = prisma as unknown as { productTemplate: { findUnique: (a: unknown) => Promise<{ manufacturerServiceId: string | null; imageAssetId: string | null; galleryAssetIds: string[]; videoAssetId: string | null } | null> } }
+    const tpl = await p.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true, imageAssetId: true, galleryAssetIds: true, videoAssetId: true } })
+    if (!tpl) return empty
+    if (tpl.manufacturerServiceId && !partner.services.map((s) => s.id).includes(tpl.manufacturerServiceId)) return empty
+    const ids = [tpl.imageAssetId, ...(tpl.galleryAssetIds ?? []), tpl.videoAssetId]
+    const urls = await resolveCertBadgeUrls(ids).catch(() => new Map<string, string>())
+    const item = (id: string | null): MediaItem | null => (id && urls.get(id) ? { assetId: id, url: urls.get(id)! } : null)
+    return {
+      hero: item(tpl.imageAssetId),
+      gallery: (tpl.galleryAssetIds ?? []).map(item).filter((m): m is MediaItem => !!m),
+      video: item(tpl.videoAssetId),
+    }
+  } catch (err) {
+    console.error('[loadMedia] failed:', err)
+    return empty
+  }
 }
 
 export interface CertRow {
