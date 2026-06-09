@@ -25,6 +25,7 @@ import {
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { ProductRowActions } from './ProductRowActions'
 import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSelection'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
 
 export const dynamic = 'force-dynamic'
@@ -95,6 +96,7 @@ type Row = {
   priceFloorCents: number
   updatedAt: Date
   certRefreshNeededAt: Date | null
+  imageAssetId: string | null
   _count: { ingredientSlots: number; packagingSystems: number; variants: number }
 }
 
@@ -127,6 +129,9 @@ export default async function ProductsListPage({
         orderBy: { updatedAt: 'desc' },
       })
     : []
+
+  // Resolve hero thumbnails (Asset id → URL) for the name cell.
+  const heroUrls = await resolveCertBadgeUrls(templates.map((r) => r.imageAssetId))
 
   // KPI + chip counts always reflect the FULL set; only the table obeys the tab.
   const countFor = (t: Exclude<Tab, 'all'>) =>
@@ -281,9 +286,18 @@ export default async function ProductsListPage({
                       <td className="pl-5 pr-2 py-3 align-middle"><RowCheckbox id={r.id} /></td>
                       <td className="px-3 py-3 font-medium text-ink-900">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-lg bg-pink-50 text-[11px] font-bold uppercase text-pink-700 ring-1 ring-ink-100">
-                            {r.name.slice(0, 2)}
-                          </span>
+                          {r.imageAssetId && heroUrls.get(r.imageAssetId) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={heroUrls.get(r.imageAssetId)!}
+                              alt=""
+                              className="h-9 w-9 flex-none rounded-lg object-cover ring-1 ring-ink-100"
+                            />
+                          ) : (
+                            <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-lg bg-pink-50 text-[11px] font-bold uppercase text-pink-700 ring-1 ring-ink-100">
+                              {r.name.slice(0, 2)}
+                            </span>
+                          )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <Link
