@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { createDraftShell, updateBasics, type InitialDraft } from './build-actions'
+import { CertificatesCard } from './CertificatesCard'
 
 interface Opt { id: string; label: string }
 interface CategoryOption { id: string; name: string; mainCategory: string }
@@ -111,6 +112,9 @@ export function BasicsScreen({
           <Field full label="Product name · appears in the marketplace">
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sparkling Yuzu Soda" />
           </Field>
+          <Field full label="Base SKU · seeds variant SKUs (internal)">
+            <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
+          </Field>
           <Field label="Category">
             <select className="sel" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}>
               <option value="">Select…</option>
@@ -122,9 +126,6 @@ export function BasicsScreen({
               <option value="">{categoryId ? 'Select…' : 'Pick a category first'}</option>
               {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </Field>
-          <Field label="Base SKU · seeds variant SKUs (internal)">
-            <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
           </Field>
 
           <Field full label="Niches · 1 primary + up to 2 secondary">
@@ -140,21 +141,10 @@ export function BasicsScreen({
           <Field full label="Detailed description · detail page">
             <textarea rows={3} value={longDesc} onChange={(e) => setLongDesc(e.target.value)} placeholder="A bright, citrus-forward sparkling soda…" />
           </Field>
-
-          <Field full label="Custom meta fields · max 10">
-            {meta.map((m, i) => (
-              <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
-                <input className="input" style={{ width: '38%' }} value={m.key} placeholder="Key" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} />
-                <input className="input" style={{ flex: 1 }} value={m.value} placeholder="Value" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
-                <button className="btn sm" onClick={() => setMeta(meta.filter((_, j) => j !== i))}>✕</button>
-              </div>
-            ))}
-            {meta.length < 10 && <button className="btn sm" onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
-          </Field>
         </div>
 
-        {/* RIGHT — media + product type */}
-        <div>
+        {/* RIGHT — media · custom meta · certificates */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card">
             <div className="eyebrow">Media · hero + thumbnails</div>
             <div className="imgslot" style={{ aspectRatio: '16/10', background: '#f5e9ee', marginTop: 10 }}>Hero image</div>
@@ -163,7 +153,21 @@ export function BasicsScreen({
               <div className="imgslot video" style={{ aspectRatio: 1 }}>▶</div>
             </div>
             <p className="tiny muted" style={{ marginTop: 8 }}>First image = marketplace hero. Drag to reorder.</p>
+
+            <div className="eyebrow" style={{ marginTop: 16 }}>Custom meta fields · max 10</div>
+            <div style={{ marginTop: 8 }}>
+              {meta.map((m, i) => (
+                <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
+                  <input className="input" style={{ width: '38%' }} value={m.key} placeholder="Key" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} />
+                  <input className="input" style={{ flex: 1 }} value={m.value} placeholder="Value" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+                  <button className="btn sm" onClick={() => setMeta(meta.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              {meta.length < 10 && <button className="btn sm" onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
+            </div>
           </div>
+
+          <CertificatesCard draftId={draftId} />
         </div>
       </div>
     </div>

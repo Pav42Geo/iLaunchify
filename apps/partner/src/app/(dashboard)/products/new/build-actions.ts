@@ -9,6 +9,8 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
+import { suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -49,6 +51,7 @@ export interface CertRow {
   certificateNumber: string | null
   expiryDateIso: string
   status: 'PENDING_REVIEW' | 'VERIFIED' | 'EXPIRED' | 'REJECTED'
+  badgeUrl: string | null // cert type's web badge (image)
 }
 export interface CertData { attached: CertRow[]; available: CertRow[] }
 
@@ -64,7 +67,7 @@ export async function loadCertData(productTemplateId: string): Promise<CertData>
       where: { id: productTemplateId },
       select: {
         manufacturerServiceId: true,
-        certificates: { select: { instance: { select: { id: true, certificateNumber: true, expiryDate: true, status: true, certificateType: { select: { name: true } } } } } },
+        certificates: { select: { instance: { select: { id: true, certificateNumber: true, expiryDate: true, status: true, certificateType: { select: { name: true, thumbnailFileId: true } } } } } },
       },
     })
     if (!tpl) return empty
@@ -73,20 +76,28 @@ export async function loadCertData(productTemplateId: string): Promise<CertData>
 
     const available = await prisma.partnerCertificateInstance.findMany({
       where: { partnerId: partner.id, status: { in: ['VERIFIED', 'PENDING_REVIEW'] } },
-      include: { certificateType: { select: { name: true } } },
+      include: { certificateType: { select: { name: true, thumbnailFileId: true } } },
       orderBy: { expiryDate: 'asc' },
     })
+    // Resolve cert-type web badges (images) — same helper as /certifications.
+    const fileIds = [
+      ...tpl.certificates.map((c) => c.instance.certificateType.thumbnailFileId),
+      ...available.map((a) => a.certificateType.thumbnailFileId),
+    ]
+    const badges = await resolveCertBadgeUrls(fileIds).catch(() => new Map<string, string>())
+    const badge = (id: string | null) => (id ? badges.get(id) ?? null : null)
+
     const attachedInstanceIds = new Set(tpl.certificates.map((c) => c.instance.id))
     return {
       attached: tpl.certificates.map((c) => ({
         productCertificateId: null, instanceId: c.instance.id, certName: c.instance.certificateType.name,
         certificateNumber: c.instance.certificateNumber, expiryDateIso: c.instance.expiryDate.toISOString(),
-        status: c.instance.status as CertRow['status'],
+        status: c.instance.status as CertRow['status'], badgeUrl: badge(c.instance.certificateType.thumbnailFileId),
       })),
       available: available.filter((a) => !attachedInstanceIds.has(a.id)).map((a) => ({
         productCertificateId: null, instanceId: a.id, certName: a.certificateType.name,
         certificateNumber: a.certificateNumber, expiryDateIso: a.expiryDate.toISOString(),
-        status: a.status as CertRow['status'],
+        status: a.status as CertRow['status'], badgeUrl: badge(a.certificateType.thumbnailFileId),
       })),
     }
   } catch (err) {
@@ -668,6 +679,67 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
   } catch (err) {
     console.error('[saveFlavors] failed:', err)
     return { ok: false, error: `Could not save flavors: ${(err as Error).message}` }
+  }
+}
+
+export interface PhraseSuggestionLite { phraseId: string; title: string; body: string; requirement: string; cfrCitation: string | null; isLocked: boolean }
+export interface PhraseData {
+  labelingType: string
+  factFlags: Array<{ key: string; label: string; help: string }>
+  facts: Record<string, boolean>
+  suggestions: PhraseSuggestionLite[]
+  selectedPhraseIds: string[]
+}
+
+/** Load the label-phrase engine state for a draft (consolidation — Packaging
+ *  step). Reuses @ilaunchify/marketplace suggestPhrases + PHRASE_FACT_FLAGS;
+ *  toggles persist via the editor's saveProductPhraseFacts/saveProductPhrases. */
+export async function loadPhraseData(productTemplateId: string): Promise<PhraseData | null> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return null
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true, labelingType: true, phraseFacts: true, phrases: { select: { mandatoryPhraseId: true } } },
+    })
+    if (!tpl) return null
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return null
+
+    const labelingType = String(tpl.labelingType)
+    const factFlags = PHRASE_FACT_FLAGS
+      .filter((f) => f.labelingTypes.includes(labelingType))
+      .map((f) => ({ key: f.key, label: f.label, help: f.help }))
+    const { suggestions } = await suggestPhrases({ productTemplateId })
+    return {
+      labelingType,
+      factFlags,
+      facts: (tpl.phraseFacts ?? {}) as Record<string, boolean>,
+      suggestions: suggestions.map((s) => ({ phraseId: s.phraseId, title: s.title, body: s.body, requirement: s.requirement, cfrCitation: s.cfrCitation, isLocked: s.isLocked })),
+      selectedPhraseIds: tpl.phrases.map((p) => p.mandatoryPhraseId),
+    }
+  } catch (err) {
+    console.error('[loadPhraseData] failed:', err)
+    return null
+  }
+}
+
+export interface CertTypeOption { id: string; name: string; badgeUrl: string | null }
+
+/** Active cert-type catalog for the in-builder "request a certificate" form. */
+export async function loadCertTypes(): Promise<CertTypeOption[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const types = await prisma.certificateType.findMany({
+      where: { status: 'ACTIVE' }, orderBy: { name: 'asc' },
+      select: { id: true, name: true, thumbnailFileId: true },
+    })
+    const badges = await resolveCertBadgeUrls(types.map((t) => t.thumbnailFileId)).catch(() => new Map<string, string>())
+    return types.map((t) => ({ id: t.id, name: t.name, badgeUrl: t.thumbnailFileId ? (badges.get(t.thumbnailFileId) ?? null) : null }))
+  } catch (err) {
+    console.error('[loadCertTypes] failed:', err)
+    return []
   }
 }
 

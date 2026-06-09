@@ -20,6 +20,7 @@ import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
 import { CertificatesCard } from './CertificatesCard'
 import { NotesCard } from './NotesCard'
+import { LabelPhrasesCard } from './LabelPhrasesCard'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -358,6 +359,7 @@ export function GuidedBuilder({
                 </div>
                 <div className="note" style={{ marginTop: 14 }}>The maker positions <b>frames</b>, not final art. Each frame <b>auto-binds</b> to product data (Facts ← computed panel · Manufacturer ← facility · Net wt ← variant). Saved as JSON the Creator&apos;s Design Studio reads.</div>
               </div>
+              <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>
           )}
@@ -397,7 +399,7 @@ export function GuidedBuilder({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-                <CertificatesCard draftId={draftId} />
+                <CertificatesCard draftId={draftId} preview />
                 <NotesCard draftId={draftId} />
               </div>
 
@@ -515,7 +517,7 @@ const CSS = `
 .gb .seg button.on{background:var(--ink-900);color:#fff}
 .gb .navbtns{display:flex;align-items:center;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid var(--ink-100)}
 .gb .navleft{display:flex;gap:10px;align-items:center}
-.gb .rail{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
+.gb .rail{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;background:#fff}
 .gb .facts{border:2px solid #000;border-radius:6px;padding:10px;font-family:Helvetica,Arial,sans-serif;color:#000;font-size:11px;background:#fff}
 .gb .facts .big{font-size:24px;font-weight:800;border-bottom:6px solid #000;margin:0 0 2px}
 .gb .facts .r{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:2px 0}
