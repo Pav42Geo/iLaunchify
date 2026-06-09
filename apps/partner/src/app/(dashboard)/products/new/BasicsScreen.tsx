@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { createDraftShell, updateBasics, type InitialDraft } from './build-actions'
+import { saveProductNiches, saveProductLifestyleTags } from '../[id]/edit/card-actions'
 import { CertificatesCard } from './CertificatesCard'
 
 interface Opt { id: string; label: string }
@@ -92,6 +93,26 @@ export function BasicsScreen({
     return () => { if (t.current) clearTimeout(t.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, baseSku, subcategoryId, shortDesc, longDesc, meta])
+
+  // Persist niches (1 primary + ≤2 secondary; first = primary) — debounced.
+  const nTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (nTimer.current) clearTimeout(nTimer.current)
+    nTimer.current = setTimeout(() => { void saveProductNiches(draftId, selNiches) }, 700)
+    return () => { if (nTimer.current) clearTimeout(nTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selNiches, draftId])
+
+  // Persist lifestyle tags — debounced.
+  const tagTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (tagTimer.current) clearTimeout(tagTimer.current)
+    tagTimer.current = setTimeout(() => { void saveProductLifestyleTags(draftId, selTags) }, 700)
+    return () => { if (tagTimer.current) clearTimeout(tagTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selTags, draftId])
 
   function toggleChip(list: string[], set: (v: string[]) => void, id: string, max?: number) {
     if (list.includes(id)) set(list.filter((x) => x !== id))
