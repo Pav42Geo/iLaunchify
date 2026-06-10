@@ -811,6 +811,25 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
   }
 }
 
+/** Attached packaging-system ids for a draft (consolidation — Packaging step).
+ *  Attach/detach reuse the editor's addPackagingLink / removePackagingLink. */
+export async function loadPackaging(productTemplateId: string): Promise<string[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true, packagingSystems: { select: { packagingSystemId: true } } },
+    })
+    if (!tpl) return []
+    if (tpl.manufacturerServiceId && !partner.services.map((s) => s.id).includes(tpl.manufacturerServiceId)) return []
+    return tpl.packagingSystems.map((p) => p.packagingSystemId)
+  } catch (err) {
+    console.error('[loadPackaging] failed:', err)
+    return []
+  }
+}
+
 export interface AllergenOverride { allergen: string; action: 'ADD' | 'REMOVE'; reason: string }
 export interface AllergenData { autoDerived: string[]; manualOverrides: AllergenOverride[]; crossContamination: string }
 

@@ -25,6 +25,7 @@ import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { ComplianceCard } from './ComplianceCard'
 import { AllergensCard } from './AllergensCard'
+import { PackagingPicker } from './PackagingPicker'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -355,6 +356,7 @@ export function GuidedBuilder({
           {/* ===== STEP 4 — PACKAGING STUDIO ===== */}
           {cur === 3 && (
             <section>
+              <PackagingPicker draftId={draftId} systems={packagingSystems} />
               <div className="banner">ℹ︎ <b>Platform library is the default.</b> Admin curates 3D mockups + normalized die-lines. Custom uploads route to an admin verification queue; the product can&apos;t go LIVE until die-lines are verified.</div>
               <div className="pacshell">
                 <div className="lib">
