@@ -142,7 +142,17 @@ function SpecSheetView({
           {q.oneTimeFeesCents > 0 && <Line label="One-time fees" value={money(q.oneTimeFeesCents)} />}
           {q.perUnitFeesCents > 0 && <Line label="Per-unit fees" value={money(q.perUnitFeesCents)} />}
           {q.perOrderFeesCents > 0 && <Line label="Per-order fees" value={money(q.perOrderFeesCents)} />}
-          <Line label="Production subtotal" value={<strong>{money(q.subtotalCents)}</strong>} />
+          <Line label="Production subtotal" value={money(q.subtotalCents)} />
+          {q.platformFeeCents != null && (
+            <Line
+              label={`Platform fee${q.platformFeePercent != null ? ` (${q.platformFeePercent}%)` : ''}`}
+              value={money(q.platformFeeCents)}
+            />
+          )}
+          <Line
+            label="Total"
+            value={<strong>{money(q.allInTotalCents ?? q.subtotalCents)}</strong>}
+          />
         </dl>
       </Card>
 

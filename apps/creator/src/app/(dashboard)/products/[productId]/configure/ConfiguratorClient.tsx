@@ -123,6 +123,10 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
     }
   }, [flavor, selectedValues, data.baseRows, data.geometry])
 
+  // Tier-aware platform fee on the production subtotal + the creator's all-in total.
+  const platformFeeCents = Math.round((quote.subtotalCents * data.platformFeePercent) / 100)
+  const allInCents = quote.subtotalCents + platformFeeCents
+
   function confirm() {
     if (!quote.valid) {
       toast.error('Fix the highlighted issues first.')
@@ -162,6 +166,9 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
         subtotalCents: quote.subtotalCents,
         priceDeltaCents: quote.priceDeltaCents,
         valid: quote.valid,
+        platformFeePercent: data.platformFeePercent,
+        platformFeeCents,
+        allInTotalCents: allInCents,
       },
       label: labelChanged ? (panel as unknown) : null,
       recipe: data.baseRows.map((r) => r.name),
@@ -291,13 +298,19 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
             {quote.perOrderFeesCents > 0 && (
               <Qline label="Per-order fees" value={money(quote.perOrderFeesCents)} />
             )}
+            <Qline label="Production subtotal" value={money(quote.subtotalCents)} />
+            <Qline
+              label={`Platform fee · ${data.creatorTier} · ${data.platformFeePercent}%`}
+              value={money(platformFeeCents)}
+            />
             <div className="mt-1 flex items-center justify-between border-t border-ink-100 pt-2 text-[14px] font-semibold text-ink-900">
-              <span>Production subtotal</span>
-              <span className="tabular-nums">{money(quote.subtotalCents)}</span>
+              <span>Your total</span>
+              <span className="tabular-nums">{money(allInCents)}</span>
             </div>
           </dl>
           <p className="mt-2 text-[10.5px] text-ink-400">
-            Manufacturer economics (§9). Platform fee + your retail markup are applied at checkout.
+            Includes your <span className="font-medium">{data.creatorTier}</span>-tier platform fee.
+            Production shipping is estimated at checkout.
           </p>
 
           {quote.issues.length > 0 && (

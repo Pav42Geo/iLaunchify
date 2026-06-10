@@ -33,6 +33,9 @@ export interface SpecSheetSnapshot {
     subtotalCents: number
     priceDeltaCents: number
     valid: boolean
+    platformFeePercent?: number
+    platformFeeCents?: number
+    allInTotalCents?: number
   }
   /** Recomputed Facts panel (PanelData JSON) — null when no label-affecting picks. */
   label: unknown | null

@@ -11,7 +11,13 @@
 // reads go through a loose delegate + cast and degrade to empty.
 
 import { prisma } from '@ilaunchify/db'
+import { getCreatorTier, type TierKey } from '@ilaunchify/auth'
+import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
 import type { IngredientInput, RecipeRow, OptionOverlay } from '@ilaunchify/nutrition'
+
+// Fallback if the production-order fee rule isn't seeded — Maker headline rate
+// so we never under-quote the platform fee (matches apps/marketing pricing).
+const FALLBACK_FEE_PERCENT = 15
 
 export interface ConfiguratorValue {
   id: string
@@ -78,6 +84,10 @@ export interface ConfiguratorData {
   flavors: ConfiguratorFlavor[]
   axes: ConfiguratorAxis[]
   rules: ConfiguratorRule[]
+  /** Creator's tier (drives the platform fee). */
+  creatorTier: TierKey
+  /** Tier-aware platform-fee percent on the production subtotal (from lookupFeeRate). */
+  platformFeePercent: number
 }
 
 type Nut = IngredientInput['per100g']
@@ -261,6 +271,14 @@ export async function loadConfiguratorData(
 
   const firstVariant = template.variants[0] ?? null
 
+  // Tier-aware platform fee (same source of truth as the marketplace matrix).
+  const creatorTier = await getCreatorTier(userId)
+  const feeRule = await lookupFeeRate(
+    creatorTierToPlanCode(creatorTier),
+    FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL,
+  )
+  const platformFeePercent = feeRule?.ratePercent ?? FALLBACK_FEE_PERCENT
+
   return {
     product: { id: product.id, name: product.name },
     template: { id: template.id, name: template.name },
@@ -292,6 +310,8 @@ export async function loadConfiguratorData(
       targetValueId: r.targetValueId,
       message: r.message,
     })),
+    creatorTier,
+    platformFeePercent,
   }
 }
 
