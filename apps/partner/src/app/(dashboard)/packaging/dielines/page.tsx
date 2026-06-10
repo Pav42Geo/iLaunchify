@@ -152,11 +152,19 @@ export default async function DielinesListPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <DielineRowActions
-                          id={d.id}
-                          label={`${containerName} · ${decoration}`}
-                          status={d.status}
-                        />
+                        <div className="inline-flex items-center gap-2">
+                          <Link
+                            href={`/dielines/${d.id}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-3 py-1 text-[11.5px] font-semibold text-ink-800 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                          >
+                            Open Studio
+                          </Link>
+                          <DielineRowActions
+                            id={d.id}
+                            label={`${containerName} · ${decoration}`}
+                            status={d.status}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )

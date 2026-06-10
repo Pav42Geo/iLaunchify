@@ -1244,12 +1244,24 @@ model TemplateVersion {
 
 // Design — a creator's in-progress or finalized design for a specific Product.
 // Distinct from Template (which is the reusable starting point).
+/// How the label artwork was produced — drives the compliance gate path.
+/// STUDIO_BUILT = structured objects (full auto-gate). IMPORTED_HYBRID = designer
+/// background + platform Facts/allergen objects (auto-gate on those). IMPORTED_FLAT
+/// = fully flattened artwork → human compliance review. docs/DIELINE_FRAME_EDITOR_SPEC.md §7b.
+enum LabelSource {
+  STUDIO_BUILT
+  IMPORTED_HYBRID
+  IMPORTED_FLAT
+}
+
 model Design {
   id                  String           @id @default(cuid())
   productId           String
   brandId             String
   templateVersionId   String? // which template version this started from
   status              DesignStatus     @default(DRAFT)
+  // Phase D — label-source mode (additive substrate; routing built later).
+  labelSource         LabelSource      @default(STUDIO_BUILT)
   // Cert badges (DESIGN_STUDIO.md §Certificate badges V1). A product has one
   // Design per surface/die-cut; exactly one is the "certifications surface"
   // that hosts the managed cert-badge zone. Auto-defaults to the product's
@@ -2630,6 +2642,7 @@ enum PartnerFileKind {
   KYB_ID // Beneficial owner ID (driver's license, passport)
   CERT_OF_INCORPORATION
   PRODUCT_SAMPLE // For verification (photos of finished goods)
+  DIELINE // Uploaded die-line file (PDF/AI) for the frame editor backdrop
   OTHER
 }
 
@@ -3624,6 +3637,13 @@ model PackagingDieline {
   safeAreaBox Json? // {x,y,w,h}
   foldLines   Json? // [{x1,y1,x2,y2,type}]
   surfaces    Json? // [{name, trimBox}]
+  // Mandatory-element + packaging-mark zones placed by the partner on the
+  // die-line. Content-agnostic typed SLOTS (FrameLayout) — the actual content
+  // resolves at composition from the right scope (recipe / material / certs /
+  // phrases / market). See docs/DIELINE_FRAME_EDITOR_SPEC.md + @ilaunchify/ui
+  // canvas/frames. Normalized 0..1 to the surface trim box.
+  frames          Json? // FrameLayout
+  framesUpdatedAt DateTime?
 
   // Forward-compat nullable fields (populated in later phases — cheap to add now)
   normalizedSvgKey   String?

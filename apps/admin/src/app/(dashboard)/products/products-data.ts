@@ -30,6 +30,7 @@ export type ProductsTab =
   | 'needs-changes'
   | 'published'
   | 'all'
+  | 'drafts'
 
 export const PRODUCTS_TAB_ORDER: ProductsTab[] = [
   'new',
@@ -37,6 +38,10 @@ export const PRODUCTS_TAB_ORDER: ProductsTab[] = [
   'needs-changes',
   'published',
   'all',
+  // "drafts" is intentionally LAST + visually distinct — it's a read-only ops
+  // view of partners' in-progress builds (where are they stalling), NOT part of
+  // the action queue. Admin can't act on a draft.
+  'drafts',
 ]
 
 export const PRODUCTS_TAB_LABEL: Record<ProductsTab, string> = {
@@ -45,6 +50,7 @@ export const PRODUCTS_TAB_LABEL: Record<ProductsTab, string> = {
   'needs-changes': 'Needs changes',
   published: 'Published',
   all: 'All',
+  drafts: 'In progress',
 }
 
 // Map a tab to the set of statuses it filters on (empty = no filter).
@@ -58,6 +64,8 @@ export function tabToStatuses(tab: ProductsTab): ProductTemplateStatus[] {
       return ['NEEDS_CHANGES']
     case 'published':
       return ['PUBLISHED']
+    case 'drafts':
+      return ['DRAFT']
     case 'all':
     default:
       return []
@@ -138,6 +146,22 @@ export interface ProductManufacturer {
   companyName: string
 }
 
+// Builder-section completion for a DRAFT — derived from which sections actually
+// have data (there's no stored step). Ordered the way the builder presents
+// them, so the first `false` is where the partner most likely stalled.
+export interface DraftProgress {
+  recipe: boolean // ≥1 ingredient slot
+  production: boolean // ≥1 variant
+  packaging: boolean // ≥1 packaging system
+  pricing: boolean // ≥1 pricing tier
+  media: boolean // hero image attached
+  /** sections with data / total sections */
+  done: number
+  total: number
+  /** first incomplete section in builder order, or null when all done */
+  stalledAt: 'recipe' | 'production' | 'packaging' | 'pricing' | 'media' | null
+}
+
 export interface ProductRow {
   id: string
   name: string
@@ -153,6 +177,8 @@ export interface ProductRow {
   }
   manufacturer: ProductManufacturer | null
   niches: ProductNicheChip[]
+  /** Only meaningful on the "drafts" tab — null elsewhere to keep payload lean. */
+  progress: DraftProgress | null
 }
 
 export interface ManufacturerOption {
@@ -214,6 +240,12 @@ export async function loadProductsData(
   const statuses = tabToStatuses(filters.tab)
   if (statuses.length > 0) {
     where.status = { in: statuses }
+  } else {
+    // "All" tab — admin must NEVER see partner DRAFTs. A draft is the
+    // partner's in-progress builder work; it only enters the review queue once
+    // submitted (→ PENDING_REVIEW). Every other tab already filters to a
+    // submitted status, so this guard only matters for "all".
+    where.status = { not: 'DRAFT' }
   }
   if (filters.q) {
     where.OR = [
@@ -267,6 +299,7 @@ export async function loadProductsData(
     publishedCount,
     rejected90d,
     tabAllCount,
+    draftsCount,
     totalFiltered,
     rawRows,
     nicheGroupsAll,
@@ -283,7 +316,8 @@ export async function loadProductsData(
     prisma.productTemplate.count({
       where: { status: 'REJECTED', updatedAt: { gte: ninetyDaysAgo } },
     }),
-    prisma.productTemplate.count(),
+    prisma.productTemplate.count({ where: { status: { not: 'DRAFT' } } }),
+    prisma.productTemplate.count({ where: { status: 'DRAFT' } }),
     prisma.productTemplate.count({ where: where as never }),
     prisma.productTemplate.findMany({
       where: where as never,
@@ -297,6 +331,17 @@ export async function loadProductsData(
         },
         manufacturerService: {
           select: { partner: { select: { id: true, companyName: true } } },
+        },
+        // Builder-section counts — drive the "In progress" (drafts) tab's
+        // completion + stalled-step columns. Cheap aggregate; loaded for every
+        // tab but only rendered on drafts.
+        _count: {
+          select: {
+            ingredientSlots: true,
+            variants: true,
+            packagingSystems: true,
+            pricingTiers: true,
+          },
         },
         // ProductTemplateNiche join — included via cast because the typed
         // client hasn't been regenerated yet (task #584). After regenerate
@@ -336,7 +381,7 @@ export async function loadProductsData(
       where:
         statuses.length > 0
           ? { productTemplate: { status: { in: statuses } } }
-          : {},
+          : { productTemplate: { status: { not: 'DRAFT' } } },
       _count: { _all: true },
     }),
     (
@@ -361,13 +406,18 @@ export async function loadProductsData(
     // parent category for grouping in the UI.
     prisma.productTemplate.groupBy({
       by: ['subcategoryId'],
+      where: { status: { not: 'DRAFT' } },
       _count: { _all: true },
     }),
     // Manufacturer dropdown — partners who have ≥1 ProductTemplate routed
     // through one of their PartnerService rows. Done via a join through
     // PartnerService → Partner.
+    // Manufacturers with ≥1 non-DRAFT template. (The _count stays unfiltered —
+    // filtered relation counts need a Prisma preview flag — so a manufacturer's
+    // dropdown tally may include their drafts, but draft-only manufacturers no
+    // longer appear at all.)
     prisma.partnerService.findMany({
-      where: { productTemplates: { some: {} } },
+      where: { productTemplates: { some: { status: { not: 'DRAFT' } } } },
       select: {
         partner: { select: { id: true, companyName: true } },
         _count: { select: { productTemplates: true } },
@@ -465,6 +515,7 @@ export async function loadProductsData(
     'needs-changes': needsChanges,
     published: publishedCount,
     all: tabAllCount,
+    drafts: draftsCount,
   }
 
   // Row payload type — captures the cast-include shape until the typed
@@ -489,7 +540,44 @@ export async function loadProductsData(
       isPrimary: boolean
       niche: { slug: string; name: string; iconEmoji: string | null }
     }[]
+    _count: {
+      ingredientSlots: number
+      variants: number
+      packagingSystems: number
+      pricingTiers: number
+    }
   }
+
+  // Derive draft progress only for the drafts tab (keeps the payload lean
+  // elsewhere). Ordered the way the builder presents the sections so the first
+  // `false` is the stall point.
+  const computeProgress = (r: RawRow): DraftProgress => {
+    const recipe = r._count.ingredientSlots > 0
+    const production = r._count.variants > 0
+    const packaging = r._count.packagingSystems > 0
+    const pricing = r._count.pricingTiers > 0
+    const media = Boolean(r.imageAssetId)
+    const ordered: Array<[DraftProgress['stalledAt'], boolean]> = [
+      ['recipe', recipe],
+      ['production', production],
+      ['packaging', packaging],
+      ['pricing', pricing],
+      ['media', media],
+    ]
+    const done = ordered.filter(([, v]) => v).length
+    const stalled = ordered.find(([, v]) => !v)
+    return {
+      recipe,
+      production,
+      packaging,
+      pricing,
+      media,
+      done,
+      total: ordered.length,
+      stalledAt: stalled ? stalled[0] : null,
+    }
+  }
+  const wantProgress = filters.tab === 'drafts'
 
   const rows: ProductRow[] = (rawRows as unknown as RawRow[]).map((r) => ({
     id: r.id,
@@ -522,6 +610,7 @@ export async function loadProductsData(
       }))
       // Primary first, then natural order
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)),
+    progress: wantProgress ? computeProgress(r) : null,
   }))
 
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PRODUCTS_PAGE_SIZE))

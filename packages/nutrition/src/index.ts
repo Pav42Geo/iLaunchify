@@ -98,3 +98,23 @@ export function resolveConfiguredSelection(
   }
   return list
 }
+
+/**
+ * Stable, order-independent fingerprint of a recipe's ingredient list. Hash it
+ * with `stableHash()` (from @ilaunchify/ui) to stamp recipe-derived label
+ * objects, so the die-line submit gate can detect staleness with a cheap string
+ * compare when the recipe changes. docs/HANDOFF-TO-CODE-dieline-phase-b.md.
+ */
+export function recipeFingerprint(ingredients: IngredientInput[]): string {
+  return ingredients
+    .map((i) => {
+      const panel = (i.per100g ?? {}) as Record<string, unknown>
+      const nutr = Object.keys(panel)
+        .sort()
+        .map((k) => `${k}=${panel[k]}`)
+        .join(',')
+      return `${i.id}|${i.name}|${i.quantity}|${i.unit}|${nutr}`
+    })
+    .sort()
+    .join(';')
+}

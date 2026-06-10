@@ -34,6 +34,8 @@ import {
   Clock,
   Building2,
   Image as ImageIcon,
+  Check,
+  PencilRuler,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
@@ -134,6 +136,19 @@ const TAB_TONE: Record<ProductsTab, { dot: string; bg: string; text: string; bor
   'needs-changes': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
   published: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
   all: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  // Dashed/violet so the read-only ops tab reads as separate from the queue.
+  drafts: { dot: 'bg-violet-400', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200' },
+}
+
+const DRAFT_STEP_LABEL: Record<
+  'recipe' | 'production' | 'packaging' | 'pricing' | 'media',
+  string
+> = {
+  recipe: 'Recipe',
+  production: 'Production',
+  packaging: 'Packaging',
+  pricing: 'Pricing',
+  media: 'Media',
 }
 
 // -----------------------------------------------------------------------------
@@ -172,6 +187,7 @@ export default async function AdminProductsListPage({ searchParams }: PageProps)
 
       {data.rows.length === 0 ? (
         <EmptyState
+          draftsTab={data.filters.tab === 'drafts'}
           filtered={Boolean(
             data.filters.q ||
               data.filters.niche ||
@@ -180,6 +196,8 @@ export default async function AdminProductsListPage({ searchParams }: PageProps)
               data.filters.tab !== 'new',
           )}
         />
+      ) : data.filters.tab === 'drafts' ? (
+        <DraftsTable rows={data.rows} />
       ) : (
         <ProductsTable rows={data.rows} filters={data.filters} />
       )}
@@ -728,6 +746,160 @@ function Th({
   return <th className={cn('px-3 py-2.5 text-left font-semibold', className)}>{children}</th>
 }
 
+// =============================================================================
+// DraftsTable — read-only "In progress" ops view. No row actions: a draft is
+// the partner's unsubmitted work, so there's nothing to approve. The Build
+// progress column derives section completion + the stall point from data.
+// =============================================================================
+
+const DRAFT_SECTIONS = ['recipe', 'production', 'packaging', 'pricing', 'media'] as const
+
+function DraftsTable({ rows }: { rows: ProductRow[] }) {
+  return (
+    <div className="space-y-3">
+      {/* Read-only ops banner — visually separate from the action queue. */}
+      <div className="flex items-start gap-2.5 rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 px-4 py-3">
+        <PencilRuler className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" aria-hidden="true" />
+        <p className="text-[12px] leading-relaxed text-violet-900">
+          <span className="font-semibold">In-progress builds — read-only.</span> Partners
+          haven&rsquo;t submitted these yet, so there&rsquo;s nothing to approve. Use this to spot
+          where builds stall — the <span className="font-medium">Stalled at</span> chip marks the
+          first empty step — and reach out to partners who need a hand.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <table className="w-full text-[12.5px]">
+          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <tr>
+              <Th>Product</Th>
+              <Th>Manufacturer</Th>
+              <Th>Build progress</Th>
+              <Th className="text-right">Last edited</Th>
+              <Th className="text-right">Started</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-100">
+            {rows.map((p) => {
+              const prog = p.progress
+              return (
+                <tr key={p.id} className="transition-colors hover:bg-violet-50/20">
+                  {/* Product — links to the read-only review snapshot */}
+                  <td className="px-3 py-3 align-top">
+                    <Link
+                      href={`/products/${p.id}`}
+                      className="group/cell flex items-start gap-2.5 focus-visible:outline-none"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-ink-200',
+                          p.imageAssetId
+                            ? 'bg-zinc-50 text-violet-600'
+                            : 'bg-violet-50 text-violet-500',
+                        )}
+                      >
+                        {p.imageAssetId ? (
+                          <ImageIcon className="h-3 w-3" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-ink-900 group-hover/cell:text-violet-700 group-focus-visible/cell:underline">
+                          {p.name}
+                        </p>
+                        <p className="mt-0.5 truncate text-[10.5px] text-ink-500">{p.slug}</p>
+                      </div>
+                    </Link>
+                  </td>
+
+                  {/* Manufacturer */}
+                  <td className="px-3 py-3 align-top">
+                    {p.manufacturer ? (
+                      <Link
+                        href={`/partners/${p.manufacturer.partnerId}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                      >
+                        <Building2 className="h-3 w-3 text-ink-400" />
+                        <span className="truncate max-w-[140px]">{p.manufacturer.companyName}</span>
+                      </Link>
+                    ) : (
+                      <span className="text-[11px] text-ink-400">—</span>
+                    )}
+                  </td>
+
+                  {/* Build progress — section chips + count + stall hint */}
+                  <td className="px-3 py-3 align-top">
+                    {prog ? (
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {DRAFT_SECTIONS.map((k) => (
+                            <span
+                              key={k}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                                prog[k]
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                  : 'border-ink-200 bg-zinc-50 text-ink-400',
+                              )}
+                            >
+                              {prog[k] ? (
+                                <Check className="h-2.5 w-2.5" aria-hidden="true" />
+                              ) : (
+                                <span className="h-2 w-2 rounded-full border border-dashed border-ink-300" />
+                              )}
+                              {DRAFT_STEP_LABEL[k]}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-[10.5px] tabular-nums text-ink-500">
+                            {prog.done}/{prog.total} sections
+                          </span>
+                          {prog.stalledAt ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                              Stalled at {DRAFT_STEP_LABEL[prog.stalledAt]}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+                              All filled · not submitted
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-ink-400">—</span>
+                    )}
+                  </td>
+
+                  {/* Last edited */}
+                  <td className="px-3 py-3 text-right align-top">
+                    <span
+                      className="inline-flex items-center gap-1 text-[11.5px] text-ink-600"
+                      title={p.updatedAt.toLocaleString()}
+                    >
+                      <Clock className="h-3 w-3 text-ink-400" />
+                      {formatRelative(p.updatedAt)}
+                    </span>
+                  </td>
+
+                  {/* Started */}
+                  <td className="px-3 py-3 text-right align-top">
+                    <span className="text-[11.5px] text-ink-500" title={p.createdAt.toLocaleString()}>
+                      {formatRelative(p.createdAt)}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 function SortableTh({
   sortKey,
   filters,
@@ -812,18 +984,22 @@ function Pagination({
 // Empty state
 // =============================================================================
 
-function EmptyState({ filtered }: { filtered: boolean }) {
+function EmptyState({ filtered, draftsTab }: { filtered: boolean; draftsTab?: boolean }) {
+  const title = draftsTab
+    ? 'No drafts in progress'
+    : filtered
+      ? 'No products match'
+      : 'No new submissions'
+  const body = draftsTab
+    ? 'When partners start building products, their unsubmitted drafts show up here so you can see where they stall.'
+    : filtered
+      ? 'Try a different filter combination — or jump to the "All" tab to see everything.'
+      : 'Once partners start submitting ProductTemplates, they will show up here.'
   return (
     <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
       <Package className="mx-auto h-8 w-8 text-ink-300" />
-      <h3 className="mt-3 font-display text-[15px] font-semibold text-ink-900">
-        {filtered ? 'No products match' : 'No new submissions'}
-      </h3>
-      <p className="mt-1 text-[12.5px] text-ink-500">
-        {filtered
-          ? 'Try a different filter combination — or jump to the "All" tab to see everything.'
-          : 'Once partners start submitting ProductTemplates, they will show up here.'}
-      </p>
+      <h3 className="mt-3 font-display text-[15px] font-semibold text-ink-900">{title}</h3>
+      <p className="mt-1 text-[12.5px] text-ink-500">{body}</p>
       {filtered && (
         <Link
           href="/products"

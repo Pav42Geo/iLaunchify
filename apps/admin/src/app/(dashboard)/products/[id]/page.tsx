@@ -58,6 +58,7 @@ import type {
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { partnerUrl } from '@/lib/partner-url'
 import {
   suggestNiches,
   suggestPhrases,
@@ -175,6 +176,62 @@ const PARTNER_TIER_NOTE: Record<PartnerTier, string> = {
   VERIFIED: 'Verified — baseline placement + standard fee schedule.',
   TRUSTED: 'Trusted — earned priority surfacing + reduced fee on production orders.',
   PREMIER: 'Premier — featured placement + best fee schedule.',
+}
+
+// -----------------------------------------------------------------------------
+// New-builder configurator shapes (loose-delegate payloads — the generated
+// client may not surface these models on every machine until the migration
+// runs; see docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md).
+// -----------------------------------------------------------------------------
+
+type OverlayOpStr = 'NONE' | 'SWAP' | 'ADD' | 'REMOVE'
+
+interface RawOptionValue {
+  id: string
+  label: string
+  isDefault: boolean
+  overlayOp: OverlayOpStr
+  unitCostDeltaCents: number
+  leadTimeDeltaDays: number
+  moqOverride: number | null
+  priceDeltaCents: number
+  status: string
+  sortOrder: number
+}
+
+interface RawOptionAxis {
+  id: string
+  key: string
+  label: string
+  layer: string
+  editableByCreator: boolean
+  affectsLabel: boolean
+  required: boolean
+  boundSlotId: string | null
+  isActive: boolean
+  sortOrder: number
+  values: RawOptionValue[]
+}
+
+interface RawFee {
+  id: string
+  label: string
+  basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'
+  amountCents: number
+  waivedAboveQty: number | null
+  sortOrder: number
+}
+
+const FEE_BASIS_LABEL: Record<RawFee['basis'], string> = {
+  PER_UNIT: 'Per unit',
+  PER_SKU_ONE_TIME: 'One-time / SKU',
+  PER_ORDER: 'Per order',
+}
+
+const STORAGE_CLASS_LABEL: Record<'AMBIENT' | 'CHILLED' | 'FROZEN', string> = {
+  AMBIENT: 'Ambient',
+  CHILLED: 'Chilled',
+  FROZEN: 'Frozen',
 }
 
 // -----------------------------------------------------------------------------
@@ -518,6 +575,61 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
       if (a.matched !== b.matched) return a.matched ? -1 : 1
       return b.weight - a.weight
     })
+
+  // ---------------------------------------------------------------------------
+  // New-builder data — configurator option axes + per-template fees, plus the
+  // gallery/video + storage/lead scalars. These models + columns landed with
+  // the guided builder (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md, 2026-06-08)
+  // and may not be on the generated client on every machine until the migration
+  // runs — so reach via a loose delegate + cast and degrade to empty (the cards
+  // self-hide) when the model isn't there yet.
+  // ---------------------------------------------------------------------------
+
+  const looseDb = prisma as unknown as {
+    productOptionAxis?: { findMany: (args: unknown) => Promise<RawOptionAxis[]> }
+    productTemplateFee?: { findMany: (args: unknown) => Promise<RawFee[]> }
+  }
+  const [optionAxes, fees] = await Promise.all([
+    looseDb.productOptionAxis
+      ?.findMany({
+        where: { productTemplateId: id, isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        include: { values: { orderBy: { sortOrder: 'asc' } } },
+      })
+      .catch(() => [] as RawOptionAxis[]) ?? Promise.resolve([] as RawOptionAxis[]),
+    looseDb.productTemplateFee
+      ?.findMany({
+        where: { productTemplateId: id },
+        orderBy: { sortOrder: 'asc' },
+      })
+      .catch(() => [] as RawFee[]) ?? Promise.resolve([] as RawFee[]),
+  ])
+  const labelAffectingAxes = optionAxes.filter((a) => a.affectsLabel)
+
+  // New scalar columns off the template (cast — may be ungenerated locally).
+  const builderScalars = template as unknown as {
+    galleryAssetIds?: string[] | null
+    videoAssetId?: string | null
+    storageClass?: 'AMBIENT' | 'CHILLED' | 'FROZEN' | null
+    storageTempMinF?: number | null
+    storageTempMaxF?: number | null
+    leadTimeRepeatDays?: number | null
+    leadTimeFirstRunDays?: number | null
+    maxFlavorsPerPack?: number | null
+  }
+  const galleryAssetIds = builderScalars.galleryAssetIds ?? []
+  const videoAssetId = builderScalars.videoAssetId ?? null
+  const storageClass = builderScalars.storageClass ?? null
+  const storageTempMinF = builderScalars.storageTempMinF ?? null
+  const storageTempMaxF = builderScalars.storageTempMaxF ?? null
+  const leadTimeRepeatDays = builderScalars.leadTimeRepeatDays ?? null
+  const leadTimeFirstRunDays = builderScalars.leadTimeFirstRunDays ?? null
+  const maxFlavorsPerPack = builderScalars.maxFlavorsPerPack ?? null
+  const hasProductionStorageData =
+    storageClass != null ||
+    leadTimeRepeatDays != null ||
+    leadTimeFirstRunDays != null ||
+    maxFlavorsPerPack != null
 
   // Tone + label resolution (strict-TS bang on Record<EnumKey, T>).
   const tone = STATUS_TONE[template.status]!
@@ -1271,20 +1383,207 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             </SnapshotCard>
           )}
 
-          {/* Media — only renders when a hero image is attached. */}
-          {template.imageAssetId && (
+          {/* Media — hero + gallery (max 6) + product video. New builder stores
+              the gallery in galleryAssetIds[] and the clip in videoAssetId. */}
+          {(template.imageAssetId || galleryAssetIds.length > 0 || videoAssetId) && (
             <SnapshotCard
               id="media"
               icon={ImageIcon}
               title="Media"
-              subtitle="Hero image attached"
+              subtitle={[
+                template.imageAssetId ? 'hero' : null,
+                galleryAssetIds.length > 0
+                  ? `${galleryAssetIds.length} gallery image${galleryAssetIds.length === 1 ? '' : 's'}`
+                  : null,
+                videoAssetId ? 'video' : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             >
-              <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px] text-ink-900">
-                <ImageIcon className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
-                <span className="font-mono text-[11.5px] text-ink-600">
-                  {template.imageAssetId}
-                </span>
+              <div className="space-y-1.5">
+                {template.imageAssetId && (
+                  <MediaAssetRow
+                    kind="hero"
+                    label="Hero image"
+                    assetId={template.imageAssetId}
+                  />
+                )}
+                {galleryAssetIds.map((aid, idx) => (
+                  <MediaAssetRow
+                    key={aid}
+                    kind="image"
+                    label={`Gallery ${idx + 1}`}
+                    assetId={aid}
+                  />
+                ))}
+                {videoAssetId && (
+                  <MediaAssetRow kind="video" label="Product video" assetId={videoAssetId} />
+                )}
               </div>
+            </SnapshotCard>
+          )}
+
+          {/* Creator-configurable options — the configurator axes the
+              manufacturer exposed (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md).
+              The label-affecting axes are the compliance-critical ones: each
+              creator selection recomputes the FDA Facts panel via the overlay
+              engine, so admin must see exactly which axes mutate the label. */}
+          {optionAxes.length > 0 && (
+            <SnapshotCard
+              id="options"
+              icon={Layers}
+              title="Creator-configurable options"
+              subtitle={`${optionAxes.length} axis${optionAxes.length === 1 ? '' : 'es'}${
+                labelAffectingAxes.length > 0
+                  ? ` · ${labelAffectingAxes.length} change the Facts label`
+                  : ''
+              }`}
+            >
+              {labelAffectingAxes.length > 0 && (
+                <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-[11.5px] text-amber-900">
+                  <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    {labelAffectingAxes.length} axis
+                    {labelAffectingAxes.length === 1 ? '' : 'es'} recompute the FDA Facts
+                    label per creator selection — verify each value&rsquo;s overlay before
+                    publishing.
+                  </span>
+                </div>
+              )}
+              <ul className="space-y-2.5">
+                {optionAxes.map((axis) => (
+                  <li
+                    key={axis.id}
+                    className="rounded-xl border border-ink-100 bg-zinc-50/50 px-3 py-2.5"
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[12.5px] font-semibold text-ink-900">
+                        {axis.label}
+                      </span>
+                      <span className="font-mono text-[10px] text-ink-400">{axis.key}</span>
+                      <OptionTag
+                        tone={axis.editableByCreator ? 'pink' : 'neutral'}
+                        label={axis.editableByCreator ? 'Creator-editable' : 'Locked'}
+                      />
+                      {axis.affectsLabel && <OptionTag tone="amber" label="Affects label" />}
+                      <OptionTag tone="neutral" label={axis.layer} />
+                      {axis.required && <OptionTag tone="neutral" label="Required" />}
+                    </div>
+                    {axis.values.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {axis.values.map((v) => (
+                          <li
+                            key={v.id}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 bg-white px-2.5 py-1.5 text-[12px]"
+                          >
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate font-medium text-ink-900">
+                                {v.label}
+                              </span>
+                              {v.isDefault && <OptionTag tone="emerald" label="Default" />}
+                              {v.overlayOp !== 'NONE' && (
+                                <OptionTag tone="sky" label={v.overlayOp} />
+                              )}
+                            </span>
+                            <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-ink-500">
+                              {formatDelta(v.unitCostDeltaCents, '$')}
+                              {v.leadTimeDeltaDays !== 0 && ` · ${formatDelta(v.leadTimeDeltaDays, 'd')}`}
+                              {v.moqOverride != null && ` · MOQ≥${v.moqOverride.toLocaleString()}`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </SnapshotCard>
+          )}
+
+          {/* Production & storage — first-run vs repeat lead times, storage
+              class + temperature band, and the multi-flavor pack cap. */}
+          {hasProductionStorageData && (
+            <SnapshotCard
+              id="production"
+              icon={PackageIcon}
+              title="Production & storage"
+              subtitle="Lead times · storage class · pack cap"
+            >
+              <dl className="divide-y divide-ink-100">
+                {(leadTimeRepeatDays != null || leadTimeFirstRunDays != null) && (
+                  <Row label="Lead time">
+                    <span className="tabular-nums">
+                      {leadTimeFirstRunDays != null
+                        ? `${leadTimeFirstRunDays}d first run`
+                        : '—'}
+                      {' · '}
+                      {leadTimeRepeatDays != null ? `${leadTimeRepeatDays}d repeat` : '—'}
+                    </span>
+                  </Row>
+                )}
+                {storageClass && (
+                  <Row label="Storage class">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="font-medium text-ink-900">
+                        {STORAGE_CLASS_LABEL[storageClass]}
+                      </span>
+                      {(storageTempMinF != null || storageTempMaxF != null) && (
+                        <span className="text-[11.5px] text-ink-500 tabular-nums">
+                          {storageTempMinF ?? '—'}–{storageTempMaxF ?? '—'}°F
+                        </span>
+                      )}
+                    </span>
+                  </Row>
+                )}
+                {maxFlavorsPerPack != null && (
+                  <Row label="Max flavors / pack">
+                    <span className="tabular-nums">
+                      {maxFlavorsPerPack}{' '}
+                      <span className="text-[10.5px] uppercase tracking-wider text-ink-500">
+                        distinct
+                      </span>
+                    </span>
+                  </Row>
+                )}
+              </dl>
+            </SnapshotCard>
+          )}
+
+          {/* Fees — one-time / per-unit / per-order surcharges the manufacturer
+              attached (#3). Surfaced so admin can sanity-check the economics. */}
+          {fees.length > 0 && (
+            <SnapshotCard
+              id="fees"
+              icon={DollarSign}
+              title="Fees"
+              subtitle={`${fees.length} fee${fees.length === 1 ? '' : 's'}`}
+            >
+              <table className="w-full text-[12.5px]">
+                <thead>
+                  <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                    <th className="pb-1.5 pr-3 font-semibold">Fee</th>
+                    <th className="pb-1.5 pr-3 font-semibold">Basis</th>
+                    <th className="pb-1.5 pr-3 font-semibold text-right">Amount</th>
+                    <th className="pb-1.5 font-semibold text-right">Waived above</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fees.map((f) => (
+                    <tr key={f.id} className="border-t border-ink-100">
+                      <td className="py-1.5 pr-3 font-medium text-ink-900">{f.label}</td>
+                      <td className="py-1.5 pr-3 text-ink-600">{FEE_BASIS_LABEL[f.basis]}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono tabular-nums text-ink-900">
+                        ${(f.amountCents / 100).toFixed(2)}
+                      </td>
+                      <td className="py-1.5 text-right font-mono tabular-nums text-ink-600">
+                        {f.waivedAboveQty != null
+                          ? `${f.waivedAboveQty.toLocaleString()} u`
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </SnapshotCard>
           )}
 
@@ -1313,8 +1612,30 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
           </SnapshotCard>
         </div>
 
-        {/* RIGHT — Sticky rail */}
+        {/* RIGHT — Sticky rail. Decision panel goes FIRST so Approve / Request
+            changes / Reject are immediately visible — previously it sat dead
+            last under the placement + constraints panels, well below the fold. */}
         <aside id="notes" className="space-y-6 md:sticky md:top-6 md:self-start">
+          {/* Decision + checklist + notes — the primary review action surface. */}
+          <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+            <ProductReviewer
+              productTemplateId={template.id}
+              currentStatus={template.status}
+              openReviewItems={openReviewItems.map((r) => ({
+                id: r.id,
+                category: r.category,
+                description: r.description,
+              }))}
+              notes={template.notes.map((n) => ({
+                id: n.id,
+                authorName: nameByAuthorId.get(n.authorId) ?? 'Unknown',
+                authorType: n.authorType,
+                body: n.body,
+                createdAt: n.createdAt,
+              }))}
+            />
+          </div>
+
           {/* Quick actions */}
           <SnapshotCard icon={ExternalLink} title="Quick actions" compact>
             <div className="flex flex-col gap-2">
@@ -1334,13 +1655,18 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 <History className="h-3.5 w-3.5" aria-hidden="true" />
                 Audit history
               </Link>
-              <Link
-                href={`/partner/products/${template.id}/edit`}
+              {/* Cross-app (admin 3003 → partner 3002): plain <a> + partnerUrl,
+                  not <Link>, and the consolidated builder route (the /edit
+                  route was retired → it redirects to /products/new?draft=). */}
+              <a
+                href={partnerUrl(`/products/new?draft=${template.id}`)}
+                target="_blank"
+                rel="noreferrer"
                 className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-900 transition-colors hover:border-ink-400 hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
               >
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 Open in partner builder
-              </Link>
+              </a>
               <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-1.5">
                 <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
                   <Hash className="mr-0.5 inline h-3 w-3" aria-hidden="true" />
@@ -1659,26 +1985,6 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             </p>
           </section>
 
-          {/* Reviewer — UNCHANGED prop shape, wrapped in the same chrome
-              so it stops looking like a shadcn Card. */}
-          <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-            <ProductReviewer
-              productTemplateId={template.id}
-              currentStatus={template.status}
-              openReviewItems={openReviewItems.map((r) => ({
-                id: r.id,
-                category: r.category,
-                description: r.description,
-              }))}
-              notes={template.notes.map((n) => ({
-                id: n.id,
-                authorName: nameByAuthorId.get(n.authorId) ?? 'Unknown',
-                authorType: n.authorType,
-                body: n.body,
-                createdAt: n.createdAt,
-              }))}
-            />
-          </div>
         </aside>
       </div>
     </div>
@@ -1921,6 +2227,75 @@ function humanizeTopology(t: string): string {
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
+}
+
+// =============================================================================
+// New-builder render helpers — media rows, option tags, delta formatting
+// =============================================================================
+
+function MediaAssetRow({
+  kind,
+  label,
+  assetId,
+}: {
+  kind: 'hero' | 'image' | 'video'
+  label: string
+  assetId: string
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px] text-ink-900">
+      <ImageIcon
+        className={cn(
+          'h-3.5 w-3.5 shrink-0',
+          kind === 'hero'
+            ? 'text-pink-600'
+            : kind === 'video'
+              ? 'text-sky-600'
+              : 'text-ink-500',
+        )}
+        aria-hidden="true"
+      />
+      <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+        {label}
+      </span>
+      <span className="truncate font-mono text-[11px] text-ink-600" title={assetId}>
+        {assetId}
+      </span>
+    </div>
+  )
+}
+
+type OptionTagTone = 'pink' | 'amber' | 'sky' | 'emerald' | 'neutral'
+
+function OptionTag({ tone, label }: { tone: OptionTagTone; label: string }) {
+  const cls: Record<OptionTagTone, string> = {
+    pink: 'border-pink-200 bg-pink-50 text-pink-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800',
+    sky: 'border-sky-200 bg-sky-50 text-sky-800',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    neutral: 'border-ink-200 bg-zinc-50 text-ink-600',
+  }
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider',
+        cls[tone],
+      )}
+    >
+      {label}
+    </span>
+  )
+}
+
+/** Signed delta for option-value economics. unit '$' = cents→dollars, 'd' = days. */
+function formatDelta(value: number, unit: '$' | 'd'): string {
+  if (unit === '$') {
+    const dollars = value / 100
+    const sign = dollars > 0 ? '+' : dollars < 0 ? '−' : ''
+    return `${sign}$${Math.abs(dollars).toFixed(2)}`
+  }
+  const sign = value > 0 ? '+' : value < 0 ? '−' : ''
+  return `${sign}${Math.abs(value)}d`
 }
 
 // =============================================================================

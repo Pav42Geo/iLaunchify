@@ -215,10 +215,25 @@ export function ProductReviewer({
                 ? 'Live in marketplace. You can pause to temporarily hide.'
                 : currentStatus === 'NEEDS_CHANGES'
                   ? 'Waiting on the partner. You can short-circuit + publish if items are moot.'
-                  : 'No actions for this status.'}
+                  : currentStatus === 'DRAFT'
+                    ? 'Draft — the partner hasn’t submitted this for review yet.'
+                    : currentStatus === 'REJECTED'
+                      ? 'Rejected (terminal). The partner must clone to retry.'
+                      : 'No actions for this status.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
+          {!canApprove && !isPendingStatus && !canPause && !canResume && (
+            <p className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+              {currentStatus === 'DRAFT'
+                ? 'Nothing to approve yet — this product is still a draft. Once the partner finishes the builder and submits, it moves to “Pending review” and the Approve / Request changes / Reject actions appear here.'
+                : currentStatus === 'REJECTED'
+                  ? 'This product was rejected (terminal). The partner must clone it to try again.'
+                  : currentStatus === 'ARCHIVED'
+                    ? 'This product is archived — no review actions.'
+                    : 'No review actions are available for this status.'}
+            </p>
+          )}
           {canApprove && (
             <Button
               onClick={handleApprove}

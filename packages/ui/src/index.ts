@@ -91,6 +91,10 @@ export * from './nutrition/NutritionFactsRenderer'
 export * from './canvas/types'
 export { Stage } from './canvas/Stage'
 export { DieCutFrame, DieCutLegend } from './canvas/DieCutFrame'
+// Die-line frame model — scoped slots + content resolution (pure, DB-free).
+export * from './canvas/frames'
+// Frame compliance gate — submit-gate validation (pure, DB-free).
+export * from './canvas/frame-compliance'
 // C9 — normalized dieline SVG generator (from a PackagingDieline structured spec)
 export {
   dielineSvgFromSpec,

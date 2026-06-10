@@ -10,6 +10,7 @@ const nextConfig = {
     '@ilaunchify/auth',
     '@ilaunchify/orders',
     '@ilaunchify/compliance-client',
+    '@ilaunchify/nutrition',
   ],
   experimental: {
     serverActions: { allowedOrigins: ['app.ilaunchify.com', 'localhost:3000'] },
