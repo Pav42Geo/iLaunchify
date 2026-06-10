@@ -3422,11 +3422,25 @@ enum FlavorPresetStatus {
 // Admin-curated canonical packaging taxonomy. Starts EMPTY at V1 launch and grows
 // as admin clusters partner-contributed PackagingSystems via the promotion
 // queue (task #135).
+/// Provenance of a packaging type's 3D model — tracked for licensing (Pacdora
+/// imports) + to know what can be regenerated. docs/PACKAGING_COMPOSITION_MODEL.md.
+enum Model3DSource {
+  PACDORA_IMPORT // downloaded from Pacdora (Business license) — track for licensing
+  UPLOAD // partner/admin-uploaded glTF/glb
+  PARAMETRIC // generated from topology + dimensions (future)
+}
+
 model PackagingType {
   id                 String                     @id @default(cuid())
   slug               String                     @unique // 'hdpe-jar-16oz-wide-mouth'
   displayName        String // canonical name shown publicly
   imageFileId        String? // admin-curated reference photo (Asset/PartnerFile soft FK)
+  // 3D Packaging Studio asset (docs/PACKAGING_COMPOSITION_MODEL.md §4). The glTF
+  // drives the three.js scene; defaultSurfaces (enriched to SurfaceDescriptor[])
+  // maps each clickable region → the component role it decorates + UV region.
+  model3dKey         String? // imported glTF/glb (R2 storage key)
+  model3dSource      Model3DSource?
+  model3dThumbKey    String? // preview thumbnail
   defaultTopology    PackagingTopology
   // Slice C7.c — explicit container category (defaultTopology is too coarse to derive
   // which component slots CONTAINER/CLOSURE/SEAL a product implies). Nullable: admins
@@ -3736,6 +3750,15 @@ model PackagingComponent {
 
   // Editor sort
   displayOrder Int @default(0)
+
+  // 3D Packaging Studio (docs/PACKAGING_COMPOSITION_MODEL.md §4). Per-instance
+  // dimension overrides (else inherit PackagingType.defaultDimensions) + how this
+  // component's children arrange inside it in the 3D scene (e.g. {rows,cols} for a
+  // 6-pack of cans in a carton, or explicit child positions).
+  widthMm     Float?
+  heightMm    Float?
+  depthMm     Float?
+  childLayout Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
