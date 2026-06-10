@@ -105,6 +105,19 @@ export default async function ProductOverview({ params }: { params: Promise<{ pr
         />
       </div>
 
+      {/* Configure + compliance shortcuts */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild>
+          <Link href={`/products/${product.id}/configure`}>Configure &amp; quote</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href={`/products/${product.id}/label-check`}>Label compliance</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href={`/products/${product.id}/spec-sheet`}>Spec sheet</Link>
+        </Button>
+      </div>
+
       <RetailIdentityCard
         productId={product.id}
         initial={{
