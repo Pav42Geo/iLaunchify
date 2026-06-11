@@ -6,7 +6,7 @@
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { SampleCheckout } from './SampleCheckout'
 import type { SampleOption } from '@/lib/sample-quote'
@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic'
 export default async function SampleCheckoutPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = await params
   const user = await requireUser()
+  const settings = await getSampleSettings()
 
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
@@ -95,6 +96,9 @@ export default async function SampleCheckoutPage({ params }: { params: Promise<{
             flavorNames={flavorNames}
             isMultiFlavor={flavorNames.length > 1}
             defaultShipTo={last ?? null}
+            sampleShippingCents={settings.sampleFlatShippingCents}
+            samplePlatformFeeBps={settings.samplePlatformFeeBps}
+            brandedRequiresDieline={settings.brandedRequiresDieline}
           />
         )}
       </main>

@@ -11,8 +11,6 @@ import { Beaker, Package, Lock, Minus, Plus, Check } from 'lucide-react'
 import { quoteSample, hasSamplerSet, formatCents, type SampleOption, type SampleMode } from '@/lib/sample-quote'
 import { createSampleOrder } from '../checkout/sample-actions'
 
-const SAMPLE_SHIPPING_CENTS = 995 // mirrors server SAMPLE_FLAT_SHIPPING_CENTS
-
 const INPUT =
   'mt-1 block w-full rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
 const LABEL = 'block text-[11px] font-medium text-ink-600'
@@ -40,9 +38,12 @@ interface Props {
   flavorNames: string[]
   isMultiFlavor: boolean
   defaultShipTo: ShipToDefaults | null
+  sampleShippingCents: number
+  samplePlatformFeeBps: number
+  brandedRequiresDieline: boolean
 }
 
-export function SampleCheckout({ productId, productName, options, flavorNames, isMultiFlavor, defaultShipTo }: Props) {
+export function SampleCheckout({ productId, productName, options, flavorNames, isMultiFlavor, defaultShipTo, sampleShippingCents, samplePlatformFeeBps, brandedRequiresDieline }: Props) {
   const kinds = options.map((o) => o.kind)
   const [activeKind, setActiveKind] = React.useState(() => (kinds.includes('UNBRANDED') ? 'UNBRANDED' : kinds[0]!) as 'UNBRANDED' | 'BRANDED')
   const opt = options.find((o) => o.kind === activeKind)!
@@ -71,11 +72,12 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
 
   const effectiveMode: SampleMode = samplerAvailable ? mode : 'PER_FLAVOR'
   const quote = quoteSample(opt, { mode: effectiveMode, unitsByFlavor: units }, isMultiFlavor)
-  const brandedLocked = false // Branded allowed (Pavel 2026-06-10)
-  const needsAck = activeKind === 'BRANDED'
+  const brandedLocked = activeKind === 'BRANDED' && brandedRequiresDieline
+  const needsAck = activeKind === 'BRANDED' && !brandedLocked
   const addressComplete = !!(contactName.trim() && addressLine1.trim() && city.trim() && postalCode.trim())
-  const totalCents = quote.subtotalCents + SAMPLE_SHIPPING_CENTS
-  const canPay = !pending && quote.unitCount > 0 && quote.errors.length === 0 && addressComplete && (!needsAck || brandedAck)
+  const sampleFeeCents = Math.floor((quote.subtotalCents * samplePlatformFeeBps) / 10000)
+  const totalCents = quote.subtotalCents + sampleShippingCents + sampleFeeCents
+  const canPay = !pending && !brandedLocked && quote.unitCount > 0 && quote.errors.length === 0 && addressComplete && (!needsAck || brandedAck)
 
   const setUnit = (flavor: string, n: number) => setUnits((u) => ({ ...u, [flavor]: Math.max(0, n) }))
 
@@ -207,7 +209,8 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
               <Row key={i} label={`${l.label}${l.qty > 1 ? ` × ${l.qty}` : ''}`} value={formatCents(l.totalCents)} />
             ))}
             {quote.unitCount === 0 && <Row label="Sample" value="$—.——" dimmed />}
-            <Row label="Sample shipping" value={formatCents(SAMPLE_SHIPPING_CENTS)} />
+            <Row label="Sample shipping" value={formatCents(sampleShippingCents)} />
+            {sampleFeeCents > 0 && <Row label="Platform fee" value={formatCents(sampleFeeCents)} />}
             <div className="my-1 border-t border-ink-100" />
             <Row label="Total" value={formatCents(totalCents)} bold />
           </dl>

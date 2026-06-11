@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings } from '@ilaunchify/db'
 import type { SampleOption } from './sample-quote'
 
 /**
@@ -78,11 +78,11 @@ export async function getProductSampleOptions(templateSlug: string): Promise<Pro
     }))
     const flavorNames = (row.flavorPresets ?? []).map((f) => f.name).filter((n): n is string => !!n && n.trim().length > 0)
 
-    // Branded-sample availability. Pavel 2026-06-10: allow Branded now — partners
-    // supply packaging out-of-band until the die-line flow ships (#36). Re-gate on
-    // the real "die-line passed compliance" signal when that lands; the card still
-    // renders a locked state if this flips back to false.
-    const dielineReady = true
+    // Branded-sample availability, admin-controlled (SampleSettings). When the
+    // admin requires an approved die-line for branded samples, the card shows a
+    // locked state; otherwise branded is available now (partners supply packaging
+    // out-of-band until the die-line flow ships, #36).
+    const dielineReady = !(await getSampleSettings()).brandedRequiresDieline
 
     return { options, flavorNames, isMultiFlavor: flavorNames.length > 1, dielineReady }
   } catch (err) {

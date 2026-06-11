@@ -8,6 +8,40 @@
 
 export type SampleCreditStatus = 'AVAILABLE' | 'APPLIED' | 'EXPIRED' | 'VOID'
 
+/** Days a minted sample credit stays usable before it expires (Pavel 2026-06-10). */
+export const SAMPLE_CREDIT_EXPIRY_DAYS = 90
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export interface MintedCredit {
+  amountCents: number
+  /** Epoch ms when the credit expires (paid-at + SAMPLE_CREDIT_EXPIRY_DAYS). */
+  expiresAtMs: number
+}
+
+/**
+ * The credit a PAID sample order mints toward the creator's first production
+ * order: the sample subtotal, capped by the partner's `creditCapCents`, expiring
+ * SAMPLE_CREDIT_EXPIRY_DAYS after payment. Returns null when the option doesn't
+ * grant credit or the amount rounds to 0. Pure — the caller persists the row.
+ */
+export function mintSampleCredit(
+  sampleSubtotalCents: number,
+  opt: { creditTowardFirstOrder: boolean; creditCapCents: number | null },
+  paidAtMs: number = Date.now(),
+  /** Admin overrides (SampleSettings): expiry window + a platform-wide ceiling. */
+  settings?: { expiryDays?: number; platformCapCents?: number | null },
+): MintedCredit | null {
+  if (!opt.creditTowardFirstOrder) return null
+  const subtotal = Math.max(0, Math.floor(sampleSubtotalCents || 0))
+  const partnerCap = typeof opt.creditCapCents === 'number' && opt.creditCapCents > 0 ? Math.floor(opt.creditCapCents) : subtotal
+  const platformCap = settings?.platformCapCents != null && settings.platformCapCents > 0 ? Math.floor(settings.platformCapCents) : Infinity
+  const amountCents = Math.min(subtotal, partnerCap, platformCap)
+  if (amountCents <= 0) return null
+  const expiryDays = settings?.expiryDays && settings.expiryDays > 0 ? Math.floor(settings.expiryDays) : SAMPLE_CREDIT_EXPIRY_DAYS
+  return { amountCents, expiresAtMs: paidAtMs + expiryDays * DAY_MS }
+}
+
 export interface SampleCreditEntry {
   id: string
   remainingCents: number

@@ -4,48 +4,14 @@
 // singleton so the sample economics are admin-tunable without a deploy. Cast-guarded
 // until the migration lands the model on the generated client.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings, type SampleSettingsValues } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
-export interface SampleSettingsValues {
-  creditBackEnabled: boolean
-  creditExpiryDays: number
-  creditMaxCapCents: number | null
-  sampleFlatShippingCents: number
-  samplePlatformFeeBps: number
-  abuseWindowDays: number
-  brandedRequiresDieline: boolean
-}
-
-export const SAMPLE_SETTINGS_DEFAULTS: SampleSettingsValues = {
-  creditBackEnabled: true,
-  creditExpiryDays: 90,
-  creditMaxCapCents: null,
-  sampleFlatShippingCents: 995,
-  samplePlatformFeeBps: 0,
-  abuseWindowDays: 30,
-  brandedRequiresDieline: false,
-}
-
-const SELECT = {
-  creditBackEnabled: true, creditExpiryDays: true, creditMaxCapCents: true,
-  sampleFlatShippingCents: true, samplePlatformFeeBps: true, abuseWindowDays: true, brandedRequiresDieline: true,
-}
-
-export async function getSampleSettings(): Promise<SampleSettingsValues> {
-  try {
-    const row = await (prisma as unknown as {
-      sampleSettings: { findUnique: (a: unknown) => Promise<Partial<SampleSettingsValues> | null> }
-    }).sampleSettings
-      .findUnique({ where: { id: 'default' }, select: SELECT })
-      .catch(() => null)
-    return row ? { ...SAMPLE_SETTINGS_DEFAULTS, ...row } : SAMPLE_SETTINGS_DEFAULTS
-  } catch {
-    return SAMPLE_SETTINGS_DEFAULTS
-  }
-}
+// Read-side lives in @ilaunchify/db (the single source every consumer reads).
+// Re-exported so the page keeps importing from './actions'.
+export { getSampleSettings, type SampleSettingsValues }
 
 type Result = { ok: true } | { ok: false; error: string }
 

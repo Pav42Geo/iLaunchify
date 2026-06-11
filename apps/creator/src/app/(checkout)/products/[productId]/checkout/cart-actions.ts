@@ -17,7 +17,7 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { findRouting, estimateDispatchCosts, applySampleCredit, type SampleCreditEntry } from '@ilaunchify/orders'
 import {
@@ -224,7 +224,8 @@ export async function placeOrderFromCheckoutDraft(
   //         generated client until the migration).
   let sampleCreditAppliedCents = 0
   let consumedCredits: Array<{ id: string; newRemainingCents: number; fullyUsed: boolean }> = []
-  if (product.productTemplateId && platformFeeCents > 0) {
+  const sampleSettings = await getSampleSettings()
+  if (sampleSettings.creditBackEnabled && product.productTemplateId && platformFeeCents > 0) {
     const credits = await (prisma as unknown as {
       sampleCredit: { findMany: (a: unknown) => Promise<Array<{ id: string; remainingCents: number; status: SampleCreditEntry['status']; expiresAt: Date | null }>> }
     }).sampleCredit

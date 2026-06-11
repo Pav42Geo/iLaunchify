@@ -21,7 +21,7 @@
 //       cancel_at_period_end + current_period_end onto CreatorProfile so
 //       the /settings/plan UI reflects pending cancellations
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { createDispatches, mintSampleCredit } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { appLogger } from '@ilaunchify/logger'
@@ -202,6 +202,11 @@ async function onPaymentSucceeded(pi: Stripe.PaymentIntent) {
  *  failures are logged, not thrown (the sample is already paid). */
 async function mintCreditForPaidSample(orderId: string): Promise<void> {
   try {
+    // Admin master switch — when credit-back is off, a sample is just a paid
+    // order (no credit minted).
+    const settings = await getSampleSettings()
+    if (!settings.creditBackEnabled) return
+
     const p = prisma as unknown as {
       order: {
         findUnique: (a: unknown) => Promise<{
@@ -240,7 +245,10 @@ async function mintCreditForPaidSample(orderId: string): Promise<void> {
     })
     if (!opt) return
 
-    const minted = mintSampleCredit(order.subtotalCents, opt, (order.paidAt ?? new Date()).getTime())
+    const minted = mintSampleCredit(order.subtotalCents, opt, (order.paidAt ?? new Date()).getTime(), {
+      expiryDays: settings.creditExpiryDays,
+      platformCapCents: settings.creditMaxCapCents,
+    })
     if (!minted) return
 
     await p.sampleCredit.upsert({

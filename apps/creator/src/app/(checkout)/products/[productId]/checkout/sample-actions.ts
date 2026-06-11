@@ -14,20 +14,13 @@
 // New Order columns (orderType / sampleKind) + ProductSampleOption are cast-guarded
 // until the sample-policy migration lands on the client.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
 import { quoteSample, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
-
-// V1 simplifications (Pavel can revisit): flat sample shipping, no platform fee on
-// the sample itself (it's a conversion tool — the fee/credit play happens on the
-// first production order), 30-day abuse window.
-const SAMPLE_FLAT_SHIPPING_CENTS = 995
-const SAMPLE_PLATFORM_FEE_CENTS = 0
-const SAMPLE_ABUSE_WINDOW_DAYS = 30
 
 export interface SampleShipTo {
   contactName: string
@@ -54,6 +47,9 @@ export async function createSampleOrder(
 ): Promise<Result<{ checkoutUrl: string; orderId: string }>> {
   const user = await requireUser()
   if (user.role !== 'CREATOR') return { ok: false, error: 'Only creators can order samples.' }
+
+  // Admin-tunable sample policy (shipping, fee, abuse window, branded gating).
+  const settings = await getSampleSettings()
 
   // --- 1. Owned product + its catalog template -------------------------------
   const product = await prisma.product.findFirst({
@@ -114,6 +110,11 @@ export async function createSampleOrder(
   if (input.kind === 'BRANDED' && !input.acknowledgedNotForResale) {
     return { ok: false, error: 'Please confirm the not-for-resale acknowledgment to order a branded sample.' }
   }
+  // Admin gate: when branded samples require an approved die-line and that flow
+  // isn't live yet, block branded server-side.
+  if (input.kind === 'BRANDED' && settings.brandedRequiresDieline) {
+    return { ok: false, error: 'Branded samples require an approved die-line, which isn’t available for this product yet.' }
+  }
 
   const flavorNames = (tpl?.flavorPresets ?? []).map((f) => f.name).filter((n): n is string => !!n && n.trim().length > 0)
   const isMultiFlavor = flavorNames.length > 1
@@ -135,7 +136,7 @@ export async function createSampleOrder(
 
   // --- 4. Abuse cap — sample orders per creator per template per window -------
   if (opt.maxPerCreatorPerPeriod != null) {
-    const since = new Date(Date.now() - SAMPLE_ABUSE_WINDOW_DAYS * 86_400_000)
+    const since = new Date(Date.now() - settings.abuseWindowDays * 86_400_000)
     const prior = await (prisma as unknown as {
       order: { count: (a: unknown) => Promise<number> }
     }).order
@@ -149,7 +150,7 @@ export async function createSampleOrder(
       })
       .catch(() => 0)
     if (prior >= opt.maxPerCreatorPerPeriod) {
-      return { ok: false, error: `You've reached the sample limit for this product (${opt.maxPerCreatorPerPeriod} per ${SAMPLE_ABUSE_WINDOW_DAYS} days).` }
+      return { ok: false, error: `You've reached the sample limit for this product (${opt.maxPerCreatorPerPeriod} per ${settings.abuseWindowDays} days).` }
     }
   }
 
@@ -159,8 +160,8 @@ export async function createSampleOrder(
     return { ok: false, error: 'Enter a complete shipping address.' }
   }
 
-  const shippingCents = SAMPLE_FLAT_SHIPPING_CENTS
-  const platformFeeCents = SAMPLE_PLATFORM_FEE_CENTS
+  const shippingCents = settings.sampleFlatShippingCents
+  const platformFeeCents = Math.floor((quote.subtotalCents * settings.samplePlatformFeeBps) / 10000)
   const totalCents = quote.subtotalCents + shippingCents + platformFeeCents
 
   // --- 6. Create the SAMPLE order (+ item). No MOQ check by design. -----------
