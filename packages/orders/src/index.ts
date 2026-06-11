@@ -37,6 +37,18 @@ export {
 export type { ProductionManifest } from './manifest'
 export { recomputeAggregateApprovalStatus } from './aggregate-approval'
 export {
+  isUsableCredit,
+  usableCredits,
+  availableSampleCreditCents,
+  applySampleCredit,
+} from './sample-credit'
+export type {
+  SampleCreditStatus,
+  SampleCreditEntry,
+  CreditConsumption,
+  ApplyCreditResult,
+} from './sample-credit'
+export {
   exportBundleFilename,
   assembleSpecSheet,
   buildExportBundleManifest,

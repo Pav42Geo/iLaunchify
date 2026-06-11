@@ -245,6 +245,13 @@ enum OrderStatus {
   DISPUTED
 }
 
+/// Order discriminator (Pavel 2026-06-10). Samples bypass the production MOQ and
+/// can mint a SampleCredit toward the creator's first production order.
+enum OrderType {
+  PRODUCTION
+  SAMPLE
+}
+
 enum DispatchType {
   PRODUCT
   LABEL
@@ -1910,6 +1917,13 @@ model Order {
   brandId                  String // which brand this batch is produced under
   creatorUserId            String // the creator paying iLaunchify
   status                   OrderStatus             @default(PENDING_PAYMENT)
+  // Order discriminator (Pavel 2026-06-10). PRODUCTION = a normal batch (subject
+  // to MOQ + the full routing/dispatch graph). SAMPLE = a pre-production sample
+  // that BYPASSES the production MOQ (uses the partner's sampleMoq) and may
+  // credit toward the creator's first production order. sampleKind set only when
+  // orderType = SAMPLE.
+  orderType                OrderType               @default(PRODUCTION)
+  sampleKind               SampleKind?
   // Money (in cents) — what the CREATOR pays iLaunchify for this production batch
   subtotalCents            Int // production cost basis (manufacturer cost + label cost)
   shippingCents            Int                     @default(0)
@@ -1961,6 +1975,38 @@ model Order {
 
   @@index([brandId, status])
   @@index([creatorUserId, status])
+}
+
+/// Lifecycle of a sample-order credit toward a production order (Pavel 2026-06-10).
+enum SampleCreditStatus {
+  AVAILABLE // earned, unspent
+  APPLIED // consumed against a production order
+  EXPIRED // passed expiresAt before use
+  VOID // sample refunded / cancelled
+}
+
+/// Ledger of credit a SAMPLE order grants toward the creator's first PRODUCTION
+/// order, when the partner enabled `creditTowardFirstOrder` on the sample option
+/// (capped by creditCapCents). One row per sample order. FKs are kept as plain
+/// scalars (no relation objects) to keep this additive and isolated — queried by
+/// (creatorUserId, brandId, productTemplateId, status). The checkout slice
+/// formalises consumption + writes the AuditLog.
+model SampleCredit {
+  id                String             @id @default(cuid())
+  creatorUserId     String
+  brandId           String
+  productTemplateId String
+  sourceOrderId     String             @unique // the SAMPLE order that minted this credit
+  amountCents       Int // credit granted (sample subtotal, capped by creditCapCents)
+  remainingCents    Int // unspent balance
+  status            SampleCreditStatus @default(AVAILABLE)
+  appliedOrderId    String? // the PRODUCTION order it was applied to
+  expiresAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([creatorUserId, brandId, productTemplateId, status])
+  @@index([appliedOrderId])
 }
 
 enum OrderShipToType {
