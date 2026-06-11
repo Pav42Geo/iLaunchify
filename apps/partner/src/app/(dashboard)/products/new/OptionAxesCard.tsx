@@ -25,8 +25,13 @@ export interface OptionValueUI {
   // UI-only preview data (not persisted — the engine refetches per100g by id at
   // order time). Lets the Recipe step show the recomputed panel live.
   overlayPer100g?: Record<string, number>
-  overlayQty?: number // ADD quantity
-  overlayUnit?: string // ADD unit
+  overlayQty?: number // ADD quantity — also the per-swap quantity for SWAP rows
+  overlayUnit?: string // ADD unit — also the per-swap unit for SWAP rows
+  // UI-only editable fields for a SWAP alternative (preview/display; the engine
+  // refetches by id at order time). Let the partner tune each replaceable.
+  overlayWaste?: number
+  overlayCostPerKgCents?: number | null
+  overlayDensityGPerMl?: number | null
 }
 export interface OptionAxisUI {
   key: string // SWEETENER | STRENGTH | CAFFEINE | CUSTOM
