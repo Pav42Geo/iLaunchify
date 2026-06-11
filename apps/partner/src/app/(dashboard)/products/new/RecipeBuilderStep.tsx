@@ -47,6 +47,17 @@ interface Row {
 let counter = 0
 const uid = () => `r${++counter}`
 
+type TabKey = 'build' | 'ingredients' | 'allergens' | 'cost' | 'label' | 'recipes' | 'templates'
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'build', label: '🍽 BUILD RECIPE' },
+  { key: 'ingredients', label: '≣ INGREDIENTS' },
+  { key: 'allergens', label: '⛨ ALLERGENS' },
+  { key: 'cost', label: '$ COST' },
+  { key: 'label', label: '🏷 LABEL' },
+  { key: 'recipes', label: '🗂 MY RECIPES' },
+  { key: 'templates', label: '▦ RECIPE TEMPLATES' },
+]
+
 export function RecipeBuilderStep({
   productName,
   flavorMode = 'SINGLE',
@@ -111,6 +122,9 @@ export function RecipeBuilderStep({
   const [chooserOpen, setChooserOpen] = useState<boolean>(
     !initialEntryMode && !(initialRows && initialRows.length),
   )
+  // Active Search & build tab (the 7-tab nav). BUILD is the full editor; the
+  // others are focused read views.
+  const [activeTab, setActiveTab] = useState<TabKey>('build')
   // Flavors come from the Variants & packs step (shared). Each = a name + its
   // own distinct flavor ingredient overlaid on the shared base, so each Facts
   // column shows DIFFERENT numbers.
@@ -264,12 +278,24 @@ export function RecipeBuilderStep({
 
       {entryMode === 'SEARCH_BUILD' && (
        <>
-      <div className="rb-tabs">
-        {['🍽 BUILD RECIPE', '≣ INGREDIENTS', '⛨ ALLERGENS', '$ COST', '🏷 LABEL', '🏷 MY RECIPES', '▦ RECIPE TEMPLATES'].map((t, i) => (
-          <div key={t} className={`rb-tab ${i === 0 ? 'on' : ''}`}>{t}</div>
+      <div className="rb-tabs" role="tablist">
+        {TABS.map((t) => (
+          <div
+            key={t.key}
+            role="tab"
+            tabIndex={0}
+            aria-selected={activeTab === t.key}
+            className={`rb-tab ${activeTab === t.key ? 'on' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab(t.key) } }}
+          >
+            {t.label}
+          </div>
         ))}
       </div>
 
+      {activeTab === 'build' && (
+       <>
       <div className="rb-wrap">
         <div>
           {/* Recipe Ingredients */}
@@ -484,6 +510,113 @@ export function RecipeBuilderStep({
           recipeRows={recipeRows}
           geometry={{ basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture }}
         />
+      )}
+       </>
+      )}
+
+      {/* ≣ INGREDIENTS — read-only summary of the full recipe. */}
+      {activeTab === 'ingredients' && (
+        <div className="rb-card">
+          <div className="rb-h">≣ Ingredients ({rows.length})</div>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Read-only summary. Edit quantities in <b>Build recipe</b>.</p>
+          <table>
+            <thead><tr><th>Ingredient</th><th>Section</th><th className="r">Qty</th><th>Unit</th><th className="r">Grams</th></tr></thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={5} className="muted">No ingredients yet — add some in Build recipe.</td></tr>
+              ) : rows.map((r) => (
+                <tr key={r.uid} className={r.category === 'optional' && !r.selected ? 'dim' : ''}>
+                  <td>{rowData(r).name || r.ingId}</td>
+                  <td>{r.category === 'base' ? 'Main' : `Optional${r.selected ? '' : ' · off'}`}</td>
+                  <td className="r">{r.qty}</td>
+                  <td>{r.unit}</td>
+                  <td className="r">{(r.qty * (1 - r.waste / 100)).toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ⛨ ALLERGENS — managed by the AllergensCard sibling below the builder. */}
+      {activeTab === 'allergens' && (
+        <div className="rb-card">
+          <div className="rb-h">⛨ Allergens</div>
+          <p className="muted">Allergens are auto-derived from your ingredients (FDA Big-9) and managed in the <b>Allergens</b> panel below this builder — add a missed allergen, clear a false positive, or write a cross-contamination statement there.</p>
+        </div>
+      )}
+
+      {/* $ COST — cost summary + per-ingredient nutrition breakdown. */}
+      {activeTab === 'cost' && (
+        <>
+          <div className="rb-card">
+            <div className="rb-h">$ Cost Summary</div>
+            <div className="costgrid">
+              <div className="costtile"><div className="l">Total ingredient cost</div><div className="v">${totalCents.toFixed(2)}</div></div>
+              <div className="costtile retail"><div className="l">Suggested retail / serving</div><div className="v">${retail.toFixed(2)}</div></div>
+            </div>
+            <div className="costfoot"><span>Per serving cost</span><b>${perServingCost.toFixed(3)}</b></div>
+          </div>
+          {base.length > 0 && (
+            <div className="rb-card">
+              <div className="rb-h">▦ Nutrition Breakdown</div>
+              <table>
+                <thead><tr><th>Ingredient</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Carbs</th><th className="r">Fat</th><th className="r">Sugars</th></tr></thead>
+                <tbody>
+                  {base.map((r) => {
+                    const d = rowData(r)
+                    const grams = (r.unit === 'ml' ? r.qty * (d.densityGPerMl ?? 1) : r.qty) * (1 - r.waste / 100)
+                    const c = (k: string) => ((d.per100g[k] ?? 0) * grams) / 100
+                    return (
+                      <tr key={r.uid}>
+                        <td>{d.name || r.ingId}</td>
+                        <td className="r">{Math.round(c('calories'))}</td>
+                        <td className="r">{c('protein').toFixed(1)} g</td>
+                        <td className="r">{c('totalCarbohydrate').toFixed(1)} g</td>
+                        <td className="r">{c('totalFat').toFixed(1)} g</td>
+                        <td className="r">{c('totalSugars').toFixed(1)} g</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 🏷 LABEL — full live label preview (Public / Internal). */}
+      {activeTab === 'label' && (
+        <div className="rb-card">
+          <div className="rb-h">🏷 Label preview</div>
+          <div className="lblseg" style={{ marginBottom: 10 }}>
+            <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
+            <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
+          </div>
+          {ps && result ? (
+            <div style={{ maxWidth: 340 }}>
+              <FactsPanel result={result} ps={ps} />
+              <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
+            </div>
+          ) : (
+            <p className="muted">Add ingredients + a serving size to see the label.</p>
+          )}
+          <p className="muted tiny" style={{ marginTop: 8 }}>{mode === 'public' ? 'Public marketplace label — base ingredients only.' : 'Internal preview — base + ticked optionals.'}</p>
+        </div>
+      )}
+
+      {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces (coming soon). */}
+      {activeTab === 'recipes' && (
+        <div className="rb-card" style={{ textAlign: 'center' }}>
+          <div className="rb-h" style={{ justifyContent: 'center' }}>🗂 My recipes</div>
+          <p className="muted">Save this formulation to reuse it across products. <b>Coming soon.</b></p>
+        </div>
+      )}
+      {activeTab === 'templates' && (
+        <div className="rb-card" style={{ textAlign: 'center' }}>
+          <div className="rb-h" style={{ justifyContent: 'center' }}>▦ Recipe templates</div>
+          <p className="muted">Start from a curated base formulation for this category. <b>Coming soon.</b></p>
+        </div>
       )}
        </>
       )}
