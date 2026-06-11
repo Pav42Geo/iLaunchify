@@ -308,7 +308,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
       flavorPresets: Array<{ name: string; statementOfIdentity: string | null }>
-      ingredientSlots: Array<{ baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
+      ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
       variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null }>
@@ -334,7 +334,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
         flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true } },
-        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
+        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
         variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true } },
@@ -355,6 +355,10 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
 
     if (!tpl) return null
     if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return null
+
+    // Axes bind to the stable baseIngredientId client-side; the DB stores the
+    // real slot id. Map it back so the binding re-selects the right base row.
+    const slotToIng = new Map(tpl.ingredientSlots.map((s) => [s.id, s.baseIngredientId]))
 
     return {
       id: tpl.id,
@@ -379,7 +383,8 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         weightG: s.weightG ?? 0,
       })),
       axes: (tpl.optionAxes ?? []).map((a) => ({
-        key: a.key, label: a.label, editableByCreator: a.editableByCreator, affectsLabel: a.affectsLabel, boundSlotId: a.boundSlotId,
+        key: a.key, label: a.label, editableByCreator: a.editableByCreator, affectsLabel: a.affectsLabel,
+        boundSlotId: a.boundSlotId ? (slotToIng.get(a.boundSlotId) ?? null) : null,
         values: a.values.map((v) => {
           const ov = (v.recipeOverlay ?? {}) as { toIngredientId?: string; addIngredientId?: string }
           const ingId = ov.toIngredientId ?? ov.addIngredientId
@@ -565,6 +570,19 @@ export async function saveOptionAxes(productTemplateId: string, axes: OptionAxis
           : a.values.map((v, j) => ({ ...v, isDefault: j === 0 })),
       }))
 
+    // Resolve each axis's bound slot. The client binds by the stable
+    // baseIngredientId (row uids are ephemeral), so map ingredientId → the real
+    // TemplateIngredientSlot.id here. Pass-through any value that's already a
+    // slot id (legacy / mixed data).
+    const slots = await prisma.templateIngredientSlot.findMany({
+      where: { productTemplateId },
+      select: { id: true, baseIngredientId: true },
+    })
+    const slotIds = new Set(slots.map((s) => s.id))
+    const ingToSlot = new Map(slots.map((s) => [s.baseIngredientId, s.id]))
+    const resolveSlot = (b: string | null | undefined): string | null =>
+      !b ? null : slotIds.has(b) ? b : (ingToSlot.get(b) ?? null)
+
     // ProductOptionAxis/Value are not in the generated client until migration.
     const p = prisma as unknown as {
       productOptionAxis: {
@@ -582,7 +600,7 @@ export async function saveOptionAxes(productTemplateId: string, axes: OptionAxis
           layer: a.layer,
           editableByCreator: a.editableByCreator,
           affectsLabel: a.affectsLabel,
-          boundSlotId: a.boundSlotId ?? null,
+          boundSlotId: resolveSlot(a.boundSlotId),
           required: a.required,
           sortOrder: a.sortOrder,
           values: {

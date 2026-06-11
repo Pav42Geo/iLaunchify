@@ -128,6 +128,11 @@ export function RecipeBuilderStep({
   // Retail markup multiplier over per-serving cost (manufacturer-set; was a
   // hardcoded 4× demo). Suggested retail = per-serving cost × markup.
   const [markup, setMarkup] = useState(4)
+  // The base row whose "replaceable" swap modal is open (null = closed).
+  const [swapRow, setSwapRow] = useState<Row | null>(null)
+  // The SWAP axis bound to a given base ingredient, if any.
+  const swapAxisFor = (ingId: string) =>
+    axes.find((a) => a.boundSlotId === ingId && a.values.some((v) => v.overlayOp === 'SWAP'))
   // Flavors come from the Variants & packs step (shared). Each = a name + its
   // own distinct flavor ingredient overlaid on the shared base, so each Facts
   // column shows DIFFERENT numbers.
@@ -307,16 +312,31 @@ export function RecipeBuilderStep({
             <table>
               <thead><tr><th>Ingredient Name</th><th className="r">Qty</th><th>Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th /></tr></thead>
               <tbody>
-                {base.map((r) => (
+                {base.map((r) => {
+                  const swap = onAxes ? swapAxisFor(r.ingId) : undefined
+                  return (
                   <tr key={r.uid}>
-                    <td>{rowData(r).name}</td>
+                    <td>
+                      {rowData(r).name}
+                      {swap && (
+                        <span title={`Replaceable · ${swap.values.filter((v) => v.overlayOp === 'SWAP').length} swap option(s)`} style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 700, color: 'var(--g2)', background: 'var(--g-50)', border: '1px solid var(--g-bd)', borderRadius: 999, padding: '1px 6px' }}>
+                          ⇄ {swap.values.filter((v) => v.overlayOp === 'SWAP').length}
+                        </span>
+                      )}
+                    </td>
                     <td className="r"><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
                     <td><select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value as 'g' | 'ml' })}><option>g</option><option>ml</option></select></td>
                     <td className="r"><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
                     <td className="r">{(r.qty * (1 - r.waste / 100)).toFixed(1)}</td>
-                    <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {onAxes && (
+                        <button type="button" title="Make replaceable — let the creator swap this ingredient" onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 13, marginRight: 8 }}>⇄</button>
+                      )}
+                      <span className="del" onClick={() => remove(r.uid)}>🗑</span>
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
               <tfoot><tr><td /><td /><td /><td className="r grn">Total</td><td className="r grn">{base.reduce((s, r) => s + r.qty * (1 - r.waste / 100), 0).toFixed(1)}</td><td /></tr></tfoot>
             </table>
@@ -503,7 +523,7 @@ export function RecipeBuilderStep({
         <LabelOptionsSection
           axes={axes}
           onAxes={onAxes}
-          baseSlots={base.map((r) => ({ id: r.uid, name: rowData(r).name || r.ingId, qty: r.qty, unit: r.unit }))}
+          baseSlots={base.map((r) => ({ id: r.ingId, uid: r.uid, name: rowData(r).name || r.ingId, qty: r.qty, unit: r.unit }))}
           recipeRows={recipeRows}
           geometry={{ basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture }}
         />
@@ -610,6 +630,110 @@ export function RecipeBuilderStep({
       )}
        </>
       )}
+
+      {swapRow && onAxes && (
+        <SwapModal
+          ingId={swapRow.ingId}
+          baseName={rowData(swapRow).name || swapRow.ingId}
+          existingAxis={swapAxisFor(swapRow.ingId)}
+          onSave={(axis) => { onAxes([...axes.filter((a) => a.boundSlotId !== swapRow.ingId), axis]); setSwapRow(null) }}
+          onRemove={() => { onAxes(axes.filter((a) => a.boundSlotId !== swapRow.ingId)); setSwapRow(null) }}
+          onClose={() => setSwapRow(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Modal launched from a base ingredient row to mark it "replaceable": the base
+ *  stays the default and each alternative becomes a SWAP option. Produces a
+ *  single label-affecting OptionAxisUI bound to the row's baseIngredientId, fed
+ *  back through the existing axes pipeline (persist + live label recompute). */
+function SwapModal({
+  ingId, baseName, existingAxis, onSave, onRemove, onClose,
+}: {
+  ingId: string
+  baseName: string
+  existingAxis?: OptionAxisUI
+  onSave: (axis: OptionAxisUI) => void
+  onRemove: () => void
+  onClose: () => void
+}) {
+  const [label, setLabel] = useState(existingAxis?.label ?? `${baseName} choice`)
+  const [alts, setAlts] = useState<Array<{ ingId: string; name: string; per100g: Record<string, number> }>>(
+    () => (existingAxis?.values ?? [])
+      .filter((v) => v.overlayOp === 'SWAP' && v.overlayIngId)
+      .map((v) => ({ ingId: v.overlayIngId!, name: v.overlayIngName || v.label, per100g: v.overlayPer100g ?? {} })),
+  )
+  const [, startPick] = useTransition()
+
+  function addAlt(picked: IngredientResult) {
+    if (picked.id === ingId) { toast.error('That is the base ingredient.'); return }
+    if (alts.some((a) => a.ingId === picked.id)) { toast.error(`${picked.internalName} is already an option.`); return }
+    startPick(async () => {
+      const res = await getIngredientNutrition(picked.id)
+      setAlts((xs) => [...xs, { ingId: picked.id, name: picked.internalName, per100g: res.ok ? res.data.per100g : {} }])
+    })
+  }
+
+  function save() {
+    const values: OptionValueUI[] = [
+      { label: baseName, isDefault: true, leadDelta: 0, costDeltaCents: 0, moqOverride: null, overlayOp: 'NONE' },
+      ...alts.map((a) => ({
+        label: a.name, isDefault: false, leadDelta: 0, costDeltaCents: 0, moqOverride: null,
+        overlayOp: 'SWAP' as const, overlayIngId: a.ingId, overlayIngName: a.name, overlayPer100g: a.per100g,
+      })),
+    ]
+    onSave({ key: 'CUSTOM', label: label.trim() || `${baseName} choice`, editableByCreator: true, affectsLabel: true, boundSlotId: ingId, values })
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,28,.45)', display: 'grid', placeItems: 'center', zIndex: 60, padding: 16 }}>
+      <div className="rb-card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(520px, 100%)', maxHeight: '86vh', overflow: 'auto', margin: 0 }}>
+        <div className="rb-h" style={{ justifyContent: 'space-between' }}>
+          <span>⇄ Make “{baseName}” replaceable</span>
+          <button type="button" onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--mut)' }}>✕</button>
+        </div>
+        <p className="muted tiny" style={{ margin: '0 0 10px' }}>
+          The base stays the default. Each alternative becomes a creator-pickable swap; the FDA label recomputes per choice.
+        </p>
+
+        <span className="f">Option label</span>
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={`${baseName} choice`} style={{ width: '100%', marginBottom: 12 }} />
+
+        <div className="rb-h" style={{ fontSize: 13 }}>Options ({alts.length + 1})</div>
+        <table>
+          <tbody>
+            <tr>
+              <td><b>{baseName}</b></td>
+              <td className="r"><span className="muted tiny">default</span></td>
+            </tr>
+            {alts.map((a) => (
+              <tr key={a.ingId}>
+                <td>{a.name}</td>
+                <td className="r"><span className="del" onClick={() => setAlts((xs) => xs.filter((x) => x.ingId !== a.ingId))}>🗑</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div style={{ marginTop: 10 }}>
+          <span className="f">Add a swap option</span>
+          <IngredientPicker onPick={addAlt} placeholder="Search an alternative ingredient…" />
+        </div>
+
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 16, gap: 8 }}>
+          {existingAxis ? (
+            <button type="button" className="rb-btn o sm" onClick={onRemove} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>Remove replaceable</button>
+          ) : <span />}
+          <div className="row" style={{ gap: 8 }}>
+            <button type="button" className="rb-btn o sm" onClick={onClose}>Cancel</button>
+            <button type="button" className="rb-btn sm" onClick={save} disabled={alts.length === 0} style={alts.length === 0 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>
+              Save {alts.length > 0 ? `(${alts.length} option${alts.length === 1 ? '' : 's'})` : ''}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -621,7 +745,8 @@ function LabelOptionsSection({
 }: {
   axes: OptionAxisUI[]
   onAxes: (a: OptionAxisUI[]) => void
-  baseSlots: Array<{ id: string; name: string; qty: number; unit: string }>
+  /** id = stable baseIngredientId (binding key); uid = ephemeral engine row id. */
+  baseSlots: Array<{ id: string; uid: string; name: string; qty: number; unit: string }>
   recipeRows: RecipeRow[]
   geometry: Parameters<typeof calculateLabel>[1]
 }) {
@@ -642,17 +767,18 @@ function LabelOptionsSection({
   }
 
   // Live preview of the DEFAULT combination (each label-affecting axis's default).
+  // Axes bind by baseIngredientId; the engine matches rows by uid, so translate.
   const overlays: OptionOverlay[] = []
   for (const { a } of labelAxes) {
     const v = a.values.find((x) => x.isDefault) ?? a.values[0]
     if (!v) continue
-    if (v.overlayOp === 'SWAP' && a.boundSlotId && v.overlayPer100g) {
-      const slot = baseSlots.find((s) => s.id === a.boundSlotId)
-      overlays.push({ op: 'SWAP', slotId: a.boundSlotId, ingredient: { id: v.overlayIngId || 'opt', name: v.overlayIngName || v.label, per100g: v.overlayPer100g, quantity: slot?.qty ?? 0, unit: slot?.unit ?? 'g' } })
+    const slot = baseSlots.find((s) => s.id === a.boundSlotId)
+    if (v.overlayOp === 'SWAP' && slot && v.overlayPer100g) {
+      overlays.push({ op: 'SWAP', slotId: slot.uid, ingredient: { id: v.overlayIngId || 'opt', name: v.overlayIngName || v.label, per100g: v.overlayPer100g, quantity: slot.qty, unit: slot.unit } })
     } else if (v.overlayOp === 'ADD' && v.overlayPer100g) {
       overlays.push({ op: 'ADD', ingredient: { id: v.overlayIngId || 'opt', name: v.overlayIngName || v.label, per100g: v.overlayPer100g, quantity: v.overlayQty ?? 1, unit: v.overlayUnit ?? 'g' } })
-    } else if (v.overlayOp === 'REMOVE' && a.boundSlotId) {
-      overlays.push({ op: 'REMOVE', slotId: a.boundSlotId })
+    } else if (v.overlayOp === 'REMOVE' && slot) {
+      overlays.push({ op: 'REMOVE', slotId: slot.uid })
     }
   }
   const baseList = publicSelection(recipeRows)
