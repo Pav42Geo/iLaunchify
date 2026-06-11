@@ -6,6 +6,7 @@ writes a ComplianceCheck audit row, returns ComplianceResult.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 
 import structlog
 from fastapi import APIRouter, HTTPException
@@ -110,7 +111,9 @@ async def check_recipe_compliance(body: CheckRequest) -> ComplianceResult:
         ingredient_groups=ingredient_groups,
     )
 
-    outcome = "FAILED" if violations else ("PASSED_WITH_WARNINGS" if warnings else "PASSED")
+    outcome: Literal["PASSED", "PASSED_WITH_WARNINGS", "FAILED"] = (
+        "FAILED" if violations else ("PASSED_WITH_WARNINGS" if warnings else "PASSED")
+    )
     passed = not violations
 
     # 5. Write audit row + cache the calculated nutrition on the recipe

@@ -17,7 +17,6 @@ from typing import Any
 
 from app.schemas import Disclosure
 
-
 # 7 CFR 66.106 disclosure phrasings
 # - § 66.106(a)(1) — "Bioengineered food" for foods that are themselves BE
 # - § 66.106(a)(2) — "Contains a bioengineered food ingredient" for foods

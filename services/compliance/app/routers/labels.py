@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.post("/v1/labels/render")
-async def render_label(body: LabelRenderRequest):
+async def render_label(body: LabelRenderRequest) -> Response:
     prisma = await get_prisma()
 
     recipe = await prisma.recipe.find_unique(

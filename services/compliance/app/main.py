@@ -17,6 +17,7 @@ V1 endpoints:
 """
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
@@ -28,7 +29,7 @@ log = structlog.get_logger()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("compliance.startup")
     if not settings.service_token and settings.environment != "development":
         log.error(

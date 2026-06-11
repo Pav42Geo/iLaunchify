@@ -34,6 +34,10 @@ select = ["E", "F", "I", "W", "B", "UP"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+# The rule-pack / rounding engine reads untyped JSON (json.load → Any) and does
+# dict[str, Any] lookups; flagging every `return <Any>` adds casts without safety.
+# Keep the rest of strict (untyped-defs, missing annotations, etc.) on.
+warn_return_any = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
