@@ -13,7 +13,7 @@ import io
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from weasyprint import HTML  # type: ignore[import-not-found]
+from weasyprint import HTML
 
 from app.schemas import PanelData
 

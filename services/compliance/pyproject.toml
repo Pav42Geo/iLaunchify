@@ -34,6 +34,19 @@ select = ["E", "F", "I", "W", "B", "UP"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+# The rule-pack / rounding engine reads untyped JSON (json.load → Any) and does
+# dict[str, Any] lookups; flagging every `return <Any>` adds casts without safety.
+# Keep the rest of strict (untyped-defs, missing annotations, etc.) on.
+warn_return_any = false
+
+# weasyprint ships no py.typed marker / stubs. In CI it's installed (its native
+# Pango/Cairo libs are present), so mypy resolves the module but reports
+# import-untyped; locally without it installed the same import is import-not-found.
+# A per-module override suppresses both regardless of install state — cleaner than
+# an inline ignore whose error code flips between environments.
+[[tool.mypy.overrides]]
+module = ["weasyprint", "weasyprint.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

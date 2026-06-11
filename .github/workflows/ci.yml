@@ -76,6 +76,12 @@ jobs:
           # pip cache disabled until requirements.txt or lock file exists;
           # pyproject.toml alone doesn't satisfy setup-python's expected patterns.
 
+      - name: System deps (WeasyPrint)
+        # weasyprint is a runtime dep (PDF label rendering); its native Pango/Cairo
+        # libs are needed at import time, and libffi to build cffi if no wheel.
+        working-directory: ${{ github.workspace }}
+        run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libcairo2 libffi-dev
+
       - name: Install
         run: pip install -e ".[dev]"
 

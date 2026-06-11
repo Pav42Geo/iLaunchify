@@ -31,7 +31,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # FDA-allowed category names — anything outside this set is rejected.
 ALLOWED_GROUP_NAMES: set[str] = {
     "Spices",
