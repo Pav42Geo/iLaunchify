@@ -591,6 +591,7 @@ function formatCents(cents: number): string {
 // =============================================================================
 
 function _BuilderLockBadgeWithHoverCard_DEPRECATED() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- deprecated, unrendered component kept for reference
   const [open, setOpen] = useState(false)
   return (
     <span
