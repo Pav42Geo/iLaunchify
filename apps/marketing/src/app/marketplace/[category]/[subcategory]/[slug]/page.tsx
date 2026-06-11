@@ -31,7 +31,7 @@ import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getDecorationOfferings } from '@/lib/decoration-offerings-db'
 import { getProductRestrictions } from '@/lib/product-restrictions'
-import { getProductSampleOptions } from '@/lib/product-sample-options'
+import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -115,6 +115,14 @@ export default async function ProductDetailPage({
   // (Pavel 2026-06-10). Empty → the "Order a sample" card hides (fixture-only /
   // partner hasn't enabled samples).
   const sampleData = await getProductSampleOptions(template.slug)
+
+  // Samples require an existing product (locked). Resolve whether the signed-in
+  // creator already owns a Product for this template → enables the "Order a
+  // sample" deep-link; otherwise the card guides them to customise first.
+  const ownedSampleProductId =
+    session?.user?.id && sampleData.options.length > 0
+      ? await getOwnedSampleProductId(template.slug, session.user.id)
+      : null
 
   // Cert strip. The authoritative signal is the product's EARNED certs —
   // VERIFIED PartnerCertificateInstances surfaced as admin-curated PNG badges
@@ -270,6 +278,7 @@ export default async function ProductDetailPage({
                   isMultiFlavor={sampleData.isMultiFlavor}
                   dielineReady={sampleData.dielineReady}
                   isAuthenticated={isAuthenticated}
+                  ownedProductId={ownedSampleProductId}
                 />
               </div>
             )}

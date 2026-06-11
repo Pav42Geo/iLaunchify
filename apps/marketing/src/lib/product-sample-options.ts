@@ -78,15 +78,33 @@ export async function getProductSampleOptions(templateSlug: string): Promise<Pro
     }))
     const flavorNames = (row.flavorPresets ?? []).map((f) => f.name).filter((n): n is string => !!n && n.trim().length > 0)
 
-    // Dieline-readiness for BRANDED samples. The dieline frame editor + its
-    // verified-status signal aren't wired yet (builder Step 4, #36), so this
-    // defaults locked. Replace with the real "dieline passed compliance" check
-    // when that flow lands — the card already handles the locked state.
-    const dielineReady = false
+    // Branded-sample availability. Pavel 2026-06-10: allow Branded now — partners
+    // supply packaging out-of-band until the die-line flow ships (#36). Re-gate on
+    // the real "die-line passed compliance" signal when that lands; the card still
+    // renders a locked state if this flips back to false.
+    const dielineReady = true
 
     return { options, flavorNames, isMultiFlavor: flavorNames.length > 1, dielineReady }
   } catch (err) {
     console.warn('[product-sample-options] getProductSampleOptions failed:', (err as Error).message)
     return EMPTY
+  }
+}
+
+/**
+ * Whether the signed-in creator already owns a Product for this template (samples
+ * require an existing product, per the locked attachment model). Returns the
+ * product id to deep-link the sample checkout, or null (guide them to customise).
+ */
+export async function getOwnedSampleProductId(templateSlug: string, userId: string): Promise<string | null> {
+  try {
+    const owned = await prisma.product.findFirst({
+      where: { productTemplate: { slug: templateSlug }, brand: { creatorProfile: { userId } } },
+      select: { id: true },
+    })
+    return owned?.id ?? null
+  } catch (err) {
+    console.warn('[product-sample-options] getOwnedSampleProductId failed:', (err as Error).message)
+    return null
   }
 }

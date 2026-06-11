@@ -11,8 +11,10 @@
 
 import * as React from 'react'
 import { Beaker, Package, Lock, Minus, Plus, Check } from 'lucide-react'
-import { Button } from '@ilaunchify/ui'
 import { quoteSample, formatCents, hasSamplerSet, type SampleOption, type SampleMode } from '@/lib/sample-quote'
+import { creatorUrl } from '@/lib/app-urls'
+
+const CTA_BTN = 'mt-3 block w-full rounded-full bg-ink-900 px-4 py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-ink-800'
 
 interface SampleOrderCardProps {
   options: SampleOption[] // enabled only
@@ -20,6 +22,8 @@ interface SampleOrderCardProps {
   isMultiFlavor: boolean
   dielineReady: boolean
   isAuthenticated: boolean
+  /** The creator's owned Product for this template (samples require one). */
+  ownedProductId: string | null
 }
 
 const KIND_META = {
@@ -27,7 +31,7 @@ const KIND_META = {
   BRANDED: { label: 'Branded', sub: 'In your packaging + artwork', Icon: Package },
 } as const
 
-export function SampleOrderCard({ options, flavorNames, isMultiFlavor, dielineReady, isAuthenticated }: SampleOrderCardProps) {
+export function SampleOrderCard({ options, flavorNames, isMultiFlavor, dielineReady, isAuthenticated, ownedProductId }: SampleOrderCardProps) {
   const kinds = options.map((o) => o.kind)
   const [activeKind, setActiveKind] = React.useState(() => (kinds.includes('UNBRANDED') ? 'UNBRANDED' : kinds[0]) as 'UNBRANDED' | 'BRANDED')
   const opt = options.find((o) => o.kind === activeKind) ?? options[0]
@@ -135,13 +139,17 @@ export function SampleOrderCard({ options, flavorNames, isMultiFlavor, dielineRe
             )}
           </div>
 
-          <Button
-            className="mt-3 w-full"
-            disabled={!isAuthenticated || quote.unitCount === 0 || quote.errors.length > 0}
-          >
-            {!isAuthenticated ? 'Sign in to order a sample' : quote.unitCount === 0 ? 'Add units to order a sample' : `Request sample · ${formatCents(quote.subtotalCents)}`}
-          </Button>
-          <p className="mt-2 text-center text-[11px] text-ink-400">Samples are produced to order · not for resale</p>
+          {!isAuthenticated ? (
+            <a href={creatorUrl('/login')} className={CTA_BTN}>Sign in to order a sample</a>
+          ) : ownedProductId ? (
+            <a href={creatorUrl(`/products/${ownedProductId}/sample`)} className={CTA_BTN}>Order a sample →</a>
+          ) : (
+            <>
+              <span className={`${CTA_BTN} cursor-not-allowed opacity-40`}>Order a sample →</span>
+              <p className="mt-2 text-center text-[11px] text-ink-500">Customize this product first (Start launching above) to order a sample.</p>
+            </>
+          )}
+          <p className="mt-2 text-center text-[11px] text-ink-400">Produced to order · not for resale</p>
         </>
       )}
     </div>
