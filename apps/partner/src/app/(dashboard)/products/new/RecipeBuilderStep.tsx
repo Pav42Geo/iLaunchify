@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
+import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
@@ -33,7 +33,7 @@ interface Row {
   uid: string
   ingId: string
   qty: number
-  unit: 'g' | 'ml'
+  unit: string
   waste: number
   category: 'base' | 'optional'
   selected: boolean // optional: ticked into preview
@@ -49,6 +49,13 @@ interface Row {
 
 let counter = 0
 const uid = () => `r${++counter}`
+
+// Selectable recipe units (mirrors the engine's AVAILABLE_UNITS, minus 'each'
+// which needs a per-piece weight we don't capture). Volume units only convert
+// to mass with a density, so they're shown only for ingredients that have one.
+const VOLUME_UNITS = new Set(['ml', 'l', 'fl_oz', 'cup', 'tbsp', 'tsp'])
+const UNIT_LABELS: Record<string, string> = { g: 'g', kg: 'kg', oz: 'oz', lb: 'lb', ml: 'ml', l: 'L', fl_oz: 'fl oz', cup: 'cup', tbsp: 'tbsp', tsp: 'tsp' }
+const SELECTABLE_UNITS = ['g', 'kg', 'oz', 'lb', 'ml', 'l', 'fl_oz', 'cup', 'tbsp', 'tsp']
 
 type TabKey = 'build' | 'ingredients' | 'allergens' | 'cost' | 'label' | 'recipes' | 'templates'
 const TABS: Array<{ key: TabKey; label: string; soon?: boolean }> = [
@@ -228,6 +235,9 @@ export function RecipeBuilderStep({
     const l = ing(r.ingId)
     return { name: l?.name ?? '', per100g: l?.per100g ?? {}, densityGPerMl: undefined, cents: l?.cents ?? 0 }
   }
+  // The row's quantity converted to grams (density-aware for volume units), via
+  // the engine's canonical unit table — the single basis for grams/cost/label.
+  const rawGrams = (r: Row) => toGrams(r.qty, r.unit, { densityGPerMl: rowData(r).densityGPerMl ?? undefined })
   function handlePick(picked: IngredientResult) {
     // Duplicate guard — flag the same ingredient anywhere in the recipe, not just
     // the section being added to, so a base ingredient can't be re-added as an
@@ -285,7 +295,7 @@ export function RecipeBuilderStep({
     saveTimer.current = setTimeout(() => {
       const slots = rows
         .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
-        .map((r, i) => ({ ingredientId: r.ingId, weightG: r.unit === 'ml' ? r.qty * (r.densityGPerMl ?? 1) : r.qty, displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
+        .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
       void saveRecipeSlots(draftId, slots)
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
@@ -308,7 +318,7 @@ export function RecipeBuilderStep({
   // Build engine rows + compute the live label.
   const recipeRows: RecipeRow[] = rows.map((r) => ({
     id: r.uid, name: rowData(r).name ?? '', per100g: rowData(r).per100g ?? {},
-    quantity: r.qty, unit: r.unit, trimWastePct: r.waste, category: r.category, selected: r.selected,
+    quantity: rawGrams(r), unit: 'g', trimWastePct: r.waste, category: r.category, selected: r.selected,
   }))
   const selected = mode === 'public' ? publicSelection(recipeRows) : previewSelection(recipeRows)
   const result = selected.length
@@ -335,7 +345,7 @@ export function RecipeBuilderStep({
   // Real batch ingredient cost ($), from each ingredient's $/kg applied to its
   // raw purchased weight (cost is on what you buy, before waste loss).
   const totalCents = rows.reduce((sum, r) => {
-    const grams = r.unit === 'ml' ? r.qty * (rowData(r).densityGPerMl ?? 1) : r.qty
+    const grams = rawGrams(r)
     const costPerKg = (r.costPerKgCents ?? 0) / 100 // dollars per kg
     return sum + costPerKg * (grams / 1000)
   }, 0)
@@ -398,39 +408,38 @@ export function RecipeBuilderStep({
           <div className="rb-card">
             <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
             <table>
-              <thead><tr><th>Ingredient Name</th><th className="r">Qty</th><th>Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
+              <thead><tr><th>Ingredient Name</th><th /><th>Qty</th><th>Unit</th><th>Waste %</th><th>Grams</th><th>$/kg</th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const swap = onAxes ? swapAxisFor(r.ingId) : undefined
+                  const swapN = swap ? swap.values.filter((v) => v.overlayOp === 'SWAP').length : 0
+                  const showVol = rowData(r).densityGPerMl != null || VOLUME_UNITS.has(r.unit)
                   return (
                   <tr key={r.uid}>
+                    <td>{rowData(r).name}</td>
                     <td>
-                      {rowData(r).name}
-                      {swap && (
-                        <span title={`Replaceable · ${swap.values.filter((v) => v.overlayOp === 'SWAP').length} swap option(s)`} style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 700, color: 'var(--g2)', background: 'var(--g-50)', border: '1px solid var(--g-bd)', borderRadius: 999, padding: '1px 6px' }}>
-                          ⇄ {swap.values.filter((v) => v.overlayOp === 'SWAP').length}
-                        </span>
-                      )}
-                    </td>
-                    <td className="r"><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
-                    <td><select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value as 'g' | 'ml' })}><option>g</option><option>ml</option></select></td>
-                    <td className="r"><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
-                    <td className="r">{(r.qty * (1 - r.waste / 100)).toFixed(1)}</td>
-                    <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
                       {onAxes && (
-                        <button type="button" title="Make replaceable — let the creator swap this ingredient" onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 13, marginRight: 8 }}>⇄</button>
+                        <button type="button" title={swap ? `Replaceable · ${swapN} swap option(s) — edit` : 'Make replaceable — let the creator swap this ingredient'} onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 12, fontWeight: swap ? 700 : 400, whiteSpace: 'nowrap' }}>⇄{swap ? ` ${swapN}` : ''}</button>
                       )}
-                      <span className="del" onClick={() => remove(r.uid)}>🗑</span>
                     </td>
+                    <td><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
+                    <td>
+                      <select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
+                        {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                      </select>
+                    </td>
+                    <td><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
+                    <td>{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
+                    <td><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
+                    <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                   </tr>
                   )
                 })}
                 {base.length === 0 && (
-                  <tr><td colSpan={7} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
+                  <tr><td colSpan={8} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
                 )}
               </tbody>
-              <tfoot><tr><td /><td /><td /><td className="r grn">Total</td><td className="r grn">{base.reduce((s, r) => s + r.qty * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="r grn">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
+              <tfoot><tr><td /><td /><td /><td /><td className="grn">Total</td><td className="grn">{base.reduce((s, r) => s + rawGrams(r) * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="grn">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
             </table>
           </div>
 
@@ -444,8 +453,12 @@ export function RecipeBuilderStep({
                     <tr key={r.uid} className={r.selected ? '' : 'dim'}>
                       <td><span className={`circle ${r.selected ? 'chk' : ''}`} onClick={() => patch(r.uid, { selected: !r.selected })}>{r.selected ? '✓' : ''}</span></td>
                       <td>{rowData(r).name}</td>
-                      <td className="r"><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
-                      <td><select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value as 'g' | 'ml' })}><option>g</option><option>ml</option></select></td>
+                      <td><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
+                      <td>
+                        <select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
+                          {SELECTABLE_UNITS.filter((u) => (rowData(r).densityGPerMl != null || VOLUME_UNITS.has(r.unit)) || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                        </select>
+                      </td>
                       <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                     </tr>
                   ))}
@@ -580,7 +593,7 @@ export function RecipeBuilderStep({
         <LabelOptionsSection
           axes={axes}
           onAxes={onAxes}
-          baseSlots={base.map((r) => ({ id: r.ingId, uid: r.uid, name: rowData(r).name || r.ingId, qty: r.qty, unit: r.unit }))}
+          baseSlots={base.map((r) => ({ id: r.ingId, uid: r.uid, name: rowData(r).name || r.ingId, qty: rawGrams(r), unit: 'g' }))}
           recipeRows={recipeRows}
           geometry={{ basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture }}
         />
@@ -603,8 +616,8 @@ export function RecipeBuilderStep({
                   <td>{rowData(r).name || r.ingId}</td>
                   <td>{r.category === 'base' ? 'Main' : `Optional${r.selected ? '' : ' · off'}`}</td>
                   <td className="r">{r.qty}</td>
-                  <td>{r.unit}</td>
-                  <td className="r">{(r.qty * (1 - r.waste / 100)).toFixed(1)}</td>
+                  <td>{UNIT_LABELS[r.unit] ?? r.unit}</td>
+                  <td className="r">{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
