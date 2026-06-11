@@ -21,7 +21,7 @@
 //       cancel_at_period_end + current_period_end onto CreatorProfile so
 //       the /settings/plan UI reflects pending cancellations
 
-import { prisma, getSampleSettings } from '@ilaunchify/db'
+import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
 import { createDispatches, mintSampleCredit } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { appLogger } from '@ilaunchify/logger'
@@ -193,7 +193,9 @@ async function onPaymentSucceeded(pi: Stripe.PaymentIntent) {
   }
 
   // Routing: create the two OrderDispatches. Auto-holds the order if no match.
-  await createDispatches({ orderId })
+  // Accept window is admin-tunable via OrderSettings.
+  const orderSettings = await getOrderSettings()
+  await createDispatches({ orderId, acceptWindowHours: orderSettings.acceptWindowHours })
 }
 
 /** Mint the SampleCredit for a freshly-paid SAMPLE order, when the product's

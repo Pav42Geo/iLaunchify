@@ -203,14 +203,17 @@ export async function placeOrderFromCheckoutDraft(
   // simplification; V2 reconciles partner pricing properly).
   const productionTotalCents = Math.max(productionSubtotalCents, dispatchSubtotal)
 
-  // --- 6. Shipping placeholder for V1 (same per-unit tier as
-  //        estimateShipping in fulfillment-actions, mirrored here to keep
-  //        the action self-contained when the wizard isn't running). ----------
-  const shippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType)
-
-  // --- 7. Platform fee (admin-tunable via OrderSettings; falls back to the
-  //        PLATFORM_FEE_BPS default when the settings row isn't present). --------
+  // Admin-tunable order policy (fees + shipping) — OrderSettings singleton.
   const orderSettings = await getOrderSettings()
+
+  // --- 6. Shipping (admin-tunable flat rate; free over an optional threshold).
+  //        Falls back to the V1 per-unit tiers when no flat rate is configured.
+  const baseShippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType, orderSettings)
+  const freeThreshold = orderSettings.freeShippingThresholdCents
+  const shippingCents =
+    freeThreshold != null && productionTotalCents >= freeThreshold ? 0 : baseShippingCents
+
+  // --- 7. Platform fee (admin-tunable; falls back to PLATFORM_FEE_BPS) --------
   const feeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
   const feeBase = productionTotalCents + shippingCents
   const platformFeeCents = Math.floor(feeBase * (feeBps / 10000))
@@ -637,15 +640,20 @@ async function resolveShipTo({
 function estimateFlatShipping(
   qty: number,
   shipToType: NonNullable<CheckoutDraftState['fulfillment']['shipToType']>,
+  settings: { flatShippingBaseCents: number; flatShippingPerUnitCents: number },
 ): number {
   if (qty <= 0) return 0
+  const mode =
+    shipToType === 'CLOSEST_WAREHOUSE' || shipToType === 'SPECIFIC_WAREHOUSE' ? 0.78 : 1.0
+  // Admin-configured flat rate takes precedence; otherwise the V1 per-unit tiers.
+  if (settings.flatShippingBaseCents > 0 || settings.flatShippingPerUnitCents > 0) {
+    return Math.round((settings.flatShippingBaseCents + settings.flatShippingPerUnitCents * qty) * mode)
+  }
   let perUnit: number
   if (qty < 100) perUnit = 95
   else if (qty < 500) perUnit = 72
   else if (qty < 2500) perUnit = 58
   else perUnit = 44
-  const mode =
-    shipToType === 'CLOSEST_WAREHOUSE' || shipToType === 'SPECIFIC_WAREHOUSE' ? 0.78 : 1.0
   return Math.round(perUnit * qty * mode)
 }
 
