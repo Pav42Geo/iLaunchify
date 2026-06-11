@@ -8,7 +8,7 @@
 // Rendered inside GuidedBuilder's `.gb` style scope.
 
 import { useEffect, useRef, useState } from 'react'
-import { saveOptionRules, saveChangeApprovalRules, type OptionRuleInput, type ChangeApprovalRuleInput } from './build-actions'
+import { saveOptionRules, saveChangeApprovalRules, type OptionRuleInput, type ChangeApprovalRuleInput, type InitialDraft } from './build-actions'
 import type { OptionAxisUI } from './OptionAxesCard'
 
 // ---------------------------------------------------------------------------
@@ -34,13 +34,21 @@ const DEFAULT_APPROVER: Record<string, ChangeApprovalRuleInput['requiredApprover
   PACKAGING_CHANGE: 'PRODUCTION_SCHEDULING', PRICE_CHANGE: 'BRAND_OPS',
 }
 
-export function ApprovalTriggersCard({ draftId }: { draftId: string | null }) {
-  const [rules, setRules] = useState<Record<string, ChangeApprovalRuleInput['requiredApprover']>>(
-    () => ({ ...DEFAULT_APPROVER }),
-  )
+export function ApprovalTriggersCard({ draftId, initialRules }: { draftId: string | null; initialRules?: InitialDraft['changeApprovalRules'] }) {
+  const [rules, setRules] = useState<Record<string, ChangeApprovalRuleInput['requiredApprover']>>(() => {
+    // Seed from saved per-template overrides; fall back to platform defaults.
+    const seed = { ...DEFAULT_APPROVER }
+    for (const r of initialRules ?? []) seed[r.changeType] = r.requiredApprover as ChangeApprovalRuleInput['requiredApprover']
+    return seed
+  })
+  // If we loaded saved overrides, skip the first autosave so a resume doesn't
+  // re-write identical rows. A brand-new draft (no saved rules) still persists
+  // the sensible defaults on first mount.
+  const hydrated = useRef((initialRules?.length ?? 0) > 0)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
+    if (!hydrated.current) { hydrated.current = true; void saveChangeApprovalRules(draftId, CHANGE_TYPES.map((c, i) => ({ changeType: c.key, requiredApprover: rules[c.key]!, sortOrder: i }))); return }
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       const payload: ChangeApprovalRuleInput[] = CHANGE_TYPES.map((c, i) => ({ changeType: c.key, requiredApprover: rules[c.key]!, sortOrder: i }))
@@ -81,8 +89,13 @@ export function ApprovalTriggersCard({ draftId }: { draftId: string | null }) {
 
 interface RuleRow { kind: 'EXCLUDE' | 'REQUIRE'; whenKey: string; targetKey: string; message: string }
 
-export function CompatibilityRulesCard({ draftId, axes }: { draftId: string | null; axes: OptionAxisUI[] }) {
-  const [rules, setRules] = useState<RuleRow[]>([])
+export function CompatibilityRulesCard({ draftId, axes, initialRules }: { draftId: string | null; axes: OptionAxisUI[]; initialRules?: InitialDraft['optionRules'] }) {
+  const [rules, setRules] = useState<RuleRow[]>(
+    () => (initialRules ?? []).map((r) => ({ kind: r.kind, whenKey: r.whenValueId, targetKey: r.targetValueId, message: r.message ?? '' })),
+  )
+  // Skip the first autosave so resuming a draft never re-writes (or, on an empty
+  // mount, wipes) the saved rules before the user touches anything.
+  const hydrated = useRef(false)
 
   // Stable value options: "axisKey:valueLabel" → "Axis: Value".
   const options = axes.flatMap((a) =>
@@ -92,6 +105,7 @@ export function CompatibilityRulesCard({ draftId, axes }: { draftId: string | nu
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
+    if (!hydrated.current) { hydrated.current = true; return }
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       const payload: OptionRuleInput[] = rules

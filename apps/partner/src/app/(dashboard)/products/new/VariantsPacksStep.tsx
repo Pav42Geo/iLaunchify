@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, saveProduction, type FeeInput, type InitialDraft } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, type FeeInput, type InitialDraft } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -143,20 +143,20 @@ export function VariantsPacksStep({
       {/* Fees — one-time / per-unit / per-order (#3) */}
       {selected && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <FeesCard draftId={draftId} />
+          <FeesCard draftId={draftId} initialFees={initial?.fees} />
         </div>
       )}
 
       {/* Type-specific config for the chosen type */}
       {kind && (
         <div className="card">
-          {kind === 'single' && <SinglePack />}
+          {kind === 'single' && <SinglePack draftId={draftId} packing={initial?.packing ?? null} />}
           {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} />}
-          {kind === 'pack' && <MultiPack />}
+          {kind === 'pack' && <MultiPack draftId={draftId} packing={initial?.packing ?? null} />}
 
           {/* Conditional add-ons (stack under the base config) */}
-          {selected?.isSubscription && <SubscriptionConfig />}
-          {selected?.isCustomizable && <PickNConfig flavorCount={flavorCount} />}
+          {selected?.isSubscription && <SubscriptionConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} />}
+          {selected?.isCustomizable && <PickNConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} />}
         </div>
       )}
 
@@ -164,10 +164,10 @@ export function VariantsPacksStep({
       {selected && <OptionAxesCard axes={axes} onAxes={onAxes} />}
 
       {/* Cross-option compatibility rules (#5) — only when ≥2 option values exist */}
-      {selected && <CompatibilityRulesCard draftId={draftId} axes={axes} />}
+      {selected && <CompatibilityRulesCard draftId={draftId} axes={axes} initialRules={initial?.optionRules} />}
 
       {/* Approval triggers (#7) */}
-      {selected && <ApprovalTriggersCard draftId={draftId} />}
+      {selected && <ApprovalTriggersCard draftId={draftId} initialRules={initial?.changeApprovalRules} />}
 
       <style>{`
         .gb .pt-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 14px;font:inherit;color:var(--ink-900);cursor:pointer;transition:.12s}
@@ -211,6 +211,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: 
   const [leadFirstRun, setLeadFirstRun] = useState(initial?.leadTimeFirstRunDays ?? 35)
   const [shelfLife, setShelfLife] = useState(p?.shelfLifeDays ?? 365)
   const [lotTracking, setLotTracking] = useState(p?.lotTracking ?? true)
+  const [sku, setSku] = useState(p?.sku ?? baseSku)
   const [storageClass, setStorageClass] = useState<'AMBIENT' | 'CHILLED' | 'FROZEN'>(initial?.storageClass ?? 'AMBIENT')
   const [tempMin, setTempMin] = useState<number | ''>(initial?.storageTempMinF ?? 55)
   const [tempMax, setTempMax] = useState<number | ''>(initial?.storageTempMaxF ?? 75)
@@ -253,11 +254,12 @@ function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: 
         monthlyCapacity: capacity || null,
         shelfLifeDays: shelfLife,
         lotTracking,
+        sku,
       })
     }, 800)
     return () => { if (prodTimer.current) clearTimeout(prodTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, draftId])
+  }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, sku, draftId])
 
   return (
     <>
@@ -293,7 +295,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: 
         </Field>
         <Field label="Storage temp °F · min"><input className="input" type="number" value={tempMin} onChange={(e) => setTempMin(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
         <Field label="Storage temp °F · max"><input className="input" type="number" value={tempMax} onChange={(e) => setTempMax(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
-        <Field label="Base SKU"><input className="input" defaultValue={baseSku} /></Field>
+        <Field label="Base SKU" hint="manufacturer stock id"><input className="input" value={sku} onChange={(e) => setSku(e.target.value)} /></Field>
         <Field label="Lot / batch tracking"><select className="sel" value={lotTracking ? 'on' : 'off'} onChange={(e) => setLotTracking(e.target.value === 'on')}><option value="on">On (recommended)</option><option value="off">Off</option></select></Field>
         <Field label="Facility · Manufactured by">
           <select className="sel">
@@ -318,13 +320,19 @@ function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: 
 
 /** Fees — one-time / per-unit / per-order. PER_SKU_ONE_TIME fees can waive at a
  *  volume threshold (e.g. QA batch testing waived above 12,500 units). */
-function FeesCard({ draftId }: { draftId: string | null }) {
-  interface FeeRow { label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null }
-  const [fees, setFees] = useState<FeeRow[]>([])
+interface FeeRow { label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null }
+function FeesCard({ draftId, initialFees }: { draftId: string | null; initialFees?: InitialDraft['fees'] }) {
+  const [fees, setFees] = useState<FeeRow[]>(
+    () => (initialFees ?? []).map((f) => ({ label: f.label, basis: f.basis, amountCents: f.amountCents, waivedAboveQty: f.waivedAboveQty })),
+  )
+  // Guard the first autosave so resuming a draft doesn't immediately re-write
+  // the rows we just loaded (and never wipes saved fees with an empty mount).
+  const hydrated = useRef(false)
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
+    if (!hydrated.current) { hydrated.current = true; return }
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       const payload: FeeInput[] = fees.map((f, i) => ({ ...f, sortOrder: i }))
@@ -372,20 +380,48 @@ function FeesCard({ draftId }: { draftId: string | null }) {
   )
 }
 
-/** Single-flavor bundle config. Units + bundle copy collapse when packs = 1. */
-function SinglePack() {
-  const [packsPerBundle, setPacksPerBundle] = useState(1)
+type PackingInit = InitialDraft['packing']
+function cfgNum(p: PackingInit, key: string, fallback: number): number {
+  const v = p?.packingConfig?.[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+}
+
+/** Single-flavor bundle config. Units + bundle copy collapse when packs = 1.
+ *  Persists packs-per-bundle → variant.innerPacksPerOuter and units-per-pack →
+ *  packingConfig.unitsPerPack (debounced, parity with the flavors card). */
+function SinglePack({ draftId, packing }: { draftId: string | null; packing: PackingInit }) {
+  const [packsPerBundle, setPacksPerBundle] = useState(packing?.innerPacksPerOuter ?? 1)
+  const [unitsPerPack, setUnitsPerPack] = useState(() => cfgNum(packing, 'unitsPerPack', 1))
   const isBundle = packsPerBundle > 1
+  const totalUnits = packsPerBundle * unitsPerPack
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      void savePacking(draftId, { innerPacksPerOuter: packsPerBundle, packingConfig: { unitsPerPack } })
+    }, 700)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packsPerBundle, unitsPerPack, draftId])
+
   return (
     <>
-      <div className="section-title"><span className="ic">▦</span> Pack</div>
+      <div className="section-title"><span className="ic">▦</span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how the single flavor is bundled for sale</span></div>
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Packs per bundle" hint="you choose">
           <input className="input" type="number" min={1} value={packsPerBundle} onChange={(e) => setPacksPerBundle(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} />
         </Field>
-        {isBundle && <Field label="Units (pcs) per pack"><input className="input" type="number" min={1} defaultValue={1} style={{ width: 90 }} /></Field>}
-        <span className="tiny muted" style={{ paddingBottom: 9 }}>{isBundle ? `A ${packsPerBundle}-pack bundle of the same flavor.` : 'A single pack.'}</span>
+        <Field label="Units (pcs) per pack" hint="e.g. 2 bars in a pack">
+          <input className="input" type="number" min={1} value={unitsPerPack} onChange={(e) => setUnitsPerPack(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 110 }} />
+        </Field>
+        <span className="tiny muted" style={{ paddingBottom: 9 }}>
+          {isBundle ? `A ${packsPerBundle}-pack bundle of the same flavor` : 'A single pack'}
+          {unitsPerPack > 1 ? `, ${unitsPerPack} pcs each` : ''} · <b>{totalUnits.toLocaleString()}</b> sellable unit{totalUnits === 1 ? '' : 's'} per bundle.
+        </span>
       </div>
+      <p className="tiny muted" style={{ marginTop: 8 }}>One recipe, one flavor. The bundle is the sellable SKU — its barcode and pricing live on this configuration.</p>
     </>
   )
 }
@@ -489,39 +525,110 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   )
 }
 
-function MultiPack() {
-  const [unitsPerOuter, setUnitsPerOuter] = useState(12)
-  const [components, setComponents] = useState<Array<{ name: string; printed: boolean }>>([
-    { name: 'Primary · Can', printed: true },
-    { name: 'Secondary · Carton', printed: true },
-  ])
+interface PackComponent { name: string; printed: boolean }
+const DEFAULT_COMPONENTS: PackComponent[] = [
+  { name: 'Primary · Can', printed: true },
+  { name: 'Secondary · Carton', printed: true },
+]
+function cfgComponents(p: PackingInit): PackComponent[] {
+  const v = p?.packingConfig?.components
+  if (Array.isArray(v) && v.length) {
+    return v.map((c) => ({ name: String((c as PackComponent)?.name ?? 'Component'), printed: (c as PackComponent)?.printed !== false }))
+  }
+  return DEFAULT_COMPONENTS
+}
+function cfgStr(p: PackingInit, key: string, fallback: string): string {
+  const v = p?.packingConfig?.[key]
+  return typeof v === 'string' && v ? v : fallback
+}
+
+/** Multi-pack composition — outer pack + inner units + a component list. Persists
+ *  units-per-outer → variant.innerPacksPerOuter, cases → outerPacksPerCase, and
+ *  pack type / outer / components → packingConfig (debounced, parity with flavors). */
+function MultiPack({ draftId, packing }: { draftId: string | null; packing: PackingInit }) {
+  const [unitsPerOuter, setUnitsPerOuter] = useState(packing?.innerPacksPerOuter && packing.innerPacksPerOuter > 1 ? packing.innerPacksPerOuter : 12)
+  const [casesPerPallet, setCasesPerPallet] = useState(packing?.outerPacksPerCase ?? 1)
+  const [packType, setPackType] = useState(() => cfgStr(packing, 'packType', 'Variety multipack'))
+  const [outerPack, setOuterPack] = useState(() => cfgStr(packing, 'outerPack', 'Paper carton (printed)'))
+  const [components, setComponents] = useState<PackComponent[]>(() => cfgComponents(packing))
+  const printedCount = components.filter((c) => c.printed).length
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      void savePacking(draftId, {
+        innerPacksPerOuter: unitsPerOuter,
+        outerPacksPerCase: casesPerPallet,
+        packingConfig: { packType, outerPack, components },
+      })
+    }, 700)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitsPerOuter, casesPerPallet, packType, outerPack, components, draftId])
+
+  function patchComp(i: number, p: Partial<PackComponent>) {
+    setComponents(components.map((c, j) => (j === i ? { ...c, ...p } : c)))
+  }
+
   return (
     <>
-      <div className="section-title"><span className="ic">▣</span> Pack composition</div>
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12 }}>
-        <Field label="Pack type"><select className="sel"><option>Variety multipack</option><option>Single-flavor multipack</option><option>Sampler</option></select></Field>
-        <Field label="Outer pack"><select className="sel"><option>Paper carton (printed)</option><option>Shrink (no print)</option></select></Field>
+      <div className="section-title"><span className="ic">▣</span> Pack composition <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how units nest inside the sellable outer</span></div>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
+        <Field label="Pack type">
+          <select className="sel" value={packType} onChange={(e) => setPackType(e.target.value)}>
+            <option>Variety multipack</option><option>Single-flavor multipack</option><option>Sampler</option>
+          </select>
+        </Field>
+        <Field label="Outer pack">
+          <select className="sel" value={outerPack} onChange={(e) => setOuterPack(e.target.value)}>
+            <option>Paper carton (printed)</option><option>Shrink (no print)</option><option>Rigid box (printed)</option>
+          </select>
+        </Field>
         <Field label="Units per outer" hint="you choose"><input className="input" type="number" min={1} value={unitsPerOuter} onChange={(e) => setUnitsPerOuter(Math.max(1, parseInt(e.target.value, 10) || 1))} /></Field>
+        <Field label="Outers per case" hint="shipping/case pack"><input className="input" type="number" min={1} value={casesPerPallet} onChange={(e) => setCasesPerPallet(Math.max(1, parseInt(e.target.value, 10) || 1))} /></Field>
       </div>
       <div className="compbar">
         {components.map((c, i) => (
           <div key={i} className="compcard" style={c.printed ? undefined : { opacity: 0.7 }}>
-            <b>{c.name}</b>
-            <div className="muted small">{c.printed ? 'printed · die-line required' : 'not decorated'}</div>
-            <button className="del" style={{ fontSize: 10 }} onClick={() => setComponents(components.filter((_, j) => j !== i))}>remove</button>
+            <input className="input" value={c.name} onChange={(e) => patchComp(i, { name: e.target.value })} style={{ fontWeight: 600, marginBottom: 4 }} />
+            <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={c.printed} onChange={(e) => patchComp(i, { printed: e.target.checked })} /> {c.printed ? 'printed · die-line required' : 'not decorated'}
+            </label>
+            <button className="del" style={{ fontSize: 10, marginTop: 4 }} onClick={() => setComponents(components.filter((_, j) => j !== i))}>remove</button>
           </div>
         ))}
         <button className="rb-btn-add" onClick={() => setComponents([...components, { name: `Component ${components.length + 1}`, printed: true }])}>+ Component</button>
       </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>{unitsPerOuter} units per outer · {components.length} component{components.length === 1 ? '' : 's'}. Each printed component gets a die-line in Packaging.</p>
+      <p className="tiny muted" style={{ marginTop: 8 }}>{unitsPerOuter} unit{unitsPerOuter === 1 ? '' : 's'} per outer · {casesPerPallet} outer{casesPerPallet === 1 ? '' : 's'} per case · {components.length} component{components.length === 1 ? '' : 's'} ({printedCount} printed). Each printed component gets its own die-line in Packaging.</p>
+      {printedCount === 0 && <div className="warn">⚠ No printed components — this pack has nothing to decorate. Mark at least one component as printed, or this will skip the Packaging die-line step.</div>}
     </>
   )
 }
 
-/** Subscription-rotating add-on — delivery cadence + how many flavors rotate in. */
-function SubscriptionConfig() {
-  const [cadence, setCadence] = useState('monthly')
-  const [rotation, setRotation] = useState(3)
+const CADENCE_LABEL: Record<string, string> = { weekly: 'weekly', biweekly: 'every 2 weeks', monthly: 'monthly', quarterly: 'quarterly' }
+
+/** Subscription-rotating add-on — delivery cadence + how many flavors rotate in.
+ *  Persists cadence → variant.subscriptionInterval and rotation/commitment →
+ *  packingConfig (debounced). Warns when rotation exceeds the flavor pool. */
+function SubscriptionConfig({ draftId, packing, flavorCount }: { draftId: string | null; packing: PackingInit; flavorCount: number }) {
+  const [cadence, setCadence] = useState(packing?.subscriptionInterval ?? 'monthly')
+  const [rotation, setRotation] = useState(() => cfgNum(packing, 'rotationSize', 3))
+  const [minCommitment, setMinCommitment] = useState(() => cfgNum(packing, 'minCommitment', 0))
+  const exceedsPool = flavorCount > 0 && rotation > flavorCount
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      void savePacking(draftId, { subscriptionInterval: cadence, packingConfig: { rotationSize: rotation, minCommitment } })
+    }, 700)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cadence, rotation, minCommitment, draftId])
+
   return (
     <div className="addon">
       <div className="section-title"><span className="ic">↻</span> Subscription &amp; rotation</div>
@@ -538,20 +645,44 @@ function SubscriptionConfig() {
           <input className="input" type="number" min={1} value={rotation} onChange={(e) => setRotation(Math.max(1, parseInt(e.target.value, 10) || 1))} />
         </Field>
         <Field label="Min. commitment">
-          <select className="sel"><option>None (cancel anytime)</option><option>3 shipments</option><option>6 shipments</option><option>12 shipments</option></select>
+          <select className="sel" value={minCommitment} onChange={(e) => setMinCommitment(parseInt(e.target.value, 10) || 0)}>
+            <option value={0}>None (cancel anytime)</option>
+            <option value={3}>3 shipments</option>
+            <option value={6}>6 shipments</option>
+            <option value={12}>12 shipments</option>
+          </select>
         </Field>
       </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>Ships {rotation} rotating flavor{rotation === 1 ? '' : 's'} {cadence}. Each shipment draws from the flavors defined above.</p>
+      <p className="tiny muted" style={{ marginTop: 8 }}>
+        Ships {rotation} rotating flavor{rotation === 1 ? '' : 's'} {CADENCE_LABEL[cadence] ?? cadence}
+        {minCommitment > 0 ? ` · ${minCommitment}-shipment minimum` : ' · cancel anytime'}. Each shipment draws from the flavors defined above.
+      </p>
+      {exceedsPool && <div className="warn">⚠ Rotation size ({rotation}) is more than the {flavorCount} flavor{flavorCount === 1 ? '' : 's'} you’ve defined — a shipment can’t hold more distinct flavors than exist. Add flavors or lower the rotation.</div>}
     </div>
   )
 }
 
-/** Customizable pick-N add-on — customer picks between min and max of M flavors. */
-function PickNConfig({ flavorCount }: { flavorCount: number }) {
-  const [min, setMin] = useState(1)
-  const [max, setMax] = useState(6)
+/** Customizable pick-N add-on — customer picks between min and max of M flavors.
+ *  Persists max → variant.customerPicksCount and min → packingConfig.pickMin
+ *  (debounced). Warns when max exceeds the pool or min > max. */
+function PickNConfig({ draftId, packing, flavorCount }: { draftId: string | null; packing: PackingInit; flavorCount: number }) {
+  const [min, setMin] = useState(() => cfgNum(packing, 'pickMin', 1))
+  const [max, setMax] = useState(packing?.customerPicksCount ?? 6)
   const M = flavorCount || 0
   const exceedsPool = M > 0 && max > M
+  const minOverMax = min > max
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      void savePacking(draftId, { customerPicksCount: max, packingConfig: { pickMin: min } })
+    }, 700)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [min, max, draftId])
+
   return (
     <div className="addon">
       <div className="section-title"><span className="ic">☑</span> Customer choice (pick-N)</div>
@@ -560,6 +691,7 @@ function PickNConfig({ flavorCount }: { flavorCount: number }) {
         <Field label="Max picks"><input className="input" type="number" min={1} value={max} onChange={(e) => setMax(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} /></Field>
         <span className="tiny muted" style={{ paddingBottom: 9 }}>Customer picks {min === max ? min : `${min}–${max}`} of {M || 'the'} available flavor{M === 1 ? '' : 's'}.</span>
       </div>
+      {minOverMax && <div className="warn">⚠ Min picks ({min}) is greater than max picks ({max}) — the customer would have no valid choice. Lower the min or raise the max.</div>}
       {exceedsPool && <div className="warn">⚠ Max picks ({max}) is more than the {M} flavor{M === 1 ? '' : 's'} you’ve defined. Add more flavors or lower the max.</div>}
     </div>
   )

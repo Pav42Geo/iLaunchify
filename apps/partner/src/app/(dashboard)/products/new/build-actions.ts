@@ -274,8 +274,16 @@ export interface InitialDraft {
   production: {
     fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH' | null
     moqMin: number; orderIncrement: number; monthlyCapacity: number | null
-    shelfLifeDays: number | null; lotTracking: boolean
+    shelfLifeDays: number | null; lotTracking: boolean; sku: string | null
   } | null
+  packing: {
+    innerPacksPerOuter: number; outerPacksPerCase: number
+    customerPicksCount: number | null; subscriptionInterval: string | null
+    packingConfig: Record<string, unknown> | null
+  } | null
+  fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
+  changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
+  optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
   pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
 }
 
@@ -299,7 +307,10 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       ingredientSlots: Array<{ baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
-      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean }>
+      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null }>
+      fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
+      changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
+      optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
       pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
       optionAxes: Array<{
         key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
@@ -320,7 +331,10 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
-        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true } },
+        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true } },
+        fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
+        changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
+        optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
         pricingTiers: { orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }], select: { minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true, fulfillmentMode: true } },
         optionAxes: {
           orderBy: { sortOrder: 'asc' },
@@ -381,8 +395,21 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
             monthlyCapacity: tpl.variants[0].monthlyCapacity,
             shelfLifeDays: tpl.variants[0].shelfLifeDays,
             lotTracking: tpl.variants[0].lotTracking,
+            sku: tpl.variants[0].sku,
           }
         : null,
+      packing: tpl.variants[0]
+        ? {
+            innerPacksPerOuter: tpl.variants[0].innerPacksPerOuter,
+            outerPacksPerCase: tpl.variants[0].outerPacksPerCase,
+            customerPicksCount: tpl.variants[0].customerPicksCount,
+            subscriptionInterval: tpl.variants[0].subscriptionInterval,
+            packingConfig: (tpl.variants[0].packingConfig ?? null) as Record<string, unknown> | null,
+          }
+        : null,
+      fees: (tpl.fees ?? []).map((f) => ({ label: f.label, basis: f.basis, amountCents: f.amountCents, waivedAboveQty: f.waivedAboveQty, sortOrder: f.sortOrder })),
+      changeApprovalRules: (tpl.changeApprovalRules ?? []).map((r) => ({ changeType: r.changeType, requiredApprover: r.requiredApprover, sortOrder: r.sortOrder })),
+      optionRules: (tpl.optionRules ?? []).map((r) => ({ kind: r.kind, whenValueId: r.whenValueId, targetValueId: r.targetValueId, message: r.message })),
       pricingTiers: tpl.pricingTiers ?? [],
     }
   } catch (err) {
@@ -630,6 +657,8 @@ export interface ProductionInput {
   monthlyCapacity: number | null
   shelfLifeDays: number | null
   lotTracking: boolean
+  /** Manufacturer base SKU for the default variant. null/undefined leaves it unchanged. */
+  sku?: string | null
 }
 
 /** Persist the draft's production spec onto its default variant (#35). Creates
@@ -645,7 +674,7 @@ export async function saveProduction(productTemplateId: string, input: Productio
     const ownIds = partner.services.map((s) => s.id)
     if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
 
-    const data = {
+    const data: Record<string, unknown> = {
       fulfillmentMode: input.fulfillmentMode,
       moqMin: Math.max(1, Math.floor(input.moqMin || 1)),
       orderIncrement: Math.max(1, Math.floor(input.orderIncrement || 1)),
@@ -653,6 +682,7 @@ export async function saveProduction(productTemplateId: string, input: Productio
       shelfLifeDays: input.shelfLifeDays == null ? null : Math.max(1, Math.floor(input.shelfLifeDays)),
       lotTracking: input.lotTracking,
     }
+    if (input.sku !== undefined) data.sku = input.sku?.trim() ? input.sku.trim() : null
     const existing = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId }, select: { id: true } })
     if (existing) {
       await prisma.productTemplateVariant.update({ where: { id: existing.id }, data: data as never })
@@ -665,6 +695,62 @@ export async function saveProduction(productTemplateId: string, input: Productio
   } catch (err) {
     console.error('[saveProduction] failed:', err)
     return { ok: false, error: `Could not save production: ${(err as Error).message}` }
+  }
+}
+
+export interface PackingInput {
+  /** Inner packs per outer / units per bundle (single = packs-per-bundle, pack = units-per-outer). */
+  innerPacksPerOuter?: number
+  outerPacksPerCase?: number
+  /** Pick-N max picks. null clears. */
+  customerPicksCount?: number | null
+  /** Subscription cadence ("weekly" | "biweekly" | "monthly" | "quarterly"). null clears. */
+  subscriptionInterval?: string | null
+  /** Free-form per-type extras (unitsPerPack, packType, outerPack, components, rotationSize,
+   *  minCommitment, pickMin, …). MERGED into the variant's existing packingConfig so add-on
+   *  cards (subscription / pick-N) and the base pack card don't clobber each other. */
+  packingConfig?: Record<string, unknown>
+}
+
+/** Persist the draft's type-specific packing config onto its default variant (#35).
+ *  Only writes the provided keys (the type cards each own a slice); packingConfig is
+ *  merged, not replaced. Creates the default variant if none exists. Cast-guarded. */
+export async function savePacking(productTemplateId: string, input: PackingInput): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const existing = await (prisma as unknown as {
+      productTemplateVariant: { findFirst: (a: unknown) => Promise<{ id: string; packingConfig: unknown } | null> }
+    }).productTemplateVariant.findFirst({ where: { productTemplateId }, select: { id: true, packingConfig: true } })
+
+    const data: Record<string, unknown> = {}
+    if (input.innerPacksPerOuter != null) data.innerPacksPerOuter = Math.max(1, Math.floor(input.innerPacksPerOuter))
+    if (input.outerPacksPerCase != null) data.outerPacksPerCase = Math.max(1, Math.floor(input.outerPacksPerCase))
+    if (input.customerPicksCount !== undefined) data.customerPicksCount = input.customerPicksCount == null ? null : Math.max(1, Math.floor(input.customerPicksCount))
+    if (input.subscriptionInterval !== undefined) data.subscriptionInterval = input.subscriptionInterval
+    if (input.packingConfig) {
+      const prev = (existing?.packingConfig ?? {}) as Record<string, unknown>
+      data.packingConfig = { ...prev, ...input.packingConfig }
+    }
+    if (Object.keys(data).length === 0) return { ok: true }
+
+    if (existing) {
+      await prisma.productTemplateVariant.update({ where: { id: existing.id }, data: data as never })
+    } else {
+      await prisma.productTemplateVariant.create({
+        data: { productTemplateId, containerFormat: 'Default', servingsPerContainer: 1, servingSizeG: 1, ...data } as never,
+      })
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[savePacking] failed:', err)
+    return { ok: false, error: `Could not save packing: ${(err as Error).message}` }
   }
 }
 

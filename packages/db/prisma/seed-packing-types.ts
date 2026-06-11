@@ -1,5 +1,5 @@
 // Seed the admin-curated PackingProfile taxonomy — one profile per value of the
-// existing `PackingType` enum (the 14-group taxonomy, Pavel 2026-06-08). Each
+// existing `PackingType` enum (the 15-group taxonomy, Pavel 2026-06-08). Each
 // row's structural flags drive the turnkey builder: flavorMode (one recipe vs
 // base + flavor presets), packStructure (pack composition + die-lines),
 // labelColumns (single / dual / triple-column Facts). Admins tune these via
