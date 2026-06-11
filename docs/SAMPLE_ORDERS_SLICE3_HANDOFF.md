@@ -103,14 +103,27 @@ In the production checkout (`apps/creator/src/app/(checkout)/.../cart-actions.ts
   - `onChargeRefunded` voids unused (`AVAILABLE`) sample credit → `VOID`.
 
 ### Remaining (the actual build)
-- **Task A — `createSampleOrder` action.** Open design question first: a SAMPLE
-  order needs an `Order` + `OrderItem` with a `productId`. UNBRANDED is recipe-only
-  (could attach to the marketplace `ProductTemplate` via a lightweight Product), but
-  BRANDED needs the creator's customised `Product`. Decide the attachment model,
-  then mirror `placeOrderFromCheckoutDraft`: set `orderType=SAMPLE` + `sampleKind`,
-  **no MOQ**, single `manufacturerServiceId`, `createCheckoutSession` (the webhook
-  already finishes the loop). Lives in apps/creator; the marketplace CTA navigates
-  there (cross-app server action isn't viable from apps/marketing).
+- **Task A — `createSampleOrder` action.** Attachment model **LOCKED (require an
+  existing product)**: the action takes the creator's own `productId` (a `Product`
+  under their brand, already created from the template) — it does NOT auto-create
+  one. So the marketplace template page can't place a sample directly; its CTA
+  routes the creator to their product / customise flow, and the sample is ordered
+  from there. Implementation:
+  - Lives in **apps/creator** (it needs Stripe + order create); reachable via
+    `creatorUrl(...)` from the marketplace card.
+  - Load the owned `Product` → its `productTemplate` → the `ProductSampleOption`
+    for `(productTemplateId, sampleKind)`. Reject if the kind is disabled.
+  - **Server re-quote** with `quoteSample` — now exported from **`@ilaunchify/orders`**
+    (`packages/orders/src/sample-quote.ts`); never trust client prices. Reject on
+    `errors.length`.
+  - **Ship-to**: a sample ships to the creator. Resolve a default address the same
+    way the production checkout's `resolveShipTo` does (the `Order` requires the
+    shipTo fields) — so the sample flow needs an address step / saved address, it's
+    a mini-checkout, not a one-click action.
+  - Abuse cap (`maxPerCreatorPerPeriod`), then create `Order` (`orderType=SAMPLE`,
+    `sampleKind`, `subtotalCents`=quote subtotal, single `manufacturerServiceId`,
+    **no MOQ**) + `OrderItem(productId)`, AuditLog, `createCheckoutSession`. The
+    webhook already mints the credit on PAID.
 - **Task B — production-checkout consumption.** In `cart-actions.ts`, load the
   creator+brand+template `AVAILABLE` credits, `applySampleCredit(subtotal+fee, …)`,
   reduce `totalCents`, persist `consumed` (deduct + flip `APPLIED`/`appliedOrderId`),

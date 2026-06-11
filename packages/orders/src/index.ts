@@ -41,13 +41,29 @@ export {
   usableCredits,
   availableSampleCreditCents,
   applySampleCredit,
+  mintSampleCredit,
+  SAMPLE_CREDIT_EXPIRY_DAYS,
 } from './sample-credit'
 export type {
   SampleCreditStatus,
   SampleCreditEntry,
   CreditConsumption,
   ApplyCreditResult,
+  MintedCredit,
 } from './sample-credit'
+export {
+  quoteSample,
+  hasSamplerSet,
+  formatCents,
+} from './sample-quote'
+export type {
+  SampleKind,
+  SampleOption,
+  SampleMode,
+  SampleSelection,
+  SampleQuoteLine,
+  SampleQuote,
+} from './sample-quote'
 export {
   exportBundleFilename,
   assembleSpecSheet,
