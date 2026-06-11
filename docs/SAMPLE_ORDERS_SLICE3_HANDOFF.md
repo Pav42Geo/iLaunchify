@@ -102,28 +102,21 @@ In the production checkout (`apps/creator/src/app/(checkout)/.../cart-actions.ts
     and **skips `createDispatches()`**; PRODUCTION unchanged.
   - `onChargeRefunded` voids unused (`AVAILABLE`) sample credit → `VOID`.
 
-### Remaining (the actual build)
-- **Task A — `createSampleOrder` action.** Attachment model **LOCKED (require an
-  existing product)**: the action takes the creator's own `productId` (a `Product`
-  under their brand, already created from the template) — it does NOT auto-create
-  one. So the marketplace template page can't place a sample directly; its CTA
-  routes the creator to their product / customise flow, and the sample is ordered
-  from there. Implementation:
-  - Lives in **apps/creator** (it needs Stripe + order create); reachable via
-    `creatorUrl(...)` from the marketplace card.
-  - Load the owned `Product` → its `productTemplate` → the `ProductSampleOption`
-    for `(productTemplateId, sampleKind)`. Reject if the kind is disabled.
-  - **Server re-quote** with `quoteSample` — now exported from **`@ilaunchify/orders`**
-    (`packages/orders/src/sample-quote.ts`); never trust client prices. Reject on
-    `errors.length`.
-  - **Ship-to**: a sample ships to the creator. Resolve a default address the same
-    way the production checkout's `resolveShipTo` does (the `Order` requires the
-    shipTo fields) — so the sample flow needs an address step / saved address, it's
-    a mini-checkout, not a one-click action.
-  - Abuse cap (`maxPerCreatorPerPeriod`), then create `Order` (`orderType=SAMPLE`,
-    `sampleKind`, `subtotalCents`=quote subtotal, single `manufacturerServiceId`,
-    **no MOQ**) + `OrderItem(productId)`, AuditLog, `createCheckoutSession`. The
-    webhook already mints the credit on PAID.
+### Task A — `createSampleOrder` action: DONE
+`apps/creator/src/app/(checkout)/products/[productId]/checkout/sample-actions.ts`.
+Attachment model LOCKED (require an existing product). The action: loads the owned
+`Product` → `productTemplate` → `ProductSampleOption(kind)`, **re-quotes server-side**
+with `quoteSample` (from `@ilaunchify/orders`), enforces the abuse cap (per creator
+per template per 30 days), validates ship-to, creates a `SAMPLE` `Order`+item with
+**no MOQ** and single `manufacturerServiceId`, AuditLogs `SAMPLE_ORDER_CREATED`, and
+`createCheckoutSession`s. V1 choices: flat sample shipping `$9.95`, **no platform fee
+on the sample itself**, 30-day abuse window. Cast-guarded; creator app typechecks clean.
+
+### Remaining
+- **Task A-UI — sample mini-checkout.** A small form/page that collects kind +
+  flavor/qty selection + ship-to, calls `createSampleOrder(productId, …)`, and
+  redirects to `data.checkoutUrl`. The marketplace `SampleOrderCard` CTA routes the
+  creator here (`creatorUrl(...)`) since samples need an existing product.
 - **Task B — production-checkout consumption.** In `cart-actions.ts`, load the
   creator+brand+template `AVAILABLE` credits, `applySampleCredit(subtotal+fee, …)`,
   reduce `totalCents`, persist `consumed` (deduct + flip `APPLIED`/`appliedOrderId`),
