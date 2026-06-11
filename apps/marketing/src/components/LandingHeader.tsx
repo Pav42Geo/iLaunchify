@@ -69,6 +69,11 @@ export function LandingHeader({
                 description: 'Curated starter templates across 8 niches.',
               },
               {
+                label: 'Academy',
+                href: '/academy',
+                description: 'Free courses to launch and grow your brand.',
+              },
+              {
                 label: 'Talk to sales',
                 href: '/contact-sales',
                 description: 'Agency-tier onboarding for multi-brand operators.',
@@ -89,6 +94,11 @@ export function LandingHeader({
                 label: 'Partner network',
                 href: '/business#tiers',
                 description: '4 service types · 5-layer onboarding.',
+              },
+              {
+                label: 'Partner Academy',
+                href: '/business/academy',
+                description: 'Training for manufacturing + fulfillment partners.',
               },
               {
                 label: 'Apply to join',
