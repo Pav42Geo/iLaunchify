@@ -21,6 +21,13 @@ export interface OrderSettingsValues {
   flatShippingPerUnitCents: number
   freeShippingThresholdCents: number | null
   defaultMoq: number
+  // Cancellations & refunds
+  creatorCancelWindowHours: number
+  cancellationFeeBps: number
+  refundProcessingFeeBps: number
+  partnerStrikeOnCancel: boolean
+  autoApproveCreatorCancelBeforeRouting: boolean
+  disputeWindowDays: number
 }
 
 export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
@@ -36,6 +43,12 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
   flatShippingPerUnitCents: 0,
   freeShippingThresholdCents: null,
   defaultMoq: 100,
+  creatorCancelWindowHours: 24,
+  cancellationFeeBps: 0,
+  refundProcessingFeeBps: 0,
+  partnerStrikeOnCancel: true,
+  autoApproveCreatorCancelBeforeRouting: true,
+  disputeWindowDays: 14,
 }
 
 export async function getOrderSettings(): Promise<OrderSettingsValues> {
@@ -49,6 +62,8 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
           productionFeeBps: true, warehouseReferralFeeBps: true,
           acceptWindowHours: true, maxReroutes: true, capabilityWeightPct: true, proximityWeightPct: true, certWeightPct: true, autoCancelAfterHours: true,
           flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true, defaultMoq: true,
+          creatorCancelWindowHours: true, cancellationFeeBps: true, refundProcessingFeeBps: true,
+          partnerStrikeOnCancel: true, autoApproveCreatorCancelBeforeRouting: true, disputeWindowDays: true,
         },
       })
       .catch(() => null)

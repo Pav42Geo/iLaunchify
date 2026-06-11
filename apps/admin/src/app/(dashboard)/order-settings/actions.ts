@@ -45,6 +45,12 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('flatShippingPerUnitCents', 0, 10_000_00)
     set('freeShippingThresholdCents', 0, 100_000_00)
     set('defaultMoq', 1, 1_000_000)
+    set('creatorCancelWindowHours', 1, 2160)
+    set('cancellationFeeBps', 0, 10_000)
+    set('refundProcessingFeeBps', 0, 10_000)
+    set('disputeWindowDays', 0, 365)
+    if (patch.partnerStrikeOnCancel !== undefined) data.partnerStrikeOnCancel = !!patch.partnerStrikeOnCancel
+    if (patch.autoApproveCreatorCancelBeforeRouting !== undefined) data.autoApproveCreatorCancelBeforeRouting = !!patch.autoApproveCreatorCancelBeforeRouting
 
     await (prisma as unknown as {
       orderSettings: { upsert: (a: unknown) => Promise<unknown> }
@@ -62,6 +68,7 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     revalidatePath('/order-settings/fees')
     revalidatePath('/order-settings/routing')
     revalidatePath('/order-settings/shipping')
+    revalidatePath('/order-settings/cancellations')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not save settings: ${(err as Error).message}` }

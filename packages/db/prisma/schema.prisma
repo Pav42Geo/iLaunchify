@@ -2060,6 +2060,14 @@ model OrderSettings {
   freeShippingThresholdCents Int? // free shipping at/above this subtotal; null = never
   defaultMoq                 Int  @default(100) // default minimum order quantity (was DEFAULT_MOQ)
 
+  // ---- Cancellations & refunds (policy; consumers land as the flows ship) ----
+  creatorCancelWindowHours             Int     @default(24) // creator self-cancel window after placing
+  cancellationFeeBps                   Int     @default(0) // fee retained on a cancel past the free window
+  refundProcessingFeeBps               Int     @default(0) // non-refundable processing fee on refunds
+  partnerStrikeOnCancel                Boolean @default(true) // partner takes a strike when their cancel is approved
+  autoApproveCreatorCancelBeforeRouting Boolean @default(true) // auto-approve creator cancel before the order routes
+  disputeWindowDays                    Int     @default(14) // days after delivery a creator can open a dispute
+
   updatedAt   DateTime @updatedAt
   updatedById String?
 }

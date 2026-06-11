@@ -1,6 +1,6 @@
 'use server'
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -57,6 +57,11 @@ export async function reviewCancellation({
     }
   })
 
+  // Snapshot the cancellation/refund policy in effect at decision time, so when
+  // the strike/refund-retention flows ship the record is reproducible (the
+  // project values audit reproducibility). The policy isn't enforced here yet.
+  const policy = await getOrderSettings()
+
   await logAuditAs(admin, {
     entityType: 'CancellationRequest',
     entityId: req.id,
@@ -66,6 +71,14 @@ export async function reviewCancellation({
       orderId: req.orderId,
       dispatchId: req.dispatchId,
       reviewNotes: reviewNotes?.trim() || null,
+      policyAtDecision:
+        decision === 'APPROVED'
+          ? {
+              partnerStrikeOnCancel: policy.partnerStrikeOnCancel,
+              cancellationFeeBps: policy.cancellationFeeBps,
+              refundProcessingFeeBps: policy.refundProcessingFeeBps,
+            }
+          : undefined,
     },
   })
 

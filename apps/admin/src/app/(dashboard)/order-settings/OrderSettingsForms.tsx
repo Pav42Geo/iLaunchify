@@ -5,7 +5,7 @@
 // singleton via saveOrderSettings(patch, section).
 
 import * as React from 'react'
-import { DollarSign, Workflow, Truck } from 'lucide-react'
+import { DollarSign, Workflow, Truck, RotateCcw } from 'lucide-react'
 import { saveOrderSettings, type OrderSettingsValues } from './actions'
 
 const NUM = 'w-36 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -147,6 +147,56 @@ export function ShippingForm({ initial }: { initial: OrderSettingsValues }) {
         </Field>
       </Card>
       <SaveBar pending={pending} status={status} onSave={() => save({ flatShippingBaseCents, flatShippingPerUnitCents, freeShippingThresholdCents, defaultMoq })} />
+    </div>
+  )
+}
+
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (b: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-4">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-ink-800">{label}</div>
+        {hint && <div className="text-[11.5px] text-ink-500">{hint}</div>}
+      </div>
+      <span className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-pink-600' : 'bg-ink-300'}`}>
+        <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </span>
+    </label>
+  )
+}
+
+// --- Cancellations & refunds -------------------------------------------------
+export function CancellationsForm({ initial }: { initial: OrderSettingsValues }) {
+  const [creatorCancelWindowHours, setWin] = React.useState(initial.creatorCancelWindowHours)
+  const [cancellationFeeBps, setCancFee] = React.useState(initial.cancellationFeeBps)
+  const [refundProcessingFeeBps, setRefFee] = React.useState(initial.refundProcessingFeeBps)
+  const [disputeWindowDays, setDispute] = React.useState(initial.disputeWindowDays)
+  const [partnerStrikeOnCancel, setStrike] = React.useState(initial.partnerStrikeOnCancel)
+  const [autoApprove, setAuto] = React.useState(initial.autoApproveCreatorCancelBeforeRouting)
+  const { pending, status, setStatus, save } = useSaver('cancellations')
+  const NE = '(Not yet enforced — recorded for when the flow ships.)'
+  return (
+    <div className="space-y-5">
+      <Card icon={RotateCcw} title="Cancellation policy" desc="When and how a creator can cancel, and what it costs.">
+        <Field label="Creator self-cancel window (hours)" hint={`Free cancel within this long after placing. ${NE}`}>
+          <input className={NUM} type="number" min={1} max={2160} value={creatorCancelWindowHours} onChange={(e) => { setWin(intOr(e, 1)); setStatus(null) }} />
+        </Field>
+        <Field label="Cancellation fee (bps)" hint={`${pct(cancellationFeeBps)} retained on a cancel past the free window. ${NE}`}>
+          <input className={NUM} type="number" min={0} max={10000} value={cancellationFeeBps} onChange={(e) => { setCancFee(intOr(e, 0)); setStatus(null) }} />
+        </Field>
+        <Toggle label="Auto-approve creator cancel before routing" hint={`Skip admin review when the order hasn't routed to a partner yet. ${NE}`} checked={autoApprove} onChange={(b) => { setAuto(b); setStatus(null) }} />
+      </Card>
+      <Card icon={RotateCcw} title="Refunds & disputes" desc="Refund retention and the post-delivery dispute window.">
+        <Field label="Refund processing fee (bps)" hint={`${pct(refundProcessingFeeBps)} non-refundable on a refund. ${NE}`}>
+          <input className={NUM} type="number" min={0} max={10000} value={refundProcessingFeeBps} onChange={(e) => { setRefFee(intOr(e, 0)); setStatus(null) }} />
+        </Field>
+        <Field label="Dispute window (days)" hint={`Days after delivery a creator can open a dispute. ${NE}`}>
+          <input className={NUM} type="number" min={0} max={365} value={disputeWindowDays} onChange={(e) => { setDispute(intOr(e, 0)); setStatus(null) }} />
+        </Field>
+        <Toggle label="Partner strike on approved cancellation" hint="When an admin approves a partner's cancellation, the partner takes a strike. Recorded in the cancellation audit now; enforced when strikes ship." checked={partnerStrikeOnCancel} onChange={(b) => { setStrike(b); setStatus(null) }} />
+      </Card>
+      <SaveBar pending={pending} status={status} onSave={() => save({ creatorCancelWindowHours, cancellationFeeBps, refundProcessingFeeBps, disputeWindowDays, partnerStrikeOnCancel, autoApproveCreatorCancelBeforeRouting: autoApprove })} />
     </div>
   )
 }
