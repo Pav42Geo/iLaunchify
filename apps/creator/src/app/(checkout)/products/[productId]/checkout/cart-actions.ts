@@ -17,7 +17,7 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma, getSampleSettings } from '@ilaunchify/db'
+import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { findRouting, estimateDispatchCosts, applySampleCredit, type SampleCreditEntry } from '@ilaunchify/orders'
 import {
@@ -208,9 +208,12 @@ export async function placeOrderFromCheckoutDraft(
   //        the action self-contained when the wizard isn't running). ----------
   const shippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType)
 
-  // --- 7. Platform fee ------------------------------------------------------
+  // --- 7. Platform fee (admin-tunable via OrderSettings; falls back to the
+  //        PLATFORM_FEE_BPS default when the settings row isn't present). --------
+  const orderSettings = await getOrderSettings()
+  const feeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
   const feeBase = productionTotalCents + shippingCents
-  const platformFeeCents = Math.floor(feeBase * (PLATFORM_FEE_BPS / 10000))
+  const platformFeeCents = Math.floor(feeBase * (feeBps / 10000))
   const grossTotalCents = productionTotalCents + shippingCents + platformFeeCents
 
   // --- 7b. Sample credit (Pavel 2026-06-10) — a paid sample mints credit toward

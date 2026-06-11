@@ -2033,6 +2033,33 @@ model SampleSettings {
   updatedById String? // admin User who last changed it
 }
 
+/// Platform-wide order policy knobs (Pavel 2026-06-11) — the admin-tunable
+/// constants that currently live hard-coded across the order system. Singleton:
+/// one row, id = "default". Surfaced under Admin → Settings → Order Settings as
+/// Fees & Commissions / Partner Routing / Shipping & Fulfillment.
+model OrderSettings {
+  id String @id @default("default")
+
+  // ---- Fees & commissions ----
+  productionFeeBps        Int @default(500) // platform fee on production orders (bps; was PLATFORM_FEE_BPS)
+  warehouseReferralFeeBps Int @default(0) // fee on warehouse-referral revenue
+
+  // ---- Partner routing & dispatch ----
+  acceptWindowHours    Int @default(24) // partner accept window per dispatch (was DEFAULT_ACCEPT_WINDOW_HOURS)
+  maxReroutes          Int @default(3) // max auto-reroutes before the order holds (was MAX_REROUTES)
+  capabilityWeightPct  Int @default(60) // match scoring: capability vs proximity (proximity = 100 − this)
+  autoCancelAfterHours Int @default(72) // unpaid/stuck order auto-cancel window
+
+  // ---- Shipping & fulfillment ----
+  flatShippingBaseCents      Int  @default(0) // flat base added to every order
+  flatShippingPerUnitCents   Int  @default(0) // per-unit shipping add
+  freeShippingThresholdCents Int? // free shipping at/above this subtotal; null = never
+  defaultMoq                 Int  @default(100) // default minimum order quantity (was DEFAULT_MOQ)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
 enum OrderShipToType {
   CREATOR_ADDRESS // goods ship to the creator's own warehouse / address
   WAREHOUSE_PARTNER // goods ship to a connected WAREHOUSE partner service

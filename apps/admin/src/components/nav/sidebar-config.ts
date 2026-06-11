@@ -74,6 +74,8 @@ import {
   Recycle,
   BadgeCheck,
   Gift,
+  DollarSign,
+  Truck,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -249,6 +251,9 @@ const PRIMARY: SidebarRegion = {
           label: 'Order Settings',
           icon: ShoppingBag,
           children: [
+            { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees' },
+            { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing' },
+            { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping' },
             { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/sample-settings' },
           ],
         },

@@ -19,6 +19,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Session', // Tier 1 Security & Access — admin session revocation (2026-06-05)
   'Lead',
   'SampleSettings', // Sample-policy admin settings (2026-06-11)
+  'OrderSettings', // Order-policy admin settings (2026-06-11)
   'Order',
   'OrderDispatch',
   'Charge',
