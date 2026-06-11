@@ -17,8 +17,8 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { prisma, getSampleSettings, resolveOrderSettings } from '@ilaunchify/db'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import { findRouting, estimateDispatchCosts, applySampleCredit, type SampleCreditEntry } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -203,8 +203,10 @@ export async function placeOrderFromCheckoutDraft(
   // simplification; V2 reconciles partner pricing properly).
   const productionTotalCents = Math.max(productionSubtotalCents, dispatchSubtotal)
 
-  // Admin-tunable order policy (fees + shipping) — OrderSettings singleton.
-  const orderSettings = await getOrderSettings()
+  // Admin-tunable order policy (fees + shipping), resolved for THIS creator's tier
+  // so scoped overrides (tier/market/region) take effect.
+  const creatorTier = await getCreatorTier(user.id)
+  const orderSettings = await resolveOrderSettings({ creatorTier })
 
   // --- 6. Shipping (admin-tunable flat rate; free over an optional threshold).
   //        Falls back to the V1 per-unit tiers when no flat rate is configured.

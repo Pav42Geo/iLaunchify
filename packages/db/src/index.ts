@@ -38,6 +38,11 @@ export {
 } from './sample-settings'
 export {
   getOrderSettings,
+  resolveOrderSettings,
+  applyOrderOverrides,
   ORDER_SETTINGS_DEFAULTS,
   type OrderSettingsValues,
+  type OrderSettingsScope,
+  type OrderSettingsOverrideRow,
+  type OrderSettingsContext,
 } from './order-settings'

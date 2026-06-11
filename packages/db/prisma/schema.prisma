@@ -2064,6 +2064,39 @@ model OrderSettings {
   updatedById String?
 }
 
+/// Scope dimension for an order-settings override (Pavel 2026-06-11).
+enum OrderSettingsScope {
+  CREATOR_TIER // scopeKey = "maker" | "builder" | "agency"
+  MARKET // scopeKey = Market.code (e.g. "US")
+  REGION // scopeKey = Region.id
+}
+
+/// Scoped override of the platform OrderSettings economics (Pavel 2026-06-11).
+/// Layered over the singleton default by `resolveOrderSettings(ctx)` — null
+/// fields inherit the default; resolution order is region < market < creator-tier
+/// (tier wins). Only economic fields are overridable; routing/dispatch stay global.
+model OrderSettingsOverride {
+  id       String             @id @default(cuid())
+  scope    OrderSettingsScope
+  scopeKey String // tier slug / market code / region id
+  enabled  Boolean            @default(true)
+
+  // Overridable economics (null = inherit the global default)
+  productionFeeBps           Int?
+  warehouseReferralFeeBps    Int?
+  flatShippingBaseCents      Int?
+  flatShippingPerUnitCents   Int?
+  freeShippingThresholdCents Int?
+
+  note        String? // admin label, e.g. "Agency launch promo"
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([scope, scopeKey])
+  @@index([scope, enabled])
+}
+
 enum OrderShipToType {
   CREATOR_ADDRESS // goods ship to the creator's own warehouse / address
   WAREHOUSE_PARTNER // goods ship to a connected WAREHOUSE partner service
