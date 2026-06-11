@@ -408,7 +408,7 @@ export function RecipeBuilderStep({
           <div className="rb-card">
             <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
             <table>
-              <thead><tr><th>Ingredient Name</th><th /><th>Qty</th><th>Unit</th><th>Waste %</th><th>Grams</th><th>$/kg</th><th /></tr></thead>
+              <thead><tr><th>Ingredient Name</th><th /><th className="r">Qty</th><th className="r">Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const swap = onAxes ? swapAxisFor(r.ingId) : undefined
@@ -422,15 +422,15 @@ export function RecipeBuilderStep({
                         <button type="button" title={swap ? `Replaceable · ${swapN} swap option(s) — edit` : 'Make replaceable — let the creator swap this ingredient'} onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 12, fontWeight: swap ? 700 : 400, whiteSpace: 'nowrap' }}>⇄{swap ? ` ${swapN}` : ''}</button>
                       )}
                     </td>
-                    <td><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
-                    <td>
+                    <td className="r"><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
+                    <td className="r">
                       <select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
                         {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
                       </select>
                     </td>
-                    <td><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
-                    <td>{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
-                    <td><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
+                    <td className="r"><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
+                    <td className="r">{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
+                    <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
                     <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                   </tr>
                   )
@@ -439,7 +439,7 @@ export function RecipeBuilderStep({
                   <tr><td colSpan={8} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
                 )}
               </tbody>
-              <tfoot><tr><td /><td /><td /><td /><td className="grn">Total</td><td className="grn">{base.reduce((s, r) => s + rawGrams(r) * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="grn">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
+              <tfoot><tr><td /><td /><td /><td /><td className="grn r">Total</td><td className="grn r">{base.reduce((s, r) => s + rawGrams(r) * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="grn r">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
             </table>
           </div>
 
