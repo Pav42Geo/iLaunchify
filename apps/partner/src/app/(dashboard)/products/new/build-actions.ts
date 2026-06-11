@@ -457,7 +457,7 @@ export async function getIngredientNutrition(
   }
 }
 
-export interface SlotInput { ingredientId: string; weightG: number; displayOrder: number }
+export interface SlotInput { ingredientId: string; weightG: number; displayOrder: number; costPerKgCents?: number | null }
 
 /** Replace the draft's base ingredient slots (real-picked ingredients only). */
 export async function saveRecipeSlots(productTemplateId: string, slots: SlotInput[]): Promise<Result> {
@@ -498,10 +498,49 @@ export async function saveRecipeSlots(productTemplateId: string, slots: SlotInpu
         }),
       ),
     ])
+
+    // Best-effort: persist per-slot ingredient cost. The costPerKgCents column is
+    // migration-gated, so this stays OUT of the create above (which must never
+    // fail) — a separate cast + try/catch that no-ops until the migration lands.
+    const withCost = valid.filter((s) => s.costPerKgCents != null)
+    if (withCost.length) {
+      try {
+        const px = prisma as unknown as { templateIngredientSlot: { updateMany: (a: unknown) => Promise<unknown> } }
+        for (const s of withCost) {
+          await px.templateIngredientSlot.updateMany({
+            where: { productTemplateId, baseIngredientId: s.ingredientId },
+            data: { costPerKgCents: Math.max(0, Math.round(s.costPerKgCents!)) },
+          })
+        }
+      } catch {
+        // Column not migrated yet — costs persist once 20260611000000_add_slot_cost lands.
+      }
+    }
+
     return { ok: true }
   } catch (err) {
     console.error('[saveRecipeSlots] failed:', err)
     return { ok: false, error: `Could not save recipe: ${(err as Error).message}` }
+  }
+}
+
+/** Best-effort per-slot ingredient costs (¢/kg keyed by baseIngredientId). The
+ *  column is migration-gated, so this is a separate cast + try/catch that returns
+ *  {} until 20260611000000_add_slot_cost lands — never breaks loadDraft/resume. */
+export async function loadSlotCosts(productTemplateId: string): Promise<Record<string, number>> {
+  try {
+    const px = prisma as unknown as {
+      templateIngredientSlot: { findMany: (a: unknown) => Promise<Array<{ baseIngredientId: string; costPerKgCents: number | null }>> }
+    }
+    const rows = await px.templateIngredientSlot.findMany({
+      where: { productTemplateId },
+      select: { baseIngredientId: true, costPerKgCents: true },
+    })
+    const out: Record<string, number> = {}
+    for (const r of rows) if (r.costPerKgCents != null) out[r.baseIngredientId] = r.costPerKgCents
+    return out
+  } catch {
+    return {}
   }
 }
 

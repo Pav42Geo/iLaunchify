@@ -2593,6 +2593,7 @@ model TemplateIngredientSlot {
   productTemplateId         String
   baseIngredientId          String // default ingredient
   weightG                   Decimal // grams in the base recipe (per batch)
+  costPerKgCents            Int? // manufacturer's ingredient cost (¢ per kg) — drives the recipe cost summary
   displayOrder              Int                             @default(0)
   // Manufacturer can lock specific slots from replacement (e.g. structural fillers)
   allowReplacement          Boolean                         @default(true)

@@ -11,7 +11,7 @@ import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSel
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, type MyRecipe } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -43,6 +43,8 @@ interface Row {
   name?: string
   per100g?: Record<string, number>
   densityGPerMl?: number | null
+  // Manufacturer's ingredient cost (¢ per kg) — drives the real cost summary.
+  costPerKgCents?: number | null
 }
 
 let counter = 0
@@ -144,6 +146,16 @@ export function RecipeBuilderStep({
     if (activeTab !== 'recipes' || myRecipes !== null) return
     void listMyRecipes(draftId ?? undefined).then(setMyRecipes)
   }, [activeTab, myRecipes, draftId])
+  // Restore saved per-ingredient costs once (best-effort; no-ops until migrated).
+  const costsLoaded = useRef(false)
+  useEffect(() => {
+    if (!draftId || costsLoaded.current) return
+    costsLoaded.current = true
+    void loadSlotCosts(draftId).then((costs) => {
+      if (Object.keys(costs).length === 0) return
+      setRows((rs) => rs.map((r) => (r.category === 'base' && costs[r.ingId] != null ? { ...r, costPerKgCents: costs[r.ingId] } : r)))
+    })
+  }, [draftId])
   // Apply another product's formulation onto this one (replaces base, keeps optionals).
   function applyRecipe(slots: MyRecipe['slots']) {
     setRows((rs) => [
@@ -245,7 +257,7 @@ export function RecipeBuilderStep({
     saveTimer.current = setTimeout(() => {
       const slots = rows
         .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
-        .map((r, i) => ({ ingredientId: r.ingId, weightG: r.unit === 'ml' ? r.qty * (r.densityGPerMl ?? 1) : r.qty, displayOrder: i }))
+        .map((r, i) => ({ ingredientId: r.ingId, weightG: r.unit === 'ml' ? r.qty * (r.densityGPerMl ?? 1) : r.qty, displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
       void saveRecipeSlots(draftId, slots)
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
@@ -290,10 +302,12 @@ export function RecipeBuilderStep({
       : null
   }
 
-  // Cost
+  // Real batch ingredient cost ($), from each ingredient's $/kg applied to its
+  // raw purchased weight (cost is on what you buy, before waste loss).
   const totalCents = rows.reduce((sum, r) => {
-    const grams = r.unit === 'ml' ? r.qty : r.qty // density ~1 for demo
-    return sum + ((rowData(r).cents ?? 0) / 100) * grams
+    const grams = r.unit === 'ml' ? r.qty * (rowData(r).densityGPerMl ?? 1) : r.qty
+    const costPerKg = (r.costPerKgCents ?? 0) / 100 // dollars per kg
+    return sum + costPerKg * (grams / 1000)
   }, 0)
   const perServingCost = result && result.geometry.totalServings > 0 ? totalCents / result.geometry.totalServings : 0
   const retail = perServingCost * markup
@@ -354,7 +368,7 @@ export function RecipeBuilderStep({
           <div className="rb-card">
             <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
             <table>
-              <thead><tr><th>Ingredient Name</th><th className="r">Qty</th><th>Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th /></tr></thead>
+              <thead><tr><th>Ingredient Name</th><th className="r">Qty</th><th>Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const swap = onAxes ? swapAxisFor(r.ingId) : undefined
@@ -372,6 +386,7 @@ export function RecipeBuilderStep({
                     <td><select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value as 'g' | 'ml' })}><option>g</option><option>ml</option></select></td>
                     <td className="r"><input className="waste" type="number" value={r.waste} onChange={(e) => patch(r.uid, { waste: parseFloat(e.target.value) || 0 })} /></td>
                     <td className="r">{(r.qty * (1 - r.waste / 100)).toFixed(1)}</td>
+                    <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {onAxes && (
                         <button type="button" title="Make replaceable — let the creator swap this ingredient" onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 13, marginRight: 8 }}>⇄</button>
@@ -382,10 +397,10 @@ export function RecipeBuilderStep({
                   )
                 })}
                 {base.length === 0 && (
-                  <tr><td colSpan={6} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
+                  <tr><td colSpan={7} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
                 )}
               </tbody>
-              <tfoot><tr><td /><td /><td /><td className="r grn">Total</td><td className="r grn">{base.reduce((s, r) => s + r.qty * (1 - r.waste / 100), 0).toFixed(1)}</td><td /></tr></tfoot>
+              <tfoot><tr><td /><td /><td /><td className="r grn">Total</td><td className="r grn">{base.reduce((s, r) => s + r.qty * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="r grn">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
             </table>
           </div>
 
