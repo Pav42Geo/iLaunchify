@@ -505,6 +505,58 @@ export async function saveRecipeSlots(productTemplateId: string, slots: SlotInpu
   }
 }
 
+export interface MyRecipe {
+  id: string
+  name: string
+  status: string
+  slots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
+}
+
+/** The partner's own product recipes (base ingredient slots), for the "My
+ *  recipes" reuse tab — apply one product's formulation onto another. No new
+ *  schema: every product already stores its recipe. Excludes the current draft. */
+export async function listMyRecipes(excludeTemplateId?: string): Promise<MyRecipe[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const ownIds = partner.services.map((s) => s.id)
+    if (ownIds.length === 0) return []
+
+    const rows = await prisma.productTemplate.findMany({
+      where: {
+        manufacturerServiceId: { in: ownIds },
+        ...(excludeTemplateId ? { id: { not: excludeTemplateId } } : {}),
+        ingredientSlots: { some: {} },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 25,
+      select: {
+        id: true, name: true, status: true,
+        ingredientSlots: {
+          orderBy: { displayOrder: 'asc' },
+          select: { baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } },
+        },
+      },
+    })
+
+    return rows.map((t) => ({
+      id: t.id,
+      name: t.name,
+      status: String(t.status),
+      slots: t.ingredientSlots.map((s) => ({
+        ingId: s.baseIngredientId,
+        name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
+        per100g: (s.baseIngredient?.nutritionPer100g ?? {}) as Record<string, number>,
+        densityGPerMl: s.baseIngredient?.densityGPerML ?? null,
+        weightG: Number(s.weightG ?? 0),
+      })),
+    }))
+  } catch (err) {
+    console.error('[listMyRecipes] failed:', err)
+    return []
+  }
+}
+
 export interface OptionValueInput {
   label: string
   isDefault: boolean

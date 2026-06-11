@@ -11,7 +11,7 @@ import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSel
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import type { IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -55,7 +55,7 @@ const TABS: Array<{ key: TabKey; label: string; soon?: boolean }> = [
   { key: 'allergens', label: '⛨ ALLERGENS' },
   { key: 'cost', label: '$ COST' },
   { key: 'label', label: '🏷 LABEL' },
-  { key: 'recipes', label: '🗂 MY RECIPES', soon: true },
+  { key: 'recipes', label: '🗂 MY RECIPES' },
   { key: 'templates', label: '▦ RECIPE TEMPLATES', soon: true },
 ]
 
@@ -129,6 +129,21 @@ export function RecipeBuilderStep({
   const [markup, setMarkup] = useState(4)
   // The base row whose "replaceable" swap modal is open (null = closed).
   const [swapRow, setSwapRow] = useState<Row | null>(null)
+  // "My recipes" reuse list — lazily loaded the first time that tab opens.
+  const [myRecipes, setMyRecipes] = useState<MyRecipe[] | null>(null)
+  useEffect(() => {
+    if (activeTab !== 'recipes' || myRecipes !== null) return
+    void listMyRecipes(draftId ?? undefined).then(setMyRecipes)
+  }, [activeTab, myRecipes, draftId])
+  // Apply another product's formulation onto this one (replaces base, keeps optionals).
+  function applyRecipe(slots: MyRecipe['slots']) {
+    setRows((rs) => [
+      ...slots.map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined })),
+      ...rs.filter((r) => r.category === 'optional'),
+    ])
+    setActiveTab('build')
+    toast.success('Recipe applied — review the ingredients.')
+  }
   // The SWAP axis bound to a given base ingredient, if any.
   const swapAxisFor = (ingId: string) =>
     axes.find((a) => a.boundSlotId === ingId && a.values.some((v) => v.overlayOp === 'SWAP'))
@@ -573,9 +588,30 @@ export function RecipeBuilderStep({
 
       {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces (coming soon). */}
       {activeTab === 'recipes' && (
-        <div className="rb-card" style={{ textAlign: 'center' }}>
-          <div className="rb-h" style={{ justifyContent: 'center' }}>🗂 My recipes</div>
-          <p className="muted">Save this formulation to reuse it across products. <b>Coming soon.</b></p>
+        <div className="rb-card">
+          <div className="rb-h">🗂 My recipes</div>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>
+            Reuse a formulation from another of your products — applies its base ingredients here so you can tweak from there.
+          </p>
+          {myRecipes === null ? (
+            <p className="muted">Loading your recipes…</p>
+          ) : myRecipes.length === 0 ? (
+            <p className="muted">No other recipes yet. Once you’ve built a product, its formulation shows here to reuse.</p>
+          ) : (
+            <table>
+              <thead><tr><th>Product</th><th className="r">Ingredients</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {myRecipes.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.name || 'Untitled product'}</td>
+                    <td className="r">{r.slots.length}</td>
+                    <td><span className="muted tiny">{r.status.replace(/_/g, ' ').toLowerCase()}</span></td>
+                    <td className="r"><button type="button" className="rb-btn o sm" onClick={() => applyRecipe(r.slots)} disabled={r.slots.length === 0}>Apply</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
       {activeTab === 'templates' && (
