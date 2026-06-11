@@ -44,6 +44,10 @@ interface GuidedBuilderProps {
   serviceScopes: string[]
   /** When resuming a draft (?draft=<id>) — seeds the builder state. */
   initial?: InitialDraft | null
+  /** Recipe-builder Mode 2 (AI parser) enabled for this partner's plan (Trusted+). */
+  aiAvailable?: boolean
+  /** Recipe-builder Mode 3 (declared panel) enabled for this partner's plan. */
+  declareAvailable?: boolean
 }
 
 const STEPS = [
@@ -66,6 +70,8 @@ export function GuidedBuilder({
   facilities,
   packingProfiles,
   initial,
+  aiAvailable = false,
+  declareAvailable = false,
 }: GuidedBuilderProps) {
   const router = useRouter()
 
@@ -347,6 +353,10 @@ export function GuidedBuilder({
                 axes={axes}
                 onAxes={setAxes}
                 initialRows={initial?.recipeSlots}
+                aiAvailable={aiAvailable}
+                declareAvailable={declareAvailable}
+                labelingType={ltype === 'Formulation' ? 'SUPPLEMENT' : 'FOOD'}
+                initialEntryMode={initial?.recipeEntryMode ?? null}
               />
               <AllergensCard draftId={draftId} />
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />

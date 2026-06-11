@@ -262,6 +262,9 @@ export interface InitialDraft {
   lifestyleTagIds: string[]
   flavors: Array<{ name: string; soi: string }>
   axes: InitialDraftAxis[]
+  // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
+  // resuming a draft so the builder reopens on the right surface.
+  recipeEntryMode: 'SEARCH_BUILD' | 'AI_PARSER' | 'DECLARED_PANEL' | null
   // Recipe base slots — restored so editing shows the real recipe (and the
   // recipe-step autosave round-trips instead of wiping it).
   recipeSlots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
@@ -300,7 +303,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     type Loaded = {
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
-      packingProfileId: string | null; maxFlavorsPerPack: number | null
+      packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
@@ -326,6 +329,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       select: {
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
+        recipeEntryMode: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
@@ -363,6 +367,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       subcategoryId: tpl.subcategoryId,
       packingProfileId: tpl.packingProfileId,
       maxFlavorsPerPack: tpl.maxFlavorsPerPack,
+      recipeEntryMode: (tpl.recipeEntryMode as InitialDraft['recipeEntryMode']) ?? null,
       nicheIds: tpl.niches.map((n) => n.nicheId),
       lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
       flavors: tpl.flavorPresets.map((f) => ({ name: f.name, soi: f.statementOfIdentity ?? '' })),

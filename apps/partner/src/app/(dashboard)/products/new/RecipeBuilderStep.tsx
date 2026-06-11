@@ -12,6 +12,9 @@ import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import type { IngredientResult } from '../[id]/edit/ingredient-actions'
 import { getIngredientNutrition, saveRecipeSlots } from './build-actions'
+import { ModeChooser, type Mode } from './ModeChooser'
+import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
+import { DeclaredPanelPanel } from './DeclaredPanelPanel'
 
 // Small demo ingredient library (per-100g) so the engine produces real numbers.
 // Swaps to the live IngredientPicker (USDA/library/private) when wired.
@@ -54,6 +57,10 @@ export function RecipeBuilderStep({
   axes = [],
   onAxes,
   initialRows,
+  aiAvailable = false,
+  declareAvailable = false,
+  labelingType = 'FOOD',
+  initialEntryMode = null,
 }: {
   productName: string
   /** From the chosen packing type — SINGLE = one recipe, MULTI = base + presets. */
@@ -71,6 +78,14 @@ export function RecipeBuilderStep({
   /** Restored base recipe slots (edit mode) — seeds rows so editing shows the
    *  real recipe and the autosave round-trips instead of wiping it. */
   initialRows?: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
+  /** Mode 2 (AI parser) enabled for this partner's plan (Trusted+). */
+  aiAvailable?: boolean
+  /** Mode 3 (declared panel) enabled for this partner's plan. */
+  declareAvailable?: boolean
+  /** Drives the declared-panel Nutrition vs Supplement Facts default. */
+  labelingType?: string
+  /** Restored recipe entry mode (resume) — reopens the builder on that surface. */
+  initialEntryMode?: Mode | null
 }) {
   const [rows, setRows] = useState<Row[]>(() =>
     initialRows && initialRows.length
@@ -90,6 +105,12 @@ export function RecipeBuilderStep({
   const [moisture, setMoisture] = useState(0)
   const [subtab, setSubtab] = useState<'pack' | 'adv'>('pack')
   const [mode, setMode] = useState<'public' | 'preview'>('public')
+  // Recipe entry method (Search / AI / Declare) + whether the chooser shows its
+  // three tiles (open) or the collapsed "Built with: X · Switch mode" pill.
+  const [entryMode, setEntryMode] = useState<Mode>(initialEntryMode ?? 'SEARCH_BUILD')
+  const [chooserOpen, setChooserOpen] = useState<boolean>(
+    !initialEntryMode && !(initialRows && initialRows.length),
+  )
   // Flavors come from the Variants & packs step (shared). Each = a name + its
   // own distinct flavor ingredient overlaid on the shared base, so each Facts
   // column shows DIFFERENT numbers.
@@ -113,6 +134,27 @@ export function RecipeBuilderStep({
       }])
     })
   }
+  // Mode 2 → live recipe: seed the accepted AI lines as base rows (replacing the
+  // existing base set, keeping optionals), then return to Search & build to
+  // refine. Nutrient data is fetched per ingredient so the live label populates;
+  // the existing autosave effect persists via saveRecipeSlots (single write path).
+  function handleAiCommit(lines: CommittedParseLine[]) {
+    startPick(async () => {
+      const built: Row[] = []
+      for (const l of lines) {
+        const res = await getIngredientNutrition(l.ingredientId)
+        built.push({
+          uid: uid(), ingId: l.ingredientId, qty: l.weightG, unit: 'g', waste: 0,
+          category: 'base', selected: true, name: l.name,
+          per100g: res.ok ? res.data.per100g : {}, densityGPerMl: res.ok ? res.data.densityGPerMl : null,
+        })
+      }
+      setRows((rs) => [...built, ...rs.filter((r) => r.category === 'optional')])
+      setEntryMode('SEARCH_BUILD')
+      setChooserOpen(false)
+    })
+  }
+
   const base = rows.filter((r) => r.category === 'base')
   const optional = rows.filter((r) => r.category === 'optional')
 
@@ -121,6 +163,9 @@ export function RecipeBuilderStep({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
+    // Declared mode owns the slots server-side (one synthetic slot); never let
+    // the client base rows overwrite it.
+    if (entryMode === 'DECLARED_PANEL') return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       const slots = rows
@@ -181,6 +226,33 @@ export function RecipeBuilderStep({
   return (
     <div className="rb">
       <style>{CSS}</style>
+
+      {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel. */}
+      <div style={{ marginBottom: 14 }}>
+        <ModeChooser
+          currentMode={entryMode}
+          collapsed={!chooserOpen}
+          aiAvailable={aiAvailable && !!draftId}
+          declareAvailable={declareAvailable && !!draftId}
+          onSelect={(m) => { setEntryMode(m); setChooserOpen(false) }}
+          onExpand={() => setChooserOpen(true)}
+        />
+      </div>
+
+      {entryMode === 'AI_PARSER' && (
+        draftId
+          ? <AiParserPanel productTemplateId={draftId} onCommit={handleAiCommit} onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }} />
+          : <p className="muted tiny">Save your draft first to parse a recipe with AI.</p>
+      )}
+
+      {entryMode === 'DECLARED_PANEL' && (
+        draftId
+          ? <DeclaredPanelPanel productTemplateId={draftId} labelingType={labelingType} existingSlotCount={base.length} onSaved={() => setChooserOpen(false)} onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }} />
+          : <p className="muted tiny">Save your draft first to declare a nutrition panel.</p>
+      )}
+
+      {entryMode === 'SEARCH_BUILD' && (
+       <>
       <div className="rb-tabs">
         {['🍽 BUILD RECIPE', '≣ INGREDIENTS', '⛨ ALLERGENS', '$ COST', '🏷 LABEL', '🏷 MY RECIPES', '▦ RECIPE TEMPLATES'].map((t, i) => (
           <div key={t} className={`rb-tab ${i === 0 ? 'on' : ''}`}>{t}</div>
@@ -356,6 +428,8 @@ export function RecipeBuilderStep({
           recipeRows={recipeRows}
           geometry={{ basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture }}
         />
+      )}
+       </>
       )}
     </div>
   )

@@ -7,6 +7,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { GuidedBuilder } from './GuidedBuilder'
 import { loadDraft } from './build-actions'
 
@@ -25,9 +26,20 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    select: { id: true, services: { select: { type: true } } },
+    select: { id: true, tier: true, services: { select: { type: true } } },
   })
   if (!partner) return null
+
+  // Recipe-builder mode gating by partner plan (Pavel 2026-06-01: AI parser is
+  // Trusted+). The mode server actions re-check this; these flags only drive the
+  // chooser's enabled/disabled tiles.
+  const planCode = partnerTierToPlanCode(
+    partner.tier.toLowerCase() as 'verified' | 'trusted' | 'premier',
+  )
+  const [aiAvailable, declareAvailable] = await Promise.all([
+    hasFeature(planCode, 'ai_recipe_parser'),
+    hasFeature(planCode, 'declare_nutrition_panel'),
+  ])
 
   const [categories, subcategories, packagingSystems, niches, lifestyleTags] = await Promise.all([
     prisma.category.findMany({ select: { id: true, name: true, mainCategory: true }, orderBy: { name: 'asc' } }),
@@ -69,6 +81,8 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       facilities={[]}
       packingProfiles={packingProfiles}
       serviceScopes={serviceScopes}
+      aiAvailable={aiAvailable}
+      declareAvailable={declareAvailable}
     />
   )
 }
