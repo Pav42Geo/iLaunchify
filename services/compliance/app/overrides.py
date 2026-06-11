@@ -13,6 +13,7 @@ from typing import Any
 
 from app.schemas import NutrientProfile
 
+
 # Allow-list — every nutrient name the editor exposes. Keep in sync with
 # apps/partner/.../BasicsCard NutrientOverridesPanel select options.
 ALLOWED_NUTRIENTS: set[str] = {

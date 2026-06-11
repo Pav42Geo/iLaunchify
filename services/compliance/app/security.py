@@ -5,10 +5,9 @@ service handles partner trade secrets (recipes) and returns verdicts that
 print on physical FDA labels, so every /v1 route requires the shared token.
 
 Behavior:
-  - COMPLIANCE_SERVICE_TOKEN set → require exact `Authorization: Bearer <token>`
-    (constant-time compare).
+  - COMPLIANCE_SERVICE_TOKEN set      → require exact `Authorization: Bearer <token>` (constant-time compare).
   - token unset + environment=development → allow (local dev convenience).
-  - token unset + any other environment → 503: refuse to serve rather than serve open.
+  - token unset + any other environment   → 503: refuse to serve rather than serve open.
 
 /healthz and /readyz stay unauthenticated (liveness probes).
 """

@@ -44,7 +44,7 @@ class Violation(BaseModel):
     field: str | None = None
     suggested_fix: str | None = Field(default=None, alias="suggestedFix")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "ser_by_alias": True}
 
 
 class Disclosure(BaseModel):
@@ -62,7 +62,7 @@ class NutrientRow(BaseModel):
     percent_daily_value: int | None = Field(default=None, alias="percentDailyValue")
     indent: int = 0
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "ser_by_alias": True}
 
 
 class PanelData(BaseModel):
@@ -73,7 +73,7 @@ class PanelData(BaseModel):
     required_footer: str = Field(alias="requiredFooter")
     required_warnings: list[str] = Field(alias="requiredWarnings")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "ser_by_alias": True}
 
 
 class ComplianceResult(BaseModel):
@@ -87,7 +87,7 @@ class ComplianceResult(BaseModel):
     rule_pack_version: str = Field(alias="rulePackVersion")
     evaluated_at: str = Field(alias="evaluatedAt")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "ser_by_alias": True}
 
 
 class NutrientProfile(BaseModel):
@@ -112,4 +112,4 @@ class NutrientProfile(BaseModel):
     vitamin_c: float = Field(default=0, alias="vitaminC")
     vitamin_e: float = Field(default=0, alias="vitaminE")
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "ser_by_alias": True}
