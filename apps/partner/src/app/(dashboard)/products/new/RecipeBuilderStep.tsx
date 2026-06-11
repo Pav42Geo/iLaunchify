@@ -15,6 +15,7 @@ import { getIngredientNutrition, saveRecipeSlots } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
+import { AllergensCard } from './AllergensCard'
 
 // Small demo ingredient library (per-100g) so the engine produces real numbers.
 // Swaps to the live IngredientPicker (USDA/library/private) when wired.
@@ -48,14 +49,14 @@ let counter = 0
 const uid = () => `r${++counter}`
 
 type TabKey = 'build' | 'ingredients' | 'allergens' | 'cost' | 'label' | 'recipes' | 'templates'
-const TABS: Array<{ key: TabKey; label: string }> = [
+const TABS: Array<{ key: TabKey; label: string; soon?: boolean }> = [
   { key: 'build', label: '🍽 BUILD RECIPE' },
   { key: 'ingredients', label: '≣ INGREDIENTS' },
   { key: 'allergens', label: '⛨ ALLERGENS' },
   { key: 'cost', label: '$ COST' },
   { key: 'label', label: '🏷 LABEL' },
-  { key: 'recipes', label: '🗂 MY RECIPES' },
-  { key: 'templates', label: '▦ RECIPE TEMPLATES' },
+  { key: 'recipes', label: '🗂 MY RECIPES', soon: true },
+  { key: 'templates', label: '▦ RECIPE TEMPLATES', soon: true },
 ]
 
 export function RecipeBuilderStep({
@@ -292,10 +293,12 @@ export function RecipeBuilderStep({
             tabIndex={0}
             aria-selected={activeTab === t.key}
             className={`rb-tab ${activeTab === t.key ? 'on' : ''}`}
+            style={t.soon ? { opacity: 0.6 } : undefined}
             onClick={() => setActiveTab(t.key)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab(t.key) } }}
           >
             {t.label}
+            {t.soon && <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', border: '1px solid var(--bd)', borderRadius: 999, padding: '1px 5px' }}>soon</span>}
           </div>
         ))}
       </div>
@@ -420,54 +423,7 @@ export function RecipeBuilderStep({
             )}
           </div>
 
-          {/* Cost Summary */}
-          <CostSummaryCard totalCents={totalCents} perServingCost={perServingCost} retail={retail} markup={markup} onMarkup={setMarkup} />
-
-
-          {/* Nutrition Breakdown — per-ingredient contribution to the batch (base
-              ingredients, waste-adjusted). Helps the manufacturer see which slot
-              drives each macro before the label rounds it. */}
-          {base.length > 0 && (
-            <div className="rb-card">
-              <div className="rb-h">▦ Nutrition Breakdown</div>
-              <p className="muted tiny" style={{ margin: '0 0 8px' }}>
-                Each base ingredient&apos;s contribution to the whole batch (waste-adjusted, before serving math).
-              </p>
-              <table>
-                <thead><tr><th>Ingredient</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Carbs</th><th className="r">Fat</th><th className="r">Sugars</th></tr></thead>
-                <tbody>
-                  {base.map((r) => {
-                    const d = rowData(r)
-                    const grams = (r.unit === 'ml' ? r.qty * (d.densityGPerMl ?? 1) : r.qty) * (1 - r.waste / 100)
-                    const c = (k: string) => ((d.per100g[k] ?? 0) * grams) / 100
-                    return (
-                      <tr key={r.uid}>
-                        <td>{d.name || r.ingId}</td>
-                        <td className="r">{Math.round(c('calories'))}</td>
-                        <td className="r">{c('protein').toFixed(1)} g</td>
-                        <td className="r">{c('totalCarbohydrate').toFixed(1)} g</td>
-                        <td className="r">{c('totalFat').toFixed(1)} g</td>
-                        <td className="r">{c('totalSugars').toFixed(1)} g</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td className="grn">Batch total</td>
-                    {(['calories', 'protein', 'totalCarbohydrate', 'totalFat', 'totalSugars'] as const).map((k) => {
-                      const total = base.reduce((sum, r) => {
-                        const d = rowData(r)
-                        const grams = (r.unit === 'ml' ? r.qty * (d.densityGPerMl ?? 1) : r.qty) * (1 - r.waste / 100)
-                        return sum + ((d.per100g[k] ?? 0) * grams) / 100
-                      }, 0)
-                      return <td key={k} className="r grn">{k === 'calories' ? Math.round(total) : `${total.toFixed(1)} g`}</td>
-                    })}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
+          {/* Cost summary + per-ingredient nutrition breakdown live in the COST tab. */}
         </div>
 
         {/* RIGHT — live label */}
@@ -556,12 +512,11 @@ export function RecipeBuilderStep({
         </div>
       )}
 
-      {/* ⛨ ALLERGENS — managed by the AllergensCard sibling below the builder. */}
+      {/* ⛨ ALLERGENS — the real allergen manager, folded into the tab. */}
       {activeTab === 'allergens' && (
-        <div className="rb-card">
-          <div className="rb-h">⛨ Allergens</div>
-          <p className="muted">Allergens are auto-derived from your ingredients (FDA Big-9) and managed in the <b>Allergens</b> panel below this builder — add a missed allergen, clear a false positive, or write a cross-contamination statement there.</p>
-        </div>
+        draftId
+          ? <AllergensCard draftId={draftId} />
+          : <div className="rb-card"><div className="rb-h">⛨ Allergens</div><p className="muted">Save your draft first to manage allergens.</p></div>
       )}
 
       {/* $ COST — cost summary + per-ingredient nutrition breakdown. */}

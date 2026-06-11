@@ -24,7 +24,6 @@ import { CertificatesCard } from './CertificatesCard'
 import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { ComplianceCard } from './ComplianceCard'
-import { AllergensCard } from './AllergensCard'
 import { PackagingPicker } from './PackagingPicker'
 
 interface CategoryOption { id: string; name: string; mainCategory: string }
@@ -358,7 +357,6 @@ export function GuidedBuilder({
                 labelingType={ltype === 'Formulation' ? 'SUPPLEMENT' : 'FOOD'}
                 initialEntryMode={initial?.recipeEntryMode ?? null}
               />
-              <AllergensCard draftId={draftId} />
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
             </section>
           )}
