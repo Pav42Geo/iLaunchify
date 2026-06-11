@@ -125,6 +125,9 @@ export function RecipeBuilderStep({
   // Active Search & build tab (the 7-tab nav). BUILD is the full editor; the
   // others are focused read views.
   const [activeTab, setActiveTab] = useState<TabKey>('build')
+  // Retail markup multiplier over per-serving cost (manufacturer-set; was a
+  // hardcoded 4× demo). Suggested retail = per-serving cost × markup.
+  const [markup, setMarkup] = useState(4)
   // Flavors come from the Variants & packs step (shared). Each = a name + its
   // own distinct flavor ingredient overlaid on the shared base, so each Facts
   // column shows DIFFERENT numbers.
@@ -246,7 +249,7 @@ export function RecipeBuilderStep({
     return sum + ((rowData(r).cents ?? 0) / 100) * grams
   }, 0)
   const perServingCost = result && result.geometry.totalServings > 0 ? totalCents / result.geometry.totalServings : 0
-  const retail = perServingCost * 4 // demo 4x markup
+  const retail = perServingCost * markup
 
   return (
     <div className="rb">
@@ -397,14 +400,8 @@ export function RecipeBuilderStep({
           </div>
 
           {/* Cost Summary */}
-          <div className="rb-card">
-            <div className="rb-h">$ Cost Summary</div>
-            <div className="costgrid">
-              <div className="costtile"><div className="l">Total ingredient cost</div><div className="v">${totalCents.toFixed(2)}</div></div>
-              <div className="costtile retail"><div className="l">Suggested retail / serving</div><div className="v">${retail.toFixed(2)}</div></div>
-            </div>
-            <div className="costfoot"><span>Per serving cost</span><b>${perServingCost.toFixed(3)}</b></div>
-          </div>
+          <CostSummaryCard totalCents={totalCents} perServingCost={perServingCost} retail={retail} markup={markup} onMarkup={setMarkup} />
+
 
           {/* Nutrition Breakdown — per-ingredient contribution to the batch (base
               ingredients, waste-adjusted). Helps the manufacturer see which slot
@@ -549,14 +546,7 @@ export function RecipeBuilderStep({
       {/* $ COST — cost summary + per-ingredient nutrition breakdown. */}
       {activeTab === 'cost' && (
         <>
-          <div className="rb-card">
-            <div className="rb-h">$ Cost Summary</div>
-            <div className="costgrid">
-              <div className="costtile"><div className="l">Total ingredient cost</div><div className="v">${totalCents.toFixed(2)}</div></div>
-              <div className="costtile retail"><div className="l">Suggested retail / serving</div><div className="v">${retail.toFixed(2)}</div></div>
-            </div>
-            <div className="costfoot"><span>Per serving cost</span><b>${perServingCost.toFixed(3)}</b></div>
-          </div>
+          <CostSummaryCard totalCents={totalCents} perServingCost={perServingCost} retail={retail} markup={markup} onMarkup={setMarkup} />
           {base.length > 0 && (
             <div className="rb-card">
               <div className="rb-h">▦ Nutrition Breakdown</div>
@@ -728,6 +718,48 @@ function LabelOptionsSection({
         .rb .lo-prev{margin-top:12px;border:1px solid #F4C0D1;background:#FBEAF0;color:#C71350;border-radius:10px;padding:8px 12px;font-size:12px}
         .rb .lo-link{background:none;border:0;color:#C71350;cursor:pointer;font:inherit;font-size:11px;text-decoration:underline}
       `}</style>
+    </div>
+  )
+}
+
+/** Cost summary with an editable retail markup. Rendered in both the Build and
+ *  Cost tabs (one source of truth). Per-ingredient catalog costs aren't captured
+ *  yet, so "total ingredient cost" reflects what cost data the rows carry. */
+function CostSummaryCard({
+  totalCents, perServingCost, retail, markup, onMarkup,
+}: {
+  totalCents: number
+  perServingCost: number
+  retail: number
+  markup: number
+  onMarkup: (m: number) => void
+}) {
+  return (
+    <div className="rb-card">
+      <div className="rb-h">$ Cost Summary</div>
+      <div className="costgrid">
+        <div className="costtile"><div className="l">Total ingredient cost</div><div className="v">${totalCents.toFixed(2)}</div></div>
+        <div className="costtile retail"><div className="l">Suggested retail / serving</div><div className="v">${retail.toFixed(2)}</div></div>
+      </div>
+      <div className="costfoot"><span>Per serving cost</span><b>${perServingCost.toFixed(3)}</b></div>
+      <div className="costfoot" style={{ borderTop: 0, paddingTop: 6 }}>
+        <span>
+          Retail markup ×
+          <i className="info" title="Suggested retail = per-serving cost × markup. Set your target margin; fees configured in Variants & packs apply at checkout.">i</i>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <input
+            className="qty"
+            type="number"
+            min={1}
+            step={0.1}
+            value={markup}
+            onChange={(e) => onMarkup(Math.max(1, parseFloat(e.target.value) || 1))}
+            aria-label="Retail markup multiplier"
+          />
+          <b>${perServingCost.toFixed(3)} × {markup} = ${retail.toFixed(2)}</b>
+        </span>
+      </div>
     </div>
   )
 }
