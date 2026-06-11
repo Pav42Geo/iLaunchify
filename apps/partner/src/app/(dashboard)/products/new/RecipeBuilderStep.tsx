@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
-import type { IngredientResult } from '../[id]/edit/ingredient-actions'
+import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
 import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
@@ -56,7 +56,16 @@ const TABS: Array<{ key: TabKey; label: string; soon?: boolean }> = [
   { key: 'cost', label: '$ COST' },
   { key: 'label', label: '🏷 LABEL' },
   { key: 'recipes', label: '🗂 MY RECIPES' },
-  { key: 'templates', label: '▦ RECIPE TEMPLATES', soon: true },
+  { key: 'templates', label: '▦ RECIPE TEMPLATES' },
+]
+
+// Curated starter formulations (V1, code-defined — a content set admin can move
+// to a model later). Ingredients are resolved against the live catalog at apply
+// time by search term, so each template is a starting scaffold the partner refines.
+const RECIPE_TEMPLATES: Array<{ id: string; name: string; desc: string; items: Array<{ search: string; grams: number }> }> = [
+  { id: 'sparkling', name: 'Sparkling beverage base', desc: 'Carbonated water + a touch of sweetener and acid — a clean soda scaffold.', items: [{ search: 'carbonated water', grams: 320 }, { search: 'cane sugar', grams: 18 }, { search: 'citric acid', grams: 1 }] },
+  { id: 'protein', name: 'Protein shake base', desc: 'Whey protein + cocoa + sweetener — a chocolate shake scaffold.', items: [{ search: 'whey protein', grams: 30 }, { search: 'cocoa', grams: 5 }, { search: 'cane sugar', grams: 8 }] },
+  { id: 'hydration', name: 'Electrolyte hydration base', desc: 'Water + a pinch of salt and sugar — a hydration scaffold.', items: [{ search: 'water', grams: 350 }, { search: 'sea salt', grams: 0.5 }, { search: 'cane sugar', grams: 6 }] },
 ]
 
 export function RecipeBuilderStep({
@@ -143,6 +152,25 @@ export function RecipeBuilderStep({
     ])
     setActiveTab('build')
     toast.success('Recipe applied — review the ingredients.')
+  }
+  // Start from a curated template: resolve each item against the catalog, seed
+  // what matches, and flag anything not found so the partner can add it.
+  function applyTemplate(tpl: { name: string; items: Array<{ search: string; grams: number }> }) {
+    startPick(async () => {
+      const built: Row[] = []
+      const missing: string[] = []
+      for (const item of tpl.items) {
+        const res = await searchIngredients({ query: item.search, limit: 1 })
+        const match = res.ok ? res.data.results[0] : undefined
+        if (!match) { missing.push(item.search); continue }
+        const nut = await getIngredientNutrition(match.id)
+        built.push({ uid: uid(), ingId: match.id, qty: item.grams, unit: 'g', waste: 0, category: 'base', selected: true, name: match.internalName, per100g: nut.ok ? nut.data.per100g : {}, densityGPerMl: nut.ok ? nut.data.densityGPerMl : null })
+      }
+      if (built.length === 0) { toast.error('Could not match any of this template’s ingredients in your catalog.'); return }
+      setRows((rs) => [...built, ...rs.filter((r) => r.category === 'optional')])
+      setActiveTab('build')
+      toast.success(`Started from “${tpl.name}”${missing.length ? ` · ${missing.length} not in catalog — add manually` : ''}.`)
+    })
   }
   // The SWAP axis bound to a given base ingredient, if any.
   const swapAxisFor = (ingId: string) =>
@@ -615,9 +643,24 @@ export function RecipeBuilderStep({
         </div>
       )}
       {activeTab === 'templates' && (
-        <div className="rb-card" style={{ textAlign: 'center' }}>
-          <div className="rb-h" style={{ justifyContent: 'center' }}>▦ Recipe templates</div>
-          <p className="muted">Start from a curated base formulation for this category. <b>Coming soon.</b></p>
+        <div className="rb-card">
+          <div className="rb-h">▦ Recipe templates</div>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>
+            Start from a curated base formulation — ingredients are matched to your catalog, and you refine from there.
+          </p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {RECIPE_TEMPLATES.map((t) => (
+              <div key={t.id} className="lo-axis" style={{ marginTop: 0 }}>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <b>{t.name}</b>
+                    <p className="muted tiny" style={{ margin: '2px 0 0' }}>{t.desc} · {t.items.length} ingredients</p>
+                  </div>
+                  <button type="button" className="rb-btn o sm" onClick={() => applyTemplate(t)}>Start from this</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
        </>
