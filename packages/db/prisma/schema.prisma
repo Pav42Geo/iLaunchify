@@ -4105,6 +4105,10 @@ model ProductTemplatePackaging {
 model ProductTemplatePricingTier {
   id                String          @id @default(cuid())
   productTemplateId String
+  // Which fulfillment mode these bands price. BULK_PRODUCTION = the volume bands
+  // (MOQ-gated); ON_DEMAND = small-quantity / no-MOQ pricing. A product offering
+  // BOTH carries rows for both modes. Additive — existing rows default to bulk.
+  fulfillmentMode   FulfillmentMode @default(BULK_PRODUCTION)
   sortOrder         Int             @default(0)
   minQty            Int // inclusive lower bound
   maxQty            Int? // inclusive upper bound; NULL = "and up"
@@ -4116,7 +4120,7 @@ model ProductTemplatePricingTier {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  @@unique([productTemplateId, sortOrder])
+  @@unique([productTemplateId, fulfillmentMode, sortOrder])
   @@index([productTemplateId])
 }
 

@@ -51,6 +51,10 @@ export interface ProductDetailConfiguratorProps {
   /** Slice C8.2 — resolved partner decoration offerings (one card per method).
    * Empty array hides the picker (most templates have no offering yet). */
   decorationOfferings?: DecorationOfferingCard[]
+  /** Platform-fee % per subscription tier — drives the modal's per-tier columns. */
+  feePctByTier?: { maker: number; builder: number; agency: number }
+  /** On-demand bands — when present, the modal shows a Bulk/On-demand switcher. */
+  onDemandRows?: PricingTierRow[]
 }
 
 export function ProductDetailConfigurator({
@@ -60,6 +64,8 @@ export function ProductDetailConfigurator({
   viewerTier = 'maker',
   isAuthenticated = false,
   decorationOfferings = [],
+  feePctByTier,
+  onDemandRows,
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
 
@@ -200,9 +206,11 @@ export function ProductDetailConfigurator({
               detail.packaging.find((p) => p.id === packagingId)?.name ?? ''
             }`}
             rows={rows}
+            onDemandRows={onDemandRows}
             currentTier={currentTier}
             currentQuantity={quantity}
             isAuthenticated={isAuthenticated}
+            feePctByTier={feePctByTier}
           />
         </div>
       </div>

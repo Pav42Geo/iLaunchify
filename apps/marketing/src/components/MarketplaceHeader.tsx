@@ -17,7 +17,7 @@
 // @ilaunchify/auth is wired into apps/marketing (REBUILD R2).
 
 import Link from 'next/link'
-import { Heart, Bell } from 'lucide-react'
+import { Heart, Bell, GraduationCap } from 'lucide-react'
 import {
   AppHeader,
   AppHeaderGuestCta,
@@ -117,6 +117,15 @@ export function MarketplaceHeader({
         // AppHeaderSubnavStrip's scroll container.
         <AppHeaderSubnavStrip>
           <CategoriesMegaMenu />
+          {/* Creator Academy — same-app (/academy on marketing). Sits before the
+              niche tabs as a top-level destination, distinguished by its icon. */}
+          <Link
+            href="/academy"
+            className="flex items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 py-[11px] text-[13px] font-medium text-ink-600 transition-colors hover:border-pink-300 hover:text-pink-700"
+          >
+            <GraduationCap className="h-4 w-4" aria-hidden="true" />
+            Academy
+          </Link>
           {niches.map((n) => {
             const isActive = activeNiche === n.slug
             return (

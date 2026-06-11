@@ -12,6 +12,22 @@ import { revalidatePath } from 'next/cache'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
 import { uploadFile, getSignedReadUrl, deleteFile } from '@ilaunchify/storage'
+import { lookupFeeRate, creatorTierToPlanCode, FEE_EVENTS } from '@ilaunchify/plans'
+
+const FALLBACK_FEE_PCT = 15
+
+/** Tier-aware platform-fee percents (production-order subtotal) for the pricing
+ *  card's per-subscription-tier columns. Same source of truth as the marketplace. */
+export async function getCreatorFeePercents(): Promise<{ maker: number; builder: number; agency: number }> {
+  const out = { maker: FALLBACK_FEE_PCT, builder: FALLBACK_FEE_PCT, agency: FALLBACK_FEE_PCT }
+  await Promise.all(
+    (['maker', 'builder', 'agency'] as const).map(async (t) => {
+      const r = await lookupFeeRate(creatorTierToPlanCode(t), FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL).catch(() => null)
+      if (r?.ratePercent != null) out[t] = r.ratePercent
+    }),
+  )
+  return out
+}
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -260,7 +276,7 @@ export interface InitialDraft {
     moqMin: number; orderIncrement: number; monthlyCapacity: number | null
     shelfLifeDays: number | null; lotTracking: boolean
   } | null
-  pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null }>
+  pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
 }
 
 /** Load an existing DRAFT for the guided builder to resume (#35 load-back). Returns
@@ -284,7 +300,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
       variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean }>
-      pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null }>
+      pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
       optionAxes: Array<{
         key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
         values: Array<{ label: string; isDefault: boolean; leadTimeDeltaDays: number; unitCostDeltaCents: number; moqOverride: number | null; overlayOp: string; recipeOverlay: unknown }>
@@ -305,7 +321,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
         variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true } },
-        pricingTiers: { orderBy: { sortOrder: 'asc' }, select: { minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true } },
+        pricingTiers: { orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }], select: { minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true, fulfillmentMode: true } },
         optionAxes: {
           orderBy: { sortOrder: 'asc' },
           select: {
@@ -557,6 +573,7 @@ export async function saveOptionAxes(productTemplateId: string, axes: OptionAxis
 }
 
 export interface PricingTierInput {
+  fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND'
   minQty: number
   maxQty: number | null
   perUnitCostCents: number
@@ -577,20 +594,27 @@ export async function savePricingTiers(productTemplateId: string, tiers: Pricing
     const ownIds = partner.services.map((s) => s.id)
     if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
 
+    // sortOrder is unique per (template, mode) — index within each mode.
+    const modeCount: Record<'BULK_PRODUCTION' | 'ON_DEMAND', number> = { BULK_PRODUCTION: 0, ON_DEMAND: 0 }
     const clean = tiers
       .filter((t) => t.minQty > 0 && t.perUnitCostCents > 0)
-      .map((t, i) => ({
-        minQty: Math.max(1, Math.floor(t.minQty)),
-        maxQty: t.maxQty == null ? null : Math.max(t.minQty, Math.floor(t.maxQty)),
-        perUnitCostCents: Math.max(0, Math.floor(t.perUnitCostCents)),
-        perUnitFloorCents: Math.max(0, Math.floor(t.perUnitFloorCents)),
-        leadTimeDays: t.leadTimeDays == null ? null : Math.max(0, Math.floor(t.leadTimeDays)),
-        sortOrder: i,
-      }))
+      .map((t) => {
+        const fulfillmentMode = t.fulfillmentMode === 'ON_DEMAND' ? 'ON_DEMAND' : 'BULK_PRODUCTION'
+        return {
+          fulfillmentMode,
+          minQty: Math.max(1, Math.floor(t.minQty)),
+          maxQty: t.maxQty == null ? null : Math.max(t.minQty, Math.floor(t.maxQty)),
+          perUnitCostCents: Math.max(0, Math.floor(t.perUnitCostCents)),
+          perUnitFloorCents: Math.max(0, Math.floor(t.perUnitFloorCents)),
+          leadTimeDays: t.leadTimeDays == null ? null : Math.max(0, Math.floor(t.leadTimeDays)),
+          sortOrder: modeCount[fulfillmentMode]++,
+        }
+      })
 
     await prisma.$transaction([
       prisma.productTemplatePricingTier.deleteMany({ where: { productTemplateId } }),
-      ...clean.map((t) => prisma.productTemplatePricingTier.create({ data: { productTemplateId, ...t } })),
+      // fulfillmentMode is a new column — cast until the client is regenerated.
+      ...clean.map((t) => prisma.productTemplatePricingTier.create({ data: { productTemplateId, ...t } as never })),
     ])
     return { ok: true }
   } catch (err) {

@@ -22,7 +22,7 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
-import { getCreatorPricingMatrix } from '@/lib/pricing'
+import { getCreatorPricingMatrix, getCreatorFeePcts } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
@@ -106,6 +106,8 @@ export default async function ProductDetailPage({
     template.pricePerUnit,
   )
   const pricingRows = pricingMatrix.rows
+  // Per-tier fee % for the modal's Maker/Builder/Agency columns.
+  const feePctByTier = await getCreatorFeePcts()
 
   // Cert strip. The authoritative signal is the product's EARNED certs —
   // VERIFIED PartnerCertificateInstances surfaced as admin-curated PNG badges
@@ -247,6 +249,7 @@ export default async function ProductDetailPage({
               detail={detail}
               pricingRows={pricingRows}
               viewerTier={viewerTier}
+              feePctByTier={feePctByTier}
               isAuthenticated={isAuthenticated}
               decorationOfferings={decorationOfferings}
             />

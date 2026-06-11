@@ -3,8 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package, Gift, Printer } from 'lucide-react'
+import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package, Gift, Printer, GraduationCap } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
+import { marketingUrl } from '@/lib/marketing-url'
+
+// Partner Academy lives on the marketing app (/business/academy) — cross-app, so
+// a plain <a> + marketingUrl, never a Next <Link>.
+const PARTNER_ACADEMY_HREF = marketingUrl('/business/academy')
 
 interface NavItem {
   href: string
@@ -90,6 +95,16 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
             </Link>
           )
         })}
+
+        {/* Partner Academy — cross-app to the marketing business academy.
+            Shown to everyone, including pre-approval partners (learn while waiting). */}
+        <a
+          href={PARTNER_ACADEMY_HREF}
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-ink-600 transition-colors hover:bg-ink-50"
+        >
+          <GraduationCap className="h-4 w-4" />
+          Academy
+        </a>
       </nav>
       {restricted && (
         <p className="mt-6 px-2 text-xs text-ink-500">

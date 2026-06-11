@@ -102,3 +102,18 @@ export async function getCreatorPricingMatrix(
 
   return { rows, feePercent, viewerTier }
 }
+
+/**
+ * Platform-fee % for all three creator tiers — drives the per-tier columns in
+ * the marketplace PricingTierModal. Same lookup source as the matrix above.
+ */
+export async function getCreatorFeePcts(): Promise<{ maker: number; builder: number; agency: number }> {
+  const out = { maker: FALLBACK_FEE_PERCENT, builder: FALLBACK_FEE_PERCENT, agency: FALLBACK_FEE_PERCENT }
+  await Promise.all(
+    (['maker', 'builder', 'agency'] as const).map(async (t) => {
+      const r = await lookupFeeRate(creatorTierToPlanCode(t), FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL)
+      if (r?.ratePercent != null) out[t] = r.ratePercent
+    }),
+  )
+  return out
+}
