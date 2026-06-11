@@ -7,6 +7,7 @@
   "scripts": {
     "// Note": "All commands load env from .env.local at the repo root via dotenv-cli — Next.js uses the same file.",
     "generate":       "pnpm exec dotenv -e ../../.env.local -- prisma generate",
+    "push":           "pnpm exec dotenv -e ../../.env.local -- prisma db push",
     "migrate":        "pnpm exec dotenv -e ../../.env.local -- prisma migrate dev",
     "migrate:deploy": "pnpm exec dotenv -e ../../.env.local -- prisma migrate deploy",
     "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",

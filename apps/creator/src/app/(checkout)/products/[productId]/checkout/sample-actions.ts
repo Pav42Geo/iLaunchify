@@ -44,6 +44,8 @@ export interface CreateSampleOrderInput {
   kind: 'UNBRANDED' | 'BRANDED'
   selection: SampleSelection
   shipTo: SampleShipTo
+  /** Required for BRANDED — the creator approves their not-for-resale artwork proof. */
+  acknowledgedNotForResale?: boolean
 }
 
 export async function createSampleOrder(
@@ -105,6 +107,12 @@ export async function createSampleOrder(
   const opt = tpl?.sampleOptions?.[0]
   if (!opt || !opt.enabled) {
     return { ok: false, error: `${input.kind === 'BRANDED' ? 'Branded' : 'Unbranded'} samples aren't offered for this product.` }
+  }
+
+  // Branded produces the creator's actual artwork — require the not-for-resale
+  // acknowledgment server-side (the client gates too, but this is the real gate).
+  if (input.kind === 'BRANDED' && !input.acknowledgedNotForResale) {
+    return { ok: false, error: 'Please confirm the not-for-resale acknowledgment to order a branded sample.' }
   }
 
   const flavorNames = (tpl?.flavorPresets ?? []).map((f) => f.name).filter((n): n is string => !!n && n.trim().length > 0)
@@ -179,7 +187,7 @@ export async function createSampleOrder(
       shipToState: s.state ?? null,
       shipToPostalCode: s.postalCode.trim(),
       shipToCountry: s.country?.trim() || 'US',
-      internalNotes: `SAMPLE · ${input.kind} · ${quote.unitCount} unit(s) · ${input.selection.mode}`,
+      internalNotes: `SAMPLE · ${input.kind} · ${quote.unitCount} unit(s) · ${input.selection.mode}${input.kind === 'BRANDED' ? ' · not-for-resale ack' : ''}`,
       items: {
         create: {
           productId: product.id,
@@ -205,6 +213,7 @@ export async function createSampleOrder(
       subtotalCents: quote.subtotalCents,
       totalCents,
       creditableCents: quote.creditableCents,
+      acknowledgedNotForResale: input.kind === 'BRANDED' ? !!input.acknowledgedNotForResale : undefined,
     },
   })
 

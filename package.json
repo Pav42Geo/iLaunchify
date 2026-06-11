@@ -18,6 +18,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "db:generate": "pnpm --filter @ilaunchify/db generate",
+    "db:push": "pnpm --filter @ilaunchify/db push",
     "db:migrate": "pnpm --filter @ilaunchify/db migrate",
     "db:studio": "pnpm --filter @ilaunchify/db studio",
     "db:seed": "pnpm --filter @ilaunchify/db seed",
