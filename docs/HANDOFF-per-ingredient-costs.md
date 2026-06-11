@@ -28,19 +28,22 @@ automatically once it lands** — no code change needed.
 ## To make costs persist (one additive migration — your call, shared DB)
 
 CockroachDB Serverless; `prisma migrate dev` hangs locally, so use the
-diff→deploy / `db push` path the team already uses:
+`db push` path the team already uses. **Use the package scripts, not raw
+`prisma` — the scripts wrap with `dotenv -e ../../.env.local` so `DATABASE_URL`
+loads** (a bare `prisma db push` fails with P1012 "Environment variable not
+found: DATABASE_URL" because Prisma's CLI doesn't read the root `.env.local`):
 
 ```bash
-# from a shell that HAS your DATABASE_URL (the agent's shell does not)
-pnpm --filter @ilaunchify/db exec prisma db push        # or: prisma migrate deploy
-pnpm db:generate                                        # regenerate the client
-rm -rf apps/*/.next                                     # clear the stale bundled client
+pnpm db:push        # = dotenv -e ../../.env.local -- prisma db push  (additive ADD COLUMN)
+pnpm db:generate    # = dotenv-wrapped prisma generate (client picks up costPerKgCents)
+rm -rf apps/*/.next # clear the stale bundled client
 # restart `pnpm dev`
 ```
 
-`prisma db push` applies the additive column directly (matches how the prior 6
-db-push fields were reconciled). `migrate deploy` would apply the committed
-migration file instead — either is fine since the column is purely additive.
+`pnpm db:push` applies the additive column directly (matches how the prior 6
+db-push fields were reconciled). To apply the committed migration file instead,
+`pnpm --filter @ilaunchify/db migrate:deploy` (also dotenv-wrapped) — either is
+fine since the column is purely additive.
 
 After that, the `$/kg` costs round-trip on save/reload, and `loadSlotCosts`
 returns real values.
