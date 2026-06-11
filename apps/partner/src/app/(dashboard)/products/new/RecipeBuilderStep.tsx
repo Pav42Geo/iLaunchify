@@ -478,7 +478,7 @@ export function RecipeBuilderStep({
                               : 'Make this ingredient replaceable — let the creator swap it for an alternative you approve. The Nutrition Facts label recomputes for each option.'}
                             aria-label={swap ? 'Edit replaceable swap options' : 'Make ingredient replaceable'}
                             onClick={() => setSwapRow(r)}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${swap ? 'var(--g2)' : '#c4c9d4'}`, background: swap ? 'rgba(120,190,40,.16)' : 'transparent', color: swap ? 'var(--g2)' : '#6b7280', cursor: 'pointer', fontSize: 13, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${swap ? 'var(--g2)' : '#c4c9d4'}`, background: swap ? 'var(--g-50)' : 'transparent', color: swap ? 'var(--g2)' : '#6b7280', cursor: 'pointer', fontSize: 13, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' }}
                           >⇄</button>
                           {swapN > 0 && (
                             <button
@@ -504,20 +504,25 @@ export function RecipeBuilderStep({
                     <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                   </tr>
                   {swap && swapOpen && swapN > 0 && (
-                    <tr>
-                      <td colSpan={8} style={{ padding: 0, borderTop: 0 }}>
-                        <div style={{ padding: '2px 8px 8px 30px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span className="muted tiny">Creator can swap <b>{rowData(r).name}</b> for:</span>
-                          {swapAlts.map((v, k) => (
-                            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                              <span style={{ color: 'var(--g2)', fontWeight: 700 }}>⇄</span>
-                              <span>{v.overlayIngName || v.label}</span>
-                            </div>
-                          ))}
-                          <button type="button" className="lo-link" style={{ alignSelf: 'flex-start', fontSize: 11, marginTop: 2 }} onClick={() => setSwapRow(r)}>Edit swap options</button>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      <tr>
+                        <td colSpan={8} className="muted tiny" style={{ padding: '4px 8px 2px 30px', borderTop: 0 }}>
+                          Creator can swap <b>{rowData(r).name}</b> for{swapN === 1 ? '' : ` (${swapN} options)`}:
+                        </td>
+                      </tr>
+                      {swapAlts.map((v, k) => (
+                        <tr key={`${r.uid}-swap-${k}`} style={{ background: 'var(--g-50)' }}>
+                          <td style={{ paddingLeft: 30 }}><span style={{ color: 'var(--g2)', fontWeight: 700, marginRight: 6 }}>⇄</span>{v.overlayIngName || v.label}</td>
+                          <td className="r" />
+                          <td className="r">{r.qty}</td>
+                          <td className="r">{UNIT_LABELS[r.unit] ?? r.unit}</td>
+                          <td className="r">{r.waste}</td>
+                          <td className="r">{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
+                          <td className="r muted">—</td>
+                          <td />
+                        </tr>
+                      ))}
+                    </>
                   )}
                   </Fragment>
                   )
