@@ -5,7 +5,7 @@
 // Cost Summary · live Nutrition Facts (Public/Preview). The live label is
 // computed by the real @ilaunchify/nutrition engine, not a mock.
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
@@ -28,6 +28,44 @@ const LIBRARY: Array<{ id: string; name: string; per100g: Partial<Nutrients>; ce
   { id: 'cocoa', name: 'Cocoa powder', per100g: { calories: 228, protein: 20, totalFat: 14, totalCarbohydrate: 58, dietaryFiber: 33 }, cents: 40 },
   { id: 'salt', name: 'Sea salt', per100g: { sodium: 38758 }, cents: 5 },
 ]
+
+// Per-100g nutrient fallback for catalog ingredients that were seeded WITHOUT
+// nutrition data (the starter-template ingredients persist `nutritionPer100g: {}`,
+// so applying a template / picking those rows would otherwise yield an all-zero
+// Facts label). Real catalog/USDA per100g always wins — this only fills the gap
+// when a row carries none. Values are USDA-approximate per 100 g edible portion.
+const NUTRIENT_FALLBACK: Array<{ match: RegExp; per100g: Partial<Nutrients> }> = [
+  { match: /carbonated water|sparkling water|filtered water|\bwater\b/, per100g: {} },
+  { match: /glucose syrup|corn syrup/, per100g: { calories: 316, totalCarbohydrate: 79, totalSugars: 79 } },
+  { match: /cane sugar|granulated sugar|\bsugar\b/, per100g: { calories: 387, totalCarbohydrate: 100, totalSugars: 100 } },
+  { match: /citric acid/, per100g: { calories: 247, totalCarbohydrate: 63 } },
+  { match: /whey protein/, per100g: { calories: 400, protein: 80, totalFat: 7, saturatedFat: 4, totalCarbohydrate: 8, totalSugars: 5, sodium: 200 } },
+  { match: /cocoa/, per100g: { calories: 228, protein: 20, totalFat: 14, saturatedFat: 8, totalCarbohydrate: 58, dietaryFiber: 33 } },
+  { match: /sea salt|table salt|\bsalt\b/, per100g: { sodium: 38758 } },
+  { match: /stevia|monk fruit|erythritol/, per100g: { calories: 0 } },
+  { match: /lecithin/, per100g: { calories: 763, totalFat: 100, saturatedFat: 15 } },
+  { match: /caffeine|beta-?alanine|citrulline|tyrosine|premix/, per100g: { calories: 0 } },
+  { match: /\boats?\b|oatmeal|whole grain oat/, per100g: { calories: 389, protein: 17, totalFat: 7, saturatedFat: 1, totalCarbohydrate: 66, dietaryFiber: 11, totalSugars: 1 } },
+  { match: /sunflower oil|vegetable oil|canola oil|olive oil/, per100g: { calories: 884, totalFat: 100, saturatedFat: 11 } },
+  { match: /vinegar/, per100g: { calories: 18, totalCarbohydrate: 0.9 } },
+  { match: /spirulina/, per100g: { calories: 290, protein: 57, totalFat: 8, totalCarbohydrate: 24, dietaryFiber: 4, sodium: 1048 } },
+  { match: /chlorella/, per100g: { calories: 410, protein: 58, totalFat: 9, totalCarbohydrate: 23, dietaryFiber: 13 } },
+  { match: /wheatgrass|barley grass/, per100g: { calories: 350, protein: 25, totalCarbohydrate: 45, dietaryFiber: 35 } },
+  { match: /acai/, per100g: { calories: 70, totalFat: 5, totalCarbohydrate: 4, dietaryFiber: 2 } },
+  { match: /pectin|xanthan gum|gellan gum|guar gum/, per100g: { calories: 325, totalCarbohydrate: 90, dietaryFiber: 90 } },
+  { match: /cayenne|chili|pepper mash|hot pepper/, per100g: { calories: 40, protein: 1.9, totalCarbohydrate: 8.8, dietaryFiber: 1.5, totalSugars: 5 } },
+  { match: /garlic/, per100g: { calories: 149, protein: 6.4, totalCarbohydrate: 33, dietaryFiber: 2.1, totalSugars: 1 } },
+  { match: /\bflour\b|\bwheat\b/, per100g: { calories: 364, protein: 10, totalFat: 1, totalCarbohydrate: 76, dietaryFiber: 2.7, totalSugars: 0.3 } },
+  { match: /honey/, per100g: { calories: 304, totalCarbohydrate: 82, totalSugars: 82 } },
+]
+
+/** Per-100g nutrients for an ingredient name when the catalog carries none. */
+function fallbackPer100g(name: string): Record<string, number> | null {
+  if (!name) return null
+  const n = name.toLowerCase()
+  const hit = NUTRIENT_FALLBACK.find((e) => e.match.test(n))
+  return hit ? (hit.per100g as Record<string, number>) : null
+}
 
 interface Row {
   uid: string
@@ -147,6 +185,11 @@ export function RecipeBuilderStep({
   const [markup, setMarkup] = useState(4)
   // The base row whose "replaceable" swap modal is open (null = closed).
   const [swapRow, setSwapRow] = useState<Row | null>(null)
+  // Ingredients whose nested swap-option list is COLLAPSED (default = expanded,
+  // so a freshly-made-replaceable ingredient shows its alternatives immediately).
+  const [collapsedSwaps, setCollapsedSwaps] = useState<Set<string>>(() => new Set())
+  const toggleSwapOpen = (ingId: string) =>
+    setCollapsedSwaps((s) => { const n = new Set(s); if (n.has(ingId)) n.delete(ingId); else n.add(ingId); return n })
   // "My recipes" reuse list — lazily loaded the first time that tab opens.
   const [myRecipes, setMyRecipes] = useState<MyRecipe[] | null>(null)
   useEffect(() => {
@@ -231,7 +274,12 @@ export function RecipeBuilderStep({
   }, [flavors])
   // Resolve a row's nutrient data — inline (real picker) or via the demo lib.
   function rowData(r: Row): { name: string; per100g: Record<string, number>; densityGPerMl?: number | null; cents: number } {
-    if (r.per100g) return { name: r.name ?? '', per100g: r.per100g, densityGPerMl: r.densityGPerMl, cents: 0 }
+    if (r.per100g) {
+      // Catalog rows seeded without nutrition data persist `{}` — fall back to a
+      // name-keyed estimate so the live label still computes. Real data wins.
+      const per100g = Object.keys(r.per100g).length === 0 ? (fallbackPer100g(r.name ?? '') ?? r.per100g) : r.per100g
+      return { name: r.name ?? '', per100g, densityGPerMl: r.densityGPerMl, cents: 0 }
+    }
     const l = ing(r.ingId)
     return { name: l?.name ?? '', per100g: l?.per100g ?? {}, densityGPerMl: undefined, cents: l?.cents ?? 0 }
   }
@@ -408,18 +456,40 @@ export function RecipeBuilderStep({
           <div className="rb-card">
             <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
             <table>
-              <thead><tr><th>Ingredient Name</th><th /><th className="r">Qty</th><th className="r">Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
+              <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r">Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const swap = onAxes ? swapAxisFor(r.ingId) : undefined
-                  const swapN = swap ? swap.values.filter((v) => v.overlayOp === 'SWAP').length : 0
+                  const swapAlts = swap ? swap.values.filter((v) => v.overlayOp === 'SWAP') : []
+                  const swapN = swapAlts.length
+                  const swapOpen = !collapsedSwaps.has(r.ingId)
                   const showVol = rowData(r).densityGPerMl != null || VOLUME_UNITS.has(r.unit)
                   return (
-                  <tr key={r.uid}>
+                  <Fragment key={r.uid}>
+                  <tr>
                     <td>{rowData(r).name}</td>
-                    <td>
+                    <td className="r" style={{ whiteSpace: 'nowrap' }}>
                       {onAxes && (
-                        <button type="button" title={swap ? `Replaceable · ${swapN} swap option(s) — edit` : 'Make replaceable — let the creator swap this ingredient'} onClick={() => setSwapRow(r)} style={{ border: 0, background: 'transparent', cursor: 'pointer', color: swap ? 'var(--g2)' : 'var(--mut)', fontSize: 12, fontWeight: swap ? 700 : 400, whiteSpace: 'nowrap' }}>⇄{swap ? ` ${swapN}` : ''}</button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            title={swap
+                              ? `Replaceable ingredient · ${swapN} swap option${swapN === 1 ? '' : 's'}. Click to edit which alternatives the creator can choose — the FDA label recomputes per choice.`
+                              : 'Make this ingredient replaceable — let the creator swap it for an alternative you approve. The Nutrition Facts label recomputes for each option.'}
+                            aria-label={swap ? 'Edit replaceable swap options' : 'Make ingredient replaceable'}
+                            onClick={() => setSwapRow(r)}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${swap ? 'var(--g2)' : '#c4c9d4'}`, background: swap ? 'rgba(120,190,40,.16)' : 'transparent', color: swap ? 'var(--g2)' : '#6b7280', cursor: 'pointer', fontSize: 13, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' }}
+                          >⇄</button>
+                          {swapN > 0 && (
+                            <button
+                              type="button"
+                              title={swapOpen ? 'Hide swap options' : 'Show swap options'}
+                              aria-label={swapOpen ? 'Hide swap options' : 'Show swap options'}
+                              onClick={() => toggleSwapOpen(r.ingId)}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 1, border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--g2)', fontSize: 11, fontWeight: 700, padding: 0 }}
+                            >{swapN}<span style={{ fontSize: 9, display: 'inline-block', transform: swapOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>▾</span></button>
+                          )}
+                        </span>
                       )}
                     </td>
                     <td className="r"><input className="qty" type="number" value={r.qty} onChange={(e) => patch(r.uid, { qty: parseFloat(e.target.value) || 0 })} /></td>
@@ -433,6 +503,23 @@ export function RecipeBuilderStep({
                     <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
                     <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                   </tr>
+                  {swap && swapOpen && swapN > 0 && (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 0, borderTop: 0 }}>
+                        <div style={{ padding: '2px 8px 8px 30px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span className="muted tiny">Creator can swap <b>{rowData(r).name}</b> for:</span>
+                          {swapAlts.map((v, k) => (
+                            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                              <span style={{ color: 'var(--g2)', fontWeight: 700 }}>⇄</span>
+                              <span>{v.overlayIngName || v.label}</span>
+                            </div>
+                          ))}
+                          <button type="button" className="lo-link" style={{ alignSelf: 'flex-start', fontSize: 11, marginTop: 2 }} onClick={() => setSwapRow(r)}>Edit swap options</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                   )
                 })}
                 {base.length === 0 && (
@@ -794,7 +881,7 @@ function SwapModal({
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,28,.45)', display: 'grid', placeItems: 'center', zIndex: 60, padding: 16 }}>
-      <div className="rb-card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(520px, 100%)', maxHeight: '86vh', overflow: 'auto', margin: 0 }}>
+      <div className="rb-card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '90vh', overflow: 'auto', margin: 0 }}>
         <div className="rb-h" style={{ justifyContent: 'space-between' }}>
           <span>⇄ Make “{baseName}” replaceable</span>
           <button type="button" onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--mut)' }}>✕</button>
