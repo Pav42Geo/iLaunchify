@@ -98,14 +98,12 @@ export function RecipeBuilderStep({
   /** Restored recipe entry mode (resume) — reopens the builder on that surface. */
   initialEntryMode?: Mode | null
 }) {
+  // Start from the restored recipe, or empty — a new product begins with no
+  // ingredients (the partner adds real ones via the picker). The old demo seed
+  // rows (water/yuzu/monk) were prototype scaffolding and couldn't persist
+  // (not real Ingredient rows), so they're gone.
   const [rows, setRows] = useState<Row[]>(() =>
-    initialRows && initialRows.length
-      ? initialRows.map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g', waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined }))
-      : [
-          { uid: uid(), ingId: 'water', qty: 320, unit: 'ml', waste: 0, category: 'base', selected: true },
-          { uid: uid(), ingId: 'yuzu', qty: 18, unit: 'ml', waste: 0, category: 'base', selected: true },
-          { uid: uid(), ingId: 'monk', qty: 0.3, unit: 'g', waste: 0, category: 'base', selected: true },
-        ],
+    (initialRows ?? []).map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined })),
   )
   const [search, setSearch] = useState('')
   const [addCat, setAddCat] = useState<'base' | 'optional'>('base')
@@ -337,6 +335,9 @@ export function RecipeBuilderStep({
                   </tr>
                   )
                 })}
+                {base.length === 0 && (
+                  <tr><td colSpan={6} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
+                )}
               </tbody>
               <tfoot><tr><td /><td /><td /><td className="r grn">Total</td><td className="r grn">{base.reduce((s, r) => s + r.qty * (1 - r.waste / 100), 0).toFixed(1)}</td><td /></tr></tfoot>
             </table>
