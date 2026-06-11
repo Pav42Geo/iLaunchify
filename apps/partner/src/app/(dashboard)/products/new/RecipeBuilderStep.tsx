@@ -82,7 +82,15 @@ interface Row {
   per100g?: Record<string, number>
   densityGPerMl?: number | null
   // Manufacturer's ingredient cost (¢ per kg) — drives the real cost summary.
-  costPerKgCents?: number | null
+  // Stored canonically per-kg; the row's costUnit only changes how it's entered.
+  costPerKgCents?: number | null // primary currency (currencies[0]) cost, per-kg
+  costUnit?: string // cost-entry basis: 'kg' | 'lb' | 'g' | 'oz'
+  // Per-kg cost in each NON-primary market currency, keyed by ISO code. The
+  // primary currency stays on costPerKgCents (persisted); these are client-side.
+  costByCurrencyCents?: Record<string, number>
+  // Account-defined custom measures for this row (e.g. "1 case = 500 g"). Each
+  // stores grams per 1 unit; selecting one in the Unit dropdown converts by it.
+  customUnits?: Array<{ name: string; grams: number }>
 }
 
 let counter = 0
@@ -94,6 +102,56 @@ const uid = () => `r${++counter}`
 const VOLUME_UNITS = new Set(['ml', 'l', 'fl_oz', 'cup', 'tbsp', 'tsp'])
 const UNIT_LABELS: Record<string, string> = { g: 'g', kg: 'kg', oz: 'oz', lb: 'lb', ml: 'ml', l: 'L', fl_oz: 'fl oz', cup: 'cup', tbsp: 'tbsp', tsp: 'tsp' }
 const SELECTABLE_UNITS = ['g', 'kg', 'oz', 'lb', 'ml', 'l', 'fl_oz', 'cup', 'tbsp', 'tsp']
+// Serving / package weight unit choices (ReciPal: grams · kg · oz · lb + volume).
+const WEIGHT_UNITS = ['g', 'kg', 'oz', 'lb', 'ml', 'fl_oz']
+// Cost-entry basis units → grams per 1 unit. Cost is stored canonically per-kg.
+const COST_UNITS = ['kg', 'lb', 'g', 'oz']
+const COST_UNIT_G: Record<string, number> = { kg: 1000, lb: 453.592, g: 1, oz: 28.3495 }
+// Display symbol per ISO currency (the Cost column follows the product's market).
+const CURRENCY_SYMBOL: Record<string, string> = {
+  USD: '$', CAD: 'C$', EUR: '€', GBP: '£', AUD: 'A$', MXN: 'MX$', JPY: '¥',
+}
+const curSym = (ccy: string) => CURRENCY_SYMBOL[ccy] ?? `${ccy} `
+const UNIT_FULL: Record<string, string> = { g: 'grams', kg: 'kilograms', oz: 'ounces', lb: 'pounds', ml: 'milliliters', fl_oz: 'fluid ounces' }
+// FDA reference serving sizes (RACC, 21 CFR 101.12) by food group — the typical
+// household measure + its gram weight. Selecting one in "Find serving" fills the
+// descriptive serving and the serving-size weight. (Representative subset.)
+const RACC: Array<{ group: string; serving: string; grams: number }> = [
+  { group: 'Bakery Products', serving: '1 piece', grams: 55 },
+  { group: 'Beverages', serving: '8 fl oz', grams: 240 },
+  { group: 'Cereals and Other Grain Products', serving: '1 cup', grams: 40 },
+  { group: 'Dairy Products and Substitutes', serving: '1 cup', grams: 240 },
+  { group: 'Desserts', serving: '1/2 cup', grams: 85 },
+  { group: 'Dessert Toppings and Fillings', serving: '2 tbsp', grams: 30 },
+  { group: 'Egg and Egg Substitutes', serving: '1 egg', grams: 50 },
+  { group: 'Fats and Oils', serving: '1 tbsp', grams: 14 },
+  { group: 'Fish, Shellfish, Game Meats, and Meat or Poultry Substitutes', serving: '3 oz', grams: 85 },
+  { group: 'Fruits and Fruit Juices', serving: '1 cup', grams: 140 },
+  { group: 'Legumes', serving: '1/2 cup', grams: 130 },
+  { group: 'Miscellaneous', serving: '1 serving', grams: 30 },
+  { group: 'Mixed Dishes', serving: '1 cup', grams: 140 },
+  { group: 'Nuts and Seeds', serving: '1 oz', grams: 30 },
+  { group: 'Potatoes and Sweet Potatoes/Yams', serving: '1/2 cup', grams: 90 },
+  { group: 'Salads', serving: '1 cup', grams: 100 },
+  { group: 'Sauces, Dips, Gravies, and Condiments', serving: '2 tbsp', grams: 30 },
+  { group: 'Snacks', serving: '1 oz', grams: 30 },
+  { group: 'Soups', serving: '1 cup', grams: 245 },
+  { group: 'Sugars and Sweets', serving: '1 piece', grams: 40 },
+  { group: 'Vegetables', serving: '1 cup', grams: 85 },
+]
+const RACC_INFANT: Array<{ group: string; serving: string; grams: number }> = [
+  { group: 'Cereals, dry instant', serving: '15 g', grams: 15 },
+  { group: 'Cereals, prepared, ready-to-serve', serving: '110 g', grams: 110 },
+  { group: 'Other cereal and grain products, dry ready-to-eat', serving: '7 g', grams: 7 },
+  { group: 'Dinners, desserts, fruits, vegetables or soups, dry mix', serving: '15 g', grams: 15 },
+  { group: 'Dinners, desserts, fruits, vegetables or soups, ready-to-serve, junior type', serving: '110 g', grams: 110 },
+  { group: 'Dinners, desserts, fruits, vegetables or soups, ready-to-serve, strained type', serving: '60 g', grams: 60 },
+  { group: 'Dinners, stews or soups for young children, ready-to-serve', serving: '170 g', grams: 170 },
+  { group: 'Fruits for young children, ready-to-serve', serving: '125 g', grams: 125 },
+  { group: 'Vegetables for young children, ready-to-serve', serving: '70 g', grams: 70 },
+  { group: 'Eggs/egg yolks, ready-to-serve', serving: '55 g', grams: 55 },
+  { group: 'Juices, all varieties', serving: '120 mL', grams: 120 },
+]
 
 // Pink "active" dot shown next to the ingredient currently in the recipe (base
 // when no swap is active, otherwise the active replaceable). Mirrors the prototype.
@@ -136,6 +194,7 @@ export function RecipeBuilderStep({
   declareAvailable = false,
   labelingType = 'FOOD',
   initialEntryMode = null,
+  currencies = ['USD'],
 }: {
   productName: string
   /** From the chosen packing type — SINGLE = one recipe, MULTI = base + presets. */
@@ -161,6 +220,9 @@ export function RecipeBuilderStep({
   labelingType?: string
   /** Restored recipe entry mode (resume) — reopens the builder on that surface. */
   initialEntryMode?: Mode | null
+  /** ISO currency codes of the product's ACTIVE target markets (V1: ['USD']).
+   *  One Cost input per currency; the first is primary (persisted per-kg). */
+  currencies?: string[]
 }) {
   // Start from the restored recipe, or empty — a new product begins with no
   // ingredients (the partner adds real ones via the picker). The old demo seed
@@ -173,9 +235,23 @@ export function RecipeBuilderStep({
   const [addCat, setAddCat] = useState<'base' | 'optional'>('base')
   const [lmode, setLmode] = useState<'package' | 'serving'>('serving')
   const [servingSizeG, setServingSizeG] = useState(30)
+  const [servingUnit, setServingUnit] = useState<string>('g')
   const [packageSizeG, setPackageSizeG] = useState(355)
-  const [servingsPerPackage, setServingsPerPackage] = useState(1)
+  const [packageUnit, setPackageUnit] = useState<string>('g')
+  const [numPackages, setNumPackages] = useState(1)
+  const [servingsPerPackage, setServingsPerPackage] = useState(2)
   const [moisture, setMoisture] = useState(0)
+  // Recipe-wide waste %, applied to EVERY ingredient on top of its own waste
+  // (ReciPal "Recipe Waste %" in the Totals row). Drives yield, grams + cost.
+  const [recipeWaste, setRecipeWaste] = useState(0)
+  // The row whose "Add custom unit" modal is open (null = closed).
+  const [customMeasureRow, setCustomMeasureRow] = useState<Row | null>(null)
+  // Descriptive ("suggested") serving — the household measure printed on the
+  // label, e.g. "1 cup", "1 scoop", "4 pieces". Separate from the gram weight.
+  const [suggestedServing, setSuggestedServing] = useState<string>('1 serving')
+  const [suggestedServingFr, setSuggestedServingFr] = useState<string>('')
+  const [aggCount, setAggCount] = useState(1)
+  const [findServingOpen, setFindServingOpen] = useState(false)
   const [subtab, setSubtab] = useState<'pack' | 'adv'>('pack')
   const [mode, setMode] = useState<'public' | 'preview'>('public')
   // Recipe entry method (Search / AI / Declare) + whether the chooser shows its
@@ -335,7 +411,36 @@ export function RecipeBuilderStep({
   }
   // The row's quantity converted to grams (density-aware for volume units), via
   // the engine's canonical unit table — the single basis for grams/cost/label.
-  const rawGrams = (r: Row) => toGrams(r.qty, r.unit, { densityGPerMl: rowData(r).densityGPerMl ?? undefined })
+  const rawGrams = (r: Row) => {
+    const cu = r.customUnits?.find((c) => c.name === r.unit)
+    if (cu) return r.qty * cu.grams
+    return toGrams(r.qty, r.unit, { densityGPerMl: rowData(r).densityGPerMl ?? undefined })
+  }
+  // Effective waste for a row = its own waste compounded with the recipe-wide
+  // waste (both remove mass; nutrients on the remaining mass are conserved).
+  const effWaste = (rowWaste: number) => (1 - (1 - rowWaste / 100) * (1 - recipeWaste / 100)) * 100
+  // The product's market currencies; the first is primary (persisted per-kg).
+  const primaryCcy = currencies[0] ?? 'USD'
+  // Per-kg cost stored for a row in a given currency (primary ↔ costPerKgCents).
+  const costCentsFor = (r: Row, ccy: string): number | null =>
+    ccy === primaryCcy ? (r.costPerKgCents ?? null) : (r.costByCurrencyCents?.[ccy] ?? null)
+  // Cost entry ⇄ canonical per-kg cents, via the row's chosen cost basis unit,
+  // for a specific market currency.
+  const costDisplayFor = (r: Row, ccy: string): number | '' => {
+    const cents = costCentsFor(r, ccy)
+    if (cents == null) return ''
+    const gPerUnit = COST_UNIT_G[r.costUnit ?? 'kg'] ?? 1000
+    return Math.round((cents / 100) * (gPerUnit / 1000) * 100) / 100
+  }
+  const costPatchFor = (r: Row, ccy: string, val: string): Partial<Row> => {
+    const v = parseFloat(val)
+    const gPerUnit = COST_UNIT_G[r.costUnit ?? 'kg'] ?? 1000
+    const cents = isNaN(v) || v < 0 ? null : Math.max(0, Math.round((v / (gPerUnit / 1000)) * 100))
+    if (ccy === primaryCcy) return { costPerKgCents: cents }
+    const next = { ...(r.costByCurrencyCents ?? {}) }
+    if (cents == null) delete next[ccy]; else next[ccy] = cents
+    return { costByCurrencyCents: next }
+  }
   function handlePick(picked: IngredientResult) {
     // Duplicate guard — flag the same ingredient anywhere in the recipe, not just
     // the section being added to, so a base ingredient can't be re-added as an
@@ -416,7 +521,7 @@ export function RecipeBuilderStep({
   // Build engine rows + compute the live label.
   const recipeRows: RecipeRow[] = rows.map((r) => ({
     id: r.uid, name: rowData(r).name ?? '', per100g: rowData(r).per100g ?? {},
-    quantity: rawGrams(r), unit: 'g', trimWastePct: r.waste, category: r.category, selected: r.selected,
+    quantity: rawGrams(r), unit: 'g', trimWastePct: effWaste(r.waste), category: r.category, selected: r.selected,
   }))
   // Preview rows substitute any active replaceable in for its base ingredient,
   // so the Internal-preview label reflects the swapped-in choice.
@@ -425,15 +530,33 @@ export function RecipeBuilderStep({
     const v = actIng ? swapAxisFor(r.ingId)?.values.find((x) => x.overlayOp === 'SWAP' && x.overlayIngId === actIng) : undefined
     if (v) {
       const sq = v.overlayQty ?? r.qty, su = v.overlayUnit ?? r.unit
-      return { id: r.uid, name: v.overlayIngName ?? '', per100g: v.overlayPer100g ?? {}, quantity: toGrams(sq, su, { densityGPerMl: v.overlayDensityGPerMl ?? undefined }), unit: 'g', trimWastePct: v.overlayWaste ?? r.waste, category: r.category, selected: r.selected }
+      return { id: r.uid, name: v.overlayIngName ?? '', per100g: v.overlayPer100g ?? {}, quantity: toGrams(sq, su, { densityGPerMl: v.overlayDensityGPerMl ?? undefined }), unit: 'g', trimWastePct: effWaste(v.overlayWaste ?? r.waste), category: r.category, selected: r.selected }
     }
-    return { id: r.uid, name: rowData(r).name ?? '', per100g: rowData(r).per100g ?? {}, quantity: rawGrams(r), unit: 'g', trimWastePct: r.waste, category: r.category, selected: r.selected }
+    return { id: r.uid, name: rowData(r).name ?? '', per100g: rowData(r).per100g ?? {}, quantity: rawGrams(r), unit: 'g', trimWastePct: effWaste(r.waste), category: r.category, selected: r.selected }
   })
   const selected = mode === 'public' ? publicSelection(recipeRows) : previewSelection(previewEngineRows)
-  const result = selected.length
-    ? calculateLabel(selected, { basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture })
-    : null
+  // Serving / package weights entered in g·kg·oz·lb·ml·fl oz → grams for the engine.
+  const servingGrams = toGrams(servingSizeG, servingUnit)
+  const packageGrams = toGrams(packageSizeG, packageUnit)
+  const geoArgs = { basis: lmode, servingSizeG: servingGrams, packageSizeG: packageGrams, servingsPerPackage, numPackages, moistureLossPct: moisture }
+  const result = selected.length ? calculateLabel(selected, geoArgs) : null
   const ps = result?.perServing
+  // Per-ingredient Nutrition Breakdown (QA): each selected ingredient's exact
+  // batch contribution from the engine, plus its per-serving share. Makes a bad
+  // input (missing per100g, wrong qty) obvious. Geometry-independent batch.
+  const breakdown = result
+    ? selected.map((s) => ({
+        name: s.name || '—',
+        usableG: toGrams(s.quantity, s.unit, s) * (1 - (s.trimWastePct ?? 0) / 100),
+        batch: calculateLabel([s], geoArgs).raw.batch,
+      }))
+    : []
+  const ts = result?.geometry.totalServings ?? 0
+  // True when ingredients are present but none carry nutrient data — the label
+  // would read all-zero, which looks like "it doesn't calculate". We surface a
+  // hint instead of a silent zeroed panel.
+  const noNutritionData = selected.length > 0 &&
+    selected.every((r) => !r.per100g || Object.keys(r.per100g).length === 0)
 
   // Per-flavor label: shared base recipe + that flavor's distinct ingredient,
   // so each column carries its own calories/sugar/etc.
@@ -447,23 +570,54 @@ export function RecipeBuilderStep({
     }
     const all = [...baseRows, overlay]
     return all.length
-      ? calculateLabel(all, { basis: lmode, servingSizeG, packageSizeG, servingsPerPackage, numPackages: 1, moistureLossPct: moisture })
+      ? calculateLabel(all, { basis: lmode, servingSizeG: toGrams(servingSizeG, servingUnit), packageSizeG: toGrams(packageSizeG, packageUnit), servingsPerPackage, numPackages, moistureLossPct: moisture })
       : null
   }
 
-  // Real batch ingredient cost ($), from each ingredient's $/kg applied to its
-  // raw purchased weight (cost is on what you buy, before waste loss).
-  const totalCents = rows.reduce((sum, r) => {
-    const grams = rawGrams(r)
-    const costPerKg = (r.costPerKgCents ?? 0) / 100 // dollars per kg
-    return sum + costPerKg * (grams / 1000)
-  }, 0)
+  // Real batch ingredient cost per market currency, from each ingredient's
+  // per-kg price applied to its raw purchased weight (cost is on what you buy,
+  // before waste loss). One total per active-market currency.
+  const totalsByCurrency: Record<string, number> = {}
+  for (const ccy of currencies) {
+    totalsByCurrency[ccy] = rows.reduce((sum, r) => {
+      const grams = rawGrams(r)
+      const perKg = (costCentsFor(r, ccy) ?? 0) / 100
+      return sum + perKg * (grams / 1000)
+    }, 0)
+  }
+  const totalCents = totalsByCurrency[primaryCcy] ?? 0
   const perServingCost = result && result.geometry.totalServings > 0 ? totalCents / result.geometry.totalServings : 0
   const retail = perServingCost * markup
 
   return (
     <div className="rb">
       <style>{CSS}</style>
+
+      {findServingOpen && (
+        <FindServingModal
+          onClose={() => setFindServingOpen(false)}
+          onPick={(serving, grams) => {
+            setSuggestedServing(serving)
+            setServingSizeG(grams)
+            setServingUnit('g')
+            setLmode('serving')
+            setFindServingOpen(false)
+          }}
+        />
+      )}
+
+      {customMeasureRow && (
+        <AddCustomMeasureModal
+          ingredientName={rowData(customMeasureRow).name}
+          existing={customMeasureRow.customUnits ?? []}
+          onClose={() => setCustomMeasureRow(null)}
+          onSave={(name, grams) => {
+            const row = customMeasureRow
+            patch(row.uid, { customUnits: [...(row.customUnits ?? []), { name, grams }], unit: name })
+            setCustomMeasureRow(null)
+          }}
+        />
+      )}
 
       {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel. */}
       <div style={{ marginBottom: 14 }}>
@@ -517,7 +671,7 @@ export function RecipeBuilderStep({
           <div className="rb-card">
             <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
             <table>
-              <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
+              <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Cost <i className="info" data-tip="You set ingredient prices here — they aren't stored in the catalog. Enter your price and pick the basis (kg · lb · g · oz). The Total sums each ingredient's price × its grams.">i</i></th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const alts = onAxes ? swapAltsFor(r.ingId) : []
@@ -539,15 +693,31 @@ export function RecipeBuilderStep({
                         >＋</button>
                       )}
                     </td>
-                    <td className="r"><input className="qty" type="number" min={0} value={r.qty} onChange={(e) => patch(r.uid, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
+                    <td className="r"><input className="num" type="number" min={0} value={r.qty} onChange={(e) => patch(r.uid, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
                     <td className="r">
-                      <select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
+                      <select className="num" value={r.unit} onChange={(e) => { if (e.target.value === '__add__') { setCustomMeasureRow(r); return } patch(r.uid, { unit: e.target.value }) }}>
                         {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                        {(r.customUnits ?? []).map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        <option value="__add__">+ Add custom unit…</option>
                       </select>
                     </td>
-                    <td className="r"><input className="waste" type="number" min={0} max={100} value={r.waste} onChange={(e) => patch(r.uid, { waste: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })} /></td>
-                    <td className="r">{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
-                    <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
+                    <td className="r"><input className="num" type="number" min={0} max={100} value={r.waste} onChange={(e) => patch(r.uid, { waste: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })} /></td>
+                    <td className="r">{(rawGrams(r) * (1 - effWaste(r.waste) / 100)).toFixed(1)}</td>
+                    <td className="r">
+                      <span className="costcell">
+                        <span className="costins">
+                          {currencies.map((ccy) => (
+                            <span key={ccy} className="curin" title={ccy}>
+                              <span className="cursym">{curSym(ccy)}</span>
+                              <input className="num" type="number" min={0} step={0.01} value={costDisplayFor(r, ccy)} placeholder="—" onChange={(e) => patch(r.uid, costPatchFor(r, ccy, e.target.value))} />
+                            </span>
+                          ))}
+                        </span>
+                        <select className="cu" value={r.costUnit ?? 'kg'} onChange={(e) => patch(r.uid, { costUnit: e.target.value })}>
+                          {COST_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </span>
+                    </td>
                     <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                   </tr>
                   {/* Inline replaceable child rows — dimmed unless swapped-in (active). */}
@@ -592,32 +762,72 @@ export function RecipeBuilderStep({
                   <tr><td colSpan={8} className="muted" style={{ padding: '14px 6px', textAlign: 'center' }}>No ingredients yet — search below to add your first.</td></tr>
                 )}
               </tbody>
-              <tfoot><tr><td /><td /><td /><td /><td className="grn r">Total</td><td className="grn r">{base.reduce((s, r) => s + rawGrams(r) * (1 - r.waste / 100), 0).toFixed(1)}</td><td className="grn r">${totalCents.toFixed(2)}</td><td /></tr></tfoot>
+              <tfoot>
+                <tr>
+                  <td /><td /><td />
+                  <td className="grn r" style={{ whiteSpace: 'nowrap' }}>Total <i className="info" data-tip="Recipe Waste % is applied to EVERY ingredient, in addition to each ingredient's own waste. Use it when a known fraction of the whole batch is lost — spillage, trim left in the mixer, residue, etc.">i</i></td>
+                  <td className="r">
+                    <span className="rwcell">
+                      <input className="num" type="number" min={0} max={100} value={recipeWaste} onChange={(e) => setRecipeWaste(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} aria-label="Recipe waste percent" />
+                    </span>
+                  </td>
+                  <td className="grn r">{base.reduce((s, r) => s + rawGrams(r) * (1 - effWaste(r.waste) / 100), 0).toFixed(1)}</td>
+                  <td className="grn r">
+                    {currencies.map((ccy) => (
+                      <div key={ccy} style={{ whiteSpace: 'nowrap' }}>{curSym(ccy)}{(totalsByCurrency[ccy] ?? 0).toFixed(2)}</div>
+                    ))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
             </table>
+            {base.length > 0 && totalCents === 0 && (
+              <p className="muted tiny" style={{ marginTop: 8 }}>Total cost is {curSym(primaryCcy)}0.00 because no ingredient prices are set yet — type your price in the <b>Cost</b> column for each ingredient (it isn’t pulled from the catalog; you set it per recipe).{currencies.length > 1 && <> Prices are entered per active market currency ({currencies.join(' · ')}).</>}</p>
+            )}
           </div>
 
-          {/* Optional Ingredients */}
+          {/* Optional Ingredients — same columns as the base table, plus an
+              activation toggle: click the check to tick the ingredient into the
+              Preview label, click again to deactivate it. */}
           {optional.length > 0 && (
             <div className="rb-card">
               <div className="rb-h">✓ Optional Ingredients ({optional.length})</div>
               <table>
+                <thead><tr><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} title="Click to activate / deactivate">On</th><th style={{ width: '99%' }}>Ingredient Name</th><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
                 <tbody>
-                  {optional.map((r) => (
+                  {optional.map((r) => {
+                    const showVol = rowData(r).densityGPerMl != null || VOLUME_UNITS.has(r.unit)
+                    return (
                     <tr key={r.uid} className={r.selected ? '' : 'dim'}>
-                      <td><span className={`circle ${r.selected ? 'chk' : ''}`} onClick={() => patch(r.uid, { selected: !r.selected })}>{r.selected ? '✓' : ''}</span></td>
+                      <td className="r">
+                        <span
+                          className={`circle ${r.selected ? 'chk' : ''}`}
+                          role="checkbox"
+                          aria-checked={r.selected}
+                          tabIndex={0}
+                          title={r.selected ? 'Active — ticked into the Preview label. Click to deactivate.' : 'Inactive — click to activate.'}
+                          aria-label={r.selected ? 'Deactivate optional ingredient' : 'Activate optional ingredient'}
+                          onClick={() => patch(r.uid, { selected: !r.selected })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); patch(r.uid, { selected: !r.selected }) } }}
+                        >{r.selected ? '✓' : ''}</span>
+                      </td>
                       <td>{rowData(r).name}</td>
-                      <td><input className="qty" type="number" min={0} value={r.qty} onChange={(e) => patch(r.uid, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
-                      <td>
+                      <td className="r"><input className="qty" type="number" min={0} value={r.qty} onChange={(e) => patch(r.uid, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
+                      <td className="r">
                         <select value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
-                          {SELECTABLE_UNITS.filter((u) => (rowData(r).densityGPerMl != null || VOLUME_UNITS.has(r.unit)) || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                          {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
                         </select>
                       </td>
+                      <td className="r"><input className="waste" type="number" min={0} max={100} value={r.waste} onChange={(e) => patch(r.uid, { waste: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })} /></td>
+                      <td className="r">{(rawGrams(r) * (1 - r.waste / 100)).toFixed(1)}</td>
+                      <td className="r"><input className="waste" type="number" min={0} step={0.01} value={r.costPerKgCents != null ? r.costPerKgCents / 100 : ''} placeholder="—" onChange={(e) => { const v = parseFloat(e.target.value); patch(r.uid, { costPerKgCents: isNaN(v) ? null : Math.max(0, Math.round(v * 100)) }) }} /></td>
                       <td><span className="del" onClick={() => remove(r.uid)}>🗑</span></td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
-              <p className="muted tiny">Optional ingredients tick into the <b>Preview</b> label only — the Public label stays base-only.</p>
+              <p className="muted tiny">Optional ingredients tick into the <b>Preview</b> label only — the Public label stays base-only. Deactivate one (click its check) to drop it from the preview without deleting it.</p>
             </div>
           )}
 
@@ -636,7 +846,7 @@ export function RecipeBuilderStep({
             <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their USDA/library nutrient panel into the live label.</p>
           </div>
 
-          {/* Packaging & Serving (ReciPal) */}
+          {/* Packaging & Serving (ReciPal model) */}
           <div className="rb-card">
             <div className="rb-h">⚖ Packaging &amp; Serving Information</div>
             <div className="subtab">
@@ -645,35 +855,68 @@ export function RecipeBuilderStep({
             </div>
             {subtab === 'pack' && (
               <>
-                <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>
                   How would you like to set up your label?
-                  <i className="info" title="BY PACKAGE SIZE: enter the package size + number of packages the recipe makes — precise control of yield. BY SERVING SIZE: enter the serving size weight + optional moisture loss and we calculate the rest (ignores density).">i</i>
+                  <i className="info" data-tip="To create your nutrition label we need the serving and package size. BY PACKAGE SIZE: enter the package size and the number of packages the recipe makes — precisely controls how much product your recipe yields. BY SERVING SIZE: enter only the serving size weight and optional moisture loss and we calculate the rest (this method does not account for density).">i</i>
                 </div>
                 <div className="radio">
                   <label><input type="radio" name="lmode" checked={lmode === 'package'} onChange={() => setLmode('package')} /> By package size</label>
                   <label><input type="radio" name="lmode" checked={lmode === 'serving'} onChange={() => setLmode('serving')} /> By serving size</label>
                 </div>
-                {lmode === 'package' ? (
-                  <div className="row2">
-                    <div><span className="f">Package size (g)</span><input type="number" value={packageSizeG} onChange={(e) => setPackageSizeG(parseFloat(e.target.value) || 0)} /></div>
-                    <div><span className="f">Servings per package <i className="info" title="Non-round values render as “about N” per FDA.">i</i></span><input type="number" value={servingsPerPackage} onChange={(e) => setServingsPerPackage(parseFloat(e.target.value) || 1)} /></div>
+
+                {lmode === 'serving' ? (
+                  <div>
+                    <span className="f">Serving size weight <i className="info" data-tip="The amount customarily consumed per sitting by a person 4+ years of age. Enter the weight and pick the unit. Nutrition is scaled to this serving size.">i</i></span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input type="number" min={0} style={{ flex: 1 }} value={servingSizeG} onChange={(e) => setServingSizeG(parseFloat(e.target.value) || 0)} />
+                      <select value={servingUnit} onChange={(e) => setServingUnit(e.target.value)}>
+                        {WEIGHT_UNITS.map((u) => <option key={u} value={u}>{UNIT_FULL[u] ?? u}</option>)}
+                      </select>
+                    </div>
+                    {result && <p className="makes">This recipe makes about {result.geometry.packagesMade.toFixed(1)} package(s)</p>}
                   </div>
                 ) : (
-                  <div className="row2">
-                    <div><span className="f">Serving size (g)</span><input type="number" value={servingSizeG} onChange={(e) => setServingSizeG(parseFloat(e.target.value) || 0)} /></div>
-                    <div><span className="f">Servings per package</span><input type="number" value={servingsPerPackage} onChange={(e) => setServingsPerPackage(parseFloat(e.target.value) || 1)} /></div>
+                  <div>
+                    <span className="f">Package size</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input type="number" min={0} style={{ flex: 1 }} value={packageSizeG} onChange={(e) => setPackageSizeG(parseFloat(e.target.value) || 0)} />
+                      <select value={packageUnit} onChange={(e) => setPackageUnit(e.target.value)}>
+                        {WEIGHT_UNITS.map((u) => <option key={u} value={u}>{UNIT_FULL[u] ?? u}</option>)}
+                      </select>
+                    </div>
+                    <span className="f" style={{ marginTop: 8 }}>Number of packages this recipe makes</span>
+                    <input type="number" min={0} style={{ width: 140 }} value={numPackages} onChange={(e) => setNumPackages(parseFloat(e.target.value) || 1)} />
                   </div>
                 )}
-                {result && <p className="makes">Makes about {result.geometry.packagesMade.toFixed(1)} package(s) · {result.geometry.servingsPerContainerLabel} servings/container</p>}
+
+                <span className="f" style={{ marginTop: 10 }}>Moisture loss % <i className="info" data-tip="The decrease in water content during cooking/preparation. A 100 g recipe that loses 20% to evaporation yields 80 g. Reducing water concentrates nutrients — higher moisture loss = LARGER per-serving values, assuming the serving size stays the same.">i</i></span>
+                <input type="number" min={0} max={100} style={{ width: 120 }} value={moisture} onChange={(e) => setMoisture(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
+
+                <div className="row2" style={{ marginTop: 10 }}>
+                  <div>
+                    <span className="f">Suggested serving <i className="info" data-tip="The descriptive household measure printed on the label — 1 cup, 1 tbsp, 1 scoop, 1 cookie, etc. Use your best judgment, or Find serving for FDA reference amounts.">i</i></span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input style={{ flex: 1 }} value={suggestedServing} onChange={(e) => setSuggestedServing(e.target.value)} placeholder="1 cup" />
+                      <button type="button" className="rb-btn sm" onClick={() => setFindServingOpen(true)}>Find serving</button>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="f">How many servings are in each package? <i className="info" data-tip="The number of servings EACH PACKAGE has. 20 cookies at 1 cookie/serving = 20 servings. Non-round numbers (e.g. 2.2) round on the label and are prefixed “about”.">i</i></span>
+                    <input type="number" min={0} style={{ width: '100%' }} value={servingsPerPackage} onChange={(e) => setServingsPerPackage(parseFloat(e.target.value) || 1)} />
+                  </div>
+                </div>
               </>
             )}
             {subtab === 'adv' && (
-              <div className="row2">
-                <div>
-                  <span className="f">Moisture / cook loss % <i className="info" title="Water leaves during cooking; nutrients are conserved so per-serving values concentrate.">i</i></span>
-                  <input type="number" value={moisture} onChange={(e) => setMoisture(parseFloat(e.target.value) || 0)} />
+              <>
+                <span className="f">Suggested serving (French) <i className="info" data-tip="For Canadian nutrition labels, provide the same serving size in French as in English.">i</i></span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input style={{ flex: 1 }} value={suggestedServingFr} onChange={(e) => setSuggestedServingFr(e.target.value)} placeholder="ex. 1 tasse" />
+                  <button type="button" className="rb-btn o sm" onClick={() => setSuggestedServingFr(suggestedServing ? `${suggestedServing} (FR)` : '')}>Translate</button>
                 </div>
-              </div>
+                <span className="f" style={{ marginTop: 10 }}>Package count for aggregate labels <i className="info" data-tip="If this recipe appears in an FDA aggregate (combined) label, this is the number of servings it contributes. Each recipe’s aggregate servings are summed for the total.">i</i></span>
+                <input type="number" min={0} style={{ width: 140 }} value={aggCount} onChange={(e) => setAggCount(parseFloat(e.target.value) || 1)} />
+              </>
             )}
           </div>
 
@@ -731,16 +974,68 @@ export function RecipeBuilderStep({
               </>
             ) : (
               <>
-                <FactsPanel result={result} ps={ps} />
+                <FactsPanel result={result} ps={ps} serving={suggestedServing} />
                 <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
               </>
             )
           ) : (
             <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)' }}>Add ingredients + a serving size to see the label.</div>
           )}
+          {noNutritionData && (
+            <p className="rb-warn">⚠ These ingredients have no nutrition data yet, so the label reads all zeros. Pick USDA / library ingredients, or open the ingredient to add per-100 g values.</p>
+          )}
           <p className="muted tiny" style={{ marginTop: 8 }}>{mode === 'public' ? 'Public marketplace label — base ingredients only.' : 'Internal preview — base + ticked optionals.'} · {productName || 'Untitled'}</p>
         </div>
       </div>
+
+      {result && breakdown.length > 0 && (
+        <details className="rb-card" style={{ marginTop: 14 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>🧪 Nutrition Breakdown — per-ingredient contribution (QA)</summary>
+          <p className="muted tiny" style={{ marginTop: 6 }}>Each ingredient&apos;s exact contribution to the <b>batch</b> (whole recipe), straight from the engine — if a number looks off, the culprit ingredient is visible here. Per serving = batch ÷ {ts.toFixed(2)} servings.</p>
+          <table>
+            <thead><tr><th>Ingredient</th><th className="r">Usable g</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Fat</th><th className="r">Carb</th><th className="r">Sugars</th><th className="r">Sodium</th></tr></thead>
+            <tbody>
+              {breakdown.map((b, i) => {
+                const noData = b.usableG > 0 && b.batch.calories === 0 && b.batch.protein === 0 && b.batch.totalFat === 0 && b.batch.totalCarbohydrate === 0
+                return (
+                  <tr key={i}>
+                    <td>{b.name}{noData && <span style={{ color: 'var(--red)', marginLeft: 6, fontSize: 10 }} title="This ingredient has no stored nutrition data — it contributes 0 to the label.">⚠ no data</span>}</td>
+                    <td className="r">{b.usableG.toFixed(1)}</td>
+                    <td className="r">{Math.round(b.batch.calories)}</td>
+                    <td className="r">{b.batch.protein.toFixed(1)}</td>
+                    <td className="r">{b.batch.totalFat.toFixed(1)}</td>
+                    <td className="r">{b.batch.totalCarbohydrate.toFixed(1)}</td>
+                    <td className="r">{b.batch.totalSugars.toFixed(1)}</td>
+                    <td className="r">{Math.round(b.batch.sodium)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="grn">
+                <td>Batch total</td>
+                <td className="r">{result.geometry.rawMassG.toFixed(1)}</td>
+                <td className="r">{Math.round(result.raw.batch.calories)}</td>
+                <td className="r">{result.raw.batch.protein.toFixed(1)}</td>
+                <td className="r">{result.raw.batch.totalFat.toFixed(1)}</td>
+                <td className="r">{result.raw.batch.totalCarbohydrate.toFixed(1)}</td>
+                <td className="r">{result.raw.batch.totalSugars.toFixed(1)}</td>
+                <td className="r">{Math.round(result.raw.batch.sodium)}</td>
+              </tr>
+              <tr>
+                <td>Per serving (exact, pre-rounding)</td>
+                <td className="r">{Math.round(result.geometry.servingSizeG)}</td>
+                <td className="r">{result.raw.perServingExact.calories.toFixed(0)}</td>
+                <td className="r">{result.raw.perServingExact.protein.toFixed(1)}</td>
+                <td className="r">{result.raw.perServingExact.totalFat.toFixed(1)}</td>
+                <td className="r">{result.raw.perServingExact.totalCarbohydrate.toFixed(1)}</td>
+                <td className="r">{result.raw.perServingExact.totalSugars.toFixed(1)}</td>
+                <td className="r">{result.raw.perServingExact.sodium.toFixed(0)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </details>
+      )}
 
       {onAxes && axes.some((a) => a.affectsLabel) && (
         <LabelOptionsSection
@@ -1062,7 +1357,7 @@ function CostSummaryCard({
       <div className="costfoot" style={{ borderTop: 0, paddingTop: 6 }}>
         <span>
           Retail markup ×
-          <i className="info" title="Suggested retail = per-serving cost × markup. Set your target margin; fees configured in Variants & packs apply at checkout.">i</i>
+          <i className="info" data-tip="Suggested retail = per-serving cost × markup. Set your target margin; fees configured in Variants & packs apply at checkout.">i</i>
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input
@@ -1083,13 +1378,99 @@ function CostSummaryCard({
 
 type LabelResult = NonNullable<ReturnType<typeof calculateLabel>>
 
-function FactsPanel({ result, ps, title, narrow }: { result: LabelResult; ps: LabelResult['perServing']; title?: string; narrow?: boolean }) {
+// Find Serving Size — FDA reference-amount (RACC) picker. General foods vs.
+// infants, searchable, one click fills the descriptive serving + gram weight.
+function FindServingModal({ onClose, onPick }: { onClose: () => void; onPick: (serving: string, grams: number) => void }) {
+  const [tab, setTab] = useState<'general' | 'infant'>('general')
+  const [q, setQ] = useState('')
+  const source = tab === 'general' ? RACC : RACC_INFANT
+  const list = q.trim() ? source.filter((r) => r.group.toLowerCase().includes(q.toLowerCase())) : source
+  return (
+    <div className="fs-overlay" role="dialog" aria-modal="true" aria-label="Find serving size" onClick={onClose}>
+      <div className="fs-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="fs-head">
+          <b>Find Serving Size</b>
+          <button type="button" className="fs-x" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        <div className="fs-seg">
+          <button className={tab === 'general' ? 'on' : ''} onClick={() => setTab('general')}>General foods</button>
+          <button className={tab === 'infant' ? 'on' : ''} onClick={() => setTab('infant')}>Infants and young (1–3 years of age)</button>
+        </div>
+        <div style={{ padding: '0 16px' }}>
+          <span className="f">Search product category</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. bread, syrup, candies, bar" style={{ width: '100%' }} />
+        </div>
+        <div className="fs-list">
+          {list.map((r) => (
+            <div key={r.group} className="fs-row">
+              <div><b>{r.group}</b><span className="muted tiny" style={{ marginLeft: 8 }}>{r.serving} · {r.grams} g</span></div>
+              <button type="button" className="rb-btn sm" onClick={() => onPick(r.serving, r.grams)}>Select</button>
+            </div>
+          ))}
+          {list.length === 0 && <p className="muted tiny" style={{ padding: 16 }}>No categories match “{q}”.</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Add custom measure — define an account-specific unit for one ingredient,
+// e.g. "1 case = 500 g" (Weight) or "1 scoop = 30 ml" (Volume). Resolves to
+// grams-per-1-unit so the recipe math stays in the engine's canonical grams.
+function AddCustomMeasureModal({
+  ingredientName, existing, onClose, onSave,
+}: { ingredientName: string; existing: Array<{ name: string; grams: number }>; onClose: () => void; onSave: (name: string, grams: number) => void }) {
+  const [kind, setKind] = useState<'weight' | 'volume'>('weight')
+  const [qty, setQty] = useState('1')
+  const [name, setName] = useState('')
+  const [eqQty, setEqQty] = useState('')
+  const [eqUnit, setEqUnit] = useState('g')
+  const opts = kind === 'weight' ? ['g', 'kg', 'oz', 'lb'] : ['ml', 'fl_oz', 'cup', 'tbsp', 'tsp']
+  const q = parseFloat(qty), eq = parseFloat(eqQty)
+  const gramsPerUnit = q > 0 && eq > 0 ? toGrams(eq, eqUnit) / q : 0
+  const dupe = !!name.trim() && existing.some((e) => e.name.toLowerCase() === name.trim().toLowerCase())
+  const valid = !!name.trim() && gramsPerUnit > 0 && !dupe
+  return (
+    <div className="fs-overlay" role="dialog" aria-modal="true" aria-label="Add custom measure" onClick={onClose}>
+      <div className="fs-modal" style={{ width: 'min(520px,100%)' }} onClick={(e) => e.stopPropagation()}>
+        <div className="fs-head"><b>Add custom measure</b><button type="button" className="fs-x" aria-label="Close" onClick={onClose}>✕</button></div>
+        <div className="fs-seg">
+          <button className={kind === 'weight' ? 'on' : ''} onClick={() => { setKind('weight'); setEqUnit('g') }}>Weight</button>
+          <button className={kind === 'volume' ? 'on' : ''} onClick={() => { setKind('volume'); setEqUnit('ml') }}>Volume</button>
+        </div>
+        <div style={{ padding: '4px 16px 16px' }}>
+          <p className="muted tiny" style={{ marginTop: 0 }}>For things like <em>case, jar, 12-pack</em>. Specific to {ingredientName || 'this ingredient'} — it won’t change the ingredient for anyone else.</p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input className="num" type="number" min={0} value={qty} onChange={(e) => setQty(e.target.value)} aria-label="Quantity" />
+            <input style={{ flex: 1 }} value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "case"' aria-label="Unit name" />
+          </div>
+          <div style={{ textAlign: 'center', color: 'var(--mut)', fontSize: 12, margin: '10px 0' }}>is equivalent to</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input className="num" type="number" min={0} value={eqQty} onChange={(e) => setEqQty(e.target.value)} aria-label="Equivalent quantity" />
+            <select style={{ flex: 1 }} value={eqUnit} onChange={(e) => setEqUnit(e.target.value)}>
+              {opts.map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+            </select>
+          </div>
+          {dupe && <p className="rb-warn" style={{ marginTop: 10 }}>“{name.trim()}” already exists for this ingredient.</p>}
+          {valid && <p className="muted tiny" style={{ marginTop: 8 }}>1 {name.trim()} = {gramsPerUnit.toFixed(1)} g</p>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <button type="button" className="rb-btn sm" disabled={!valid} style={!valid ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => valid && onSave(name.trim(), gramsPerUnit)}>Save</button>
+            <button type="button" className="rb-btn o sm" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FactsPanel({ result, ps, title, narrow, serving }: { result: LabelResult; ps: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string }) {
+  const grams = `${Math.round(result.geometry.servingSizeG)} g`
   return (
     <div className="facts" style={narrow ? { minWidth: 150, flex: '0 0 auto' } : undefined}>
       {title && <div className="flavhdr">{title}</div>}
       <h2 style={narrow ? { fontSize: 18 } : undefined}>Nutrition Facts</h2>
       <div className="b8" style={{ paddingBottom: 2 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Serving</span><b>{Math.round(result.geometry.servingSizeG)} g</b></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Serving size</span><b>{serving && serving.trim() ? `${serving.trim()} (${grams})` : grams}</b></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Per container</span><b>{result.geometry.servingsPerContainerLabel}</b></div>
       </div>
       <div className="cal"><span>Calories</span><span className="n" style={narrow ? { fontSize: 22 } : undefined}>{ps.calories}</span></div>
@@ -1128,7 +1509,17 @@ const CSS = `
 .rb td{padding:7px 6px;border-bottom:1px solid #f0f2f0;vertical-align:middle;font-size:12.5px}
 .rb input,.rb select{border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff}
 .rb input:focus,.rb select:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-50)}
-.rb .qty{width:60px;text-align:center} .rb .waste{width:50px;text-align:center}
+/* All compact table fields share the Waste field's width — equal, not wider. */
+.rb .qty,.rb .waste,.rb .num{width:52px;text-align:center;padding-left:4px;padding-right:4px}
+.rb select.num{width:52px}
+.rb .costcell{display:inline-flex;gap:3px;align-items:center;justify-content:flex-end}
+.rb .costins{display:inline-flex;flex-direction:column;gap:3px}
+.rb .curin{display:inline-flex;align-items:center;gap:2px;justify-content:flex-end}
+.rb .cursym{font-size:14px;font-weight:700;color:var(--pink,#FF2E63);min-width:18px;text-align:right}
+.rb .costcell .num{width:46px}
+.rb .cu{width:46px;padding:6px 2px;text-align:center}
+.rb .rwcell{display:inline-flex;gap:5px;align-items:center;justify-content:flex-end}
+.rb .rwcell .num{width:52px}
 .rb-btn{background:var(--g);color:#fff;border:0;border-radius:8px;padding:7px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
 .rb-btn.o{background:#fff;color:var(--g2);border:1px solid var(--g-bd)} .rb-btn.sm{padding:5px 11px;font-size:12px}
 .rb .circle{width:24px;height:24px;border-radius:50%;border:1px solid var(--bd);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--g)}
@@ -1163,5 +1554,22 @@ const CSS = `
 .rb .flav{display:inline-flex;align-items:center;gap:5px;background:var(--g-50);color:var(--g2);border:1px solid var(--g-bd);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600}
 .rb .flav button{border:0;background:transparent;color:var(--g2);cursor:pointer;font-size:11px;padding:0}
 .rb .flavhdr{background:var(--g-50);color:var(--g2);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--g-bd);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
+/* Readable hover tooltip for the "i" info icons (replaces the tiny native title). */
+.rb .info[data-tip]{position:relative}
+.rb .info[data-tip]:hover::after,.rb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#18181A;color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.rb .info[data-tip]:hover::before,.rb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#18181A;z-index:60;pointer-events:none}
+.rb .rb-warn{margin-top:10px;background:#FFF7E6;border:1px solid #F4D58A;color:#7A5A00;font-size:11.5px;line-height:1.45;border-radius:10px;padding:9px 11px}
+/* Find Serving Size modal */
+.fs-overlay{position:fixed;inset:0;background:rgba(20,20,24,.5);display:grid;place-items:start center;padding:48px 16px;z-index:200;overflow:auto}
+.fs-modal{background:#fff;border-radius:16px;width:min(640px,100%);box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden}
+.fs-head{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 8px;font-size:18px}
+.fs-x{border:0;background:transparent;font-size:16px;color:#6B6D78;cursor:pointer;width:28px;height:28px;border-radius:50%}
+.fs-x:hover{background:#EEEFF1}
+.fs-seg{display:flex;gap:8px;padding:6px 16px 12px}
+.fs-seg button{flex:1;border:1px solid var(--g-bd);background:#fff;color:var(--g2);font:inherit;font-weight:600;font-size:12.5px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.fs-seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.fs-list{max-height:52vh;overflow:auto;padding:8px 16px 16px}
+.fs-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-left:3px solid var(--g-bd);background:#fff;border-bottom:1px solid var(--bd);padding:11px 12px}
+.fs-row:hover{background:var(--g-50)}
 @media(max-width:900px){.rb-wrap{grid-template-columns:1fr}}
 `
