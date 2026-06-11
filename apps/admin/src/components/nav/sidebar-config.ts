@@ -257,7 +257,7 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping' },
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations' },
             { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides' },
-            { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/sample-settings' },
+            { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings' },
           ],
         },
         { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },

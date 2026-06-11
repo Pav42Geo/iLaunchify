@@ -47,7 +47,7 @@ export async function saveSampleSettings(input: SampleSettingsValues): Promise<R
       action: 'SAMPLE_SETTINGS_UPDATED',
       payload: data,
     })
-    revalidatePath('/sample-settings')
+    revalidatePath('/order-settings/sample-settings')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not save settings: ${(err as Error).message}` }
