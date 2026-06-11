@@ -125,7 +125,18 @@ export function RecipeBuilderStep({
     return { name: l?.name ?? '', per100g: l?.per100g ?? {}, densityGPerMl: undefined, cents: l?.cents ?? 0 }
   }
   function handlePick(picked: IngredientResult) {
-    if (rows.some((r) => r.ingId === picked.id && r.category === addCat)) { toast.error(`${picked.internalName} is already added.`); return }
+    // Duplicate guard — flag the same ingredient anywhere in the recipe, not just
+    // the section being added to, so a base ingredient can't be re-added as an
+    // optional (and vice-versa) by mistake.
+    const existing = rows.find((r) => r.ingId === picked.id)
+    if (existing) {
+      toast.error(
+        existing.category === addCat
+          ? `${picked.internalName} is already added.`
+          : `${picked.internalName} is already in your ${existing.category === 'base' ? 'main' : 'optional'} ingredients.`,
+      )
+      return
+    }
     startPick(async () => {
       const res = await getIngredientNutrition(picked.id)
       setRows((rs) => [...rs, {
@@ -368,6 +379,51 @@ export function RecipeBuilderStep({
             </div>
             <div className="costfoot"><span>Per serving cost</span><b>${perServingCost.toFixed(3)}</b></div>
           </div>
+
+          {/* Nutrition Breakdown — per-ingredient contribution to the batch (base
+              ingredients, waste-adjusted). Helps the manufacturer see which slot
+              drives each macro before the label rounds it. */}
+          {base.length > 0 && (
+            <div className="rb-card">
+              <div className="rb-h">▦ Nutrition Breakdown</div>
+              <p className="muted tiny" style={{ margin: '0 0 8px' }}>
+                Each base ingredient&apos;s contribution to the whole batch (waste-adjusted, before serving math).
+              </p>
+              <table>
+                <thead><tr><th>Ingredient</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Carbs</th><th className="r">Fat</th><th className="r">Sugars</th></tr></thead>
+                <tbody>
+                  {base.map((r) => {
+                    const d = rowData(r)
+                    const grams = (r.unit === 'ml' ? r.qty * (d.densityGPerMl ?? 1) : r.qty) * (1 - r.waste / 100)
+                    const c = (k: string) => ((d.per100g[k] ?? 0) * grams) / 100
+                    return (
+                      <tr key={r.uid}>
+                        <td>{d.name || r.ingId}</td>
+                        <td className="r">{Math.round(c('calories'))}</td>
+                        <td className="r">{c('protein').toFixed(1)} g</td>
+                        <td className="r">{c('totalCarbohydrate').toFixed(1)} g</td>
+                        <td className="r">{c('totalFat').toFixed(1)} g</td>
+                        <td className="r">{c('totalSugars').toFixed(1)} g</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td className="grn">Batch total</td>
+                    {(['calories', 'protein', 'totalCarbohydrate', 'totalFat', 'totalSugars'] as const).map((k) => {
+                      const total = base.reduce((sum, r) => {
+                        const d = rowData(r)
+                        const grams = (r.unit === 'ml' ? r.qty * (d.densityGPerMl ?? 1) : r.qty) * (1 - r.waste / 100)
+                        return sum + ((d.per100g[k] ?? 0) * grams) / 100
+                      }, 0)
+                      return <td key={k} className="r grn">{k === 'calories' ? Math.round(total) : `${total.toFixed(1)} g`}</td>
+                    })}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* RIGHT — live label */}
