@@ -72,10 +72,46 @@ In the production checkout (`apps/creator/src/app/(checkout)/.../cart-actions.ts
 4. **Idempotency**: guard against double-applying on webhook retries (the global
    event-id dedupe from Tier 1.4).
 
-## Open decisions for Pavel
+## Decisions — LOCKED (Pavel 2026-06-10)
 
-- Credit applies to subtotal **only**, or also offsets the platform fee? (Default:
-  subtotal only; partner payout unaffected.)
-- Credit **expiry** (e.g. 90 days)? Today `expiresAt` is null = never.
-- Does a refunded/cancelled sample **void** its credit (`status=VOID`)? (Recommended yes.)
-- BRANDED `dielineReady` — wire to the dieline compliance signal when #36 lands.
+1. **Credit applies to subtotal + platform fee** (not shipping). The checkout
+   passes `creditableBase = productionSubtotalCents + platformFeeCents` into
+   `applySampleCredit()`; partner payout stays whole, iLaunchify absorbs the
+   credit against its fee + the subtotal.
+2. **Credit expires 90 days after the sample is paid.** Use
+   `mintSampleCredit(subtotal, opt, paidAtMs)` (in `@ilaunchify/orders`) — it
+   returns `{ amountCents, expiresAtMs }` with the cap + `SAMPLE_CREDIT_EXPIRY_DAYS`
+   applied. Persist `expiresAt = new Date(expiresAtMs)`. The apply engine already
+   treats past-`expiresAt` credit as unusable; a sweep job (or lazy check) flips
+   stale rows to `status=EXPIRED`.
+3. **A refunded/cancelled sample voids its credit** → set `status=VOID`,
+   `remainingCents=0` in the refund handler (and never if already APPLIED to a
+   placed production order — handle that as a clawback edge later).
+4. **Branded samples are allowed now** — `dielineReady` is `true` in the loader.
+   Partners supply packaging out-of-band until the die-line flow (#36) ships; then
+   re-gate on the real compliance signal. The card still renders a locked state if
+   it flips back.
+
+### Already wired for these decisions
+- `mintSampleCredit()` + `SAMPLE_CREDIT_EXPIRY_DAYS=90` — credit amount + expiry.
+- `applySampleCredit()` — agnostic to the base; pass subtotal+fee per decision 1.
+- Loader `dielineReady=true` — Branded unlocked.
+- **Webhook credit lifecycle DONE** (`packages/payments/src/webhook-handlers.ts`):
+  - `onPaymentSucceeded` branches on `Order.orderType` — a paid SAMPLE mints its
+    `SampleCredit` via `mintCreditForPaidSample()` (idempotent on `sourceOrderId`)
+    and **skips `createDispatches()`**; PRODUCTION unchanged.
+  - `onChargeRefunded` voids unused (`AVAILABLE`) sample credit → `VOID`.
+
+### Remaining (the actual build)
+- **Task A — `createSampleOrder` action.** Open design question first: a SAMPLE
+  order needs an `Order` + `OrderItem` with a `productId`. UNBRANDED is recipe-only
+  (could attach to the marketplace `ProductTemplate` via a lightweight Product), but
+  BRANDED needs the creator's customised `Product`. Decide the attachment model,
+  then mirror `placeOrderFromCheckoutDraft`: set `orderType=SAMPLE` + `sampleKind`,
+  **no MOQ**, single `manufacturerServiceId`, `createCheckoutSession` (the webhook
+  already finishes the loop). Lives in apps/creator; the marketplace CTA navigates
+  there (cross-app server action isn't viable from apps/marketing).
+- **Task B — production-checkout consumption.** In `cart-actions.ts`, load the
+  creator+brand+template `AVAILABLE` credits, `applySampleCredit(subtotal+fee, …)`,
+  reduce `totalCents`, persist `consumed` (deduct + flip `APPLIED`/`appliedOrderId`),
+  AuditLog. Use the Tier-1.4 event dedupe to avoid double-apply on retries.

@@ -22,7 +22,7 @@
 //       the /settings/plan UI reflects pending cancellations
 
 import { prisma } from '@ilaunchify/db'
-import { createDispatches } from '@ilaunchify/orders'
+import { createDispatches, mintSampleCredit } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { appLogger } from '@ilaunchify/logger'
 import type Stripe from 'stripe'
@@ -177,8 +177,89 @@ async function onPaymentSucceeded(pi: Stripe.PaymentIntent) {
     })
   })
 
+  // Branch on order type (Pavel 2026-06-10). A SAMPLE order mints its credit
+  // (when the partner enabled it) and does NOT enter the multi-partner production
+  // dispatch graph. PRODUCTION orders route exactly as before. Cast-guarded —
+  // orderType/SampleCredit land on the client after the sample-policy migration.
+  const typed = await (prisma as unknown as {
+    order: { findUnique: (a: unknown) => Promise<{ orderType: string | null } | null> }
+  }).order
+    .findUnique({ where: { id: orderId }, select: { orderType: true } })
+    .catch(() => null)
+
+  if (typed?.orderType === 'SAMPLE') {
+    await mintCreditForPaidSample(orderId)
+    return
+  }
+
   // Routing: create the two OrderDispatches. Auto-holds the order if no match.
   await createDispatches({ orderId })
+}
+
+/** Mint the SampleCredit for a freshly-paid SAMPLE order, when the product's
+ *  ProductSampleOption granted credit (capped, 90-day expiry per
+ *  `mintSampleCredit`). Idempotent via the unique `sourceOrderId`. Cast-guarded;
+ *  failures are logged, not thrown (the sample is already paid). */
+async function mintCreditForPaidSample(orderId: string): Promise<void> {
+  try {
+    const p = prisma as unknown as {
+      order: {
+        findUnique: (a: unknown) => Promise<{
+          brandId: string
+          creatorUserId: string
+          subtotalCents: number
+          sampleKind: 'UNBRANDED' | 'BRANDED' | null
+          paidAt: Date | null
+          items: Array<{ product: { productTemplateId: string | null } | null }>
+        } | null>
+      }
+      productSampleOption: {
+        findUnique: (a: unknown) => Promise<{ creditTowardFirstOrder: boolean; creditCapCents: number | null } | null>
+      }
+      sampleCredit: { upsert: (a: unknown) => Promise<unknown> }
+    }
+
+    const order = await p.order.findUnique({
+      where: { id: orderId },
+      select: {
+        brandId: true,
+        creatorUserId: true,
+        subtotalCents: true,
+        sampleKind: true,
+        paidAt: true,
+        items: { take: 1, select: { product: { select: { productTemplateId: true } } } },
+      },
+    })
+    if (!order || !order.sampleKind) return
+    const productTemplateId = order.items[0]?.product?.productTemplateId
+    if (!productTemplateId) return
+
+    const opt = await p.productSampleOption.findUnique({
+      where: { productTemplateId_kind: { productTemplateId, kind: order.sampleKind } },
+      select: { creditTowardFirstOrder: true, creditCapCents: true },
+    })
+    if (!opt) return
+
+    const minted = mintSampleCredit(order.subtotalCents, opt, (order.paidAt ?? new Date()).getTime())
+    if (!minted) return
+
+    await p.sampleCredit.upsert({
+      where: { sourceOrderId: orderId }, // unique → idempotent on webhook retries
+      update: {},
+      create: {
+        creatorUserId: order.creatorUserId,
+        brandId: order.brandId,
+        productTemplateId,
+        sourceOrderId: orderId,
+        amountCents: minted.amountCents,
+        remainingCents: minted.amountCents,
+        status: 'AVAILABLE',
+        expiresAt: new Date(minted.expiresAtMs),
+      },
+    })
+  } catch (err) {
+    console.error('[webhook] mintCreditForPaidSample failed:', (err as Error).message)
+  }
 }
 
 async function onChargeRefunded(charge: Stripe.Charge) {
@@ -190,6 +271,15 @@ async function onChargeRefunded(charge: Stripe.Charge) {
     where: { id: orderId },
     data: { status: 'REFUNDED' },
   }).catch(() => {/* ignore not-found */})
+
+  // Refunding a SAMPLE voids its unused credit (Pavel 2026-06-10). APPLIED credit
+  // (already consumed on a placed production order) is left for a later clawback
+  // pass. No-op for production orders. Cast-guarded.
+  await (prisma as unknown as {
+    sampleCredit: { updateMany: (a: unknown) => Promise<unknown> }
+  }).sampleCredit
+    .updateMany({ where: { sourceOrderId: orderId, status: 'AVAILABLE' }, data: { status: 'VOID', remainingCents: 0 } })
+    .catch(() => {/* ignore — not a sample / no credit */})
 }
 
 async function onTransferEvent(_event: Stripe.Event) {
