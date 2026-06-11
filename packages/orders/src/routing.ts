@@ -13,7 +13,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
-import { pickBestMatch, rankPartnerMatches, type MatchCandidate } from './scoring'
+import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 
 export interface RoutingResult {
   ok: true
@@ -40,6 +40,8 @@ export async function findRouting(params: {
   destinationCountry?: string | null
   destinationRegionId?: string | null
   targetMarketId?: string | null
+  /** Admin-tunable scoring weights (OrderSettings). */
+  weights?: MatchWeights
 }): Promise<RoutingResult | RoutingFailure> {
   const product = await prisma.product.findUnique({
     where: { id: params.productId },
@@ -116,6 +118,7 @@ export async function findRouting(params: {
     destinationCountry: params.destinationCountry,
     destinationRegionId: params.destinationRegionId,
     targetMarketId: params.targetMarketId,
+    weights: params.weights,
   })
   const manufacturer = gated.find((s) => s.id === best?.serviceId) ?? gated[0]!
 
@@ -186,6 +189,8 @@ export function estimateDispatchCosts(params: {
 export async function createDispatches(params: {
   orderId: string
   acceptWindowHours?: number
+  /** Admin-tunable partner-match scoring weights (OrderSettings). */
+  weights?: MatchWeights
 }): Promise<{ ok: true } | { ok: false; reason: string; message: string }> {
   const order = await prisma.order.findUnique({
     where: { id: params.orderId },
@@ -204,6 +209,7 @@ export async function createDispatches(params: {
   const routing = await findRouting({
     productId: item.productId,
     quantity: item.quantity,
+    weights: params.weights,
   })
 
   if (!routing.ok) {

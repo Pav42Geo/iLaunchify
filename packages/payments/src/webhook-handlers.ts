@@ -193,9 +193,17 @@ async function onPaymentSucceeded(pi: Stripe.PaymentIntent) {
   }
 
   // Routing: create the two OrderDispatches. Auto-holds the order if no match.
-  // Accept window is admin-tunable via OrderSettings.
+  // Accept window + partner-match scoring weights are admin-tunable (OrderSettings).
   const orderSettings = await getOrderSettings()
-  await createDispatches({ orderId, acceptWindowHours: orderSettings.acceptWindowHours })
+  await createDispatches({
+    orderId,
+    acceptWindowHours: orderSettings.acceptWindowHours,
+    weights: {
+      capability: orderSettings.capabilityWeightPct,
+      proximity: orderSettings.proximityWeightPct,
+      cert: orderSettings.certWeightPct,
+    },
+  })
 }
 
 /** Mint the SampleCredit for a freshly-paid SAMPLE order, when the product's

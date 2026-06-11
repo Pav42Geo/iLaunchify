@@ -38,6 +38,8 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('acceptWindowHours', 1, 720)
     set('maxReroutes', 0, 20)
     set('capabilityWeightPct', 0, 100)
+    set('proximityWeightPct', 0, 100)
+    set('certWeightPct', 0, 100)
     set('autoCancelAfterHours', 1, 2160)
     set('flatShippingBaseCents', 0, 10_000_00)
     set('flatShippingPerUnitCents', 0, 10_000_00)

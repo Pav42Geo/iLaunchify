@@ -85,28 +85,38 @@ export function FeesForm({ initial }: { initial: OrderSettingsValues }) {
 export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
   const [acceptWindowHours, setAcc] = React.useState(initial.acceptWindowHours)
   const [maxReroutes, setRer] = React.useState(initial.maxReroutes)
-  const [capabilityWeightPct, setCap] = React.useState(initial.capabilityWeightPct)
   const [autoCancelAfterHours, setAc] = React.useState(initial.autoCancelAfterHours)
+  const [capabilityWeightPct, setCap] = React.useState(initial.capabilityWeightPct)
+  const [proximityWeightPct, setProx] = React.useState(initial.proximityWeightPct)
+  const [certWeightPct, setCert] = React.useState(initial.certWeightPct)
   const { pending, status, setStatus, save } = useSaver('routing')
+  const wSum = capabilityWeightPct + proximityWeightPct + certWeightPct
+  const norm = (n: number) => (wSum > 0 ? `${Math.round((n / wSum) * 100)}%` : '—')
   return (
     <div className="space-y-5">
       <Card icon={Workflow} title="Dispatch windows" desc="How long partners get to accept, and when an order auto-holds or cancels.">
-        <Field label="Partner accept window (hours)" hint="Time a partner has to accept a dispatch before it reroutes.">
+        <Field label="Partner accept window (hours)" hint="Time a partner has to accept a dispatch before it times out.">
           <input className={NUM} type="number" min={1} max={720} value={acceptWindowHours} onChange={(e) => { setAcc(intOr(e, 1)); setStatus(null) }} />
         </Field>
-        <Field label="Max auto-reroutes" hint="Reroute attempts before the order holds for admin.">
+        <Field label="Max auto-reroutes" hint="Reroute attempts before the order holds for admin. (Not yet enforced — V1 reroute is manual.)">
           <input className={NUM} type="number" min={0} max={20} value={maxReroutes} onChange={(e) => { setRer(intOr(e, 0)); setStatus(null) }} />
         </Field>
-        <Field label="Auto-cancel after (hours)" hint="Unpaid / stuck orders auto-cancel past this age.">
+        <Field label="Auto-cancel after (hours)" hint="Unpaid / stuck orders auto-cancel past this age. (Not yet enforced — future job.)">
           <input className={NUM} type="number" min={1} max={2160} value={autoCancelAfterHours} onChange={(e) => { setAc(intOr(e, 1)); setStatus(null) }} />
         </Field>
       </Card>
-      <Card icon={Workflow} title="Match scoring" desc="How the engine ranks partners for a dispatch.">
-        <Field label="Capability weight (%)" hint={`Capability ${capabilityWeightPct}% · proximity ${100 - capabilityWeightPct}%`}>
+      <Card icon={Workflow} title="Match scoring weights" desc="How the engine ranks partners for a dispatch. Weights are relative — they're renormalized over the dimensions that apply to each order.">
+        <Field label="Capability" hint={`Capacity headroom above the order qty · ${norm(capabilityWeightPct)} effective`}>
           <input className={NUM} type="number" min={0} max={100} value={capabilityWeightPct} onChange={(e) => { setCap(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))); setStatus(null) }} />
         </Field>
+        <Field label="Proximity" hint={`Region/country closeness to the destination · ${norm(proximityWeightPct)} effective`}>
+          <input className={NUM} type="number" min={0} max={100} value={proximityWeightPct} onChange={(e) => { setProx(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))); setStatus(null) }} />
+        </Field>
+        <Field label="Certification" hint={`Holds an active cert for the target market · ${norm(certWeightPct)} effective`}>
+          <input className={NUM} type="number" min={0} max={100} value={certWeightPct} onChange={(e) => { setCert(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))); setStatus(null) }} />
+        </Field>
       </Card>
-      <SaveBar pending={pending} status={status} onSave={() => save({ acceptWindowHours, maxReroutes, capabilityWeightPct, autoCancelAfterHours })} />
+      <SaveBar pending={pending} status={status} onSave={() => save({ acceptWindowHours, maxReroutes, autoCancelAfterHours, capabilityWeightPct, proximityWeightPct, certWeightPct })} />
     </div>
   )
 }

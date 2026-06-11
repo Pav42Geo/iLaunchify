@@ -24,6 +24,12 @@ export interface MatchCandidate {
   certifiedMarketIds: string[]
 }
 
+export interface MatchWeights {
+  capability: number
+  proximity: number
+  cert: number
+}
+
 export interface MatchContext {
   quantity: number
   /** Optional — proximity is scored only when a destination is known. */
@@ -31,6 +37,9 @@ export interface MatchContext {
   destinationRegionId?: string | null
   /** Optional — cert coverage is scored only when a target market is given. */
   targetMarketId?: string | null
+  /** Admin-tunable dimension weights (OrderSettings). Raw magnitudes — the score
+   *  renormalizes by the applicable weights, so percentages work directly. */
+  weights?: MatchWeights
 }
 
 export interface MatchScore {
@@ -94,15 +103,18 @@ export function scorePartnerMatch(candidate: MatchCandidate, ctx: MatchContext):
       : 0
     : null
 
-  let sum = capability * WEIGHTS.capability
-  let wsum = WEIGHTS.capability
+  // Admin-tunable weights override the defaults; the renormalization below keeps
+  // the total in 0..1 regardless of the raw magnitudes used.
+  const w = ctx.weights ?? WEIGHTS
+  let sum = capability * w.capability
+  let wsum = w.capability
   if (proximity !== null) {
-    sum += proximity * WEIGHTS.proximity
-    wsum += WEIGHTS.proximity
+    sum += proximity * w.proximity
+    wsum += w.proximity
   }
   if (cert !== null) {
-    sum += cert * WEIGHTS.cert
-    wsum += WEIGHTS.cert
+    sum += cert * w.cert
+    wsum += w.cert
   }
 
   return {

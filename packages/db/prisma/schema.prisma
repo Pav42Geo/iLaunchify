@@ -2047,8 +2047,12 @@ model OrderSettings {
   // ---- Partner routing & dispatch ----
   acceptWindowHours    Int @default(24) // partner accept window per dispatch (was DEFAULT_ACCEPT_WINDOW_HOURS)
   maxReroutes          Int @default(3) // max auto-reroutes before the order holds (was MAX_REROUTES)
-  capabilityWeightPct  Int @default(60) // match scoring: capability vs proximity (proximity = 100 − this)
-  autoCancelAfterHours Int @default(72) // unpaid/stuck order auto-cancel window
+  // Partner-match scoring weights (raw magnitudes; the scorer renormalizes by the
+  // applicable dimensions). Defaults mirror the previous hard-coded 0.40/0.35/0.25.
+  capabilityWeightPct  Int @default(40) // capacity headroom above order qty
+  proximityWeightPct   Int @default(35) // region/country closeness to destination
+  certWeightPct        Int @default(25) // holds an active cert for the target market
+  autoCancelAfterHours Int @default(72) // unpaid/stuck order auto-cancel window (no consumer yet)
 
   // ---- Shipping & fulfillment ----
   flatShippingBaseCents      Int  @default(0) // flat base added to every order

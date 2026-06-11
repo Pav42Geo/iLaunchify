@@ -26,7 +26,7 @@ export {
   capabilityScore,
   proximityScore,
 } from './scoring'
-export type { MatchCandidate, MatchContext, MatchScore } from './scoring'
+export type { MatchCandidate, MatchContext, MatchScore, MatchWeights } from './scoring'
 export { runAutoCancel } from './auto-cancel'
 export type { AutoCancelResult } from './auto-cancel'
 export {
