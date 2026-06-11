@@ -121,17 +121,23 @@ const APPROVAL_TONE: Record<string, { bg: string; label: string }> = {
 // Page
 // -----------------------------------------------------------------------------
 
+type OrderTypeFilter = 'PRODUCTION' | 'SAMPLE'
+
 interface PageProps {
-  searchParams: Promise<{ status?: string; sort?: string }>
+  searchParams: Promise<{ status?: string; sort?: string; type?: string }>
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
-  const { status: statusParam, sort: sortParam } = await searchParams
+  const { status: statusParam, sort: sortParam, type: typeParam } = await searchParams
   const status =
     statusParam && (STATUS_LIST as string[]).includes(statusParam)
       ? (statusParam as OrderStatus)
       : null
   const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
+  const typeFilter: OrderTypeFilter | null =
+    typeParam === 'SAMPLE' ? 'SAMPLE' : typeParam === 'PRODUCTION' ? 'PRODUCTION' : null
+  // orderType is cast-guarded (post-dates the generated client until migration).
+  const rowWhere = { ...(status ? { status } : {}), ...(typeFilter ? { orderType: typeFilter } : {}) }
 
   // Run KPI aggregates + filtered fetch + per-status counts in parallel.
   const last30 = new Date(Date.now() - 30 * 24 * 3600 * 1000)
@@ -143,6 +149,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     revenue30,
     urgentCount,
     statusCounts,
+    sampleCount,
     rows,
   ] = await Promise.all([
     prisma.order.count(),
@@ -155,8 +162,11 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     }),
     prisma.order.count({ where: { status: { in: URGENT_STATUSES } } }),
     prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
+    (prisma as unknown as { order: { count: (a: unknown) => Promise<number> } }).order
+      .count({ where: { orderType: 'SAMPLE' } as never })
+      .catch(() => 0),
     prisma.order.findMany({
-      where: status ? { status } : {},
+      where: rowWhere as never,
       include: {
         brand: { select: { name: true, handle: true } },
         creator: { select: { email: true, name: true } },
@@ -204,17 +214,21 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         </Link>
       )}
 
+      {/* TYPE FILTER — production vs sample orders */}
+      <TypeChips active={typeFilter} status={status} sort={sort} totalCount={totalCount} sampleCount={sampleCount} />
+
       {/* FILTER CHIPS */}
       <FilterChips
         active={status}
         totalCount={totalCount}
         statusCountMap={statusCountMap}
         currentSort={sort}
+        typeFilter={typeFilter}
       />
 
       {/* TABLE */}
       {rows.length === 0 ? (
-        <EmptyState filtered={status !== null} />
+        <EmptyState filtered={status !== null || typeFilter !== null} />
       ) : (
         <OrdersTable rows={rows} currentSort={sort} activeStatus={status} />
       )}
@@ -313,11 +327,13 @@ function FilterChips({
   totalCount,
   statusCountMap,
   currentSort,
+  typeFilter,
 }: {
   active: OrderStatus | null
   totalCount: number
   statusCountMap: Map<string, number>
   currentSort: 'newest' | 'oldest'
+  typeFilter: OrderTypeFilter | null
 }) {
   const filters: Array<{ value: OrderStatus | null; label: string; count: number }> = [
     { value: null, label: 'All', count: totalCount },
@@ -332,6 +348,7 @@ function FilterChips({
     const params = new URLSearchParams()
     if (active) params.set('status', active)
     if (sort !== 'newest') params.set('sort', sort)
+    if (typeFilter) params.set('type', typeFilter)
     const q = params.toString()
     return q ? `/orders?${q}` : '/orders'
   }
@@ -344,6 +361,7 @@ function FilterChips({
           const params = new URLSearchParams()
           if (f.value) params.set('status', f.value)
           if (currentSort !== 'newest') params.set('sort', currentSort)
+          if (typeFilter) params.set('type', typeFilter)
           const q = params.toString()
           const href = q ? `/orders?${q}` : '/orders'
           return (
@@ -380,6 +398,61 @@ function FilterChips({
         <ArrowDownUp className="h-3.5 w-3.5" />
         {currentSort === 'newest' ? 'Newest first' : 'Oldest first'}
       </Link>
+    </div>
+  )
+}
+
+// =============================================================================
+// Type chips — production vs sample
+// =============================================================================
+
+function TypeChips({
+  active,
+  status,
+  sort,
+  totalCount,
+  sampleCount,
+}: {
+  active: OrderTypeFilter | null
+  status: OrderStatus | null
+  sort: 'newest' | 'oldest'
+  totalCount: number
+  sampleCount: number
+}) {
+  const href = (type: OrderTypeFilter | null) => {
+    const p = new URLSearchParams()
+    if (status) p.set('status', status)
+    if (sort !== 'newest') p.set('sort', sort)
+    if (type) p.set('type', type)
+    const q = p.toString()
+    return q ? `/orders?${q}` : '/orders'
+  }
+  const items: Array<{ value: OrderTypeFilter | null; label: string; count: number }> = [
+    { value: null, label: 'All types', count: totalCount },
+    { value: 'PRODUCTION', label: 'Production', count: Math.max(0, totalCount - sampleCount) },
+    { value: 'SAMPLE', label: 'Samples', count: sampleCount },
+  ]
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">Type</span>
+      {items.map((it) => {
+        const isActive = active === it.value
+        return (
+          <Link
+            key={String(it.value)}
+            href={href(it.value)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+              isActive
+                ? 'border-pink-500 bg-pink-50 text-pink-700'
+                : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:text-ink-900',
+            )}
+          >
+            {it.label}
+            <span className="text-[10.5px] tabular-nums text-ink-400">{it.count}</span>
+          </Link>
+        )
+      })}
     </div>
   )
 }
@@ -446,6 +519,11 @@ function OrdersTable({
                   >
                     #{o.id.slice(-8)}
                   </Link>
+                  {(o as { orderType?: string }).orderType === 'SAMPLE' && (
+                    <span className="mt-1 inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-violet-700">
+                      Sample{(o as { sampleKind?: string | null }).sampleKind ? ` · ${String((o as { sampleKind?: string | null }).sampleKind).toLowerCase()}` : ''}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 align-top">
                   <p className="inline-flex items-center gap-1.5 font-medium text-ink-900">
