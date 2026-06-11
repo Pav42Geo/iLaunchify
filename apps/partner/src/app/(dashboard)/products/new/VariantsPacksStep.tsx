@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, type FeeInput, type InitialDraft } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, type FeeInput, type SampleOptionInput, type InitialDraft } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -144,6 +144,13 @@ export function VariantsPacksStep({
       {selected && (
         <div className="card" style={{ marginBottom: 16 }}>
           <FeesCard draftId={draftId} initialFees={initial?.fees} />
+        </div>
+      )}
+
+      {/* Samples — partner sample policy (Pavel 2026-06-10) */}
+      {selected && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <SamplesCard draftId={draftId} initialOptions={initial?.sampleOptions} isMultiFlavor={selected.flavorMode === 'MULTI'} />
         </div>
       )}
 
@@ -376,6 +383,140 @@ function FeesCard({ draftId, initialFees }: { draftId: string | null; initialFee
         </table>
       )}
       <button className="rb-btn-add" style={{ marginTop: 10 }} onClick={() => setFees([...fees, { label: '', basis: 'PER_UNIT', amountCents: 0, waivedAboveQty: null }])}>+ Add fee</button>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Samples — partner sample policy (Pavel 2026-06-10). Two kinds the partner can
+// offer + price per product: UNBRANDED (product only) and BRANDED (with the
+// creator's packaging). Per-flavor + optional sampler-set pricing; small sample
+// MOQ + own lead time; partner-optional credit toward the first production order.
+// ---------------------------------------------------------------------------
+interface SampleRow {
+  kind: 'UNBRANDED' | 'BRANDED'
+  enabled: boolean
+  perFlavorCents: number | null
+  samplerSetCents: number | null
+  sampleMoq: number
+  maxUnitsPerFlavor: number | null
+  leadTimeDays: number
+  creditTowardFirstOrder: boolean
+  creditCapCents: number | null
+  maxPerCreatorPerPeriod: number | null
+}
+function defaultSampleRow(kind: 'UNBRANDED' | 'BRANDED'): SampleRow {
+  return { kind, enabled: false, perFlavorCents: null, samplerSetCents: null, sampleMoq: 1, maxUnitsPerFlavor: null, leadTimeDays: kind === 'BRANDED' ? 28 : 14, creditTowardFirstOrder: false, creditCapCents: null, maxPerCreatorPerPeriod: null }
+}
+const dollars = (c: number | null) => (c == null || c === 0 ? '—' : `$${(c / 100).toFixed(2)}`)
+const centsField = (v: number | null, set: (n: number | null) => void, w = 100) => (
+  <input className="input" type="number" min={0} value={v ?? ''} placeholder="—" style={{ width: w }} onChange={(e) => set(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0))} />
+)
+
+function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; onChange: (r: SampleRow) => void; isMultiFlavor: boolean }) {
+  const patch = (p: Partial<SampleRow>) => onChange({ ...row, ...p })
+  const branded = row.kind === 'BRANDED'
+  return (
+    <div style={{ marginTop: 12, border: '1px solid var(--ink-200)', borderRadius: 14, padding: 14, background: 'var(--ink-50)' }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div>
+          <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
+            <input type="checkbox" checked={row.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
+            {branded ? 'Branded sample' : 'Unbranded sample'}
+          </label>
+          <div className="tiny muted" style={{ marginTop: 3, maxWidth: 440 }}>
+            {branded
+              ? 'Product in the creator’s packaging + artwork (a “golden sample”). Gates on the dieline passing the compliance check before it can be produced.'
+              : 'The recipe in plain / generic packaging — “taste the formulation.” Ships before artwork exists; stamped NOT FOR RESALE.'}
+          </div>
+        </div>
+        {row.enabled && <span className="pill" style={{ padding: '1px 8px', fontSize: 10 }}>{isMultiFlavor ? `${dollars(row.perFlavorCents)}/flavor` : dollars(row.perFlavorCents)}</span>}
+      </div>
+
+      {row.enabled && (
+        <>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12 }}>
+            <Field label={isMultiFlavor ? 'Per-flavor price (¢)' : 'Sample unit price (¢)'} hint={dollars(row.perFlavorCents)}>
+              {centsField(row.perFlavorCents, (n) => patch({ perFlavorCents: n }))}
+            </Field>
+            {isMultiFlavor && (
+              <Field label="Sampler-set price (¢)" hint={`all flavors · ${dollars(row.samplerSetCents)}`}>
+                {centsField(row.samplerSetCents, (n) => patch({ samplerSetCents: n }))}
+              </Field>
+            )}
+            <Field label="Sample MOQ" hint="min units / order"><input className="input" type="number" min={1} value={row.sampleMoq} onChange={(e) => patch({ sampleMoq: Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
+            <Field label="Lead time (days)"><input className="input" type="number" min={0} value={row.leadTimeDays} onChange={(e) => patch({ leadTimeDays: Math.max(0, parseInt(e.target.value, 10) || 0) })} /></Field>
+            {isMultiFlavor && (
+              <Field label="Max units / flavor" hint="optional cap"><input className="input" type="number" min={1} value={row.maxUnitsPerFlavor ?? ''} placeholder="—" onChange={(e) => patch({ maxUnitsPerFlavor: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
+            )}
+            <Field label="Max samples / creator" hint="abuse cap · optional"><input className="input" type="number" min={1} value={row.maxPerCreatorPerPeriod ?? ''} placeholder="∞" onChange={(e) => patch({ maxPerCreatorPerPeriod: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
+          </div>
+          <div className="row" style={{ gap: 16, marginTop: 10, alignItems: 'flex-end' }}>
+            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+              <input type="checkbox" checked={row.creditTowardFirstOrder} onChange={(e) => patch({ creditTowardFirstOrder: e.target.checked })} />
+              Credit sample cost toward the creator’s first production order
+            </label>
+            {row.creditTowardFirstOrder && (
+              <Field label="Credit cap (¢)" hint={`max · ${dollars(row.creditCapCents)} · blank = full`}>
+                {centsField(row.creditCapCents, (n) => patch({ creditCapCents: n }))}
+              </Field>
+            )}
+          </div>
+          {branded && <p className="tiny" style={{ marginTop: 8, color: 'var(--pink-700)' }}>ⓘ A branded sample can’t be produced until this product’s dieline passes the compliance check — the marketplace will keep it locked until then.</p>}
+        </>
+      )}
+    </div>
+  )
+}
+
+function SamplesCard({ draftId, initialOptions, isMultiFlavor }: { draftId: string | null; initialOptions?: InitialDraft['sampleOptions']; isMultiFlavor: boolean }) {
+  const seed = (kind: 'UNBRANDED' | 'BRANDED'): SampleRow => {
+    const found = (initialOptions ?? []).find((o) => o.kind === kind)
+    return found ? { ...defaultSampleRow(kind), ...found } : defaultSampleRow(kind)
+  }
+  const [unbranded, setUnbranded] = useState<SampleRow>(() => seed('UNBRANDED'))
+  const [branded, setBranded] = useState<SampleRow>(() => seed('BRANDED'))
+  const [samplesOn, setSamplesOn] = useState((initialOptions ?? []).some((o) => o.enabled))
+  const hydrated = useRef(false)
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (!hydrated.current) { hydrated.current = true; return }
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      // Always persist both rows (so configured prices survive a master toggle);
+      // the master switch gates each kind's effective `enabled`.
+      const payload: SampleOptionInput[] = [
+        { ...unbranded, enabled: samplesOn && unbranded.enabled },
+        { ...branded, enabled: samplesOn && branded.enabled },
+      ]
+      void saveSampleOptions(draftId, payload)
+    }, 800)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [samplesOn, unbranded, branded, draftId])
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <div className="section-title"><span className="ic">⚗</span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· let creators de-risk before a full run</span></div>
+        <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
+          <input type="checkbox" checked={samplesOn} onChange={(e) => setSamplesOn(e.target.checked)} /> Allow sample orders
+        </label>
+      </div>
+      <p className="tiny muted" style={{ marginTop: 4 }}>
+        Samples are produced to order and bypass the production MOQ. Pick which kinds you offer and price each.
+        {isMultiFlavor ? ' For multi-flavor products you can price per flavor and/or offer a flat all-flavors sampler set.' : ''}
+      </p>
+      {!samplesOn && <p className="tiny muted" style={{ marginTop: 10 }}>Sample orders are off for this product. Turn them on to let creators order a pre-production sample.</p>}
+      {samplesOn && (
+        <>
+          <SampleKindEditor row={unbranded} onChange={setUnbranded} isMultiFlavor={isMultiFlavor} />
+          <SampleKindEditor row={branded} onChange={setBranded} isMultiFlavor={isMultiFlavor} />
+          {!unbranded.enabled && !branded.enabled && <div className="warn">⚠ Samples are allowed but neither kind is enabled — enable Unbranded or Branded above, or turn samples off.</div>}
+        </>
+      )}
     </>
   )
 }

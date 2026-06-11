@@ -284,6 +284,7 @@ export interface InitialDraft {
   fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
   changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
   optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
+  sampleOptions: Array<{ kind: 'UNBRANDED' | 'BRANDED'; enabled: boolean; perFlavorCents: number | null; samplerSetCents: number | null; sampleMoq: number; maxUnitsPerFlavor: number | null; leadTimeDays: number; creditTowardFirstOrder: boolean; creditCapCents: number | null; maxPerCreatorPerPeriod: number | null }>
   pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
 }
 
@@ -311,6 +312,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
       changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
       optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
+      sampleOptions: Array<{ kind: 'UNBRANDED' | 'BRANDED'; enabled: boolean; perFlavorCents: number | null; samplerSetCents: number | null; sampleMoq: number; maxUnitsPerFlavor: number | null; leadTimeDays: number; creditTowardFirstOrder: boolean; creditCapCents: number | null; maxPerCreatorPerPeriod: number | null }>
       pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
       optionAxes: Array<{
         key: string; label: string; editableByCreator: boolean; affectsLabel: boolean; boundSlotId: string | null
@@ -335,6 +337,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
         changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
         optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
+        sampleOptions: { orderBy: { sortOrder: 'asc' }, select: { kind: true, enabled: true, perFlavorCents: true, samplerSetCents: true, sampleMoq: true, maxUnitsPerFlavor: true, leadTimeDays: true, creditTowardFirstOrder: true, creditCapCents: true, maxPerCreatorPerPeriod: true } },
         pricingTiers: { orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }], select: { minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true, fulfillmentMode: true } },
         optionAxes: {
           orderBy: { sortOrder: 'asc' },
@@ -410,6 +413,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       fees: (tpl.fees ?? []).map((f) => ({ label: f.label, basis: f.basis, amountCents: f.amountCents, waivedAboveQty: f.waivedAboveQty, sortOrder: f.sortOrder })),
       changeApprovalRules: (tpl.changeApprovalRules ?? []).map((r) => ({ changeType: r.changeType, requiredApprover: r.requiredApprover, sortOrder: r.sortOrder })),
       optionRules: (tpl.optionRules ?? []).map((r) => ({ kind: r.kind, whenValueId: r.whenValueId, targetValueId: r.targetValueId, message: r.message })),
+      sampleOptions: (tpl.sampleOptions ?? []).map((s) => ({ kind: s.kind, enabled: s.enabled, perFlavorCents: s.perFlavorCents, samplerSetCents: s.samplerSetCents, sampleMoq: s.sampleMoq, maxUnitsPerFlavor: s.maxUnitsPerFlavor, leadTimeDays: s.leadTimeDays, creditTowardFirstOrder: s.creditTowardFirstOrder, creditCapCents: s.creditCapCents, maxPerCreatorPerPeriod: s.maxPerCreatorPerPeriod })),
       pricingTiers: tpl.pricingTiers ?? [],
     }
   } catch (err) {
@@ -872,6 +876,60 @@ export async function saveFees(productTemplateId: string, fees: FeeInput[]): Pro
   } catch (err) {
     console.error('[saveFees] failed:', err)
     return { ok: false, error: `Could not save fees: ${(err as Error).message}` }
+  }
+}
+
+export interface SampleOptionInput {
+  kind: 'UNBRANDED' | 'BRANDED'
+  enabled: boolean
+  perFlavorCents: number | null
+  samplerSetCents: number | null
+  sampleMoq: number
+  maxUnitsPerFlavor: number | null
+  leadTimeDays: number
+  creditTowardFirstOrder: boolean
+  creditCapCents: number | null
+  maxPerCreatorPerPeriod: number | null
+}
+
+/** Replace the draft's sample policy (one row per kind). Partner-set, per product
+ *  (Pavel 2026-06-10). Cast-guarded — ProductSampleOption lands on the client after
+ *  the sample-policy migration. */
+export async function saveSampleOptions(productTemplateId: string, options: SampleOptionInput[]): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const nn = (v: number | null) => (v == null || !Number.isFinite(v) ? null : Math.max(0, Math.floor(v)))
+    const clean = options
+      .filter((o) => o.kind === 'UNBRANDED' || o.kind === 'BRANDED')
+      .map((o, i) => ({
+        productTemplateId,
+        kind: o.kind,
+        enabled: !!o.enabled,
+        perFlavorCents: nn(o.perFlavorCents),
+        samplerSetCents: nn(o.samplerSetCents),
+        sampleMoq: Math.max(1, Math.floor(o.sampleMoq || 1)),
+        maxUnitsPerFlavor: o.maxUnitsPerFlavor == null ? null : Math.max(1, Math.floor(o.maxUnitsPerFlavor)),
+        leadTimeDays: Math.max(0, Math.floor(o.leadTimeDays || 0)),
+        creditTowardFirstOrder: !!o.creditTowardFirstOrder,
+        creditCapCents: nn(o.creditCapCents),
+        maxPerCreatorPerPeriod: o.maxPerCreatorPerPeriod == null ? null : Math.max(1, Math.floor(o.maxPerCreatorPerPeriod)),
+        sortOrder: i,
+      }))
+
+    const p = prisma as unknown as { productSampleOption: { deleteMany: (a: unknown) => Promise<unknown>; createMany: (a: unknown) => Promise<unknown> } }
+    await p.productSampleOption.deleteMany({ where: { productTemplateId } })
+    if (clean.length) await p.productSampleOption.createMany({ data: clean })
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveSampleOptions] failed:', err)
+    return { ok: false, error: `Could not save sample policy: ${(err as Error).message}` }
   }
 }
 

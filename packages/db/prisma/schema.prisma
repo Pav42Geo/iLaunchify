@@ -2425,6 +2425,7 @@ model ProductTemplate {
   optionAxes                 ProductOptionAxis[]
   optionRules                ProductOptionRule[]
   fees                       ProductTemplateFee[]
+  sampleOptions              ProductSampleOption[]
   specSheets                 ProductSpecSheet[]
   changeApprovalRules        ProductChangeApprovalRule[]
   // V1 — product-plan additions 2026-06-01.
@@ -4324,6 +4325,53 @@ model ProductTemplateFee {
   productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
   createdAt         DateTime        @default(now())
 
+  @@index([productTemplateId])
+}
+
+/// Sample policy — the partner decides, per product, whether creators can order
+/// pre-production samples and at what price. Two kinds (Pavel 2026-06-10):
+///   UNBRANDED — the recipe in plain/generic packaging ("taste the formulation");
+///               ships before the dieline exists, stamped NOT FOR RESALE.
+///   BRANDED   — the product in the creator's packaging + artwork ("golden
+///               sample" / packaging proof); gated on the dieline passing the
+///               compliance check before it can be produced.
+/// Pricing fits the flavor pool: a per-flavor unit price PLUS an optional flat
+/// all-flavors sampler-set price. Samples are a distinct SAMPLE order type that
+/// bypasses the production MOQ (sampleMoq instead). Partners may credit the
+/// sample cost toward the creator's first production order (the conversion
+/// lever). One row per enabled kind. Cast-guarded until the migration lands.
+enum SampleKind {
+  UNBRANDED // product only — recipe in plain/generic packaging
+  BRANDED // product in the creator's packaging + artwork (gates on dieline)
+}
+
+model ProductSampleOption {
+  id                String     @id @default(cuid())
+  productTemplateId String
+  kind              SampleKind
+  enabled           Boolean    @default(true)
+
+  // ---- Pricing (fits the flavor pool) ----
+  perFlavorCents  Int? // price per flavor unit sampled
+  samplerSetCents Int? // optional flat all-flavors sampler-set price
+
+  // ---- Sample logistics (distinct from production) ----
+  sampleMoq         Int  @default(1) // min units per sample order (NOT the production MOQ)
+  maxUnitsPerFlavor Int? // cap per flavor per order; null = uncapped
+  leadTimeDays      Int  @default(14)
+
+  // ---- Credit-back (conversion lever) ----
+  creditTowardFirstOrder Boolean @default(false)
+  creditCapCents         Int? // max credit applied to the first production order; null = full
+
+  // ---- Abuse control ----
+  maxPerCreatorPerPeriod Int? // sample orders per creator per product per period; null = unlimited
+
+  sortOrder       Int             @default(0)
+  productTemplate ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+
+  @@unique([productTemplateId, kind])
   @@index([productTemplateId])
 }
 

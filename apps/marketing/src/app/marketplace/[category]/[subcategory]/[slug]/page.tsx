@@ -18,6 +18,7 @@ import {
 } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurator'
+import { SampleOrderCard } from '@/components/SampleOrderCard'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
@@ -30,6 +31,7 @@ import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getDecorationOfferings } from '@/lib/decoration-offerings-db'
 import { getProductRestrictions } from '@/lib/product-restrictions'
+import { getProductSampleOptions } from '@/lib/product-sample-options'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -108,6 +110,11 @@ export default async function ProductDetailPage({
   const pricingRows = pricingMatrix.rows
   // Per-tier fee % for the modal's Maker/Builder/Agency columns.
   const feePctByTier = await getCreatorFeePcts()
+
+  // Sample policy — enabled sample kinds the partner offers for this product
+  // (Pavel 2026-06-10). Empty → the "Order a sample" card hides (fixture-only /
+  // partner hasn't enabled samples).
+  const sampleData = await getProductSampleOptions(template.slug)
 
   // Cert strip. The authoritative signal is the product's EARNED certs —
   // VERIFIED PartnerCertificateInstances surfaced as admin-curated PNG badges
@@ -253,6 +260,19 @@ export default async function ProductDetailPage({
               isAuthenticated={isAuthenticated}
               decorationOfferings={decorationOfferings}
             />
+
+            {/* Order a sample — only when the partner enabled sample orders */}
+            {sampleData.options.length > 0 && (
+              <div className="mt-5">
+                <SampleOrderCard
+                  options={sampleData.options}
+                  flavorNames={sampleData.flavorNames}
+                  isMultiFlavor={sampleData.isMultiFlavor}
+                  dielineReady={sampleData.dielineReady}
+                  isAuthenticated={isAuthenticated}
+                />
+              </div>
+            )}
 
             <div className="flex items-center gap-4 mt-4 text-[13px] text-ink-600">
               <button className="inline-flex items-center gap-1.5 hover:text-pink-500 transition-colors">
