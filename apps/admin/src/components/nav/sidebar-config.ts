@@ -244,6 +244,14 @@ const PRIMARY: SidebarRegion = {
       icon: ShieldCheck,
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        {
+          kind: 'group',
+          label: 'Order Settings',
+          icon: ShoppingBag,
+          children: [
+            { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/sample-settings' },
+          ],
+        },
         { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
         { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
