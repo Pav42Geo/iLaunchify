@@ -19,7 +19,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { findRouting, estimateDispatchCosts } from '@ilaunchify/orders'
+import { findRouting, estimateDispatchCosts, applySampleCredit, type SampleCreditEntry } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
   createProductionSubscription,
@@ -211,7 +211,38 @@ export async function placeOrderFromCheckoutDraft(
   // --- 7. Platform fee ------------------------------------------------------
   const feeBase = productionTotalCents + shippingCents
   const platformFeeCents = Math.floor(feeBase * (PLATFORM_FEE_BPS / 10000))
-  const totalCents = productionTotalCents + shippingCents + platformFeeCents
+  const grossTotalCents = productionTotalCents + shippingCents + platformFeeCents
+
+  // --- 7b. Sample credit (Pavel 2026-06-10) — a paid sample mints credit toward
+  //         the creator's first production order. Decision: platform-funded +
+  //         partner-whole. The only Stripe-Connect-clean way to keep the partner
+  //         whole is to offset the PLATFORM FEE (application_fee can't go
+  //         negative), so per-order credit is capped at platformFeeCents and any
+  //         excess ROLLS OVER to the next order (no credit lost). Result: the
+  //         creator sees a lower platform fee, the partner still receives
+  //         productionTotal + shipping. Cast-guarded (SampleCredit post-dates the
+  //         generated client until the migration).
+  let sampleCreditAppliedCents = 0
+  let consumedCredits: Array<{ id: string; newRemainingCents: number; fullyUsed: boolean }> = []
+  if (product.productTemplateId && platformFeeCents > 0) {
+    const credits = await (prisma as unknown as {
+      sampleCredit: { findMany: (a: unknown) => Promise<Array<{ id: string; remainingCents: number; status: SampleCreditEntry['status']; expiresAt: Date | null }>> }
+    }).sampleCredit
+      .findMany({
+        where: { creatorUserId: user.id, brandId: product.brandId, productTemplateId: product.productTemplateId, status: 'AVAILABLE' },
+        orderBy: { createdAt: 'asc' }, // FIFO — spend oldest first
+        select: { id: true, remainingCents: true, status: true, expiresAt: true },
+      })
+      .catch(() => [] as Array<{ id: string; remainingCents: number; status: SampleCreditEntry['status']; expiresAt: Date | null }>)
+    const applied = applySampleCredit(
+      platformFeeCents,
+      credits.map((c) => ({ id: c.id, remainingCents: c.remainingCents, status: c.status, expiresAt: c.expiresAt })),
+    )
+    sampleCreditAppliedCents = applied.appliedCents
+    consumedCredits = applied.consumed.map((c) => ({ id: c.id, newRemainingCents: c.newRemainingCents, fullyUsed: c.fullyUsed }))
+  }
+  const applicationFeeCents = platformFeeCents - sampleCreditAppliedCents
+  const totalCents = grossTotalCents - sampleCreditAppliedCents
 
   // --- 8. Order + OrderItem in a single txn ---------------------------------
   const promo = state.cart.promoCode?.trim() ? state.cart.promoCode.trim() : null
@@ -270,6 +301,18 @@ export async function placeOrderFromCheckoutDraft(
       },
     })
 
+    // Consume the applied sample credit. The `status: 'AVAILABLE'` guard in the
+    // where-clause makes this a no-op if a concurrent order already spent it
+    // (no double-spend). Fully-used rows flip to APPLIED + link this order.
+    for (const c of consumedCredits) {
+      await (tx as unknown as { sampleCredit: { updateMany: (a: unknown) => Promise<unknown> } }).sampleCredit.updateMany({
+        where: { id: c.id, status: 'AVAILABLE' },
+        data: c.fullyUsed
+          ? { remainingCents: c.newRemainingCents, status: 'APPLIED', appliedOrderId: created.id }
+          : { remainingCents: c.newRemainingCents },
+      })
+    }
+
     // --- 9. Persist Proceed-at-my-risk ack on the latest DesignVersion ------
     //         (DS-69 reuse — only when blockings remained at My cart time).
     if (options.complianceAck?.acknowledged) {
@@ -322,6 +365,8 @@ export async function placeOrderFromCheckoutDraft(
       quantity: qty,
       subtotalCents: productionTotalCents,
       shippingCents,
+      platformFeeCents,
+      sampleCreditAppliedCents,
       totalCents,
       shipToType: shipTo.data.shipToType,
       surface: 'checkout-wizard',
@@ -337,9 +382,11 @@ export async function placeOrderFromCheckoutDraft(
   const sub = state.subscription
   if (sub.offerAccepted && sub.cadence) {
     const discountBp = Math.max(0, Math.min(10_000, sub.discountBp))
+    // Recurring runs use the GROSS total — the sample credit is a one-time
+    // first-order benefit and must not discount every subscription run.
     const perRunUnitCents = Math.max(
       0,
-      Math.round(totalCents * (10_000 - discountBp) / 10_000),
+      Math.round(grossTotalCents * (10_000 - discountBp) / 10_000),
     )
     try {
       const customerId = await getOrCreateCreatorCustomer({
@@ -370,7 +417,7 @@ export async function placeOrderFromCheckoutDraft(
             finishPartnerFinishIds: state.production.finishPartnerFinishIds,
             shipTo: shipTo.data,
           } as unknown as object,
-          subtotalCentsAtCreation: totalCents,
+          subtotalCentsAtCreation: grossTotalCents,
         },
       })
 
@@ -454,7 +501,7 @@ export async function placeOrderFromCheckoutDraft(
           quantity: 1,
         },
       ],
-      applicationFeeCents: platformFeeCents,
+      applicationFeeCents,
     })
   } catch (err) {
     await prisma.order.update({

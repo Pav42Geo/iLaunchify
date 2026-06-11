@@ -2009,6 +2009,30 @@ model SampleCredit {
   @@index([appliedOrderId])
 }
 
+/// Platform-wide sample-order policy knobs (Pavel 2026-06-11). Admin-tunable so
+/// the sample economics change without a deploy — the createSampleOrder action,
+/// production-checkout credit consumption, marketplace gating, and webhook mint
+/// all read from this. Singleton: exactly one row, keyed id = "default".
+model SampleSettings {
+  id String @id @default("default")
+
+  // ---- Credit-back ----
+  creditBackEnabled Boolean @default(true) // master switch; off = creator just pays for samples
+  creditExpiryDays  Int     @default(90) // days a minted credit stays usable
+  creditMaxCapCents Int? // platform ceiling on a single sample's credit (null = none)
+
+  // ---- Sample economics ----
+  sampleFlatShippingCents Int @default(995) // flat sample shipping
+  samplePlatformFeeBps    Int @default(0) // platform fee on the sample order itself (basis points)
+
+  // ---- Guardrails ----
+  abuseWindowDays        Int     @default(30) // window for the per-creator sample cap
+  brandedRequiresDieline Boolean @default(false) // gate branded samples on an approved die-line
+
+  updatedAt   DateTime @updatedAt
+  updatedById String? // admin User who last changed it
+}
+
 enum OrderShipToType {
   CREATOR_ADDRESS // goods ship to the creator's own warehouse / address
   WAREHOUSE_PARTNER // goods ship to a connected WAREHOUSE partner service
