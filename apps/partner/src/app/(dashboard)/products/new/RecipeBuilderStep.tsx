@@ -194,6 +194,34 @@ export function RecipeBuilderStep({
 
   const ing = (id: string) => LIBRARY.find((l) => l.id === id)
   const [, startPick] = useTransition()
+  // Real per-flavor ingredient (MULTI products): each flavor column gets a
+  // distinct ingredient picked from the live catalog (replaces the demo
+  // library). The per100g cache feeds the per-flavor Facts columns.
+  const [flavorPickIdx, setFlavorPickIdx] = useState<number | null>(null)
+  const [flavorIng, setFlavorIng] = useState<Record<string, { name: string; per100g: Record<string, number> }>>({})
+  function pickFlavorIng(idx: number, picked: IngredientResult) {
+    startPick(async () => {
+      const res = await getIngredientNutrition(picked.id)
+      setFlavorIng((c) => ({ ...c, [picked.id]: { name: picked.internalName, per100g: res.ok ? res.data.per100g : {} } }))
+      setFlavors(flavors.map((x, j) => (j === idx ? { ...x, ingId: picked.id } : x)))
+      setFlavorPickIdx(null)
+    })
+  }
+  // Hydrate the cache for real flavor ids not yet fetched (resume). Demo/empty
+  // ids (no real Ingredient) simply resolve to no column until a real pick.
+  useEffect(() => {
+    const missing = [...new Set(flavors.map((f) => f.ingId).filter((id) => id && !flavorIng[id]))]
+    if (missing.length === 0) return
+    startPick(async () => {
+      const updates: Record<string, { name: string; per100g: Record<string, number> }> = {}
+      for (const id of missing) {
+        const res = await getIngredientNutrition(id)
+        if (res.ok) updates[id] = { name: '(saved ingredient)', per100g: res.data.per100g }
+      }
+      if (Object.keys(updates).length) setFlavorIng((c) => ({ ...c, ...updates }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flavors])
   // Resolve a row's nutrient data — inline (real picker) or via the demo lib.
   function rowData(r: Row): { name: string; per100g: Record<string, number>; densityGPerMl?: number | null; cents: number } {
     if (r.per100g) return { name: r.name ?? '', per100g: r.per100g, densityGPerMl: r.densityGPerMl, cents: 0 }
@@ -291,9 +319,11 @@ export function RecipeBuilderStep({
   // Per-flavor label: shared base recipe + that flavor's distinct ingredient,
   // so each column carries its own calories/sugar/etc.
   function flavorResult(ingId: string) {
+    const fi = flavorIng[ingId]
+    if (!fi) return null // no real ingredient picked for this flavor yet
     const baseRows = publicSelection(recipeRows)
     const overlay: RecipeRow = {
-      id: `flav-${ingId}`, name: ing(ingId)?.name ?? '', per100g: ing(ingId)?.per100g ?? {},
+      id: `flav-${ingId}`, name: fi.name, per100g: fi.per100g,
       quantity: 20, unit: 'g', category: 'base', selected: true,
     }
     const all = [...baseRows, overlay]
@@ -496,17 +526,22 @@ export function RecipeBuilderStep({
               {flavors.map((f, i) => (
                 <span key={i} className="flav">
                   <input value={f.name} onChange={(e) => setFlavors(flavors.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={{ width: 64, border: 0, background: 'transparent', font: 'inherit', color: 'inherit', fontWeight: 600 }} />
-                  <select value={f.ingId} onChange={(e) => setFlavors(flavors.map((x, j) => j === i ? { ...x, ingId: e.target.value } : x))} style={{ border: 0, background: 'transparent', font: 'inherit', fontSize: 10, color: 'var(--g2)' }} aria-label="Flavor ingredient">
-                    {LIBRARY.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select>
+                  <button type="button" onClick={() => setFlavorPickIdx(flavorPickIdx === i ? null : i)} style={{ border: 0, background: 'transparent', font: 'inherit', fontSize: 10, color: 'var(--g2)', cursor: 'pointer', textDecoration: 'underline' }} aria-label="Set flavor ingredient">
+                    {flavorIng[f.ingId]?.name ?? '+ ingredient'}
+                  </button>
                   <button onClick={() => setFlavors(flavors.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
                 </span>
               ))}
               {flavors.length < maxColumns && (
-                <button className="rb-btn o sm" onClick={() => setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: 'cane', soi: '' }])}>
+                <button className="rb-btn o sm" onClick={() => setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }])}>
                   + Flavor ({flavors.length}/{maxColumns})
                 </button>
               )}
+            </div>
+          )}
+          {flavorMode === 'MULTI' && flavorPickIdx != null && (
+            <div style={{ marginBottom: 8 }}>
+              <IngredientPicker onPick={(p) => pickFlavorIng(flavorPickIdx, p)} placeholder={`Pick the distinct ingredient for “${flavors[flavorPickIdx]?.name || 'this flavor'}”…`} />
             </div>
           )}
           {ps && result ? (
@@ -515,7 +550,14 @@ export function RecipeBuilderStep({
                 <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                   {flavors.map((f, i) => {
                     const fr = flavorResult(f.ingId)
-                    return fr ? <FactsPanel key={i} result={fr} ps={fr.perServing} title={f.name || `Flavor ${i + 1}`} narrow /> : null
+                    return fr ? (
+                      <FactsPanel key={i} result={fr} ps={fr.perServing} title={f.name || `Flavor ${i + 1}`} narrow />
+                    ) : (
+                      <div key={i} className="facts" style={{ minWidth: 150, flex: '0 0 auto', display: 'grid', placeItems: 'center', textAlign: 'center', padding: 12, color: 'var(--mut)' }}>
+                        <div className="flavhdr">{f.name || `Flavor ${i + 1}`}</div>
+                        <button type="button" className="rb-btn o sm" style={{ marginTop: 8 }} onClick={() => setFlavorPickIdx(i)}>Pick ingredient</button>
+                      </div>
+                    )
                   })}
                 </div>
                 <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
