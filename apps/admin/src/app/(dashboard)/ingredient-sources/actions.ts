@@ -76,3 +76,77 @@ export async function saveIngredientSource(source: string, patch: IngredientSour
     return { ok: false, error: `Could not save source: ${(err as Error).message}` }
   }
 }
+
+// ---------------------------------------------------------------------------
+// DSLD mirror sync — pulls common dietary ingredients from the live NIH DSLD v9
+// API into the Library (source = DSLD) so MIRROR mode + failover work offline.
+// Mirrors prisma/seed-dsld-mirror.ts but runnable from the admin UI.
+// ---------------------------------------------------------------------------
+
+const DSLD_TERMS = [
+  'Vitamin A', 'Vitamin C', 'Vitamin D', 'Vitamin E', 'Vitamin K', 'Thiamin', 'Riboflavin', 'Niacin',
+  'Vitamin B6', 'Folate', 'Vitamin B12', 'Biotin', 'Pantothenic Acid', 'Calcium', 'Iron', 'Magnesium',
+  'Zinc', 'Selenium', 'Copper', 'Manganese', 'Chromium', 'Potassium', 'Iodine', 'Omega-3', 'Fish Oil',
+  'Probiotics', 'Collagen', 'Whey Protein', 'Creatine', 'Ashwagandha', 'Turmeric', 'Ginkgo', 'Ginseng',
+  'Melatonin', 'Glucosamine', 'Chondroitin', 'CoQ10', 'Caffeine', 'L-Theanine', 'Green Tea', 'Elderberry',
+]
+const DSLD_DIETARY = new Set(['vitamin', 'mineral', 'botanical', 'amino acid', 'protein', 'probiotic', 'enzyme', 'fatty acid', 'nucleotide', 'carbohydrate'])
+const dslug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+interface DsldRaw { _source?: { allIngredients?: Array<{ ingredientGroup?: string; name?: string; category?: string; notes?: string }> } }
+
+export async function syncDsldMirror(): Promise<{ ok: true; created: number; total: number } | { ok: false; error: string }> {
+  const admin = await requireRole('ADMIN')
+  const cfg = await (await import('@ilaunchify/db')).resolveIngredientSource('DSLD')
+  const base = (cfg.apiBaseUrl || 'https://api.ods.od.nih.gov/dsld/v9/').replace(/\/$/, '')
+  let created = 0
+  try {
+    const seen = new Set<string>()
+    for (const term of DSLD_TERMS) {
+      let json: unknown = null
+      try {
+        const res = await fetch(`${base}/search-filter?q=${encodeURIComponent(term)}&size=15`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
+        if (!res.ok) continue
+        json = await res.json()
+      } catch { continue }
+      const hits = (json as { hits?: DsldRaw[] } | null)?.hits ?? []
+      const t = term.toLowerCase()
+      for (const hit of hits) {
+        for (const ing of hit._source?.allIngredients ?? []) {
+          const cat = (ing.category ?? '').toLowerCase()
+          if (!DSLD_DIETARY.has(cat)) continue
+          const group = (ing.ingredientGroup ?? '').trim()
+          const specific = (ing.name ?? '').trim()
+          const name = (!group || /unspecified|^other$/i.test(group)) && specific ? specific : group || specific
+          if (!name || !name.toLowerCase().includes(t.split(' ')[0] ?? t)) continue
+          const sourceRefId = `dsld-${dslug(name)}`
+          if (seen.has(sourceRefId)) continue
+          seen.add(sourceRefId)
+          const exists = await prisma.ingredient.findFirst({ where: { source: 'DSLD', sourceRefId }, select: { id: true } })
+          if (exists) continue
+          const form = /Form:\s*(?:as\s+)?([^)]+)/i.exec(ing.notes ?? '')?.[1]?.trim() ?? null
+          const altName = /Alt\.?\s*Name:\s*([^)]+)/i.exec(ing.notes ?? '')?.[1]?.trim() ?? null
+          await prisma.ingredient.create({
+            data: {
+              name, internalName: name, labelDeclarationName: name, nutritionPer100g: {},
+              source: 'DSLD', sourceRefId, category: 'supplement',
+              domainData: { dietaryIngredient: { category: cat, form, altName } },
+              verificationStatus: 'ADMIN_VERIFIED', allergens: [], allergenFlags: [],
+            },
+          })
+          created++
+        }
+      }
+      await new Promise((r) => setTimeout(r, 120))
+    }
+    const total = await prisma.ingredient.count({ where: { source: 'DSLD' } })
+    await (prisma as unknown as { ingredientSourceConfig: { upsert: (a: unknown) => Promise<unknown> } }).ingredientSourceConfig
+      .upsert({ where: { source: 'DSLD' }, update: { rowCount: total, lastSyncedAt: new Date() }, create: { source: 'DSLD', rowCount: total, lastSyncedAt: new Date() } })
+      .catch(() => {})
+    await logAuditAs(admin, { entityType: 'IngredientSourceConfig', entityId: 'DSLD', action: 'DSLD_MIRROR_SYNCED', payload: { created, total } })
+    revalidatePath('/ingredient-sources')
+    return { ok: true, created, total }
+  } catch (err) {
+    return { ok: false, error: `Sync failed: ${(err as Error).message}` }
+  }
+}

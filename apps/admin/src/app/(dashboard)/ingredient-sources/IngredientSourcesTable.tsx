@@ -5,8 +5,8 @@
 // rate limit, notes. The search adapter reads these. Cast-safe; saves per source.
 
 import * as React from 'react'
-import { Database, Globe, Layers } from 'lucide-react'
-import { saveIngredientSource, type IngredientSourceConfigValues } from './actions'
+import { Database, Globe, Layers, RefreshCw } from 'lucide-react'
+import { saveIngredientSource, syncDsldMirror, type IngredientSourceConfigValues } from './actions'
 
 const INPUT = 'rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
 
@@ -36,6 +36,14 @@ function SourceCard({ cfg }: { cfg: IngredientSourceConfigValues }) {
   const [notes, setNotes] = React.useState(cfg.notes ?? '')
   const [pending, start] = React.useTransition()
   const [status, setStatus] = React.useState<{ ok: boolean; msg: string } | null>(null)
+  const [syncing, setSyncing] = React.useState(false)
+  const [syncMsg, setSyncMsg] = React.useState<string | null>(null)
+  const runSync = async () => {
+    setSyncing(true); setSyncMsg(null)
+    const r = await syncDsldMirror()
+    setSyncing(false)
+    setSyncMsg(r.ok ? `Synced — ${r.created} new (${r.total} total).` : r.error)
+  }
 
   const dirty = () => setStatus(null)
   const save = () =>
@@ -97,11 +105,17 @@ function SourceCard({ cfg }: { cfg: IngredientSourceConfigValues }) {
         <input className={`${INPUT} w-full`} value={notes} placeholder="Internal note…" onChange={(e) => { setNotes(e.target.value); dirty() }} />
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" onClick={save} disabled={pending} className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50">
           {pending ? 'Saving…' : 'Save'}
         </button>
+        {cfg.source === 'DSLD' && (
+          <button type="button" onClick={runSync} disabled={syncing} className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+        )}
         {status && <span className={`text-[13px] ${status.ok ? 'text-emerald-700' : 'text-red-600'}`}>{status.msg}</span>}
+        {syncMsg && <span className="text-[13px] text-emerald-700">{syncMsg}</span>}
         {cfg.lastSyncedAt && <span className="text-[11.5px] text-ink-500">Last synced {new Date(cfg.lastSyncedAt).toLocaleString()} · {cfg.rowCount.toLocaleString()} rows</span>}
       </div>
     </div>

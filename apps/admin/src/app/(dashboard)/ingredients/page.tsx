@@ -60,12 +60,15 @@ const STATUS_TONE: Record<
   LIBRARY_PROMOTED: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
 }
 
-const SOURCE_ORDER: IngredientSource[] = ['USDA', 'LIBRARY', 'PARTNER_PRIVATE']
+const SOURCE_ORDER: IngredientSource[] = ['USDA', 'LIBRARY', 'PARTNER_PRIVATE', 'DSLD', 'INCI', 'AAFCO']
 
 const SOURCE_LABELS: Record<IngredientSource, string> = {
   USDA: 'USDA',
   LIBRARY: 'Curated',
   PARTNER_PRIVATE: 'Partner-private',
+  DSLD: 'NIH DSLD',
+  INCI: 'INCI',
+  AAFCO: 'AAFCO',
 }
 
 const SOURCE_TONE: Record<
@@ -75,6 +78,9 @@ const SOURCE_TONE: Record<
   USDA: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
   LIBRARY: { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
   PARTNER_PRIVATE: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
+  DSLD: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
+  INCI: { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200' },
+  AAFCO: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200' },
 }
 
 const PAGE_SIZE = 50
