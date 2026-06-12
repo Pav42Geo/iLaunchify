@@ -6,11 +6,36 @@
 // Partner-gated + rate-limited, mirroring the food IngredientPicker search.
 // docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 1).
 
-import { resolveIngredientSource } from '@ilaunchify/db'
+import { prisma, resolveIngredientSource } from '@ilaunchify/db'
 import { requirePartnerActor, checkRateLimit } from '@ilaunchify/auth'
 import { parseDsldHits, type DsldIngredientCandidate } from './dsld'
 
 type Result = { ok: true; data: DsldIngredientCandidate[]; note?: string } | { ok: false; error: string }
+
+/** Search the mirrored DSLD rows in the Ingredient Library (source = DSLD). */
+async function searchDsldMirror(q: string): Promise<DsldIngredientCandidate[]> {
+  try {
+    const rows = await (prisma as unknown as {
+      ingredient: { findMany: (a: unknown) => Promise<Array<{ id: string; name: string; internalName: string | null; domainData: unknown }>> }
+    }).ingredient.findMany({
+      where: { source: 'DSLD', OR: [{ name: { contains: q, mode: 'insensitive' } }, { internalName: { contains: q, mode: 'insensitive' } }] },
+      select: { id: true, name: true, internalName: true, domainData: true },
+      take: 15,
+    })
+    return rows.map((r) => {
+      const di = ((r.domainData as Record<string, unknown> | null)?.dietaryIngredient as Record<string, unknown>) ?? {}
+      return {
+        id: r.id,
+        name: r.internalName ?? r.name,
+        category: String(di.category ?? 'other'),
+        ...(di.form ? { form: String(di.form) } : {}),
+        ...(di.altName ? { altName: String(di.altName) } : {}),
+      }
+    })
+  } catch {
+    return []
+  }
+}
 
 export async function searchDsldIngredients(query: string): Promise<Result> {
   const actor = await requirePartnerActor()
@@ -25,10 +50,10 @@ export async function searchDsldIngredients(query: string): Promise<Result> {
   const cfg = await resolveIngredientSource('DSLD')
   if (!cfg.enabled) return { ok: false, error: 'DSLD source is disabled. Enable it in Admin → Ingredient Data Sources.' }
 
-  // MIRROR mode: no live call. The DB mirror import is a later slice, so until
-  // then there's nothing to return locally.
+  // MIRROR mode: serve from the mirrored DSLD rows (no live call).
   if (cfg.mode === 'MIRROR') {
-    return { ok: true, data: [], note: 'DSLD is set to Mirror but no rows are imported yet.' }
+    const data = await searchDsldMirror(q)
+    return { ok: true, data, note: data.length === 0 ? 'No mirrored DSLD rows match — run the DSLD mirror import.' : undefined }
   }
 
   const base = (cfg.apiBaseUrl || 'https://api.ods.od.nih.gov/dsld/v9/').replace(/\/$/, '')
@@ -39,8 +64,11 @@ export async function searchDsldIngredients(query: string): Promise<Result> {
     const json = (await res.json()) as unknown
     return { ok: true, data: parseDsldHits(json, q) }
   } catch (err) {
-    // Auto-failover to the DB mirror when configured (no mirror rows yet → empty).
-    if (cfg.failoverToDb) return { ok: true, data: [], note: 'DSLD API unreachable — showing the local copy (empty until the mirror is imported).' }
+    // Auto-failover to the mirrored DB copy when configured.
+    if (cfg.failoverToDb) {
+      const data = await searchDsldMirror(q)
+      return { ok: true, data, note: 'DSLD API unreachable — showing the mirrored copy.' }
+    }
     return { ok: false, error: `DSLD unreachable: ${(err as Error).message}` }
   }
 }
