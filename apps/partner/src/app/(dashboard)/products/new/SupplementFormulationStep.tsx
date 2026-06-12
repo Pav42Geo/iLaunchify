@@ -18,6 +18,19 @@ import { dsldLabelName, type DsldIngredientCandidate } from './dsld'
 import { saveSupplementFormulation, loadSupplementFormulation } from './supplement-actions'
 
 const UNITS = ['mg', 'mcg', 'g', 'IU', 'mcg DFE', 'mg NE', 'mg DFE', 'billion CFU', 'mL']
+
+// Supplement dosage forms (FDA / DSLD physical-state codes). Picking one sets a
+// sensible default serving form and tags the product for DSLD form filtering.
+const DOSAGE_FORMS: { key: string; label: string; dsld: string; serving: string }[] = [
+  { key: 'capsule', label: 'Capsules', dsld: 'e0159', serving: '1 capsule' },
+  { key: 'softgel', label: 'Softgels', dsld: 'e0161', serving: '1 softgel' },
+  { key: 'tablet', label: 'Tablets', dsld: 'e0155', serving: '1 tablet' },
+  { key: 'gummy', label: 'Gummies', dsld: 'e0176', serving: '2 gummies' },
+  { key: 'powder', label: 'Powder', dsld: 'e0162', serving: '1 scoop' },
+  { key: 'liquid', label: 'Liquid', dsld: 'e0165', serving: '1 mL' },
+  { key: 'lozenge', label: 'Lozenges', dsld: 'e0174', serving: '1 lozenge' },
+  { key: 'softchew', label: 'Soft chews', dsld: 'e0176', serving: '1 soft chew' },
+]
 let seq = 0
 const uid = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`
 
@@ -46,6 +59,12 @@ export function SupplementFormulationStep({
   const [blends, setBlends] = React.useState<{ id: string; name: string; total: number; unit: string }[]>([])
   const [servingForm, setServingForm] = React.useState(servingFormDefault)
   const [servingsPerContainer, setSpc] = React.useState(30)
+  const [dosageForm, setDosageForm] = React.useState('capsule')
+  const pickDosageForm = (key: string) => {
+    setDosageForm(key)
+    const f = DOSAGE_FORMS.find((d) => d.key === key)
+    if (f) setServingForm(f.serving)
+  }
 
   // Load any saved formulation, then debounce-autosave subsequent edits. The
   // `hydrated` guard prevents the initial empty state from clobbering the load.
@@ -60,6 +79,7 @@ export function SupplementFormulationStep({
         setBlends(r.data.blends ?? [])
         if (r.data.servingForm) setServingForm(r.data.servingForm)
         if (r.data.servingsPerContainer) setSpc(r.data.servingsPerContainer)
+        if (r.data.dosageForm) setDosageForm(r.data.dosageForm)
       }
       hydrated.current = true
     })
@@ -70,10 +90,10 @@ export function SupplementFormulationStep({
     if (!draftId || !hydrated.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer })
+      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm })
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [rows, blends, servingForm, servingsPerContainer, draftId])
+  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, draftId])
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
@@ -137,6 +157,24 @@ export function SupplementFormulationStep({
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
       {/* LEFT — formulation */}
       <div className="space-y-4">
+        {/* Dosage form */}
+        <div className="rounded-2xl border border-ink-200 bg-white p-4">
+          <h2 className="mb-2 text-[14px] font-bold text-ink-900">Dosage form</h2>
+          <div className="flex flex-wrap gap-2">
+            {DOSAGE_FORMS.map((d) => (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => pickDosageForm(d.key)}
+                className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${dosageForm === d.key ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 text-ink-700 hover:bg-ink-50'}`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-ink-500">Sets the default serving form and tags the product for NIH DSLD form matching.</p>
+        </div>
+
         <div className="rounded-2xl border border-ink-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700"><FlaskConical className="h-4 w-4" /></span>

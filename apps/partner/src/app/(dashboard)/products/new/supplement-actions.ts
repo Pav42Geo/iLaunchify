@@ -30,6 +30,7 @@ export interface SupplementFormulationPayload {
   blends: SupplementBlend[]
   servingForm: string
   servingsPerContainer: number
+  dosageForm?: string // 'capsule' | 'gummy' | 'powder' | … (DSLD physical state)
 }
 
 type Result = { ok: true } | { ok: false; error: string }
