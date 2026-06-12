@@ -41,6 +41,16 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
     hasFeature(planCode, 'declare_nutrition_panel'),
   ])
 
+  // Currencies of the ACTIVE target markets drive the recipe Cost column (V1 =
+  // US/USD only; auto-expands as CA/EU markets are switched ACTIVE).
+  const activeMarkets = await prisma.market.findMany({
+    where: { status: 'ACTIVE' },
+    select: { currency: true },
+    orderBy: { code: 'asc' },
+  })
+  const currencies = [...new Set(activeMarkets.map((m) => m.currency))]
+  const marketCurrencies = currencies.length ? currencies : ['USD']
+
   const [categories, subcategories, packagingSystems, niches, lifestyleTags] = await Promise.all([
     prisma.category.findMany({ select: { id: true, name: true, mainCategory: true }, orderBy: { name: 'asc' } }),
     prisma.subcategory.findMany({ select: { id: true, name: true, categoryId: true }, orderBy: { name: 'asc' } }),
@@ -83,6 +93,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       serviceScopes={serviceScopes}
       aiAvailable={aiAvailable}
       declareAvailable={declareAvailable}
+      currencies={marketCurrencies}
     />
   )
 }

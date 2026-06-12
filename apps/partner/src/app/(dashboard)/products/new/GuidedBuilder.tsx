@@ -16,6 +16,7 @@ import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-act
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
+import { CosmeticFormulationStep } from './CosmeticFormulationStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
@@ -349,6 +350,8 @@ export function GuidedBuilder({
               </div>
               {ltype === 'Supplement' ? (
                 <SupplementFormulationStep productName={name} draftId={draftId} />
+              ) : ltype === 'Cosmetic' ? (
+                <CosmeticFormulationStep productName={name} draftId={draftId} />
               ) : (
                 <RecipeBuilderStep
                   productName={name}
@@ -362,7 +365,7 @@ export function GuidedBuilder({
                   initialRows={initial?.recipeSlots}
                   aiAvailable={aiAvailable}
                   declareAvailable={declareAvailable}
-                  domain={ltype === 'Cosmetic' ? 'COSMETIC' : 'FOOD'}
+                  domain="FOOD"
                   initialEntryMode={initial?.recipeEntryMode ?? null}
                   currencies={currencies}
                 />

@@ -20,6 +20,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Lead',
   'SampleSettings', // Sample-policy admin settings (2026-06-11)
   'OrderSettings', // Order-policy admin settings (2026-06-11)
+  'IngredientSourceConfig', // Ingredient data-source admin settings (2026-06-11)
   'Order',
   'OrderDispatch',
   'Charge',

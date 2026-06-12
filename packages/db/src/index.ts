@@ -46,3 +46,12 @@ export {
   type OrderSettingsOverrideRow,
   type OrderSettingsContext,
 } from './order-settings'
+export {
+  getIngredientSourceConfigs,
+  resolveIngredientSource,
+  INGREDIENT_SOURCE_DEFAULTS,
+  INGREDIENT_SOURCES,
+  type IngredientSourceConfigValues,
+  type IngredientSourceMode,
+  type LabelingTypeKey,
+} from './ingredient-sources'

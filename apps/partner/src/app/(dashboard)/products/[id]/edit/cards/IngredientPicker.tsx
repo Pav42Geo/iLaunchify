@@ -22,7 +22,7 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Input } from '@ilaunchify/ui'
-import { Beaker, Loader2, Plus, Search, Sparkles, X } from 'lucide-react'
+import { Beaker, ListFilter, Loader2, Plus, Search, Sparkles, X } from 'lucide-react'
 import { searchIngredients, type IngredientResult } from '../ingredient-actions'
 import { AddPrivateIngredientModal } from './AddPrivateIngredientModal'
 
@@ -45,6 +45,10 @@ export function IngredientPicker({
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [showAddModal, setShowAddModal] = useState(false)
+  // Source filter (legacy "funnel" menu). Single-select, client-side over the
+  // unified search results. Mirrors the legacy platform's filter list.
+  const [filter, setFilter] = useState<FilterKey>('all')
+  const [filterOpen, setFilterOpen] = useState(false)
 
   // Debounced search.
   useEffect(() => {
@@ -76,16 +80,17 @@ export function IngredientPicker({
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!open) return
+    const list = results.filter((r) => matchesFilter(r, filter))
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, results.length))
+      setActiveIndex((i) => Math.min(i + 1, list.length))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (activeIndex < results.length) {
-        const ing = results[activeIndex]
+      if (activeIndex < list.length) {
+        const ing = list[activeIndex]
         if (ing) handlePick(ing)
       } else {
         setShowAddModal(true)
@@ -95,16 +100,18 @@ export function IngredientPicker({
     }
   }
 
+  // Apply the source filter client-side over the unified results.
+  const shown = results.filter((r) => matchesFilter(r, filter))
+
   // Empty-state panel (no query) groups results under "Recently used" +
   // "Library staples" subheaders. firstStapleIdx is the boundary between the
   // recentlyUsed rows and the staples (−1 when there are no staples).
   const isEmptyState = query.trim().length === 0
-  const firstStapleIdx = results.findIndex((r) => !r.recentlyUsed)
+  const firstStapleIdx = shown.findIndex((r) => !r.recentlyUsed)
 
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <Input
           value={query}
           onChange={(e) => {
@@ -116,22 +123,99 @@ export function IngredientPicker({
           onKeyDown={handleKey}
           autoFocus={autoFocus}
           placeholder={placeholder}
-          className="pl-8 pr-8"
+          className="pl-3 pr-20"
         />
-        {query && (
+        {/* Right-side controls: clear · search icon · filter funnel (legacy layout). */}
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+          {query && (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setQuery('')
+              }}
+              className="text-ink-400 hover:text-ink-600"
+              aria-label="Clear"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <Search className="pointer-events-none h-4 w-4 text-ink-400" />
           <button
             type="button"
             onMouseDown={(e) => {
               e.preventDefault()
-              setQuery('')
+              setFilterOpen((v) => !v)
+              setOpen(true)
             }}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600"
-            aria-label="Clear"
+            className={`flex h-6 w-6 items-center justify-center rounded-md hover:bg-ink-100 ${
+              filter !== 'all' ? 'text-pink-600' : 'text-ink-500'
+            }`}
+            aria-label="Filter ingredients"
+            aria-haspopup="menu"
+            aria-expanded={filterOpen}
+            title="Filter by source"
           >
-            <X className="h-3.5 w-3.5" />
+            <ListFilter className="h-4 w-4" />
           </button>
+        </div>
+
+        {/* Filter menu — single-select, mirrors the legacy funnel options. */}
+        {filterOpen && (
+          <div
+            className="absolute right-0 top-[calc(100%+4px)] z-40 w-60 overflow-hidden rounded-md border border-ink-200 bg-white py-1 shadow-lg"
+            onMouseDown={(e) => e.preventDefault()}
+            role="menu"
+          >
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="menuitemradio"
+                aria-checked={filter === f.key}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setFilter(f.key)
+                  setFilterOpen(false)
+                  setActiveIndex(0)
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-ink-50 ${
+                  filter === f.key ? 'text-pink-600' : 'text-ink-700'
+                }`}
+              >
+                <span
+                  className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${
+                    filter === f.key ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300'
+                  }`}
+                >
+                  {filter === f.key && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </span>
+                {f.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Active-filter status chip + reset (legacy "Showing results for"). */}
+      {filter !== 'all' && (
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-ink-500">
+          <span className="inline-flex items-center gap-1">
+            <ListFilter className="h-3 w-3" />
+            Filtered: <span className="font-semibold text-ink-700">{FILTERS.find((f) => f.key === filter)?.label}</span>
+          </span>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setFilter('all')
+            }}
+            className="font-medium text-pink-600 hover:underline"
+          >
+            Reset
+          </button>
+        </div>
+      )}
 
       {open && (
         <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-80 overflow-auto rounded-md border border-ink-200 bg-white shadow-lg">
@@ -142,10 +226,12 @@ export function IngredientPicker({
             </div>
           )}
 
-          {!loading && results.length === 0 && (
+          {!loading && shown.length === 0 && (
             <div className="px-3 py-4 text-center text-xs text-ink-500">
               {isEmptyState ? (
                 'Search for an ingredient by name.'
+              ) : filter !== 'all' && results.length > 0 ? (
+                <>No <span className="font-medium">{FILTERS.find((f) => f.key === filter)?.label.toLowerCase()}</span> match &ldquo;{query}&rdquo;. Try resetting the filter.</>
               ) : (
                 <>No matches for &ldquo;{query}&rdquo;. Create it as a private ingredient below.</>
               )}
@@ -153,7 +239,7 @@ export function IngredientPicker({
           )}
 
           {!loading &&
-            results.map((ing, idx) => (
+            shown.map((ing, idx) => (
               <Fragment key={ing.id}>
                 {isEmptyState && idx === 0 && ing.recentlyUsed && (
                   <GroupHeader>Recently used</GroupHeader>
@@ -211,9 +297,9 @@ export function IngredientPicker({
               setOpen(false)
               setShowAddModal(true)
             }}
-            onMouseEnter={() => setActiveIndex(results.length)}
+            onMouseEnter={() => setActiveIndex(shown.length)}
             className={`flex w-full items-center gap-2 border-t border-ink-200 px-3 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50 ${
-              activeIndex === results.length ? 'bg-pink-50/60' : ''
+              activeIndex === shown.length ? 'bg-pink-50/60' : ''
             }`}
           >
             <Plus className="h-4 w-4" />
@@ -235,6 +321,32 @@ export function IngredientPicker({
       )}
     </div>
   )
+}
+
+// Source filter — mirrors the legacy platform's funnel menu, mapped onto our
+// unified ingredient model (USDA · LIBRARY · PARTNER_PRIVATE + recently-used).
+// ("Non-food" from legacy is omitted until we track a food/non-food flag.)
+type FilterKey = 'all' | 'usda' | 'library' | 'private' | 'used'
+const FILTERS: ReadonlyArray<{ key: FilterKey; label: string }> = [
+  { key: 'all', label: 'All ingredients' },
+  { key: 'usda', label: 'USDA ingredients' },
+  { key: 'library', label: 'Library ingredients' },
+  { key: 'private', label: 'My custom ingredients' },
+  { key: 'used', label: "Ingredients I've used" },
+]
+function matchesFilter(r: IngredientResult, filter: FilterKey): boolean {
+  switch (filter) {
+    case 'usda':
+      return r.source === 'USDA'
+    case 'library':
+      return r.source === 'LIBRARY' || r.verificationStatus === 'LIBRARY_PROMOTED'
+    case 'private':
+      return r.source === 'PARTNER_PRIVATE'
+    case 'used':
+      return r.recentlyUsed
+    default:
+      return true
+  }
 }
 
 function GroupHeader({ children }: { children: React.ReactNode }) {

@@ -27,6 +27,7 @@
 
 import type { LucideIcon } from 'lucide-react'
 import {
+  Database,
   LayoutDashboard,
   GraduationCap,
   PlaySquare,
@@ -221,6 +222,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
+        { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/applications/packaging-mockups', hiddenUntilBuilt: true },
