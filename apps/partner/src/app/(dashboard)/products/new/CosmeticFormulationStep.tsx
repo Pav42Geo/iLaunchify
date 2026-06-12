@@ -7,8 +7,9 @@
 // the domain is COSMETIC. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 2).
 
 import * as React from 'react'
-import { Plus, Trash2, Palette } from 'lucide-react'
+import { Plus, Trash2, Palette, Search } from 'lucide-react'
 import { toInciDeclaration } from './inci'
+import { searchInci, type InciEntry } from './inci-dictionary'
 import { saveCosmeticFormulation, loadCosmeticFormulation } from './cosmetic-actions'
 
 const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -56,6 +57,14 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), inciName: '', pct: 0, isColorAdditive: false, isFragrance: false }])
   const remove = (id: string) => setRows((rs) => rs.filter((r) => r.uid !== id))
 
+  // INCI dictionary search — picking an entry pre-fills the name + color/fragrance flags.
+  const [inciQuery, setInciQuery] = React.useState('')
+  const inciResults = React.useMemo(() => searchInci(inciQuery), [inciQuery])
+  const addFromInci = (e: InciEntry) => {
+    setRows((rs) => [...rs, { uid: uid(), inciName: e.name, pct: 0, isColorAdditive: !!e.color, isFragrance: !!e.fragrance }])
+    setInciQuery('')
+  }
+
   const totalPct = rows.reduce((n, r) => n + (r.pct || 0), 0)
   const decl = toInciDeclaration(rows.map((r) => ({ id: r.uid, inciName: r.inciName, pct: r.pct, isColorAdditive: r.isColorAdditive, isFragrance: r.isFragrance })))
 
@@ -69,6 +78,25 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
             <h2 className="text-[15px] font-bold text-ink-900">Ingredients (INCI)</h2>
           </div>
           <p className="mb-3 text-[11px] text-ink-500">Enter the % concentration — the declaration auto-orders by 21 CFR 701.3: &gt;1% by predominance, then ≤1% in any order, color additives last.</p>
+
+          {/* INCI dictionary search */}
+          <div className="relative mb-3">
+            <div className="relative">
+              <input className={`${INPUT} w-full pl-3 pr-8`} value={inciQuery} onChange={(e) => setInciQuery(e.target.value)} placeholder="Search INCI ingredients (e.g. Glycerin, Phenoxyethanol, Niacinamide)…" />
+              <Search className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+            </div>
+            {inciQuery.trim().length >= 1 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-md border border-ink-200 bg-white shadow-lg">
+                {inciResults.map((e) => (
+                  <button key={e.name} type="button" onClick={() => addFromInci(e)} className="flex w-full items-center justify-between gap-2 border-b border-ink-50 px-3 py-2 text-left text-[13px] last:border-0 hover:bg-pink-50/40">
+                    <span className="min-w-0"><span className="font-medium text-ink-900">{e.name}</span><span className="ml-1 text-[11px] text-ink-500">{e.fn}</span></span>
+                    {(e.color || e.fragrance) && <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-600">{e.color ? 'Color' : 'Fragrance'}</span>}
+                  </button>
+                ))}
+                {inciResults.length === 0 && <div className="px-3 py-2 text-[12px] text-ink-500">No match — type the INCI name manually in the table.</div>}
+              </div>
+            )}
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
@@ -130,7 +158,7 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
           <p className="mt-2 text-[11px] text-ink-500">MoCRA requires a responsible person + a way to receive adverse-event reports on the label. Facility registration &amp; product listing are handled separately.</p>
         </div>
 
-        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} INCI dictionary search lands in a later slice. {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} INCI search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live declaration */}
