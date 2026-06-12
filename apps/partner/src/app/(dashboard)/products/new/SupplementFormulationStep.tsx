@@ -10,9 +10,11 @@
 // is DIETARY_SUPPLEMENT. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 1).
 
 import * as React from 'react'
-import { Plus, Trash2, FlaskConical, Layers } from 'lucide-react'
+import { Plus, Trash2, FlaskConical, Layers, Search, Loader2 } from 'lucide-react'
 import { NutritionFactsRenderer } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend } from '@ilaunchify/nutrition'
+import { searchDsldIngredients } from './dsld-actions'
+import { dsldLabelName, type DsldIngredientCandidate } from './dsld'
 
 const UNITS = ['mg', 'mcg', 'g', 'IU', 'mcg DFE', 'mg NE', 'mg DFE', 'billion CFU', 'mL']
 let seq = 0
@@ -41,6 +43,30 @@ export function SupplementFormulationStep({
   const [blends, setBlends] = React.useState<{ id: string; name: string; total: number; unit: string }[]>([])
   const [servingForm, setServingForm] = React.useState(servingFormDefault)
   const [servingsPerContainer, setSpc] = React.useState(30)
+
+  // NIH DSLD ingredient search (live/hybrid per admin config).
+  const [dsldQuery, setDsldQuery] = React.useState('')
+  const [dsldResults, setDsldResults] = React.useState<DsldIngredientCandidate[]>([])
+  const [dsldNote, setDsldNote] = React.useState<string | null>(null)
+  const [dsldPending, startDsld] = React.useTransition()
+  React.useEffect(() => {
+    const q = dsldQuery.trim()
+    if (q.length < 2) { setDsldResults([]); setDsldNote(null); return }
+    const t = setTimeout(() => {
+      startDsld(async () => {
+        const r = await searchDsldIngredients(q)
+        if (r.ok) { setDsldResults(r.data); setDsldNote(r.note ?? (r.data.length === 0 ? 'No DSLD matches.' : null)) }
+        else { setDsldResults([]); setDsldNote(r.error) }
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [dsldQuery])
+  const unitFor = (cat: string) => (cat === 'probiotic' ? 'billion CFU' : cat === 'protein' ? 'g' : 'mg')
+  const addFromDsld = (c: DsldIngredientCandidate) => {
+    setRows((rs) => [...rs, { uid: uid(), name: dsldLabelName(c), amount: 0, unit: unitFor(c.category), percentDV: '', blendId: '', isOther: false }])
+    setDsldQuery('')
+    setDsldResults([])
+  }
 
   const patch = (id: string, p: Partial<DietRow>) => setRows((rs) => rs.map((r) => (r.uid === id ? { ...r, ...p } : r)))
   const addRow = (isOther = false) =>
@@ -84,6 +110,35 @@ export function SupplementFormulationStep({
           <div className="mb-3 flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700"><FlaskConical className="h-4 w-4" /></span>
             <h2 className="text-[15px] font-bold text-ink-900">Dietary ingredients</h2>
+          </div>
+
+          {/* NIH DSLD search — validated dietary-ingredient identities. */}
+          <div className="relative mb-3">
+            <div className="relative">
+              <input
+                className={`${INPUT} w-full pl-3 pr-8`}
+                value={dsldQuery}
+                onChange={(e) => setDsldQuery(e.target.value)}
+                placeholder="Search NIH DSLD for a dietary ingredient (e.g. Vitamin C, Ashwagandha)…"
+              />
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400">
+                {dsldPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </span>
+            </div>
+            {(dsldResults.length > 0 || dsldNote) && dsldQuery.trim().length >= 2 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-md border border-ink-200 bg-white shadow-lg">
+                {dsldResults.map((c) => (
+                  <button key={c.id} type="button" onClick={() => addFromDsld(c)} className="flex w-full items-center justify-between gap-2 border-b border-ink-50 px-3 py-2 text-left text-[13px] last:border-0 hover:bg-pink-50/40">
+                    <span className="min-w-0">
+                      <span className="font-medium text-ink-900">{c.name}</span>
+                      {(c.form || c.altName) && <span className="ml-1 text-[11px] text-ink-500">as {c.form || c.altName}</span>}
+                    </span>
+                    <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">{c.category}</span>
+                  </button>
+                ))}
+                {dsldResults.length === 0 && dsldNote && <div className="px-3 py-2 text-[12px] text-ink-500">{dsldNote}</div>}
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -178,7 +233,7 @@ export function SupplementFormulationStep({
           </div>
         </div>
 
-        <p className="text-[11px] text-ink-500">Live preview only — dietary-ingredient persistence + NIH DSLD search land in the next Phase 1 slices. {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">NIH DSLD search is live (admin-configurable). Saving the formulation to the draft lands in the next slice. {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live Supplement Facts */}
