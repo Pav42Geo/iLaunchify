@@ -18,6 +18,11 @@ import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
 import { CosmeticFormulationStep } from './CosmeticFormulationStep'
 import { PetFormulationStep } from './PetFormulationStep'
+import { setDraftLabelingType, type LabelingTypeValue } from './domain-actions'
+
+type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'
+const LT_TO_LTYPE: Record<string, Ltype> = { FOOD: 'Recipe', DIETARY_SUPPLEMENT: 'Supplement', COSMETIC: 'Cosmetic', PET_PRODUCT: 'Pet' }
+const LTYPE_TO_LT: Record<Ltype, LabelingTypeValue> = { Recipe: 'FOOD', Supplement: 'DIETARY_SUPPLEMENT', Cosmetic: 'COSMETIC', Pet: 'PET_PRODUCT' }
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
@@ -92,7 +97,12 @@ export function GuidedBuilder({
 
   const [cur, setCur] = useState(0)
   const [ptype, setPtype] = useState<ProductType>('single')
-  const [ltype, setLtype] = useState<'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'>('Recipe')
+  const [ltype, setLtype] = useState<Ltype>(LT_TO_LTYPE[initial?.labelingType ?? 'FOOD'] ?? 'Recipe')
+  // Persist the domain choice to the draft's labelingType (drives rule pack + panel).
+  const chooseLtype = (v: Ltype) => {
+    setLtype(v)
+    if (draftId) void setDraftLabelingType(draftId, LTYPE_TO_LT[v])
+  }
   const [isPending, startTransition] = useTransition()
   const [draftId, setDraftId] = useState<string | null>(initial?.id ?? null)
   const [profile, setProfile] = useState<PackingProfileOption | null>(
@@ -345,10 +355,10 @@ export function GuidedBuilder({
           {cur === 2 && (
             <section>
               <div className="seg" style={{ marginBottom: 14 }}>
-                <button className={ltype === 'Recipe' ? 'on' : ''} onClick={() => setLtype('Recipe')}>Food / Beverage</button>
-                <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => setLtype('Supplement')}>Supplement</button>
-                <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => setLtype('Cosmetic')}>Cosmetic</button>
-                <button className={ltype === 'Pet' ? 'on' : ''} onClick={() => setLtype('Pet')}>Pet</button>
+                <button className={ltype === 'Recipe' ? 'on' : ''} onClick={() => chooseLtype('Recipe')}>Food / Beverage</button>
+                <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => chooseLtype('Supplement')}>Supplement</button>
+                <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => chooseLtype('Cosmetic')}>Cosmetic</button>
+                <button className={ltype === 'Pet' ? 'on' : ''} onClick={() => chooseLtype('Pet')}>Pet</button>
               </div>
               {ltype === 'Supplement' ? (
                 <SupplementFormulationStep productName={name} draftId={draftId} />
