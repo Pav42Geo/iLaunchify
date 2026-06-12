@@ -17,6 +17,7 @@ import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
 import { CosmeticFormulationStep } from './CosmeticFormulationStep'
+import { PetFormulationStep } from './PetFormulationStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
@@ -91,7 +92,7 @@ export function GuidedBuilder({
 
   const [cur, setCur] = useState(0)
   const [ptype, setPtype] = useState<ProductType>('single')
-  const [ltype, setLtype] = useState<'Recipe' | 'Supplement' | 'Cosmetic'>('Recipe')
+  const [ltype, setLtype] = useState<'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'>('Recipe')
   const [isPending, startTransition] = useTransition()
   const [draftId, setDraftId] = useState<string | null>(initial?.id ?? null)
   const [profile, setProfile] = useState<PackingProfileOption | null>(
@@ -347,11 +348,14 @@ export function GuidedBuilder({
                 <button className={ltype === 'Recipe' ? 'on' : ''} onClick={() => setLtype('Recipe')}>Food / Beverage</button>
                 <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => setLtype('Supplement')}>Supplement</button>
                 <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => setLtype('Cosmetic')}>Cosmetic</button>
+                <button className={ltype === 'Pet' ? 'on' : ''} onClick={() => setLtype('Pet')}>Pet</button>
               </div>
               {ltype === 'Supplement' ? (
                 <SupplementFormulationStep productName={name} draftId={draftId} />
               ) : ltype === 'Cosmetic' ? (
                 <CosmeticFormulationStep productName={name} draftId={draftId} />
+              ) : ltype === 'Pet' ? (
+                <PetFormulationStep productName={name} draftId={draftId} />
               ) : (
                 <RecipeBuilderStep
                   productName={name}
