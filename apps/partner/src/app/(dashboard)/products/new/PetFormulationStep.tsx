@@ -6,8 +6,9 @@
 // when the domain is PET_PRODUCT. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 3).
 
 import * as React from 'react'
-import { Plus, Trash2, PawPrint } from 'lucide-react'
+import { Plus, Trash2, PawPrint, Search } from 'lucide-react'
 import { petIngredientOrder, formatGuaranteedAnalysis, adequacyStatement, type PetSpecies, type LifeStage, type AdequacyMethod } from './pet'
+import { searchAafco, type AafcoEntry } from './aafco-dictionary'
 import { savePetFormulation, loadPetFormulation } from './pet-actions'
 
 const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -67,6 +68,14 @@ export function PetFormulationStep({ productName, draftId }: { productName?: str
   const patch = (id: string, p: Partial<PetRow>) => setRows((rs) => rs.map((r) => (r.uid === id ? { ...r, ...p } : r)))
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), name: '', weight: 0 }])
   const remove = (id: string) => setRows((rs) => rs.filter((r) => r.uid !== id))
+
+  // AAFCO ingredient dictionary search.
+  const [aafcoQuery, setAafcoQuery] = React.useState('')
+  const aafcoResults = React.useMemo(() => searchAafco(aafcoQuery), [aafcoQuery])
+  const addFromAafco = (e: AafcoEntry) => {
+    setRows((rs) => [...rs, { uid: uid(), name: e.name, weight: 0 }])
+    setAafcoQuery('')
+  }
   const addOther = () => setOthers((o) => [...o, { name: '', value: 0, bound: 'min', unit: '%' }])
   const patchOther = (i: number, p: Partial<GaOther>) => setOthers((o) => o.map((x, j) => (j === i ? { ...x, ...p } : x)))
   const removeOther = (i: number) => setOthers((o) => o.filter((_, j) => j !== i))
@@ -106,6 +115,26 @@ export function PetFormulationStep({ productName, draftId }: { productName?: str
         <div className="rounded-2xl border border-ink-200 bg-white p-4">
           <h2 className="mb-1 text-[14px] font-bold text-ink-900">Ingredients</h2>
           <p className="mb-3 text-[11px] text-ink-500">Enter a relative weight — the statement auto-orders by descending predominance.</p>
+
+          {/* AAFCO ingredient search */}
+          <div className="relative mb-3">
+            <div className="relative">
+              <input className={`${INPUT} w-full pl-3 pr-8`} value={aafcoQuery} onChange={(e) => setAafcoQuery(e.target.value)} placeholder="Search AAFCO ingredients (e.g. Chicken Meal, Brown Rice, Salmon Oil)…" />
+              <Search className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+            </div>
+            {aafcoQuery.trim().length >= 1 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-md border border-ink-200 bg-white shadow-lg">
+                {aafcoResults.map((e) => (
+                  <button key={e.name} type="button" onClick={() => addFromAafco(e)} className="flex w-full items-center justify-between gap-2 border-b border-ink-50 px-3 py-2 text-left text-[13px] last:border-0 hover:bg-pink-50/40">
+                    <span className="font-medium text-ink-900">{e.name}</span>
+                    <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-600">{e.category}</span>
+                  </button>
+                ))}
+                {aafcoResults.length === 0 && <div className="px-3 py-2 text-[12px] text-ink-500">No match — type the ingredient name manually in the table.</div>}
+              </div>
+            )}
+          </div>
+
           <table className="w-full text-[13px]">
             <thead><tr className="border-b border-ink-200 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500"><th className="py-1.5 pr-2">Ingredient</th><th className="py-1.5 px-1 text-right">Weight</th><th /></tr></thead>
             <tbody>
@@ -150,7 +179,7 @@ export function PetFormulationStep({ productName, draftId }: { productName?: str
           {method !== 'intermittent' && !feedingDirections.trim() && <p className="mt-1 text-[11px] text-amber-600">Feeding directions are required for complete &amp; balanced products.</p>}
         </div>
 
-        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} AAFCO ingredient library lands in a later slice. {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} AAFCO search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live AAFCO label */}
