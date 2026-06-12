@@ -163,7 +163,7 @@ const PRIMARY: SidebarRegion = {
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {
       kind: 'item',
-      label: 'Manufacturer Products',
+      label: 'Products',
       icon: Package,
       href: '/products',
     },
@@ -222,7 +222,6 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
-        { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/applications/packaging-mockups', hiddenUntilBuilt: true },
@@ -317,6 +316,7 @@ const APPLICATIONS: SidebarRegion = {
       icon: Plug,
       children: [
         { kind: 'item', label: 'Channels', icon: Plug, href: '/channels' },
+        { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Marketing', icon: Megaphone, href: '/integrations/marketing', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Analytics', icon: TrendingUp, href: '/integrations/analytics', hiddenUntilBuilt: true },
       ],
