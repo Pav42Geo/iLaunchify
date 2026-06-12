@@ -15,6 +15,7 @@ import { NutritionFactsRenderer } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
 import { dsldLabelName, type DsldIngredientCandidate } from './dsld'
+import { saveSupplementFormulation, loadSupplementFormulation } from './supplement-actions'
 
 const UNITS = ['mg', 'mcg', 'g', 'IU', 'mcg DFE', 'mg NE', 'mg DFE', 'billion CFU', 'mL']
 let seq = 0
@@ -35,14 +36,44 @@ const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] t
 export function SupplementFormulationStep({
   productName,
   servingFormDefault = '1 capsule',
+  draftId,
 }: {
   productName?: string
   servingFormDefault?: string
+  draftId?: string | null
 }) {
   const [rows, setRows] = React.useState<DietRow[]>([])
   const [blends, setBlends] = React.useState<{ id: string; name: string; total: number; unit: string }[]>([])
   const [servingForm, setServingForm] = React.useState(servingFormDefault)
   const [servingsPerContainer, setSpc] = React.useState(30)
+
+  // Load any saved formulation, then debounce-autosave subsequent edits. The
+  // `hydrated` guard prevents the initial empty state from clobbering the load.
+  const hydrated = React.useRef(false)
+  React.useEffect(() => {
+    if (!draftId) { hydrated.current = true; return }
+    let cancelled = false
+    loadSupplementFormulation(draftId).then((r) => {
+      if (cancelled) return
+      if (r.ok && r.data) {
+        setRows(r.data.dietaryIngredients ?? [])
+        setBlends(r.data.blends ?? [])
+        if (r.data.servingForm) setServingForm(r.data.servingForm)
+        if (r.data.servingsPerContainer) setSpc(r.data.servingsPerContainer)
+      }
+      hydrated.current = true
+    })
+    return () => { cancelled = true }
+  }, [draftId])
+  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  React.useEffect(() => {
+    if (!draftId || !hydrated.current) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer })
+    }, 1000)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [rows, blends, servingForm, servingsPerContainer, draftId])
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
@@ -233,7 +264,7 @@ export function SupplementFormulationStep({
           </div>
         </div>
 
-        <p className="text-[11px] text-ink-500">NIH DSLD search is live (admin-configurable). Saving the formulation to the draft lands in the next slice. {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} NIH DSLD search is live (admin-configurable). {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live Supplement Facts */}

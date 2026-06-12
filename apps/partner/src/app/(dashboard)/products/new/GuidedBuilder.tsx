@@ -348,7 +348,7 @@ export function GuidedBuilder({
                 <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => setLtype('Cosmetic')}>Cosmetic</button>
               </div>
               {ltype === 'Supplement' ? (
-                <SupplementFormulationStep productName={name} />
+                <SupplementFormulationStep productName={name} draftId={draftId} />
               ) : (
                 <RecipeBuilderStep
                   productName={name}

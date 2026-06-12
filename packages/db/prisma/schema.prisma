@@ -994,6 +994,11 @@ model Ingredient {
   usdaFdcId                String?                         @unique // populated for USDA-sourced rows
   name                     String // legacy display name; new code reads internalName
   nutritionPer100g         Json // { calories, totalFat, saturatedFat, ... } — also the canonical V1 nutrient profile
+  // Domain-specific ingredient payload keyed by product domain (Phase 0,
+  // docs/PRODUCT_DOMAINS_ARCHITECTURE.md): { dietaryIngredient?, inci?,
+  // guaranteedAnalysis? }. Food/baby keep using nutritionPer100g; supplement/
+  // cosmetic/pet read their typed shape from here. Additive, optional.
+  domainData               Json? // typed-per-domain; null for plain food rows
   category                 String? // legacy free-text category
   isOrganic                Boolean                         @default(false)
   allergens                String[] // legacy ["milk","wheat","sesame"]; new code reads allergenFlags
@@ -2508,6 +2513,12 @@ model ProductTemplate {
   // panel. true = control disabled, value follows category. An admin override
   // sets this false and may hand-set labelingType.
   labelingTypeLocked         Boolean                       @default(true)
+  // Non-food formulation payload (Phase 1, docs/PRODUCT_DOMAINS_ARCHITECTURE.md).
+  // Supplements/cosmetics/pet don't fit the food TemplateIngredientSlot model, so
+  // their formulation is stored here keyed by domain, e.g.
+  // { supplement: { dietaryIngredients[], blends[], servingForm, servingsPerContainer } }.
+  // Additive + optional; null for food templates (which use recipe slots).
+  formulationData            Json?
   // ---- Retail identity (template level) ----
   // Default FDA Statement of Identity (the food's common/usual name, 21 CFR
   // 101.3) for templates with no flavors. Per-flavor SoI overrides live on
@@ -4568,9 +4579,39 @@ model ProductChangeApprovalRule {
 //   - Library promotion queue that absorbs cross-partner repeats over time
 
 enum IngredientSource {
-  USDA // imported from USDA FoodData Central
-  LIBRARY // iLaunchify-curated supplement-specific item
+  USDA // imported from USDA FoodData Central (food/baby)
+  LIBRARY // iLaunchify-curated item
   PARTNER_PRIVATE // partner-uploaded with COA, scoped to one partner via ownerPartnerId
+  DSLD // NIH Dietary Supplement Label Database (supplements) — Phase 1
+  INCI // INCI cosmetic ingredient dictionary (cosmetics) — Phase 2
+  AAFCO // AAFCO feed-ingredient library (pet) — Phase 3
+}
+
+// How an external ingredient source is consulted (Pavel 2026-06-11). Admin-managed
+// per source via IngredientSourceConfig; see docs/PRODUCT_DOMAINS_ARCHITECTURE.md §5.
+enum IngredientSourceMode {
+  MIRROR // DB copy only — imported/mirrored ahead of time (default)
+  LIVE // call the external API at search time
+  HYBRID // live discovery, snapshot the chosen row into the DB
+}
+
+// Admin configuration for each ingredient data source (one row per source). The
+// search adapter reads this to decide MIRROR vs LIVE vs HYBRID, with auto-failover
+// to the mirrored DB copy when a LIVE API is down. Managed in /admin/ingredient-sources.
+model IngredientSourceConfig {
+  source          IngredientSource     @id
+  mode            IngredientSourceMode @default(MIRROR)
+  failoverToDb    Boolean              @default(true) // LIVE/HYBRID → fall back to DB copy if the API is unreachable
+  enabled         Boolean              @default(true)
+  apiBaseUrl      String? // external endpoint, e.g. https://api.ods.od.nih.gov/dsld/v9/
+  rateLimitPerMin Int                  @default(60)
+  syncCron        String? // schedule for the mirror refresh job
+  lastSyncedAt    DateTime?
+  rowCount        Int                  @default(0) // mirrored ingredient rows currently in the DB
+  labelingTypes   LabelingType[] // which product domains this source feeds
+  notes           String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 }
 
 enum VerificationStatus {
