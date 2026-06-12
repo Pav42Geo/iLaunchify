@@ -10,6 +10,7 @@ export * from './units'
 export * from './rounding'
 export * from './engine'
 export * from './panel-adapter'
+export * from './supplement-facts'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.
