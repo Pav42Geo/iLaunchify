@@ -10,6 +10,7 @@ import * as React from 'react'
 import { Plus, Trash2, Palette, Search } from 'lucide-react'
 import { toInciDeclaration } from './inci'
 import { searchInci, type InciEntry } from './inci-dictionary'
+import { searchLibraryIngredients } from './domain-library-actions'
 import { saveCosmeticFormulation, loadCosmeticFormulation } from './cosmetic-actions'
 
 const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -57,9 +58,27 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), inciName: '', pct: 0, isColorAdditive: false, isFragrance: false }])
   const remove = (id: string) => setRows((rs) => rs.filter((r) => r.uid !== id))
 
-  // INCI dictionary search — picking an entry pre-fills the name + color/fragrance flags.
+  // INCI search — admin-managed Library (DB) first, static starter dictionary as
+  // fallback (pre-seed / source disabled). Picking pre-fills name + color/fragrance.
   const [inciQuery, setInciQuery] = React.useState('')
-  const inciResults = React.useMemo(() => searchInci(inciQuery), [inciQuery])
+  const [inciResults, setInciResults] = React.useState<InciEntry[]>([])
+  React.useEffect(() => {
+    const q = inciQuery.trim()
+    if (q.length < 1) { setInciResults([]); return }
+    let cancelled = false
+    const t = setTimeout(async () => {
+      let entries: InciEntry[] = []
+      if (q.length >= 2) {
+        const r = await searchLibraryIngredients('INCI', q)
+        if (!cancelled && r.ok && r.data.length) {
+          entries = r.data.map((d) => ({ name: d.name, fn: String(d.meta.function ?? ''), color: !!d.meta.color, fragrance: !!d.meta.fragrance }))
+        }
+      }
+      if (!cancelled && entries.length === 0) entries = searchInci(q)
+      if (!cancelled) setInciResults(entries)
+    }, 200)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [inciQuery])
   const addFromInci = (e: InciEntry) => {
     setRows((rs) => [...rs, { uid: uid(), inciName: e.name, pct: 0, isColorAdditive: !!e.color, isFragrance: !!e.fragrance }])
     setInciQuery('')

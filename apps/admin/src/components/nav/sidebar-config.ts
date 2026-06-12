@@ -154,12 +154,6 @@ const PRIMARY: SidebarRegion = {
       icon: ShoppingBag,
       href: '/orders',
     },
-    {
-      kind: 'item',
-      label: 'Routing preview',
-      icon: Workflow,
-      href: '/routing-preview',
-    },
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {
       kind: 'item',
@@ -255,6 +249,7 @@ const PRIMARY: SidebarRegion = {
           children: [
             { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees' },
             { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing' },
+            { kind: 'item', label: 'Routing preview', icon: Workflow, href: '/routing-preview' },
             { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping' },
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations' },
             { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides' },
