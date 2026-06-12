@@ -47,6 +47,9 @@ interface GuidedBuilderProps {
   aiAvailable?: boolean
   /** Recipe-builder Mode 3 (declared panel) enabled for this partner's plan. */
   declareAvailable?: boolean
+  /** ISO currency codes of ACTIVE target markets (V1 ['USD']) — drives the
+   *  recipe Cost column currency, one input per market currency. */
+  currencies?: string[]
 }
 
 const STEPS = [
@@ -71,6 +74,7 @@ export function GuidedBuilder({
   initial,
   aiAvailable = false,
   declareAvailable = false,
+  currencies = ['USD'],
 }: GuidedBuilderProps) {
   const router = useRouter()
 
@@ -85,7 +89,7 @@ export function GuidedBuilder({
 
   const [cur, setCur] = useState(0)
   const [ptype, setPtype] = useState<ProductType>('single')
-  const [ltype, setLtype] = useState<'Recipe' | 'Formulation'>('Recipe')
+  const [ltype, setLtype] = useState<'Recipe' | 'Supplement' | 'Cosmetic'>('Recipe')
   const [isPending, startTransition] = useTransition()
   const [draftId, setDraftId] = useState<string | null>(initial?.id ?? null)
   const [profile, setProfile] = useState<PackingProfileOption | null>(
@@ -339,8 +343,8 @@ export function GuidedBuilder({
             <section>
               <div className="seg" style={{ marginBottom: 14 }}>
                 <button className={ltype === 'Recipe' ? 'on' : ''} onClick={() => setLtype('Recipe')}>Food / Beverage</button>
-                <button className={ltype === 'Formulation' ? 'on' : ''} onClick={() => setLtype('Formulation')}>Supplement</button>
-                <button className={ltype === 'Formulation' ? 'on' : ''} onClick={() => setLtype('Formulation')}>Cosmetic</button>
+                <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => setLtype('Supplement')}>Supplement</button>
+                <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => setLtype('Cosmetic')}>Cosmetic</button>
               </div>
               <RecipeBuilderStep
                 productName={name}
@@ -354,8 +358,9 @@ export function GuidedBuilder({
                 initialRows={initial?.recipeSlots}
                 aiAvailable={aiAvailable}
                 declareAvailable={declareAvailable}
-                labelingType={ltype === 'Formulation' ? 'SUPPLEMENT' : 'FOOD'}
+                domain={ltype === 'Supplement' ? 'DIETARY_SUPPLEMENT' : ltype === 'Cosmetic' ? 'COSMETIC' : 'FOOD'}
                 initialEntryMode={initial?.recipeEntryMode ?? null}
+                currencies={currencies}
               />
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
             </section>

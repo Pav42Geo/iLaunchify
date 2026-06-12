@@ -7,7 +7,9 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
-import { calculateLabel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
+import { calculateLabel, toPanelData, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
+import { NutritionFactsRenderer } from '@ilaunchify/ui'
+import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
@@ -192,7 +194,7 @@ export function RecipeBuilderStep({
   initialRows,
   aiAvailable = false,
   declareAvailable = false,
-  labelingType = 'FOOD',
+  domain = 'FOOD',
   initialEntryMode = null,
   currencies = ['USD'],
 }: {
@@ -216,8 +218,9 @@ export function RecipeBuilderStep({
   aiAvailable?: boolean
   /** Mode 3 (declared panel) enabled for this partner's plan. */
   declareAvailable?: boolean
-  /** Drives the declared-panel Nutrition vs Supplement Facts default. */
-  labelingType?: string
+  /** Product domain — drives terminology, label kind, search source, panel
+   *  format (Food / Supplement / Cosmetic / Pet / OTC). See product-domains.ts. */
+  domain?: DomainKey
   /** Restored recipe entry mode (resume) — reopens the builder on that surface. */
   initialEntryMode?: Mode | null
   /** ISO currency codes of the product's ACTIVE target markets (V1: ['USD']).
@@ -552,6 +555,16 @@ export function RecipeBuilderStep({
       }))
     : []
   const ts = result?.geometry.totalServings ?? 0
+  // Everything domain-specific reads from the registry (product-domains.ts):
+  // terminology, search source, label kind, and panel format — no ad-hoc branches.
+  const dom = getDomain(domain)
+  const noFactsPanel = !dom.hasFactsPanel // cosmetic / pet / OTC
+  const panelFormat: 'STANDARD' | 'SUPPLEMENT_FACTS' = dom.panelFormat ?? 'STANDARD'
+  // What this no-panel domain carries instead of a Facts box.
+  const noPanelMsg =
+    dom.labelKind === 'GUARANTEED_ANALYSIS' ? 'Pet products carry an AAFCO Guaranteed Analysis + nutritional-adequacy statement + feeding directions instead of a Facts panel.'
+    : dom.labelKind === 'DRUG_FACTS' ? 'OTC products carry a Drug Facts panel instead of a Nutrition / Supplement Facts box.'
+    : 'Cosmetics carry an INCI ingredient declaration + net contents instead of a Facts panel.'
   // True when ingredients are present but none carry nutrient data — the label
   // would read all-zero, which looks like "it doesn't calculate". We surface a
   // hint instead of a silent zeroed panel.
@@ -639,7 +652,7 @@ export function RecipeBuilderStep({
 
       {entryMode === 'DECLARED_PANEL' && (
         draftId
-          ? <DeclaredPanelPanel productTemplateId={draftId} labelingType={labelingType} existingSlotCount={base.length} onSaved={() => setChooserOpen(false)} onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }} />
+          ? <DeclaredPanelPanel productTemplateId={draftId} labelingType={legacyLabelingType(domain)} existingSlotCount={base.length} onSaved={() => setChooserOpen(false)} onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }} />
           : <p className="muted tiny">Save your draft first to declare a nutrition panel.</p>
       )}
 
@@ -669,7 +682,7 @@ export function RecipeBuilderStep({
         <div>
           {/* Recipe Ingredients */}
           <div className="rb-card">
-            <div className="rb-h">🍽 Recipe Ingredients ({base.length})</div>
+            <div className="rb-h">🍽 {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
             <table>
               <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Cost <i className="info" data-tip="You set ingredient prices here — they aren't stored in the catalog. Enter your price and pick the basis (kg · lb · g · oz). The Total sums each ingredient's price × its grams.">i</i></th><th /></tr></thead>
               <tbody>
@@ -842,8 +855,12 @@ export function RecipeBuilderStep({
                 </select>
               )}
             </div>
-            <IngredientPicker onPick={handlePick} placeholder="Search USDA, the library, or your private ingredients…" />
-            <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their USDA/library nutrient panel into the live label.</p>
+            <IngredientPicker onPick={handlePick} placeholder={dom.searchBuilt ? `Search ${dom.searchSourceLabel}, the library, or your private ${dom.ingredientNounPlural}…` : `Search the library or your private ${dom.ingredientNounPlural}…`} />
+            {dom.searchBuilt ? (
+              <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their {dom.searchSourceLabel} nutrient panel into the live label.</p>
+            ) : (
+              <p className="tiny muted" style={{ marginTop: 8 }}>Dedicated <b>{dom.searchSourceLabel}</b> {dom.ingredientNoun} search for {dom.label.toLowerCase()} products ships in a later phase — using the shared library for now.</p>
+            )}
           </div>
 
           {/* Packaging & Serving (ReciPal model) */}
@@ -925,10 +942,9 @@ export function RecipeBuilderStep({
 
         {/* RIGHT — live label */}
         <div>
-          <div className="lblseg" style={{ marginBottom: 10 }}>
+          <div className="seg" style={{ marginBottom: 10 }}>
             <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
-            <style>{`.rb .lblseg{display:inline-flex;background:#EEEFF1;border-radius:10px;padding:3px;gap:3px}.rb .lblseg button{border:0;background:transparent;padding:5px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:600;color:#6B6D78;cursor:pointer;transition:.12s}.rb .lblseg button:hover{color:#18181A}.rb .lblseg button.on{background:#18181A;color:#fff}`}</style>
           </div>
           {flavorMode === 'MULTI' && (
             <div className="flavbar">
@@ -953,14 +969,18 @@ export function RecipeBuilderStep({
               <IngredientPicker onPick={(p) => pickFlavorIng(flavorPickIdx, p)} placeholder={`Pick the distinct ingredient for “${flavors[flavorPickIdx]?.name || 'this flavor'}”…`} />
             </div>
           )}
-          {ps && result ? (
+          {noFactsPanel ? (
+            <div className="rb-card" style={{ color: 'var(--mut)', fontSize: 12.5, lineHeight: 1.5 }}>
+              <b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} {!dom.labelBuilt && <span className="tiny">This domain&apos;s label renderer ships in a later phase.</span>} <span className="tiny">(Auto-selected from this product&apos;s category.)</span>
+            </div>
+          ) : ps && result ? (
             flavorMode === 'MULTI' && flavors.length > 0 ? (
               <>
                 <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                   {flavors.map((f, i) => {
                     const fr = flavorResult(f.ingId)
                     return fr ? (
-                      <FactsPanel key={i} result={fr} ps={fr.perServing} title={f.name || `Flavor ${i + 1}`} narrow />
+                      <FactsPanel key={i} result={fr} ps={fr.perServing} title={f.name || `Flavor ${i + 1}`} narrow format={panelFormat} />
                     ) : (
                       <div key={i} className="facts" style={{ minWidth: 150, flex: '0 0 auto', display: 'grid', placeItems: 'center', textAlign: 'center', padding: 12, color: 'var(--mut)' }}>
                         <div className="flavhdr">{f.name || `Flavor ${i + 1}`}</div>
@@ -974,14 +994,14 @@ export function RecipeBuilderStep({
               </>
             ) : (
               <>
-                <FactsPanel result={result} ps={ps} serving={suggestedServing} />
+                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} />
                 <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
               </>
             )
           ) : (
             <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)' }}>Add ingredients + a serving size to see the label.</div>
           )}
-          {noNutritionData && (
+          {!noFactsPanel && noNutritionData && (
             <p className="rb-warn">⚠ These ingredients have no nutrition data yet, so the label reads all zeros. Pick USDA / library ingredients, or open the ingredient to add per-100 g values.</p>
           )}
           <p className="muted tiny" style={{ marginTop: 8 }}>{mode === 'public' ? 'Public marketplace label — base ingredients only.' : 'Internal preview — base + ticked optionals.'} · {productName || 'Untitled'}</p>
@@ -1116,13 +1136,15 @@ export function RecipeBuilderStep({
       {activeTab === 'label' && (
         <div className="rb-card">
           <div className="rb-h">🏷 Label preview</div>
-          <div className="lblseg" style={{ marginBottom: 10 }}>
+          <div className="seg" style={{ marginBottom: 10 }}>
             <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
           </div>
-          {ps && result ? (
+          {noFactsPanel ? (
+            <p className="muted" style={{ lineHeight: 1.5 }}><b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} <span className="tiny">(Auto-selected from this product&apos;s category.)</span></p>
+          ) : ps && result ? (
             <div style={{ maxWidth: 340 }}>
-              <FactsPanel result={result} ps={ps} />
+              <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} />
               <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
             </div>
           ) : (
@@ -1463,33 +1485,16 @@ function AddCustomMeasureModal({
   )
 }
 
-function FactsPanel({ result, ps, title, narrow, serving }: { result: LabelResult; ps: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string }) {
-  const grams = `${Math.round(result.geometry.servingSizeG)} g`
+// Live label — renders the canonical FDA-standard panel via the shared
+// @ilaunchify/ui NutritionFactsRenderer, fed by the engine's toPanelData
+// adapter (single source of truth for both math AND format). `format` switches
+// Nutrition Facts ↔ Supplement Facts; voluntary fats show when present.
+function FactsPanel({ result, title, narrow, serving, format = 'STANDARD' }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR' }) {
+  const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format })
   return (
-    <div className="facts" style={narrow ? { minWidth: 150, flex: '0 0 auto' } : undefined}>
-      {title && <div className="flavhdr">{title}</div>}
-      <h2 style={narrow ? { fontSize: 18 } : undefined}>Nutrition Facts</h2>
-      <div className="b8" style={{ paddingBottom: 2 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Serving size</span><b>{serving && serving.trim() ? `${serving.trim()} (${grams})` : grams}</b></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Per container</span><b>{result.geometry.servingsPerContainerLabel}</b></div>
-      </div>
-      <div className="cal"><span>Calories</span><span className="n" style={narrow ? { fontSize: 22 } : undefined}>{ps.calories}</span></div>
-      <Frow l="Total Fat" v={`${ps.totalFat.amount} g`} dv={ps.totalFat.dv} b />
-      <Frow l="Saturated Fat" v={`${ps.saturatedFat.amount} g`} dv={ps.saturatedFat.dv} ind />
-      <Frow l="Sodium" v={`${ps.sodium.amount} mg`} dv={ps.sodium.dv} b />
-      <Frow l="Total Carbohydrate" v={`${ps.totalCarbohydrate.amount} g`} dv={ps.totalCarbohydrate.dv} b />
-      <Frow l="Dietary Fiber" v={`${ps.dietaryFiber.amount} g`} dv={ps.dietaryFiber.dv} ind />
-      <Frow l="Total Sugars" v={`${ps.totalSugars.amount} g`} ind />
-      <Frow l="Protein" v={`${ps.protein.amount} g`} b />
-    </div>
-  )
-}
-
-function Frow({ l, v, dv, b, ind }: { l: string; v: string; dv?: number; b?: boolean; ind?: boolean }) {
-  return (
-    <div className="fr" style={ind ? { paddingLeft: 12 } : undefined}>
-      <span>{b ? <b>{l}</b> : l} {v}</span>
-      {dv !== undefined && <b>{dv}%</b>}
+    <div style={narrow ? { minWidth: 196, flex: '0 0 auto' } : undefined}>
+      {title && <div className="flavhdr" style={{ marginBottom: 6 }}>{title}</div>}
+      <NutritionFactsRenderer data={data} widthPx={narrow ? 196 : 300} />
     </div>
   )
 }
