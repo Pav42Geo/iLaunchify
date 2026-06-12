@@ -146,11 +146,15 @@ export async function searchIngredients(input: {
   })
   const usageMap = new Map(usage.map((u) => [u.ingredientId, u.useCount]))
 
-  // Re-rank: PARTNER_PRIVATE first (it's specific), then LIBRARY, then USDA.
+  // Re-rank: PARTNER_PRIVATE first (it's specific), then LIBRARY, then external
+  // catalogs (USDA / DSLD / INCI / AAFCO).
   const sourceRank: Record<IngredientSource, number> = {
     PARTNER_PRIVATE: 0,
     LIBRARY: 1,
     USDA: 2,
+    DSLD: 3,
+    INCI: 3,
+    AAFCO: 3,
   }
   const ranked = matches
     .map((m) => ({

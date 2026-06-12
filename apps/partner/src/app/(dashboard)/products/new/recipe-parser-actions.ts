@@ -160,7 +160,9 @@ const ingredientSearchAdapter = async (
   return res.data.results.map((r) => ({
     id: r.id,
     name: r.internalName,
-    source: r.source,
+    // The food recipe parser only deals with food sources; non-food catalogs
+    // (DSLD/INCI/AAFCO) never surface here, so narrow to the food tag union.
+    source: r.source === 'USDA' || r.source === 'PARTNER_PRIVATE' ? r.source : 'LIBRARY',
     labelDeclarationName: r.labelDeclarationName,
     allergenFlags: r.allergenFlags,
   }))

@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-actions'
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
+import { SupplementFormulationStep } from './SupplementFormulationStep'
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
@@ -346,22 +347,26 @@ export function GuidedBuilder({
                 <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => setLtype('Supplement')}>Supplement</button>
                 <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => setLtype('Cosmetic')}>Cosmetic</button>
               </div>
-              <RecipeBuilderStep
-                productName={name}
-                flavorMode={profile?.flavorMode ?? 'SINGLE'}
-                maxColumns={profile?.labelColumns ?? 1}
-                flavors={flavors}
-                onFlavors={setFlavors}
-                draftId={draftId}
-                axes={axes}
-                onAxes={setAxes}
-                initialRows={initial?.recipeSlots}
-                aiAvailable={aiAvailable}
-                declareAvailable={declareAvailable}
-                domain={ltype === 'Supplement' ? 'DIETARY_SUPPLEMENT' : ltype === 'Cosmetic' ? 'COSMETIC' : 'FOOD'}
-                initialEntryMode={initial?.recipeEntryMode ?? null}
-                currencies={currencies}
-              />
+              {ltype === 'Supplement' ? (
+                <SupplementFormulationStep productName={name} />
+              ) : (
+                <RecipeBuilderStep
+                  productName={name}
+                  flavorMode={profile?.flavorMode ?? 'SINGLE'}
+                  maxColumns={profile?.labelColumns ?? 1}
+                  flavors={flavors}
+                  onFlavors={setFlavors}
+                  draftId={draftId}
+                  axes={axes}
+                  onAxes={setAxes}
+                  initialRows={initial?.recipeSlots}
+                  aiAvailable={aiAvailable}
+                  declareAvailable={declareAvailable}
+                  domain={ltype === 'Cosmetic' ? 'COSMETIC' : 'FOOD'}
+                  initialEntryMode={initial?.recipeEntryMode ?? null}
+                  currencies={currencies}
+                />
+              )}
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
             </section>
           )}
