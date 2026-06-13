@@ -195,7 +195,7 @@ export function VariantsPacksStep({
       {kind && (
         <div className="card">
           {kind === 'single' && <SinglePack draftId={draftId} packing={initial?.packing ?? null} />}
-          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} />}
+          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} packing={initial?.packing ?? null} />}
           {kind === 'pack' && <MultiPack draftId={draftId} packing={initial?.packing ?? null} />}
 
           {/* Conditional add-ons (stack under the base config) */}
@@ -604,7 +604,7 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
   )
 }
 
-function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null }) {
+function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, packing }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; packing: PackingInit }) {
   const list = flavors.length ? flavors : [{ name: '', ingId: 'cane', soi: '' }]
   const [perFlavorCap, setPerFlavorCap] = useState(false)
   // Manufacturer's ceiling: how many DISTINCT flavors a Creator may combine into
@@ -612,9 +612,14 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   const [maxPerPack, setMaxPerPack] = useState<number | null>(initialMax ?? null)
   // Pack composition (production-line constraint): box capacity + min run per
   // flavor + even-fills rule → the valid flavor×pieces splits a Creator may pick.
-  const [packCapacity, setPackCapacity] = useState<number | null>(null)
-  const [minPerFlavor, setMinPerFlavor] = useState(1)
-  const [evenOnly, setEvenOnly] = useState(true)
+  // Capacity reuses the shared packingConfig.unitsPerPack so it isn't entered
+  // twice; min-per-flavor + even-fills persist alongside it.
+  const [packCapacity, setPackCapacity] = useState<number | null>(() => {
+    const u = cfgNum(packing, 'unitsPerPack', 0)
+    return u >= 1 ? u : null
+  })
+  const [minPerFlavor, setMinPerFlavor] = useState(() => cfgNum(packing, 'minPerFlavor', 1))
+  const [evenOnly, setEvenOnly] = useState(() => packing?.packingConfig?.evenFillsOnly !== false)
   const pool = list.length
   const packSplits = useMemo(
     () => (packCapacity ? computePackSplits(packCapacity, minPerFlavor, evenOnly, pool) : []),
@@ -656,6 +661,21 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
     return () => { if (capTimer.current) clearTimeout(capTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxPerPack, pool, draftId])
+
+  // Persist pack composition → packingConfig (merged: unitsPerPack reused as
+  // capacity, plus minPerFlavor + evenFillsOnly). Debounced.
+  const compTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId) return
+    if (compTimer.current) clearTimeout(compTimer.current)
+    compTimer.current = setTimeout(() => {
+      const packingConfig: Record<string, unknown> = { minPerFlavor, evenFillsOnly: evenOnly }
+      if (packCapacity != null) packingConfig.unitsPerPack = packCapacity
+      void savePacking(draftId, { packingConfig })
+    }, 800)
+    return () => { if (compTimer.current) clearTimeout(compTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packCapacity, minPerFlavor, evenOnly, draftId])
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
