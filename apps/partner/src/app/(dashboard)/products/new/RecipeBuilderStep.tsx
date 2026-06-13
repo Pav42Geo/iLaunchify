@@ -8,7 +8,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
 import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
-import { NutritionFactsSvg } from '@ilaunchify/ui'
+import { NutritionFactsSvg, VarietyFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
@@ -391,6 +391,8 @@ export function RecipeBuilderStep({
   const [, startPick] = useTransition()
   // Which flavor's Facts label is shown in the tabbed preview (one per view).
   const [activeFlavor, setActiveFlavor] = useState(0)
+  // Variety-pack (outer-box) Nutrition Display mode (21 CFR 101.9(d)(13)).
+  const [packView, setPackView] = useState<'MULTI' | 'SIDE' | 'SINGLE'>('MULTI')
   // Add a flavor-only overlay line (its own child mini-recipe row). The line
   // carries amount + unit, so the engine recomputes THAT flavor's Facts.
   function addFlavorLine(idx: number, picked: IngredientResult) {
@@ -654,6 +656,9 @@ export function RecipeBuilderStep({
   // Grams a flavor's overlay adds on top of the base (live total readout).
   const flavorOverlayGrams = (f: Flavor) =>
     (f.lines ?? []).reduce((s, l) => s + (l.qty > 0 ? toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined }) : 0), 0)
+
+  // Flavors that carry overlay data → one aggregate column each (variety pack).
+  const flavorsWithData = flavors.filter((f) => flavorOverlayGrams(f) > 0)
 
   // Real batch ingredient cost per market currency, from each ingredient's
   // per-kg price applied to its raw purchased weight (cost is on what you buy,
@@ -1130,6 +1135,44 @@ export function RecipeBuilderStep({
                   )}
                   <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
                   <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor (shown per tab; all print individually).</p>
+
+                  {flavorsWithData.length >= 2 && (
+                    <div className="varietypack">
+                      <div className="vp-h">
+                        <span>Variety pack label <span className="tiny">· outer box · {flavorsWithData.length} flavors</span></span>
+                      </div>
+                      <div className="seg sm" style={{ marginBottom: 8 }}>
+                        <button type="button" className={packView === 'MULTI' ? 'on' : ''} onClick={() => setPackView('MULTI')}>Multi-column</button>
+                        <button type="button" className={packView === 'SIDE' ? 'on' : ''} onClick={() => setPackView('SIDE')}>Side-by-side</button>
+                        <button type="button" className={packView === 'SINGLE' ? 'on' : ''} onClick={() => setPackView('SINGLE')}>Single</button>
+                      </div>
+                      {(() => {
+                        const cols: VarietyColumn[] = flavorsWithData
+                          .map((fl) => {
+                            const r = flavorResult(fl)
+                            return r ? { label: fl.name || 'Flavor', data: toPanelData(r, { suggestedServing, showVoluntaryFats: true, format: panelFormat }) } : null
+                          })
+                          .filter((c): c is VarietyColumn => c !== null)
+                        if (packView === 'MULTI') {
+                          return <div style={{ overflowX: 'auto' }}><VarietyFactsSvg columns={cols} widthPx={Math.min(680, 158 + cols.length * 92)} /></div>
+                        }
+                        if (packView === 'SIDE') {
+                          return (
+                            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                              {flavorsWithData.map((fl, i) => {
+                                const r = flavorResult(fl)
+                                return r ? <FactsPanel key={i} result={r} ps={r.perServing} title={fl.name || `Flavor ${i + 1}`} narrow format={panelFormat} /> : null
+                              })}
+                            </div>
+                          )
+                        }
+                        const f0 = flavorsWithData[0]!
+                        const r0 = flavorResult(f0)
+                        return r0 ? <FactsPanel result={r0} ps={r0.perServing} title={f0.name || 'Flavor 1'} format={panelFormat} /> : null
+                      })()}
+                      <p className="makes">Aggregate panel for the outer carton (21 CFR 101.9(d)(13)). Each unit still carries its own single-flavor label. Moves into Packaging → Variety Pack Label when that studio ships.</p>
+                    </div>
+                  )}
                 </>
               )
             })() : (
@@ -1745,6 +1788,9 @@ const CSS = `
 .rb table.flavlines select{border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font:inherit;background:#fff}
 .rb table.flavlines .del{border:0;background:transparent;cursor:pointer;font-size:13px;opacity:.7}
 .rb table.flavlines .del:hover{opacity:1}
+.rb .varietypack{margin-top:14px;padding-top:12px;border-top:2px solid var(--ink)}
+.rb .vp-h{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.rb .seg.sm button{font-size:11px;padding:4px 9px}
 .rb .flavhdr{background:var(--g-50);color:var(--g2);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--g-bd);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
 /* Readable hover tooltip for the "i" info icons (replaces the tiny native title). */
 .rb .info[data-tip]{position:relative}
