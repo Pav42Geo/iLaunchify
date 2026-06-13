@@ -31,6 +31,14 @@ export interface DietaryIngredient {
   isOtherIngredient?: boolean
   /** Descending-order weight within a blend (higher = listed first). */
   sortWeight?: number
+  /** Print "<" before the amount (trace declaration, e.g. "<1 g"). */
+  amountLessThan?: boolean
+  /** Print "<" before the %DV (e.g. "<1%"). */
+  dvLessThan?: boolean
+  /** A footnote symbol attached to THIS row's %DV cell (e.g. "*", "**"). When the
+   *  row has no DV it replaces the default symbol; otherwise it is appended. Define
+   *  the symbol's meaning via SupplementPanelOptions.customFootnotes. */
+  symbol?: string
 }
 
 export interface ProprietaryBlend {
@@ -39,6 +47,8 @@ export interface ProprietaryBlend {
   totalAmount: number
   unit: string
   percentDV?: number | null
+  amountLessThan?: boolean
+  symbol?: string
 }
 
 /**
@@ -68,34 +78,16 @@ export interface SupplementPanelOptions {
   servingsPerContainer: string | number
   /** Optional Calories/fat/carb/sugars/protein block declared above the ingredients. */
   nutrition?: SupplementNutrition
-}
-
-/** Build the FDA-ordered Calories/fat/carb/sugars/protein rows shown above the
- *  dietary ingredients. %DV uses the standard food Daily Values (21 CFR 101.9). */
-function buildNutritionRows(n: SupplementNutrition): NutrientRow[] {
-  const rows: NutrientRow[] = []
-  const pct = (amt: number, key: keyof typeof DAILY_VALUES): number | undefined => {
-    const dv = DAILY_VALUES[key]
-    return dv ? roundDV((amt / dv) * 100) : undefined
-  }
-  const pos = (v?: number): v is number => typeof v === 'number' && v > 0
-
-  if (pos(n.calories)) rows.push({ id: 'calories', label: 'Calories', amount: roundCalories(n.calories), indent: 0 })
-  if (pos(n.totalFat)) {
-    rows.push({ id: 'totalFat', label: 'Total Fat', amount: roundFat(n.totalFat), unit: 'g', percentDailyValue: pct(n.totalFat, 'totalFat'), indent: 0 })
-    if (pos(n.saturatedFat)) rows.push({ id: 'saturatedFat', label: 'Saturated Fat', amount: roundFat(n.saturatedFat), unit: 'g', percentDailyValue: pct(n.saturatedFat, 'saturatedFat'), indent: 1 })
-    if (pos(n.transFat)) rows.push({ id: 'transFat', label: 'Trans Fat', amount: roundFat(n.transFat), unit: 'g', indent: 1 })
-  }
-  if (pos(n.cholesterol)) rows.push({ id: 'cholesterol', label: 'Cholesterol', amount: roundCholSodium(n.cholesterol), unit: 'mg', percentDailyValue: pct(n.cholesterol, 'cholesterol'), indent: 0 })
-  if (pos(n.sodium)) rows.push({ id: 'sodium', label: 'Sodium', amount: roundCholSodium(n.sodium), unit: 'mg', percentDailyValue: pct(n.sodium, 'sodium'), indent: 0 })
-  if (pos(n.totalCarbohydrate)) {
-    rows.push({ id: 'totalCarbohydrate', label: 'Total Carbohydrate', amount: roundGramMacro(n.totalCarbohydrate), unit: 'g', percentDailyValue: pct(n.totalCarbohydrate, 'totalCarbohydrate'), indent: 0 })
-    if (pos(n.dietaryFiber)) rows.push({ id: 'dietaryFiber', label: 'Dietary Fiber', amount: roundGramMacro(n.dietaryFiber), unit: 'g', percentDailyValue: pct(n.dietaryFiber, 'dietaryFiber'), indent: 1 })
-    if (pos(n.totalSugars)) rows.push({ id: 'totalSugars', label: 'Total Sugars', amount: roundGramMacro(n.totalSugars), unit: 'g', indent: 1 })
-    if (pos(n.addedSugars)) rows.push({ id: 'addedSugars', label: 'Includes Added Sugars', amount: roundGramMacro(n.addedSugars), unit: 'g', percentDailyValue: pct(n.addedSugars, 'addedSugars'), indent: 2 })
-  }
-  if (pos(n.protein)) rows.push({ id: 'protein', label: 'Protein', amount: roundGramMacro(n.protein), unit: 'g', percentDailyValue: pct(n.protein, 'protein'), indent: 0 })
-  return rows
+  /** Per-nutrient "<" trace flags for the nutrition block (e.g. Total Sugars "<0.5 g"). */
+  nutritionLessThan?: Partial<Record<keyof SupplementNutrition, boolean>>
+  /** Footnote glyph for ingredients with no established DV. Default "†". A brand may
+   *  choose "‡", "*", "**" to match house style — engine keeps it consistent. */
+  noDvSymbol?: string
+  /** Footnote glyph for the "2,000 calorie diet" note appended to calorie-based %DVs.
+   *  Default "*". */
+  caloriePctSymbol?: string
+  /** Extra footnote lines for any custom row symbols, e.g. { symbol: '‡', text: '…' }. */
+  customFootnotes?: Array<{ symbol: string; text: string }>
 }
 
 export interface SupplementPanelResult {
@@ -104,15 +96,60 @@ export interface SupplementPanelResult {
   otherIngredients: string[]
 }
 
-// FDA wording (21 CFR 101.36(b)(2)(iii)(F) / (b)(3)). The "†" symbol sits in the
-// % Daily Value column for ingredients without an established DV.
-const FOOTER_DV = '† Daily Value Not Established.'
-// The "Percent Daily Values are based on a 2,000 calorie diet" footnote is ONLY
-// required when total fat, saturated fat, total carbohydrate, dietary fiber, or
-// protein are declared (101.36(b)(2)(iii)(D)) — never for a vitamins/minerals
-// or herbal supplement. The current model declares none of those, so it is omitted.
-const MACRO_DV_KEYS = new Set(['totalFat', 'saturatedFat', 'totalCarbohydrate', 'dietaryFiber', 'protein'])
-const FOOTER_PCT = '* Percent Daily Values are based on a 2,000 calorie diet.'
+// Calorie-based %DV nutrients (101.36(b)(2)(iii)(D)): their %DV carries the
+// "2,000 calorie diet" footnote symbol, and declaring any of them requires that
+// footnote. Cholesterol/Sodium have fixed (non-calorie) DVs, so they're excluded.
+const CALORIE_BASIS_KEYS = new Set<keyof SupplementNutrition>([
+  'totalFat', 'saturatedFat', 'totalCarbohydrate', 'dietaryFiber', 'addedSugars', 'protein',
+])
+
+/** Build the FDA-ordered Calories/fat/carb/sugars/protein rows above the dietary
+ *  ingredients. %DV uses the standard food Daily Values; calorie-based %DVs carry
+ *  `pctSymbol`. Honors per-nutrient "<" trace flags. */
+function buildNutritionRows(
+  n: SupplementNutrition,
+  lessThan: Partial<Record<keyof SupplementNutrition, boolean>>,
+  pctSymbol: string,
+): { rows: NutrientRow[]; usesCalorieBasis: boolean } {
+  const rows: NutrientRow[] = []
+  let usesCalorieBasis = false
+  const pos = (v?: number): v is number => typeof v === 'number' && v > 0
+
+  const add = (key: keyof SupplementNutrition, label: string, rounded: number, unit: string, indent: number, hasDv: boolean) => {
+    const dv = DAILY_VALUES[key as keyof typeof DAILY_VALUES]
+    const lt = lessThan[key]
+    let percent: number | undefined
+    let dvText: string | undefined
+    if (hasDv && dv) {
+      percent = roundDV((rounded / dv) * 100)
+      const sym = CALORIE_BASIS_KEYS.has(key) ? pctSymbol : ''
+      if (CALORIE_BASIS_KEYS.has(key)) usesCalorieBasis = true
+      dvText = `${lt ? '<' : ''}${percent}%${sym}`
+    }
+    rows.push({
+      id: key, label, amount: fmtAmount(rounded, unit, lt), unit: undefined, indent,
+      ...(percent !== undefined ? { percentDailyValue: percent } : {}),
+      ...(dvText !== undefined ? { dvText } : {}),
+    })
+  }
+
+  if (pos(n.calories)) add('calories', 'Calories', roundCalories(n.calories), '', 0, false)
+  if (pos(n.totalFat)) {
+    add('totalFat', 'Total Fat', roundFat(n.totalFat), 'g', 0, true)
+    if (pos(n.saturatedFat)) add('saturatedFat', 'Saturated Fat', roundFat(n.saturatedFat), 'g', 1, true)
+    if (pos(n.transFat)) add('transFat', 'Trans Fat', roundFat(n.transFat), 'g', 1, false)
+  }
+  if (pos(n.cholesterol)) add('cholesterol', 'Cholesterol', roundCholSodium(n.cholesterol), 'mg', 0, true)
+  if (pos(n.sodium)) add('sodium', 'Sodium', roundCholSodium(n.sodium), 'mg', 0, true)
+  if (pos(n.totalCarbohydrate)) {
+    add('totalCarbohydrate', 'Total Carbohydrate', roundGramMacro(n.totalCarbohydrate), 'g', 0, true)
+    if (pos(n.dietaryFiber)) add('dietaryFiber', 'Dietary Fiber', roundGramMacro(n.dietaryFiber), 'g', 1, true)
+    if (pos(n.totalSugars)) add('totalSugars', 'Total Sugars', roundGramMacro(n.totalSugars), 'g', 1, false)
+    if (pos(n.addedSugars)) add('addedSugars', 'Includes Added Sugars', roundGramMacro(n.addedSugars), 'g', 2, true)
+  }
+  if (pos(n.protein)) add('protein', 'Protein', roundGramMacro(n.protein), 'g', 0, true)
+  return { rows, usesCalorieBasis }
+}
 
 /** Build a Supplement Facts PanelData from dietary ingredients + blends. */
 export function toSupplementPanelData(
@@ -120,56 +157,72 @@ export function toSupplementPanelData(
   blends: ProprietaryBlend[],
   opts: SupplementPanelOptions,
 ): SupplementPanelResult {
+  const noDvSymbol = opts.noDvSymbol || '†'
+  const pctSymbol = opts.caloriePctSymbol || '*'
   const panelIngredients = ingredients.filter((i) => !i.isOtherIngredient)
-  const otherIngredients = ingredients.filter((i) => i.isOtherIngredient).map((i) => i.name)
+  const otherIngredients = ingredients.filter((i) => i.isOtherIngredient).map((i) => cleanLabel(i.name))
 
-  // FDA "nutrition information" (Calories / fats / carbs / sugars / protein) is
-  // declared ABOVE the dietary ingredients when present.
-  const rows: NutrientRow[] = opts.nutrition ? buildNutritionRows(opts.nutrition) : []
-  let anyNoDV = false
+  // FDA "nutrition information" (Calories / fats / carbs / sugars / protein) above
+  // the dietary ingredients.
+  const nut = opts.nutrition
+    ? buildNutritionRows(opts.nutrition, opts.nutritionLessThan ?? {}, pctSymbol)
+    : { rows: [] as NutrientRow[], usesCalorieBasis: false }
+  const rows: NutrientRow[] = [...nut.rows]
+  let usesDefaultNoDv = false
 
-  // Standalone (non-blend) ingredients first, in given order. Ingredients without
-  // an established DV get a "†" in the % Daily Value column (noDailyValue).
+  // The %DV cell for a dietary ingredient / blend: a percentage (with optional "<"
+  // and appended symbol), or the no-DV footnote glyph.
+  const dvCellFor = (hasDV: boolean, percent: number | null | undefined, lt?: boolean, sym?: string): string => {
+    // The row's footnote symbol prints IN FRONT of the % Daily Value (e.g. "*60%").
+    if (hasDV) return `${sym ?? ''}${lt ? '<' : ''}${percent}%`
+    if (!sym) usesDefaultNoDv = true
+    return sym || noDvSymbol
+  }
+
   for (const ing of panelIngredients.filter((i) => !i.blendId)) {
     const hasDV = ing.percentDV != null
-    if (!hasDV) anyNoDV = true
     rows.push({
       id: ing.id,
       label: cleanLabel(ing.name),
-      amount: amountStr(ing.amountPerServing, ing.unit),
+      amount: fmtAmount(ing.amountPerServing, ing.unit, ing.amountLessThan),
+      dvText: dvCellFor(hasDV, ing.percentDV, ing.dvLessThan, ing.symbol),
       ...(hasDV ? { percentDailyValue: ing.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
   }
 
   // Each proprietary blend: name + total weight on one line, then members (no
-  // amounts) in descending predominance order. The blend line carries the "†"
-  // (it has no DV); DV-bearing ingredients must be declared separately, not hidden
-  // in a blend (21 CFR 101.36(c)).
+  // amounts) in descending predominance order. The blend line carries the no-DV
+  // glyph; DV-bearing ingredients must be declared separately (21 CFR 101.36(c)).
   for (const blend of blends) {
     const members = panelIngredients
       .filter((i) => i.blendId === blend.id)
       .sort((a, b) => (b.sortWeight ?? 0) - (a.sortWeight ?? 0))
     if (members.length === 0) continue
     const hasDV = blend.percentDV != null
-    if (!hasDV) anyNoDV = true
     rows.push({
       id: blend.id,
       label: cleanLabel(blend.name),
-      amount: amountStr(blend.totalAmount, blend.unit),
+      amount: fmtAmount(blend.totalAmount, blend.unit, blend.amountLessThan),
+      dvText: dvCellFor(hasDV, blend.percentDV, false, blend.symbol),
       ...(hasDV ? { percentDailyValue: blend.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
     for (const m of members) {
-      rows.push({ id: m.id, label: cleanLabel(m.name), amount: '', indent: 1 })
+      rows.push({ id: m.id, label: cleanLabel(m.name), amount: '', dvText: '', indent: 1 })
     }
   }
 
+  // Footnotes, in the conventional order: calorie note, no-DV note, then any
+  // custom-symbol notes the manufacturer defined.
   const footerParts: string[] = []
-  // 2,000-cal footnote only when a calorie-based DRV nutrient is actually declared.
-  const hasMacroDV = rows.some((r) => MACRO_DV_KEYS.has(r.id) && r.percentDailyValue != null)
-  if (hasMacroDV) footerParts.push(FOOTER_PCT)
-  if (anyNoDV) footerParts.push(FOOTER_DV)
+  if (nut.usesCalorieBasis) footerParts.push(`${pctSymbol} Percent Daily Values are based on a 2,000 calorie diet.`)
+  if (usesDefaultNoDv) footerParts.push(`${noDvSymbol} Daily Value Not Established.`)
+  for (const cf of opts.customFootnotes ?? []) {
+    const sym = cf.symbol.trim()
+    const text = cf.text.trim()
+    if (sym && text) footerParts.push(`${sym} ${text}`)
+  }
 
   const panel: PanelData = {
     format: 'SUPPLEMENT_FACTS',
@@ -188,10 +241,11 @@ function formatAmount(n: number): string {
   return String(Math.round(n * 1000) / 1000)
 }
 
-/** A declared amount string, or '' when the amount is zero/blank (so unfilled
- *  rows don't print a misleading "0 mg"). */
-function amountStr(value: number, unit: string): string {
-  return value > 0 ? `${formatAmount(value)} ${unit}`.trim() : ''
+/** A declared amount string ("<1 g" / "5 g"), or '' when zero/blank so unfilled
+ *  rows don't print a misleading "0 mg". */
+function fmtAmount(value: number, unit: string, lessThan?: boolean): string {
+  if (!(value > 0)) return ''
+  return `${lessThan ? '<' : ''}${formatAmount(value)} ${unit}`.trim()
 }
 
 /** Tidy an ingredient/blend name for the panel: drop DSLD template braces

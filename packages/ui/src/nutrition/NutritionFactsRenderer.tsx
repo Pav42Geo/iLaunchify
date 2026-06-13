@@ -56,20 +56,15 @@ export function NutritionFactsRenderer({
       </div>
 
       {isSupplement ? (
-        // 21 CFR 101.36 column format: nutrient name | Amount Per Serving | % Daily
-        // Value. Headers sit over columns 2 and 3 (the name column has no header).
-        <div className="mt-1 grid grid-cols-[1fr_auto_auto] items-end gap-x-3 border-b border-black pb-0.5 text-xs font-bold">
-          <span />
-          <span className="text-right">Amount Per Serving</span>
-          <span className="text-right">% Daily Value</span>
-        </div>
+        <SupplementTable rows={data.rows} />
       ) : (
-        <div className="mt-1 text-xs font-bold uppercase">Amount per serving</div>
+        <>
+          <div className="mt-1 text-xs font-bold uppercase">Amount per serving</div>
+          {data.rows.map((row, i) => (
+            <NutrientRowRender key={`${row.id}-${i}`} row={row} />
+          ))}
+        </>
       )}
-
-      {data.rows.map((row, i) => (
-        <NutrientRowRender key={`${row.id}-${i}`} row={row} isSupplement={isSupplement} />
-      ))}
 
       {data.requiredFooter && (
         <div className="mt-2 border-t border-black pt-1 text-[10px] leading-tight">
@@ -96,10 +91,61 @@ export function NutritionFactsRenderer({
   )
 }
 
-function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSupplement: boolean }) {
-  // Supplement Facts has no large bold Calories box (that's a Nutrition Facts
-  // feature); any calories on a supplement render as a normal line.
-  const isCalories = row.id === 'calories' && !isSupplement
+// Supplement Facts (21 CFR 101.36) renders as a TABLE so the three columns —
+// nutrient name | Amount Per Serving | % Daily Value — share strict widths: an
+// amount never drifts under the %DV column. Headers stack on two lines; ingredient
+// rows use a compact, regular weight (real labels aren't large/bold).
+function SupplementTable({ rows }: { rows: NutrientRow[] }) {
+  const amountStr = (row: NutrientRow) =>
+    row.unit ? `${formatValue(row.amount)} ${row.unit}` : formatValue(row.amount)
+  const dvCell = (row: NutrientRow) =>
+    // The engine pre-formats the %DV cell (handles "<", footnote glyphs); fall back
+    // to the raw percentage / "†" for older data.
+    row.dvText !== undefined
+      ? row.dvText
+      : row.percentDailyValue !== undefined
+        ? `${row.percentDailyValue}%`
+        : row.noDailyValue
+          ? '†'
+          : ''
+  const indentPad = (n: number | undefined) => (n === 1 ? 10 : n === 2 ? 20 : 0)
+
+  return (
+    <table className="mt-1 w-full border-collapse text-[11.5px] leading-tight">
+      <thead>
+        <tr className="border-b-2 border-black align-bottom">
+          <th className="w-full" />
+          <th className="whitespace-nowrap pb-0.5 pl-2 text-center font-bold">Amount<br />Per Serving</th>
+          <th className="whitespace-nowrap pb-0.5 pl-2 text-center font-bold">% Daily<br />Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={`${row.id}-${i}`} className="border-b border-zinc-400">
+            <td
+              className={cn('py-0.5 pr-1', SUPPLEMENT_BOLD_IDS.has(row.id) && 'font-bold')}
+              style={{ paddingLeft: indentPad(row.indent) }}
+            >
+              {row.label}
+            </td>
+            <td className="whitespace-nowrap py-0.5 pl-2 text-right tabular-nums">{amountStr(row)}</td>
+            <td className="whitespace-nowrap py-0.5 pl-2 text-right">{dvCell(row)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// The mandatory top-level macronutrients FDA prints in bold on a Supplement Facts
+// panel. Sub-nutrients (saturated fat, fiber, sugars) and dietary ingredients
+// (vitamins, minerals, botanicals) stay regular weight.
+const SUPPLEMENT_BOLD_IDS = new Set([
+  'calories', 'totalFat', 'cholesterol', 'sodium', 'totalCarbohydrate', 'protein',
+])
+
+function NutrientRowRender({ row }: { row: NutrientRow }) {
+  const isCalories = row.id === 'calories'
   const indentClass = row.indent === 1 ? 'pl-3' : row.indent === 2 ? 'pl-6' : ''
   const isMajorRow = row.indent === 0
 
@@ -108,28 +154,6 @@ function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSuppleme
       <div className="mt-1 flex items-end justify-between border-y-[4px] border-black py-0.5">
         <span className="text-base font-extrabold">Calories</span>
         <span className="text-2xl font-extrabold leading-none">{formatValue(row.amount)}</span>
-      </div>
-    )
-  }
-
-  // The %DV cell: a percentage, a "†" (no established DV), or empty.
-  const dvCell =
-    row.percentDailyValue !== undefined ? `${row.percentDailyValue}%` : row.noDailyValue ? '†' : ''
-
-  if (isSupplement) {
-    // Three columns: nutrient name | amount per serving | % Daily Value.
-    const amountStr = row.unit ? `${formatValue(row.amount)} ${row.unit}` : formatValue(row.amount)
-    return (
-      <div
-        className={cn(
-          'grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 border-b border-zinc-400 py-0.5 text-sm leading-tight',
-          isMajorRow && 'font-semibold',
-          indentClass,
-        )}
-      >
-        <span>{row.label}</span>
-        <span className="text-right font-normal tabular-nums">{amountStr}</span>
-        <span className="min-w-[2.5rem] text-right font-bold">{dvCell}</span>
       </div>
     )
   }
@@ -149,7 +173,6 @@ function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSuppleme
       {row.percentDailyValue !== undefined ? (
         <span className="font-bold">{row.percentDailyValue}%</span>
       ) : row.noDailyValue ? (
-        // No established Daily Value → "†" in the % Daily Value column.
         <span className="font-bold">†</span>
       ) : null}
     </div>

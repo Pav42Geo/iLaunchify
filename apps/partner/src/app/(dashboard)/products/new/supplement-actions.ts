@@ -18,12 +18,15 @@ export interface SupplementDietaryRow {
   percentDV: string // '' = no established DV (†)
   blendId: string
   isOther: boolean
+  amountLessThan?: boolean // print "<" before the amount
+  symbol?: string // custom footnote glyph for this row's %DV cell
 }
 export interface SupplementBlend {
   id: string
   name: string
   total: number
   unit: string
+  amountLessThan?: boolean
 }
 /** Optional Calories/fat/carb/sugars/protein declaration (21 CFR 101.36(b)(2)). */
 export interface SupplementNutritionPayload {
@@ -46,6 +49,9 @@ export interface SupplementFormulationPayload {
   servingsPerContainer: number
   dosageForm?: string // 'capsule' | 'gummy' | 'powder' | … (DSLD physical state)
   nutrition?: SupplementNutritionPayload // Calories/fat/carb/sugars/protein, if present
+  nutritionLessThan?: Record<string, boolean> // per-nutrient "<" trace flags
+  noDvSymbol?: string // footnote glyph for no-DV ingredients (default "†")
+  customFootnotes?: Array<{ symbol: string; text: string }>
 }
 
 type Result = { ok: true } | { ok: false; error: string }

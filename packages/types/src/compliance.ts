@@ -34,6 +34,10 @@ export const NutrientRowSchema = z.object({
   // Value, so a "†" must appear in the % Daily Value column referring to the
   // "Daily Value Not Established" footnote (21 CFR 101.36(b)(2)(iii)(F)).
   noDailyValue: z.boolean().optional(),
+  // Pre-formatted % Daily Value cell, produced by the Supplement Facts engine so
+  // structured annotations (<, footnote symbols like † ‡ * **) render exactly as
+  // declared. When present, the renderer prints it verbatim over percentDailyValue.
+  dvText: z.string().optional(),
   indent: z.number().int().min(0).max(2).default(0),
 })
 export type NutrientRow = z.infer<typeof NutrientRowSchema>

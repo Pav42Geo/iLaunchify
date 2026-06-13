@@ -58,7 +58,12 @@ interface DietRow {
   percentDV: string // '' = no established DV (†)
   blendId: string // '' = standalone
   isOther: boolean
+  amountLessThan?: boolean // print "<" before the amount (trace declaration)
+  symbol?: string // custom footnote glyph for this row's %DV cell
 }
+
+// Footnote glyph choices for ingredients with no established Daily Value.
+const NO_DV_SYMBOLS = ['†', '‡', '*', '**']
 
 const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
 
@@ -78,7 +83,9 @@ export function SupplementFormulationStep({
   const [dosageForm, setDosageForm] = React.useState('capsule')
   // Optional Calories/macros block (string inputs; only positive values declared).
   const [nut, setNut] = React.useState<Record<string, string>>({})
+  const [nutLt, setNutLt] = React.useState<Record<string, boolean>>({}) // per-nutrient "<" trace flags
   const [nutOpen, setNutOpen] = React.useState(false)
+  const [noDvSymbol, setNoDvSymbol] = React.useState('†') // footnote glyph for no-DV rows
   const builtNutrition: SupplementNutrition = React.useMemo(() => {
     const out: Record<string, number> = {}
     for (const f of NUTRITION_FIELDS) {
@@ -111,6 +118,8 @@ export function SupplementFormulationStep({
           setNut(Object.fromEntries(Object.entries(r.data.nutrition).map(([k, v]) => [k, String(v)])))
           setNutOpen(true)
         }
+        if (r.data.nutritionLessThan) setNutLt(r.data.nutritionLessThan)
+        if (r.data.noDvSymbol) setNoDvSymbol(r.data.noDvSymbol)
       }
       hydrated.current = true
     })
@@ -121,10 +130,10 @@ export function SupplementFormulationStep({
     if (!draftId || !hydrated.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition })
+      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol })
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, draftId])
+  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, nutLt, noDvSymbol, draftId])
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
@@ -173,12 +182,16 @@ export function SupplementFormulationStep({
       blendId: r.blendId || null,
       isOtherIngredient: r.isOther,
       sortWeight: rows.length - i, // declared order = descending predominance
+      amountLessThan: r.amountLessThan,
+      symbol: r.symbol?.trim() || undefined,
     }))
   const blendInputs: ProprietaryBlend[] = blends.map((b) => ({ id: b.id, name: b.name, totalAmount: b.total, unit: b.unit, percentDV: null }))
   const { panel, otherIngredients } = toSupplementPanelData(dietary, blendInputs, {
     servingSize: servingForm,
     servingsPerContainer,
     nutrition: builtNutrition,
+    nutritionLessThan: nutLt,
+    noDvSymbol,
   })
   const hasPanel = panel.rows.length > 0
 
@@ -221,18 +234,29 @@ export function SupplementFormulationStep({
               {NUTRITION_FIELDS.map((f) => (
                 <label key={f.key} className="flex flex-col gap-1">
                   <span className={`text-[11.5px] text-ink-700 ${f.indent ? 'pl-3 text-ink-500' : 'font-medium'}`}>{f.label}{f.unit ? ` (${f.unit})` : ''}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    className={INPUT}
-                    value={nut[f.key] ?? ''}
-                    onChange={(e) => setNut((n) => ({ ...n, [f.key]: e.target.value }))}
-                    placeholder="0"
-                  />
+                  <div className="flex items-center gap-1">
+                    {f.key !== 'calories' && (
+                      <button
+                        type="button"
+                        aria-pressed={!!nutLt[f.key]}
+                        title="Declare as “less than” (e.g. <1 g)"
+                        onClick={() => setNutLt((s) => ({ ...s, [f.key]: !s[f.key] }))}
+                        className={`h-9 w-7 shrink-0 rounded-md border text-[13px] font-semibold ${nutLt[f.key] ? 'border-pink-400 bg-pink-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
+                      >&lt;</button>
+                    )}
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      className={`${INPUT} w-full`}
+                      value={nut[f.key] ?? ''}
+                      onChange={(e) => setNut((n) => ({ ...n, [f.key]: e.target.value }))}
+                      placeholder="0"
+                    />
+                  </div>
                 </label>
               ))}
-              <p className="col-span-full text-[11px] text-ink-500">Per serving. Leave blank what isn’t present — empty rows are omitted from the panel. %DV and the “2,000 calorie” footnote are added automatically.</p>
+              <p className="col-span-full text-[11px] text-ink-500">Per serving. Leave blank what isn’t present — empty rows are omitted from the panel. The <b>&lt;</b> toggle prints “less than” (e.g. “&lt;1 g”). %DV and the “2,000 calorie” footnote are added automatically.</p>
             </div>
           )}
         </div>
@@ -279,6 +303,7 @@ export function SupplementFormulationStep({
                   <th className="py-1.5 pr-2">Ingredient (incl. source / plant part)</th>
                   <th className="py-1.5 px-1 text-right">Amount</th>
                   <th className="py-1.5 px-1">Unit</th>
+                  <th className="py-1.5 px-1 text-center" title="Footnote symbol for this row">Sym</th>
                   <th className="py-1.5 px-1 text-right">% DV</th>
                   <th className="py-1.5 px-1">Blend</th>
                   <th />
@@ -288,13 +313,25 @@ export function SupplementFormulationStep({
                 {dietRows.map((r) => (
                   <tr key={r.uid} className="border-b border-ink-50">
                     <td className="py-1.5 pr-2"><input className={`${INPUT} w-full`} value={r.name} placeholder="e.g. Vitamin C (as ascorbic acid)" onChange={(e) => patch(r.uid, { name: e.target.value })} /></td>
-                    <td className="py-1.5 px-1"><input className={`${INPUT} w-16 text-right`} type="number" min={0} value={r.amount} onChange={(e) => patch(r.uid, { amount: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
+                    <td className="py-1.5 px-1">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          aria-pressed={!!r.amountLessThan}
+                          title="Declare as “less than” (e.g. <1 g)"
+                          onClick={() => patch(r.uid, { amountLessThan: !r.amountLessThan })}
+                          className={`h-7 w-6 rounded-md border text-[13px] font-semibold ${r.amountLessThan ? 'border-pink-400 bg-pink-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
+                        >&lt;</button>
+                        <input className={`${INPUT} w-14 text-right`} type="number" min={0} value={r.amount} onChange={(e) => patch(r.uid, { amount: Math.max(0, parseFloat(e.target.value) || 0) })} />
+                      </div>
+                    </td>
                     <td className="py-1.5 px-1">
                       <select className={`${INPUT} w-24`} value={r.unit} onChange={(e) => patch(r.uid, { unit: e.target.value })}>
                         {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
-                    <td className="py-1.5 px-1"><input className={`${INPUT} w-14 text-right`} type="number" min={0} value={r.percentDV} placeholder="†" onChange={(e) => patch(r.uid, { percentDV: e.target.value })} /></td>
+                    <td className="py-1.5 px-1"><input className={`${INPUT} w-10 text-center`} maxLength={2} value={r.symbol ?? ''} placeholder="—" title="Optional footnote symbol (define it under Footnotes)" onChange={(e) => patch(r.uid, { symbol: e.target.value })} /></td>
+                    <td className="py-1.5 px-1"><input className={`${INPUT} w-14 text-right`} type="number" min={0} value={r.percentDV} placeholder={noDvSymbol} onChange={(e) => patch(r.uid, { percentDV: e.target.value })} /></td>
                     <td className="py-1.5 px-1">
                       <select className={`${INPUT} w-32`} value={r.blendId} onChange={(e) => patch(r.uid, { blendId: e.target.value })}>
                         <option value="">— none —</option>
@@ -304,7 +341,7 @@ export function SupplementFormulationStep({
                     <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
                   </tr>
                 ))}
-                {dietRows.length === 0 && <tr><td colSpan={6} className="py-4 text-center text-[12px] text-ink-400">No dietary ingredients yet — add the first below.</td></tr>}
+                {dietRows.length === 0 && <tr><td colSpan={7} className="py-4 text-center text-[12px] text-ink-400">No dietary ingredients yet — add the first below.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -313,7 +350,14 @@ export function SupplementFormulationStep({
             <button type="button" onClick={() => addRow(false)} className="inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Dietary ingredient</button>
             <button type="button" onClick={addBlend} className="inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Layers className="h-3.5 w-3.5" /> Proprietary blend</button>
           </div>
-          <p className="mt-2 text-[11px] text-ink-500">Leave <b>% DV</b> blank for ingredients with no established Daily Value — they print with a “†”. Source / plant part goes in the name, e.g. “Turmeric (root) extract”.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
+            <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value)</span>
+            <select className={`${INPUT} w-20`} value={noDvSymbol} onChange={(e) => setNoDvSymbol(e.target.value)}>
+              {NO_DV_SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <span className="text-[11px] text-ink-500">Glyph used for ingredients with no established Daily Value, and its footnote. Default “†”.</span>
+          </div>
+          <p className="mt-2 text-[11px] text-ink-500">Leave <b>% DV</b> blank for ingredients with no established Daily Value — they print with “{noDvSymbol}”. The <b>&lt;</b> button declares a trace amount (“&lt;1 g”); <b>Sym</b> adds a custom footnote mark to a row. Source / plant part goes in the name, e.g. “Turmeric (root) extract”.</p>
         </div>
 
         {/* Proprietary blends */}
