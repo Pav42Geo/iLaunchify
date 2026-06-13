@@ -417,11 +417,22 @@ export function RecipeBuilderStep({
     setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: (f.lines ?? []).filter((_, k) => k !== li) } : f)))
   }
   // Resume: hydrate per100g for any persisted overlay line missing nutrient data
-  // (extras store ingId+qty+unit, not nutrients, to avoid staleness).
+  // (extras store ingId+qty+unit, not nutrients, to avoid staleness). We track
+  // already-attempted ids in a ref so an ingredient that legitimately has NO
+  // nutrition data ({}), is fetched ONCE — never refetched on every render
+  // (that loop was firing unbounded network requests).
+  const flavorHydrated = useRef<Set<string>>(new Set())
   useEffect(() => {
     const needs = (l: FlavorLine) => l.ingId && !(l.per100g && Object.keys(l.per100g).length)
-    const missing = [...new Set(flavors.flatMap((f) => (f.lines ?? []).filter(needs).map((l) => l.ingId)))]
+    const missing = [
+      ...new Set(
+        flavors.flatMap((f) => (f.lines ?? []).filter(needs).map((l) => l.ingId)),
+      ),
+    ].filter((id) => !flavorHydrated.current.has(id))
     if (missing.length === 0) return
+    // Mark attempted up-front so a re-render before the fetch resolves can't
+    // re-enqueue the same ids.
+    missing.forEach((id) => flavorHydrated.current.add(id))
     startPick(async () => {
       const cache: Record<string, { per100g: Record<string, number>; density: number | null }> = {}
       for (const id of missing) {
@@ -429,10 +440,12 @@ export function RecipeBuilderStep({
         if (res.ok) cache[id] = { per100g: res.data.per100g, density: res.data.densityGPerMl ?? null }
       }
       if (!Object.keys(cache).length) return
-      onFlavors?.(flavors.map((f) => ({
-        ...f,
-        lines: (f.lines ?? []).map((l) => (cache[l.ingId] && needs(l) ? { ...l, per100g: cache[l.ingId]!.per100g, densityGPerMl: cache[l.ingId]!.density } : l)),
-      })))
+      onFlavors?.(
+        flavors.map((f) => ({
+          ...f,
+          lines: (f.lines ?? []).map((l) => (cache[l.ingId] && needs(l) ? { ...l, per100g: cache[l.ingId]!.per100g, densityGPerMl: cache[l.ingId]!.density } : l)),
+        })),
+      )
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flavors])
@@ -1101,21 +1114,26 @@ export function RecipeBuilderStep({
                       {overlayG > 0 && <span className="tiny">Flavor adds {Math.round(overlayG * 10) / 10} g</span>}
                     </div>
                     {lines.length > 0 ? (
-                      <table className="flavlines">
-                        <thead><tr><th>Ingredient</th><th>Amount</th><th>Unit</th><th aria-label="Remove" /></tr></thead>
+                      <table>
+                        <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r">Qty</th><th className="r">Unit</th><th className="r">Grams</th><th /></tr></thead>
                         <tbody>
-                          {lines.map((l, li) => (
-                            <tr key={li}>
-                              <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
-                              <td><input type="number" min={0} step="any" value={l.qty || ''} placeholder="0" onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} className="amt" aria-label={`${l.name} amount`} /></td>
-                              <td>
-                                <select value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
-                                  {['g', 'mg', 'ml'].map((u) => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                              </td>
-                              <td><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
-                            </tr>
-                          ))}
+                          {lines.map((l, li) => {
+                            const showVol = l.densityGPerMl != null || VOLUME_UNITS.has(l.unit)
+                            const grams = toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined })
+                            return (
+                              <tr key={li}>
+                                <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
+                                <td className="r"><input className="num" type="number" min={0} value={l.qty || ''} onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} aria-label={`${l.name} amount`} /></td>
+                                <td className="r">
+                                  <select className="num" value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
+                                    {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                                  </select>
+                                </td>
+                                <td className="r">{grams ? grams.toFixed(1) : '—'}</td>
+                                <td className="r"><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     ) : (
@@ -1781,13 +1799,9 @@ const CSS = `
 .rb .flavname{flex:1 1 120px;min-width:100px;border:1px solid var(--bd);border-radius:8px;padding:6px 9px;font:inherit;font-weight:600;color:var(--ink)}
 .rb .flavbuilder{border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--g-50)}
 .rb .flavbuilder-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px}
-.rb table.flavlines{width:100%;border-collapse:collapse;font-size:12px}
-.rb table.flavlines th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--g2);font-weight:600;padding:2px 6px 4px}
-.rb table.flavlines td{padding:3px 6px;border-top:1px solid var(--bd);vertical-align:middle}
-.rb table.flavlines .amt{width:64px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font:inherit}
-.rb table.flavlines select{border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font:inherit;background:#fff}
-.rb table.flavlines .del{border:0;background:transparent;cursor:pointer;font-size:13px;opacity:.7}
-.rb table.flavlines .del:hover{opacity:1}
+.rb .flavbuilder table{background:#fff;border-radius:8px}
+.rb .del{border:0;background:transparent;cursor:pointer;font-size:13px;opacity:.7;padding:0 2px}
+.rb .del:hover{opacity:1}
 .rb .varietypack{margin-top:14px;padding-top:12px;border-top:2px solid var(--ink)}
 .rb .vp-h{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
 .rb .seg.sm button{font-size:11px;padding:4px 9px}
