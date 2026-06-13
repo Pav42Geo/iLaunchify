@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateLabel, resolveGeometry, sumBatch, type IngredientInput } from './engine'
-import { toPanelData, perContainerPanel } from './panel-adapter'
+import { toPanelData, perContainerPanel, assessSimplified } from './panel-adapter'
 import {
   roundCalories, roundFat, roundGramMacro, roundCholSodium, roundMicro,
   roundServingsPerContainer, formatServingsPerContainer, formatNetWeight,
@@ -192,5 +192,73 @@ describe('perContainerPanel scales per-serving → whole container', () => {
     const r2 = calculateLabel([REF], { basis: 'package', packageSizeG: 100, numPackages: 4, servingsPerPackage: 2 })
     const c2 = perContainerPanel(r2)
     expect(amt(c2, 'calories')).toBe(25) // 100 batch / 4 packages
+  })
+})
+
+describe('simplified format (21 CFR 101.9(f))', () => {
+  // A nutritionally-empty ingredient: every per-serving value rounds to 0, so all
+  // 15 core nutrients are insignificant → simplified format is eligible.
+  const EMPTY: IngredientInput = {
+    id: 'empty', name: 'Empty', quantity: 100, unit: 'g', per100g: {},
+  }
+  const empty = calculateLabel([EMPTY], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+
+  it('assessSimplified: all-zero food is eligible, full statement, every omittable id', () => {
+    const a = assessSimplified(empty)
+    expect(a.eligible).toBe(true)
+    expect(a.insignificantIds).toEqual([
+      'saturatedFat', 'transFat', 'cholesterol', 'dietaryFiber', 'totalSugars',
+      'addedSugars', 'vitaminD', 'calcium', 'iron', 'potassium',
+    ])
+    expect(a.statement).toBe(
+      'Not a significant source of saturated fat, trans fat, cholesterol, dietary fiber, ' +
+      'total sugars, added sugars, vitamin D, calcium, iron and potassium.',
+    )
+  })
+
+  it('REF (significant fat/sodium/carb/calcium) is NOT eligible', () => {
+    // REF per serving: 50 cal, 2.5g fat, 100mg sodium, 10g carb, 2g fiber,
+    // 5g protein, calcium ~4%DV — many significant nutrients, far fewer than 8
+    // round to zero.
+    const r = calculateLabel([REF], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+    expect(assessSimplified(r).eligible).toBe(false)
+  })
+
+  it('toPanelData simplified=true on eligible food drops insignificant rows + sets nsSource', () => {
+    const panel = toPanelData(empty, { simplified: true })
+    const ids = panel.rows.map((x) => x.id)
+    // The always-declared five are retained (even at zero).
+    expect(ids).toContain('calories')
+    expect(ids).toContain('totalFat')
+    expect(ids).toContain('sodium')
+    expect(ids).toContain('totalCarbohydrate')
+    expect(ids).toContain('protein')
+    // The insignificant omittable rows are dropped.
+    expect(ids).not.toContain('saturatedFat')
+    expect(ids).not.toContain('cholesterol')
+    expect(ids).not.toContain('dietaryFiber')
+    expect(ids).not.toContain('addedSugars')
+    expect(ids).not.toContain('calcium')
+    expect(ids).not.toContain('iron')
+    expect(ids).not.toContain('potassium')
+    expect(panel.nsSource).toBe(
+      'Not a significant source of saturated fat, trans fat, cholesterol, dietary fiber, ' +
+      'total sugars, added sugars, vitamin D, calcium, iron and potassium.',
+    )
+  })
+
+  it('simplified=false (default) keeps the full row set + no nsSource', () => {
+    const panel = toPanelData(empty)
+    const ids = panel.rows.map((x) => x.id)
+    expect(ids).toContain('saturatedFat')
+    expect(ids).toContain('calcium')
+    expect(panel.nsSource).toBeUndefined()
+  })
+
+  it('simplified=true on an INELIGIBLE food is a no-op (full rows, no nsSource)', () => {
+    const r = calculateLabel([REF], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+    const panel = toPanelData(r, { simplified: true })
+    expect(panel.rows.map((x) => x.id)).toContain('saturatedFat')
+    expect(panel.nsSource).toBeUndefined()
   })
 })

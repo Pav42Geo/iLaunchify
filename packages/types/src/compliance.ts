@@ -49,6 +49,10 @@ export const PanelDataSchema = z.object({
   servingsPerContainer: z.string(),
   requiredFooter: z.string(),
   requiredWarnings: z.array(z.string()),
+  // "Not a significant source of …" statement for the simplified Nutrition Facts
+  // format (21 CFR 101.9(f)). Present only when the simplified format is used;
+  // the renderer prints it inside the box above the "* % Daily Value" footnote.
+  nsSource: z.string().optional(),
 })
 export type PanelData = z.infer<typeof PanelDataSchema>
 

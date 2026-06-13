@@ -45,13 +45,15 @@ const AMOUNT_CAPTION_PX = 12 // "Amount per serving" subheading — clearly legi
 const CALORIES_LABEL_PX = 31 // "Calories" word (large bold, bottom-aligned to the number)
 const CALORIES_NUM_PX = 46 // the Calories number — the LARGEST element on the panel
 const CALORIES_RULE = 4 // bar BELOW the Calories row (between Calories and %DV)
-const DV_HEADER_PX = 11 // "% Daily Value*" heading — legible
-const ROW_PX = 11.5 // body row text
+const DV_HEADER_PX = 12 // "% Daily Value*" heading — legible
+const ROW_PX = 13 // body row text — legible at preview scale
 const ROW_RULE = 0.5 // hairline between nutrient rows (d)(v)
 const VITAMIN_RULE = 2.5 // bar separating the vitamins/minerals block (d)(8)
 const FOOTER_BAR = 4 // bar above the footnote
-const FOOTER_PX = 8 // footnote text
+const FOOTER_PX = 9.5 // footnote text
 const COL_HEADER_PX = 9 // dual-column headers ("Per serving" / "Per container")
+const NS_SOURCE_PX = 10 // "Not a significant source of …" statement (inside the box)
+const INGREDIENTS_PX = 12 // "INGREDIENTS:" / "Contains:" blocks (outside the box)
 
 const ROW_LINE_GAP = 2 // extra vertical space added per wrapped text line
 const COL_GAP = 6 // gap between value columns
@@ -118,11 +120,19 @@ export function NutritionFactsSvg({
   data,
   perContainer,
   columnHeaders,
+  ingredientStatement,
+  contains,
   widthPx = 320,
 }: {
   data: PanelData
   perContainer?: PanelData
   columnHeaders?: { primary: string; secondary: string }
+  /** Ingredients statement, rendered "INGREDIENTS: <text>" BELOW / OUTSIDE the
+   *  box (21 CFR 101.4). The word "INGREDIENTS:" is bold, the list regular. */
+  ingredientStatement?: string
+  /** "Contains" allergen line (FALCPA), rendered "Contains: <allergens>" below
+   *  the ingredients statement. Omitted when empty. */
+  contains?: string
   widthPx?: number | null
 }): JSX.Element {
   // viewBox width is the authoritative geometry; widthPx only sets the rendered
@@ -431,6 +441,25 @@ export function NutritionFactsSvg({
     els.push(<line key={`row-rule-${ri}`} x1={innerLeft} y1={y} x2={innerRight} y2={y} stroke="#000" strokeWidth={ROW_RULE} />)
   })
 
+  // --- Simplified-format statement (21 CFR 101.9(f)) -----------------------
+  // "Not a significant source of …" sits INSIDE the box, after the last nutrient
+  // row and ABOVE the "* % Daily Value" footnote — separated by a hairline.
+  const nsSource = data.nsSource
+  if (nsSource && nsSource.trim().length > 0) {
+    els.push(<line key="ns-rule" x1={innerLeft} y1={y} x2={innerRight} y2={y} stroke="#000" strokeWidth={ROW_RULE} />)
+    y += 4
+    const nsLines = wrapSvgText(nsSource, innerWidth, NS_SOURCE_PX)
+    nsLines.forEach((line, ni) => {
+      const baseline = y + NS_SOURCE_PX + ni * (NS_SOURCE_PX + ROW_LINE_GAP)
+      els.push(
+        <text key={`ns-${ni}`} x={innerLeft} y={baseline} fontFamily={FONT} fontSize={NS_SOURCE_PX} fontWeight={400} fill="#000">
+          {line}
+        </text>,
+      )
+    })
+    y += NS_SOURCE_PX + (nsLines.length - 1) * (NS_SOURCE_PX + ROW_LINE_GAP) + 3
+  }
+
   // --- Footnote ------------------------------------------------------------
   const footer = data.requiredFooter
   if (footer && footer.trim().length > 0) {
@@ -465,7 +494,52 @@ export function NutritionFactsSvg({
     />
   )
 
-  const totalHeight = boxBottom
+  // --- Ingredients + "Contains" blocks — BELOW / OUTSIDE the box (21 CFR
+  // 101.4 ingredient list + FALCPA "Contains" statement). Mirrors how
+  // SupplementFactsSvg lays out "Other ingredients" beyond boxBottom. The label
+  // prefix ("INGREDIENTS:" / "Contains:") is bold; the rest is regular. -------
+  const belowEls: JSX.Element[] = []
+  let totalHeight = boxBottom
+  let by = boxBottom
+
+  /** Render a "PREFIX rest" block wrapped to width W, prefix bold + rest regular,
+   *  treating the prefix as the first word so wrapping accounts for it. */
+  const pushBelowBlock = (key: string, prefix: string, rest: string) => {
+    by += 6
+    const full = `${prefix} ${rest}`.trim()
+    const lines = wrapSvgText(full, W, INGREDIENTS_PX)
+    lines.forEach((line, li) => {
+      const baseline = by + INGREDIENTS_PX + li * (INGREDIENTS_PX + ROW_LINE_GAP)
+      if (li === 0) {
+        // First line: bold prefix + regular remainder in ONE <text> via tspans so
+        // SVG positions them sequentially (a `dx` gap guarantees a real space —
+        // no fragile width estimate of the BOLD prefix, which was colliding).
+        const remainder = line.slice(prefix.length).replace(/^\s+/, '')
+        belowEls.push(
+          <text key={`${key}-l0`} x={0} y={baseline} fontFamily={FONT} fontSize={INGREDIENTS_PX} fill="#000">
+            <tspan fontWeight={700}>{prefix}</tspan>
+            {remainder.length > 0 ? <tspan dx={5} fontWeight={400}>{remainder}</tspan> : null}
+          </text>,
+        )
+      } else {
+        belowEls.push(
+          <text key={`${key}-${li}`} x={0} y={baseline} fontFamily={FONT} fontSize={INGREDIENTS_PX} fontWeight={400} fill="#000">
+            {line}
+          </text>,
+        )
+      }
+    })
+    by += INGREDIENTS_PX + (lines.length - 1) * (INGREDIENTS_PX + ROW_LINE_GAP) + 2
+    totalHeight = by
+  }
+
+  if (ingredientStatement && ingredientStatement.trim().length > 0) {
+    pushBelowBlock('ingredients', 'INGREDIENTS:', ingredientStatement.trim())
+  }
+  if (contains && contains.trim().length > 0) {
+    pushBelowBlock('contains', 'Contains:', contains.trim())
+  }
+
   const widthAttr: number | string = widthPx == null ? '100%' : widthPx
 
   return (
@@ -480,6 +554,7 @@ export function NutritionFactsSvg({
     >
       {boxEl}
       {els}
+      {belowEls}
     </svg>
   )
 }

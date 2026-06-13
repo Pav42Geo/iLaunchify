@@ -8,6 +8,8 @@ import {
   roundCalories, roundFat, roundGramMacro, roundCholSodium, roundMicro, roundDV,
 } from './rounding'
 
+// roundCalories is used both by the per-container panel and assessSimplified.
+
 export interface PanelOptions {
   /** Descriptive serving, e.g. "1 cup" or "4". Combined with grams. */
   suggestedServing?: string
@@ -17,6 +19,11 @@ export interface PanelOptions {
   showVoluntaryFats?: boolean
   /** Override the audience (defaults to the one the engine computed with). */
   audience?: NutritionAudience
+  /** Use the simplified Nutrition Facts format (21 CFR 101.9(f)) when eligible:
+   *  omit the insignificant nutrient rows and add a "Not a significant source of
+   *  …" statement. No-op when the food is not eligible (fewer than 8 of the 15
+   *  core nutrients round to zero). */
+  simplified?: boolean
 }
 
 const FOOTER =
@@ -142,6 +149,96 @@ const ROUNDER: Partial<Record<keyof Nutrients, (v: number) => number>> = {
   potassium: roundMicro,
 }
 
+// ---------------------------------------------------------------------------
+// Simplified Nutrition Facts format (21 CFR 101.9(f)).
+//
+// A food MAY use the simplified format when it contains INSIGNIFICANT amounts of
+// 8 or more of these 15 "core" nutrients. "Insignificant" = the FDA-rounded
+// per-serving display amount rounds to zero (calories rounds to 0, every other
+// nutrient's class-specific rounder returns 0). The simplified panel still
+// declares the always-required five (calories, total fat, sodium, total
+// carbohydrate, protein) even when they're zero; the OTHER insignificant ones
+// are omitted from the body and named in a single statement:
+//   "Not a significant source of <names>."
+// ---------------------------------------------------------------------------
+
+/** The 15 core nutrients counted toward simplified-format eligibility. */
+const SIMPLIFIED_CORE: (keyof Nutrients | 'calories')[] = [
+  'calories', 'totalFat', 'saturatedFat', 'transFat', 'cholesterol', 'sodium',
+  'totalCarbohydrate', 'dietaryFiber', 'totalSugars', 'addedSugars', 'protein',
+  'vitaminD', 'calcium', 'iron', 'potassium',
+]
+
+/** The five nutrients that must ALWAYS be declared — never omitted, never named
+ *  in the "Not a significant source of" statement (21 CFR 101.9(f)(1)). */
+const SIMPLIFIED_ALWAYS_DECLARED = new Set<string>([
+  'calories', 'totalFat', 'sodium', 'totalCarbohydrate', 'protein',
+])
+
+/** Canonical label-cased names for the statement, in FDA panel order. Note the
+ *  capital D in "vitamin D". Only the omittable nutrients appear here. */
+const SIMPLIFIED_LABEL_NAMES: Record<string, string> = {
+  saturatedFat: 'saturated fat',
+  transFat: 'trans fat',
+  cholesterol: 'cholesterol',
+  dietaryFiber: 'dietary fiber',
+  totalSugars: 'total sugars',
+  addedSugars: 'added sugars',
+  vitaminD: 'vitamin D',
+  calcium: 'calcium',
+  iron: 'iron',
+  potassium: 'potassium',
+}
+
+/** Canonical order the statement names are rendered in (FDA panel order). */
+const SIMPLIFIED_STATEMENT_ORDER: string[] = [
+  'saturatedFat', 'transFat', 'cholesterol', 'dietaryFiber', 'totalSugars',
+  'addedSugars', 'vitaminD', 'calcium', 'iron', 'potassium',
+]
+
+/** Join names with ", " and " and " before the last item, NO oxford comma. */
+function joinSimplifiedNames(names: string[]): string {
+  if (names.length === 0) return ''
+  if (names.length === 1) return names[0]!
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
+}
+
+export function assessSimplified(
+  result: LabelResult,
+  audience?: NutritionAudience,
+): { eligible: boolean; insignificantIds: string[]; statement: string } {
+  const aud: NutritionAudience = audience ?? result.audience ?? 'GENERAL'
+  const exact = result.raw.perServingExact
+
+  /** FDA-rounded per-serving display amount for one core nutrient. */
+  const rounded = (key: keyof Nutrients | 'calories'): number => {
+    if (key === 'calories') return roundCalories(exact.calories)
+    const round = ROUNDER[key]
+    const ex = exact[key] ?? 0
+    return round ? round(ex) : ex
+  }
+
+  // Count the insignificant (rounds-to-zero) nutrients among the 15 core ones.
+  const insignificant = SIMPLIFIED_CORE.filter((key) => rounded(key) === 0)
+  const eligible = insignificant.length >= 8
+
+  // The omittable insignificant nutrients (exclude the always-declared five).
+  const insignificantIds: string[] = insignificant.filter((id) => !SIMPLIFIED_ALWAYS_DECLARED.has(id))
+
+  // Render the statement names in canonical panel order.
+  const names = SIMPLIFIED_STATEMENT_ORDER
+    .filter((id) => insignificantIds.includes(id))
+    .map((id) => SIMPLIFIED_LABEL_NAMES[id]!)
+
+  const statement = names.length > 0 ? `Not a significant source of ${joinSimplifiedNames(names)}.` : ''
+
+  // `aud` is reserved for future audience-specific eligibility rules; eligibility
+  // currently keys off rounded amounts only (the rounders are audience-agnostic).
+  void aud
+
+  return { eligible, insignificantIds, statement }
+}
+
 export function toPanelData(result: LabelResult, opts: PanelOptions = {}): PanelData {
   const ps = result.perServing
   const g = result.geometry
@@ -178,13 +275,29 @@ export function toPanelData(result: LabelResult, opts: PanelOptions = {}): Panel
     view: (key) => perServingMap[key] ?? { amount: 0, dv: 0 },
   }
 
+  // Build the full row set once, then (when requested + eligible) apply the
+  // simplified format: drop the insignificant omittable rows + attach the
+  // "Not a significant source of …" statement. Filtering the shared buildRows
+  // output keeps the simplified and full panels in lockstep — same row list.
+  let rows = buildRows(src, audience, opts.showVoluntaryFats ?? false)
+  let nsSource: string | undefined
+  if (opts.simplified) {
+    const simplified = assessSimplified(result, audience)
+    if (simplified.eligible) {
+      const drop = new Set(simplified.insignificantIds)
+      rows = rows.filter((r) => !drop.has(r.id))
+      nsSource = simplified.statement || undefined
+    }
+  }
+
   return {
     format: opts.format ?? 'STANDARD',
-    rows: buildRows(src, audience, opts.showVoluntaryFats ?? false),
+    rows,
     servingSize: serving,
     servingsPerContainer: g.servingsPerContainerLabel,
     requiredFooter: audience === 'GENERAL' ? FOOTER : FOOTER_CHILD,
     requiredWarnings: [],
+    ...(nsSource ? { nsSource } : {}),
   }
 }
 

@@ -7,7 +7,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
-import { calculateLabel, toPanelData, perContainerPanel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
+import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
 import { NutritionFactsSvg } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
@@ -259,6 +259,8 @@ export function RecipeBuilderStep({
   // Recipe-wide waste %, applied to EVERY ingredient on top of its own waste
   // (ReciPal "Recipe Waste %" in the Totals row). Drives yield, grams + cost.
   const [recipeWaste, setRecipeWaste] = useState(0)
+  // FDA simplified format (21 CFR 101.9(f)) — opt-in, only offered when eligible.
+  const [simplifiedOn, setSimplifiedOn] = useState(false)
   // The row whose "Add custom unit" modal is open (null = closed).
   const [customMeasureRow, setCustomMeasureRow] = useState<Row | null>(null)
   // Descriptive ("suggested") serving — the household measure printed on the
@@ -557,6 +559,18 @@ export function RecipeBuilderStep({
   // FOOD-only audience; other domains keep the standard panel.
   const audience: NutritionAudience = domain === 'FOOD' ? ageGroup : 'GENERAL'
   const result = selected.length ? calculateLabel(selected, geoArgs, { audience }) : null
+  // Simplified-format eligibility (≥8 insignificant nutrients) — gates the opt-in.
+  const simpEligible = result ? assessSimplified(result, audience).eligible : false
+  // Ingredient statement for the label: ingredient names in descending order by
+  // weight (21 CFR 101.4), joined — the renderer prefixes "INGREDIENTS:".
+  const ingredientStatement = [...selected]
+    .sort((a, b) =>
+      toGrams(b.quantity, b.unit, b) * (1 - (b.trimWastePct ?? 0) / 100) -
+      toGrams(a.quantity, a.unit, a) * (1 - (a.trimWastePct ?? 0) / 100),
+    )
+    .map((s) => s.name?.trim())
+    .filter((n): n is string => !!n)
+    .join(', ')
   const ps = result?.perServing
   // Per-ingredient Nutrition Breakdown (QA): each selected ingredient's exact
   // batch contribution from the engine, plus its per-serving share. Makes a bad
@@ -1028,13 +1042,19 @@ export function RecipeBuilderStep({
                     )
                   })}
                 </div>
-                <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
+                <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
                 <p className="makes">Combined {flavors.length}-column label for the pack · each column = that flavor&apos;s own recipe · plus a single-column label per flavor at print.</p>
               </>
             ) : (
               <>
-                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} />
-                <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
+                {simpEligible && (
+                  <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
+                    <span>Use the <b>simplified format</b> — this product qualifies (most nutrients are insignificant). Hides the zero rows and adds the “Not a significant source of…” statement (21 CFR 101.9(f)).</span>
+                  </label>
+                )}
+                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} />
+                <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
               </>
             )
           ) : (
@@ -1183,8 +1203,14 @@ export function RecipeBuilderStep({
             <p className="muted" style={{ lineHeight: 1.5 }}><b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} <span className="tiny">(Auto-selected from this product&apos;s category.)</span></p>
           ) : ps && result ? (
             <div style={{ maxWidth: 340 }}>
-              <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} />
-              <div className="netwt">Net Wt {formatNetWeight(result.geometry.netWeightG)}</div>
+              {simpEligible && (
+                <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
+                  <span>Use the <b>simplified format</b> (qualifies) — adds “Not a significant source of…” (21 CFR 101.9(f)).</span>
+                </label>
+              )}
+              <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} />
+              <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
             </div>
           ) : (
             <p className="muted">Add ingredients + a serving size to see the label.</p>
@@ -1529,8 +1555,8 @@ function AddCustomMeasureModal({
 // source of truth for the math). When the package holds 2–3 servings, FDA
 // (21 CFR 101.9(e)) requires the dual "per serving | per container" column
 // format — surfaced here via perContainerPanel.
-function FactsPanel({ result, title, narrow, serving, format = 'STANDARD' }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR' }) {
-  const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format })
+function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simplified = false, ingredientStatement }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR'; simplified?: boolean; ingredientStatement?: string }) {
+  const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format, simplified })
   // Dual-column (per serving | per container, 21 CFR 101.9(e)) is an explicit
   // opt-in for the specific 2–3-serving single-eating-occasion case — NOT auto-
   // applied (auto-applying it made the standard panel look wrong). Default = the
@@ -1544,7 +1570,8 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD' }: { r
         data={data}
         perContainer={perContainer}
         columnHeaders={dual ? { primary: 'Per serving', secondary: 'Per container' } : undefined}
-        widthPx={narrow ? 196 : dual ? 360 : 300}
+        ingredientStatement={ingredientStatement}
+        widthPx={narrow ? 196 : dual ? 340 : 290}
       />
     </div>
   )
