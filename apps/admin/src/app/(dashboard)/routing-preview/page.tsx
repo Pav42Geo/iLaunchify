@@ -3,6 +3,7 @@
 // candidates with their capability/proximity/cert score breakdown. Makes the
 // orchestration routing transparent for ops.
 
+import { Workflow } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { RoutingPreviewForm } from './RoutingPreviewForm'
@@ -39,14 +40,15 @@ export default async function RoutingPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-[#F3EFE8] px-6 py-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Routing preview</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-600">
+      <header className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+        <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500"><Workflow className="h-3 w-3" /> Order settings</p>
+        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">Routing preview</h1>
+        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
           See which manufacturers the orchestration engine would rank for an order — with the
           capability, proximity, and certification scores behind each pick. Hard gates (category fit,
           MOQ range, payouts) filter first; survivors are scored.
         </p>
-      </div>
+      </header>
 
       <RoutingPreviewForm products={uniqueProducts} markets={markets} regions={regions} />
     </div>
