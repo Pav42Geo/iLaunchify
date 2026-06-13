@@ -275,7 +275,10 @@ export function RecipeBuilderStep({
   const [mode, setMode] = useState<'public' | 'preview'>('public')
   // Recipe entry method (Search / AI / Declare) + whether the chooser shows its
   // three tiles (open) or the collapsed "Built with: X · Switch mode" pill.
-  const [entryMode, setEntryMode] = useState<Mode>(initialEntryMode ?? 'SEARCH_BUILD')
+  // Declared is the default path for food: most manufacturers already have a
+  // formulated product + COA and just need to put their values on the label.
+  // Building from ingredients is the secondary path. (Decision 2026-06-13.)
+  const [entryMode, setEntryMode] = useState<Mode>(initialEntryMode ?? 'DECLARED_PANEL')
   const [chooserOpen, setChooserOpen] = useState<boolean>(
     !initialEntryMode && !(initialRows && initialRows.length),
   )
@@ -725,7 +728,9 @@ export function RecipeBuilderStep({
           currentMode={entryMode}
           collapsed={!chooserOpen}
           aiAvailable={aiAvailable && !!draftId}
-          declareAvailable={declareAvailable && !!draftId}
+          // Declared is a shipped, ungated path — available whenever a draft
+          // exists (the panel needs a productTemplateId to save).
+          declareAvailable={!!draftId}
           onSelect={(m) => { setEntryMode(m); setChooserOpen(false) }}
           onExpand={() => setChooserOpen(true)}
         />

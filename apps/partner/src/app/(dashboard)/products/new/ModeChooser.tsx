@@ -18,9 +18,9 @@ import { Search, Sparkles, FileText } from 'lucide-react'
 export type Mode = 'SEARCH_BUILD' | 'AI_PARSER' | 'DECLARED_PANEL'
 
 const MODE_LABELS: Record<Mode, string> = {
-  SEARCH_BUILD: 'Search & build',
+  SEARCH_BUILD: 'Build from ingredients',
   AI_PARSER: 'Parse with AI',
-  DECLARED_PANEL: 'Declared panel',
+  DECLARED_PANEL: 'My own label data',
 }
 
 interface ModeChooserProps {
@@ -65,10 +65,19 @@ export function ModeChooser({
   return (
     <div className="grid gap-2 sm:grid-cols-3">
       <ModeTile
+        icon={FileText}
+        title="I already have my data"
+        sub="Enter your Nutrition / Supplement Facts values straight from your spec sheet or lab COA. No ingredient-by-ingredient build."
+        when="Recommended"
+        active={currentMode === 'DECLARED_PANEL'}
+        disabled={!declareAvailable}
+        onClick={() => onSelect('DECLARED_PANEL')}
+      />
+      <ModeTile
         icon={Search}
-        title="Search & build"
-        sub="Pick from USDA, library, or your private feed. Add slots one at a time."
-        when="Most common"
+        title="Build from ingredients"
+        sub="Pick from USDA, library, or your private feed and add ingredients with amounts — we compute the Facts for you."
+        when="Formulating from scratch"
         active={currentMode === 'SEARCH_BUILD'}
         onClick={() => onSelect('SEARCH_BUILD')}
       />
@@ -82,16 +91,6 @@ export function ModeChooser({
         badge={aiAvailable ? undefined : 'Trusted+'}
         lockedHint="Available on the Trusted and Premier partner tiers."
         onClick={() => onSelect('AI_PARSER')}
-      />
-      <ModeTile
-        icon={FileText}
-        title="Declare the panel"
-        sub="Type the Nutrition or Supplement Facts directly. Bypass per-ingredient computation."
-        when="Pre-tested COA"
-        active={currentMode === 'DECLARED_PANEL'}
-        disabled={!declareAvailable}
-        badge={declareAvailable ? undefined : 'Coming next'}
-        onClick={() => onSelect('DECLARED_PANEL')}
       />
     </div>
   )

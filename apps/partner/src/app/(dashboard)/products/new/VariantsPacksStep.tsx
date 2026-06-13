@@ -17,7 +17,7 @@
 //  • Multi-flavor → optional per-flavor capacity override.
 //  • Single pack (packs-per-bundle = 1) → bundle copy + units collapse.
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, type FeeInput, type SampleOptionInput, type InitialDraft } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
@@ -49,6 +49,30 @@ export interface FlavorLine {
 // `ingId` is the legacy single-overlay field (kept for back-compat); the live
 // model is `lines` — a child mini-recipe of flavor-only additions.
 export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[] }
+
+export interface PackSplit { flavors: number; perFlavor: number; even: boolean; distribution: string }
+
+/** Derive the valid (flavor-count × pieces) splits for a pack of a given
+ *  capacity. Even-only keeps splits where the count divides capacity evenly;
+ *  otherwise an uneven distribution is allowed (e.g. 18 ÷ 4 = 5+5+4+4). A flavor
+ *  may not appear fewer than `minPerFlavor` times, which caps the flavor count.
+ *  21 CFR has no rule here — this is a production-line constraint. */
+export function computePackSplits(capacity: number, minPerFlavor: number, evenOnly: boolean, pool: number): PackSplit[] {
+  if (!Number.isFinite(capacity) || capacity < 1) return []
+  const minPer = Math.max(1, Math.floor(minPerFlavor))
+  const maxFlavors = Math.min(pool > 0 ? pool : capacity, Math.floor(capacity / minPer))
+  const out: PackSplit[] = []
+  for (let f = 1; f <= maxFlavors; f++) {
+    if (capacity % f === 0) {
+      out.push({ flavors: f, perFlavor: capacity / f, even: true, distribution: `${f} × ${capacity / f}` })
+    } else if (!evenOnly) {
+      const base = Math.floor(capacity / f)
+      const rem = capacity % f
+      out.push({ flavors: f, perFlavor: base, even: false, distribution: `${rem} × ${base + 1} + ${f - rem} × ${base}` })
+    }
+  }
+  return out
+}
 
 export function VariantsPacksStep({
   packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial,
@@ -586,7 +610,18 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   // Manufacturer's ceiling: how many DISTINCT flavors a Creator may combine into
   // a single pack. null = no cap (Creator can use the whole pool).
   const [maxPerPack, setMaxPerPack] = useState<number | null>(initialMax ?? null)
+  // Pack composition (production-line constraint): box capacity + min run per
+  // flavor + even-fills rule → the valid flavor×pieces splits a Creator may pick.
+  const [packCapacity, setPackCapacity] = useState<number | null>(null)
+  const [minPerFlavor, setMinPerFlavor] = useState(1)
+  const [evenOnly, setEvenOnly] = useState(true)
   const pool = list.length
+  const packSplits = useMemo(
+    () => (packCapacity ? computePackSplits(packCapacity, minPerFlavor, evenOnly, pool) : []),
+    [packCapacity, minPerFlavor, evenOnly, pool],
+  )
+  // Largest flavor count the pack can actually hold → the feasible ceiling.
+  const feasibleMaxFlavors = packSplits.length ? Math.max(...packSplits.map((s) => s.flavors)) : pool
   const effCap = Math.min(maxPerPack ?? pool, pool)
   function set(i: number, p: Partial<Flavor>) {
     onFlavors(list.map((f, j) => (j === i ? { ...f, ...p } : f)))
@@ -654,6 +689,51 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
             ? `No cap — a Creator can build a pack from all ${pool} flavor${pool === 1 ? '' : 's'}.`
             : `A Creator can mix up to ${effCap} of your ${pool} flavors in one pack.`}
         </span>
+      </div>
+
+      {/* Pack composition — capacity + min run + even-fills rule → the valid
+          flavor×pieces splits a Creator may pick. */}
+      <div style={{ marginTop: 14, padding: 12, border: '1px solid var(--ink-200)', borderRadius: 10, background: '#fff' }}>
+        <div className="tiny" style={{ fontWeight: 700, marginBottom: 10 }}>Pack composition <span className="muted" style={{ fontWeight: 400 }}>· how flavors split across the box</span></div>
+        <div className="row" style={{ gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <Field label="Pack capacity" hint="units per box">
+            <input className="input" type="number" min={1} value={packCapacity ?? ''} placeholder="e.g. 18"
+              onChange={(e) => { const v = parseInt(e.target.value, 10); setPackCapacity(Number.isNaN(v) ? null : Math.max(1, v)) }}
+              style={{ width: 110 }} />
+          </Field>
+          <Field label="Min per flavor" hint="smallest run">
+            <input className="input" type="number" min={1} value={minPerFlavor}
+              onChange={(e) => setMinPerFlavor(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              style={{ width: 110 }} />
+          </Field>
+          <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', paddingBottom: 9 }}>
+            <input type="checkbox" checked={evenOnly} onChange={(e) => setEvenOnly(e.target.checked)} /> Even fills only
+          </label>
+        </div>
+        {packCapacity != null && (
+          packSplits.length ? (
+            <>
+              <table style={{ marginTop: 10 }}>
+                <thead><tr><th>Flavors</th><th>Per flavor</th><th>Distribution</th><th /></tr></thead>
+                <tbody>
+                  {packSplits.map((s) => (
+                    <tr key={s.flavors}>
+                      <td>{s.flavors}</td>
+                      <td>{s.perFlavor}{!s.even && '*'}</td>
+                      <td className="muted">{s.distribution}</td>
+                      <td>{!s.even && <span className="tiny muted">uneven</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="tiny muted" style={{ marginTop: 8 }}>
+                A {packCapacity}-unit box supports up to <b>{feasibleMaxFlavors}</b> flavor{feasibleMaxFlavors === 1 ? '' : 's'}{evenOnly ? ' (even fills)' : ''}. Set “Max flavors per pack” at or below this.{evenOnly ? '' : ' * uneven runs.'}
+              </p>
+            </>
+          ) : (
+            <p className="tiny muted" style={{ marginTop: 8 }}>No valid splits — lower “Min per flavor” or turn off “Even fills only”.</p>
+          )
+        )}
       </div>
       <table style={{ marginTop: 14 }}>
         <thead><tr><th>#</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
