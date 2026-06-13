@@ -56,11 +56,12 @@ export function NutritionFactsRenderer({
       </div>
 
       {isSupplement ? (
-        // 21 CFR 101.36: "Amount Per Serving" over the amounts + a "% Daily Value"
-        // column header on the right.
-        <div className="mt-1 flex items-end justify-between border-b border-black pb-0.5 text-xs font-bold">
-          <span>Amount Per Serving</span>
-          <span>% Daily Value</span>
+        // 21 CFR 101.36 column format: nutrient name | Amount Per Serving | % Daily
+        // Value. Headers sit over columns 2 and 3 (the name column has no header).
+        <div className="mt-1 grid grid-cols-[1fr_auto_auto] items-end gap-x-3 border-b border-black pb-0.5 text-xs font-bold">
+          <span />
+          <span className="text-right">Amount Per Serving</span>
+          <span className="text-right">% Daily Value</span>
         </div>
       ) : (
         <div className="mt-1 text-xs font-bold uppercase">Amount per serving</div>
@@ -107,6 +108,28 @@ function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSuppleme
       <div className="mt-1 flex items-end justify-between border-y-[4px] border-black py-0.5">
         <span className="text-base font-extrabold">Calories</span>
         <span className="text-2xl font-extrabold leading-none">{formatValue(row.amount)}</span>
+      </div>
+    )
+  }
+
+  // The %DV cell: a percentage, a "†" (no established DV), or empty.
+  const dvCell =
+    row.percentDailyValue !== undefined ? `${row.percentDailyValue}%` : row.noDailyValue ? '†' : ''
+
+  if (isSupplement) {
+    // Three columns: nutrient name | amount per serving | % Daily Value.
+    const amountStr = row.unit ? `${formatValue(row.amount)} ${row.unit}` : formatValue(row.amount)
+    return (
+      <div
+        className={cn(
+          'grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 border-b border-zinc-400 py-0.5 text-sm leading-tight',
+          isMajorRow && 'font-semibold',
+          indentClass,
+        )}
+      >
+        <span>{row.label}</span>
+        <span className="text-right font-normal tabular-nums">{amountStr}</span>
+        <span className="min-w-[2.5rem] text-right font-bold">{dvCell}</span>
       </div>
     )
   }
