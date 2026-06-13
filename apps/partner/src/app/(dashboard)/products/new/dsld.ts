@@ -77,8 +77,18 @@ function rank(name: string, q: string): number {
   return 2
 }
 
-/** Build the label name a supplement uses: "Vitamin C (as Ascorbic Acid)". */
+/** Clean DSLD's raw form text into label-ready prose: drop template braces
+ *  ("{Magnesium}" → "Magnesium") and collapse whitespace. */
+export function cleanSourceName(s: string): string {
+  return s.replace(/[{}]/g, '').replace(/\s+/g, ' ').trim()
+}
+
+/** Build the label name a supplement uses: "Vitamin C (as Ascorbic Acid)".
+ *  When the source already reads "from …", drop the "as" so it renders like a
+ *  real label — "Vitamin A (from Cod Liver Oil)" rather than "(as from …)". */
 export function dsldLabelName(c: DsldIngredientCandidate): string {
-  const source = c.form || c.altName
-  return source ? `${c.name} (as ${source})` : c.name
+  const source = cleanSourceName(c.form || c.altName || '')
+  if (!source) return cleanSourceName(c.name)
+  const prefix = /^from\b/i.test(source) ? '' : 'as '
+  return `${cleanSourceName(c.name)} (${prefix}${source})`
 }

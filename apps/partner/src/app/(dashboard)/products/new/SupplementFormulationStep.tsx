@@ -14,7 +14,7 @@ import { Plus, Trash2, FlaskConical, Layers, Search, Loader2 } from 'lucide-reac
 import { NutritionFactsRenderer } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
-import { dsldLabelName, type DsldIngredientCandidate } from './dsld'
+import { dsldLabelName, cleanSourceName, type DsldIngredientCandidate } from './dsld'
 import { saveSupplementFormulation, loadSupplementFormulation } from './supplement-actions'
 
 const UNITS = ['mg', 'mcg', 'g', 'IU', 'mcg DFE', 'mg NE', 'mg DFE', 'billion CFU', 'mL']
@@ -102,8 +102,8 @@ export function SupplementFormulationStep({
     loadSupplementFormulation(draftId).then((r) => {
       if (cancelled) return
       if (r.ok && r.data) {
-        setRows(r.data.dietaryIngredients ?? [])
-        setBlends(r.data.blends ?? [])
+        setRows((r.data.dietaryIngredients ?? []).map((d) => ({ ...d, name: cleanSourceName(d.name) })))
+        setBlends((r.data.blends ?? []).map((b) => ({ ...b, name: cleanSourceName(b.name) })))
         if (r.data.servingForm) setServingForm(r.data.servingForm)
         if (r.data.servingsPerContainer) setSpc(r.data.servingsPerContainer)
         if (r.data.dosageForm) setDosageForm(r.data.dosageForm)

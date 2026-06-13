@@ -135,8 +135,8 @@ export function toSupplementPanelData(
     if (!hasDV) anyNoDV = true
     rows.push({
       id: ing.id,
-      label: ing.name,
-      amount: `${formatAmount(ing.amountPerServing)} ${ing.unit}`.trim(),
+      label: cleanLabel(ing.name),
+      amount: amountStr(ing.amountPerServing, ing.unit),
       ...(hasDV ? { percentDailyValue: ing.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
@@ -155,13 +155,13 @@ export function toSupplementPanelData(
     if (!hasDV) anyNoDV = true
     rows.push({
       id: blend.id,
-      label: blend.name,
-      amount: `${formatAmount(blend.totalAmount)} ${blend.unit}`.trim(),
+      label: cleanLabel(blend.name),
+      amount: amountStr(blend.totalAmount, blend.unit),
       ...(hasDV ? { percentDailyValue: blend.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
     for (const m of members) {
-      rows.push({ id: m.id, label: m.name, amount: '', indent: 1 })
+      rows.push({ id: m.id, label: cleanLabel(m.name), amount: '', indent: 1 })
     }
   }
 
@@ -186,4 +186,16 @@ export function toSupplementPanelData(
 function formatAmount(n: number): string {
   if (!Number.isFinite(n)) return '0'
   return String(Math.round(n * 1000) / 1000)
+}
+
+/** A declared amount string, or '' when the amount is zero/blank (so unfilled
+ *  rows don't print a misleading "0 mg"). */
+function amountStr(value: number, unit: string): string {
+  return value > 0 ? `${formatAmount(value)} ${unit}`.trim() : ''
+}
+
+/** Tidy an ingredient/blend name for the panel: drop DSLD template braces
+ *  ("{Magnesium}" → "Magnesium") and collapse whitespace. */
+function cleanLabel(s: string): string {
+  return s.replace(/[{}]/g, '').replace(/\s+/g, ' ').trim()
 }
