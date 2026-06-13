@@ -13,6 +13,7 @@ import { getDomain, legacyLabelingType, type DomainKey } from './product-domains
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { type Flavor, type FlavorLine } from './VariantsPacksStep'
+import { LabelViewerModal } from './LabelViewerModal'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
 import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
@@ -396,6 +397,8 @@ export function RecipeBuilderStep({
   const [activeFlavor, setActiveFlavor] = useState(0)
   // Variety-pack (outer-box) Nutrition Display mode (21 CFR 101.9(d)(13)).
   const [packView, setPackView] = useState<'MULTI' | 'SIDE' | 'SINGLE'>('MULTI')
+  // Full-screen label viewer modal (compare flavors + aggregate columns).
+  const [labelViewerOpen, setLabelViewerOpen] = useState(false)
   // Add a flavor-only overlay line (its own child mini-recipe row). The line
   // carries amount + unit, so the engine recomputes THAT flavor's Facts.
   function addFlavorLine(idx: number, picked: IngredientResult) {
@@ -676,6 +679,13 @@ export function RecipeBuilderStep({
 
   // Flavors that carry overlay data → one aggregate column each (variety pack).
   const flavorsWithData = flavors.filter((f) => flavorOverlayGrams(f) > 0)
+  // Per-flavor panels for the variety views + modal (computed once).
+  const varietyCols: VarietyColumn[] = flavorsWithData
+    .map((fl) => {
+      const r = flavorResult(fl)
+      return r ? { label: fl.name || 'Flavor', data: toPanelData(r, { suggestedServing, showVoluntaryFats: true, format: panelFormat }) } : null
+    })
+    .filter((c): c is VarietyColumn => c !== null)
 
   // Real batch ingredient cost per market currency, from each ingredient's
   // per-kg price applied to its raw purchased weight (cost is on what you buy,
@@ -720,6 +730,10 @@ export function RecipeBuilderStep({
             setCustomMeasureRow(null)
           }}
         />
+      )}
+
+      {labelViewerOpen && varietyCols.length > 0 && (
+        <LabelViewerModal columns={varietyCols} productName={productName} onClose={() => setLabelViewerOpen(false)} />
       )}
 
       {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel. */}
@@ -1162,34 +1176,25 @@ export function RecipeBuilderStep({
 
                   {flavorsWithData.length >= 2 && (
                     <div className="varietypack">
-                      <div className="vp-h">
+                      <div className="vp-h" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <span>Variety pack label <span className="tiny">· outer box · {flavorsWithData.length} flavors</span></span>
+                        <button type="button" className="rb-btn o sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
                       </div>
                       <div className="seg sm" style={{ marginBottom: 8 }}>
                         <button type="button" className={packView === 'MULTI' ? 'on' : ''} onClick={() => setPackView('MULTI')}>Multi-column</button>
                         <button type="button" className={packView === 'SIDE' ? 'on' : ''} onClick={() => setPackView('SIDE')}>Side-by-side</button>
                         <button type="button" className={packView === 'SINGLE' ? 'on' : ''} onClick={() => setPackView('SINGLE')}>Single</button>
                       </div>
-                      {(() => {
-                        const cols: VarietyColumn[] = flavorsWithData
-                          .map((fl) => {
+                      {packView === 'MULTI' ? (
+                        <div style={{ overflowX: 'auto' }}><VarietyFactsSvg columns={varietyCols} widthPx={Math.min(680, 158 + varietyCols.length * 92)} /></div>
+                      ) : packView === 'SIDE' ? (
+                        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                          {flavorsWithData.map((fl, i) => {
                             const r = flavorResult(fl)
-                            return r ? { label: fl.name || 'Flavor', data: toPanelData(r, { suggestedServing, showVoluntaryFats: true, format: panelFormat }) } : null
-                          })
-                          .filter((c): c is VarietyColumn => c !== null)
-                        if (packView === 'MULTI') {
-                          return <div style={{ overflowX: 'auto' }}><VarietyFactsSvg columns={cols} widthPx={Math.min(680, 158 + cols.length * 92)} /></div>
-                        }
-                        if (packView === 'SIDE') {
-                          return (
-                            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                              {flavorsWithData.map((fl, i) => {
-                                const r = flavorResult(fl)
-                                return r ? <FactsPanel key={i} result={r} ps={r.perServing} title={fl.name || `Flavor ${i + 1}`} narrow format={panelFormat} /> : null
-                              })}
-                            </div>
-                          )
-                        }
+                            return r ? <FactsPanel key={i} result={r} ps={r.perServing} title={fl.name || `Flavor ${i + 1}`} narrow format={panelFormat} /> : null
+                          })}
+                        </div>
+                      ) : (() => {
                         const f0 = flavorsWithData[0]!
                         const r0 = flavorResult(f0)
                         return r0 ? <FactsPanel result={r0} ps={r0.perServing} title={f0.name || 'Flavor 1'} format={panelFormat} /> : null
