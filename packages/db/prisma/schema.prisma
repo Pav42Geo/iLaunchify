@@ -2372,6 +2372,15 @@ enum LabelingType {
   COSMETIC // 21 CFR 701 cosmetic labeling (no "Facts" panel)
 }
 
+// Nutrition Facts audience (21 CFR 101.9(j)(5)) — selects the Daily Value table +
+// which %DV columns appear on a FOOD-domain panel. Infant formula (21 CFR 107) is
+// NOT here; it is a separate regulated class, deferred.
+enum NutritionAudience {
+  GENERAL // adults & children ≥ 4 years — standard 2016 panel
+  CHILD_1_3 // children 1 through 3 years — 1,000-cal DRV basis
+  INFANT_0_12 // infants through 12 months — infant RDIs, no sat fat/chol/sodium DV
+}
+
 // =============================================================================
 // PACKING TOPOLOGY
 // =============================================================================
@@ -2518,6 +2527,11 @@ model ProductTemplate {
   // panel. true = control disabled, value follows category. An admin override
   // sets this false and may hand-set labelingType.
   labelingTypeLocked         Boolean                       @default(true)
+  // Target audience for FOOD-domain Nutrition Facts. Drives the panel VARIANT per
+  // 21 CFR 101.9(j)(5): GENERAL (≥4 yrs, standard panel), CHILD_1_3 (children 1–3,
+  // own DV table), INFANT_0_12 (infants 0–12 mo, infant RDIs + suppressed fat/chol
+  // %DV). Same recipe → engine recomputes %DV against the age-group DV table.
+  intendedAgeGroup           NutritionAudience             @default(GENERAL)
   // Non-food formulation payload (Phase 1, docs/PRODUCT_DOMAINS_ARCHITECTURE.md).
   // Supplements/cosmetics/pet don't fit the food TemplateIngredientSlot model, so
   // their formulation is stored here keyed by domain, e.g.

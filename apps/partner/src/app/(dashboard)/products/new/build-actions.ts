@@ -270,6 +270,8 @@ export interface InitialDraft {
   recipeEntryMode: 'SEARCH_BUILD' | 'AI_PARSER' | 'DECLARED_PANEL' | null
   // Product domain (label regime) — restores the step-3 toggle on resume.
   labelingType: string
+  // Nutrition Facts audience (21 CFR 101.9(j)(5)) — restores the age-group selector.
+  intendedAgeGroup: string
   // Recipe base slots — restored so editing shows the real recipe (and the
   // recipe-step autosave round-trips instead of wiping it).
   recipeSlots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
@@ -308,7 +310,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     type Loaded = {
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
-      packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string
+      packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
@@ -334,7 +336,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       select: {
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
-        recipeEntryMode: true, labelingType: true,
+        recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
@@ -378,6 +380,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       maxFlavorsPerPack: tpl.maxFlavorsPerPack,
       recipeEntryMode: (tpl.recipeEntryMode as InitialDraft['recipeEntryMode']) ?? null,
       labelingType: String(tpl.labelingType ?? 'FOOD'),
+      intendedAgeGroup: String(tpl.intendedAgeGroup ?? 'GENERAL'),
       nicheIds: tpl.niches.map((n) => n.nicheId),
       lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
       flavors: tpl.flavorPresets.map((f) => ({ name: f.name, soi: f.statementOfIdentity ?? '' })),
@@ -1296,6 +1299,53 @@ export interface BasicsPatch {
   leadTimeFirstRunDays?: number | null
   allergenCrossContamination?: string | null
   customMeta?: Array<{ key: string; value: string }> | null
+}
+
+/**
+ * Persist the Nutrition Facts audience (21 CFR 101.9(j)(5)) for a FOOD draft.
+ * Drives the panel variant (DV table + which %DV columns/rows show). Partner-gated
+ * to the owning service + audited. Cast-guarded (column ships with a migration).
+ */
+export async function setIntendedAgeGroup(
+  productTemplateId: string,
+  value: 'GENERAL' | 'CHILD_1_3' | 'INFANT_0_12',
+): Promise<Result> {
+  if (!['GENERAL', 'CHILD_1_3', 'INFANT_0_12'].includes(value)) {
+    return { ok: false, error: 'Invalid age group.' }
+  }
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true },
+    })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) {
+      return { ok: false, error: 'Not your product.' }
+    }
+
+    await (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } }).productTemplate.update({
+      where: { id: productTemplateId },
+      data: { intendedAgeGroup: value },
+    })
+    try {
+      await logAuditAs(user, {
+        entityType: 'ProductTemplate',
+        entityId: productTemplateId,
+        action: 'INTENDED_AGE_GROUP_SET',
+        toValue: value,
+      })
+    } catch (auditErr) {
+      console.error('[setIntendedAgeGroup] audit log failed (non-fatal):', auditErr)
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: `Could not save age group: ${(err as Error).message}` }
+  }
 }
 
 /** Verify the partner owns the draft, then patch whitelisted Basics fields. */

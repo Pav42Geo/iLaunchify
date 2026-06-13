@@ -402,6 +402,7 @@ export function GuidedBuilder({
                   declareAvailable={declareAvailable}
                   domain="FOOD"
                   initialEntryMode={initial?.recipeEntryMode ?? null}
+                  initialAgeGroup={initial?.intendedAgeGroup ?? 'GENERAL'}
                   currencies={currencies}
                 />
               )}

@@ -10,7 +10,7 @@
 // resolve to the same total-servings basis, so per-serving values and
 // servings-per-container can never disagree.
 
-import { Nutrients, DAILY_VALUES, NUTRIENT_KEYS, zeroNutrients, fillNutrients } from './nutrients'
+import { Nutrients, DAILY_VALUES, NUTRIENT_KEYS, zeroNutrients, fillNutrients, dailyValuesFor, type NutritionAudience } from './nutrients'
 import { toGrams } from './units'
 import {
   roundCalories, roundFat, roundGramMacro, roundCholSodium, roundMicro, roundDV,
@@ -113,13 +113,23 @@ export function resolveGeometry(rawMassG: number, input: GeometryInput): Geometr
   }
 }
 
+type DvTable = Partial<Record<keyof Nutrients, number>>
 interface DvCell { amount: number; dv: number }
-const cell = (amount: number, key: keyof Nutrients): DvCell => {
-  const dvRef = DAILY_VALUES[key]
+const cell = (amount: number, key: keyof Nutrients, dvTable: DvTable = DAILY_VALUES): DvCell => {
+  const dvRef = dvTable[key]
   return { amount, dv: dvRef ? roundDV((amount / dvRef) * 100) : 0 }
 }
 
+export interface LabelOptions {
+  /** Nutrition Facts audience (21 CFR 101.9(j)(5)) — selects the DV table for %DV.
+   *  GENERAL (default) keeps the standard ≥4-yr panel. */
+  audience?: NutritionAudience
+}
+
 export interface LabelResult {
+  /** Echoes the audience used so the panel adapter can apply the matching
+   *  format (which %DV columns / rows the variant declares). */
+  audience: NutritionAudience
   geometry: Geometry
   /** Per-serving, FDA-rounded, label-ready. */
   perServing: {
@@ -146,7 +156,9 @@ export interface LabelResult {
   raw: { batch: Nutrients; perServingExact: Nutrients }
 }
 
-export function calculateLabel(ingredients: IngredientInput[], geometryInput: GeometryInput): LabelResult {
+export function calculateLabel(ingredients: IngredientInput[], geometryInput: GeometryInput, opts: LabelOptions = {}): LabelResult {
+  const audience: NutritionAudience = opts.audience ?? 'GENERAL'
+  const dv = dailyValuesFor(audience)
   const { batch, rawMassG } = sumBatch(ingredients)
   const geometry = resolveGeometry(rawMassG, geometryInput)
   const ts = geometry.totalServings
@@ -156,34 +168,35 @@ export function calculateLabel(ingredients: IngredientInput[], geometryInput: Ge
   for (const k of NUTRIENT_KEYS) perServingExact[k] = ps(k)
 
   return {
+    audience,
     geometry,
     perServing: {
       calories: roundCalories(ps('calories')),
-      totalFat: cellRound(ps('totalFat'), 'totalFat', roundFat),
-      saturatedFat: cellRound(ps('saturatedFat'), 'saturatedFat', roundFat),
+      totalFat: cellRound(ps('totalFat'), 'totalFat', roundFat, dv),
+      saturatedFat: cellRound(ps('saturatedFat'), 'saturatedFat', roundFat, dv),
       transFat: { amount: roundFat(ps('transFat')) },
       polyunsaturatedFat: { amount: roundFat(ps('polyunsaturatedFat')) },
       monounsaturatedFat: { amount: roundFat(ps('monounsaturatedFat')) },
-      cholesterol: cellRound(ps('cholesterol'), 'cholesterol', roundCholSodium),
-      sodium: cellRound(ps('sodium'), 'sodium', roundCholSodium),
-      totalCarbohydrate: cellRound(ps('totalCarbohydrate'), 'totalCarbohydrate', roundGramMacro),
-      dietaryFiber: cellRound(ps('dietaryFiber'), 'dietaryFiber', roundGramMacro),
+      cholesterol: cellRound(ps('cholesterol'), 'cholesterol', roundCholSodium, dv),
+      sodium: cellRound(ps('sodium'), 'sodium', roundCholSodium, dv),
+      totalCarbohydrate: cellRound(ps('totalCarbohydrate'), 'totalCarbohydrate', roundGramMacro, dv),
+      dietaryFiber: cellRound(ps('dietaryFiber'), 'dietaryFiber', roundGramMacro, dv),
       totalSugars: { amount: roundGramMacro(ps('totalSugars')) },
-      addedSugars: cellRound(ps('addedSugars'), 'addedSugars', roundGramMacro),
+      addedSugars: cellRound(ps('addedSugars'), 'addedSugars', roundGramMacro, dv),
       sugarAlcohol: { amount: roundGramMacro(ps('sugarAlcohol')) },
-      protein: cellRound(ps('protein'), 'protein', roundGramMacro),
-      vitaminD: cellRound(ps('vitaminD'), 'vitaminD', roundMicro),
-      calcium: cellRound(ps('calcium'), 'calcium', roundMicro),
-      iron: cellRound(ps('iron'), 'iron', roundMicro),
-      potassium: cellRound(ps('potassium'), 'potassium', roundMicro),
+      protein: cellRound(ps('protein'), 'protein', roundGramMacro, dv),
+      vitaminD: cellRound(ps('vitaminD'), 'vitaminD', roundMicro, dv),
+      calcium: cellRound(ps('calcium'), 'calcium', roundMicro, dv),
+      iron: cellRound(ps('iron'), 'iron', roundMicro, dv),
+      potassium: cellRound(ps('potassium'), 'potassium', roundMicro, dv),
     },
     raw: { batch, perServingExact },
   }
 }
 
-function cellRound(exact: number, key: keyof Nutrients, round: (v: number) => number): DvCell {
+function cellRound(exact: number, key: keyof Nutrients, round: (v: number) => number, dvTable: DvTable = DAILY_VALUES): DvCell {
   const amount = round(exact)
   // %DV is computed from the EXACT value (FDA), not the rounded display amount.
-  const c = cell(exact, key)
+  const c = cell(exact, key, dvTable)
   return { amount, dv: c.dv }
 }

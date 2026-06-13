@@ -7,13 +7,13 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
-import { calculateLabel, toPanelData, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay } from '@ilaunchify/nutrition'
+import { calculateLabel, toPanelData, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
 import { NutritionFactsRenderer } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, type MyRecipe } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -196,6 +196,7 @@ export function RecipeBuilderStep({
   declareAvailable = false,
   domain = 'FOOD',
   initialEntryMode = null,
+  initialAgeGroup = 'GENERAL',
   currencies = ['USD'],
 }: {
   productName: string
@@ -223,6 +224,8 @@ export function RecipeBuilderStep({
   domain?: DomainKey
   /** Restored recipe entry mode (resume) — reopens the builder on that surface. */
   initialEntryMode?: Mode | null
+  /** Restored Nutrition Facts audience (21 CFR 101.9(j)(5)) — FOOD only. */
+  initialAgeGroup?: string
   /** ISO currency codes of the product's ACTIVE target markets (V1: ['USD']).
    *  One Cost input per currency; the first is primary (persisted per-kg). */
   currencies?: string[]
@@ -244,6 +247,15 @@ export function RecipeBuilderStep({
   const [numPackages, setNumPackages] = useState(1)
   const [servingsPerPackage, setServingsPerPackage] = useState(2)
   const [moisture, setMoisture] = useState(0)
+  // Nutrition Facts audience (21 CFR 101.9(j)(5)) — switches the panel VARIANT
+  // (DV table + which %DV columns/rows show). FOOD only; persisted to the draft.
+  const [ageGroup, setAgeGroup] = useState<NutritionAudience>(
+    (['GENERAL', 'CHILD_1_3', 'INFANT_0_12'].includes(initialAgeGroup) ? initialAgeGroup : 'GENERAL') as NutritionAudience,
+  )
+  const changeAgeGroup = (v: NutritionAudience) => {
+    setAgeGroup(v)
+    if (draftId) void setIntendedAgeGroup(draftId, v)
+  }
   // Recipe-wide waste %, applied to EVERY ingredient on top of its own waste
   // (ReciPal "Recipe Waste %" in the Totals row). Drives yield, grams + cost.
   const [recipeWaste, setRecipeWaste] = useState(0)
@@ -542,7 +554,9 @@ export function RecipeBuilderStep({
   const servingGrams = toGrams(servingSizeG, servingUnit)
   const packageGrams = toGrams(packageSizeG, packageUnit)
   const geoArgs = { basis: lmode, servingSizeG: servingGrams, packageSizeG: packageGrams, servingsPerPackage, numPackages, moistureLossPct: moisture }
-  const result = selected.length ? calculateLabel(selected, geoArgs) : null
+  // FOOD-only audience; other domains keep the standard panel.
+  const audience: NutritionAudience = domain === 'FOOD' ? ageGroup : 'GENERAL'
+  const result = selected.length ? calculateLabel(selected, geoArgs, { audience }) : null
   const ps = result?.perServing
   // Per-ingredient Nutrition Breakdown (QA): each selected ingredient's exact
   // batch contribution from the engine, plus its per-serving share. Makes a bad
@@ -583,7 +597,7 @@ export function RecipeBuilderStep({
     }
     const all = [...baseRows, overlay]
     return all.length
-      ? calculateLabel(all, { basis: lmode, servingSizeG: toGrams(servingSizeG, servingUnit), packageSizeG: toGrams(packageSizeG, packageUnit), servingsPerPackage, numPackages, moistureLossPct: moisture })
+      ? calculateLabel(all, { basis: lmode, servingSizeG: toGrams(servingSizeG, servingUnit), packageSizeG: toGrams(packageSizeG, packageUnit), servingsPerPackage, numPackages, moistureLossPct: moisture }, { audience })
       : null
   }
 
@@ -880,6 +894,22 @@ export function RecipeBuilderStep({
                   <label><input type="radio" name="lmode" checked={lmode === 'package'} onChange={() => setLmode('package')} /> By package size</label>
                   <label><input type="radio" name="lmode" checked={lmode === 'serving'} onChange={() => setLmode('serving')} /> By serving size</label>
                 </div>
+
+                {domain === 'FOOD' && (
+                  <div style={{ marginTop: 10 }}>
+                    <span className="f">Intended age group <i className="info" data-tip="Who the product is sold to. FDA (21 CFR 101.9(j)(5)) requires a different Nutrition Facts format per audience: General (adults & children 4+) uses the standard panel; Children 1–3 uses the toddler Daily Values; Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. The panel preview updates automatically — you don't edit it by hand.">i</i></span>
+                    <select value={ageGroup} onChange={(e) => changeAgeGroup(e.target.value as NutritionAudience)} style={{ width: '100%', maxWidth: 320 }}>
+                      <option value="GENERAL">General — adults &amp; children 4+ (standard panel)</option>
+                      <option value="CHILD_1_3">Children 1–3 years</option>
+                      <option value="INFANT_0_12">Infants 0–12 months</option>
+                    </select>
+                    {ageGroup !== 'GENERAL' && (
+                      <p className="tiny muted" style={{ marginTop: 4 }}>
+                        Infant <b>formula</b> (21 CFR 107) is a separately regulated product and not covered here — this is for baby/toddler <b>food</b>.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {lmode === 'serving' ? (
                   <div>

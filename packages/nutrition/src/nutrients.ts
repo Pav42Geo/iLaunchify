@@ -79,3 +79,46 @@ export const DAILY_VALUES: Partial<Record<keyof Nutrients, number>> = {
   magnesium: 420, zinc: 11, selenium: 55, copper: 0.9, manganese: 2.3,
   chromium: 35, molybdenum: 45, chloride: 2300,
 }
+
+// ---------------------------------------------------------------------------
+// Age-group Daily Values (21 CFR 101.9(j)(5)) — Nutrition Facts panel variants.
+// Values are the codified 2016-rule RDI table (c)(8)(iv) + DRV table (c)(9),
+// verified against eCFR 21 CFR 101.9. A key being ABSENT means FDA has not
+// established a DV for that nutrient/age — so NO %DV is shown (the renderer omits
+// the column), per the regulation's "N/A" cells.
+// ---------------------------------------------------------------------------
+
+/** Audience selecting the Nutrition Facts DV table + %DV columns. */
+export type NutritionAudience = 'GENERAL' | 'CHILD_1_3' | 'INFANT_0_12'
+
+/** Children 1 through 3 years — 1,000-cal DRV basis. Every macronutrient has a DV. */
+export const DAILY_VALUES_CHILD_1_3: Partial<Record<keyof Nutrients, number>> = {
+  totalFat: 39, saturatedFat: 10, cholesterol: 300, sodium: 1500,
+  totalCarbohydrate: 150, dietaryFiber: 14, addedSugars: 25, protein: 13,
+  vitaminD: 15, calcium: 700, iron: 7, potassium: 3000,
+  vitaminA: 300, vitaminC: 15, vitaminE: 6, vitaminK: 30, thiamin: 0.5,
+  riboflavin: 0.5, niacin: 6, vitaminB6: 0.5, folate: 150, vitaminB12: 0.9,
+  biotin: 8, pantothenicAcid: 2, choline: 200, phosphorus: 460, iodine: 90,
+  magnesium: 80, zinc: 3, selenium: 20, copper: 0.3, manganese: 1.2,
+  chromium: 11, molybdenum: 17, chloride: 1500,
+}
+
+/** Infants through 12 months — infant RDIs. NOTE: saturated fat, cholesterol,
+ *  sodium, dietary fiber and added sugars have NO established DV (omitted →
+ *  no %DV); protein uses the infant RDI (11 g), not a DRV. */
+export const DAILY_VALUES_INFANT_0_12: Partial<Record<keyof Nutrients, number>> = {
+  totalFat: 30, totalCarbohydrate: 95, protein: 11,
+  vitaminD: 10, calcium: 260, iron: 11, potassium: 700,
+  vitaminA: 500, vitaminC: 50, vitaminE: 5, vitaminK: 2.5, thiamin: 0.3,
+  riboflavin: 0.4, niacin: 4, vitaminB6: 0.3, folate: 80, vitaminB12: 0.5,
+  biotin: 6, pantothenicAcid: 1.8, choline: 150, phosphorus: 275, iodine: 130,
+  magnesium: 75, zinc: 3, selenium: 20, copper: 0.2, manganese: 0.6,
+  chromium: 5.5, molybdenum: 3, chloride: 570,
+}
+
+/** Resolve the Daily Value table for an audience (defaults to GENERAL ≥4 yrs). */
+export function dailyValuesFor(audience: NutritionAudience = 'GENERAL'): Partial<Record<keyof Nutrients, number>> {
+  if (audience === 'CHILD_1_3') return DAILY_VALUES_CHILD_1_3
+  if (audience === 'INFANT_0_12') return DAILY_VALUES_INFANT_0_12
+  return DAILY_VALUES
+}
