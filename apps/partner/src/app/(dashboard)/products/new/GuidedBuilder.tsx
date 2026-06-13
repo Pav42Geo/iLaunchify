@@ -18,6 +18,7 @@ import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
 import { CosmeticFormulationStep } from './CosmeticFormulationStep'
 import { PetFormulationStep } from './PetFormulationStep'
+import { ReviewSummary } from './ReviewSummary'
 import { setDraftLabelingType, type LabelingTypeValue } from './domain-actions'
 
 type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'
@@ -473,14 +474,7 @@ export function GuidedBuilder({
 
               <div style={{ marginBottom: 16 }}><ComplianceCard draftId={draftId} /></div>
 
-              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                <div className="card"><div className="eyebrow">Basics</div><h3 className="display" style={{ fontSize: 18, margin: '6px 0' }}>{name || 'Untitled product'}</h3><p className="muted small">{selNiches.length} niches · {selTags.length} tags</p><span className="pill green">✓ complete</span></div>
-                <div className="card"><div className="eyebrow">Recipe / formulation</div><h3 style={{ margin: '6px 0' }}>Base + flavor presets</h3><span className="pill amber">1 preset in progress</span></div>
-                <div className="card"><div className="eyebrow">Packaging</div><h3 style={{ margin: '6px 0' }}>Can + carton</h3><span className="pill amber">Carton: 1 of 6 panels laid out</span></div>
-                <div className="card"><div className="eyebrow">Compliance</div><h3 style={{ margin: '6px 0' }}>FDA scan</h3><span className="pill amber">Net-quantity format · review</span></div>
-                <div className="card"><div className="eyebrow">Pricing</div><h3 style={{ margin: '6px 0' }}>3 tiers · from $0.86</h3><span className="pill green">✓ set</span></div>
-                <div className="card"><div className="eyebrow">Marketplace facets</div><p className="muted small" style={{ marginTop: 6 }}>Category, niche, tags, packaging type, format, allergens, certs, MOQ, lead time, fulfillment mode.</p></div>
-              </div>
+              <ReviewSummary draftId={draftId} />
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
                 <CertificatesCard draftId={draftId} preview />
