@@ -692,6 +692,31 @@ export function RecipeBuilderStep({
 
       {activeTab === 'build' && (
        <>
+      {domain === 'FOOD' && (
+        <div className="agebar">
+          <div className="agebar-l">
+            <span className="agebar-t">Who are you building this for?</span>
+            <span className="agebar-s">
+              Sets the FDA Nutrition Facts format (21 CFR 101.9(j)(5)) — the live label updates automatically.
+              <i className="info" data-tip="General (adults & children 4+) prints the standard panel. Children 1–3 uses the toddler Daily Values. Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. Note: infant FORMULA (21 CFR 107) is a separately regulated product — this is for baby/toddler FOOD.">i</i>
+            </span>
+          </div>
+          <div className="agebar-seg" role="radiogroup" aria-label="Intended age group">
+            {([['GENERAL', 'General · 4+'], ['CHILD_1_3', 'Children 1–3'], ['INFANT_0_12', 'Infants 0–12 mo']] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={ageGroup === v}
+                className={ageGroup === v ? 'on' : ''}
+                onClick={() => changeAgeGroup(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="rb-wrap">
         <div>
           {/* Recipe Ingredients */}
@@ -894,22 +919,6 @@ export function RecipeBuilderStep({
                   <label><input type="radio" name="lmode" checked={lmode === 'package'} onChange={() => setLmode('package')} /> By package size</label>
                   <label><input type="radio" name="lmode" checked={lmode === 'serving'} onChange={() => setLmode('serving')} /> By serving size</label>
                 </div>
-
-                {domain === 'FOOD' && (
-                  <div style={{ marginTop: 10 }}>
-                    <span className="f">Intended age group <i className="info" data-tip="Who the product is sold to. FDA (21 CFR 101.9(j)(5)) requires a different Nutrition Facts format per audience: General (adults & children 4+) uses the standard panel; Children 1–3 uses the toddler Daily Values; Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. The panel preview updates automatically — you don't edit it by hand.">i</i></span>
-                    <select value={ageGroup} onChange={(e) => changeAgeGroup(e.target.value as NutritionAudience)} style={{ width: '100%', maxWidth: 320 }}>
-                      <option value="GENERAL">General — adults &amp; children 4+ (standard panel)</option>
-                      <option value="CHILD_1_3">Children 1–3 years</option>
-                      <option value="INFANT_0_12">Infants 0–12 months</option>
-                    </select>
-                    {ageGroup !== 'GENERAL' && (
-                      <p className="tiny muted" style={{ marginTop: 4 }}>
-                        Infant <b>formula</b> (21 CFR 107) is a separately regulated product and not covered here — this is for baby/toddler <b>food</b>.
-                      </p>
-                    )}
-                  </div>
-                )}
 
                 {lmode === 'serving' ? (
                   <div>
@@ -1537,6 +1546,15 @@ const CSS = `
 .rb-tab.on{color:var(--g2);border-color:var(--g)}
 .rb-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px}
 .rb-card{border:1px solid var(--bd);border-radius:12px;background:#fff;padding:16px;margin-bottom:16px}
+.agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--g-bd);background:var(--g-50);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.agebar-l{display:flex;flex-direction:column;gap:2px;min-width:220px}
+.agebar-t{font-weight:700;font-size:13.5px;color:var(--ink)}
+.agebar-s{font-size:11px;color:var(--mut)}
+.agebar-seg{display:inline-flex;background:#fff;border:1px solid var(--g-bd);border-radius:999px;padding:3px}
+.agebar-seg button{appearance:none;border:0;background:transparent;color:var(--mut);font-weight:600;font-size:12px;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.agebar-seg button:hover{color:var(--ink)}
+.agebar-seg button.on{background:var(--ink);color:#fff}
+.agebar-seg button:focus-visible{outline:2px solid var(--g);outline-offset:2px}
 .rb-h{display:flex;align-items:center;gap:8px;color:var(--g2);font-weight:700;font-size:15px;margin-bottom:10px}
 .rb table{width:100%;border-collapse:collapse}
 .rb th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;padding:8px 6px;border-bottom:1px solid var(--bd)}
