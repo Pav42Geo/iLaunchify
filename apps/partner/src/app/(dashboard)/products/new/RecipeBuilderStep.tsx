@@ -401,11 +401,12 @@ export function RecipeBuilderStep({
       return
     }
     startPick(async () => {
-      const res = await getIngredientNutrition(picked.id)
+      const res = await getIngredientNutrition(picked.id).catch(() => undefined)
+      const ok = res != null && res.ok
       const line: FlavorLine = {
         ingId: picked.id, name: picked.internalName, qty: 0, unit: 'g',
-        per100g: res.ok ? res.data.per100g : {},
-        densityGPerMl: res.ok ? res.data.densityGPerMl : picked.densityGPerML,
+        per100g: ok ? res.data.per100g : {},
+        densityGPerMl: ok ? res.data.densityGPerMl : picked.densityGPerML,
       }
       setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: [...(f.lines ?? []), line] } : f)))
     })
@@ -436,8 +437,8 @@ export function RecipeBuilderStep({
     startPick(async () => {
       const cache: Record<string, { per100g: Record<string, number>; density: number | null }> = {}
       for (const id of missing) {
-        const res = await getIngredientNutrition(id)
-        if (res.ok) cache[id] = { per100g: res.data.per100g, density: res.data.densityGPerMl ?? null }
+        const res = await getIngredientNutrition(id).catch(() => undefined)
+        if (res && res.ok) cache[id] = { per100g: res.data.per100g, density: res.data.densityGPerMl ?? null }
       }
       if (!Object.keys(cache).length) return
       onFlavors?.(

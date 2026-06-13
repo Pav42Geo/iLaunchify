@@ -56,9 +56,11 @@ export function IngredientPicker({
     let cancelled = false
     setLoading(true)
     const id = setTimeout(async () => {
-      const res = await searchIngredients({ query, limit: 25 })
+      // A server action can resolve to `undefined` if it's aborted/deduped by
+      // the framework (e.g. rapid re-fires), so guard before reading `.ok`.
+      const res = await searchIngredients({ query, limit: 25 }).catch(() => undefined)
       if (cancelled) return
-      if (res.ok) {
+      if (res && res.ok) {
         setResults(res.data.results)
         setActiveIndex(0)
       } else {
