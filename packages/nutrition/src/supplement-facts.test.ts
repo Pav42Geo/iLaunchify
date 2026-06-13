@@ -59,6 +59,31 @@ describe('toSupplementPanelData', () => {
     expect(panel.requiredFooter).toContain('Daily Value Not Established')
   })
 
+  it('declares the Calories/macros block above the ingredients, with %DV + the 2,000-cal footnote', () => {
+    const ings: DietaryIngredient[] = [
+      { id: 'mag', name: 'Magnesium (as Magnesium Citrate)', amountPerServing: 250, unit: 'mg', percentDV: 60 },
+    ]
+    const { panel } = toSupplementPanelData(ings, [], {
+      ...opts,
+      nutrition: { calories: 20, totalCarbohydrate: 4, totalSugars: 3, addedSugars: 3 },
+    })
+    // Nutrition rows come first, in FDA order, then the dietary ingredient.
+    expect(panel.rows.map((r) => r.id)).toEqual(['calories', 'totalCarbohydrate', 'totalSugars', 'addedSugars', 'mag'])
+    expect(panel.rows[1]).toMatchObject({ id: 'totalCarbohydrate', percentDailyValue: 1 }) // 4/275
+    expect(panel.rows[3]).toMatchObject({ id: 'addedSugars', percentDailyValue: 6 }) // 3/50
+    expect(panel.rows[2]?.percentDailyValue).toBeUndefined() // total sugars: no %DV
+    expect(panel.requiredFooter).toContain('2,000 calorie') // carbohydrate declared
+  })
+
+  it('omits the nutrition block entirely when nothing is declared', () => {
+    const ings: DietaryIngredient[] = [
+      { id: 'd', name: 'Vitamin D', amountPerServing: 25, unit: 'mcg', percentDV: 125 },
+    ]
+    const { panel } = toSupplementPanelData(ings, [], { ...opts, nutrition: {} })
+    expect(panel.rows.map((r) => r.id)).toEqual(['d'])
+    expect(panel.requiredFooter).toBe('')
+  })
+
   it('separates Other Ingredients (excipients) out of the panel', () => {
     const ings: DietaryIngredient[] = [
       { id: 'b', name: 'Biotin', amountPerServing: 30, unit: 'mcg', percentDV: 100 },

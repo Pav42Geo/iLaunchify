@@ -12,7 +12,7 @@
 import * as React from 'react'
 import { Plus, Trash2, FlaskConical, Layers, Search, Loader2 } from 'lucide-react'
 import { NutritionFactsRenderer } from '@ilaunchify/ui'
-import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend } from '@ilaunchify/nutrition'
+import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
 import { dsldLabelName, type DsldIngredientCandidate } from './dsld'
 import { saveSupplementFormulation, loadSupplementFormulation } from './supplement-actions'
@@ -31,6 +31,22 @@ const DOSAGE_FORMS: { key: string; label: string; dsld: string; serving: string 
   { key: 'lozenge', label: 'Lozenges', dsld: 'e0174', serving: '1 lozenge' },
   { key: 'softchew', label: 'Soft chews', dsld: 'e0176', serving: '1 soft chew' },
 ]
+// Optional "nutrition information" block (21 CFR 101.36(b)(2)) — declared above the
+// dietary ingredients when the product carries calories/macros (gummies, powders).
+const NUTRITION_FIELDS: { key: keyof SupplementNutrition; label: string; unit: string; indent?: number }[] = [
+  { key: 'calories', label: 'Calories', unit: '' },
+  { key: 'totalFat', label: 'Total Fat', unit: 'g' },
+  { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g', indent: 1 },
+  { key: 'transFat', label: 'Trans Fat', unit: 'g', indent: 1 },
+  { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
+  { key: 'sodium', label: 'Sodium', unit: 'mg' },
+  { key: 'totalCarbohydrate', label: 'Total Carbohydrate', unit: 'g' },
+  { key: 'dietaryFiber', label: 'Dietary Fiber', unit: 'g', indent: 1 },
+  { key: 'totalSugars', label: 'Total Sugars', unit: 'g', indent: 1 },
+  { key: 'addedSugars', label: 'Added Sugars', unit: 'g', indent: 2 },
+  { key: 'protein', label: 'Protein', unit: 'g' },
+]
+
 let seq = 0
 const uid = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`
 
@@ -60,6 +76,17 @@ export function SupplementFormulationStep({
   const [servingForm, setServingForm] = React.useState(servingFormDefault)
   const [servingsPerContainer, setSpc] = React.useState(30)
   const [dosageForm, setDosageForm] = React.useState('capsule')
+  // Optional Calories/macros block (string inputs; only positive values declared).
+  const [nut, setNut] = React.useState<Record<string, string>>({})
+  const [nutOpen, setNutOpen] = React.useState(false)
+  const builtNutrition: SupplementNutrition = React.useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const f of NUTRITION_FIELDS) {
+      const v = parseFloat(nut[f.key] ?? '')
+      if (Number.isFinite(v) && v > 0) out[f.key] = v
+    }
+    return out
+  }, [nut])
   const pickDosageForm = (key: string) => {
     setDosageForm(key)
     const f = DOSAGE_FORMS.find((d) => d.key === key)
@@ -80,6 +107,10 @@ export function SupplementFormulationStep({
         if (r.data.servingForm) setServingForm(r.data.servingForm)
         if (r.data.servingsPerContainer) setSpc(r.data.servingsPerContainer)
         if (r.data.dosageForm) setDosageForm(r.data.dosageForm)
+        if (r.data.nutrition && Object.keys(r.data.nutrition).length) {
+          setNut(Object.fromEntries(Object.entries(r.data.nutrition).map(([k, v]) => [k, String(v)])))
+          setNutOpen(true)
+        }
       }
       hydrated.current = true
     })
@@ -90,10 +121,10 @@ export function SupplementFormulationStep({
     if (!draftId || !hydrated.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm })
+      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition })
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, draftId])
+  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, draftId])
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
@@ -147,6 +178,7 @@ export function SupplementFormulationStep({
   const { panel, otherIngredients } = toSupplementPanelData(dietary, blendInputs, {
     servingSize: servingForm,
     servingsPerContainer,
+    nutrition: builtNutrition,
   })
   const hasPanel = panel.rows.length > 0
 
@@ -173,6 +205,36 @@ export function SupplementFormulationStep({
             ))}
           </div>
           <p className="mt-2 text-[11px] text-ink-500">Sets the default serving form and tags the product for NIH DSLD form matching.</p>
+        </div>
+
+        {/* Nutrition information (Calories / macros) — declare only if present. */}
+        <div className="rounded-2xl border border-ink-200 bg-white p-4">
+          <button type="button" onClick={() => setNutOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
+            <span>
+              <span className="text-[14px] font-bold text-ink-900">Nutrition information</span>
+              <span className="ml-2 text-[11.5px] text-ink-500">Calories, fats, carbs, sugars, protein — only if your product has them (gummies, powders, chews)</span>
+            </span>
+            <span className="text-[12px] font-semibold text-pink-700">{nutOpen ? 'Hide' : 'Add'}</span>
+          </button>
+          {nutOpen && (
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+              {NUTRITION_FIELDS.map((f) => (
+                <label key={f.key} className="flex flex-col gap-1">
+                  <span className={`text-[11.5px] text-ink-700 ${f.indent ? 'pl-3 text-ink-500' : 'font-medium'}`}>{f.label}{f.unit ? ` (${f.unit})` : ''}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    className={INPUT}
+                    value={nut[f.key] ?? ''}
+                    onChange={(e) => setNut((n) => ({ ...n, [f.key]: e.target.value }))}
+                    placeholder="0"
+                  />
+                </label>
+              ))}
+              <p className="col-span-full text-[11px] text-ink-500">Per serving. Leave blank what isn’t present — empty rows are omitted from the panel. %DV and the “2,000 calorie” footnote are added automatically.</p>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-ink-200 bg-white p-4">

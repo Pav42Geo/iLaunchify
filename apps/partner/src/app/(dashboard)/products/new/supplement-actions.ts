@@ -25,12 +25,27 @@ export interface SupplementBlend {
   total: number
   unit: string
 }
+/** Optional Calories/fat/carb/sugars/protein declaration (21 CFR 101.36(b)(2)). */
+export interface SupplementNutritionPayload {
+  calories?: number
+  totalFat?: number
+  saturatedFat?: number
+  transFat?: number
+  cholesterol?: number
+  sodium?: number
+  totalCarbohydrate?: number
+  dietaryFiber?: number
+  totalSugars?: number
+  addedSugars?: number
+  protein?: number
+}
 export interface SupplementFormulationPayload {
   dietaryIngredients: SupplementDietaryRow[]
   blends: SupplementBlend[]
   servingForm: string
   servingsPerContainer: number
   dosageForm?: string // 'capsule' | 'gummy' | 'powder' | … (DSLD physical state)
+  nutrition?: SupplementNutritionPayload // Calories/fat/carb/sugars/protein, if present
 }
 
 type Result = { ok: true } | { ok: false; error: string }

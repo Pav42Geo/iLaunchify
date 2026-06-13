@@ -13,6 +13,8 @@
 // SUPPLEMENT_FACTS) the food path uses. docs/PRODUCT_DOMAINS_ARCHITECTURE.md.
 
 import type { PanelData, NutrientRow } from '@ilaunchify/types'
+import { DAILY_VALUES } from './nutrients'
+import { roundCalories, roundFat, roundGramMacro, roundCholSodium, roundDV } from './rounding'
 
 /** One dietary ingredient declared per serving. */
 export interface DietaryIngredient {
@@ -39,10 +41,61 @@ export interface ProprietaryBlend {
   percentDV?: number | null
 }
 
+/**
+ * Mandatory-when-present "nutrition information" for a Supplement Facts panel
+ * (21 CFR 101.36(b)(2)): Calories, fats, cholesterol, sodium, carbs, sugars and
+ * protein declared above the dietary ingredients, with %DV from the standard food
+ * Daily Values. All optional — a row only appears when a value > 0 is given.
+ * Declaring fat / sat fat / carb / fiber / protein triggers the 2,000-cal footnote.
+ */
+export interface SupplementNutrition {
+  calories?: number
+  totalFat?: number
+  saturatedFat?: number
+  transFat?: number
+  cholesterol?: number
+  sodium?: number
+  totalCarbohydrate?: number
+  dietaryFiber?: number
+  totalSugars?: number
+  addedSugars?: number
+  protein?: number
+}
+
 export interface SupplementPanelOptions {
   /** Serving form, e.g. "1 capsule", "2 gummies", "1 scoop (5 g)". */
   servingSize: string
   servingsPerContainer: string | number
+  /** Optional Calories/fat/carb/sugars/protein block declared above the ingredients. */
+  nutrition?: SupplementNutrition
+}
+
+/** Build the FDA-ordered Calories/fat/carb/sugars/protein rows shown above the
+ *  dietary ingredients. %DV uses the standard food Daily Values (21 CFR 101.9). */
+function buildNutritionRows(n: SupplementNutrition): NutrientRow[] {
+  const rows: NutrientRow[] = []
+  const pct = (amt: number, key: keyof typeof DAILY_VALUES): number | undefined => {
+    const dv = DAILY_VALUES[key]
+    return dv ? roundDV((amt / dv) * 100) : undefined
+  }
+  const pos = (v?: number): v is number => typeof v === 'number' && v > 0
+
+  if (pos(n.calories)) rows.push({ id: 'calories', label: 'Calories', amount: roundCalories(n.calories), indent: 0 })
+  if (pos(n.totalFat)) {
+    rows.push({ id: 'totalFat', label: 'Total Fat', amount: roundFat(n.totalFat), unit: 'g', percentDailyValue: pct(n.totalFat, 'totalFat'), indent: 0 })
+    if (pos(n.saturatedFat)) rows.push({ id: 'saturatedFat', label: 'Saturated Fat', amount: roundFat(n.saturatedFat), unit: 'g', percentDailyValue: pct(n.saturatedFat, 'saturatedFat'), indent: 1 })
+    if (pos(n.transFat)) rows.push({ id: 'transFat', label: 'Trans Fat', amount: roundFat(n.transFat), unit: 'g', indent: 1 })
+  }
+  if (pos(n.cholesterol)) rows.push({ id: 'cholesterol', label: 'Cholesterol', amount: roundCholSodium(n.cholesterol), unit: 'mg', percentDailyValue: pct(n.cholesterol, 'cholesterol'), indent: 0 })
+  if (pos(n.sodium)) rows.push({ id: 'sodium', label: 'Sodium', amount: roundCholSodium(n.sodium), unit: 'mg', percentDailyValue: pct(n.sodium, 'sodium'), indent: 0 })
+  if (pos(n.totalCarbohydrate)) {
+    rows.push({ id: 'totalCarbohydrate', label: 'Total Carbohydrate', amount: roundGramMacro(n.totalCarbohydrate), unit: 'g', percentDailyValue: pct(n.totalCarbohydrate, 'totalCarbohydrate'), indent: 0 })
+    if (pos(n.dietaryFiber)) rows.push({ id: 'dietaryFiber', label: 'Dietary Fiber', amount: roundGramMacro(n.dietaryFiber), unit: 'g', percentDailyValue: pct(n.dietaryFiber, 'dietaryFiber'), indent: 1 })
+    if (pos(n.totalSugars)) rows.push({ id: 'totalSugars', label: 'Total Sugars', amount: roundGramMacro(n.totalSugars), unit: 'g', indent: 1 })
+    if (pos(n.addedSugars)) rows.push({ id: 'addedSugars', label: 'Includes Added Sugars', amount: roundGramMacro(n.addedSugars), unit: 'g', percentDailyValue: pct(n.addedSugars, 'addedSugars'), indent: 2 })
+  }
+  if (pos(n.protein)) rows.push({ id: 'protein', label: 'Protein', amount: roundGramMacro(n.protein), unit: 'g', percentDailyValue: pct(n.protein, 'protein'), indent: 0 })
+  return rows
 }
 
 export interface SupplementPanelResult {
@@ -70,7 +123,9 @@ export function toSupplementPanelData(
   const panelIngredients = ingredients.filter((i) => !i.isOtherIngredient)
   const otherIngredients = ingredients.filter((i) => i.isOtherIngredient).map((i) => i.name)
 
-  const rows: NutrientRow[] = []
+  // FDA "nutrition information" (Calories / fats / carbs / sugars / protein) is
+  // declared ABOVE the dietary ingredients when present.
+  const rows: NutrientRow[] = opts.nutrition ? buildNutritionRows(opts.nutrition) : []
   let anyNoDV = false
 
   // Standalone (non-blend) ingredients first, in given order. Ingredients without
