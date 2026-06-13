@@ -17,6 +17,8 @@ export interface ReviewSummary {
   formulationTitle: string // "8 dietary ingredients · 1 blend"
   formulationStatus: 'done' | 'progress' | 'empty'
   statementOfIdentity: string | null
+  /** FOOD only: Nutrition Facts audience label (21 CFR 101.9(j)(5)). null otherwise. */
+  ageGroupLabel: string | null
   flavors: number
   pricingTiers: number
   lowestCents: number | null
@@ -43,6 +45,7 @@ export async function getProductReviewSummary(draftId: string): Promise<Result> 
       productTemplate: { findUnique: (a: unknown) => Promise<{
         name: string
         labelingType: string
+        intendedAgeGroup: string | null
         statementOfIdentity: string | null
         manufacturerServiceId: string | null
         formulationData: Record<string, unknown> | null
@@ -53,7 +56,7 @@ export async function getProductReviewSummary(draftId: string): Promise<Result> 
     }).productTemplate.findUnique({
       where: { id: draftId },
       select: {
-        name: true, labelingType: true, statementOfIdentity: true, manufacturerServiceId: true,
+        name: true, labelingType: true, intendedAgeGroup: true, statementOfIdentity: true, manufacturerServiceId: true,
         formulationData: true,
         packingProfile: { select: { name: true } },
         pricingTiers: { select: { minQty: true, perUnitCostCents: true }, orderBy: { minQty: 'asc' } },
@@ -106,6 +109,16 @@ export async function getProductReviewSummary(draftId: string): Promise<Result> 
 
     const lowestCents = tpl.pricingTiers.length ? Math.min(...tpl.pricingTiers.map((t) => t.perUnitCostCents)) : null
 
+    // FOOD only: surface the Nutrition Facts audience (21 CFR 101.9(j)(5)).
+    const AGE_GROUP_LABEL: Record<string, string> = {
+      GENERAL: 'General — adults & children 4+',
+      CHILD_1_3: 'Children 1–3 years',
+      INFANT_0_12: 'Infants 0–12 months',
+    }
+    const ageGroupLabel = dom === 'FOOD'
+      ? (AGE_GROUP_LABEL[String(tpl.intendedAgeGroup ?? 'GENERAL')] ?? 'General — adults & children 4+')
+      : null
+
     return {
       ok: true,
       data: {
@@ -116,6 +129,7 @@ export async function getProductReviewSummary(draftId: string): Promise<Result> 
         formulationTitle,
         formulationStatus,
         statementOfIdentity: tpl.statementOfIdentity,
+        ageGroupLabel,
         flavors: tpl._count.flavorPresets,
         pricingTiers: tpl.pricingTiers.length,
         lowestCents,
