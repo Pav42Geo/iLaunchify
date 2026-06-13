@@ -35,7 +35,20 @@ const BUCKETS: Array<{ title: string; groups: string[] }> = [
 
 const PACK_STRUCTS = ['OUTER_WITH_INNERS', 'INDIVIDUAL_IN_OUTER', 'CUSTOMIZABLE']
 
-export interface Flavor { name: string; ingId: string; soi: string }
+// A flavor-specific overlay ingredient line (added on top of the shared base
+// recipe). Each carries its own amount + unit, so the engine recomputes that
+// flavor's Nutrition Facts correctly. Persisted to FlavorPreset.extras.
+export interface FlavorLine {
+  ingId: string
+  name: string
+  qty: number
+  unit: string
+  per100g?: Record<string, number>
+  densityGPerMl?: number | null
+}
+// `ingId` is the legacy single-overlay field (kept for back-compat); the live
+// model is `lines` — a child mini-recipe of flavor-only additions.
+export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[] }
 
 export function VariantsPacksStep({
   packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial,
@@ -585,7 +598,12 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
     if (!draftId) return
     if (flavorTimer.current) clearTimeout(flavorTimer.current)
     flavorTimer.current = setTimeout(() => {
-      void saveFlavors(draftId, list.map((f, i) => ({ name: f.name, statementOfIdentity: f.soi, sortOrder: i })))
+      void saveFlavors(draftId, list.map((f, i) => ({
+        name: f.name, statementOfIdentity: f.soi, sortOrder: i,
+        // Carry the overlay lines through so editing names here never wipes the
+        // flavor ingredients added in the Recipe step.
+        extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
+      })))
     }, 900)
     return () => { if (flavorTimer.current) clearTimeout(flavorTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps

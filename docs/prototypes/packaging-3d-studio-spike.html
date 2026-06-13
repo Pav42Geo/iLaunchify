@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3D Packaging Studio — three.js spike · iLaunchify</title>
+<!--
+  SPIKE (2026-06-13) — proves the pivotal interaction for the 3D Packaging Studio:
+  render a package in three.js, hover/click a decorable SURFACE, and resolve that
+  click → a SurfaceDescriptor → a PackagingComponent → its die-line. This is the
+  no-regret PARAMETRIC path from docs/PACKAGING_COMPOSITION_MODEL.md §4-5 — it
+  works whether the 3D models ultimately come from Pacdora (PACDORA_IMPORT) or are
+  generated parametrically, so it de-risks the build-vs-buy decision without
+  depending on Pacdora's still-unknown geometry API (PACDORA_EVALUATION.md §5).
+
+  The surface map shape mirrors PackagingType.defaultSurfaces : SurfaceDescriptor[]
+  { key, label, role, uvRegion?, defaultBleedMm? } exactly. Click resolution
+  mirrors the documented consumption flow: surface.role → matching component →
+  component.dielineId → "Open Die-line Studio".
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root{
+    --pink:#FF2E63;--pink-700:#C71350;--pink-50:#FBEAF0;--pink-100:#F4C0D1;
+    --ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;
+    --ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;
+    --ink-100:#EEEFF1;--ink-50:#F8F8F9;--green:#1D9E75;--green-50:#E1F5EE;
+    --amber-50:#FAEEDA;--sky-50:#E6F1FB;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:Inter,system-ui,sans-serif;color:var(--ink-900);background:var(--ink-50);font-size:13px;line-height:1.5}
+  .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
+  .wrap{display:flex;flex-direction:column;height:100%}
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--ink-200)}
+  header h1{font-size:17px;margin:0}
+  header .tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);border-radius:999px;padding:3px 9px}
+  header .muted{color:var(--ink-500);margin-left:auto;font-size:12px}
+  .seg{display:inline-flex;border:1px solid var(--ink-200);border-radius:999px;padding:3px;background:#fff;gap:3px}
+  .seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-600);cursor:pointer;transition:.12s}
+  .seg button.on{background:var(--ink-900);color:#fff}
+  .shell{display:grid;grid-template-columns:1fr 320px;flex:1;min-height:0}
+  .stage{position:relative;background:radial-gradient(120% 120% at 50% 0%,#ffffff,#eceef0 70%,#e2e4e7)}
+  #canvas{display:block;width:100%;height:100%}
+  .hint{position:absolute;left:16px;bottom:14px;font-size:11.5px;color:var(--ink-500);background:rgba(255,255,255,.8);border:1px solid var(--ink-200);border-radius:10px;padding:6px 11px;backdrop-filter:blur(4px)}
+  .insp{border-left:1px solid var(--ink-200);background:#fff;padding:18px 16px;overflow:auto}
+  .eyebrow{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-500)}
+  .insp h2{font-size:15px;margin:2px 0 2px}
+  .insp .sub{font-size:11.5px;color:var(--ink-500);margin-bottom:14px}
+  .surf{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--ink-200);border-radius:11px;background:#fff;padding:9px 11px;margin-bottom:7px;cursor:pointer;font:inherit;transition:.12s}
+  .surf:hover{border-color:var(--pink-100);background:var(--pink-50)}
+  .surf.on{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink) inset;background:var(--pink-50)}
+  .surf .sw{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.15)}
+  .surf .nm{font-weight:600;font-size:12.5px}
+  .surf .rl{font-size:10.5px;color:var(--ink-500)}
+  .surf .meta{margin-left:auto;text-align:right}
+  .chip{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2px 7px;border:1px solid var(--ink-200);color:var(--ink-600);background:var(--ink-50)}
+  .chip.pdp{color:#0C447C;background:var(--sky-50);border-color:#B5D4F4}
+  .chip.info{color:#633806;background:var(--amber-50);border-color:#FAC775}
+  .chip.na{color:var(--ink-400)}
+  .card{border:1px solid var(--ink-200);border-radius:14px;background:var(--ink-50);padding:13px;margin-top:14px}
+  .card .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--ink-100);font-size:12px}
+  .card .row:last-child{border-bottom:0}
+  .card .k{color:var(--ink-500)}
+  .card .v{font-weight:600;font-family:"Bricolage Grotesque",Inter;text-align:right}
+  .card code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:#fff;border:1px solid var(--ink-200);border-radius:6px;padding:1px 6px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:999px;padding:10px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--pink);background:var(--pink);color:#fff;margin-top:13px;transition:.15s}
+  .btn:hover:not(:disabled){background:var(--pink-700);border-color:var(--pink-700)}
+  .btn:disabled{background:#fff;border-color:var(--ink-200);color:var(--ink-400);cursor:not-allowed}
+  .empty{color:var(--ink-400);font-size:12px;border:1px dashed var(--ink-300);border-radius:11px;padding:18px;text-align:center;margin-top:12px}
+  .legend{display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--ink-500)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="display">3D Packaging Studio</h1>
+    <span class="tag">three.js spike</span>
+    <div class="seg" id="typeSeg">
+      <button data-type="can" class="on">Can</button>
+      <button data-type="jar">Jar + lid</button>
+      <button data-type="box">Carton</button>
+    </div>
+    <div class="seg" id="foldSeg" title="Animate between the 3D package and its flat die-line net">
+      <button data-fold="1" class="on">3D</button>
+      <button data-fold="0">Die-line</button>
+    </div>
+    <span class="muted">Parametric · click a surface to resolve its die-line</span>
+  </header>
+
+  <div class="shell">
+    <div class="stage">
+      <canvas id="canvas"></canvas>
+      <div class="hint">Drag to orbit · scroll to zoom · hover highlights a decorable surface · click to select</div>
+    </div>
+
+    <aside class="insp">
+      <div class="eyebrow">Surface map</div>
+      <h2 class="display" id="pkgName">Slim drink can — 12 oz</h2>
+      <div class="sub" id="pkgMeta"></div>
+      <div id="surfList"></div>
+
+      <div class="legend">
+        <span><i style="background:#FF2E63"></i> Decorable</span>
+        <span><i style="background:#9A9CA6"></i> Non-printed</span>
+      </div>
+
+      <div id="resolution">
+        <div class="empty">Select a surface to resolve it to a component &amp; die-line.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+
+// ---------------------------------------------------------------------------
+// DATA — packaging definitions. Each `surfaces` entry is a SurfaceDescriptor
+// matching PackagingType.defaultSurfaces in the schema:
+//   { key, label, role, decorable, surfaceRole, defaultBleedMm }
+// `components` mirrors PackagingComponent rows (role + mocked dielineId/designId).
+// Click resolution: surface.role → component with that role → component.dielineId.
+// ---------------------------------------------------------------------------
+const C = { pink:'#FF2E63', pinkSoft:'#FBD2DE', ink:'#9A9CA6', inkSoft:'#D7D9DC', metal:'#C7CBCE' }
+
+const PACKAGES = {
+  can: {
+    name: 'Slim drink can — 12 oz',
+    meta: 'SINGLE_CONTAINER · aluminium · Ø66 × 122 mm',
+    geom: 'cylinder',
+    dims: { r: 0.9, h: 2.4 },
+    // cylinder material groups: 0=side, 1=top cap, 2=bottom cap
+    surfaces: [
+      { key:'wrap',     label:'Body wrap',  role:'CONTAINER', decorable:true,  surfaceRole:'pdp',  defaultBleedMm:3, group:0 },
+      { key:'lid_top',  label:'Top end',    role:'CLOSURE',   decorable:false, surfaceRole:'other',                  group:1 },
+      { key:'base',     label:'Base',       role:'CONTAINER', decorable:false, surfaceRole:'other',                  group:2 },
+    ],
+    components: [
+      { id:'cmp_can_body', role:'CONTAINER', dielineId:'dl_can_wrap_12oz', designVersionId:'dv_can_001' },
+      { id:'cmp_can_end',  role:'CLOSURE',   dielineId:null,               designVersionId:null },
+    ],
+  },
+  jar: {
+    name: 'Wide-mouth jar — 16 oz',
+    meta: 'CAPSULE_JAR · PET body + PP lid · Ø84 × 110 mm',
+    geom: 'jar',
+    dims: { bodyR:1.0, bodyH:1.8, lidR:1.06, lidH:0.5 },
+    surfaces: [
+      { key:'body_wrap', label:'Body wrap',     role:'CONTAINER', decorable:true,  surfaceRole:'pdp',  defaultBleedMm:3, part:'body', group:0 },
+      { key:'body_base', label:'Base',          role:'CONTAINER', decorable:false, surfaceRole:'other',                  part:'body', group:2 },
+      { key:'lid_top',   label:'Lid top',       role:'CLOSURE',   decorable:true,  surfaceRole:'info', defaultBleedMm:2, part:'lid',  group:1 },
+      { key:'lid_side',  label:'Lid skirt',     role:'CLOSURE',   decorable:true,  surfaceRole:'other',defaultBleedMm:2, part:'lid',  group:0 },
+    ],
+    components: [
+      { id:'cmp_jar_body', role:'CONTAINER', dielineId:'dl_jar_wrap_16oz', designVersionId:'dv_jar_001' },
+      { id:'cmp_jar_lid',  role:'CLOSURE',   dielineId:'dl_jar_lid_70mm',  designVersionId:'dv_jar_lid_001' },
+    ],
+  },
+  box: {
+    name: 'Tuck-end carton',
+    meta: 'MULTI_CONTAINER_BOX · SBS folding carton · 90 × 60 × 140 mm',
+    geom: 'box',
+    dims: { w:1.3, h:2.0, d:0.9 },
+    // BoxGeometry groups: 0:+x(right) 1:-x(left) 2:+y(top) 3:-y(bottom) 4:+z(front) 5:-z(back)
+    surfaces: [
+      { key:'front',  label:'Front panel (PDP)', role:'CARTON', decorable:true,  surfaceRole:'pdp',  defaultBleedMm:3, group:4 },
+      { key:'back',   label:'Back panel',        role:'CARTON', decorable:true,  surfaceRole:'info', defaultBleedMm:3, group:5 },
+      { key:'right',  label:'Right side',        role:'CARTON', decorable:true,  surfaceRole:'info', defaultBleedMm:3, group:0 },
+      { key:'left',   label:'Left side',         role:'CARTON', decorable:true,  surfaceRole:'other',defaultBleedMm:3, group:1 },
+      { key:'top',    label:'Top tuck',          role:'CARTON', decorable:false, surfaceRole:'other',                  group:2 },
+      { key:'bottom', label:'Bottom tuck',       role:'CARTON', decorable:false, surfaceRole:'other',                  group:3 },
+    ],
+    components: [
+      { id:'cmp_carton', role:'CARTON', dielineId:'dl_carton_tuckend', designVersionId:'dv_carton_001' },
+    ],
+  },
+}
+
+// ---------------------------------------------------------------------------
+// three.js scene
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('canvas')
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true })
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100)
+camera.position.set(3.4, 2.0, 5.0)
+
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+controls.minDistance = 2.6
+controls.maxDistance = 12
+controls.target.set(0, 0.1, 0)
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbfc4c9, 1.05))
+const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(4, 6, 5); scene.add(key)
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-5, 2, -3); scene.add(fill)
+
+// soft ground shadow disk
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(3.6, 48),
+  new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.06 })
+)
+ground.rotation.x = -Math.PI/2; ground.position.y = -1.5; scene.add(ground)
+
+let group = null              // spinning wrapper for the current package
+let pickables = []            // every surface mesh (one material, one descriptor)
+let pkgUpdate = null          // per-package fold function: update(t)  t=1 solid → 0 flat
+let activeType = 'can'
+let hovered = null            // { mesh }
+let selectedKey = null
+
+// --- geometry + material helpers -------------------------------------------
+// Each surface is ONE mesh with a single-element material array + a single
+// descriptor. This mirrors how a real imported glTF picks (named mesh per
+// region) far better than the cylinder/box material-group trick, and keeps
+// hover/select working identically across the 3D and flat-net states.
+function makeMat(decorable){
+  return new THREE.MeshStandardMaterial({
+    color: decorable ? C.pinkSoft : C.inkSoft,
+    metalness: decorable ? 0.05 : 0.3, roughness: 0.5,
+    emissive: 0x000000, transparent: true, opacity: 1, side: THREE.DoubleSide,
+  })
+}
+function panel(geometry, desc){
+  const m = new THREE.Mesh(geometry, [makeMat(!!(desc && desc.decorable))])
+  m.userData.groupToDesc = [desc || null]
+  return m
+}
+const cylSide = (r, h) => new THREE.CylinderGeometry(r, r, h, 64, 1, true)
+const disc    = (r)    => new THREE.CircleGeometry(r, 48)
+const flat    = (w, h) => new THREE.PlaneGeometry(w, h)
+const setOp = (mesh, o) => { mesh.material[0].opacity = o; mesh.visible = o > 0.04 }
+const byKey = (def) => Object.fromEntries(def.surfaces.map(s => [s.key, s]))
+
+// --- builders: each returns { object, meshes, update(t) } -------------------
+function buildCan(def){
+  const k = byKey(def); const { r, h } = def.dims; const W = 2*Math.PI*r
+  const o = new THREE.Group()
+  const body = panel(cylSide(r, h), k.wrap)
+  const top  = panel(disc(r), k.lid_top); top.rotation.x = -Math.PI/2; top.position.y = h/2
+  const base = panel(disc(r), k.base);    base.rotation.x = Math.PI/2; base.position.y = -h/2
+  const wrapF = panel(flat(W, h), k.wrap)
+  const topF  = panel(disc(r), k.lid_top); topF.position.set(0,  h/2 + r + 0.12, 0)
+  const baseF = panel(disc(r), k.base);    baseF.position.set(0, -(h/2 + r + 0.12), 0)
+  const solid = [body, top, base], net = [wrapF, topF, baseF]
+  o.add(...solid, ...net)
+  return { object:o, meshes:[...solid, ...net],
+    update(t){ solid.forEach(m=>setOp(m,t)); net.forEach(m=>setOp(m,1-t)) } }
+}
+
+function buildJar(def){
+  const k = byKey(def); const { bodyR, bodyH, lidR, lidH } = def.dims
+  const Wb = 2*Math.PI*bodyR, Wl = 2*Math.PI*lidR, topY = bodyH/2
+  const o = new THREE.Group()
+  const body = panel(cylSide(bodyR, bodyH), k.body_wrap)
+  const base = panel(disc(bodyR), k.body_base); base.rotation.x = Math.PI/2; base.position.y = -bodyH/2
+  const lidS = panel(cylSide(lidR, lidH), k.lid_side); lidS.position.y = topY + lidH/2
+  const lidT = panel(disc(lidR), k.lid_top); lidT.rotation.x = -Math.PI/2; lidT.position.y = topY + lidH
+  const bodyF = panel(flat(Wb, bodyH), k.body_wrap)
+  const baseF = panel(disc(bodyR), k.body_base); baseF.position.set(0, -(bodyH/2 + bodyR + 0.12), 0)
+  const sx = Wb/2 + Wl/2 + 0.5
+  const lidSF = panel(flat(Wl, lidH), k.lid_side); lidSF.position.set(sx, 0, 0)
+  const lidTF = panel(disc(lidR), k.lid_top);      lidTF.position.set(sx, lidH/2 + lidR + 0.12, 0)
+  const solid = [body, base, lidS, lidT], net = [bodyF, baseF, lidSF, lidTF]
+  o.add(...solid, ...net)
+  return { object:o, meshes:[...solid, ...net],
+    update(t){ solid.forEach(m=>setOp(m,t)); net.forEach(m=>setOp(m,1-t)) } }
+}
+
+// True hinged carton: 4 walls fold from a flat row into a tube; top/bottom tuck
+// flaps fold off the front. t=1 folded box, t=0 flat die-line net.
+function buildBox(def){
+  const k = byKey(def); const { w, h, d } = def.dims
+  const inner = new THREE.Group()
+  const gFront = new THREE.Group(); inner.add(gFront)
+  const front = panel(flat(w, h), k.front); front.position.set(w/2, 0, 0); gFront.add(front)
+  const gRight = new THREE.Group(); gRight.position.set(w, 0, 0); gFront.add(gRight)
+  const right = panel(flat(d, h), k.right); right.position.set(d/2, 0, 0); gRight.add(right)
+  const gBack = new THREE.Group(); gBack.position.set(d, 0, 0); gRight.add(gBack)
+  const back = panel(flat(w, h), k.back); back.position.set(w/2, 0, 0); gBack.add(back)
+  const gLeft = new THREE.Group(); gLeft.position.set(w, 0, 0); gBack.add(gLeft)
+  const left = panel(flat(d, h), k.left); left.position.set(d/2, 0, 0); gLeft.add(left)
+  const gTop = new THREE.Group(); gTop.position.set(0, h/2, 0); gFront.add(gTop)
+  const top = panel(flat(w, d), k.top); top.position.set(w/2, d/2, 0); gTop.add(top)
+  const gBot = new THREE.Group(); gBot.position.set(0, -h/2, 0); gFront.add(gBot)
+  const bottom = panel(flat(w, d), k.bottom); bottom.position.set(w/2, -d/2, 0); gBot.add(bottom)
+  const o = new THREE.Group(); o.add(inner)
+  const box3 = new THREE.Box3(), ctr = new THREE.Vector3()
+  return { object:o, meshes:[front, right, back, left, top, bottom],
+    update(t){
+      const a = Math.PI/2*t
+      gRight.rotation.y = -a; gBack.rotation.y = -a; gLeft.rotation.y = -a
+      gTop.rotation.x = -a; gBot.rotation.x = a
+      inner.position.set(0,0,0)
+      box3.setFromObject(inner); box3.getCenter(ctr)
+      inner.position.set(-ctr.x, -ctr.y, -ctr.z)
+    } }
+}
+
+const BUILDERS = { can:buildCan, jar:buildJar, box:buildBox }
+
+function buildPackage(type){
+  if (group){ scene.remove(group); group = null }
+  pickables = []; hovered = null; selectedKey = null
+  const def = PACKAGES[type]
+  const built = BUILDERS[type](def)
+  pkgUpdate = built.update
+  pickables = built.meshes
+  group = new THREE.Group(); group.add(built.object); scene.add(group)
+  pkgUpdate(currentT)
+  document.getElementById('pkgName').textContent = def.name
+  document.getElementById('pkgMeta').textContent = def.meta
+  renderSurfaceList(def)
+  renderResolution(null)
+}
+
+// ---------------------------------------------------------------------------
+// Fold state — currentT eases toward targetT (1 = 3D, 0 = flat die-line)
+// ---------------------------------------------------------------------------
+let currentT = 1, targetT = 1
+
+// ---------------------------------------------------------------------------
+// Picking — one descriptor per mesh; skip faded/hidden meshes
+// ---------------------------------------------------------------------------
+const ray = new THREE.Raycaster()
+const ptr = new THREE.Vector2()
+
+function descOf(mesh){ return mesh.userData.groupToDesc[0] }
+function refreshHighlights(){
+  pickables.forEach(mesh => {
+    const d = descOf(mesh); const mat = mesh.material[0]
+    if (!d){ mat.emissive.setHex(0x000000); return }
+    if (d.key === selectedKey) mat.emissive.setHex(0x7a0f30)
+    else mat.emissive.setHex(0x000000)
+  })
+  if (hovered){
+    const d = descOf(hovered.mesh)
+    if (d && d.decorable && d.key !== selectedKey) hovered.mesh.material[0].emissive.setHex(0x4d0a20)
+  }
+}
+
+function pick(ev){
+  const r = canvas.getBoundingClientRect()
+  ptr.x = ((ev.clientX - r.left)/r.width)*2 - 1
+  ptr.y = -((ev.clientY - r.top)/r.height)*2 + 1
+  ray.setFromCamera(ptr, camera)
+  const hits = ray.intersectObjects(pickables, false)
+  for (const hit of hits){
+    if (hit.object.visible === false) continue
+    const d = descOf(hit.object)
+    hovered = { mesh: hit.object }
+    canvas.style.cursor = (d && d.decorable) ? 'pointer' : 'grab'
+    return d
+  }
+  hovered = null; canvas.style.cursor = 'grab'; return null
+}
+
+canvas.addEventListener('pointermove', (e)=>{ pick(e) })
+canvas.addEventListener('pointerleave', ()=>{ hovered=null })
+canvas.addEventListener('click', (e)=>{
+  const d = pick(e)
+  if (d && d.decorable){ selectedKey = d.key; renderResolution(d); syncList() }
+})
+
+// ---------------------------------------------------------------------------
+// Inspector rendering
+// ---------------------------------------------------------------------------
+function swatch(d){ return d.decorable ? C.pink : C.ink }
+function roleChip(sr){
+  if (sr==='pdp')  return '<span class="chip pdp">PDP</span>'
+  if (sr==='info') return '<span class="chip info">Info panel</span>'
+  return '<span class="chip na">—</span>'
+}
+function renderSurfaceList(def){
+  const html = def.surfaces.map(s => `
+    <button class="surf" data-key="${s.key}" ${s.decorable?'':'disabled style="cursor:default;opacity:.7"'}>
+      <span class="sw" style="background:${swatch(s)}"></span>
+      <span>
+        <div class="nm">${s.label}</div>
+        <div class="rl">role: ${s.role}${s.defaultBleedMm?` · bleed ${s.defaultBleedMm}mm`:''}</div>
+      </span>
+      <span class="meta">${roleChip(s.surfaceRole)}</span>
+    </button>`).join('')
+  document.getElementById('surfList').innerHTML = html
+  document.querySelectorAll('#surfList .surf').forEach(btn=>{
+    if (btn.disabled) return
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key
+      const d = PACKAGES[activeType].surfaces.find(s=>s.key===key)
+      selectedKey = key; renderResolution(d); syncList()
+    })
+  })
+}
+function syncList(){
+  document.querySelectorAll('#surfList .surf').forEach(b=>{
+    b.classList.toggle('on', b.dataset.key === selectedKey)
+  })
+}
+function renderResolution(d){
+  const el = document.getElementById('resolution')
+  if (!d){ el.innerHTML = '<div class="empty">Select a surface to resolve it to a component &amp; die-line.</div>'; return }
+  const def = PACKAGES[activeType]
+  const cmp = def.components.find(c => c.role === d.role)   // surface.role → component
+  const hasDieline = cmp && cmp.dielineId
+  el.innerHTML = `
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:8px">Resolved · surface → component → die-line</div>
+      <div class="row"><span class="k">Surface key</span><span class="v"><code>${d.key}</code></span></div>
+      <div class="row"><span class="k">Component role</span><span class="v">${d.role}</span></div>
+      <div class="row"><span class="k">Component</span><span class="v"><code>${cmp?cmp.id:'—'}</code></span></div>
+      <div class="row"><span class="k">Die-line</span><span class="v">${hasDieline?`<code>${cmp.dielineId}</code>`:'<span style="color:var(--ink-400)">not yet attached</span>'}</span></div>
+      <div class="row"><span class="k">Design version</span><span class="v">${cmp&&cmp.designVersionId?`<code>${cmp.designVersionId}</code>`:'—'}</span></div>
+    </div>
+    <button class="btn" ${hasDieline?'':'disabled'} onclick="alert('→ would open Die-line Studio for ${hasDieline?cmp.dielineId:''}')">
+      ${hasDieline?'Open Die-line Studio →':'No die-line on this component'}
+    </button>`
+}
+
+// ---------------------------------------------------------------------------
+// Type switcher + loop + resize
+// ---------------------------------------------------------------------------
+document.getElementById('typeSeg').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if (!btn) return
+  document.querySelectorAll('#typeSeg button').forEach(b=>b.classList.toggle('on', b===btn))
+  activeType = btn.dataset.type
+  buildPackage(activeType)
+})
+
+document.getElementById('foldSeg').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if (!btn) return
+  document.querySelectorAll('#foldSeg button').forEach(b=>b.classList.toggle('on', b===btn))
+  targetT = Number(btn.dataset.fold)
+})
+
+function resize(){
+  const r = canvas.parentElement.getBoundingClientRect()
+  renderer.setSize(r.width, r.height, false)
+  camera.aspect = r.width / r.height
+  camera.updateProjectionMatrix()
+}
+window.addEventListener('resize', resize)
+
+function loop(){
+  requestAnimationFrame(loop)
+  controls.update()
+  // ease fold state and re-place the package
+  if (Math.abs(targetT - currentT) > 0.0005){ currentT += (targetT - currentT) * 0.1 }
+  else currentT = targetT
+  if (pkgUpdate) pkgUpdate(currentT)
+  if (group) group.rotation.y += 0.0015   // gentle idle spin
+  refreshHighlights()
+  renderer.render(scene, camera)
+}
+
+buildPackage('can')
+resize()
+loop()
+</script>
+</body>
+</html>

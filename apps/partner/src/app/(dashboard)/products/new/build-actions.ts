@@ -263,7 +263,7 @@ export interface InitialDraft {
   maxFlavorsPerPack: number | null
   nicheIds: string[]
   lifestyleTagIds: string[]
-  flavors: Array<{ name: string; soi: string }>
+  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[] }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
   // resuming a draft so the builder reopens on the right surface.
@@ -314,7 +314,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
-      flavorPresets: Array<{ name: string; statementOfIdentity: string | null }>
+      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown }>
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
@@ -340,7 +340,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true } },
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true } },
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
@@ -383,7 +383,15 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       intendedAgeGroup: String(tpl.intendedAgeGroup ?? 'GENERAL'),
       nicheIds: tpl.niches.map((n) => n.nicheId),
       lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
-      flavors: tpl.flavorPresets.map((f) => ({ name: f.name, soi: f.statementOfIdentity ?? '' })),
+      flavors: tpl.flavorPresets.map((f) => ({
+        name: f.name,
+        soi: f.statementOfIdentity ?? '',
+        lines: Array.isArray(f.extras)
+          ? (f.extras as Array<Record<string, unknown>>)
+              .filter((e) => e && e.ingredientId)
+              .map((e) => ({ ingredientId: String(e.ingredientId), name: String(e.name ?? ''), qty: Number(e.qty) || 0, unit: String(e.unit ?? 'g') }))
+          : [],
+      })),
       recipeSlots: tpl.ingredientSlots.map((s) => ({
         ingId: s.baseIngredientId,
         name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
@@ -1056,11 +1064,14 @@ export async function saveSampleOptions(productTemplateId: string, options: Samp
   }
 }
 
-export interface FlavorInput { name: string; statementOfIdentity?: string | null; sortOrder: number }
+/** A flavor-specific overlay ingredient line (FlavorPreset.extras), persisted so
+ *  each flavor's Nutrition Facts recompute correctly on resume. */
+export interface FlavorExtraLine { ingredientId: string; name: string; qty: number; unit: string }
+export interface FlavorInput { name: string; statementOfIdentity?: string | null; sortOrder: number; extras?: FlavorExtraLine[] }
 
 /** Replace the draft's flavor presets (the variety pool). Only named flavors
- *  persist; each becomes a FlavorPreset with an empty slot overlay (the recipe
- *  step fills slotResolution later). Idempotent: full replace by template. */
+ *  persist; each becomes a FlavorPreset whose `extras` hold the flavor-only
+ *  overlay lines (ingredient + amount). Idempotent: full replace by template. */
 export async function saveFlavors(productTemplateId: string, flavors: FlavorInput[]): Promise<Result> {
   try {
     const { partner, error } = await requirePartner()
@@ -1078,7 +1089,14 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
     }
 
     const clean = flavors
-      .map((f, i) => ({ name: f.name.trim(), soi: f.statementOfIdentity?.trim() || null, sortOrder: f.sortOrder ?? i }))
+      .map((f, i) => ({
+        name: f.name.trim(),
+        soi: f.statementOfIdentity?.trim() || null,
+        sortOrder: f.sortOrder ?? i,
+        extras: (f.extras ?? [])
+          .filter((l) => l.ingredientId && l.qty > 0)
+          .map((l) => ({ ingredientId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
+      }))
       .filter((f) => f.name.length > 0)
 
     await prisma.$transaction([
@@ -1090,7 +1108,8 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
             name: f.name,
             statementOfIdentity: f.soi,
             sortOrder: f.sortOrder,
-            slotResolution: [], // recipe step fills the overlay later
+            slotResolution: [], // legacy slot overlay — unused by the live model
+            extras: f.extras, // flavor-only overlay lines (ingredient + amount)
           },
         }),
       ),

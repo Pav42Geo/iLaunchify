@@ -12,8 +12,9 @@ import { NutritionFactsSvg } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
+import { type Flavor, type FlavorLine } from './VariantsPacksStep'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, type MyRecipe } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -204,9 +205,10 @@ export function RecipeBuilderStep({
   flavorMode?: 'SINGLE' | 'MULTI'
   /** Cap on Facts columns for multi types (manufacturer picks ≤ this). */
   maxColumns?: number
-  /** Shared flavor list defined in Variants & packs. */
-  flavors?: Array<{ name: string; ingId: string; soi: string }>
-  onFlavors?: (f: Array<{ name: string; ingId: string; soi: string }>) => void
+  /** Shared flavor list defined in Variants & packs. Each flavor carries its
+   *  own overlay lines (flavor-only ingredients with amounts). */
+  flavors?: Flavor[]
+  onFlavors?: (f: Flavor[]) => void
   /** Draft id — when present, real-picked base slots autosave to it. */
   draftId?: string | null
   /** Shared configurable axes — label-affecting ones bind overlays here (§12b). */
@@ -383,35 +385,52 @@ export function RecipeBuilderStep({
   // Flavors come from the Variants & packs step (shared). Each = a name + its
   // own distinct flavor ingredient overlaid on the shared base, so each Facts
   // column shows DIFFERENT numbers.
-  const setFlavors = (f: Array<{ name: string; ingId: string; soi: string }>) => onFlavors?.(f)
+  const setFlavors = (f: Flavor[]) => onFlavors?.(f)
 
   const ing = (id: string) => LIBRARY.find((l) => l.id === id)
   const [, startPick] = useTransition()
-  // Real per-flavor ingredient (MULTI products): each flavor column gets a
-  // distinct ingredient picked from the live catalog (replaces the demo
-  // library). The per100g cache feeds the per-flavor Facts columns.
-  const [flavorPickIdx, setFlavorPickIdx] = useState<number | null>(null)
-  const [flavorIng, setFlavorIng] = useState<Record<string, { name: string; per100g: Record<string, number> }>>({})
-  function pickFlavorIng(idx: number, picked: IngredientResult) {
+  // Which flavor's Facts label is shown in the tabbed preview (one per view).
+  const [activeFlavor, setActiveFlavor] = useState(0)
+  // Add a flavor-only overlay line (its own child mini-recipe row). The line
+  // carries amount + unit, so the engine recomputes THAT flavor's Facts.
+  function addFlavorLine(idx: number, picked: IngredientResult) {
+    if ((flavors[idx]?.lines ?? []).some((l) => l.ingId === picked.id)) {
+      toast.error(`${picked.internalName} is already in this flavor.`)
+      return
+    }
     startPick(async () => {
       const res = await getIngredientNutrition(picked.id)
-      setFlavorIng((c) => ({ ...c, [picked.id]: { name: picked.internalName, per100g: res.ok ? res.data.per100g : {} } }))
-      setFlavors(flavors.map((x, j) => (j === idx ? { ...x, ingId: picked.id } : x)))
-      setFlavorPickIdx(null)
+      const line: FlavorLine = {
+        ingId: picked.id, name: picked.internalName, qty: 0, unit: 'g',
+        per100g: res.ok ? res.data.per100g : {},
+        densityGPerMl: res.ok ? res.data.densityGPerMl : picked.densityGPerML,
+      }
+      setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: [...(f.lines ?? []), line] } : f)))
     })
   }
-  // Hydrate the cache for real flavor ids not yet fetched (resume). Demo/empty
-  // ids (no real Ingredient) simply resolve to no column until a real pick.
+  function patchFlavorLine(idx: number, li: number, p: Partial<FlavorLine>) {
+    setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: (f.lines ?? []).map((l, k) => (k === li ? { ...l, ...p } : l)) } : f)))
+  }
+  function removeFlavorLine(idx: number, li: number) {
+    setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: (f.lines ?? []).filter((_, k) => k !== li) } : f)))
+  }
+  // Resume: hydrate per100g for any persisted overlay line missing nutrient data
+  // (extras store ingId+qty+unit, not nutrients, to avoid staleness).
   useEffect(() => {
-    const missing = [...new Set(flavors.map((f) => f.ingId).filter((id) => id && !flavorIng[id]))]
+    const needs = (l: FlavorLine) => l.ingId && !(l.per100g && Object.keys(l.per100g).length)
+    const missing = [...new Set(flavors.flatMap((f) => (f.lines ?? []).filter(needs).map((l) => l.ingId)))]
     if (missing.length === 0) return
     startPick(async () => {
-      const updates: Record<string, { name: string; per100g: Record<string, number> }> = {}
+      const cache: Record<string, { per100g: Record<string, number>; density: number | null }> = {}
       for (const id of missing) {
         const res = await getIngredientNutrition(id)
-        if (res.ok) updates[id] = { name: '(saved ingredient)', per100g: res.data.per100g }
+        if (res.ok) cache[id] = { per100g: res.data.per100g, density: res.data.densityGPerMl ?? null }
       }
-      if (Object.keys(updates).length) setFlavorIng((c) => ({ ...c, ...updates }))
+      if (!Object.keys(cache).length) return
+      onFlavors?.(flavors.map((f) => ({
+        ...f,
+        lines: (f.lines ?? []).map((l) => (cache[l.ingId] && needs(l) ? { ...l, per100g: cache[l.ingId]!.per100g, densityGPerMl: cache[l.ingId]!.density } : l)),
+      })))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flavors])
@@ -522,6 +541,23 @@ export function RecipeBuilderStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, draftId])
 
+  // Autosave flavor overlays (name + soi + extras lines) while editing in the
+  // Recipe step — the Variants step (the other writer) isn't mounted here, so
+  // this keeps each flavor's added ingredients + amounts persisted.
+  const flavorSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!draftId || flavorMode !== 'MULTI') return
+    if (flavorSaveTimer.current) clearTimeout(flavorSaveTimer.current)
+    flavorSaveTimer.current = setTimeout(() => {
+      void saveFlavors(draftId, flavors.map((f, i) => ({
+        name: f.name, statementOfIdentity: f.soi, sortOrder: i,
+        extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
+      })))
+    }, 1000)
+    return () => { if (flavorSaveTimer.current) clearTimeout(flavorSaveTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flavors, draftId, flavorMode])
+
   function patch(u: string, p: Partial<Row>) { setRows((rs) => rs.map((r) => (r.uid === u ? { ...r, ...p } : r))) }
   function remove(u: string) { setRows((rs) => rs.filter((r) => r.uid !== u)) }
   function add(ingId: string) {
@@ -599,21 +635,25 @@ export function RecipeBuilderStep({
   const noNutritionData = selected.length > 0 &&
     selected.every((r) => !r.per100g || Object.keys(r.per100g).length === 0)
 
-  // Per-flavor label: shared base recipe + that flavor's distinct ingredient,
-  // so each column carries its own calories/sugar/etc.
-  function flavorResult(ingId: string) {
-    const fi = flavorIng[ingId]
-    if (!fi) return null // no real ingredient picked for this flavor yet
+  // Per-flavor label: shared base recipe + that flavor's overlay lines (each
+  // with its own amount), so every flavor carries its own calories/sugar/etc.
+  function flavorResult(f: Flavor) {
     const baseRows = publicSelection(recipeRows)
-    const overlay: RecipeRow = {
-      id: `flav-${ingId}`, name: fi.name, per100g: fi.per100g,
-      quantity: 20, unit: 'g', category: 'base', selected: true,
-    }
-    const all = [...baseRows, overlay]
-    return all.length
-      ? calculateLabel(all, { basis: lmode, servingSizeG: toGrams(servingSizeG, servingUnit), packageSizeG: toGrams(packageSizeG, packageUnit), servingsPerPackage, numPackages, moistureLossPct: moisture }, { audience })
-      : null
+    const overlay: RecipeRow[] = (f.lines ?? [])
+      .filter((l) => l.qty > 0)
+      .map((l, k) => ({
+        id: `flav-${k}-${l.ingId}`,
+        name: l.name,
+        per100g: l.per100g && Object.keys(l.per100g).length ? l.per100g : (fallbackPer100g(l.name) ?? {}),
+        quantity: toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined }),
+        unit: 'g', category: 'base', selected: true,
+      }))
+    const all = [...baseRows, ...overlay]
+    return all.length ? calculateLabel(all, geoArgs, { audience }) : null
   }
+  // Grams a flavor's overlay adds on top of the base (live total readout).
+  const flavorOverlayGrams = (f: Flavor) =>
+    (f.lines ?? []).reduce((s, l) => s + (l.qty > 0 ? toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined }) : 0), 0)
 
   // Real batch ingredient cost per market currency, from each ingredient's
   // per-kg price applied to its raw purchased weight (cost is on what you buy,
@@ -999,27 +1039,30 @@ export function RecipeBuilderStep({
             <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
           </div>
-          {flavorMode === 'MULTI' && (
-            <div className="flavbar">
+          {flavorMode === 'MULTI' && flavors.length > 0 && (
+            <div className="flavtabs" role="tablist" aria-label="Flavors">
               {flavors.map((f, i) => (
-                <span key={i} className="flav">
-                  <input value={f.name} onChange={(e) => setFlavors(flavors.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={{ width: 64, border: 0, background: 'transparent', font: 'inherit', color: 'inherit', fontWeight: 600 }} />
-                  <button type="button" onClick={() => setFlavorPickIdx(flavorPickIdx === i ? null : i)} style={{ border: 0, background: 'transparent', font: 'inherit', fontSize: 10, color: 'var(--g2)', cursor: 'pointer', textDecoration: 'underline' }} aria-label="Set flavor ingredient">
-                    {flavorIng[f.ingId]?.name ?? '+ ingredient'}
-                  </button>
-                  <button onClick={() => setFlavors(flavors.filter((_, j) => j !== i))} aria-label="Remove">✕</button>
-                </span>
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeFlavor === i}
+                  className={`flavtab${activeFlavor === i ? ' on' : ''}`}
+                  onClick={() => setActiveFlavor(i)}
+                >
+                  {f.name || `Flavor ${i + 1}`}
+                </button>
               ))}
               {flavors.length < maxColumns && (
-                <button className="rb-btn o sm" onClick={() => setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }])}>
-                  + Flavor ({flavors.length}/{maxColumns})
+                <button
+                  type="button"
+                  className="flavtab add"
+                  aria-label="Add flavor"
+                  onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]); setActiveFlavor(flavors.length) }}
+                >
+                  + Flavor
                 </button>
               )}
-            </div>
-          )}
-          {flavorMode === 'MULTI' && flavorPickIdx != null && (
-            <div style={{ marginBottom: 8 }}>
-              <IngredientPicker onPick={(p) => pickFlavorIng(flavorPickIdx, p)} placeholder={`Pick the distinct ingredient for “${flavors[flavorPickIdx]?.name || 'this flavor'}”…`} />
             </div>
           )}
           {noFactsPanel ? (
@@ -1027,25 +1070,69 @@ export function RecipeBuilderStep({
               <b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} {!dom.labelBuilt && <span className="tiny">This domain&apos;s label renderer ships in a later phase.</span>} <span className="tiny">(Auto-selected from this product&apos;s category.)</span>
             </div>
           ) : ps && result ? (
-            flavorMode === 'MULTI' && flavors.length > 0 ? (
-              <>
-                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-                  {flavors.map((f, i) => {
-                    const fr = flavorResult(f.ingId)
-                    return fr ? (
-                      <FactsPanel key={i} result={fr} ps={fr.perServing} title={f.name || `Flavor ${i + 1}`} narrow format={panelFormat} />
+            flavorMode === 'MULTI' && flavors.length > 0 ? (() => {
+              const idx = Math.min(activeFlavor, flavors.length - 1)
+              const f = flavors[idx]!
+              const fr = flavorResult(f)
+              const lines = f.lines ?? []
+              const overlayG = flavorOverlayGrams(f)
+              return (
+                <>
+                  <div className="flavedit">
+                    <input
+                      className="flavname"
+                      value={f.name}
+                      onChange={(e) => setFlavors(flavors.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)))}
+                      placeholder={`Flavor ${idx + 1}`}
+                      aria-label="Flavor name"
+                    />
+                    {flavors.length > 1 && (
+                      <button type="button" className="rb-btn o sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>
+                    )}
+                  </div>
+                  <div className="flavbuilder">
+                    <div className="flavbuilder-h">
+                      <span>Flavor ingredients <span className="tiny">— added on top of the shared base</span></span>
+                      {overlayG > 0 && <span className="tiny">Flavor adds {Math.round(overlayG * 10) / 10} g</span>}
+                    </div>
+                    {lines.length > 0 ? (
+                      <table className="flavlines">
+                        <thead><tr><th>Ingredient</th><th>Amount</th><th>Unit</th><th aria-label="Remove" /></tr></thead>
+                        <tbody>
+                          {lines.map((l, li) => (
+                            <tr key={li}>
+                              <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
+                              <td><input type="number" min={0} step="any" value={l.qty || ''} placeholder="0" onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} className="amt" aria-label={`${l.name} amount`} /></td>
+                              <td>
+                                <select value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
+                                  {['g', 'mg', 'ml'].map((u) => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                              </td>
+                              <td><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     ) : (
-                      <div key={i} className="facts" style={{ minWidth: 150, flex: '0 0 auto', display: 'grid', placeItems: 'center', textAlign: 'center', padding: 12, color: 'var(--mut)' }}>
-                        <div className="flavhdr">{f.name || `Flavor ${i + 1}`}</div>
-                        <button type="button" className="rb-btn o sm" style={{ marginTop: 8 }} onClick={() => setFlavorPickIdx(i)}>Pick ingredient</button>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
-                <p className="makes">Combined {flavors.length}-column label for the pack · each column = that flavor&apos;s own recipe · plus a single-column label per flavor at print.</p>
-              </>
-            ) : (
+                      <p className="tiny" style={{ margin: '6px 0' }}>No flavor-specific ingredients yet. Add the flavor system, color, sweetener, etc. — each with its own amount.</p>
+                    )}
+                    <div style={{ marginTop: 6 }}>
+                      <IngredientPicker onPick={(p) => addFlavorLine(idx, p)} placeholder={`Add an ingredient for “${f.name || 'this flavor'}”…`} />
+                    </div>
+                  </div>
+                  {fr && overlayG > 0 ? (
+                    <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} />
+                  ) : (
+                    <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)', padding: 20 }}>
+                      <div className="flavhdr" style={{ margin: '0 0 8px' }}>{f.name || `Flavor ${idx + 1}`}</div>
+                      <p className="tiny" style={{ margin: 0 }}>Add at least one flavor ingredient with an amount to generate this flavor&apos;s Facts label.</p>
+                    </div>
+                  )}
+                  <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
+                  <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor (shown per tab; all print individually).</p>
+                </>
+              )
+            })() : (
               <>
                 {simpEligible && (
                   <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
@@ -1642,9 +1729,22 @@ const CSS = `
 .rb .cal{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid #000;margin-top:3px} .rb .cal .n{font-size:28px;font-weight:800}
 .rb .fr{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:1px 0}
 .rb .netwt{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-top:10px;font-weight:700;font-size:13px}
-.rb .flavbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
-.rb .flav{display:inline-flex;align-items:center;gap:5px;background:var(--g-50);color:var(--g2);border:1px solid var(--g-bd);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600}
-.rb .flav button{border:0;background:transparent;color:var(--g2);cursor:pointer;font-size:11px;padding:0}
+.rb .flavtabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--bd);padding-bottom:0}
+.rb .flavtab{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--g2);cursor:pointer;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px 8px 0 0;margin-bottom:-1px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb .flavtab:hover{color:var(--ink);background:var(--g-50)}
+.rb .flavtab.on{color:var(--ink);background:#fff;border-color:var(--bd);border-bottom:1px solid #fff;font-weight:700}
+.rb .flavtab.add{color:var(--g2);font-weight:600;border-style:dashed;border-color:var(--g-bd);border-bottom-color:var(--g-bd);border-radius:8px;margin-bottom:0}
+.rb .flavedit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.rb .flavname{flex:1 1 120px;min-width:100px;border:1px solid var(--bd);border-radius:8px;padding:6px 9px;font:inherit;font-weight:600;color:var(--ink)}
+.rb .flavbuilder{border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--g-50)}
+.rb .flavbuilder-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.rb table.flavlines{width:100%;border-collapse:collapse;font-size:12px}
+.rb table.flavlines th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--g2);font-weight:600;padding:2px 6px 4px}
+.rb table.flavlines td{padding:3px 6px;border-top:1px solid var(--bd);vertical-align:middle}
+.rb table.flavlines .amt{width:64px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font:inherit}
+.rb table.flavlines select{border:1px solid var(--bd);border-radius:6px;padding:4px 6px;font:inherit;background:#fff}
+.rb table.flavlines .del{border:0;background:transparent;cursor:pointer;font-size:13px;opacity:.7}
+.rb table.flavlines .del:hover{opacity:1}
 .rb .flavhdr{background:var(--g-50);color:var(--g2);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--g-bd);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
 /* Readable hover tooltip for the "i" info icons (replaces the tiny native title). */
 .rb .info[data-tip]{position:relative}

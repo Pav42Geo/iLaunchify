@@ -32,7 +32,7 @@ const DOMAIN_OPTIONS: { v: Ltype; label: string; desc: string; artifact: string 
 ]
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
-import { VariantsPacksStep } from './VariantsPacksStep'
+import { VariantsPacksStep, type Flavor } from './VariantsPacksStep'
 import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
 import { CertificatesCard } from './CertificatesCard'
@@ -117,8 +117,11 @@ export function GuidedBuilder({
   )
   // Shared flavor list — defined in Variants & packs, carried into Recipe so
   // each flavor becomes its own recipe column. One source of truth.
-  const [flavors, setFlavors] = useState<Array<{ name: string; ingId: string; soi: string }>>(
-    initial?.flavors.map((f) => ({ name: f.name, ingId: 'cane', soi: f.soi })) ?? [],
+  const [flavors, setFlavors] = useState<Flavor[]>(
+    initial?.flavors.map((f) => ({
+      name: f.name, ingId: 'cane', soi: f.soi,
+      lines: (f.lines ?? []).map((l) => ({ ingId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
+    })) ?? [],
   )
   // Configurable option axes (sweetener/strength/caffeine/custom). Shared so the
   // Variants step edits them and the Recipe step binds their label overlays.
