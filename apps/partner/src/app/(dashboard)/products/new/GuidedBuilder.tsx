@@ -41,7 +41,7 @@ import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { ComplianceCard } from './ComplianceCard'
 import { PackagingPicker } from './PackagingPicker'
 
-interface CategoryOption { id: string; name: string; mainCategory: string }
+interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
 interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number }
 interface ChipOption { id: string; label: string }
@@ -338,6 +338,7 @@ export function GuidedBuilder({
                 <style>{`.gb .domcard{display:block;text-align:left;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 12px;cursor:pointer;transition:.12s}.gb .domcard:hover{border-color:var(--pink-200,#F4C0D1);background:var(--pink-50,#FCEEF3)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FCEEF3);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}`}</style>
               </div>
               <BasicsScreen
+                domain={LTYPE_TO_LT[ltype]}
                 categories={categories}
                 subcategories={subcategories}
                 niches={niches}

@@ -59,6 +59,9 @@ async function requirePartner() {
 export interface CreateDraftShellInput {
   name: string
   subcategoryId: string
+  /** Product domain chosen in the domain selector. Persisted at creation and
+   *  validated against the subcategory's category domain. */
+  labelingType?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -1278,6 +1281,7 @@ export async function loadNotes(productTemplateId: string): Promise<NoteRowData[
 
 export interface BasicsPatch {
   name?: string
+  subcategoryId?: string // domain-validated against the draft's labelingType
   familyCode?: string | null // base SKU
   description?: string | null // short
   longDescription?: string | null
@@ -1306,7 +1310,7 @@ export async function updateBasics(
 
     const tpl = await prisma.productTemplate.findUnique({
       where: { id: productTemplateId },
-      select: { manufacturerServiceId: true },
+      select: { manufacturerServiceId: true, labelingType: true },
     })
     if (!tpl) return { ok: false, error: 'Draft not found.' }
     const ownIds = partner.services.map((s) => s.id)
@@ -1319,6 +1323,22 @@ export async function updateBasics(
       const n = patch.name.trim()
       if (n.length < 2 || n.length > 120) return { ok: false, error: 'Name must be 2–120 chars.' }
       data.name = n
+    }
+    if (patch.subcategoryId !== undefined && patch.subcategoryId) {
+      // Re-file under a different subcategory — but only within the same domain.
+      const sc = await (prisma as unknown as {
+        subcategory: { findUnique: (a: unknown) => Promise<{ id: string; category: { labelingType: string } | null } | null> }
+      }).subcategory.findUnique({
+        where: { id: patch.subcategoryId },
+        select: { id: true, category: { select: { labelingType: true } } },
+      })
+      if (!sc) return { ok: false, error: 'Subcategory not found.' }
+      const catDomain = String(sc.category?.labelingType ?? 'FOOD')
+      const draftDomain = String(tpl.labelingType ?? 'FOOD')
+      if (catDomain !== draftDomain) {
+        return { ok: false, error: `That subcategory belongs to the ${catDomain} domain — it doesn't match this product's domain (${draftDomain}).` }
+      }
+      data.subcategoryId = patch.subcategoryId
     }
     if (patch.familyCode !== undefined) data.familyCode = patch.familyCode?.trim() || null
     if (patch.description !== undefined) data.description = patch.description?.trim() || null
@@ -1370,11 +1390,23 @@ export async function createDraftShell(
     }
     if (!input.subcategoryId) return { ok: false, error: 'Pick a category + subcategory.' }
 
-    const subcat = await prisma.subcategory.findUnique({
+    // Pull the subcategory + its category's product domain. Cast-guarded because
+    // Category.labelingType is added by a pending migration.
+    const subcat = await (prisma as unknown as {
+      subcategory: { findUnique: (a: unknown) => Promise<{ id: string; category: { labelingType: string } | null } | null> }
+    }).subcategory.findUnique({
       where: { id: input.subcategoryId },
-      select: { id: true },
+      select: { id: true, category: { select: { labelingType: true } } },
     })
     if (!subcat) return { ok: false, error: 'Subcategory not found.' }
+
+    // Enforce: the product domain must match the category's domain. A Supplement
+    // can't be filed under a Food category, a Cosmetic can't be filed under Pet, etc.
+    const catDomain = String(subcat.category?.labelingType ?? 'FOOD')
+    if (input.labelingType && input.labelingType !== catDomain) {
+      return { ok: false, error: `That category belongs to the ${catDomain} domain — it doesn't match the selected product domain (${input.labelingType}).` }
+    }
+    const draftDomain = (input.labelingType ?? catDomain) as 'FOOD' | 'DIETARY_SUPPLEMENT' | 'PET_PRODUCT' | 'OTC' | 'COSMETIC'
 
     // Unique slug from name + partner suffix.
     const base = slugify(name) || 'product'
@@ -1391,6 +1423,7 @@ export async function createDraftShell(
         name,
         slug,
         subcategoryId: input.subcategoryId,
+        labelingType: draftDomain,
         manufacturerServiceId: partner.services[0]?.id ?? null,
         status: 'DRAFT',
       },

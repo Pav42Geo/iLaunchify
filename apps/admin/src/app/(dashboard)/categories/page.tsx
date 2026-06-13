@@ -97,7 +97,7 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
     subcategoryCount,
     productCount,
     inactiveSubcategoryCount,
-    categories,
+    categoriesRaw,
     productCountsBySubcategory,
   ] = await Promise.all([
     prisma.category.count(),
@@ -138,6 +138,18 @@ export default async function CategoriesPage({ searchParams }: PageProps) {
   const productCountBySubcategoryId = new Map(
     productCountsBySubcategory.map((c) => [c.subcategoryId, c._count._all]),
   )
+
+  // Product domain per category. Separate cast-guarded read so the main typed
+  // query stays green until the Category.labelingType migration is generated;
+  // merge it onto each row so CategoryRow simply carries `labelingType`.
+  const domainRows = await (prisma as unknown as {
+    category: { findMany: (a: unknown) => Promise<Array<{ id: string; labelingType: string }>> }
+  }).category.findMany({ select: { id: true, labelingType: true } })
+  const domainByCategoryId = new Map(domainRows.map((d) => [d.id, d.labelingType]))
+  const categories: CategoryRow[] = categoriesRaw.map((c) => ({
+    ...c,
+    labelingType: domainByCategoryId.get(c.id) ?? 'FOOD',
+  }))
 
   // Group categories by mainCategory for the Management tab.
   const grouped = new Map<string, typeof categories>()
@@ -364,6 +376,15 @@ function TabBar({
 // Tab — Catalog (overview grid)
 // -----------------------------------------------------------------------------
 
+// Short, human label for the product-domain chip on each category card.
+const DOMAIN_SHORT: Record<string, string> = {
+  FOOD: 'Food',
+  DIETARY_SUPPLEMENT: 'Supplement',
+  COSMETIC: 'Cosmetic',
+  PET_PRODUCT: 'Pet',
+  OTC: 'OTC',
+}
+
 type CategoryRow = {
   id: string
   name: string
@@ -372,6 +393,7 @@ type CategoryRow = {
   icon: string | null
   color: string | null
   mainCategory: string
+  labelingType: string
   displayOrder: number
   isActive: boolean
   subcategories: {
@@ -571,9 +593,19 @@ function CategoryCard({
         </span>
         <ReorderCategory categoryId={category.id} />
         <div className="flex-1">
-          <h3 className="font-display text-[14.5px] font-semibold leading-tight text-ink-900">
-            {category.name}
-          </h3>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="font-display text-[14.5px] font-semibold leading-tight text-ink-900">
+              {category.name}
+            </h3>
+            <span className="inline-flex items-center rounded-full bg-ink-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-ink-600">
+              {DOMAIN_SHORT[category.labelingType] ?? category.labelingType}
+            </span>
+            {!category.isActive && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-amber-700">
+                Hidden
+              </span>
+            )}
+          </div>
           {category.description && (
             <p className="mt-0.5 text-[11.5px] text-ink-600">{category.description}</p>
           )}
@@ -585,9 +617,11 @@ function CategoryCard({
               id: category.id,
               name: category.name,
               mainCategory: category.mainCategory,
+              labelingType: category.labelingType,
               description: category.description,
               icon: category.icon,
               color: category.color,
+              isActive: category.isActive,
             }}
           />
           <DeleteCategoryButton categoryId={category.id} name={category.name} />

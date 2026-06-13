@@ -18,6 +18,15 @@ import { createCategory, updateCategory } from './actions'
 
 const MAIN_CATEGORY_OPTIONS = ['Food', 'Beverages', 'Supplements', 'Other'] as const
 
+// Product domain (LabelingType) drives the New Product flow + the label regime.
+const DOMAIN_OPTIONS = [
+  { value: 'FOOD', label: 'Food / Beverage — Nutrition Facts' },
+  { value: 'DIETARY_SUPPLEMENT', label: 'Supplement — Supplement Facts' },
+  { value: 'COSMETIC', label: 'Cosmetic — INCI declaration' },
+  { value: 'PET_PRODUCT', label: 'Pet — Guaranteed Analysis' },
+  { value: 'OTC', label: 'OTC drug — Drug Facts' },
+] as const
+
 export function CategoryFormDialog({
   mode,
   category,
@@ -27,9 +36,11 @@ export function CategoryFormDialog({
     id: string
     name: string
     mainCategory: string
+    labelingType: string
     description: string | null
     icon: string | null
     color: string | null
+    isActive: boolean
   }
 }) {
   const [open, setOpen] = useState(false)
@@ -42,19 +53,23 @@ export function CategoryFormDialog({
     startTransition(async () => {
       const name = String(formData.get('name') ?? '')
       const mainCategory = String(formData.get('mainCategory') ?? 'Food')
+      const labelingType = String(formData.get('labelingType') ?? 'FOOD')
       const description = String(formData.get('description') ?? '')
       const icon = String(formData.get('icon') ?? '')
       const color = String(formData.get('color') ?? '')
+      const isActive = formData.get('isActive') === 'on'
 
       const res =
         mode === 'create'
-          ? await createCategory({ name, mainCategory, description, icon, color })
+          ? await createCategory({ name, mainCategory, labelingType, description, icon, color, isActive })
           : await updateCategory(category!.id, {
               name,
               mainCategory,
+              labelingType,
               description,
               icon,
               color,
+              isActive,
             })
 
       if (!res.ok) {
@@ -136,6 +151,30 @@ export function CategoryFormDialog({
                   ))}
                 </select>
               </div>
+              <div>
+                <label
+                  htmlFor="labelingType"
+                  className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                >
+                  Product domain
+                </label>
+                <select
+                  id="labelingType"
+                  name="labelingType"
+                  defaultValue={category?.labelingType ?? 'FOOD'}
+                  className="mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+                >
+                  {DOMAIN_OPTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10.5px] leading-snug text-ink-500">
+                  Controls which New Product flow + label panel this category uses. Products can only be
+                  filed under a category matching their domain.
+                </p>
+              </div>
               <Field
                 label="Description"
                 name="description"
@@ -156,6 +195,18 @@ export function CategoryFormDialog({
                   placeholder="#FF2E63"
                 />
               </div>
+
+              <label className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  defaultChecked={category?.isActive ?? true}
+                  className="h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-200"
+                />
+                <span className="text-[12.5px] text-ink-700">
+                  Active — fileable in the product flow. Uncheck to hide this category (e.g. Gift &amp; Seasonal).
+                </span>
+              </label>
 
               {error && (
                 <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">

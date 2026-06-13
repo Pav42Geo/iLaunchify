@@ -21,14 +21,25 @@ export async function setDraftLabelingType(draftId: string, labelingType: Labeli
   if (user.role !== 'PARTNER') return { ok: false, error: 'Not a partner account.' }
   const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true, services: { select: { id: true } } } })
   if (!partner) return { ok: false, error: 'Partner profile not found.' }
-  const tpl = await prisma.productTemplate.findUnique({ where: { id: draftId }, select: { manufacturerServiceId: true } })
+  // Pull the draft + its subcategory's category domain (cast-guarded — the
+  // Category.labelingType column ships with a pending migration).
+  const tpl = await (prisma as unknown as {
+    productTemplate: { findUnique: (a: unknown) => Promise<{ manufacturerServiceId: string | null; subcategory: { category: { labelingType: string } | null } | null } | null> }
+  }).productTemplate.findUnique({
+    where: { id: draftId },
+    select: { manufacturerServiceId: true, subcategory: { select: { category: { select: { labelingType: true } } } } },
+  })
   if (!tpl) return { ok: false, error: 'Draft not found.' }
   const ownIds = partner.services.map((s) => s.id)
   if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
   try {
+    // If the draft's current category no longer belongs to the new domain, drop
+    // it so the manufacturer is forced to re-pick a domain-matching category.
+    const currentCatDomain = tpl.subcategory?.category?.labelingType ?? null
+    const clearSubcat = currentCatDomain != null && currentCatDomain !== labelingType
     await (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } }).productTemplate.update({
       where: { id: draftId },
-      data: { labelingType, labelingTypeLocked: false },
+      data: { labelingType, labelingTypeLocked: false, ...(clearSubcat ? { subcategoryId: null } : {}) },
     })
     await logAuditAs(user, { entityType: 'ProductTemplate', entityId: draftId, action: 'LABELING_TYPE_SET', payload: { labelingType } })
     return { ok: true }

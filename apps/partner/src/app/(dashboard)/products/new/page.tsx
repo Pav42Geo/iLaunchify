@@ -52,8 +52,12 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   const marketCurrencies = currencies.length ? currencies : ['USD']
 
   const [categories, subcategories, packagingSystems, niches, lifestyleTags] = await Promise.all([
-    prisma.category.findMany({ select: { id: true, name: true, mainCategory: true }, orderBy: { name: 'asc' } }),
-    prisma.subcategory.findMany({ select: { id: true, name: true, categoryId: true }, orderBy: { name: 'asc' } }),
+    // Cast-guarded: Category.labelingType ships with a pending migration.
+    // Only active categories are fileable (deactivated ones, e.g. Gift & Seasonal, are hidden).
+    (prisma as unknown as {
+      category: { findMany: (a: unknown) => Promise<Array<{ id: string; name: string; mainCategory: string; labelingType: string }>> }
+    }).category.findMany({ where: { isActive: true }, select: { id: true, name: true, mainCategory: true, labelingType: true }, orderBy: { name: 'asc' } }),
+    prisma.subcategory.findMany({ where: { isActive: true }, select: { id: true, name: true, categoryId: true }, orderBy: { name: 'asc' } }),
     prisma.packagingSystem.findMany({
       where: { partnerId: partner.id, status: 'ACTIVE' },
       select: { id: true, partnerName: true, topology: true, unitCount: true, moq: true },

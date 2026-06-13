@@ -120,7 +120,7 @@ export default async function AdminDashboardPage() {
           icon={Users}
           tone="pink"
           href="/creators"
-          span={2}
+          span={1}
         />
         <KpiWidget
           label="Total partners"
@@ -128,7 +128,7 @@ export default async function AdminDashboardPage() {
           icon={Building2}
           tone="ink"
           href="/partners"
-          span={2}
+          span={1}
         />
         <KpiWidget
           label="Live products"
@@ -136,7 +136,7 @@ export default async function AdminDashboardPage() {
           icon={Package}
           tone="ink"
           href="/products"
-          span={2}
+          span={1}
         />
         <KpiWidget
           label="Orders today"
@@ -144,7 +144,7 @@ export default async function AdminDashboardPage() {
           icon={ShoppingBag}
           tone="pink"
           href="/orders"
-          span={2}
+          span={1}
         />
         <KpiWidget
           label="Revenue · 30d"
@@ -152,7 +152,7 @@ export default async function AdminDashboardPage() {
           icon={DollarSign}
           tone="success"
           href="/orders"
-          span={2}
+          span={1}
         />
         <KpiWidget
           label="Active sessions"
@@ -160,7 +160,7 @@ export default async function AdminDashboardPage() {
           icon={Activity}
           tone="neon"
           sublabel="last 15 min"
-          span={2}
+          span={1}
         />
       </section>
 

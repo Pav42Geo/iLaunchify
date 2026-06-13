@@ -2417,6 +2417,11 @@ model Category {
   slug                   String        @unique
   description            String?
   mainCategory           String // "Food" | "Beverages" | "Supplements" | "Other"
+  // Product domain this category belongs to — drives the New Product flow:
+  // a product can only be filed under categories whose labelingType matches the
+  // product's chosen domain (FOOD / DIETARY_SUPPLEMENT / COSMETIC / PET_PRODUCT).
+  // Subcategories inherit this via their parent category.
+  labelingType           LabelingType  @default(FOOD)
   icon                   String? // emoji or short string
   color                  String? // hex
   displayOrder           Int           @default(0)

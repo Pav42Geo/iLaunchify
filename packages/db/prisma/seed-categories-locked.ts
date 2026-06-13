@@ -30,6 +30,37 @@ interface LockedCategory {
   subcategories: LockedSubcategory[]
 }
 
+// Product domain (LabelingType) each locked category belongs to. Drives the
+// New Product flow: a product can only be filed under a category whose domain
+// matches its chosen labelingType. Subcategories inherit via their parent.
+// Keyed by slug so it stays in lockstep with the 13 locked categories below.
+type Domain = 'FOOD' | 'DIETARY_SUPPLEMENT' | 'COSMETIC' | 'PET_PRODUCT' | 'OTC'
+const CATEGORY_DOMAIN: Record<string, Domain> = {
+  'snacks-confectionery': 'FOOD',
+  'pantry-staples': 'FOOD',
+  'breakfast-morning': 'FOOD',
+  'baking-desserts': 'FOOD',
+  'ready-meals': 'FOOD',
+  'coffee-tea': 'FOOD',
+  'functional-wellness-beverages': 'FOOD',
+  'refreshment-drinks': 'FOOD',
+  'baby-kids-nutrition': 'FOOD',
+  'gift-seasonal': 'FOOD',
+  supplements: 'DIETARY_SUPPLEMENT',
+  'cosmetics-personal-care': 'COSMETIC',
+  'pet-products': 'PET_PRODUCT',
+}
+function domainForSlug(slug: string): Domain {
+  return CATEGORY_DOMAIN[slug] ?? 'FOOD'
+}
+
+// Categories preserved in the taxonomy but hidden from the product flow for now
+// (no meaningful production domain). Reseeds keep them inactive.
+const INACTIVE_CATEGORY_SLUGS = new Set<string>(['gift-seasonal'])
+function activeForSlug(slug: string): boolean {
+  return !INACTIVE_CATEGORY_SLUGS.has(slug)
+}
+
 // Helper — title-case a kebab slug for fallback subcategory names.
 function titleCaseSlug(slug: string): string {
   return slug
@@ -342,18 +373,20 @@ export async function seedCategoriesLocked(prisma: PrismaClient): Promise<void> 
         slug: cat.slug,
         name: cat.name,
         mainCategory: cat.mainCategory,
+        labelingType: domainForSlug(cat.slug),
         icon: cat.icon,
         displayOrder: cat.displayOrder,
         description: cat.description,
-        isActive: true,
+        isActive: activeForSlug(cat.slug),
       },
       update: {
         name: cat.name,
         mainCategory: cat.mainCategory,
+        labelingType: domainForSlug(cat.slug),
         icon: cat.icon,
         displayOrder: cat.displayOrder,
         description: cat.description,
-        isActive: true,
+        isActive: activeForSlug(cat.slug),
       },
     })
 

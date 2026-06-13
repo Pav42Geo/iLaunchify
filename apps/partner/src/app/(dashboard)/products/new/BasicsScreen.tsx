@@ -18,13 +18,16 @@ import { CertificatesCard } from './CertificatesCard'
 import { MediaUpload } from './MediaUpload'
 
 interface Opt { id: string; label: string }
-interface CategoryOption { id: string; name: string; mainCategory: string }
+interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
 interface FacilityOption { id: string; name: string }
 
 export type ProductType = 'SINGLE' | 'MULTI_FLAVOR' | 'MULTI_PACK'
 
 interface BasicsScreenProps {
+  /** Product domain (LabelingType) chosen in the domain selector. Categories are
+   *  filtered to this domain — a product can only be filed under a matching one. */
+  domain: string
   categories: CategoryOption[]
   subcategories: SubcategoryOption[]
   niches: Opt[]
@@ -40,7 +43,7 @@ interface BasicsScreenProps {
 interface Meta { key: string; value: string }
 
 export function BasicsScreen({
-  categories, subcategories, niches, lifestyleTags, facilities,
+  domain, categories, subcategories, niches, lifestyleTags, facilities,
   draftId, onDraftId, onName, initial,
 }: BasicsScreenProps) {
   const [name, setName] = useState(initial?.name ?? '')
@@ -54,6 +57,28 @@ export function BasicsScreen({
   const [selTags, setSelTags] = useState<string[]>(initial?.lifestyleTagIds ?? [])
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [, startSave] = useTransition()
+
+  // Only categories belonging to the chosen product domain are selectable —
+  // a Supplement can't be filed under Snacks, a Cosmetic can't be filed under
+  // Pet, etc. (server-enforced too, in build-actions).
+  const visibleCategories = categories.filter((c) => c.labelingType === domain)
+
+  // Keep the selection coherent with the domain. If the domain changes (or a
+  // resumed draft's category doesn't match), drop an invalid category; when the
+  // domain has exactly one category (Supplement / Cosmetic / Pet), auto-pick it
+  // so the manufacturer only has to choose a subcategory.
+  useEffect(() => {
+    const valid = visibleCategories.some((c) => c.id === categoryId)
+    if (!valid) {
+      if (visibleCategories.length === 1) {
+        setCategoryId(visibleCategories[0]!.id)
+      } else if (categoryId) {
+        setCategoryId('')
+      }
+      setSubcategoryId('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain])
 
   const subs = subcategories.filter((s) => s.categoryId === categoryId)
   const ready = name.trim().length >= 2 && !!subcategoryId
@@ -77,13 +102,13 @@ export function BasicsScreen({
       startSave(async () => {
         let id = draftId
         if (!id) {
-          const res = await createDraftShell({ name: name.trim(), subcategoryId })
+          const res = await createDraftShell({ name: name.trim(), subcategoryId, labelingType: domain })
           if (!res || !res.ok) { toast.error(res?.error ?? 'Save failed'); setSaving('idle'); return }
           id = res.data.id
           onDraftId(id)
         }
         const res = await updateBasics(id, {
-          name, familyCode: baseSku, description: shortDesc, longDescription: longDesc,
+          name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc,
           customMeta: meta.filter((m) => m.key.trim()),
         })
         setSaving(res.ok ? 'saved' : 'idle')
@@ -137,10 +162,15 @@ export function BasicsScreen({
           <Field full label="Base SKU · seeds variant SKUs (internal)">
             <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
           </Field>
-          <Field label="Category">
-            <select className="sel" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}>
-              <option value="">Select…</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.mainCategory})</option>)}
+          <Field label="Category · filtered to your product domain">
+            <select
+              className="sel"
+              value={categoryId}
+              disabled={visibleCategories.length <= 1}
+              onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}
+            >
+              <option value="">{visibleCategories.length ? 'Select…' : 'No category for this domain'}</option>
+              {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="Subcategory · sets the FDA rule pack">

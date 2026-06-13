@@ -25,6 +25,12 @@ type Result = { ok: true } | { ok: false; error: string }
 const MAIN_CATEGORIES = ['Food', 'Beverages', 'Supplements', 'Other'] as const
 type MainCategory = (typeof MAIN_CATEGORIES)[number]
 
+// Product domain (LabelingType) each category belongs to. Drives the New Product
+// flow — a product can only be filed under a category whose domain matches the
+// product's chosen domain. Subcategories inherit it from their parent.
+const PRODUCT_DOMAINS = ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT', 'OTC', 'COSMETIC'] as const
+type ProductDomain = (typeof PRODUCT_DOMAINS)[number]
+
 function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -40,15 +46,21 @@ function slugify(input: string): string {
 export async function createCategory(input: {
   name: string
   mainCategory: string
+  labelingType?: string
   description?: string
   icon?: string
   color?: string
+  isActive?: boolean
 }): Promise<Result> {
   const user = await requireRole(['ADMIN'])
   const name = input.name.trim()
   if (!name) return { ok: false, error: 'Name is required.' }
   if (!MAIN_CATEGORIES.includes(input.mainCategory as MainCategory)) {
     return { ok: false, error: 'Invalid main category.' }
+  }
+  const domain = (input.labelingType ?? 'FOOD') as ProductDomain
+  if (!PRODUCT_DOMAINS.includes(domain)) {
+    return { ok: false, error: 'Invalid product domain.' }
   }
 
   const slug = slugify(name)
@@ -67,16 +79,21 @@ export async function createCategory(input: {
   })
   const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1
 
-  const created = await prisma.category.create({
+  // Cast-guarded: Category.labelingType ships with a pending migration.
+  const created = await (prisma as unknown as {
+    category: { create: (a: unknown) => Promise<{ id: string; name: string; mainCategory: string }> }
+  }).category.create({
     data: {
       name,
       slug,
       externalId: `admin-${slug}`,
       mainCategory: input.mainCategory,
+      labelingType: domain,
       description: input.description?.trim() || null,
       icon: input.icon?.trim() || null,
       color: input.color?.trim() || null,
       displayOrder: nextOrder,
+      isActive: input.isActive ?? true,
     },
     select: { id: true, name: true, mainCategory: true },
   })
@@ -98,6 +115,7 @@ export async function updateCategory(
   input: {
     name?: string
     mainCategory?: string
+    labelingType?: string
     description?: string
     icon?: string
     color?: string
@@ -126,6 +144,12 @@ export async function updateCategory(
       return { ok: false, error: 'Invalid main category.' }
     }
     data.mainCategory = input.mainCategory
+  }
+  if (input.labelingType !== undefined) {
+    if (!PRODUCT_DOMAINS.includes(input.labelingType as ProductDomain)) {
+      return { ok: false, error: 'Invalid product domain.' }
+    }
+    data.labelingType = input.labelingType
   }
   if (input.description !== undefined) data.description = input.description.trim() || null
   if (input.icon !== undefined) data.icon = input.icon.trim() || null
