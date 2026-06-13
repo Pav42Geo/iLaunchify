@@ -173,8 +173,9 @@ export function toSupplementPanelData(
   // The %DV cell for a dietary ingredient / blend: a percentage (with optional "<"
   // and appended symbol), or the no-DV footnote glyph.
   const dvCellFor = (hasDV: boolean, percent: number | null | undefined, lt?: boolean, sym?: string): string => {
-    // The row's footnote symbol prints IN FRONT of the % Daily Value (e.g. "*60%").
-    if (hasDV) return `${sym ?? ''}${lt ? '<' : ''}${percent}%`
+    // The row's footnote symbol prints IN FRONT of the % Daily Value, with a thin
+    // space so it doesn't crowd the number (e.g. "* 60%").
+    if (hasDV) return `${sym ? sym + ' ' : ''}${lt ? '<' : ''}${percent}%`
     if (!sym) usesDefaultNoDv = true
     return sym || noDvSymbol
   }
