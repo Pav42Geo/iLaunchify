@@ -11,7 +11,7 @@
 
 import * as React from 'react'
 import { Plus, Trash2, FlaskConical, Layers, Search, Loader2 } from 'lucide-react'
-import { NutritionFactsRenderer } from '@ilaunchify/ui'
+import { SupplementFactsSvg } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
 import { dsldLabelName, cleanSourceName, type DsldIngredientCandidate } from './dsld'
@@ -414,12 +414,7 @@ export function SupplementFormulationStep({
       {/* RIGHT — live Supplement Facts */}
       <div className="space-y-3">
         {hasPanel ? (
-          <>
-            <NutritionFactsRenderer data={panel} widthPx={300} />
-            {otherIngredients.length > 0 && (
-              <p className="text-[12px] leading-snug text-ink-700"><b>Other ingredients:</b> {otherIngredients.join(', ')}.</p>
-            )}
-          </>
+          <SupplementFactsSvg data={panel} otherIngredients={otherIngredients} widthPx={300} />
         ) : (
           <div className="rounded-2xl border border-ink-200 bg-white p-5 text-center text-[12.5px] text-ink-500">Add a dietary ingredient to see the live Supplement Facts panel.</div>
         )}
