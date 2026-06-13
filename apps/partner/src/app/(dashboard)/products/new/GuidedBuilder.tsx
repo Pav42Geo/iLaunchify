@@ -24,6 +24,12 @@ import { setDraftLabelingType, type LabelingTypeValue } from './domain-actions'
 type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'
 const LT_TO_LTYPE: Record<string, Ltype> = { FOOD: 'Recipe', DIETARY_SUPPLEMENT: 'Supplement', COSMETIC: 'Cosmetic', PET_PRODUCT: 'Pet' }
 const LTYPE_TO_LT: Record<Ltype, LabelingTypeValue> = { Recipe: 'FOOD', Supplement: 'DIETARY_SUPPLEMENT', Cosmetic: 'COSMETIC', Pet: 'PET_PRODUCT' }
+const DOMAIN_OPTIONS: { v: Ltype; label: string; desc: string; artifact: string }[] = [
+  { v: 'Recipe', label: 'Food / Beverage', desc: 'Edible food or drink', artifact: 'Nutrition Facts' },
+  { v: 'Supplement', label: 'Supplement', desc: 'Vitamins, minerals, botanicals', artifact: 'Supplement Facts' },
+  { v: 'Cosmetic', label: 'Cosmetic', desc: 'Skincare, haircare, personal care', artifact: 'INCI declaration' },
+  { v: 'Pet', label: 'Pet', desc: 'Pet food, treats, supplements', artifact: 'Guaranteed Analysis' },
+]
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep } from './VariantsPacksStep'
@@ -317,6 +323,20 @@ export function GuidedBuilder({
           {/* ===== STEP 1 — Basics (pure identity) ===== */}
           {cur === 0 && (
             <section>
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="section-title"><span className="ic">◧</span> Product domain</div>
+                <p className="muted small" style={{ margin: '4px 0 12px' }}>What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.</p>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                  {DOMAIN_OPTIONS.map((o) => (
+                    <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.label}</div>
+                      <div className="tiny muted" style={{ marginTop: 2 }}>{o.desc}</div>
+                      <div className="tiny" style={{ marginTop: 7, fontWeight: 600, color: 'var(--pink-700, #C71350)' }}>{o.artifact}</div>
+                    </button>
+                  ))}
+                </div>
+                <style>{`.gb .domcard{display:block;text-align:left;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 12px;cursor:pointer;transition:.12s}.gb .domcard:hover{border-color:var(--pink-200,#F4C0D1);background:var(--pink-50,#FCEEF3)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FCEEF3);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}`}</style>
+              </div>
               <BasicsScreen
                 categories={categories}
                 subcategories={subcategories}
@@ -355,11 +375,10 @@ export function GuidedBuilder({
           {/* ===== STEP 3 — RECIPE / FORMULATION ===== */}
           {cur === 2 && (
             <section>
-              <div className="seg" style={{ marginBottom: 14 }}>
-                <button className={ltype === 'Recipe' ? 'on' : ''} onClick={() => chooseLtype('Recipe')}>Food / Beverage</button>
-                <button className={ltype === 'Supplement' ? 'on' : ''} onClick={() => chooseLtype('Supplement')}>Supplement</button>
-                <button className={ltype === 'Cosmetic' ? 'on' : ''} onClick={() => chooseLtype('Cosmetic')}>Cosmetic</button>
-                <button className={ltype === 'Pet' ? 'on' : ''} onClick={() => chooseLtype('Pet')}>Pet</button>
+              <div className="domchip" style={{ marginBottom: 14 }}>
+                <span>Domain: <b>{DOMAIN_OPTIONS.find((o) => o.v === ltype)?.label}</b> · {DOMAIN_OPTIONS.find((o) => o.v === ltype)?.artifact}</span>
+                <button type="button" onClick={() => go(0)}>Change in Basics</button>
+                <style>{`.gb .domchip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:999px;background:#fff;padding:5px 6px 5px 14px;font-size:12.5px;color:var(--ink-700)}.gb .domchip button{border:0;background:var(--ink-100,#EEEFF1);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;font-weight:600;color:var(--ink-700);cursor:pointer}.gb .domchip button:hover{background:var(--pink-50,#FCEEF3);color:var(--pink-700,#C71350)}`}</style>
               </div>
               {ltype === 'Supplement' ? (
                 <SupplementFormulationStep productName={name} draftId={draftId} />
