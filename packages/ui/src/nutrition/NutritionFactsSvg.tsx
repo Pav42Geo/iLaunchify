@@ -42,7 +42,7 @@ const SERVINGS_PX = 12 // "N servings per container" line
 const SERVING_LABEL_PX = 15 // "Serving size" (bold)
 const HEAVY_BAR = 8 // heavy bar under the serving block (d)(4)
 const AMOUNT_CAPTION_PX = 12 // "Amount per serving" subheading — clearly legible
-const CALORIES_LABEL_PX = 26 // "Calories" word (large bold)
+const CALORIES_LABEL_PX = 31 // "Calories" word (large bold, bottom-aligned to the number)
 const CALORIES_NUM_PX = 46 // the Calories number — the LARGEST element on the panel
 const CALORIES_RULE = 4 // bar BELOW the Calories row (between Calories and %DV)
 const DV_HEADER_PX = 11 // "% Daily Value*" heading — legible
@@ -280,8 +280,10 @@ export function NutritionFactsSvg({
   // between Calories and the "% Daily Value" heading (d)(6). -----------------
   y += 2
   const calBaseline = y + CALORIES_NUM_PX
+  // "Calories" word shares the NUMBER's baseline so both sit on the same bottom
+  // line (FDA graphic). Bottom-aligned, large bold.
   els.push(
-    <text key="cal-label" x={innerLeft} y={y + 4 + CALORIES_LABEL_PX} fontFamily={FONT} fontSize={CALORIES_LABEL_PX} fontWeight={700} fill="#000">
+    <text key="cal-label" x={innerLeft} y={calBaseline} fontFamily={FONT} fontSize={CALORIES_LABEL_PX} fontWeight={700} fill="#000">
       Calories
     </text>,
   )
