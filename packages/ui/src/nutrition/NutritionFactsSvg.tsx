@@ -29,22 +29,27 @@ import { wrapSvgText, estimateTextWidth } from './SupplementFactsSvg'
 // Layout constants. All distances in SVG user units (≈ px at viewBox scale).
 // ---------------------------------------------------------------------------
 
+// Type-size hierarchy per 21 CFR 101.9(d)(iii): the Calories NUMBER is the single
+// largest element (≥22pt); "Calories" word ≥16pt bold; the "Nutrition Facts" title
+// is the next-largest bold (no smaller than everything except the Calories number);
+// "Serving size" ≥10pt bold; "Amount per serving" / "% Daily Value*" are SMALL
+// subheadings; the nutrient list + %DV are ≥8pt. (viewBox units ≈ pt at this scale.)
 const PAD = 6 // inner padding inside the outer box
 const BORDER = 1.5 // outer box stroke width
-const TITLE_PX = 26 // "Nutrition Facts" (extra-bold)
-const TITLE_RULE = 0.75 // thin rule under title
-const SERVINGS_PX = 11 // "N servings per container" line
-const SERVING_LABEL_PX = 13 // "Serving size" (bold)
-const HEAVY_BAR = 8 // heavy black bar under the serving block
-const AMOUNT_CAPTION_PX = 8 // "Amount per serving" small bold
-const CALORIES_LABEL_PX = 13 // "Calories" word
-const CALORIES_NUM_PX = 26 // the big calories number
-const CALORIES_RULE = 4 // thick rules above/below the Calories row
-const DV_HEADER_PX = 8 // "% Daily Value*"
-const ROW_PX = 11 // body row text
-const ROW_RULE = 0.5 // hairline under each body row
-const VITAMIN_RULE = 1.5 // heavier rule before/within the vitamins block
-const FOOTER_BAR = 4 // heavy bar above the footnote
+const TITLE_PX = 31 // "Nutrition Facts" — dominant extra-bold header, full width
+const TITLE_RULE = 0.75 // hairline under the title (d)(v)
+const SERVINGS_PX = 12 // "N servings per container" line
+const SERVING_LABEL_PX = 15 // "Serving size" (bold)
+const HEAVY_BAR = 8 // heavy bar under the serving block (d)(4)
+const AMOUNT_CAPTION_PX = 12 // "Amount per serving" subheading — clearly legible
+const CALORIES_LABEL_PX = 26 // "Calories" word (large bold)
+const CALORIES_NUM_PX = 46 // the Calories number — the LARGEST element on the panel
+const CALORIES_RULE = 4 // bar BELOW the Calories row (between Calories and %DV)
+const DV_HEADER_PX = 11 // "% Daily Value*" heading — legible
+const ROW_PX = 11.5 // body row text
+const ROW_RULE = 0.5 // hairline between nutrient rows (d)(v)
+const VITAMIN_RULE = 2.5 // bar separating the vitamins/minerals block (d)(8)
+const FOOTER_BAR = 4 // bar above the footnote
 const FOOTER_PX = 8 // footnote text
 const COL_HEADER_PX = 9 // dual-column headers ("Per serving" / "Per container")
 
@@ -201,10 +206,16 @@ export function NutritionFactsSvg({
   const els: JSX.Element[] = []
   let y = PAD
 
-  // Title.
-  y += TITLE_PX
+  // Title — set the FULL width of the panel (21 CFR 101.9(d)(2)). Size it up to
+  // fill the inner width (bold advance ≈ 0.62·em), capped at TITLE_PX, so it is
+  // always the dominant header regardless of panel width.
+  const titlePx = Math.min(
+    TITLE_PX,
+    Math.max(20, Math.floor((innerWidth * 0.98) / (0.62 * 'Nutrition Facts'.length))),
+  )
+  y += titlePx
   els.push(
-    <text key="title" x={innerLeft} y={y} fontFamily={FONT} fontSize={TITLE_PX} fontWeight={800} fill="#000">
+    <text key="title" x={innerLeft} y={y} fontFamily={FONT} fontSize={titlePx} fontWeight={800} fill="#000">
       Nutrition Facts
     </text>,
   )
@@ -264,9 +275,10 @@ export function NutritionFactsSvg({
     y += 2
   }
 
-  // --- Big Calories row (thick rule above + below) -------------------------
-  els.push(<rect key="cal-rule-top" x={innerLeft} y={y} width={innerWidth} height={CALORIES_RULE} fill="#000" />)
-  y += CALORIES_RULE
+  // --- Big Calories row. Per 21 CFR 101.9(d)(5) "Calories" follows the "Amount
+  // per serving" subheading directly — NO bar above it; the bar sits BELOW,
+  // between Calories and the "% Daily Value" heading (d)(6). -----------------
+  y += 2
   const calBaseline = y + CALORIES_NUM_PX
   els.push(
     <text key="cal-label" x={innerLeft} y={y + 4 + CALORIES_LABEL_PX} fontFamily={FONT} fontSize={CALORIES_LABEL_PX} fontWeight={700} fill="#000">
@@ -323,16 +335,18 @@ export function NutritionFactsSvg({
     const isBold = BOLD_IDS.has(row.id)
     const amount = amountText(row)
 
-    // Name + inline amount form one bold/regular label line. In single-column
-    // mode the inline amount sits right after the name; we wrap the name only.
-    const inlineLabel = dual ? row.label : amount.length > 0 ? `${row.label} ${amount}` : row.label
+    // Wrap the NAME only (the inline amount is placed separately so it can stay
+    // regular weight even when the name is bold).
     const nameMax = nameColMaxWidth - indent
-    const nameLines = wrapSvgText(inlineLabel, nameMax, ROW_PX)
+    const nameLines = wrapSvgText(row.label, nameMax, ROW_PX)
     const lineCount = Math.max(1, nameLines.length)
 
     const rowTop = y
     const firstBaseline = rowTop + 3 + ROW_PX
 
+    // Nutrient NAME — bold only for the six non-indented mandatory names
+    // (Calories/Total Fat/Cholesterol/Sodium/Total Carbohydrate/Protein), per
+    // 21 CFR 101.9(d)(iv). Sub-nutrients + vitamins/minerals stay regular.
     nameLines.forEach((line, li) => {
       els.push(
         <text
@@ -349,6 +363,26 @@ export function NutritionFactsSvg({
       )
     })
 
+    // Single-column: the gram/mg amount prints INLINE right after the name, but
+    // ALWAYS regular weight — (d)(iv) forbids highlighting anything but the name.
+    if (!dual && amount.length > 0) {
+      const lastLine = nameLines[nameLines.length - 1] ?? ''
+      const lastBaseline = firstBaseline + (lineCount - 1) * (ROW_PX + ROW_LINE_GAP)
+      els.push(
+        <text
+          key={`amt-${ri}`}
+          x={nameX + estimateTextWidth(lastLine, ROW_PX) + 4}
+          y={lastBaseline}
+          fontFamily={FONT}
+          fontSize={ROW_PX}
+          fontWeight={400}
+          fill="#000"
+        >
+          {amount}
+        </text>,
+      )
+    }
+
     if (dual) {
       const containerRow = containerById.get(row.id)
       // Primary column: amount (left of its sub-cell) + %DV (right edge).
@@ -357,19 +391,19 @@ export function NutritionFactsSvg({
       const secAmount = containerRow ? amountText(containerRow) : ''
       const secDv = containerRow ? dvText(containerRow) : ''
       const pushCell = (rightX: number, amt: string, pct: string, key: string) => {
-        // %DV right-aligned at the column's right edge.
+        // %DV right-aligned at the column's right edge — always bold (d)(iv).
         if (pct.length > 0) {
           els.push(
-            <text key={`${key}-dv`} x={rightX} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={isBold ? 700 : 400} fill="#000" textAnchor="end">
+            <text key={`${key}-dv`} x={rightX} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={700} fill="#000" textAnchor="end">
               {pct}
             </text>,
           )
         }
-        // amount right-aligned to the LEFT of the %DV sub-cell.
+        // amount right-aligned to the LEFT of the %DV sub-cell — always regular.
         if (amt.length > 0) {
           const amtRight = pct.length > 0 ? rightX - estimateTextWidth(pct, ROW_PX) - DV_SUBCOL_GAP : rightX
           els.push(
-            <text key={`${key}-amt`} x={amtRight} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={isBold ? 700 : 400} fill="#000" textAnchor="end">
+            <text key={`${key}-amt`} x={amtRight} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={400} fill="#000" textAnchor="end">
               {amt}
             </text>,
           )
@@ -378,11 +412,12 @@ export function NutritionFactsSvg({
       pushCell(primaryRightX, primAmount, primDv, `prim-${ri}`)
       pushCell(secondaryRightX, secAmount, secDv, `sec-${ri}`)
     } else {
-      // Single-column: %DV right-aligned at innerRight. Amount is inline in name.
+      // Single-column: %DV right-aligned at innerRight. Per (d)(iv) the %DV
+      // percentages are ALWAYS bold — including the vitamins/minerals rows.
       const dv = dvText(row)
       if (dv.length > 0) {
         els.push(
-          <text key={`dv-${ri}`} x={dvRightX} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={isBold ? 700 : 400} fill="#000" textAnchor="end">
+          <text key={`dv-${ri}`} x={dvRightX} y={firstBaseline} fontFamily={FONT} fontSize={ROW_PX} fontWeight={700} fill="#000" textAnchor="end">
             {dv}
           </text>,
         )

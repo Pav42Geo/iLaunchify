@@ -1531,8 +1531,11 @@ function AddCustomMeasureModal({
 // format — surfaced here via perContainerPanel.
 function FactsPanel({ result, title, narrow, serving, format = 'STANDARD' }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR' }) {
   const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format })
-  const spc = result.geometry.servingsPerContainer
-  const dual = !narrow && spc >= 2 && spc <= 3
+  // Dual-column (per serving | per container, 21 CFR 101.9(e)) is an explicit
+  // opt-in for the specific 2–3-serving single-eating-occasion case — NOT auto-
+  // applied (auto-applying it made the standard panel look wrong). Default = the
+  // standard single-column Nutrition Facts.
+  const dual = false
   const perContainer = dual ? perContainerPanel(result, { suggestedServing: serving }) : undefined
   return (
     <div style={narrow ? { minWidth: 196, flex: '0 0 auto' } : undefined}>
