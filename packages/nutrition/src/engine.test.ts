@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateLabel, resolveGeometry, sumBatch, type IngredientInput } from './engine'
-import { toPanelData } from './panel-adapter'
+import { toPanelData, perContainerPanel } from './panel-adapter'
 import {
   roundCalories, roundFat, roundGramMacro, roundCholSodium, roundMicro,
   roundServingsPerContainer, formatServingsPerContainer, formatNetWeight,
@@ -138,5 +138,59 @@ describe('panel adapter → NutritionFactsRenderer PanelData', () => {
     expect(panel.servingsPerContainer).toBe('2')
     expect(panel.rows[0]).toMatchObject({ id: 'calories', amount: 50 })
     expect(panel.rows.find((x) => x.id === 'sodium')).toMatchObject({ amount: 100, percentDailyValue: 4, unit: 'mg' })
+  })
+})
+
+describe('perContainerPanel scales per-serving → whole container', () => {
+  // REF batch: calories 100, fat 5g, sodium 200mg, carb 20g, fiber 4g.
+  // basis serving, servingSizeG 50, servingsPerPackage 2:
+  //   yield 100g, netWeight 50×2=100g, packagesMade = 100/100 = 1.
+  // So one container = the whole batch = 2 servings.
+  const r = calculateLabel([REF], { basis: 'serving', servingSizeG: 50, servingsPerPackage: 2 })
+  const serving = toPanelData(r)
+  const container = perContainerPanel(r)
+
+  const amt = (panel: typeof serving, id: string): number => {
+    const row = panel.rows.find((x) => x.id === id)
+    if (!row) throw new Error(`missing row ${id}`)
+    return typeof row.amount === 'number' ? row.amount : Number(row.amount)
+  }
+
+  it('same row ids/labels/order as toPanelData', () => {
+    expect(container.rows.map((x) => x.id)).toEqual(serving.rows.map((x) => x.id))
+    expect(container.format).toBe('STANDARD')
+  })
+
+  it('per-container Calories ≈ 2× per-serving (within rounding)', () => {
+    // per serving 50 cal → per container 100 cal.
+    expect(amt(serving, 'calories')).toBe(50)
+    expect(amt(container, 'calories')).toBe(100)
+  })
+
+  it('macros scale ~2× with the container', () => {
+    // fat 5g batch ÷ 2 servings = 2.5/serving; whole container = 5g.
+    expect(amt(serving, 'totalFat')).toBe(2.5)
+    expect(amt(container, 'totalFat')).toBe(5)
+    // sodium 200mg batch ÷ 2 = 100/serving; container = 200mg.
+    expect(amt(serving, 'sodium')).toBe(100)
+    expect(amt(container, 'sodium')).toBe(200)
+    // carb 20g ÷ 2 = 10/serving; container = 20g.
+    expect(amt(serving, 'totalCarbohydrate')).toBe(10)
+    expect(amt(container, 'totalCarbohydrate')).toBe(20)
+  })
+
+  it('%DV recomputed against container amounts', () => {
+    const sodiumRow = container.rows.find((x) => x.id === 'sodium')
+    // 200 / 2300 = 8.7 → 9%
+    expect(sodiumRow?.percentDailyValue).toBe(9)
+  })
+
+  it('multi-package container = packageSize, not whole batch', () => {
+    // basis package, 100g/pkg, 4 packages, 2 servings/pkg.
+    // batch is one REF (100g) → packagesMade = numPackages = 4.
+    // per-container = batch / 4 = 25 cal. (one PACKAGE, not the whole run.)
+    const r2 = calculateLabel([REF], { basis: 'package', packageSizeG: 100, numPackages: 4, servingsPerPackage: 2 })
+    const c2 = perContainerPanel(r2)
+    expect(amt(c2, 'calories')).toBe(25) // 100 batch / 4 packages
   })
 })

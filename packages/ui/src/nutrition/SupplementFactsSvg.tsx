@@ -28,7 +28,7 @@ import type { PanelData, NutrientRow } from '@ilaunchify/types'
 const AVG_CHAR_ADVANCE_RATIO = 0.52
 
 /** Estimated rendered width of a string at `fontPx` in Helvetica. */
-function estimateTextWidth(text: string, fontPx: number): number {
+export function estimateTextWidth(text: string, fontPx: number): number {
   return text.length * fontPx * AVG_CHAR_ADVANCE_RATIO
 }
 

@@ -86,6 +86,7 @@ export { chartPalette, chartToneOrder, type ChartTone } from './components/chart
 // Nutrition rendering (compliance service consumer)
 export * from './nutrition/NutritionFactsRenderer'
 export * from './nutrition/SupplementFactsSvg'
+export * from './nutrition/NutritionFactsSvg'
 
 // Canvas — Fabric.js wrappers. 'use client' inside; host pages should
 // dynamic-import them with `ssr: false` because Fabric requires `window`.

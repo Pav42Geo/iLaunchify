@@ -7,8 +7,8 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
-import { calculateLabel, toPanelData, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
-import { NutritionFactsRenderer } from '@ilaunchify/ui'
+import { calculateLabel, toPanelData, perContainerPanel, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
+import { NutritionFactsSvg } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
@@ -1524,16 +1524,25 @@ function AddCustomMeasureModal({
   )
 }
 
-// Live label — renders the canonical FDA-standard panel via the shared
-// @ilaunchify/ui NutritionFactsRenderer, fed by the engine's toPanelData
-// adapter (single source of truth for both math AND format). `format` switches
-// Nutrition Facts ↔ Supplement Facts; voluntary fats show when present.
+// Live label — renders the canonical FDA Nutrition Facts panel as print-grade SVG
+// (@ilaunchify/ui NutritionFactsSvg), fed by the engine's toPanelData (single
+// source of truth for the math). When the package holds 2–3 servings, FDA
+// (21 CFR 101.9(e)) requires the dual "per serving | per container" column
+// format — surfaced here via perContainerPanel.
 function FactsPanel({ result, title, narrow, serving, format = 'STANDARD' }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR' }) {
   const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format })
+  const spc = result.geometry.servingsPerContainer
+  const dual = !narrow && spc >= 2 && spc <= 3
+  const perContainer = dual ? perContainerPanel(result, { suggestedServing: serving }) : undefined
   return (
     <div style={narrow ? { minWidth: 196, flex: '0 0 auto' } : undefined}>
       {title && <div className="flavhdr" style={{ marginBottom: 6 }}>{title}</div>}
-      <NutritionFactsRenderer data={data} widthPx={narrow ? 196 : 300} />
+      <NutritionFactsSvg
+        data={data}
+        perContainer={perContainer}
+        columnHeaders={dual ? { primary: 'Per serving', secondary: 'Per container' } : undefined}
+        widthPx={narrow ? 196 : dual ? 360 : 300}
+      />
     </div>
   )
 }
