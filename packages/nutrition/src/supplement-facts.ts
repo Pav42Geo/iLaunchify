@@ -246,7 +246,8 @@ function formatAmount(n: number): string {
  *  rows don't print a misleading "0 mg". */
 function fmtAmount(value: number, unit: string, lessThan?: boolean): string {
   if (!(value > 0)) return ''
-  return `${lessThan ? '<' : ''}${formatAmount(value)} ${unit}`.trim()
+  // Thin space (U+2009) after "<" so it doesn't crowd the number ("< 1 g").
+  return `${lessThan ? '< ' : ''}${formatAmount(value)} ${unit}`.trim()
 }
 
 /** Tidy an ingredient/blend name for the panel: drop DSLD template braces

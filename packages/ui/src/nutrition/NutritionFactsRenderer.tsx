@@ -115,8 +115,8 @@ function SupplementTable({ rows }: { rows: NutrientRow[] }) {
       <thead>
         <tr className="border-b-2 border-black align-bottom">
           <th className="w-full" />
-          <th className="whitespace-nowrap pb-0.5 pl-2 text-center font-bold normal-case text-black">Amount<br />Per Serving</th>
-          <th className="whitespace-nowrap pb-0.5 pl-2 text-center font-bold normal-case text-black">% Daily<br />Value</th>
+          <th className="whitespace-nowrap pb-0.5 pl-2 text-center" style={{ textTransform: 'none', color: '#000', fontWeight: 700 }}>Amount<br />Per Serving</th>
+          <th className="whitespace-nowrap pb-0.5 pl-2 text-center" style={{ textTransform: 'none', color: '#000', fontWeight: 700 }}>% Daily<br />Value</th>
         </tr>
       </thead>
       <tbody>
