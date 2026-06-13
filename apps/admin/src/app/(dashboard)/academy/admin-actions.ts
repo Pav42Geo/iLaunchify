@@ -241,3 +241,91 @@ export async function setLessonStatus(input: { id: string; to: AcademyStatus }):
   revalidatePath(`/academy/lessons/${input.id}/edit`)
   return { ok: true, data: undefined }
 }
+
+// — CATEGORIES (topics) ————————————————————————————————————————————————————————
+// AcademyCategory.slug is globally @unique (and @@unique([audience, slug])), so the
+// slug must be unique across ALL topics, not just within an audience.
+async function uniqueCategorySlug(base: string): Promise<string> {
+  let slug = base || 'topic'
+  if (isReservedAcademySlug(slug)) slug = `${slug}-topic`
+  let n = 1
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const exists = await prisma.academyCategory.findUnique({ where: { slug }, select: { id: true } })
+    if (!exists) return slug
+    n += 1
+    slug = `${base}-${n}`
+  }
+}
+
+export async function createCategory(input: {
+  audience: AcademyAudience
+  name: string
+}): Promise<Result<{ id: string }>> {
+  const admin = await requireRole('ADMIN')
+  const name = input.name.trim()
+  if (!name) return { ok: false, error: 'Name is required.' }
+
+  const slug = await uniqueCategorySlug(slugify(name))
+  const max = await prisma.academyCategory.aggregate({ where: { audience: input.audience }, _max: { order: true } })
+  const category = await prisma.academyCategory.create({
+    data: {
+      audience: input.audience,
+      name,
+      slug,
+      status: 'DRAFT',
+      order: (max._max.order ?? -1) + 1,
+    },
+    select: { id: true },
+  })
+  await logAuditAs(admin, {
+    entityType: 'AcademyCategory',
+    entityId: category.id,
+    action: 'ACADEMY_CATEGORY_CREATE',
+    toValue: 'DRAFT',
+    payload: { audience: input.audience, name, slug },
+  })
+  revalidatePath('/academy/categories')
+  return { ok: true, data: { id: category.id } }
+}
+
+export async function saveCategory(input: {
+  id: string
+  name: string
+  description: string | null
+  iconKey: string | null
+  order: number | null
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  const name = input.name.trim()
+  if (!name) return { ok: false, error: 'Name is required.' }
+
+  await prisma.academyCategory.update({
+    where: { id: input.id },
+    data: {
+      name,
+      description: input.description?.trim() || null,
+      iconKey: input.iconKey?.trim() || null,
+      order: input.order ?? 0,
+    },
+  })
+  await logAuditAs(admin, {
+    entityType: 'AcademyCategory',
+    entityId: input.id,
+    action: 'ACADEMY_CATEGORY_UPDATE',
+    payload: { name },
+  })
+  revalidatePath(`/academy/categories/${input.id}/edit`)
+  revalidatePath('/academy/categories')
+  return { ok: true, data: undefined }
+}
+
+export async function setCategoryStatus(input: { id: string; to: AcademyStatus }): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  const res = await transitionAcademyStatus({ entity: 'category', id: input.id, to: input.to, actor: admin })
+  if (!res.ok) return { ok: false, error: res.error }
+  revalidatePath(`/academy/categories/${input.id}/edit`)
+  revalidatePath('/academy/categories')
+  revalidatePath('/academy')
+  return { ok: true, data: undefined }
+}

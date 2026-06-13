@@ -1,7 +1,8 @@
 // Admin Academy — categories (topic taxonomy) list (ACADEMY_SPEC §8). v2 surface:
 // cream hero + KPI strip + chips (audience/status) + sortable table + RowActions.
 
-import { Tags, Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Tags, Clock, Plus } from 'lucide-react'
 import {
   loadCategoriesData,
   buildCategoriesHref,
@@ -36,6 +37,14 @@ export default async function AcademyCategoriesPage({ searchParams }: PageProps)
         groupLabel="Academy · Topics"
         title="Topics"
         subtitle="The topic taxonomy that powers each academy's home grid. Order, audience, and status are managed here."
+        action={
+          <Link
+            href="/academy/categories/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" /> New topic
+          </Link>
+        }
       >
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <KpiCard href={buildCategoriesHref(filters, { status: null, audience: null, page: 1 })} label="All topics" value={total} icon={Tags} tone="pink" active={!filters.status && !filters.audience} />

@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 import type { AcademyStatus } from '@ilaunchify/db'
-import { setCourseStatus, setLessonStatus } from './admin-actions'
+import { setCourseStatus, setLessonStatus, setCategoryStatus } from './admin-actions'
 
 const ALLOWED: Record<AcademyStatus, AcademyStatus[]> = {
   DRAFT: ['IN_REVIEW'],
@@ -47,7 +47,7 @@ export function StatusControl({
   id,
   status,
 }: {
-  entity: 'course' | 'lesson'
+  entity: 'course' | 'lesson' | 'category'
   id: string
   status: AcademyStatus
 }) {
@@ -59,7 +59,9 @@ export function StatusControl({
     start(async () => {
       const res = entity === 'course'
         ? await setCourseStatus({ id, to })
-        : await setLessonStatus({ id, to })
+        : entity === 'lesson'
+          ? await setLessonStatus({ id, to })
+          : await setCategoryStatus({ id, to })
       if (!res.ok) {
         toast.error(res.error)
         return

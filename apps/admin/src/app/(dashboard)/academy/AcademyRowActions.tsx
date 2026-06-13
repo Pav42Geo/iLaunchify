@@ -22,11 +22,11 @@ const AUDIT_ENTITY: Record<AcademyEntity, string> = {
   category: 'AcademyCategory',
 }
 
-// Editor routes (Phase C). Categories are managed on the list itself, so they
-// have no separate editor route.
+// Editor routes (Phase C). Each entity deep-links to its own editor page.
 function editorHref(entity: AcademyEntity, id: string): string | null {
   if (entity === 'course') return `/academy/courses/${id}/edit`
   if (entity === 'lesson') return `/academy/lessons/${id}/edit`
+  if (entity === 'category') return `/academy/categories/${id}/edit`
   return null
 }
 
