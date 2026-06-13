@@ -30,6 +30,10 @@ export const NutrientRowSchema = z.object({
   amount: z.union([z.number(), z.string()]),       // string allows "less than 1 g" form
   unit: z.string().optional(),
   percentDailyValue: z.number().optional(),
+  // Supplement Facts: this dietary ingredient (or blend) has no established Daily
+  // Value, so a "†" must appear in the % Daily Value column referring to the
+  // "Daily Value Not Established" footnote (21 CFR 101.36(b)(2)(iii)(F)).
+  noDailyValue: z.boolean().optional(),
   indent: z.number().int().min(0).max(2).default(0),
 })
 export type NutrientRow = z.infer<typeof NutrientRowSchema>

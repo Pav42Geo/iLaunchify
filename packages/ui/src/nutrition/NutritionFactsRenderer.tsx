@@ -55,7 +55,16 @@ export function NutritionFactsRenderer({
         Servings Per Container <span className="font-semibold">{data.servingsPerContainer}</span>
       </div>
 
-      <div className="mt-1 text-xs font-bold uppercase">Amount per serving</div>
+      {isSupplement ? (
+        // 21 CFR 101.36: "Amount Per Serving" over the amounts + a "% Daily Value"
+        // column header on the right.
+        <div className="mt-1 flex items-end justify-between border-b border-black pb-0.5 text-xs font-bold">
+          <span>Amount Per Serving</span>
+          <span>% Daily Value</span>
+        </div>
+      ) : (
+        <div className="mt-1 text-xs font-bold uppercase">Amount per serving</div>
+      )}
 
       {data.rows.map((row, i) => (
         <NutrientRowRender key={`${row.id}-${i}`} row={row} isSupplement={isSupplement} />
@@ -87,7 +96,9 @@ export function NutritionFactsRenderer({
 }
 
 function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSupplement: boolean }) {
-  const isCalories = row.id === 'calories'
+  // Supplement Facts has no large bold Calories box (that's a Nutrition Facts
+  // feature); any calories on a supplement render as a normal line.
+  const isCalories = row.id === 'calories' && !isSupplement
   const indentClass = row.indent === 1 ? 'pl-3' : row.indent === 2 ? 'pl-6' : ''
   const isMajorRow = row.indent === 0
 
@@ -112,9 +123,12 @@ function NutrientRowRender({ row, isSupplement }: { row: NutrientRow; isSuppleme
         {row.label} {formatValue(row.amount)}
         {row.unit && <span className="font-normal"> {row.unit}</span>}
       </span>
-      {row.percentDailyValue !== undefined && (
+      {row.percentDailyValue !== undefined ? (
         <span className="font-bold">{row.percentDailyValue}%</span>
-      )}
+      ) : row.noDailyValue ? (
+        // No established Daily Value → "†" in the % Daily Value column.
+        <span className="font-bold">†</span>
+      ) : null}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend } 
 describe('toSupplementPanelData', () => {
   const opts = { servingSize: '2 capsules', servingsPerContainer: 30 }
 
-  it('renders standalone dietary ingredients with %DV and the right footnote', () => {
+  it('renders vitamins/minerals with %DV and NO 2,000-calorie footnote (101.36(b)(2)(iii)(D))', () => {
     const ings: DietaryIngredient[] = [
       { id: 'd', name: 'Vitamin D (as cholecalciferol)', amountPerServing: 25, unit: 'mcg', percentDV: 125 },
       { id: 'c', name: 'Vitamin C (as ascorbic acid)', amountPerServing: 90, unit: 'mg', percentDV: 100 },
@@ -15,17 +15,28 @@ describe('toSupplementPanelData', () => {
     expect(panel.rows[0]).toMatchObject({ label: 'Vitamin D (as cholecalciferol)', amount: '25 mcg', percentDailyValue: 125, indent: 0 })
     expect(panel.servingSize).toBe('2 capsules')
     expect(panel.servingsPerContainer).toBe('30')
-    expect(panel.requiredFooter).toContain('2,000 calorie')
+    // No calorie-based DRV nutrient declared ⇒ no "2,000 calorie" footnote, no † footnote.
+    expect(panel.requiredFooter).not.toContain('2,000 calorie')
+    expect(panel.requiredFooter).toBe('')
     expect(otherIngredients).toEqual([])
   })
 
-  it('marks ingredients without an established DV (omits %DV, adds the † footnote)', () => {
+  it('adds the 2,000-calorie footnote ONLY when a macronutrient DV is declared', () => {
+    const ings: DietaryIngredient[] = [
+      { id: 'protein', name: 'Protein', amountPerServing: 25, unit: 'g', percentDV: 50 },
+    ]
+    const { panel } = toSupplementPanelData(ings, [], opts)
+    expect(panel.requiredFooter).toContain('2,000 calorie')
+  })
+
+  it('marks ingredients without an established DV (†, "Daily Value Not Established")', () => {
     const ings: DietaryIngredient[] = [
       { id: 'l', name: 'L-Theanine', amountPerServing: 200, unit: 'mg', percentDV: null },
     ]
     const { panel } = toSupplementPanelData(ings, [], opts)
     expect(panel.rows[0]?.percentDailyValue).toBeUndefined()
-    expect(panel.requiredFooter).toContain('Daily Value (DV) not established')
+    expect(panel.rows[0]?.noDailyValue).toBe(true)
+    expect(panel.requiredFooter).toContain('Daily Value Not Established')
   })
 
   it('groups a proprietary blend: total on the parent, members with no amounts, in predominance order', () => {
@@ -43,7 +54,9 @@ describe('toSupplementPanelData', () => {
     // members: descending sortWeight, no amounts, indented
     expect(panel.rows.slice(1).map((r) => r.label)).toEqual(['Caffeine', 'Taurine', 'Ginseng'])
     expect(panel.rows.slice(1).every((r) => r.amount === '' && r.indent === 1)).toBe(true)
-    expect(panel.requiredFooter).toContain('proprietary blend')
+    // The blend line itself has no DV → carries the † / "Daily Value Not Established".
+    expect(panel.rows[0]?.noDailyValue).toBe(true)
+    expect(panel.requiredFooter).toContain('Daily Value Not Established')
   })
 
   it('separates Other Ingredients (excipients) out of the panel', () => {

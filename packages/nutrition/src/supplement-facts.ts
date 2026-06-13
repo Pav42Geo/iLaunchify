@@ -51,7 +51,14 @@ export interface SupplementPanelResult {
   otherIngredients: string[]
 }
 
-const FOOTER_DV = '† Daily Value (DV) not established.'
+// FDA wording (21 CFR 101.36(b)(2)(iii)(F) / (b)(3)). The "†" symbol sits in the
+// % Daily Value column for ingredients without an established DV.
+const FOOTER_DV = '† Daily Value Not Established.'
+// The "Percent Daily Values are based on a 2,000 calorie diet" footnote is ONLY
+// required when total fat, saturated fat, total carbohydrate, dietary fiber, or
+// protein are declared (101.36(b)(2)(iii)(D)) — never for a vitamins/minerals
+// or herbal supplement. The current model declares none of those, so it is omitted.
+const MACRO_DV_KEYS = new Set(['totalFat', 'saturatedFat', 'totalCarbohydrate', 'dietaryFiber', 'protein'])
 const FOOTER_PCT = '* Percent Daily Values are based on a 2,000 calorie diet.'
 
 /** Build a Supplement Facts PanelData from dietary ingredients + blends. */
@@ -65,35 +72,37 @@ export function toSupplementPanelData(
 
   const rows: NutrientRow[] = []
   let anyNoDV = false
-  let anyDV = false
 
-  // Standalone (non-blend) ingredients first, in given order.
+  // Standalone (non-blend) ingredients first, in given order. Ingredients without
+  // an established DV get a "†" in the % Daily Value column (noDailyValue).
   for (const ing of panelIngredients.filter((i) => !i.blendId)) {
     const hasDV = ing.percentDV != null
-    hasDV ? (anyDV = true) : (anyNoDV = true)
+    if (!hasDV) anyNoDV = true
     rows.push({
       id: ing.id,
       label: ing.name,
       amount: `${formatAmount(ing.amountPerServing)} ${ing.unit}`.trim(),
-      ...(hasDV ? { percentDailyValue: ing.percentDV as number } : {}),
+      ...(hasDV ? { percentDailyValue: ing.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
   }
 
-  // Each proprietary blend: a parent total row, then members (no amounts), in
-  // descending sortWeight (predominance) order.
+  // Each proprietary blend: name + total weight on one line, then members (no
+  // amounts) in descending predominance order. The blend line carries the "†"
+  // (it has no DV); DV-bearing ingredients must be declared separately, not hidden
+  // in a blend (21 CFR 101.36(c)).
   for (const blend of blends) {
     const members = panelIngredients
       .filter((i) => i.blendId === blend.id)
       .sort((a, b) => (b.sortWeight ?? 0) - (a.sortWeight ?? 0))
     if (members.length === 0) continue
     const hasDV = blend.percentDV != null
-    hasDV ? (anyDV = true) : (anyNoDV = true)
+    if (!hasDV) anyNoDV = true
     rows.push({
       id: blend.id,
-      label: `${blend.name} ‡`,
+      label: blend.name,
       amount: `${formatAmount(blend.totalAmount)} ${blend.unit}`.trim(),
-      ...(hasDV ? { percentDailyValue: blend.percentDV as number } : {}),
+      ...(hasDV ? { percentDailyValue: blend.percentDV as number } : { noDailyValue: true }),
       indent: 0,
     })
     for (const m of members) {
@@ -102,9 +111,10 @@ export function toSupplementPanelData(
   }
 
   const footerParts: string[] = []
-  if (anyDV) footerParts.push(FOOTER_PCT)
+  // 2,000-cal footnote only when a calorie-based DRV nutrient is actually declared.
+  const hasMacroDV = rows.some((r) => MACRO_DV_KEYS.has(r.id) && r.percentDailyValue != null)
+  if (hasMacroDV) footerParts.push(FOOTER_PCT)
   if (anyNoDV) footerParts.push(FOOTER_DV)
-  if (blends.length > 0) footerParts.push('‡ Amount of the proprietary blend; individual amounts are not disclosed.')
 
   const panel: PanelData = {
     format: 'SUPPLEMENT_FACTS',
