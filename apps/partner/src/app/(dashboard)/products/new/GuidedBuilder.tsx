@@ -40,6 +40,7 @@ import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { ComplianceCard } from './ComplianceCard'
 import { PackagingPicker } from './PackagingPicker'
+import { PackagingStudioStep } from './PackagingStudioStep'
 
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -418,55 +419,7 @@ export function GuidedBuilder({
           {cur === 3 && (
             <section>
               <PackagingPicker draftId={draftId} systems={packagingSystems} />
-              <div className="banner">ℹ︎ <b>Platform library is the default.</b> Admin curates 3D mockups + normalized die-lines. Custom uploads route to an admin verification queue; the product can&apos;t go LIVE until die-lines are verified.</div>
-              <div className="pacshell">
-                <div className="lib">
-                  <div className="row" style={{ gap: 6, marginBottom: 8 }}><span className="chip on" style={{ fontSize: 11 }}>Library</span><span className="chip" style={{ fontSize: 11 }}>My uploads</span></div>
-                  <input className="input" placeholder="Search packaging…" style={{ fontSize: 12, padding: '7px 10px' }} />
-                  <div className="cat">Cans</div><div className="subcat on">Drink can ✓</div><div className="subcat">Food can</div><div className="subcat">Coffee can</div>
-                  <div className="cat">Boxes</div><div className="subcat">Food box</div><div className="subcat">Tuck-end box</div><div className="subcat">Box w/ window</div>
-                  <div className="cat">Bottles</div><div className="subcat">Drink bottle</div><div className="subcat">Supplement bottle</div>
-                  <div className="cat">Pouches & bags</div><div className="subcat">Stand-up pouch</div><div className="subcat">Sachet</div>
-                  <div className="cat">Jars · Tubes</div><div className="subcat">Glass jar</div><div className="subcat">Cosmetic tube</div>
-                </div>
-                <div className="stage">
-                  <div className="can3d">12 oz<br />slim can<br /><span className="tiny">3D mockup</span></div>
-                  <div className="row" style={{ marginTop: 14 }}><button className="btn sm">3D</button><button className="btn sm">2D flat</button><button className="btn sm">⤓ Upload die-line</button><button className="btn pink sm">✎ Open label editor</button></div>
-                </div>
-                <div className="insp">
-                  <div className="eyebrow">Components & die-lines</div>
-                  <div className="compcard" style={{ marginTop: 10 }}><b>Can — body wrap</b><div className="muted small">1 surface · die-line ✓</div></div>
-                  <div className="compcard" style={{ marginTop: 8 }}><b>Carton — 6 panels</b><div className="muted small">die-line ✓ · 1 of 6 laid out</div></div>
-                  <button className="btn sm" style={{ marginTop: 10, width: '100%' }}>+ Add component</button>
-                </div>
-              </div>
-              <div className="card" style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="section-title" style={{ fontSize: 15 }}><span className="ic">▭</span> Label editor — mandatory-element frames <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· Fabric.js · JSON layout</span></div>
-                  <span className="pill amber">Compliance: 1 required frame empty</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 16, marginTop: 14 }}>
-                  <div style={{ background: 'var(--ink-50)', borderRadius: 14, padding: 18, display: 'grid', placeItems: 'center' }}>
-                    <div className="die">
-                      <div className="frame" style={{ left: 30, top: 20, width: 150, height: 30 }}>Statement of Identity</div>
-                      <div className="frame" style={{ left: 30, top: 60, width: 120, height: 90 }}>Nutrition Facts</div>
-                      <div className="frame" style={{ left: 170, top: 60, width: 110, height: 60 }}>Ingredients</div>
-                      <div className="frame" style={{ left: 170, top: 135, width: 110, height: 40 }}>Allergens</div>
-                      <div className="frame" style={{ left: 30, top: 300, width: 150, height: 30 }}>Manufacturer + address</div>
-                      <div className="frame" style={{ left: 195, top: 300, width: 85, height: 50, borderStyle: 'dotted', opacity: .6 }}>Net quantity (empty)</div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="eyebrow">Element palette</div>
-                    <div style={{ marginTop: 10 }}>
-                      {['Statement of Identity', 'Net Quantity', 'Nutrition / Supplement Facts', 'Ingredients', 'Allergens', 'Manufacturer + address', 'Certificates'].map((p) => (
-                        <div key={p} className="palrow"><span className="b" /> {p}</div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="note" style={{ marginTop: 14 }}>The maker positions <b>frames</b>, not final art. Each frame <b>auto-binds</b> to product data (Facts ← computed panel · Manufacturer ← facility · Net wt ← variant). Saved as JSON the Creator&apos;s Design Studio reads.</div>
-              </div>
+              <PackagingStudioStep draftId={draftId} onNext={goNext} nextLabel={nextLabel} />
               <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>

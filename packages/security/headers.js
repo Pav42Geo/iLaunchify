@@ -19,7 +19,9 @@
 function buildCsp() {
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+    // cdn.jsdelivr.net — three.js ESM module for the partner Packaging Studio (3D),
+    // loaded at runtime (no bundled npm dep). Pinned host, not a wildcard.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
