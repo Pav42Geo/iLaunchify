@@ -31,7 +31,7 @@ const FOOTER_BAR = 4
 const FOOTER_PX = 9
 const ROW_LINE_GAP = 2
 const COL_GAP = 8
-const DV_SUBCOL_GAP = 4
+const DV_SUBCOL_GAP = 10 // breathing room between the amount and its %DV
 const NUM_COL_PAD = 5
 const NAME_COL_W = 150
 const MIN_COL_W = 54
@@ -158,7 +158,9 @@ export function layoutVarietyFacts(columns: VarietyColumn[]): VarietyLayout {
   }
   y += 3 + SERVING_LABEL_PX
   ops.push({ kind: 'text', x: innerLeft, y, size: SERVING_LABEL_PX, weight: 700, anchor: 'start', text: 'Serving size' })
-  ops.push({ kind: 'text', x: innerLeft + NAME_COL_W, y, size: SERVING_LABEL_PX, weight: 700, anchor: 'end', text: canonical.servingSize })
+  // Shared serving line spans the whole panel → right-align the value to the far
+  // edge so it never collides with the "Serving size" label.
+  ops.push({ kind: 'text', x: innerRight, y, size: SERVING_LABEL_PX, weight: 700, anchor: 'end', text: canonical.servingSize })
 
   y += 4
   ops.push({ kind: 'rect', x: innerLeft, y, w: innerWidth, h: HEAVY_BAR })
