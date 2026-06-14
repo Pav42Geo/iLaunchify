@@ -102,7 +102,7 @@ export type LayoutRect = { kind: 'rect'; x: number; y: number; w: number; h: num
 export type LayoutOp = LayoutText | LayoutRect
 export interface VarietyLayout { W: number; height: number; ops: LayoutOp[] }
 
-export interface VarietyColumn { label: string; data: PanelData }
+export interface VarietyColumn { label: string; data: PanelData; contains?: string }
 
 /** Compute the full draw-op list for the aggregate panel. Pure + deterministic. */
 export function layoutVarietyFacts(columns: VarietyColumn[]): VarietyLayout {

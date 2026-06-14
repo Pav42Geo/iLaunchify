@@ -358,8 +358,14 @@ export function NutritionFactsSvg({
 
     // Nutrient NAME — bold only for the six non-indented mandatory names
     // (Calories/Total Fat/Cholesterol/Sodium/Total Carbohydrate/Protein), per
-    // 21 CFR 101.9(d)(iv). Sub-nutrients + vitamins/minerals stay regular.
+    // 21 CFR 101.9(d)(iv). In single-column the gram/mg amount is appended to the
+    // NAME's LAST line as a regular-weight <tspan> with a guaranteed `dx` gap, so
+    // the space between name and amount is native to SVG. (The old approach
+    // positioned the amount with a text-WIDTH ESTIMATE, which undercounted some
+    // names and made them collide, e.g. "Sodium0mg".)
     nameLines.forEach((line, li) => {
+      const isLast = li === nameLines.length - 1
+      const showInlineAmount = isLast && !dual && amount.length > 0
       els.push(
         <text
           key={`name-${ri}-${li}`}
@@ -371,29 +377,10 @@ export function NutritionFactsSvg({
           fill="#000"
         >
           {line}
+          {showInlineAmount ? <tspan dx={6} fontWeight={400}>{amount}</tspan> : null}
         </text>,
       )
     })
-
-    // Single-column: the gram/mg amount prints INLINE right after the name, but
-    // ALWAYS regular weight — (d)(iv) forbids highlighting anything but the name.
-    if (!dual && amount.length > 0) {
-      const lastLine = nameLines[nameLines.length - 1] ?? ''
-      const lastBaseline = firstBaseline + (lineCount - 1) * (ROW_PX + ROW_LINE_GAP)
-      els.push(
-        <text
-          key={`amt-${ri}`}
-          x={nameX + estimateTextWidth(lastLine, ROW_PX) + 4}
-          y={lastBaseline}
-          fontFamily={FONT}
-          fontSize={ROW_PX}
-          fontWeight={400}
-          fill="#000"
-        >
-          {amount}
-        </text>,
-      )
-    }
 
     if (dual) {
       const containerRow = containerById.get(row.id)
@@ -534,7 +521,10 @@ export function NutritionFactsSvg({
   }
 
   if (ingredientStatement && ingredientStatement.trim().length > 0) {
-    pushBelowBlock('ingredients', 'INGREDIENTS:', ingredientStatement.trim())
+    // House style: print the ingredient list in ALL CAPS regardless of how each
+    // ingredient name is stored. (FDA 21 CFR 101.4 requires legibility + common
+    // names, not a specific case — uppercase is a common, allowed style choice.)
+    pushBelowBlock('ingredients', 'INGREDIENTS:', ingredientStatement.trim().toUpperCase())
   }
   if (contains && contains.trim().length > 0) {
     pushBelowBlock('contains', 'Contains:', contains.trim())

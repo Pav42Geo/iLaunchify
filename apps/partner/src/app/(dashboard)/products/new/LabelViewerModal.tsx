@@ -130,7 +130,7 @@ export function LabelViewerModal({
               {selected.map((c, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: '#18181A' }}>{c.label || `Flavor ${i + 1}`}</div>
-                  <NutritionFactsSvg data={c.data} widthPx={250} />
+                  <NutritionFactsSvg data={c.data} contains={c.contains} widthPx={250} />
                 </div>
               ))}
             </div>

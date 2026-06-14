@@ -5,7 +5,8 @@
 // Cost Summary · live Nutrition Facts (Public/Preview). The live label is
 // computed by the real @ilaunchify/nutrition engine, not a mock.
 
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ComponentType } from 'react'
+import { ChefHat, List, ShieldAlert, DollarSign, Tag, FolderOpen, LayoutGrid } from 'lucide-react'
 import { toast } from 'sonner'
 import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
 import { NutritionFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
@@ -190,14 +191,14 @@ const DOT_STYLE: CSSProperties = { width: 8, height: 8, borderRadius: '50%', bac
 const iconBtnStyle = (active: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${active ? 'var(--g2)' : '#c4c9d4'}`, background: active ? 'var(--g-50)' : 'transparent', color: active ? 'var(--g2)' : '#6b7280', cursor: 'pointer', fontSize: 14, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' })
 
 type TabKey = 'build' | 'ingredients' | 'allergens' | 'cost' | 'label' | 'recipes' | 'templates'
-const TABS: Array<{ key: TabKey; label: string; soon?: boolean }> = [
-  { key: 'build', label: '🍽 BUILD RECIPE' },
-  { key: 'ingredients', label: '≣ INGREDIENTS' },
-  { key: 'allergens', label: '⛨ ALLERGENS' },
-  { key: 'cost', label: '$ COST' },
-  { key: 'label', label: '🏷 LABEL' },
-  { key: 'recipes', label: '🗂 MY RECIPES' },
-  { key: 'templates', label: '▦ RECIPE TEMPLATES' },
+const TABS: Array<{ key: TabKey; label: string; icon: ComponentType<{ className?: string }>; soon?: boolean }> = [
+  { key: 'build', label: 'BUILD RECIPE', icon: ChefHat },
+  { key: 'ingredients', label: 'INGREDIENTS', icon: List },
+  { key: 'allergens', label: 'ALLERGENS', icon: ShieldAlert },
+  { key: 'cost', label: 'COST', icon: DollarSign },
+  { key: 'label', label: 'LABEL', icon: Tag },
+  { key: 'recipes', label: 'MY RECIPES', icon: FolderOpen },
+  { key: 'templates', label: 'RECIPE TEMPLATES', icon: LayoutGrid },
 ]
 
 // Curated starter formulations (V1, code-defined — a content set admin can move
@@ -726,20 +727,32 @@ export function RecipeBuilderStep({
 
   // Flavors that carry overlay data → one aggregate column each (variety pack).
   const flavorsWithData = flavors.filter((f) => flavorOverlayGrams(f) > 0)
+  // Net-contents TERM follows the measure (FPLA): fluid-measured products declare
+  // a volume statement ("NET 12 FL OZ"), weight-measured declare "NET WT". We key
+  // off the package unit the manufacturer entered.
+  const isFluidPack = VOLUME_UNITS.has(packageUnit) && packageSizeG > 0
+  const fluidUnit = (UNIT_LABELS[packageUnit] ?? packageUnit).toUpperCase()
+  const perUnitNet = isFluidPack ? `${+packageSizeG.toFixed(2)} ${fluidUnit}` : (result ? formatNetWeight(result.geometry.netWeightG).toUpperCase() : '')
+  // Single-unit net-contents line.
+  const netContentsLabel = result ? (isFluidPack ? `NET ${perUnitNet}` : `NET WT ${perUnitNet}`) : ''
   // Multiunit net-contents statement for the OUTER box (21 CFR 101.7(q) / FPLA):
   // "N × <per-unit net> (total)" — shown on the variety-pack / aggregate label,
   // not on a single unit. Only when the pack holds >1 unit.
   const packNetContents = (() => {
     if (unitsPerPack <= 1 || !result) return undefined
+    if (isFluidPack) {
+      const total = +(packageSizeG * unitsPerPack).toFixed(2)
+      return `${unitsPerPack} × ${perUnitNet} (${total} ${fluidUnit})`
+    }
     const per = result.geometry.netWeightG
     if (!per || per <= 0) return undefined
     return `${unitsPerPack} × ${formatNetWeight(per).toUpperCase()} (${formatNetWeight(per * unitsPerPack).toUpperCase()})`
   })()
   // Per-flavor panels for the variety views + modal (computed once).
   const varietyCols: VarietyColumn[] = flavorsWithData
-    .map((fl) => {
+    .map((fl): VarietyColumn | null => {
       const r = flavorResult(fl)
-      return r ? { label: fl.name || 'Flavor', data: toPanelData(r, { suggestedServing, showVoluntaryFats: true, format: panelFormat }) } : null
+      return r ? { label: fl.name || 'Flavor', data: toPanelData(r, { suggestedServing, showVoluntaryFats: true, format: panelFormat }), contains: flavorContains(fl) } : null
     })
     .filter((c): c is VarietyColumn => c !== null)
 
@@ -832,6 +845,7 @@ export function RecipeBuilderStep({
             onClick={() => setActiveTab(t.key)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab(t.key) } }}
           >
+            <t.icon className="rb-tab-ic" />
             {t.label}
             {t.soon && <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', border: '1px solid var(--bd)', borderRadius: 999, padding: '1px 5px' }}>soon</span>}
           </div>
@@ -865,7 +879,7 @@ export function RecipeBuilderStep({
           </div>
         </div>
       )}
-      <div className="rb-wrap">
+      <div className={`rb-wrap${base.length === 0 ? ' solo' : ''}`}>
         <div>
           {/* Add Ingredients — search sits ABOVE the recipe table. */}
           <div className="rb-card">
@@ -1197,8 +1211,8 @@ export function RecipeBuilderStep({
           {/* Cost summary + per-ingredient nutrition breakdown live in the COST tab. */}
         </div>
 
-        {/* RIGHT — live label */}
-        <div>
+        {/* RIGHT — live label (hidden until the first ingredient is added) */}
+        <div style={base.length === 0 ? { display: 'none' } : undefined}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <div className="seg">
               <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
@@ -1234,7 +1248,7 @@ export function RecipeBuilderStep({
                       <p className="tiny" style={{ margin: 0 }}>Add at least one flavor ingredient with an amount to generate this flavor&apos;s Facts label.</p>
                     </div>
                   )}
-                  <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
+                  <div className="netwt">{netContentsLabel}</div>
                   <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor.{varietyCols.length >= 2 ? ' Use “View all labels” to compare them and see the variety-pack aggregate.' : ''}</p>
                 </>
               )
@@ -1247,7 +1261,7 @@ export function RecipeBuilderStep({
                   </label>
                 )}
                 <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
-                <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
+                <div className="netwt">{netContentsLabel}</div>
               </>
             )
           ) : (
@@ -1403,7 +1417,7 @@ export function RecipeBuilderStep({
                 </label>
               )}
               <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
-              <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
+              <div className="netwt">{netContentsLabel}</div>
             </div>
           ) : (
             <p className="muted">Add ingredients + a serving size to see the label.</p>
@@ -1775,9 +1789,11 @@ const CSS = `
 .rb{--g:#FF2E63;--g2:#C71350;--g-50:#FFE9F0;--g-bd:#FFB3CC;--ink:#18181A;--mut:#6B6D78;--bd:#E0E1E5;--bg:#fff;--red:#e24b4a;font-size:13px;color:var(--ink)}
 .rb .muted{color:var(--mut)} .rb .tiny{font-size:10.5px}
 .rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--bd);margin-bottom:14px;overflow:auto}
-.rb-tab{padding:12px 2px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
+.rb-tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
+.rb-tab .rb-tab-ic{width:15px;height:15px;flex:0 0 auto;stroke-width:2}
 .rb-tab.on{color:var(--g2);border-color:var(--g)}
 .rb-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px}
+.rb-wrap.solo{grid-template-columns:1fr}
 .rb-card{border:1px solid var(--bd);border-radius:16px;background:#fff;padding:16px;margin-bottom:16px}
 .agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--g-bd);background:var(--g-50);border-radius:16px;padding:12px 16px;margin-bottom:16px}
 .agebar-l{display:flex;flex-direction:column;gap:2px;min-width:220px}
