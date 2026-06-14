@@ -45,6 +45,7 @@ export interface FlavorLine {
   unit: string
   per100g?: Record<string, number>
   densityGPerMl?: number | null
+  allergens?: string[]
 }
 // `ingId` is the legacy single-overlay field (kept for back-compat); the live
 // model is `lines` — a child mini-recipe of flavor-only additions.

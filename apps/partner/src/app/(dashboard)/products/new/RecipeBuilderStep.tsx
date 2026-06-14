@@ -85,6 +85,9 @@ interface Row {
   name?: string
   per100g?: Record<string, number>
   densityGPerMl?: number | null
+  // Big-9 allergen flags carried from the ingredient → drive the label "Contains:"
+  // statement (FALCPA / 21 CFR 101.4(b)).
+  allergens?: string[]
   // Manufacturer's ingredient cost (¢ per kg) — drives the real cost summary.
   // Stored canonically per-kg; the row's costUnit only changes how it's entered.
   costPerKgCents?: number | null // primary currency (currencies[0]) cost, per-kg
@@ -99,6 +102,28 @@ interface Row {
 
 let counter = 0
 const uid = () => `r${++counter}`
+
+// FALCPA Big-9 → label display names + canonical print order (21 CFR 101.4(b)).
+// Accepts the various flag spellings seen across USDA / library / private rows.
+const ALLERGEN_LABELS: Record<string, string> = {
+  milk: 'Milk', eggs: 'Eggs', egg: 'Eggs', fish: 'Fish',
+  shellfish: 'Shellfish', crustacean_shellfish: 'Shellfish', crustacean: 'Shellfish',
+  tree_nuts: 'Tree Nuts', treenuts: 'Tree Nuts', 'tree-nuts': 'Tree Nuts',
+  peanuts: 'Peanuts', peanut: 'Peanuts', wheat: 'Wheat',
+  soybeans: 'Soy', soybean: 'Soy', soy: 'Soy', sesame: 'Sesame',
+}
+const ALLERGEN_ORDER = ['Milk', 'Eggs', 'Fish', 'Shellfish', 'Tree Nuts', 'Peanuts', 'Wheat', 'Soy', 'Sesame']
+
+/** "Milk, Soy, Wheat" from a set of flags — deduped to display names, in the FDA
+ *  canonical order. The renderer prefixes "Contains:". '' when none. */
+function formatContains(flags: Iterable<string>): string {
+  const names = new Set<string>()
+  for (const f of flags) {
+    const label = ALLERGEN_LABELS[f.toLowerCase().trim()]
+    if (label) names.add(label)
+  }
+  return ALLERGEN_ORDER.filter((n) => names.has(n)).join(', ')
+}
 
 // Selectable recipe units (mirrors the engine's AVAILABLE_UNITS, minus 'each'
 // which needs a per-piece weight we don't capture). Volume units only convert
@@ -199,9 +224,13 @@ export function RecipeBuilderStep({
   domain = 'FOOD',
   initialEntryMode = null,
   initialAgeGroup = 'GENERAL',
+  unitsPerPack = 1,
   currencies = ['USD'],
 }: {
   productName: string
+  /** Units per outer pack/box (packingConfig.unitsPerPack) — drives the
+   *  multiunit net-contents statement on the variety-pack/outer-box label. */
+  unitsPerPack?: number
   /** From the chosen packing type — SINGLE = one recipe, MULTI = base + presets. */
   flavorMode?: 'SINGLE' | 'MULTI'
   /** Cap on Facts columns for multi types (manufacturer picks ≤ this). */
@@ -217,7 +246,7 @@ export function RecipeBuilderStep({
   onAxes?: (a: OptionAxisUI[]) => void
   /** Restored base recipe slots (edit mode) — seeds rows so editing shows the
    *  real recipe and the autosave round-trips instead of wiping it. */
-  initialRows?: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
+  initialRows?: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number; allergens?: string[] }>
   /** Mode 2 (AI parser) enabled for this partner's plan (Trusted+). */
   aiAvailable?: boolean
   /** Mode 3 (declared panel) enabled for this partner's plan. */
@@ -238,7 +267,7 @@ export function RecipeBuilderStep({
   // rows (water/yuzu/monk) were prototype scaffolding and couldn't persist
   // (not real Ingredient rows), so they're gone.
   const [rows, setRows] = useState<Row[]>(() =>
-    (initialRows ?? []).map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined })),
+    (initialRows ?? []).map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined, allergens: s.allergens ?? [] })),
   )
   const [search, setSearch] = useState('')
   const [addCat, setAddCat] = useState<'base' | 'optional'>('base')
@@ -413,6 +442,7 @@ export function RecipeBuilderStep({
         ingId: ok ? res.data.id : picked.id, name: picked.internalName, qty: 0, unit: 'g',
         per100g: ok ? res.data.per100g : {},
         densityGPerMl: ok ? res.data.densityGPerMl : picked.densityGPerML,
+        allergens: ok ? res.data.allergens : (picked.allergenFlags ?? []),
       }
       setFlavors(flavors.map((f, j) => (j === idx ? { ...f, lines: [...(f.lines ?? []), line] } : f)))
     })
@@ -519,6 +549,7 @@ export function RecipeBuilderStep({
         // Live USDA pick → use the materialized real id so the slot persists.
         uid: uid(), ingId: ok ? res.data.id : picked.id, qty: 0, unit: 'g', waste: 0, category: addCat, selected: addCat === 'base',
         name: picked.internalName, per100g: ok ? res.data.per100g : {}, densityGPerMl: ok ? res.data.densityGPerMl : picked.densityGPerML,
+        allergens: ok ? res.data.allergens : (picked.allergenFlags ?? []),
       }])
     })
   }
@@ -535,6 +566,7 @@ export function RecipeBuilderStep({
           uid: uid(), ingId: l.ingredientId, qty: l.weightG, unit: 'g', waste: 0,
           category: 'base', selected: true, name: l.name,
           per100g: res.ok ? res.data.per100g : {}, densityGPerMl: res.ok ? res.data.densityGPerMl : null,
+          allergens: res.ok ? res.data.allergens : [],
         })
       }
       setRows((rs) => [...built, ...rs.filter((r) => r.category === 'optional')])
@@ -631,6 +663,19 @@ export function RecipeBuilderStep({
     .map((s) => s.name?.trim())
     .filter((n): n is string => !!n)
     .join(', ')
+  // "Contains:" allergen statement (FALCPA, 21 CFR 101.4(b)) — union of Big-9
+  // flags across the ingredients actually in the product (base + ticked optional).
+  const baseAllergens = new Set<string>()
+  for (const r of rows) {
+    if (r.category === 'base' || r.selected) (r.allergens ?? []).forEach((a) => baseAllergens.add(a))
+  }
+  const containsStatement = formatContains(baseAllergens)
+  // Per-flavor: the base allergens plus that flavor's own overlay-line allergens.
+  const flavorContains = (f: Flavor) => {
+    const s = new Set(baseAllergens)
+    for (const l of f.lines ?? []) (l.allergens ?? []).forEach((a) => s.add(a))
+    return formatContains(s)
+  }
   const ps = result?.perServing
   // Per-ingredient Nutrition Breakdown (QA): each selected ingredient's exact
   // batch contribution from the engine, plus its per-serving share. Makes a bad
@@ -681,6 +726,15 @@ export function RecipeBuilderStep({
 
   // Flavors that carry overlay data → one aggregate column each (variety pack).
   const flavorsWithData = flavors.filter((f) => flavorOverlayGrams(f) > 0)
+  // Multiunit net-contents statement for the OUTER box (21 CFR 101.7(q) / FPLA):
+  // "N × <per-unit net> (total)" — shown on the variety-pack / aggregate label,
+  // not on a single unit. Only when the pack holds >1 unit.
+  const packNetContents = (() => {
+    if (unitsPerPack <= 1 || !result) return undefined
+    const per = result.geometry.netWeightG
+    if (!per || per <= 0) return undefined
+    return `${unitsPerPack} × ${formatNetWeight(per).toUpperCase()} (${formatNetWeight(per * unitsPerPack).toUpperCase()})`
+  })()
   // Per-flavor panels for the variety views + modal (computed once).
   const varietyCols: VarietyColumn[] = flavorsWithData
     .map((fl) => {
@@ -735,7 +789,7 @@ export function RecipeBuilderStep({
       )}
 
       {labelViewerOpen && varietyCols.length > 0 && (
-        <LabelViewerModal columns={varietyCols} productName={productName} onClose={() => setLabelViewerOpen(false)} />
+        <LabelViewerModal columns={varietyCols} productName={productName} netContents={packNetContents} onClose={() => setLabelViewerOpen(false)} />
       )}
 
       {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel. */}
@@ -813,6 +867,25 @@ export function RecipeBuilderStep({
       )}
       <div className="rb-wrap">
         <div>
+          {/* Add Ingredients — search sits ABOVE the recipe table. */}
+          <div className="rb-card">
+            <div className="rb-h" style={{ justifyContent: 'space-between' }}>
+              <span>≣ Add Ingredients</span>
+              {rows.length > 0 && (
+                <select value={addCat} onChange={(e) => setAddCat(e.target.value as 'base' | 'optional')} style={{ fontWeight: 600 }}>
+                  <option value="base">Main Ingredients</option>
+                  <option value="optional">Optional Ingredients</option>
+                </select>
+              )}
+            </div>
+            <IngredientPicker onPick={handlePick} placeholder={dom.searchBuilt ? `Search ${dom.searchSourceLabel}, the library, or your private ${dom.ingredientNounPlural}…` : `Search the library or your private ${dom.ingredientNounPlural}…`} />
+            {dom.searchBuilt ? (
+              <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their {dom.searchSourceLabel} nutrient panel into the live label.</p>
+            ) : (
+              <p className="tiny muted" style={{ marginTop: 8 }}>Dedicated <b>{dom.searchSourceLabel}</b> {dom.ingredientNoun} search for {dom.label.toLowerCase()} products ships in a later phase — using the shared library for now.</p>
+            )}
+          </div>
+
           {/* Recipe Ingredients */}
           <div className="rb-card">
             <div className="rb-h">🍽 {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
@@ -1042,24 +1115,6 @@ export function RecipeBuilderStep({
             </div>
           )}
 
-          {/* Add Ingredients */}
-          <div className="rb-card">
-            <div className="rb-h" style={{ justifyContent: 'space-between' }}>
-              <span>≣ Add Ingredients</span>
-              {rows.length > 0 && (
-                <select value={addCat} onChange={(e) => setAddCat(e.target.value as 'base' | 'optional')} style={{ fontWeight: 600 }}>
-                  <option value="base">Main Ingredients</option>
-                  <option value="optional">Optional Ingredients</option>
-                </select>
-              )}
-            </div>
-            <IngredientPicker onPick={handlePick} placeholder={dom.searchBuilt ? `Search ${dom.searchSourceLabel}, the library, or your private ${dom.ingredientNounPlural}…` : `Search the library or your private ${dom.ingredientNounPlural}…`} />
-            {dom.searchBuilt ? (
-              <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their {dom.searchSourceLabel} nutrient panel into the live label.</p>
-            ) : (
-              <p className="tiny muted" style={{ marginTop: 8 }}>Dedicated <b>{dom.searchSourceLabel}</b> {dom.ingredientNoun} search for {dom.label.toLowerCase()} products ships in a later phase — using the shared library for now.</p>
-            )}
-          </div>
 
           {/* Packaging & Serving (ReciPal model) */}
           <div className="rb-card">
@@ -1168,7 +1223,7 @@ export function RecipeBuilderStep({
               return (
                 <>
                   {fr && overlayG > 0 ? (
-                    <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} />
+                    <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} contains={flavorContains(f)} />
                   ) : (
                     <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)', padding: 20 }}>
                       <div className="flavhdr" style={{ margin: '0 0 8px' }}>{f.name || `Flavor ${idx + 1}`}</div>
@@ -1187,7 +1242,7 @@ export function RecipeBuilderStep({
                     <span>Use the <b>simplified format</b> — this product qualifies (most nutrients are insignificant). Hides the zero rows and adds the “Not a significant source of…” statement (21 CFR 101.9(f)).</span>
                   </label>
                 )}
-                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} />
+                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
                 <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
               </>
             )
@@ -1343,7 +1398,7 @@ export function RecipeBuilderStep({
                   <span>Use the <b>simplified format</b> (qualifies) — adds “Not a significant source of…” (21 CFR 101.9(f)).</span>
                 </label>
               )}
-              <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} />
+              <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
               <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
             </div>
           ) : (
@@ -1689,7 +1744,7 @@ function AddCustomMeasureModal({
 // source of truth for the math). When the package holds 2–3 servings, FDA
 // (21 CFR 101.9(e)) requires the dual "per serving | per container" column
 // format — surfaced here via perContainerPanel.
-function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simplified = false, ingredientStatement }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR'; simplified?: boolean; ingredientStatement?: string }) {
+function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simplified = false, ingredientStatement, contains }: { result: LabelResult; ps?: LabelResult['perServing']; title?: string; narrow?: boolean; serving?: string; format?: 'STANDARD' | 'SUPPLEMENT_FACTS' | 'TABULAR' | 'LINEAR'; simplified?: boolean; ingredientStatement?: string; contains?: string }) {
   const data = toPanelData(result, { suggestedServing: serving, showVoluntaryFats: true, format, simplified })
   // Dual-column (per serving | per container, 21 CFR 101.9(e)) is an explicit
   // opt-in for the specific 2–3-serving single-eating-occasion case — NOT auto-
@@ -1705,6 +1760,7 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simpl
         perContainer={perContainer}
         columnHeaders={dual ? { primary: 'Per serving', secondary: 'Per container' } : undefined}
         ingredientStatement={ingredientStatement}
+        contains={contains}
         widthPx={narrow ? 196 : dual ? 340 : 290}
       />
     </div>

@@ -14,10 +14,13 @@ import { NutritionFactsSvg, VarietyFactsSvg, type VarietyColumn } from '@ilaunch
 export function LabelViewerModal({
   columns,
   productName,
+  netContents,
   onClose,
 }: {
   columns: VarietyColumn[]
   productName?: string
+  /** Multiunit net-contents statement for the outer box (21 CFR 101.7(q)). */
+  netContents?: string
   onClose: () => void
 }): JSX.Element {
   const [view, setView] = useState<'compare' | 'individual'>('compare')
@@ -114,8 +117,13 @@ export function LabelViewerModal({
         {/* Body */}
         <div style={{ overflow: 'auto', padding: 20, background: '#FAFAF8' }}>
           {view === 'compare' ? (
-            <div style={{ overflowX: 'auto', display: 'grid', placeItems: 'start center' }}>
+            <div style={{ overflowX: 'auto', display: 'grid', placeItems: 'start center', gap: 12 }}>
               <VarietyFactsSvg columns={selected} widthPx={Math.min(880, 200 + selected.length * 96)} />
+              {netContents && (
+                <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.01em', color: '#111', textAlign: 'center' }}>
+                  {netContents}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>

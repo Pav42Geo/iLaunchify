@@ -274,7 +274,7 @@ export interface InitialDraft {
   intendedAgeGroup: string
   // Recipe base slots — restored so editing shows the real recipe (and the
   // recipe-step autosave round-trips instead of wiping it).
-  recipeSlots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number }>
+  recipeSlots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number; allergens: string[] }>
   // Production (default variant) + storage/lead (template) — #35 full load-back.
   storageClass: 'AMBIENT' | 'CHILLED' | 'FROZEN' | null
   storageTempMinF: number | null
@@ -315,7 +315,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
       flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown }>
-      ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null } | null }>
+      ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
       variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null }>
@@ -341,7 +341,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
         flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true } },
-        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true } } } },
+        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
         variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true } },
@@ -397,6 +397,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
         per100g: (s.baseIngredient?.nutritionPer100g ?? {}) as Record<string, number>,
         densityGPerMl: s.baseIngredient?.densityGPerML ?? null,
+        allergens: s.baseIngredient?.allergenFlags ?? [],
         weightG: s.weightG ?? 0,
       })),
       axes: (tpl.optionAxes ?? []).map((a) => ({

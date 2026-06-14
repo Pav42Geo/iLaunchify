@@ -406,6 +406,7 @@ export function GuidedBuilder({
                   domain="FOOD"
                   initialEntryMode={initial?.recipeEntryMode ?? null}
                   initialAgeGroup={initial?.intendedAgeGroup ?? 'GENERAL'}
+                  unitsPerPack={Number((initial?.packing?.packingConfig as Record<string, unknown> | undefined)?.unitsPerPack) || 1}
                   currencies={currencies}
                 />
               )}
