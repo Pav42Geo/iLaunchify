@@ -1,6 +1,8 @@
 # Routing Binding Model — owner-pinned manufacturing vs routed commodity legs
 
-**Status:** PROPOSAL — pending Pavel lock. Amends `PRODUCTION_ORCHESTRATION.md` §2 + §5.
+**Status:** PARTIALLY LOCKED. D1 locked (cancel+refund); D2–D5 open. Amends
+`PRODUCTION_ORCHESTRATION.md` §2 + §5. Priority build = delay-accept (§7); Recovery Mode
+(§10) deferred to a dedicated discussion.
 **Raised by:** Pavel 2026-06-14 — "the manufacturer has a specific product and specific
 ingredients that may not other manufacturers can execute, so this routing might not work
 properly… and even print services have to match with a specific print SERVICE."
@@ -95,12 +97,18 @@ mis-routing it.
 ---
 
 ## 4. Failure handling (no silent mis-route)
-- **Owner manufacturer unavailable / declines / times out** → order to **`ON_HOLD`**
-  (admin manual handling) — consistent with the cold-start escalation already shipped
-  (`runAutoCancel` → ON_HOLD on timeout). Admin can nudge/extend, or cancel + refund.
-  Open decision D1 below: ON_HOLD-first vs hard cancel+refund.
-- **No matching downstream commodity service** → `ON_HOLD` (admin), with the failing leg
-  + missing capability named in `internalNotes`. Never route to a non-matching service.
+- **Owner manufacturer can't fulfill** (declines / times out / inactive / payouts-off /
+  MOQ miss) → **cancel + refund** — **D1 LOCKED (Pavel 2026-06-14).** Manufacturing is
+  owner-pinned and alternate-manufacturer recovery is deferred (§10), so there is no
+  partner to fall back to; the creator is refunded rather than left parked indefinitely.
+  Two things make this acceptable rather than harsh: (a) **delay-accept (§7)** rescues the
+  most common recoverable case — "can make it, just not by the quoted date" — *before* it
+  ever times out; and (b) repeated no-shows feed the **reliability/penalty model (§8)**.
+  The shipped `runAutoCancel` → `ON_HOLD`-on-timeout is an interim admin-visible state until
+  the auto cancel+refund is wired.
+- **No matching downstream commodity service** (print / co-pack / warehouse) → `ON_HOLD`
+  (admin), with the failing leg + missing capability named in `internalNotes`. Never route
+  to a non-matching service.
 - **Null `manufacturerServiceId`** (legacy/seed products, pre-V1.1 self-builder) →
   Open decision D2: fall back to today's category match, or treat as un-routable → ON_HOLD.
 
@@ -121,13 +129,109 @@ mis-routing it.
 
 ---
 
-## 6. Open decisions for Pavel to lock
-- **D1 — owner unavailable:** ON_HOLD for admin (recommended, gentler, matches cold-start
-  fix) vs immediate cancel + refund?
+## 6. Open decisions
+- **D1 — owner unavailable → cancel + refund. ✅ LOCKED (2026-06-14).** No alternate
+  manufacturer in V1 (recovery deferred, §10); delay-accept (§7) + penalties (§8) cover the
+  recoverable cases.
 - **D2 — null `manufacturerServiceId`:** category-match fallback (nothing breaks today) vs
-  treat null-owner as un-routable → ON_HOLD?
-- **D3 — owner as default downstream provider:** do we auto-assign the owner's own
+  treat null-owner as un-routable → ON_HOLD? *(open, low stakes)*
+- **D3 — owner as default downstream provider:** auto-assign the owner's own
   LABEL_PRINTING / COPACKING / WAREHOUSE service when they offer it, before searching other
-  partners? (Recommended yes — matches full-service reality and minimizes splitting.)
-- **D4 — generic-BOM products:** confirm the "shop the manufacturer" path is V2-only
-  (platform-owned commodity SKUs), explicitly out of V1.
+  partners? *(open — recommended yes; matches full-service reality, minimizes splitting)*
+- **D4 — generic-BOM products:** confirm "shop the manufacturer" is V2-only (platform-owned
+  commodity SKUs), out of V1. *(open — recommended yes)*
+- **D5 — multi-flavor lead time (§9):** does each flavor add a production run (sequential)
+  or run in parallel? *(open — recommended: manufacturer declares; default parallel)*
+
+---
+
+## 7. Delay-accept — manufacturer counter-offers a later date (PRIORITIZE)
+
+The single highest-leverage idea from the 2026-06-14 discussion, and V1-safe (no IP,
+compliance, or reroute issues — the order stays with the rightful owner-manufacturer).
+
+**Problem it solves:** today a manufacturer who *can* make the product but not by the quoted
+lead time has only "accept" or "decline" — so a pure *timing* constraint forces a decline →
+lost order. That mis-models reality (they'd happily make it a week later).
+
+**Flow:** at `PENDING_ACCEPT`, the manufacturer can choose **"Accept with a revised
+delivery date"** (later than the quoted lead time, with an optional reason) →
+`PENDING_CREATOR_APPROVAL` → creator **approves** (order proceeds on the revised date) or
+**rejects** → `DECLINED` → cancel + refund (per D1).
+
+**FSM addition (OrderDispatch):**
+```
+PENDING_ACCEPT
+  → ACCEPTED                               (on-time accept, today)
+  → DECLINED                               (refuse, today)
+  → ACCEPTED_PENDING_DATE_APPROVAL  (NEW)  (maker proposes revisedDeadlineAt + reason)
+ACCEPTED_PENDING_DATE_APPROVAL
+  → ACCEPTED                               (creator approves; order deadline := revised)
+  → DECLINED                               (creator rejects → cancel + refund)
+```
+Stamp `revisedDeadlineAt` + `delayReason` on the dispatch; notify the creator to
+approve/reject; on approval, the order's promised date updates and the creator is told the
+new ETA (consequence-framed, no partner name). Reduces how often D1 (cancel+refund) even
+fires.
+
+---
+
+## 8. Reliability / penalty model (graduated, admin-in-the-loop)
+
+Hooks already exist: `PartnerClawback` model + `OrderSettings.partnerStrikeOnCancel`.
+
+**Punish the right behavior — not all "no"s are equal:**
+| Behavior | Severity | Consequence |
+|---|---|---|
+| Honest **decline with reason** (e.g. "at capacity") | low | reliability note only — we *want* this over accept-then-fail |
+| **Ghosting** (accept window times out, no response) | high | reliability strike (the real bad actor) |
+| **Accept-then-abandon** (withdraw after accepting) | highest | strike + `PartnerClawback` fee |
+
+**Escalation ladder (no auto-bans in V1):** reliability score → lower routing /
+marketplace ranking (market-based penalty — often fairer + more effective than a ban) →
+temporary "no new orders" pause → admin-reviewed suspension / de-list. Cold-start has false
+positives (partners still learning), so hard actions stay admin-decided. Reward the inverse:
+high-acceptance / on-time partners rank higher. Matches "operational trust > margin".
+
+---
+
+## 9. Lead time is quantity-tiered (already modeled — wire it up)
+
+Concern raised: "is 500 the same lead time as 50,000?" The schema already says no:
+- `ProductTemplatePricingTier.leadTimeDays` — **per quantity band** (`minQty`/`maxQty`) and
+  **per `fulfillmentMode`** (bulk vs on-demand); falls through to `packaging.leadTimeDays`.
+- `ProductTemplateVariant.leadTimeFirstRunDays` vs `leadTimeRepeatDays` — first run (incl.
+  stability testing) vs repeat.
+
+**Gaps (not schema):** (1) the quote/routing must read the **tier-matched** lead time (by
+qty + fulfillment mode, first-run vs repeat), not a flat number; (2) **multi-flavor** rule
+(D5) — sequential runs add time, parallel don't; recommend the manufacturer declares it,
+default parallel (= single-flavor tier time).
+
+---
+
+## 10. Recovery Mode — broadcast to alternate manufacturers (DEFERRED, dedicated discussion)
+
+Pavel's idea: when the owner can't fulfill AND the product is flagged **"open to alternate
+manufacturers"** (per-product, default OFF, with an "ⓘ" explainer), broadcast an **open
+project inquiry** to capability-matching manufacturers, who **apply** from a "pool of
+inquiries" UI; the system (or, as a premium-tier upsell, the creator) picks an accepted
+offer; if none accept within **48–72 h**, cancel + refund. Doubles as manufacturer lead-gen.
+
+**Why deferred (hard problems to resolve first):**
+- **Recipe IP / copyright** — handing one manufacturer's formulation to a competitor; the
+  default must be OFF and opt-in.
+- **FDA label = a new legal artifact** — the label carries the *manufacturer's name +
+  address* ("Manufactured by…"); a different facility changes the legal label and needs *its
+  own* certifications (FDA registration, GMP, allergen controls) validated for that product.
+  Not a routing swap.
+- **Re-quote** — a different manufacturer has different cost + lead time vs the quote the
+  creator already paid; who absorbs the delta / does the creator re-approve?
+- **System-picks vs creator-picks** — default **system auto-picks** the best accepted offer
+  (consequence-framed, no partner names — matches "hide the orchestration"); creator-picks
+  only as a premium upsell. *(Research item.)*
+- Reconciles with the thesis as a **recovery fallback**, not the default route (which stays
+  orchestration, not matching).
+
+This is essentially the V2 pooling mechanic (pool window, fairness, who-fills-it) applied to
+order recovery — build on that infrastructure, not before it.
