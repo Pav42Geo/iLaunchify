@@ -115,6 +115,18 @@ const ALLERGEN_LABELS: Record<string, string> = {
 }
 const ALLERGEN_ORDER = ['Milk', 'Eggs', 'Fish', 'Shellfish', 'Tree Nuts', 'Peanuts', 'Wheat', 'Soy', 'Sesame']
 
+// Net-contents casing: the term (NET WT) + US-customary units (OZ, LB, FL OZ)
+// print uppercase, but SI metric SYMBOLS keep their mandated case (g, mg, kg, mL;
+// L stays capital for liter). FDA 21 CFR 101.105 / FPLA + SI symbol rules.
+function netUpper(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/\bMG\b/g, 'mg')
+    .replace(/\bKG\b/g, 'kg')
+    .replace(/\bML\b/g, 'mL')
+    .replace(/\bG\b/g, 'g')
+}
+
 /** "Milk, Soy, Wheat" from a set of flags — deduped to display names, in the FDA
  *  canonical order. The renderer prefixes "Contains:". '' when none. */
 function formatContains(flags: Iterable<string>): string {
@@ -731,8 +743,8 @@ export function RecipeBuilderStep({
   // a volume statement ("NET 12 FL OZ"), weight-measured declare "NET WT". We key
   // off the package unit the manufacturer entered.
   const isFluidPack = VOLUME_UNITS.has(packageUnit) && packageSizeG > 0
-  const fluidUnit = (UNIT_LABELS[packageUnit] ?? packageUnit).toUpperCase()
-  const perUnitNet = isFluidPack ? `${+packageSizeG.toFixed(2)} ${fluidUnit}` : (result ? formatNetWeight(result.geometry.netWeightG).toUpperCase() : '')
+  const fluidUnit = netUpper(UNIT_LABELS[packageUnit] ?? packageUnit)
+  const perUnitNet = isFluidPack ? `${+packageSizeG.toFixed(2)} ${fluidUnit}` : (result ? netUpper(formatNetWeight(result.geometry.netWeightG)) : '')
   // Single-unit net-contents line.
   const netContentsLabel = result ? (isFluidPack ? `NET ${perUnitNet}` : `NET WT ${perUnitNet}`) : ''
   // Multiunit net-contents statement for the OUTER box (21 CFR 101.7(q) / FPLA):
@@ -746,7 +758,7 @@ export function RecipeBuilderStep({
     }
     const per = result.geometry.netWeightG
     if (!per || per <= 0) return undefined
-    return `${unitsPerPack} × ${formatNetWeight(per).toUpperCase()} (${formatNetWeight(per * unitsPerPack).toUpperCase()})`
+    return `${unitsPerPack} × ${netUpper(formatNetWeight(per))} (${netUpper(formatNetWeight(per * unitsPerPack))})`
   })()
   // Per-flavor panels for the variety views + modal (computed once).
   const varietyCols: VarietyColumn[] = flavorsWithData
