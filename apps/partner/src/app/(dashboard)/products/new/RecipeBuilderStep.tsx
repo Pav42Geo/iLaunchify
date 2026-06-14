@@ -1438,7 +1438,8 @@ export function RecipeBuilderStep({
         </div>
       )}
 
-      {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces (coming soon). */}
+      {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces. My recipes copies a
+          past product's base slots; templates resolve curated items to the catalog. */}
       {activeTab === 'recipes' && (
         <div className="rb-card">
           <div className="rb-h">🗂 My recipes</div>

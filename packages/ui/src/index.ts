@@ -90,6 +90,7 @@ export * from './nutrition/NutritionFactsSvg'
 export * from './nutrition/VarietyFactsSvg'
 export * from './nutrition/GuaranteedAnalysisSvg'
 export * from './nutrition/InciDeclarationSvg'
+export * from './nutrition/DrugFactsSvg'
 
 // Canvas — Fabric.js wrappers. 'use client' inside; host pages should
 // dynamic-import them with `ssr: false` because Fabric requires `window`.
