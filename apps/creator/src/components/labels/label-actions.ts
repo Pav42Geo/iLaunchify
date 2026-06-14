@@ -14,9 +14,20 @@
 // NutritionFactsSvg and downloads.
 
 import { requireUser, getCreatorTier, hasTier } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, isDomainEnabled } from '@ilaunchify/db'
 import { calculateLabel, toPanelData, toGrams, type RecipeRow } from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
+
+// Per-domain regulated label artifact name (for honest "coming soon" messaging).
+// FOOD is implemented below; the other renderers exist in @ilaunchify/ui but
+// the creator-side data plumbing per domain is a follow-up.
+const DOMAIN_ARTIFACT: Record<string, string> = {
+  FOOD: 'Nutrition Facts',
+  DIETARY_SUPPLEMENT: 'Supplement Facts',
+  COSMETIC: 'INCI declaration',
+  PET_PRODUCT: 'Guaranteed Analysis',
+  OTC: 'Drug Facts',
+}
 
 // FALCPA Big-9 → label display names + canonical print order (21 CFR 101.4(b)).
 const ALLERGEN_LABELS: Record<string, string> = {
@@ -90,6 +101,7 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
     where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
     select: {
       name: true,
+      productTemplateId: true,
       recipe: {
         select: {
           servingSizeG: true,
@@ -110,6 +122,24 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
     },
   })
   if (!product) return { ok: false, error: 'Product not found.' }
+
+  // Domain-aware: only FOOD downloads are wired today. Read the template's
+  // labeling type (cast-guarded — the column ships with a pending migration on
+  // some machines), honor the admin domain on/off, and give an honest message
+  // for the non-food domains whose creator-side plumbing is a follow-up.
+  const tmpl = product.productTemplateId
+    ? await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null } | null> }
+      }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true } })
+    : null
+  const domain = (tmpl?.labelingType ?? 'FOOD') as string
+  if (!(await isDomainEnabled(domain))) {
+    return { ok: false, error: 'This product’s label type isn’t available for download right now.' }
+  }
+  if (domain !== 'FOOD') {
+    return { ok: false, error: `${DOMAIN_ARTIFACT[domain] ?? 'Label'} downloads aren’t available yet — coming soon for ${(DOMAIN_ARTIFACT[domain] ? domain.replace(/_/g, ' ').toLowerCase() : 'this')} products.` }
+  }
+
   if (!product.recipe || product.recipe.ingredients.length === 0) {
     return { ok: false, error: 'This product has no recipe yet — finish customizing it first.' }
   }
