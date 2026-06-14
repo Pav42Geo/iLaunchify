@@ -42,7 +42,11 @@ export async function findRouting(params: {
   targetMarketId?: string | null
   /** Admin-tunable scoring weights (OrderSettings). */
   weights?: MatchWeights
+  /** PartnerService ids already tried (declined / timed out) — excluded so a
+   *  manual or future auto-reroute never re-picks a partner that already failed. */
+  excludeServiceIds?: string[]
 }): Promise<RoutingResult | RoutingFailure> {
+  const excluded = new Set(params.excludeServiceIds ?? [])
   const product = await prisma.product.findUnique({
     where: { id: params.productId },
     include: {
@@ -66,6 +70,7 @@ export async function findRouting(params: {
   // Hard gates first (category fit, MOQ range, payouts enabled), then B4
   // scoring ranks the survivors so we pick the best fit, not the first.
   const gated = manufServices.filter((s) => {
+    if (excluded.has(s.id)) return false
     const caps = s.capabilities as Record<string, unknown>
     const categories = (caps.categories as string[] | undefined) ?? []
     const moqMin = (caps.moqMin as number | undefined) ?? 0
@@ -143,6 +148,7 @@ export async function findRouting(params: {
   })
 
   const printProvider = printServices.find((s) => {
+    if (excluded.has(s.id)) return false
     const caps = s.capabilities as Record<string, unknown>
     const moqMin = (caps.moqMin as number | undefined) ?? 0
     return params.quantity >= moqMin && s.partner.user.stripeAccountStatus === 'ACTIVE'

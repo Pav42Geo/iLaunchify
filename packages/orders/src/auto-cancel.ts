@@ -32,7 +32,7 @@ export async function runAutoCancel(): Promise<AutoCancelResult> {
       status: 'PENDING_ACCEPT',
       acceptDeadlineAt: { lt: now },
     },
-    select: { id: true, orderId: true, acceptDeadlineAt: true, partnerServiceId: true },
+    select: { id: true, orderId: true, type: true, acceptDeadlineAt: true, partnerServiceId: true },
     take: 200, // safety cap; if there's ever a backlog larger than this, alert
   })
 
@@ -69,6 +69,31 @@ export async function runAutoCancel(): Promise<AutoCancelResult> {
           cancelledAt: now.toISOString(),
         },
       })
+
+      // Escalate the parent order so a timed-out dispatch doesn't strand it
+      // silently in ROUTING — the cold-start failure mode (few partners, one
+      // ghosts the accept window). Conservative V1: route to ON_HOLD for admin
+      // manual handling, NOT auto-cancel — a no-response is softer than an
+      // explicit decline, and at cold-start ops wants to nudge / extend / reroute
+      // rather than kill the order. FSM-safe (ROUTING/IN_FULFILLMENT → ON_HOLD)
+      // and race-guarded by the status filter; only the FIRST timed-out dispatch
+      // of an order escalates (the sibling sees ON_HOLD and no-ops).
+      const escalated = await prisma.order.updateMany({
+        where: { id: d.orderId, status: { in: ['ROUTING', 'IN_FULFILLMENT'] } },
+        data: {
+          status: 'ON_HOLD',
+          internalNotes: `Dispatch ${d.type} timed out (no partner response by ${d.acceptDeadlineAt?.toISOString() ?? 'deadline'}) — needs manual routing`,
+        },
+      })
+      if (escalated.count > 0) {
+        await logSystemAudit({
+          entityType: 'Order',
+          entityId: d.orderId,
+          action: 'ORDER_ON_HOLD_DISPATCH_TIMEOUT',
+          toValue: 'ON_HOLD',
+          payload: { dispatchId: d.id, dispatchType: d.type, partnerServiceId: d.partnerServiceId, at: now.toISOString() },
+        })
+      }
 
       result.cancelled++
     } catch (err) {
