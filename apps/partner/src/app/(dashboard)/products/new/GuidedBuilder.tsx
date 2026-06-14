@@ -66,6 +66,9 @@ interface GuidedBuilderProps {
   /** ISO currency codes of ACTIVE target markets (V1 ['USD']) — drives the
    *  recipe Cost column currency, one input per market currency. */
   currencies?: string[]
+  /** Admin-enabled product domains (LabelingType keys). Only these appear in the
+   *  Step-1 domain picker. Defaults to the four built domains; OTC ships off. */
+  enabledDomains?: string[]
 }
 
 const STEPS = [
@@ -91,8 +94,11 @@ export function GuidedBuilder({
   aiAvailable = false,
   declareAvailable = false,
   currencies = ['USD'],
+  enabledDomains = ['FOOD', 'DIETARY_SUPPLEMENT', 'COSMETIC', 'PET_PRODUCT'],
 }: GuidedBuilderProps) {
   const router = useRouter()
+  // Admin domain on/off — only show domain tiles the admin has enabled.
+  const domainOptions = DOMAIN_OPTIONS.filter((o) => enabledDomains.includes(LTYPE_TO_LT[o.v]))
 
   // Hide the dashboard sidebar + go full-bleed ONLY while the builder is open.
   // Mount-scoped (not route-scoped in the layout) so it reliably reverts on
@@ -341,7 +347,7 @@ export function GuidedBuilder({
                 <div className="section-title"><span className="ic">◧</span> Product domain</div>
                 <p className="muted small" style={{ margin: '4px 0 12px' }}>What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.</p>
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                  {DOMAIN_OPTIONS.map((o) => (
+                  {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
                       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.label}</div>
                       <div className="tiny muted" style={{ marginTop: 2 }}>{o.desc}</div>

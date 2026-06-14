@@ -2372,6 +2372,17 @@ enum LabelingType {
   COSMETIC // 21 CFR 701 cosmetic labeling (no "Facts" panel)
 }
 
+// Admin on/off switch for each product domain in the builder (2026-06-14). The
+// admin enables/disables which domains a partner can pick in the new-product
+// flow. `domain` holds a LabelingType key string. A missing row falls back to the
+// code default (DOMAIN_ENABLED_DEFAULTS in @ilaunchify/db). OTC ships disabled —
+// the Drug Facts renderer exists but the OTC flow isn't live yet.
+model DomainSetting {
+  domain    String   @id // FOOD | DIETARY_SUPPLEMENT | PET_PRODUCT | OTC | COSMETIC
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @default(now())
+}
+
 // Nutrition Facts audience (21 CFR 101.9(j)(5)) — selects the Daily Value table +
 // which %DV columns appear on a FOOD-domain panel. Infant formula (21 CFR 107) is
 // NOT here; it is a separate regulated class, deferred.

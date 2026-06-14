@@ -55,3 +55,11 @@ export {
   type IngredientSourceMode,
   type LabelingTypeKey,
 } from './ingredient-sources'
+export {
+  getDomainSettings,
+  getEnabledDomains,
+  isDomainEnabled,
+  DOMAIN_KEYS,
+  DOMAIN_ENABLED_DEFAULTS,
+  type DomainKey,
+} from './domain-settings'

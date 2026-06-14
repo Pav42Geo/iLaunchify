@@ -16,6 +16,7 @@
     "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
     "seed:subscription-plans": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-subscription-plans.ts",
     "seed:domain-ingredients": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-ingredients.ts",
+    "seed:domain-settings": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-settings.ts",
     "seed:dsld-mirror": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-dsld-mirror.ts",
     "format":         "prisma format",
     "type-check":     "tsc --noEmit",

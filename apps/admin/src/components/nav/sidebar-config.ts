@@ -242,6 +242,7 @@ const PRIMARY: SidebarRegion = {
       icon: ShieldCheck,
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains' },
         {
           kind: 'group',
           label: 'Order Settings',

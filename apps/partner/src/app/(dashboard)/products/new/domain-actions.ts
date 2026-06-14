@@ -6,7 +6,7 @@
 // we also clear the category-derived lock (labelingTypeLocked = false). Partner-
 // gated to the owning service + audited. Cast-guarded.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, isDomainEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 
@@ -17,6 +17,9 @@ type Result = { ok: true } | { ok: false; error: string }
 
 export async function setDraftLabelingType(draftId: string, labelingType: LabelingTypeValue): Promise<Result> {
   if (!VALID.includes(labelingType)) return { ok: false, error: 'Invalid labeling type.' }
+  // Admin domain on/off (DomainSetting): block disabled domains server-side, not
+  // just in the picker. OTC is disabled until its flow ships.
+  if (!(await isDomainEnabled(labelingType))) return { ok: false, error: 'That product domain is not currently available.' }
   const user = await requireUser()
   if (user.role !== 'PARTNER') return { ok: false, error: 'Not a partner account.' }
   const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true, services: { select: { id: true } } } })

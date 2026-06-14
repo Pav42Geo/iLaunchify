@@ -5,7 +5,7 @@
 // (docs/prototypes/recipe-builder-demo.html). Step 1 persists a DRAFT via
 // createDraftShell; later steps wire slice-by-slice.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getEnabledDomains } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { GuidedBuilder } from './GuidedBuilder'
@@ -80,6 +80,10 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   // Resume an existing draft when ?draft=<id> is present (#35 load-back).
   const initial = draft ? await loadDraft(draft) : null
 
+  // Admin domain on/off (DomainSetting) — only enabled domains appear in the
+  // Step-1 domain picker. OTC ships disabled.
+  const enabledDomains = await getEnabledDomains()
+
   const scopeOrder = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
   const serviceScopes = scopeOrder
     .filter((t) => partner.services.some((s) => s.type === t))
@@ -98,6 +102,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       aiAvailable={aiAvailable}
       declareAvailable={declareAvailable}
       currencies={marketCurrencies}
+      enabledDomains={enabledDomains}
     />
   )
 }
