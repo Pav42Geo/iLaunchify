@@ -8,7 +8,7 @@
 
 import { useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { NutritionFactsSvg } from '@ilaunchify/ui'
+import { NutritionFactsSvg, SupplementFactsSvg, InciDeclarationSvg, GuaranteedAnalysisSvg } from '@ilaunchify/ui'
 import { computeProductLabel, type ProductLabel } from './label-actions'
 import { printLabels } from './label-export'
 
@@ -38,7 +38,15 @@ export function useLabelDownload(productId: string, productName: string): { trig
     <div ref={ref} aria-hidden style={{ position: 'fixed', left: -99999, top: 0, pointerEvents: 'none' }}>
       {labels?.map((l, i) => (
         <div key={i}>
-          <NutritionFactsSvg data={l.panel} ingredientStatement={l.ingredientStatement} contains={l.contains} widthPx={300} />
+          {l.domain === 'FOOD' ? (
+            <NutritionFactsSvg data={l.panel} ingredientStatement={l.ingredientStatement} contains={l.contains} widthPx={300} />
+          ) : l.domain === 'DIETARY_SUPPLEMENT' ? (
+            <SupplementFactsSvg data={l.panel} otherIngredients={l.otherIngredients} widthPx={300} />
+          ) : l.domain === 'COSMETIC' ? (
+            <InciDeclarationSvg ingredients={l.ingredients} netContents={l.netContents} responsiblePerson={l.responsiblePerson} adverseEventContact={l.adverseEventContact} widthPx={300} />
+          ) : (
+            <GuaranteedAnalysisSvg gaRows={l.gaRows} ingredients={l.ingredients} adequacyStatement={l.adequacyStatement} feedingDirections={l.feedingDirections} widthPx={300} />
+          )}
         </div>
       ))}
     </div>

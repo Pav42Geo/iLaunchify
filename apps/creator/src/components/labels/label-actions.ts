@@ -1,26 +1,32 @@
 'use server'
 
-// Creator-side label data for download (task #125). RECOMPUTES the regulated
-// panel(s) from the creator's own customized recipe (single source of truth —
-// the @ilaunchify/nutrition engine, the same math the partner preview uses).
+// Creator-side label data for download (task #125 / #127). RECOMPUTES the
+// regulated label(s) for a creator-owned product from authoritative data and the
+// shared @ilaunchify/nutrition assembly (same math the partner preview uses).
 //
-// Returns EVERY label: for a single product, one Nutrition Facts panel; for a
-// MULTI-FLAVOR variant, one panel PER FLAVOR (each = the shared base recipe +
-// that flavor's overlay ingredients), so the creator downloads them all.
+// Domains:
+//   FOOD               → Nutrition Facts, recomputed from the creator's own recipe
+//                         (one panel; one PER FLAVOR for a multi-flavor variant).
+//   DIETARY_SUPPLEMENT → Supplement Facts, from the template's supplement payload.
+//   COSMETIC           → INCI declaration, from the template's cosmetic payload.
+//   PET_PRODUCT        → Guaranteed Analysis, from the template's pet payload.
+//   OTC                → blocked (domain off / flow not live).
 //
-// GATED: Builder+ only (Maker excluded) via the `label_file_download` plan
-// feature — the button is hidden for Maker client-side; this is the hard
-// server-side gate. The client renders each PanelData with packages/ui
-// NutritionFactsSvg and downloads.
+// GATED: Builder+ only (Maker excluded) via the `label_file_download` plan feature
+// — the button is hidden for Maker client-side; this is the hard server gate. The
+// admin domain on/off (DomainSetting) is also enforced. The client renders each
+// label with the matching packages/ui SVG renderer and prints to PDF.
 
 import { requireUser, getCreatorTier, hasTier } from '@ilaunchify/auth'
 import { prisma, isDomainEnabled } from '@ilaunchify/db'
-import { calculateLabel, toPanelData, toGrams, type RecipeRow } from '@ilaunchify/nutrition'
+import {
+  calculateLabel, toPanelData, toGrams, toSupplementPanelData, toInciDeclaration,
+  petIngredientOrder, formatGuaranteedAnalysis, adequacyStatement,
+  type RecipeRow, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition,
+  type CosmeticIngredient, type GuaranteedAnalysis, type PetSpecies, type LifeStage, type AdequacyMethod,
+} from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
 
-// Per-domain regulated label artifact name (for honest "coming soon" messaging).
-// FOOD is implemented below; the other renderers exist in @ilaunchify/ui but
-// the creator-side data plumbing per domain is a follow-up.
 const DOMAIN_ARTIFACT: Record<string, string> = {
   FOOD: 'Nutrition Facts',
   DIETARY_SUPPLEMENT: 'Supplement Facts',
@@ -47,24 +53,22 @@ function formatContains(flags: Iterable<string>): string {
   return ALLERGEN_ORDER.filter((n) => names.has(n)).join(', ')
 }
 
-// One ingredient resolved with everything a label needs.
+// One ingredient resolved with everything a food label needs.
 interface Line {
   row: RecipeRow
   declarationName: string
   allergens: string[]
 }
 
-export interface ProductLabel {
-  domain: 'FOOD'
-  productName: string
-  flavorName?: string
-  panel: PanelData
-  ingredientStatement: string
-  contains: string
-}
+// Discriminated label union — the client renders the matching SVG per `domain`.
+export type ProductLabel =
+  | { domain: 'FOOD'; productName: string; flavorName?: string; panel: PanelData; ingredientStatement: string; contains: string }
+  | { domain: 'DIETARY_SUPPLEMENT'; productName: string; panel: PanelData; otherIngredients: string[] }
+  | { domain: 'COSMETIC'; productName: string; ingredients: string; netContents?: string; responsiblePerson?: string; adverseEventContact?: string }
+  | { domain: 'PET_PRODUCT'; productName: string; gaRows: { label: string; value: string }[]; ingredients: string; adequacyStatement?: string; feedingDirections?: string }
 export type ComputeLabelResult = { ok: true; data: ProductLabel[] } | { ok: false; error: string }
 
-function buildLabel(
+function buildFoodLabel(
   baseLines: Line[],
   overlayLines: Line[],
   geo: { servingSizeG: number; servingsPerPackage: number; servingSizeDesc?: string },
@@ -84,9 +88,34 @@ function buildLabel(
   return { domain: 'FOOD', productName, flavorName, panel, ingredientStatement, contains: formatContains(allergenSet) }
 }
 
-/** Recompute every downloadable Nutrition Facts label for a creator-owned
- *  product. Builder+ gated. One panel for a single product; one PER FLAVOR for
- *  a multi-flavor variant. FOOD today; other domains return a friendly error. */
+// ---- Persisted non-food formulation payloads (ProductTemplate.formulationData) ----
+interface SupplementPayload {
+  dietaryIngredients: Array<{ uid: string; name: string; amount: number; unit: string; percentDV: string; blendId: string; isOther: boolean; amountLessThan?: boolean; symbol?: string }>
+  blends: Array<{ id: string; name: string; total: number; unit: string; amountLessThan?: boolean }>
+  servingForm: string
+  servingsPerContainer: number
+  nutrition?: SupplementNutrition
+  nutritionLessThan?: Record<string, boolean>
+  noDvSymbol?: string
+  customFootnotes?: Array<{ symbol: string; text: string }>
+}
+interface CosmeticPayload {
+  ingredients: Array<{ uid: string; inciName: string; pct: number; isColorAdditive: boolean; isFragrance: boolean }>
+  netContentsQty: number
+  netContentsUnit: string
+  responsiblePerson: string
+  adverseEventContact: string
+}
+interface PetPayload {
+  ingredients: Array<{ uid: string; name: string; weight: number }>
+  ga: GuaranteedAnalysis
+  species: PetSpecies
+  lifeStage: LifeStage
+  method: AdequacyMethod
+  feedingDirections: string
+}
+interface FormulationData { supplement?: SupplementPayload; cosmetic?: CosmeticPayload; pet?: PetPayload }
+
 export async function computeProductLabel(productId: string): Promise<ComputeLabelResult> {
   const user = await requireUser()
 
@@ -123,23 +152,63 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
   })
   if (!product) return { ok: false, error: 'Product not found.' }
 
-  // Domain-aware: only FOOD downloads are wired today. Read the template's
-  // labeling type (cast-guarded — the column ships with a pending migration on
-  // some machines), honor the admin domain on/off, and give an honest message
-  // for the non-food domains whose creator-side plumbing is a follow-up.
+  // Domain + persisted formulation (cast-guarded — labelingType / formulationData
+  // ship with a pending migration on some machines).
   const tmpl = product.productTemplateId
     ? await (prisma as unknown as {
-        productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null } | null> }
-      }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true } })
+        productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null; formulationData: FormulationData | null } | null> }
+      }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true, formulationData: true } })
     : null
   const domain = (tmpl?.labelingType ?? 'FOOD') as string
   if (!(await isDomainEnabled(domain))) {
     return { ok: false, error: 'This product’s label type isn’t available for download right now.' }
   }
-  if (domain !== 'FOOD') {
-    return { ok: false, error: `${DOMAIN_ARTIFACT[domain] ?? 'Label'} downloads aren’t available yet — coming soon for ${(DOMAIN_ARTIFACT[domain] ? domain.replace(/_/g, ' ').toLowerCase() : 'this')} products.` }
+
+  // ===================== Non-food domains =====================
+  if (domain === 'OTC') {
+    return { ok: false, error: 'Drug Facts downloads aren’t available yet.' }
+  }
+  if (domain === 'DIETARY_SUPPLEMENT') {
+    const p = tmpl?.formulationData?.supplement
+    if (!p || !p.dietaryIngredients?.length) return { ok: false, error: 'This supplement has no formulation yet.' }
+    const dietary: DietaryIngredient[] = p.dietaryIngredients.filter((r) => r.name?.trim()).map((r, i, arr) => ({
+      id: r.uid, name: r.name.trim(), amountPerServing: r.amount, unit: r.unit,
+      percentDV: r.percentDV?.trim() === '' || r.percentDV == null ? null : Number(r.percentDV),
+      blendId: r.blendId || null, isOtherIngredient: r.isOther, sortWeight: arr.length - i,
+      amountLessThan: r.amountLessThan, symbol: r.symbol?.trim() || undefined,
+    }))
+    const blends: ProprietaryBlend[] = (p.blends ?? []).map((b) => ({ id: b.id, name: b.name, totalAmount: b.total, unit: b.unit, percentDV: null, amountLessThan: b.amountLessThan }))
+    const { panel, otherIngredients } = toSupplementPanelData(dietary, blends, {
+      servingSize: p.servingForm, servingsPerContainer: p.servingsPerContainer,
+      nutrition: p.nutrition, nutritionLessThan: p.nutritionLessThan as Partial<Record<keyof SupplementNutrition, boolean>> | undefined,
+      noDvSymbol: p.noDvSymbol, customFootnotes: p.customFootnotes,
+    })
+    return { ok: true, data: [{ domain: 'DIETARY_SUPPLEMENT', productName: product.name, panel, otherIngredients }] }
+  }
+  if (domain === 'COSMETIC') {
+    const p = tmpl?.formulationData?.cosmetic
+    if (!p || !p.ingredients?.length) return { ok: false, error: 'This product has no ingredient list yet.' }
+    const items: CosmeticIngredient[] = p.ingredients.map((r) => ({ id: r.uid, inciName: r.inciName, pct: Number(r.pct) || 0, isColorAdditive: r.isColorAdditive, isFragrance: r.isFragrance }))
+    const decl = toInciDeclaration(items)
+    const netContents = Number(p.netContentsQty) > 0 ? `Net contents: ${p.netContentsQty} ${p.netContentsUnit}`.trim() : undefined
+    return { ok: true, data: [{ domain: 'COSMETIC', productName: product.name, ingredients: decl.text, netContents, responsiblePerson: p.responsiblePerson || undefined, adverseEventContact: p.adverseEventContact || undefined }] }
+  }
+  if (domain === 'PET_PRODUCT') {
+    const p = tmpl?.formulationData?.pet
+    if (!p || !p.ga) return { ok: false, error: 'This product has no guaranteed analysis yet.' }
+    const gaRows = formatGuaranteedAnalysis(p.ga)
+    const ingredients = petIngredientOrder((p.ingredients ?? []).map((r) => ({ id: r.uid, name: r.name, weight: Number(r.weight) || 0 }))).join(', ')
+    return {
+      ok: true,
+      data: [{
+        domain: 'PET_PRODUCT', productName: product.name, gaRows, ingredients,
+        adequacyStatement: adequacyStatement(product.name, p.species, p.lifeStage, p.method),
+        feedingDirections: p.feedingDirections || undefined,
+      }],
+    }
   }
 
+  // ===================== FOOD (default) =====================
   if (!product.recipe || product.recipe.ingredients.length === 0) {
     return { ok: false, error: 'This product has no recipe yet — finish customizing it first.' }
   }
@@ -153,17 +222,15 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
     allergens: ri.ingredient.allergenFlags ?? [],
   }))
 
-  // Flavors with real overlay lines (qty > 0). No flavors → single base label.
   type Extra = { ingredientId: string; name?: string; qty: number; unit: string }
   const flavors = (product.productTemplate?.flavorPresets ?? [])
     .map((f) => ({ name: f.name, extras: (Array.isArray(f.extras) ? (f.extras as Extra[]) : []).filter((e) => e && e.ingredientId && Number(e.qty) > 0) }))
     .filter((f) => f.name.trim().length > 0 && f.extras.length > 0)
 
   if (flavors.length === 0) {
-    return { ok: true, data: [buildLabel(baseLines, [], geo, product.name)] }
+    return { ok: true, data: [buildFoodLabel(baseLines, [], geo, product.name)] }
   }
 
-  // Resolve nutrition for all overlay ingredients in one query.
   const ids = [...new Set(flavors.flatMap((f) => f.extras.map((e) => e.ingredientId)))]
   const ingByIdRows = await prisma.ingredient.findMany({
     where: { id: { in: ids } },
@@ -181,7 +248,7 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
         allergens: ing?.allergenFlags ?? [],
       }
     })
-    return buildLabel(baseLines, overlay, geo, product.name, f.name)
+    return buildFoodLabel(baseLines, overlay, geo, product.name, f.name)
   })
 
   return { ok: true, data: labels }

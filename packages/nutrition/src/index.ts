@@ -11,6 +11,7 @@ export * from './rounding'
 export * from './engine'
 export * from './panel-adapter'
 export * from './supplement-facts'
+export * from './domain-labels'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.
