@@ -338,7 +338,7 @@ export function GuidedBuilder({
                     </button>
                   ))}
                 </div>
-                <style>{`.gb .domcard{display:block;text-align:left;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 12px;cursor:pointer;transition:.12s}.gb .domcard:hover{border-color:var(--pink-200,#F4C0D1);background:var(--pink-50,#FCEEF3)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FCEEF3);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}`}</style>
+                <style>{`.gb .domcard{display:block;text-align:left;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 12px;cursor:pointer;transition:.12s}.gb .domcard:hover{border-color:var(--pink-200,#FFB3CC);background:var(--pink-50,#FFE9F0)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FFE9F0);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}`}</style>
               </div>
               <BasicsScreen
                 domain={LTYPE_TO_LT[ltype]}
@@ -382,7 +382,7 @@ export function GuidedBuilder({
               <div className="domchip" style={{ marginBottom: 14 }}>
                 <span>Domain: <b>{DOMAIN_OPTIONS.find((o) => o.v === ltype)?.label}</b> · {DOMAIN_OPTIONS.find((o) => o.v === ltype)?.artifact}</span>
                 <button type="button" onClick={() => go(0)}>Change in Basics</button>
-                <style>{`.gb .domchip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:999px;background:#fff;padding:5px 6px 5px 14px;font-size:12.5px;color:var(--ink-700)}.gb .domchip button{border:0;background:var(--ink-100,#EEEFF1);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;font-weight:600;color:var(--ink-700);cursor:pointer}.gb .domchip button:hover{background:var(--pink-50,#FCEEF3);color:var(--pink-700,#C71350)}`}</style>
+                <style>{`.gb .domchip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:999px;background:#fff;padding:5px 6px 5px 14px;font-size:12.5px;color:var(--ink-700)}.gb .domchip button{border:0;background:var(--ink-100,#EEEFF1);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;font-weight:600;color:var(--ink-700);cursor:pointer}.gb .domchip button:hover{background:var(--pink-50,#FFE9F0);color:var(--pink-700,#C71350)}`}</style>
               </div>
               {ltype === 'Supplement' ? (
                 <SupplementFormulationStep productName={name} draftId={draftId} />
@@ -575,7 +575,7 @@ function NavBtns(_props: { onBack?: () => void; onNext?: () => void; onSaveDraft
 
 // Scoped CSS ported from the prototype, on the locked mood-board tokens.
 const CSS = `
-.gb{--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FBEAF0;--pink-100:#F4C0D1;--ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FCEEF3;--green:#1D9E75;--green-50:#E1F5EE;--amber-50:#FAEEDA;--sky-50:#E6F1FB;color:var(--ink-900);font-size:13px;line-height:1.5}
+.gb{--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--green-50:#E1F5EE;--amber-50:#FAEEDA;--sky-50:#E6F1FB;color:var(--ink-900);font-size:13px;line-height:1.5}
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
@@ -624,7 +624,7 @@ const CSS = `
 .gb-iconbtn:hover{background:#F8F8F9;border-color:#CBCCD3}
 .gb-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:61;background:#fff;border:1px solid #E0E1E5;border-radius:12px;box-shadow:0 16px 40px -16px rgba(0,0,0,.3);padding:6px;min-width:200px}
 .gb-menuitem{display:block;padding:8px 11px;border-radius:8px;font-size:13px;color:#18181A;text-decoration:none}
-.gb-menuitem:hover{background:#FBEAF0;color:#C71350}
+.gb-menuitem:hover{background:#FFE9F0;color:#C71350}
 .gb-saveicon{display:inline-flex;align-items:center;color:#1D9E75}
 .gb-nextbtn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #FF2E63;background:#FF2E63;color:#fff;transition:.15s}
 .gb-nextbtn:hover:not(:disabled){background:#E11D54;border-color:#E11D54}
@@ -660,7 +660,7 @@ const CSS = `
 .gb .cat{font-size:11px;font-weight:700;color:var(--ink-700);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
 .gb .subcat{font-size:12px;color:var(--ink-600);padding:5px 8px;border-radius:8px;cursor:pointer}
 .gb .subcat:hover{background:var(--ink-50)} .gb .subcat.on{background:var(--pink-50);color:var(--pink-700);font-weight:600}
-.gb .can3d{width:150px;height:230px;border-radius:14px;background:linear-gradient(90deg,#cfd3d6,#f4f6f7 30%,#e6e9eb 55%,#c2c6c9);box-shadow:inset 0 0 0 1px #b9bdc0;display:grid;place-items:center;color:#9aa;text-align:center;font-size:12px}
+.gb .can3d{width:150px;height:230px;border-radius:14px;background:linear-gradient(90deg,#CBCCD3,#F8F8F9 30%,#E0E1E5 55%,#c2c6c9);box-shadow:inset 0 0 0 1px #b9bdc0;display:grid;place-items:center;color:#9aa;text-align:center;font-size:12px}
 .gb .compbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .gb .compcard{border:1px solid var(--ink-200);border-radius:12px;padding:9px 11px;font-size:12px;min-width:150px}
 .gb .frame{position:absolute;border:1.5px dashed var(--pink);border-radius:6px;background:rgba(255,46,99,.06);font-size:9px;color:var(--pink-700);padding:2px 4px;font-weight:600}

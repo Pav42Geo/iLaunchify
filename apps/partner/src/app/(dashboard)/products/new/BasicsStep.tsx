@@ -79,7 +79,7 @@ export function BasicsStep({ categories, subcategories }: BasicsStepProps) {
               <li key={label}>
                 <div
                   className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${
-                    current ? 'bg-[#FBEAF0] ring-1 ring-[#F4C0D1]' : ''
+                    current ? 'bg-[#FFE9F0] ring-1 ring-[#FFB3CC]' : ''
                   }`}
                 >
                   <span

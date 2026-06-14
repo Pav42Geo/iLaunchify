@@ -151,7 +151,7 @@ export function TurnkeyProductFlow({
                   type="button"
                   onClick={() => setActiveStep(s.id)}
                   className={`flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
-                    current ? 'bg-[#FBEAF0] ring-1 ring-[#F4C0D1]' : 'hover:bg-ink-50'
+                    current ? 'bg-[#FFE9F0] ring-1 ring-[#FFB3CC]' : 'hover:bg-ink-50'
                   }`}
                   aria-current={current ? 'step' : undefined}
                 >

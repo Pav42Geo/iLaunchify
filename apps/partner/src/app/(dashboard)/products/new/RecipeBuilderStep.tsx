@@ -1601,9 +1601,9 @@ function LabelOptionsSection({
         </div>
       )}
       <style>{`
-        .rb .lo-axis{border:1px solid #E0E1E5;border-radius:12px;padding:12px;margin-top:10px}
+        .rb .lo-axis{border:1px solid #E0E1E5;border-radius:16px;padding:12px;margin-top:10px}
         .rb .lo-axis select{border:1px solid #E0E1E5;border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;background:#fff}
-        .rb .lo-prev{margin-top:12px;border:1px solid #F4C0D1;background:#FBEAF0;color:#C71350;border-radius:10px;padding:8px 12px;font-size:12px}
+        .rb .lo-prev{margin-top:12px;border:1px solid #FFB3CC;background:#FFE9F0;color:#C71350;border-radius:10px;padding:8px 12px;font-size:12px}
         .rb .lo-link{background:none;border:0;color:#C71350;cursor:pointer;font:inherit;font-size:11px;text-decoration:underline}
       `}</style>
     </div>
@@ -1768,14 +1768,14 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simpl
 }
 
 const CSS = `
-.rb{--g:#FF2E63;--g2:#C71350;--g-50:#FCEEF3;--g-bd:#F4C0D1;--ink:#1f2a24;--mut:#6b746e;--bd:#e3e7e4;--bg:#f6f8f7;--red:#e24b4a;font-size:13px;color:var(--ink)}
+.rb{--g:#FF2E63;--g2:#C71350;--g-50:#FFE9F0;--g-bd:#FFB3CC;--ink:#18181A;--mut:#6B6D78;--bd:#E0E1E5;--bg:#fff;--red:#e24b4a;font-size:13px;color:var(--ink)}
 .rb .muted{color:var(--mut)} .rb .tiny{font-size:10.5px}
 .rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--bd);margin-bottom:14px;overflow:auto}
 .rb-tab{padding:12px 2px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
 .rb-tab.on{color:var(--g2);border-color:var(--g)}
 .rb-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px}
-.rb-card{border:1px solid var(--bd);border-radius:12px;background:#fff;padding:16px;margin-bottom:16px}
-.agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--g-bd);background:var(--g-50);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.rb-card{border:1px solid var(--bd);border-radius:16px;background:#fff;padding:16px;margin-bottom:16px}
+.agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--g-bd);background:var(--g-50);border-radius:16px;padding:12px 16px;margin-bottom:16px}
 .agebar-l{display:flex;flex-direction:column;gap:2px;min-width:220px}
 .agebar-t{font-weight:700;font-size:13.5px;color:var(--ink)}
 .agebar-s{font-size:11px;color:var(--mut)}
@@ -1784,11 +1784,11 @@ const CSS = `
 .agebar-seg button:hover{color:var(--ink)}
 .agebar-seg button.on{background:var(--ink);color:#fff}
 .agebar-seg button:focus-visible{outline:2px solid var(--g);outline-offset:2px}
-.rb-h{display:flex;align-items:center;gap:8px;color:var(--g2);font-weight:700;font-size:15px;margin-bottom:10px}
+.rb-h{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:700;font-size:15px;margin-bottom:10px}
 .rb table{width:100%;border-collapse:collapse}
-.rb th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;padding:8px 6px;border-bottom:1px solid var(--bd)}
+.rb th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px;border-bottom:1px solid var(--bd)}
 .rb th.r,.rb td.r{text-align:right} .rb .grn{color:var(--g2);font-weight:700}
-.rb td{padding:7px 6px;border-bottom:1px solid #f0f2f0;vertical-align:middle;font-size:12.5px}
+.rb td{padding:7px 6px;border-bottom:1px solid #F1F1F3;vertical-align:middle;font-size:12.5px}
 .rb input,.rb select{border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff}
 .rb input:focus,.rb select:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-50)}
 /* All compact table fields share the Waste field's width — equal, not wider. */

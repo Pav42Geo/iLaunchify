@@ -62,15 +62,15 @@ export function LabelViewerModal({
         }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid #E7E5E0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid #E0E1E5' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: '#111', lineHeight: 1.2 }}>Nutrition Facts — labels</div>
-            <div style={{ fontSize: 12.5, color: '#6B7280', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: '#18181A', lineHeight: 1.2 }}>Nutrition Facts — labels</div>
+            <div style={{ fontSize: 12.5, color: '#6B6D78', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {productName ? `${productName} · ` : ''}{columns.length} flavor{columns.length === 1 ? '' : 's'}
             </div>
           </div>
           {/* View toggle */}
-          <div style={{ marginLeft: 'auto', display: 'inline-flex', border: '1px solid #E7E5E0', borderRadius: 999, padding: 2, background: '#F7F6F3' }}>
+          <div style={{ marginLeft: 'auto', display: 'inline-flex', border: '1px solid #E0E1E5', borderRadius: 999, padding: 2, background: '#F7F6F3' }}>
             {(['compare', 'individual'] as const).map((v) => (
               <button
                 key={v}
@@ -78,19 +78,19 @@ export function LabelViewerModal({
                 onClick={() => setView(v)}
                 style={{
                   border: 0, cursor: 'pointer', borderRadius: 999, padding: '6px 14px', fontSize: 12.5, fontWeight: 600,
-                  background: view === v ? '#111' : 'transparent', color: view === v ? '#fff' : '#4B5563',
+                  background: view === v ? '#18181A' : 'transparent', color: view === v ? '#fff' : '#33343C',
                 }}
               >
                 {v === 'compare' ? 'Compare columns' : 'Individual labels'}
               </button>
             ))}
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 22, lineHeight: 1, color: '#6B7280', padding: '2px 6px' }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 22, lineHeight: 1, color: '#6B6D78', padding: '2px 6px' }}>×</button>
         </div>
 
         {/* Flavor chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '12px 20px', borderBottom: '1px solid #F0EEEA', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#9CA3AF', marginRight: 2 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '12px 20px', borderBottom: '1px solid #F1F1F3', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#6B6D78', marginRight: 2 }}>
             {view === 'compare' ? 'Columns' : 'Show'}
           </span>
           {columns.map((c, i) => {
@@ -103,24 +103,24 @@ export function LabelViewerModal({
                 aria-pressed={on}
                 style={{
                   cursor: 'pointer', borderRadius: 999, padding: '5px 12px', fontSize: 12.5, fontWeight: 600,
-                  border: on ? '1.5px solid #FF2E63' : '1px solid #D6D3CD',
-                  background: on ? '#FFF1F5' : '#fff', color: on ? '#C71350' : '#6B7280',
+                  border: on ? '1.5px solid #FF2E63' : '1px solid #CBCCD3',
+                  background: on ? '#FFE9F0' : '#fff', color: on ? '#C71350' : '#6B6D78',
                 }}
               >
                 {c.label || `Flavor ${i + 1}`}
               </button>
             )
           })}
-          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: '#9CA3AF' }}>{selected.length} selected</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: '#6B6D78' }}>{selected.length} selected</span>
         </div>
 
         {/* Body */}
-        <div style={{ overflow: 'auto', padding: 20, background: '#FAFAF8' }}>
+        <div style={{ overflow: 'auto', padding: 20, background: '#F8F8F9' }}>
           {view === 'compare' ? (
             <div style={{ overflowX: 'auto', display: 'grid', placeItems: 'start center', gap: 12 }}>
               <VarietyFactsSvg columns={selected} widthPx={Math.min(880, 200 + selected.length * 96)} />
               {netContents && (
-                <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.01em', color: '#111', textAlign: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.01em', color: '#18181A', textAlign: 'center' }}>
                   {netContents}
                 </div>
               )}
@@ -129,7 +129,7 @@ export function LabelViewerModal({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
               {selected.map((c, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#111' }}>{c.label || `Flavor ${i + 1}`}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#18181A' }}>{c.label || `Flavor ${i + 1}`}</div>
                   <NutritionFactsSvg data={c.data} widthPx={250} />
                 </div>
               ))}
@@ -138,7 +138,7 @@ export function LabelViewerModal({
         </div>
 
         {/* Footer note */}
-        <div style={{ padding: '10px 20px', borderTop: '1px solid #F0EEEA', fontSize: 11.5, color: '#9CA3AF' }}>
+        <div style={{ padding: '10px 20px', borderTop: '1px solid #F1F1F3', fontSize: 11.5, color: '#6B6D78' }}>
           {view === 'compare'
             ? 'Aggregate multi-column panel for the outer carton (21 CFR 101.9(d)(13)). Each unit still carries its own single-flavor label.'
             : 'Each flavor’s own single-column Nutrition Facts — what prints on the individual unit.'}
