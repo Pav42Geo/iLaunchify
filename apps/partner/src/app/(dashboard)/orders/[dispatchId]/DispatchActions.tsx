@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import {
   acceptDispatch,
   declineDispatch,
+  proposeDispatchDelay,
   markProducing,
   enterQualityCheck,
   failQualityCheck,
@@ -325,9 +326,31 @@ function AcceptDeclinePanel({
   const [busy, setBusy] = useState(false)
   const [declineReason, setDeclineReason] = useState('AT_CAPACITY')
   const [declineNotes, setDeclineNotes] = useState('')
-  const [mode, setMode] = useState<'default' | 'decline' | 'changes'>('default')
+  const [mode, setMode] = useState<'default' | 'decline' | 'changes' | 'delay'>('default')
+  const [proposedDate, setProposedDate] = useState('')
+  const [delayReason, setDelayReason] = useState('')
   const showDecline = mode === 'decline'
   const showChanges = mode === 'changes'
+  const showDelay = mode === 'delay'
+
+  async function handleProposeDelay() {
+    if (!proposedDate) {
+      toast.error('Pick a proposed delivery date.')
+      return
+    }
+    setBusy(true)
+    try {
+      const r = await proposeDispatchDelay({ dispatchId, proposedDeadlineAt: proposedDate, reason: delayReason.trim() || undefined })
+      if (!r.ok) {
+        toast.error(r.error ?? 'Failed')
+        return
+      }
+      toast.success('Proposed — waiting for the creator to approve the new date.')
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleAccept() {
     setBusy(true)
@@ -390,6 +413,14 @@ function AcceptDeclinePanel({
             </Button>
             <Button
               variant="ghost"
+              className="w-full"
+              onClick={() => setMode('delay')}
+              disabled={busy}
+            >
+              Can make it, but need more time
+            </Button>
+            <Button
+              variant="ghost"
               className="w-full text-red-600 hover:text-red-700"
               onClick={() => setMode('decline')}
               disabled={busy}
@@ -397,6 +428,31 @@ function AcceptDeclinePanel({
               Decline
             </Button>
           </>
+        )}
+        {showDelay && (
+          <div className="space-y-3">
+            <p className="text-xs text-ink-500">
+              Propose a later delivery date you CAN hit. The order stays yours — the creator
+              approves the new date (and the order proceeds) or declines (and it&apos;s cancelled
+              + refunded). The accept window won&apos;t time out while they decide.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="proposedDate">Proposed delivery date *</Label>
+              <Input id="proposedDate" type="date" value={proposedDate} onChange={(e) => setProposedDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="delayReason">Note to creator (optional)</Label>
+              <Input id="delayReason" value={delayReason} onChange={(e) => setDelayReason(e.target.value)} placeholder="e.g. current run finishes next week" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setMode('default')} disabled={busy}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleProposeDelay} disabled={busy || !proposedDate}>
+                Send proposed date
+              </Button>
+            </div>
+          </div>
         )}
         {showDecline && (
           <div className="space-y-3">

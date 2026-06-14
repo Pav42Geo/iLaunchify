@@ -39,6 +39,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { AdjustOrderButton } from './AdjustOrderButton'
+import { DelayApprovalPrompt } from './DelayApprovalPrompt'
 
 export const dynamic = 'force-dynamic'
 
@@ -274,31 +275,38 @@ export default async function OrderDetailPage({
               finds your partners.
             </div>
           ) : (
-            order.dispatches.map((d) => (
-              <DispatchCard
-                key={d.id}
-                dispatch={{
-                  id: d.id,
-                  type: d.type,
-                  status: d.status as DispatchStatusKey,
-                  costCents: d.costCents,
-                  acceptDeadlineAt: d.acceptDeadlineAt,
-                  acceptedAt: d.acceptedAt,
-                  productionStartedAt: d.productionStartedAt,
-                  qualityCheckStartedAt: d.qualityCheckStartedAt,
-                  qualityCheckFailedAt: d.qualityCheckFailedAt,
-                  qualityCheckFailureNotes: d.qualityCheckFailureNotes,
-                  readyAt: d.readyAt,
-                  shippedAt: d.shippedAt,
-                  inTransitAt: d.inTransitAt,
-                  deliveredAt: d.deliveredAt,
-                  trackingCarrier: d.trackingCarrier,
-                  trackingNumber: d.trackingNumber,
-                  serviceType: d.partnerService.type,
-                  partnerName: d.partnerService.partner.companyName,
-                }}
-              />
-            ))
+            order.dispatches.map((d) => {
+              // Delay-accept proposal fields ship with a pending migration — cast.
+              const dd = d as unknown as { proposedDeadlineAt: Date | null; delayProposedAt: Date | null; delayReason: string | null }
+              return (
+                <DispatchCard
+                  key={d.id}
+                  dispatch={{
+                    id: d.id,
+                    type: d.type,
+                    status: d.status as DispatchStatusKey,
+                    costCents: d.costCents,
+                    acceptDeadlineAt: d.acceptDeadlineAt,
+                    acceptedAt: d.acceptedAt,
+                    productionStartedAt: d.productionStartedAt,
+                    qualityCheckStartedAt: d.qualityCheckStartedAt,
+                    qualityCheckFailedAt: d.qualityCheckFailedAt,
+                    qualityCheckFailureNotes: d.qualityCheckFailureNotes,
+                    readyAt: d.readyAt,
+                    shippedAt: d.shippedAt,
+                    inTransitAt: d.inTransitAt,
+                    deliveredAt: d.deliveredAt,
+                    trackingCarrier: d.trackingCarrier,
+                    trackingNumber: d.trackingNumber,
+                    serviceType: d.partnerService.type,
+                    partnerName: d.partnerService.partner.companyName,
+                    pendingDelay: dd.delayProposedAt != null && d.status === 'PENDING_ACCEPT',
+                    proposedDeadlineAt: dd.proposedDeadlineAt,
+                    delayReason: dd.delayReason,
+                  }}
+                />
+              )
+            })
           )}
         </section>
 
@@ -424,6 +432,10 @@ interface DispatchView {
   trackingNumber: string | null
   serviceType: string
   partnerName: string
+  // Delay-accept (§7): the maker proposed a later delivery date awaiting the creator.
+  pendingDelay: boolean
+  proposedDeadlineAt: Date | null
+  delayReason: string | null
 }
 
 function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
@@ -491,7 +503,13 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           <p className="mt-0.5 truncate text-[14px] font-semibold text-ink-900">
             {d.partnerName}
           </p>
-          {isPending && (
+          {isPending && d.pendingDelay && d.proposedDeadlineAt ? (
+            <DelayApprovalPrompt
+              dispatchId={d.id}
+              proposedDeadlineAt={d.proposedDeadlineAt.toISOString()}
+              delayReason={d.delayReason}
+            />
+          ) : isPending ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-ink-600">
               <Clock className="h-3 w-3 text-amber-700" aria-hidden="true" />
               Decision needed by{' '}
@@ -503,7 +521,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
                 minute: '2-digit',
               })}
             </p>
-          )}
+          ) : null}
           {isAccepted && <DispatchTimeline dispatch={d} />}
           {isFailure && (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-red-700">
