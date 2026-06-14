@@ -2174,6 +2174,14 @@ model OrderDispatch {
   declinedAt               DateTime?
   declineReason            DispatchDeclineReason?
   declineNotes             String?
+  // Delay-accept (docs/ROUTING_BINDING_MODEL.md §7, 2026-06-14). A partner who CAN
+  // make the order but not by the quoted date proposes a later delivery date; the
+  // creator approves (order proceeds on the revised date) or rejects (→ cancel +
+  // refund). While a proposal is pending, status stays PENDING_ACCEPT but the row is
+  // EXCLUDED from auto-cancel (it's awaiting the creator, not the partner).
+  proposedDeadlineAt       DateTime? // revised delivery date the partner proposes
+  delayReason              String? // partner's note on why the delay
+  delayProposedAt          DateTime? // when the partner proposed it (non-null = pending)
   rerouteCount             Int                    @default(0)
   // Per-state timestamps for the partner workflow (B6).
   // Useful for SLA tracking + audit + partner self-service analytics.

@@ -155,6 +155,50 @@ export async function declineDispatch({
   return { ok: true }
 }
 
+/**
+ * Delay-accept (docs/ROUTING_BINDING_MODEL.md §7). The partner CAN make the order
+ * but not by the quoted date — they propose a later delivery date instead of
+ * declining. Status stays PENDING_ACCEPT (still not finally accepted) but carries
+ * the proposal; auto-cancel SKIPS rows with a pending proposal. The creator then
+ * approves (→ ACCEPTED on the revised date) or rejects (→ cancel + refund), handled
+ * creator-side. Cast-guarded — proposal columns ship with a pending migration.
+ */
+export async function proposeDispatchDelay({
+  dispatchId,
+  proposedDeadlineAt,
+  reason,
+}: {
+  dispatchId: string
+  proposedDeadlineAt: string | Date
+  reason?: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const dispatch = await loadOwnedDispatch(user.id, dispatchId)
+  if (!dispatch) return { ok: false, error: 'Dispatch not found' }
+  if (dispatch.status !== 'PENDING_ACCEPT') {
+    return { ok: false, error: `Cannot propose a delay from ${dispatch.status}` }
+  }
+  const revised = new Date(proposedDeadlineAt)
+  if (Number.isNaN(revised.getTime())) return { ok: false, error: 'Invalid proposed date.' }
+  if (revised.getTime() <= Date.now()) return { ok: false, error: 'The proposed date must be in the future.' }
+
+  await (prisma as unknown as { orderDispatch: { update: (a: unknown) => Promise<unknown> } }).orderDispatch.update({
+    where: { id: dispatch.id },
+    data: { proposedDeadlineAt: revised, delayReason: reason ?? null, delayProposedAt: new Date() },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'OrderDispatch',
+    entityId: dispatch.id,
+    action: 'DISPATCH_DELAY_PROPOSED',
+    payload: { orderId: dispatch.orderId, type: dispatch.type, proposedDeadlineAt: revised.toISOString(), reason: reason ?? null },
+  })
+
+  revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}
+
 export async function markProducing({ dispatchId }: { dispatchId: string }): Promise<Result> {
   const user = await requireUser()
   const dispatch = await loadOwnedDispatch(user.id, dispatchId)

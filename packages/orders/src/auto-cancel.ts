@@ -27,10 +27,19 @@ export interface AutoCancelResult {
 
 export async function runAutoCancel(): Promise<AutoCancelResult> {
   const now = new Date()
-  const candidates = await prisma.orderDispatch.findMany({
+  // `delayProposedAt: null` excludes dispatches awaiting a creator decision on a
+  // partner-proposed delivery delay (docs/ROUTING_BINDING_MODEL.md §7) — those are
+  // waiting on the creator, not the partner, so they must not auto-cancel. Cast-
+  // guarded: the proposal columns ship with a pending migration.
+  const candidates = await (prisma as unknown as {
+    orderDispatch: {
+      findMany: (a: unknown) => Promise<Array<{ id: string; orderId: string; type: string; acceptDeadlineAt: Date | null; partnerServiceId: string }>>
+    }
+  }).orderDispatch.findMany({
     where: {
       status: 'PENDING_ACCEPT',
       acceptDeadlineAt: { lt: now },
+      delayProposedAt: null,
     },
     select: { id: true, orderId: true, type: true, acceptDeadlineAt: true, partnerServiceId: true },
     take: 200, // safety cap; if there's ever a backlog larger than this, alert
