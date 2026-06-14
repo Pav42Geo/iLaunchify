@@ -1170,6 +1170,34 @@ export async function loadPackaging(productTemplateId: string): Promise<string[]
   }
 }
 
+/**
+ * True once the draft has any authored recipe rows (ingredient slots). Drives the
+ * lock-after-recipe guard on the Step-2 product-type chooser: changing flavorMode
+ * / pack structure after a recipe exists would invalidate it. Callers only ever
+ * flip the lock ON (monotonic). Cast-guarded to stay green regardless of the
+ * generated client state on a given machine.
+ */
+export async function hasRecipeRows(productTemplateId: string): Promise<boolean> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return false
+    const tpl = await (prisma as unknown as {
+      productTemplate: {
+        findUnique: (a: unknown) => Promise<{ manufacturerServiceId: string | null; ingredientSlots: Array<{ id: string }> } | null>
+      }
+    }).productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true, ingredientSlots: { select: { id: true }, take: 1 } },
+    })
+    if (!tpl) return false
+    if (tpl.manufacturerServiceId && !partner.services.map((s) => s.id).includes(tpl.manufacturerServiceId)) return false
+    return tpl.ingredientSlots.length > 0
+  } catch (err) {
+    console.error('[hasRecipeRows] failed:', err)
+    return false
+  }
+}
+
 export interface AllergenOverride { allergen: string; action: 'ADD' | 'REMOVE'; reason: string }
 export interface AllergenData { autoDerived: string[]; manualOverrides: AllergenOverride[]; crossContamination: string }
 

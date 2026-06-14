@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import { Menu, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { createDraftShell, saveOptionAxes, type InitialDraft } from './build-actions'
+import { createDraftShell, saveOptionAxes, hasRecipeRows, type InitialDraft } from './build-actions'
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
@@ -116,6 +116,16 @@ export function GuidedBuilder({
   const [profile, setProfile] = useState<PackingProfileOption | null>(
     initial?.packingProfileId ? (packingProfiles.find((p) => p.id === initial.packingProfileId) ?? null) : null,
   )
+  // Lock-after-recipe (#38): the product type is the structural choice (one recipe
+  // vs base + flavor presets, label columns, pack composition). Once a recipe is
+  // authored, changing it would invalidate that recipe — so we lock the chooser.
+  // Seeded from the resumed draft; re-checked against persisted recipe rows on
+  // entering Step 2. Monotonic — only ever flips ON.
+  const [recipeLocked, setRecipeLocked] = useState<boolean>((initial?.recipeSlots?.length ?? 0) > 0)
+  useEffect(() => {
+    if (recipeLocked || !draftId) return
+    void hasRecipeRows(draftId).then((has) => { if (has) setRecipeLocked(true) })
+  }, [draftId, cur, recipeLocked])
   // Shared flavor list — defined in Variants & packs, carried into Recipe so
   // each flavor becomes its own recipe column. One source of truth.
   const [flavors, setFlavors] = useState<Flavor[]>(
@@ -367,6 +377,7 @@ export function GuidedBuilder({
                 draftId={draftId}
                 selected={profile}
                 onSelect={setProfile}
+                locked={recipeLocked}
                 flavors={flavors}
                 onFlavors={setFlavors}
                 axes={axes}

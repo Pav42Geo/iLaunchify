@@ -76,7 +76,7 @@ export function computePackSplits(capacity: number, minPerFlavor: number, evenOn
 }
 
 export function VariantsPacksStep({
-  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial,
+  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial, locked = false,
 }: {
   packingProfiles: PackingProfileOption[]
   facilities: FacilityOption[]
@@ -89,11 +89,15 @@ export function VariantsPacksStep({
   axes: OptionAxisUI[]
   onAxes: (a: OptionAxisUI[]) => void
   initial?: InitialDraft | null
+  /** Lock-after-recipe (#38): once a recipe is authored the structural type is
+   *  fixed — disable changing it. The rest of the step stays editable. */
+  locked?: boolean
 }) {
   const [, start] = useTransition()
   const [open, setOpen] = useState(false)
 
   function choose(p: PackingProfileOption) {
+    if (locked) return
     onSelect(p)
     setOpen(false)
     if (draftId) {
@@ -120,8 +124,11 @@ export function VariantsPacksStep({
 
       {/* Product type — space-saving dropdown that opens grouped cards */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title"><span className="ic">▦</span> Product type</div>
-        <button type="button" className="pt-trigger" data-open={open ? 'on' : undefined} onClick={() => setOpen((v) => !v)} style={{ marginTop: 10 }}>
+        <div className="section-title">
+          <span className="ic">▦</span> Product type
+          {locked && <span className="pill" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 10 }}>🔒 locked</span>}
+        </div>
+        <button type="button" className="pt-trigger" data-open={open ? 'on' : undefined} disabled={locked} aria-disabled={locked} onClick={() => { if (!locked) setOpen((v) => !v) }} style={{ marginTop: 10, ...(locked ? { cursor: 'not-allowed', opacity: 0.75 } : null) }}>
           {selected ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <b style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selected.name}</b>
@@ -167,6 +174,11 @@ export function VariantsPacksStep({
               })}
             </div>
             {packingProfiles.length === 0 && <p className="tiny muted" style={{ marginTop: 10 }}>No packing types seeded yet — run the DB seed.</p>}
+          </div>
+        )}
+        {locked && (
+          <div className="note grey" style={{ marginTop: 10 }}>
+            🔒 The product type is locked because a recipe has been started — changing it would reshape the recipe and label. To use a different type, start a new product.
           </div>
         )}
       </div>
