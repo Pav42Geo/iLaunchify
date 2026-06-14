@@ -8,7 +8,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { toast } from 'sonner'
 import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
-import { NutritionFactsSvg, VarietyFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
+import { NutritionFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
@@ -395,8 +395,6 @@ export function RecipeBuilderStep({
   const [, startPick] = useTransition()
   // Which flavor's Facts label is shown in the tabbed preview (one per view).
   const [activeFlavor, setActiveFlavor] = useState(0)
-  // Variety-pack (outer-box) Nutrition Display mode (21 CFR 101.9(d)(13)).
-  const [packView, setPackView] = useState<'MULTI' | 'SIDE' | 'SINGLE'>('MULTI')
   // Full-screen label viewer modal (compare flavors + aggregate columns).
   const [labelViewerOpen, setLabelViewerOpen] = useState(false)
   // Add a flavor-only overlay line (its own child mini-recipe row). The line
@@ -1142,9 +1140,15 @@ export function RecipeBuilderStep({
 
         {/* RIGHT — live label */}
         <div>
-          <div className="seg" style={{ marginBottom: 10 }}>
-            <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
-            <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div className="seg">
+              <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
+              <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
+            </div>
+            {/* Only products with multiple label previews (≥2 flavors with data). */}
+            {varietyCols.length >= 2 && (
+              <button type="button" className="rb-btn o sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
+            )}
           </div>
           {flavorMode === 'MULTI' && flavors.length > 0 && (
             <div className="tiny muted" style={{ marginBottom: 8 }}>
@@ -1172,36 +1176,7 @@ export function RecipeBuilderStep({
                     </div>
                   )}
                   <div className="netwt">NET WT {formatNetWeight(result.geometry.netWeightG).toUpperCase()}</div>
-                  <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor (shown per tab; all print individually).</p>
-
-                  {flavorsWithData.length >= 2 && (
-                    <div className="varietypack">
-                      <div className="vp-h" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span>Variety pack label <span className="tiny">· outer box · {flavorsWithData.length} flavors</span></span>
-                        <button type="button" className="rb-btn o sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
-                      </div>
-                      <div className="seg sm" style={{ marginBottom: 8 }}>
-                        <button type="button" className={packView === 'MULTI' ? 'on' : ''} onClick={() => setPackView('MULTI')}>Multi-column</button>
-                        <button type="button" className={packView === 'SIDE' ? 'on' : ''} onClick={() => setPackView('SIDE')}>Side-by-side</button>
-                        <button type="button" className={packView === 'SINGLE' ? 'on' : ''} onClick={() => setPackView('SINGLE')}>Single</button>
-                      </div>
-                      {packView === 'MULTI' ? (
-                        <div style={{ overflowX: 'auto' }}><VarietyFactsSvg columns={varietyCols} widthPx={Math.min(680, 158 + varietyCols.length * 92)} /></div>
-                      ) : packView === 'SIDE' ? (
-                        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                          {flavorsWithData.map((fl, i) => {
-                            const r = flavorResult(fl)
-                            return r ? <FactsPanel key={i} result={r} ps={r.perServing} title={fl.name || `Flavor ${i + 1}`} narrow format={panelFormat} /> : null
-                          })}
-                        </div>
-                      ) : (() => {
-                        const f0 = flavorsWithData[0]!
-                        const r0 = flavorResult(f0)
-                        return r0 ? <FactsPanel result={r0} ps={r0.perServing} title={f0.name || 'Flavor 1'} format={panelFormat} /> : null
-                      })()}
-                      <p className="makes">Aggregate panel for the outer carton (21 CFR 101.9(d)(13)). Each unit still carries its own single-flavor label. Moves into Packaging → Variety Pack Label when that studio ships.</p>
-                    </div>
-                  )}
+                  <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor.{varietyCols.length >= 2 ? ' Use “View all labels” to compare them and see the variety-pack aggregate.' : ''}</p>
                 </>
               )
             })() : (
