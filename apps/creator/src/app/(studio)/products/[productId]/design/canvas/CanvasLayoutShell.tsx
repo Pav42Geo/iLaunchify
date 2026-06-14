@@ -74,6 +74,7 @@ import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
 import { MockupModal } from './MockupModal'
 import { ExportModal } from './ExportModal'
+import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport } from './actions'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
@@ -610,6 +611,7 @@ export function CanvasLayoutShell({
           setExportOpen((v) => !v)
         }}
         exportLocked={isMakerLocked}
+        canDownloadLabels={!isMakerLocked}
       />
 
       {/* Restricted-category banner (labeling ≠ licensing) — the product trips
@@ -857,6 +859,7 @@ function TopBar({
   exportOpen,
   onToggleExport,
   exportLocked,
+  canDownloadLabels,
 }: {
   productName: string
   brandName: string
@@ -877,10 +880,13 @@ function TopBar({
   /** DS-73d — true when the creator's tier blocks export. Renders a
       lock cue but keeps the click-to-upgrade behaviour. */
   exportLocked: boolean
+  /** Builder+ — show the compliance-label download (hidden for Maker). */
+  canDownloadLabels: boolean
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
       <div className="flex items-center gap-4">
+        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">
             iL

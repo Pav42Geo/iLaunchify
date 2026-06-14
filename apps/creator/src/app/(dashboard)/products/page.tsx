@@ -18,7 +18,6 @@
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, hasTier } from '@ilaunchify/auth'
-import { LabelDownloadButton } from './[productId]/LabelDownloadButton'
 import {
   Package,
   Coffee,
@@ -699,8 +698,7 @@ function ProductCard({ row: r, canDownloadLabels }: { row: Row; canDownloadLabel
           >
             Open in Studio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
-          {canDownloadLabels && <LabelDownloadButton productId={r.id} productName={r.name} />}
-          <ProductRowActions id={r.id} name={r.name} hasDraft={!!r.draft} />
+          <ProductRowActions id={r.id} name={r.name} hasDraft={!!r.draft} canDownloadLabels={canDownloadLabels} />
         </div>
       </div>
     </article>
