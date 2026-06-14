@@ -17,7 +17,8 @@
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, hasTier } from '@ilaunchify/auth'
+import { LabelDownloadButton } from './[productId]/LabelDownloadButton'
 import {
   Package,
   Coffee,
@@ -194,6 +195,9 @@ export default async function ProductsListPage({
   searchParams: Promise<{ tab?: string; view?: string }>
 }) {
   const user = await requireUser()
+  // Builder+ gate for the compliance-label download (Maker excluded). The button
+  // is simply not rendered below for Maker; the server action is the hard gate.
+  const canDownloadLabels = hasTier(await getCreatorTier(user.id), 'builder')
   const sp = await searchParams
   const activeTab: TabKey = TABS.some((t) => t.key === sp.tab)
     ? (sp.tab as TabKey)
@@ -366,7 +370,7 @@ export default async function ProductsListPage({
       ) : (
         <div className="space-y-3">
           {visible.map((r) => (
-            <ProductCard key={r.id} row={r} />
+            <ProductCard key={r.id} row={r} canDownloadLabels={canDownloadLabels} />
           ))}
         </div>
       )}
@@ -582,7 +586,7 @@ function ProductTable({ rows }: { rows: Row[] }) {
   )
 }
 
-function ProductCard({ row: r }: { row: Row }) {
+function ProductCard({ row: r, canDownloadLabels }: { row: Row; canDownloadLabels?: boolean }) {
   const palette = STATUS[r.status]
   const recipeOutcome = r.recipe?.complianceChecks[0]?.outcome ?? null
   const recipeBadge = RECIPE_BADGE[recipeOutcome ?? 'NONE'] ?? RECIPE_BADGE.NONE
@@ -695,6 +699,7 @@ function ProductCard({ row: r }: { row: Row }) {
           >
             Open in Studio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
+          {canDownloadLabels && <LabelDownloadButton productId={r.id} productName={r.name} />}
           <ProductRowActions id={r.id} name={r.name} hasDraft={!!r.draft} />
         </div>
       </div>
