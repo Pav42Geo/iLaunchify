@@ -453,8 +453,34 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
  *  returns id/name/density). Feeds the live FDA-label engine in the recipe step. */
 export async function getIngredientNutrition(
   id: string,
-): Promise<Result<{ name: string; per100g: Record<string, number>; densityGPerMl: number | null; allergens: string[] }>> {
+): Promise<Result<{ id: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; allergens: string[] }>> {
   try {
+    // Live USDA pick (`fdc:<id>`): materialize the FDC food into a real Ingredient
+    // row (HYBRID snapshot, upsert by usdaFdcId) and return its REAL id so the
+    // recipe slot / flavor extra references a persisted FK, not the synthetic id.
+    if (id.startsWith('fdc:')) {
+      const fdcId = Number(id.slice(4))
+      if (!Number.isFinite(fdcId)) return { ok: false, error: 'Bad ingredient id.' }
+      const food = await fetchUsdaFood(fdcId)
+      if (!food) {
+        // API down/unkeyed but the row may already be mirrored — try that.
+        const mirror = await prisma.ingredient.findUnique({ where: { usdaFdcId: String(fdcId) }, select: { id: true, internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } })
+        if (!mirror) return { ok: false, error: 'USDA ingredient is temporarily unavailable.' }
+        return { ok: true, data: { id: mirror.id, name: mirror.internalName ?? mirror.name, per100g: (mirror.nutritionPer100g ?? {}) as Record<string, number>, densityGPerMl: mirror.densityGPerML, allergens: mirror.allergenFlags ?? [] } }
+      }
+      const row = await prisma.ingredient.upsert({
+        where: { usdaFdcId: String(fdcId) },
+        update: {},
+        create: {
+          name: food.description, internalName: food.description, labelDeclarationName: food.description,
+          nutritionPer100g: food.per100g, source: 'USDA', usdaFdcId: String(fdcId), sourceRefId: String(fdcId),
+          verificationStatus: 'LIBRARY_PROMOTED', allergens: [], allergenFlags: [],
+        },
+        select: { id: true, internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
+      })
+      return { ok: true, data: { id: row.id, name: row.internalName ?? row.name, per100g: (row.nutritionPer100g ?? {}) as Record<string, number>, densityGPerMl: row.densityGPerML, allergens: row.allergenFlags ?? [] } }
+    }
+
     const ing = await prisma.ingredient.findUnique({
       where: { id },
       select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
@@ -463,6 +489,7 @@ export async function getIngredientNutrition(
     return {
       ok: true,
       data: {
+        id,
         name: ing.internalName ?? ing.name,
         per100g: (ing.nutritionPer100g ?? {}) as Record<string, number>,
         densityGPerMl: ing.densityGPerML,
@@ -473,6 +500,8 @@ export async function getIngredientNutrition(
     return { ok: false, error: `Could not load ingredient: ${(err as Error).message}` }
   }
 }
+
+import { fetchUsdaFood } from '../[id]/edit/usda-fdc'
 
 export interface SlotInput { ingredientId: string; weightG: number; displayOrder: number; costPerKgCents?: number | null }
 

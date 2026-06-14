@@ -29,7 +29,10 @@ export interface IngredientSourceConfigValues {
 /** Sensible defaults per source (used until an admin row overrides them). */
 export const INGREDIENT_SOURCE_DEFAULTS: Record<IngredientSource, IngredientSourceConfigValues> = {
   USDA: {
-    source: 'USDA', mode: 'MIRROR', failoverToDb: true, enabled: true,
+    // HYBRID by default: live FDC search/discovery + a DB snapshot on pick, with
+    // auto-failover to the mirror when the API is unreachable/unkeyed — safe out
+    // of the box, and lights up the moment USDA_FDC_API_KEY is set.
+    source: 'USDA', mode: 'HYBRID', failoverToDb: true, enabled: true,
     apiBaseUrl: 'https://api.nal.usda.gov/fdc/v1/', rateLimitPerMin: 60, syncCron: null,
     lastSyncedAt: null, rowCount: 0, labelingTypes: ['FOOD'], notes: null,
   },

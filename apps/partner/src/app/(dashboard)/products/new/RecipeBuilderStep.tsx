@@ -410,7 +410,9 @@ export function RecipeBuilderStep({
       const res = await getIngredientNutrition(picked.id).catch(() => undefined)
       const ok = res != null && res.ok
       const line: FlavorLine = {
-        ingId: picked.id, name: picked.internalName, qty: 0, unit: 'g',
+        // For a live USDA pick the action materializes a real row and returns its
+        // REAL id — use it so the flavor extra persists against a true FK.
+        ingId: ok ? res.data.id : picked.id, name: picked.internalName, qty: 0, unit: 'g',
         per100g: ok ? res.data.per100g : {},
         densityGPerMl: ok ? res.data.densityGPerMl : picked.densityGPerML,
       }
@@ -513,10 +515,12 @@ export function RecipeBuilderStep({
       return
     }
     startPick(async () => {
-      const res = await getIngredientNutrition(picked.id)
+      const res = await getIngredientNutrition(picked.id).catch(() => undefined)
+      const ok = res != null && res.ok
       setRows((rs) => [...rs, {
-        uid: uid(), ingId: picked.id, qty: 0, unit: 'g', waste: 0, category: addCat, selected: addCat === 'base',
-        name: picked.internalName, per100g: res.ok ? res.data.per100g : {}, densityGPerMl: res.ok ? res.data.densityGPerMl : picked.densityGPerML,
+        // Live USDA pick → use the materialized real id so the slot persists.
+        uid: uid(), ingId: ok ? res.data.id : picked.id, qty: 0, unit: 'g', waste: 0, category: addCat, selected: addCat === 'base',
+        name: picked.internalName, per100g: ok ? res.data.per100g : {}, densityGPerMl: ok ? res.data.densityGPerMl : picked.densityGPerML,
       }])
     })
   }
@@ -975,6 +979,71 @@ export function RecipeBuilderStep({
             </div>
           )}
 
+          {/* Flavor variants — tabs per flavor; each flavor's own flavored
+              ingredients overlay the shared base recipe. Drives the per-flavor
+              label shown in the live preview on the right. */}
+          {flavorMode === 'MULTI' && (
+            <div className="rb-card">
+              <div className="rb-h">❀ Flavor variants ({flavors.length}) <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· flavored ingredients per flavor, on top of the base · ≤{maxColumns}-column label</span></div>
+              <div className="flavtabs" role="tablist" aria-label="Flavors">
+                {flavors.map((f, i) => (
+                  <button key={i} type="button" role="tab" aria-selected={activeFlavor === i} className={`flavtab${activeFlavor === i ? ' on' : ''}`} onClick={() => setActiveFlavor(i)}>
+                    {f.name || `Flavor ${i + 1}`}
+                  </button>
+                ))}
+                {flavors.length < maxColumns && (
+                  <button type="button" className="flavtab add" aria-label="Add flavor" onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]); setActiveFlavor(flavors.length) }}>+ Flavor</button>
+                )}
+              </div>
+              {flavors.length === 0 ? (
+                <p className="muted tiny" style={{ marginTop: 8 }}>Add a flavor to start — each flavor overlays the shared base recipe with its own ingredients.</p>
+              ) : (() => {
+                const idx = Math.min(activeFlavor, flavors.length - 1)
+                const f = flavors[idx]!
+                const lines = f.lines ?? []
+                const overlayG = flavorOverlayGrams(f)
+                return (
+                  <>
+                    <div className="flavedit" style={{ marginTop: 10 }}>
+                      <input className="flavname" value={f.name} onChange={(e) => setFlavors(flavors.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)))} placeholder={`Flavor ${idx + 1}`} aria-label="Flavor name" />
+                      {flavors.length > 1 && <button type="button" className="rb-btn o sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>}
+                    </div>
+                    {lines.length > 0 ? (
+                      <table style={{ marginTop: 10 }}>
+                        <thead><tr><th style={{ width: '99%' }}>Flavor ingredient</th><th className="r">Qty</th><th className="r">Unit</th><th className="r">Grams</th><th /></tr></thead>
+                        <tbody>
+                          {lines.map((l, li) => {
+                            const showVol = l.densityGPerMl != null || VOLUME_UNITS.has(l.unit)
+                            const grams = toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined })
+                            return (
+                              <tr key={li}>
+                                <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
+                                <td className="r"><input className="num" type="number" min={0} value={l.qty || ''} onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} aria-label={`${l.name} amount`} /></td>
+                                <td className="r">
+                                  <select className="num" value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
+                                    {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
+                                  </select>
+                                </td>
+                                <td className="r">{grams ? grams.toFixed(1) : '—'}</td>
+                                <td className="r"><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="tiny muted" style={{ margin: '10px 0 6px' }}>No flavor-specific ingredients yet. Add the flavor system, color, sweetener, etc. — each with its own amount.</p>
+                    )}
+                    <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 240px' }}><IngredientPicker onPick={(p) => addFlavorLine(idx, p)} placeholder={`Add an ingredient for “${f.name || 'this flavor'}”…`} /></div>
+                      {overlayG > 0 && <span className="tiny muted">This flavor adds {Math.round(overlayG * 10) / 10} g on top of the base.</span>}
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
           {/* Add Ingredients */}
           <div className="rb-card">
             <div className="rb-h" style={{ justifyContent: 'space-between' }}>
@@ -1078,29 +1147,8 @@ export function RecipeBuilderStep({
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
           </div>
           {flavorMode === 'MULTI' && flavors.length > 0 && (
-            <div className="flavtabs" role="tablist" aria-label="Flavors">
-              {flavors.map((f, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeFlavor === i}
-                  className={`flavtab${activeFlavor === i ? ' on' : ''}`}
-                  onClick={() => setActiveFlavor(i)}
-                >
-                  {f.name || `Flavor ${i + 1}`}
-                </button>
-              ))}
-              {flavors.length < maxColumns && (
-                <button
-                  type="button"
-                  className="flavtab add"
-                  aria-label="Add flavor"
-                  onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]); setActiveFlavor(flavors.length) }}
-                >
-                  + Flavor
-                </button>
-              )}
+            <div className="tiny muted" style={{ marginBottom: 8 }}>
+              Previewing <b style={{ color: 'var(--ink)' }}>{flavors[Math.min(activeFlavor, flavors.length - 1)]?.name || `Flavor ${Math.min(activeFlavor, flavors.length - 1) + 1}`}</b> · switch flavors in the <b>Flavor variants</b> card on the left
             </div>
           )}
           {noFactsPanel ? (
@@ -1112,57 +1160,9 @@ export function RecipeBuilderStep({
               const idx = Math.min(activeFlavor, flavors.length - 1)
               const f = flavors[idx]!
               const fr = flavorResult(f)
-              const lines = f.lines ?? []
               const overlayG = flavorOverlayGrams(f)
               return (
                 <>
-                  <div className="flavedit">
-                    <input
-                      className="flavname"
-                      value={f.name}
-                      onChange={(e) => setFlavors(flavors.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)))}
-                      placeholder={`Flavor ${idx + 1}`}
-                      aria-label="Flavor name"
-                    />
-                    {flavors.length > 1 && (
-                      <button type="button" className="rb-btn o sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>
-                    )}
-                  </div>
-                  <div className="flavbuilder">
-                    <div className="flavbuilder-h">
-                      <span>Flavor ingredients <span className="tiny">— added on top of the shared base</span></span>
-                      {overlayG > 0 && <span className="tiny">Flavor adds {Math.round(overlayG * 10) / 10} g</span>}
-                    </div>
-                    {lines.length > 0 ? (
-                      <table>
-                        <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r">Qty</th><th className="r">Unit</th><th className="r">Grams</th><th /></tr></thead>
-                        <tbody>
-                          {lines.map((l, li) => {
-                            const showVol = l.densityGPerMl != null || VOLUME_UNITS.has(l.unit)
-                            const grams = toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined })
-                            return (
-                              <tr key={li}>
-                                <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
-                                <td className="r"><input className="num" type="number" min={0} value={l.qty || ''} onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} aria-label={`${l.name} amount`} /></td>
-                                <td className="r">
-                                  <select className="num" value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
-                                    {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
-                                  </select>
-                                </td>
-                                <td className="r">{grams ? grams.toFixed(1) : '—'}</td>
-                                <td className="r"><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p className="tiny" style={{ margin: '6px 0' }}>No flavor-specific ingredients yet. Add the flavor system, color, sweetener, etc. — each with its own amount.</p>
-                    )}
-                    <div style={{ marginTop: 6 }}>
-                      <IngredientPicker onPick={(p) => addFlavorLine(idx, p)} placeholder={`Add an ingredient for “${f.name || 'this flavor'}”…`} />
-                    </div>
-                  </div>
                   {fr && overlayG > 0 ? (
                     <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} />
                   ) : (

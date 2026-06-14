@@ -16,6 +16,7 @@
 // products with them (per the "operational trust > margin optimization" memo).
 
 import { prisma, isIngredientBanned } from '@ilaunchify/db'
+import { searchUsdaFoods, usdaLiveMode } from './usda-fdc'
 import { requirePartnerActor, checkRateLimit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { BioengineeredStatus, IngredientSource, Prisma } from '@ilaunchify/db'
@@ -169,6 +170,43 @@ export async function searchIngredients(input: {
       return a.rank - b.rank
     })
     .map(({ m, used }) => toResult(m, { recentlyUsed: used > 0, useCount: used }))
+
+  // --- LIVE / HYBRID: merge USDA FoodData Central results ------------------
+  // When the USDA source mode is LIVE/HYBRID, reach the full FDC catalog beyond
+  // the seeded mirror. DB rows rank first; live foods fill the remainder. Live
+  // results carry a synthetic `fdc:<id>` id — materialized into a real row on
+  // pick (getIngredientNutrition). Everything fails soft → DB-only on error.
+  if (ranked.length < limit && (await usdaLiveMode())) {
+    const foods = await searchUsdaFoods(q, limit)
+    if (foods.length > 0) {
+      // Don't double-list a food already mirrored in our DB.
+      const existing = await prisma.ingredient.findMany({
+        where: { usdaFdcId: { in: foods.map((f) => String(f.fdcId)) } },
+        select: { usdaFdcId: true },
+      })
+      const haveFdc = new Set(existing.map((e) => e.usdaFdcId))
+      const seenName = new Set(ranked.map((r) => r.internalName.toLowerCase()))
+      for (const f of foods) {
+        if (ranked.length >= limit) break
+        if (haveFdc.has(String(f.fdcId))) continue
+        if (seenName.has(f.description.toLowerCase())) continue
+        seenName.add(f.description.toLowerCase())
+        ranked.push({
+          id: `fdc:${f.fdcId}`,
+          source: 'USDA',
+          internalName: f.description,
+          labelDeclarationName: f.description,
+          allergenFlags: [],
+          bioengineeredStatus: 'NOT_APPLICABLE',
+          verificationStatus: 'LIBRARY_PROMOTED',
+          ownerPartnerId: null,
+          densityGPerML: null,
+          recentlyUsed: false,
+          useCount: 0,
+        })
+      }
+    }
+  }
 
   return { ok: true, data: { results: ranked } }
 }
