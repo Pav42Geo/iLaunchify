@@ -84,7 +84,7 @@ const CREATOR_PLANS: PlanInput[] = [
     features: [
       { code: 'max_active_products',  label: 'Max active products', intValue: null },
       { code: 'studio_export',        label: 'Studio PDF export',   boolValue: true },
-      { code: 'label_file_download',  label: 'Compliance label files', boolValue: false },
+      { code: 'label_file_download',  label: 'Compliance label files', boolValue: true },
       { code: 'subscribe_and_save',   label: 'Subscribe & save',    boolValue: true },
       { code: 'product_support',      label: 'Concierge support',   boolValue: true },
       { code: 'custom_domain',        label: 'Custom domain',       boolValue: false },

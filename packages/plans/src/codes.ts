@@ -46,9 +46,9 @@ export const CREATOR_FEATURES = {
    *  (DS-73d) — Builder+. Distinct from LABEL_FILE_DOWNLOAD below. */
   STUDIO_EXPORT: 'studio_export',
   /** Download the regulated COMPLIANCE LABEL FILES (Nutrition / Supplement /
-   *  Variety / Guaranteed Analysis / INCI). Agency-only — the button is hidden
-   *  entirely for lower tiers (Pavel 2026-06-14). Surfaced in Design Studio + on
-   *  the product card after a product is created. */
+   *  Variety / Guaranteed Analysis / INCI). Builder+ (Maker excluded) — the
+   *  button is hidden entirely for Maker, no upgrade nudge (Pavel 2026-06-14).
+   *  Surfaced in Design Studio + on the product card after a product is created. */
   LABEL_FILE_DOWNLOAD: 'label_file_download',
   /** Subscribe & save upsell on checkout (R8.c / R14.d). */
   SUBSCRIBE_AND_SAVE: 'subscribe_and_save',
