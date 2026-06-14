@@ -62,6 +62,7 @@ const CREATOR_PLANS: PlanInput[] = [
     features: [
       { code: 'max_active_products',  label: 'Max active products', description: 'Hard cap. null = unlimited.', intValue: null },
       { code: 'studio_export',        label: 'Studio PDF export',   description: 'Print-ready PDF + PNG from Design Studio.', boolValue: false },
+      { code: 'label_file_download',  label: 'Compliance label files', description: 'Download the regulated label files (Nutrition / Supplement / Guaranteed Analysis / INCI). Agency-only.', boolValue: false },
       { code: 'subscribe_and_save',   label: 'Subscribe & save',    description: 'Recurring-production discount on checkout.', boolValue: false },
       { code: 'product_support',      label: 'Concierge support',   description: 'Get product support link on order detail.', boolValue: false },
       { code: 'custom_domain',        label: 'Custom domain',       description: 'V1.1+ storefront feature.', boolValue: false },
@@ -83,6 +84,7 @@ const CREATOR_PLANS: PlanInput[] = [
     features: [
       { code: 'max_active_products',  label: 'Max active products', intValue: null },
       { code: 'studio_export',        label: 'Studio PDF export',   boolValue: true },
+      { code: 'label_file_download',  label: 'Compliance label files', boolValue: false },
       { code: 'subscribe_and_save',   label: 'Subscribe & save',    boolValue: true },
       { code: 'product_support',      label: 'Concierge support',   boolValue: true },
       { code: 'custom_domain',        label: 'Custom domain',       boolValue: false },
@@ -104,6 +106,7 @@ const CREATOR_PLANS: PlanInput[] = [
     features: [
       { code: 'max_active_products',  label: 'Max active products', intValue: null },
       { code: 'studio_export',        label: 'Studio PDF export',   boolValue: true },
+      { code: 'label_file_download',  label: 'Compliance label files', boolValue: true },
       { code: 'subscribe_and_save',   label: 'Subscribe & save',    boolValue: true },
       { code: 'product_support',      label: 'Concierge support',   boolValue: true },
       { code: 'custom_domain',        label: 'Custom domain',       boolValue: true },

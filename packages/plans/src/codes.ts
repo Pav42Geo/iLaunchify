@@ -42,8 +42,14 @@ export type PlanCode = CreatorPlanCode | PartnerPlanCode
 export const CREATOR_FEATURES = {
   /** Max number of active products. null = unlimited. */
   MAX_ACTIVE_PRODUCTS: 'max_active_products',
-  /** Print-ready PDF / PNG export from Design Studio (DS-73d). */
+  /** Print-ready PDF / PNG export of the PACKAGING ARTWORK from Design Studio
+   *  (DS-73d) — Builder+. Distinct from LABEL_FILE_DOWNLOAD below. */
   STUDIO_EXPORT: 'studio_export',
+  /** Download the regulated COMPLIANCE LABEL FILES (Nutrition / Supplement /
+   *  Variety / Guaranteed Analysis / INCI). Agency-only — the button is hidden
+   *  entirely for lower tiers (Pavel 2026-06-14). Surfaced in Design Studio + on
+   *  the product card after a product is created. */
+  LABEL_FILE_DOWNLOAD: 'label_file_download',
   /** Subscribe & save upsell on checkout (R8.c / R14.d). */
   SUBSCRIBE_AND_SAVE: 'subscribe_and_save',
   /** Concierge / human "Get product support" link on order detail (R14.d). */
