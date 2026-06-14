@@ -9,6 +9,7 @@
 import * as React from 'react'
 import { Plus, Trash2, Palette, Search } from 'lucide-react'
 import { toInciDeclaration } from './inci'
+import { InciDeclarationSvg } from '@ilaunchify/ui'
 import { searchInci, type InciEntry } from './inci-dictionary'
 import { searchLibraryIngredients } from './domain-library-actions'
 import { saveCosmeticFormulation, loadCosmeticFormulation } from './cosmetic-actions'
@@ -180,23 +181,21 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
         <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} INCI search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
-      {/* RIGHT — live declaration */}
-      <div className="space-y-3">
-        <div className="rounded-2xl border-2 border-ink-900 bg-white p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Ingredient declaration · 21 CFR 701.3</div>
-          {decl.ordered.length > 0 ? (
-            <p className="mt-2 text-[12.5px] leading-relaxed text-ink-900"><b>Ingredients:</b> {decl.ordered.map((o) => o.name).join(', ')}.</p>
-          ) : (
-            <p className="mt-2 text-[12.5px] text-ink-400">Add ingredients to build the declaration.</p>
-          )}
-        </div>
-        {(netQty > 0 || responsiblePerson) && (
-          <div className="rounded-2xl border border-ink-200 bg-white p-4 text-[12px] text-ink-700">
-            {netQty > 0 && <div><b>Net contents:</b> {netQty} {netUnit}</div>}
-            {responsiblePerson && <div className="mt-1"><b>Mfd / distributed by:</b> {responsiblePerson}</div>}
-            {adverseEventContact && <div className="mt-1"><b>Adverse events:</b> {adverseEventContact}</div>}
-          </div>
+      {/* RIGHT — live INCI declaration (print-grade SVG, CSS-immune like the
+          other regulated panels). */}
+      <div className="space-y-2">
+        {decl.ordered.length > 0 ? (
+          <InciDeclarationSvg
+            ingredients={decl.ordered.map((o) => o.name).join(', ')}
+            netContents={netQty > 0 ? `${netQty} ${netUnit}` : undefined}
+            responsiblePerson={responsiblePerson || undefined}
+            adverseEventContact={adverseEventContact || undefined}
+            widthPx={300}
+          />
+        ) : (
+          <div className="rounded-2xl border border-ink-200 bg-white p-4 text-[12.5px] text-ink-400">Add ingredients to build the declaration.</div>
         )}
+        <p className="text-[11px] text-ink-500">Print-grade INCI declaration preview.</p>
       </div>
     </div>
   )

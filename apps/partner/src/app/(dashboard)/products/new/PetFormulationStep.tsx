@@ -8,6 +8,7 @@
 import * as React from 'react'
 import { Plus, Trash2, PawPrint, Search } from 'lucide-react'
 import { petIngredientOrder, formatGuaranteedAnalysis, adequacyStatement, type PetSpecies, type LifeStage, type AdequacyMethod } from './pet'
+import { GuaranteedAnalysisSvg } from '@ilaunchify/ui'
 import { searchAafco, type AafcoEntry } from './aafco-dictionary'
 import { searchLibraryIngredients } from './domain-library-actions'
 import { savePetFormulation, loadPetFormulation } from './pet-actions'
@@ -201,23 +202,17 @@ export function PetFormulationStep({ productName, draftId }: { productName?: str
         <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} AAFCO search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
-      {/* RIGHT — live AAFCO label */}
-      <div className="space-y-3">
-        <div className="rounded-2xl border-2 border-ink-900 bg-white p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Guaranteed Analysis</div>
-          <table className="mt-2 w-full text-[12.5px]">
-            <tbody>
-              {gaRows.map((g) => (
-                <tr key={g.label} className="border-b border-ink-100 last:border-0"><td className="py-1 text-ink-800">{g.label}</td><td className="py-1 text-right font-semibold text-ink-900">{g.value}</td></tr>
-              ))}
-            </tbody>
-          </table>
-          {ordered.length > 0 && (
-            <p className="mt-3 text-[12px] leading-relaxed text-ink-900"><b>Ingredients:</b> {ordered.join(', ')}.</p>
-          )}
-          <p className="mt-3 text-[11.5px] italic leading-snug text-ink-700">{statement}</p>
-          {feedingDirections.trim() && <p className="mt-2 text-[11.5px] leading-snug text-ink-700"><b>Feeding directions:</b> {feedingDirections}</p>}
-        </div>
+      {/* RIGHT — live AAFCO label (print-grade SVG, CSS-immune like the other
+          regulated panels — not app-styled HTML). */}
+      <div className="space-y-2">
+        <GuaranteedAnalysisSvg
+          gaRows={gaRows}
+          ingredients={ordered.length > 0 ? ordered.join(', ') : undefined}
+          adequacyStatement={statement}
+          feedingDirections={feedingDirections.trim() || undefined}
+          widthPx={300}
+        />
+        <p className="text-[11px] text-ink-500">Print-grade AAFCO label preview.</p>
       </div>
     </div>
   )
