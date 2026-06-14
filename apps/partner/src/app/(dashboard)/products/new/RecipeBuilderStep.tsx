@@ -886,7 +886,8 @@ export function RecipeBuilderStep({
             )}
           </div>
 
-          {/* Recipe Ingredients */}
+          {/* Recipe Ingredients — appears only once the first ingredient is added. */}
+          {base.length > 0 && (
           <div className="rb-card">
             <div className="rb-h">🍽 {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
             <table>
@@ -1004,6 +1005,7 @@ export function RecipeBuilderStep({
               <p className="muted tiny" style={{ marginTop: 8 }}>Total cost is {curSym(primaryCcy)}0.00 because no ingredient prices are set yet — type your price in the <b>Cost</b> column for each ingredient (it isn’t pulled from the catalog; you set it per recipe).{currencies.length > 1 && <> Prices are entered per active market currency ({currencies.join(' · ')}).</>}</p>
             )}
           </div>
+          )}
 
           {/* Optional Ingredients — same columns as the base table, plus an
               activation toggle: click the check to tick the ingredient into the
@@ -1116,7 +1118,8 @@ export function RecipeBuilderStep({
           )}
 
 
-          {/* Packaging & Serving (ReciPal model) */}
+          {/* Packaging & Serving — appears only once the first ingredient is added. */}
+          {base.length > 0 && (
           <div className="rb-card">
             <div className="rb-h">⚖ Packaging &amp; Serving Information</div>
             <div className="subtab">
@@ -1189,6 +1192,7 @@ export function RecipeBuilderStep({
               </>
             )}
           </div>
+          )}
 
           {/* Cost summary + per-ingredient nutrition breakdown live in the COST tab. */}
         </div>
