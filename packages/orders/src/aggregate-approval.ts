@@ -14,7 +14,7 @@
 
 import type { Prisma } from '@ilaunchify/db'
 
-type AggregateStatus =
+export type AggregateStatus =
   | 'AWAITING_PARTNERS'
   | 'PARTIALLY_ACCEPTED'
   | 'CHANGES_REQUESTED'
@@ -42,6 +42,52 @@ const FAILURE_TERMINAL = new Set([
 ])
 
 /**
+ * PURE — derive the aggregate approval status from the current order state and
+ * the set of per-dispatch statuses. No I/O, so the rules (which are the
+ * correctness keystone for multi-component + multi-SKU baskets — the order only
+ * reaches FULLY_ACCEPTED when every live leg of every item has accepted) are
+ * unit-testable without a database. `recomputeAggregateApprovalStatus` is the
+ * thin I/O shell that reads the rows, calls this, and writes the result back.
+ *
+ * Rules (docs/MULTI_PARTNER_APPROVAL_WORKFLOW.md §2), in precedence order:
+ *   - order/aggregate already CANCELLED  → CANCELLED (sticky, never downgraded)
+ *   - no dispatches yet                  → keep current
+ *   - any CHANGES_REQUESTED              → CHANGES_REQUESTED
+ *   - all LIVE legs accepted, none pending → FULLY_ACCEPTED
+ *   - some accepted + some pending       → PARTIALLY_ACCEPTED
+ *   - otherwise                          → AWAITING_PARTNERS
+ * Failure-terminal rows (declined/timed-out/withdrawn/cancelled/failed-QC) are
+ * excluded from the "all accepted" check because a rerouted leg leaves a stale
+ * terminal row beside its fresh PENDING_ACCEPT replacement.
+ */
+export function computeAggregateStatus(params: {
+  current: AggregateStatus | string
+  orderStatus: string
+  dispatchStatuses: string[]
+}): AggregateStatus {
+  const { current, orderStatus, dispatchStatuses } = params
+
+  if (current === 'CANCELLED' || orderStatus === 'CANCELLED') {
+    return 'CANCELLED'
+  }
+  if (dispatchStatuses.length === 0) {
+    return current as AggregateStatus
+  }
+
+  const anyChangesRequested = dispatchStatuses.some((s) => s === 'CHANGES_REQUESTED')
+  const anyPending = dispatchStatuses.some((s) => s === 'PENDING_ACCEPT')
+  const liveStatuses = dispatchStatuses.filter((s) => !FAILURE_TERMINAL.has(s))
+  const allLiveAccepted =
+    liveStatuses.length > 0 && liveStatuses.every((s) => POST_ACCEPTED.has(s))
+  const anyAccepted = dispatchStatuses.some((s) => POST_ACCEPTED.has(s))
+
+  if (anyChangesRequested) return 'CHANGES_REQUESTED'
+  if (allLiveAccepted && !anyPending) return 'FULLY_ACCEPTED'
+  if (anyAccepted && anyPending) return 'PARTIALLY_ACCEPTED'
+  return 'AWAITING_PARTNERS'
+}
+
+/**
  * Read every OrderDispatch row for the order, compute the aggregate
  * status, write it back to the Order row. Skips write when already at
  * CANCELLED so admin-cancels stick.
@@ -62,46 +108,19 @@ export async function recomputeAggregateApprovalStatus(
   ])
   if (!order) throw new Error(`Order ${orderId} not found`)
 
-  // Sticky CANCELLED — don't downgrade
-  if (
+  const next = computeAggregateStatus({
+    current: order.aggregateApprovalStatus,
+    orderStatus: order.status,
+    dispatchStatuses: dispatches.map((d) => d.status),
+  })
+
+  // Preserve the original no-write short-circuits: a CANCELLED order/aggregate
+  // and the no-dispatches case never write (they just report the value).
+  const shortCircuited =
     order.aggregateApprovalStatus === 'CANCELLED' ||
-    order.status === 'CANCELLED'
-  ) {
-    return 'CANCELLED'
-  }
-
-  if (dispatches.length === 0) {
-    return order.aggregateApprovalStatus as AggregateStatus
-  }
-
-  const anyChangesRequested = dispatches.some(
-    (d) => d.status === 'CHANGES_REQUESTED',
-  )
-  const anyPending = dispatches.some((d) => d.status === 'PENDING_ACCEPT')
-  // For "all accepted or further" we exclude failure-terminal rows that
-  // were rerouted — those are replaced by fresh PENDING_ACCEPT rows on
-  // the new partner, so a stale DECLINED + a fresh PENDING shouldn't
-  // count as fully-accepted-with-leftovers.
-  const liveDispatches = dispatches.filter(
-    (d) => !FAILURE_TERMINAL.has(d.status),
-  )
-  const allLiveAccepted =
-    liveDispatches.length > 0 &&
-    liveDispatches.every((d) => POST_ACCEPTED.has(d.status))
-  const anyAccepted = dispatches.some((d) => POST_ACCEPTED.has(d.status))
-
-  let next: AggregateStatus
-  if (anyChangesRequested) {
-    next = 'CHANGES_REQUESTED'
-  } else if (allLiveAccepted && !anyPending) {
-    next = 'FULLY_ACCEPTED'
-  } else if (anyAccepted && anyPending) {
-    next = 'PARTIALLY_ACCEPTED'
-  } else {
-    next = 'AWAITING_PARTNERS'
-  }
-
-  if (next !== order.aggregateApprovalStatus) {
+    order.status === 'CANCELLED' ||
+    dispatches.length === 0
+  if (!shortCircuited && next !== order.aggregateApprovalStatus) {
     await tx.order.update({
       where: { id: orderId },
       data: { aggregateApprovalStatus: next },
