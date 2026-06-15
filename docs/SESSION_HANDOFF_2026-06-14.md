@@ -144,3 +144,18 @@ Everything is typecheck- and code-review-verified; the regulated SVG renderers w
 and asserted. NOT exercised through a live checkout (the 4 apps + DB + Stripe aren't running in
 the sandbox). Recommended before relying on it: run the Mac migrations above, then a manual
 checkout pass for one product per domain.
+
+**Orchestration hardening (2026-06-14).** The risky decision logic in `@ilaunchify/orders` was
+extracted into pure, dependency-free cores and unit-tested, so `createDispatches` /
+`recomputeAggregateApprovalStatus` are now thin I/O shells over tested logic:
+- `dispatch-planner.ts` (`deriveItemDispatch`, `isLive`, `estimateDispatchCosts`) +
+  `dispatch-planner.test.ts` — print-leg collapse, co-pack/self-assembly, cost split, all branches.
+- `aggregate-approval.ts` (`computeAggregateStatus`) + `aggregate-approval.test.ts` — the
+  ships-together rollup incl. rerouted/failure-terminal exclusion + multi-SKU baskets.
+- `auto-cancel.ts` (`isOrderStale`) + `auto-cancel.test.ts` — the stale-unpaid-order window.
+
+These run with the existing `scoring` / `fsm` / `transfer-planner` suites under
+`pnpm --filter @ilaunchify/orders test` (§5.3). All assertions were additionally runtime-verified
+in the sandbox via a TS-transpile harness (47 total: 26 planner + 15 aggregate + 6 stale-order)
+since vitest itself can't run here. The remaining untested surface is the I/O shells' transaction
+wiring + manifest stamping — that's what the multi-SKU smoke test in §5.3 exercises.
