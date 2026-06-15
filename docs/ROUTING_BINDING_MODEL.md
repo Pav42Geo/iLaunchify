@@ -117,7 +117,11 @@ mis-routing it.
 ## 5. Concrete implementation corrections (when D1–D3 are locked)
 1. `findRouting`: read `Product.productTemplate` (NOT legacy `Product.template`); pin the
    manufacturer leg to `productTemplate.manufacturerServiceId`; health-check it; do not
-   score/shop it.
+   score/shop it. **✅ SHIPPED 2026-06-14** — manufacturer leg is now owner-pinned (health-
+   check: active service + active partner + payouts + MOQ covers qty; excluded owners or any
+   failure → `NO_MANUFACTURER` → ON_HOLD/cancel per D1). Null-owner legacy products keep the
+   category-match + scoring fallback (D2 conservative). The print leg still reads the legacy
+   `template.dieCutTemplateId` (item 2 below, untouched — D3 open).
 2. Downstream legs: prefer the owner's own service of that type; else match other partners
    on the **full** capability tuple (die-line + decoration + substrate + material + MOQ +
    region), not category + die-cut alone (today's print match is too loose).

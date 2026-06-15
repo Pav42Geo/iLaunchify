@@ -51,13 +51,22 @@ export async function findRouting(params: {
     where: { id: params.productId },
     include: {
       template: { include: { dieCutTemplate: true } },
+      // The NEW product template carries the owning manufacturer (the partner who
+      // built this product). Owner-pinned routing reads it; the legacy `template`
+      // above is still used for the print-leg die-cut.
+      productTemplate: { select: { manufacturerServiceId: true } },
     },
   })
   if (!product) {
     return { ok: false, reason: 'NO_MANUFACTURER', message: 'Product not found' }
   }
 
-  // -------- Manufacturer --------
+  // -------- Manufacturer (OWNER-PINNED — docs/ROUTING_BINDING_MODEL.md §2) --------
+  // A creator-customized product belongs to the manufacturer who built it (their
+  // recipe / formulation / IP). When the template has an owner, the manufacturing
+  // leg is PINNED to that owner — never shopped or rerouted; we only health-check
+  // it. Legacy/seed products with no owner (manufacturerServiceId null) fall back
+  // to the original category-match + scoring (D2 — conservative, nothing breaks).
   const manufServices = await prisma.partnerService.findMany({
     where: {
       type: 'MANUFACTURING',
@@ -67,65 +76,91 @@ export async function findRouting(params: {
     include: { partner: { include: { user: true } } },
   })
 
-  // Hard gates first (category fit, MOQ range, payouts enabled), then B4
-  // scoring ranks the survivors so we pick the best fit, not the first.
-  const gated = manufServices.filter((s) => {
-    if (excluded.has(s.id)) return false
+  const moqOf = (s: (typeof manufServices)[number]) => {
     const caps = s.capabilities as Record<string, unknown>
-    const categories = (caps.categories as string[] | undefined) ?? []
-    const moqMin = (caps.moqMin as number | undefined) ?? 0
-    const moqMax = (caps.moqMax as number | undefined) ?? Number.POSITIVE_INFINITY
-    return (
-      categories.includes(product.category) &&
-      params.quantity >= moqMin &&
-      params.quantity <= moqMax &&
-      s.partner.user.stripeAccountStatus === 'ACTIVE'
-    )
-  })
-
-  if (gated.length === 0) {
     return {
-      ok: false,
-      reason: 'NO_MANUFACTURER',
-      message: `No active manufacturer matches ${product.category} at qty ${params.quantity} with payouts enabled`,
+      min: (caps.moqMin as number | undefined) ?? 0,
+      max: (caps.moqMax as number | undefined) ?? Number.POSITIVE_INFINITY,
     }
   }
 
-  // Market-cert coverage per candidate partner (active + non-expired).
-  const now = new Date()
-  const certRows = await prisma.partnerMarketCert.findMany({
-    where: {
-      partnerId: { in: gated.map((s) => s.partnerId) },
-      status: 'ACTIVE',
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    select: { partnerId: true, marketId: true },
-  })
-  const marketsByPartner = new Map<string, string[]>()
-  for (const r of certRows) {
-    marketsByPartner.set(r.partnerId, [...(marketsByPartner.get(r.partnerId) ?? []), r.marketId])
-  }
+  let manufacturer: (typeof manufServices)[number]
+  const ownerServiceId = product.productTemplate?.manufacturerServiceId ?? null
 
-  const matchCandidates: MatchCandidate[] = gated.map((s) => {
-    const caps = s.capabilities as Record<string, unknown>
-    return {
-      serviceId: s.id,
-      moqMin: (caps.moqMin as number | undefined) ?? 0,
-      moqMax: (caps.moqMax as number | undefined) ?? Number.POSITIVE_INFINITY,
-      partnerCountry: s.partner.country,
-      partnerRegionId: s.partner.primaryRegionId ?? null,
-      certifiedMarketIds: marketsByPartner.get(s.partnerId) ?? [],
+  if (ownerServiceId) {
+    // Owner-pinned: health-check the owning manufacturer, never shop alternatives.
+    const owner = manufServices.find((s) => s.id === ownerServiceId)
+    if (!owner || excluded.has(owner.id)) {
+      return { ok: false, reason: 'NO_MANUFACTURER', message: 'The product’s manufacturer is not available for this order.' }
     }
-  })
+    if (owner.partner.user.stripeAccountStatus !== 'ACTIVE') {
+      return { ok: false, reason: 'NO_MANUFACTURER', message: 'The product’s manufacturer has not enabled payouts.' }
+    }
+    const { min, max } = moqOf(owner)
+    if (params.quantity < min || params.quantity > max) {
+      return { ok: false, reason: 'NO_MANUFACTURER', message: `The product’s manufacturer can’t run quantity ${params.quantity}.` }
+    }
+    manufacturer = owner
+  } else {
+    // Legacy fallback (no owner set): hard gates (category fit, MOQ, payouts) then
+    // B4 scoring ranks the survivors so we pick the best fit, not the first.
+    const gated = manufServices.filter((s) => {
+      if (excluded.has(s.id)) return false
+      const caps = s.capabilities as Record<string, unknown>
+      const categories = (caps.categories as string[] | undefined) ?? []
+      const { min, max } = moqOf(s)
+      return (
+        categories.includes(product.category) &&
+        params.quantity >= min &&
+        params.quantity <= max &&
+        s.partner.user.stripeAccountStatus === 'ACTIVE'
+      )
+    })
 
-  const best = pickBestMatch(matchCandidates, {
-    quantity: params.quantity,
-    destinationCountry: params.destinationCountry,
-    destinationRegionId: params.destinationRegionId,
-    targetMarketId: params.targetMarketId,
-    weights: params.weights,
-  })
-  const manufacturer = gated.find((s) => s.id === best?.serviceId) ?? gated[0]!
+    if (gated.length === 0) {
+      return {
+        ok: false,
+        reason: 'NO_MANUFACTURER',
+        message: `No active manufacturer matches ${product.category} at qty ${params.quantity} with payouts enabled`,
+      }
+    }
+
+    // Market-cert coverage per candidate partner (active + non-expired).
+    const now = new Date()
+    const certRows = await prisma.partnerMarketCert.findMany({
+      where: {
+        partnerId: { in: gated.map((s) => s.partnerId) },
+        status: 'ACTIVE',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { partnerId: true, marketId: true },
+    })
+    const marketsByPartner = new Map<string, string[]>()
+    for (const r of certRows) {
+      marketsByPartner.set(r.partnerId, [...(marketsByPartner.get(r.partnerId) ?? []), r.marketId])
+    }
+
+    const matchCandidates: MatchCandidate[] = gated.map((s) => {
+      const { min, max } = moqOf(s)
+      return {
+        serviceId: s.id,
+        moqMin: min,
+        moqMax: max,
+        partnerCountry: s.partner.country,
+        partnerRegionId: s.partner.primaryRegionId ?? null,
+        certifiedMarketIds: marketsByPartner.get(s.partnerId) ?? [],
+      }
+    })
+
+    const best = pickBestMatch(matchCandidates, {
+      quantity: params.quantity,
+      destinationCountry: params.destinationCountry,
+      destinationRegionId: params.destinationRegionId,
+      targetMarketId: params.targetMarketId,
+      weights: params.weights,
+    })
+    manufacturer = gated.find((s) => s.id === best?.serviceId) ?? gated[0]!
+  }
 
   // -------- Print provider --------
   const dieCutTemplateId = product.template?.dieCutTemplateId
