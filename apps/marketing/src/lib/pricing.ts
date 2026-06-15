@@ -29,6 +29,7 @@ export async function getPricingTierRows(
           maxQty: true,
           perUnitCostCents: true,
           perUnitFloorCents: true,
+          leadTimeDays: true,
         },
       },
     },
@@ -42,6 +43,7 @@ export async function getPricingTierRows(
     bandMin: t.minQty,
     perUnitCents: t.perUnitCostCents,
     perUnitFloorCents: t.perUnitFloorCents,
+    leadTimeDays: t.leadTimeDays,
   }))
 }
 

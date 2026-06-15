@@ -110,8 +110,11 @@ export function ProductDetailConfigurator({
   const landedCost = +(baseCost * sizeMultiplier + packagingDelta).toFixed(2)
   const totalOrderCost = +(landedCost * quantity).toFixed(2)
 
-  // Lead time from the chosen packaging (falls back to template default).
+  // Lead time scales with quantity — read it from the matched pricing band first
+  // (production time differs at 500 vs 50,000 units), then fall back to the chosen
+  // packaging, then the template default.
   const leadTimeDays =
+    matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
     template.leadTimeDays
 

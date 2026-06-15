@@ -27,6 +27,10 @@ export interface PricingTierRow {
   perUnitCents: number
   /** Hard floor — promos/discounts cannot dip below. Omitted by the synthetic fallback. */
   perUnitFloorCents?: number
+  /** Lead time for THIS quantity band (days). Production time scales with volume —
+   *  500 ≠ 50,000 — so lead time is per-band, not flat. Null/omitted ⇒ fall back to
+   *  the packaging/template default. From ProductTemplatePricingTier.leadTimeDays. */
+  leadTimeDays?: number | null
   // ---- P3 breakdown (present when prices are computed with a real fee) ----
   /** Manufacturer unit cost in cents (the band price, pre-fee). */
   manufacturerCents?: number

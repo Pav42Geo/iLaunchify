@@ -208,6 +208,12 @@ qty + fulfillment mode, first-run vs repeat), not a flat number; (2) **multi-fla
 (D5) — sequential runs add time, parallel don't; recommend the manufacturer declares it,
 default parallel (= single-flavor tier time).
 
+**Shipped 2026-06-14:** gap (1) done for the creator-facing product-detail quote —
+`PricingTierRow.leadTimeDays` threaded through `getPricingTierRows` →
+`ProductDetailConfigurator` now reads the **band-matched** lead time (falls back to
+packaging → template), so the displayed lead time changes with the selected quantity.
+First-run-vs-repeat surfacing + multi-flavor (D5) remain open.
+
 ---
 
 ## 10. Recovery Mode — broadcast to alternate manufacturers (DEFERRED, dedicated discussion)
