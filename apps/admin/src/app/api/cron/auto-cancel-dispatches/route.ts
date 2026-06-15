@@ -13,7 +13,7 @@
 //     -H "Authorization: Bearer $CRON_SECRET"
 
 import { NextRequest, NextResponse } from 'next/server'
-import { runAutoCancel } from '@ilaunchify/orders'
+import { runAutoCancel, runStaleOrderAutoCancel } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -35,10 +35,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await runAutoCancel()
+    // Two independent sweeps: (1) dispatches past their accept window, and
+    // (2) orders that never got paid past OrderSettings.autoCancelAfterHours.
+    const [dispatches, staleOrders] = await Promise.all([
+      runAutoCancel(),
+      runStaleOrderAutoCancel(),
+    ])
     return NextResponse.json({
       ok: true,
-      ...result,
+      dispatches,
+      staleOrders,
       ranAt: new Date().toISOString(),
     })
   } catch (err) {

@@ -15,8 +15,9 @@
 // V1.5+: when a dispatch times out, we should re-route to the next-best
 // partner. For V1 we just mark it timed out and let admin handle manually.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
+import { assertOrderTransition } from './order-fsm'
 
 export interface AutoCancelResult {
   scanned: number
@@ -111,6 +112,92 @@ export async function runAutoCancel(): Promise<AutoCancelResult> {
         dispatchId: d.id,
         error: (err as Error).message,
       })
+    }
+  }
+
+  return result
+}
+
+// -----------------------------------------------------------------------------
+// Stale unpaid-order auto-cancel — the consumer for OrderSettings.autoCancelAfterHours.
+//
+// Distinct from the dispatch accept-timeout above: this sweeps orders that never
+// got PAID (abandoned checkout, failed/expired Stripe session) and have sat in
+// PENDING_PAYMENT past the admin-tuned window. There's no Stripe
+// `checkout.session.expired` handler, so without this they linger forever. Safe
+// because a PENDING_PAYMENT order has no money captured and no dispatches created;
+// PENDING_PAYMENT → CANCELLED is an allowed FSM transition.
+// -----------------------------------------------------------------------------
+
+/** Pure: has the order sat unpaid at least `autoCancelAfterHours`? */
+export function isOrderStale(createdAt: Date, now: Date, autoCancelAfterHours: number): boolean {
+  return now.getTime() - createdAt.getTime() >= autoCancelAfterHours * 60 * 60 * 1000
+}
+
+export interface StaleOrderCancelResult {
+  /** The window applied (hours), echoed for observability. */
+  autoCancelAfterHours: number
+  scanned: number
+  cancelled: number
+  failed: number
+  failures: Array<{ orderId: string; error: string }>
+}
+
+export async function runStaleOrderAutoCancel(): Promise<StaleOrderCancelResult> {
+  const settings = await getOrderSettings()
+  const hours = settings.autoCancelAfterHours
+  const now = new Date()
+  const cutoff = new Date(now.getTime() - hours * 60 * 60 * 1000)
+
+  // Document + validate the transition up front (throws if the FSM ever changes
+  // to disallow it) — the per-row updateMany below stays the atomic, race-safe
+  // write, mirroring the dispatch sweep's concurrency guard.
+  assertOrderTransition('PENDING_PAYMENT', 'CANCELLED')
+
+  const candidates = await prisma.order.findMany({
+    where: { status: 'PENDING_PAYMENT', createdAt: { lt: cutoff } },
+    select: { id: true, createdAt: true },
+    take: 200, // safety cap; alert if the unpaid backlog ever exceeds this
+  })
+
+  const result: StaleOrderCancelResult = {
+    autoCancelAfterHours: hours,
+    scanned: candidates.length,
+    cancelled: 0,
+    failed: 0,
+    failures: [],
+  }
+
+  for (const o of candidates) {
+    try {
+      // Re-check status inside the write so we never cancel an order that got
+      // PAID in the gap between findMany and update.
+      const update = await prisma.order.updateMany({
+        where: { id: o.id, status: 'PENDING_PAYMENT' },
+        data: {
+          status: 'CANCELLED',
+          internalNotes: `Auto-cancelled: unpaid for over ${hours}h (created ${o.createdAt.toISOString()})`,
+        },
+      })
+      if (update.count === 0) continue // paid (or already moved) in the gap — not a failure
+
+      await logSystemAudit({
+        entityType: 'Order',
+        entityId: o.id,
+        action: 'ORDER_AUTO_CANCEL_UNPAID',
+        fromValue: 'PENDING_PAYMENT',
+        toValue: 'CANCELLED',
+        payload: {
+          createdAt: o.createdAt.toISOString(),
+          autoCancelAfterHours: hours,
+          cancelledAt: now.toISOString(),
+        },
+      })
+
+      result.cancelled++
+    } catch (err) {
+      result.failed++
+      result.failures.push({ orderId: o.id, error: (err as Error).message })
     }
   }
 

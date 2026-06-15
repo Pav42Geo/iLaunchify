@@ -35,8 +35,8 @@ export {
   proximityScore,
 } from './scoring'
 export type { MatchCandidate, MatchContext, MatchScore, MatchWeights } from './scoring'
-export { runAutoCancel } from './auto-cancel'
-export type { AutoCancelResult } from './auto-cancel'
+export { runAutoCancel, runStaleOrderAutoCancel, isOrderStale } from './auto-cancel'
+export type { AutoCancelResult, StaleOrderCancelResult } from './auto-cancel'
 export {
   generateOrderManifest,
   parseInternalNotesLookups,
