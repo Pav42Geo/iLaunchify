@@ -81,6 +81,7 @@ top-to-bottom; don't skip the cache clear (the 3-layer stale-client trap from CL
 | 2 | 3 new columns | `OrderDispatch.proposedDeadlineAt?` / `delayReason?` / `delayProposedAt?` | Delay-accept (§7) | nullable |
 | 3 | New enum value | `DispatchType += COPACKING` (was PRODUCT \| LABEL) | Multi-component **2b** | additive enum |
 | 4 | New column + index + relation | `OrderDispatch.orderItemId?` + `@@index([orderItemId])` + `OrderItem.dispatches` back-relation | Multi-component **3** | nullable FK |
+| 5 | New column | `OrderSettings.changeoverDays` (Int `@default(1)`) | D5 multi-flavor lead time | additive, defaulted |
 
 All code that reads #2/#3/#4 is **cast-guarded** so it compiled before the push. After `generate`
 the generated client will type them natively — the casts keep working (they're widening, not lying),
@@ -131,10 +132,18 @@ Because every change is additive and nullable, rolling back code does **not** re
 ## 6. OPEN decisions (routing)
 
 - **D2** null-owner fallback (taken as category-match default). **D4** confirm generic-BOM = V2.
-- **D5** multi-flavor lead time — sequential vs parallel (no schema yet).
-- **C1–C3** locked as recommended; multi-component **Phases 1–3 are all shipped** (see §4). Only
-  open follow-up: **partial-basket** policy — today any unroutable item holds the whole order;
-  decide later whether to let routable items proceed while the rest waits.
+- **D5 multi-flavor lead time — DECIDED + SHIPPED 2026-06-14.** Pavel picked `max + (N−1) ×
+  changeoverDays`. Built: `OrderSettings.changeoverDays` (default 1, admin Routing form), pure
+  `applyFlavorChangeover` in `apps/marketing/src/lib/pricing.ts`, and `getPricingTierRows({
+  flavorCount, changeoverDays })` (default N=1 = no-op). **Remaining seam:** the variety-pack
+  builder must pass the live distinct-flavor count into `getPricingTierRows` — the single-flavor
+  configurator is N=1, so the increment is dormant until the pack-builder wires it.
+- **Partial-basket policy — DECIDED 2026-06-14: all-or-nothing now, defer the rest.** Keep the
+  current whole-order ON_HOLD on any unroutable item. When a real multi-SKU cart is built, add a
+  **pre-payment routability check** at checkout (so unroutable baskets never get paid). Defer true
+  partial-fulfillment + partial-refund until there's real multi-SKU volume. (V1 checkout is
+  single-product — `orderItem.create` once — so this is a non-issue today.)
+- **C1–C3** locked as recommended; multi-component **Phases 1–3 are all shipped** (see §4).
 - **Recovery Mode (§10)** — broadcast-to-alternate-manufacturers — DEFERRED to a dedicated
   discussion (recipe IP, FDA label-as-legal-artifact, re-quote, system-vs-creator pick).
 
