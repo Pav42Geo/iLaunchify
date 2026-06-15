@@ -58,9 +58,14 @@ Each dispatch still carries its own manifest (`generateOrderManifest`) scoped to
 ---
 
 ## 4. Phasing
-- **Phase 1 (bounded):** decompose the PRINT/decoration leg per decorated component (collapse by
-  provider+die-line). Manufacturing stays one owner-pinned leg. Co-pack still implicit. This
-  covers multi-decoration products without the assembly-graph complexity.
+- **Phase 1 (bounded): ✅ SHIPPED 2026-06-14.** `createDispatches` now emits one owner-pinned
+  PRODUCT dispatch + **one LABEL dispatch per DISTINCT decorated-component provider** (collapsed
+  by `partnerOfferingId` → service). C1 = naive print cost split evenly across legs. Simple
+  products (no decorated components with offerings) keep the exact 2-dispatch behavior. C2 (Phase
+  1 default): components whose provider is inactive/payouts-off are dropped and the order self-
+  labels via the findRouting fallback — never strands (ON_HOLD-for-missing-leg deferred to Phase
+  2). Notifications dedupe by userId. Each LABEL dispatch currently gets the order-level manifest;
+  per-component manifest scoping is a Phase-2 refinement.
 - **Phase 2:** co-pack/assembly dispatch for parent-carton products (variety/multipack).
 - **Phase 3:** multi-SKU orders (`order.items` > 1) → repeat the whole graph per item.
 

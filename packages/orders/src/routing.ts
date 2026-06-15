@@ -317,11 +317,54 @@ export async function createDispatches(params: {
     return routing
   }
 
+  // Phase 1 multi-component (docs/MULTI_COMPONENT_DISPATCH.md): expand the print
+  // leg per DISTINCT decorated-component provider. Each decorated component already
+  // carries the provider it chose (partnerOfferingId); components that share a
+  // provider collapse into ONE label dispatch. No decorated-component providers →
+  // the single leg findRouting resolved (chosen offering or owner self-label),
+  // preserving today's behavior for simple products.
+  const decoratedComponents = await prisma.packagingComponent.findMany({
+    where: { productId: item.productId, partnerOfferingId: { not: null }, decorationMethod: { not: 'NONE' } },
+    select: {
+      partnerOffering: {
+        select: {
+          partnerService: {
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              partner: { select: { status: true, userId: true, user: { select: { stripeAccountStatus: true } } } },
+            },
+          },
+        },
+      },
+    },
+  })
+  const printLegMap = new Map<string, { serviceId: string; userId: string }>()
+  for (const c of decoratedComponents) {
+    const svc = c.partnerOffering?.partnerService
+    if (
+      svc &&
+      svc.type === 'LABEL_PRINTING' &&
+      svc.status === 'ACTIVE' &&
+      svc.partner.status === 'ACTIVE' &&
+      svc.partner.user?.stripeAccountStatus === 'ACTIVE'
+    ) {
+      printLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
+    }
+  }
+  const printLegs =
+    printLegMap.size > 0
+      ? [...printLegMap.values()]
+      : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
+
   const costs = estimateDispatchCosts({
     productId: item.productId,
     quantity: item.quantity,
     unitPriceCents: item.unitPriceCents,
   })
+  // C1 (Phase 1): split the naive print cost evenly across the label legs.
+  const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
 
   const acceptDeadlineAt = new Date(
     Date.now() + (params.acceptWindowHours ?? 24) * 60 * 60 * 1000,
@@ -338,14 +381,14 @@ export async function createDispatches(params: {
           acceptDeadlineAt,
           costCents: costs.manufacturerCostCents,
         },
-        {
+        ...printLegs.map((leg) => ({
           orderId: order.id,
-          type: 'LABEL',
-          partnerServiceId: routing.labelPrintingServiceId,
-          status: 'PENDING_ACCEPT',
+          type: 'LABEL' as const,
+          partnerServiceId: leg.serviceId,
+          status: 'PENDING_ACCEPT' as const,
           acceptDeadlineAt,
-          costCents: costs.printProviderCostCents,
-        },
+          costCents: perPrintCostCents,
+        })),
       ],
     })
     await tx.order.update({
@@ -353,7 +396,7 @@ export async function createDispatches(params: {
       data: {
         status: 'ROUTING',
         manufacturerServiceId: routing.manufacturingServiceId,
-        printProviderServiceId: routing.labelPrintingServiceId,
+        printProviderServiceId: printLegs[0]!.serviceId,
       },
     })
     // Phase G8 — stamp the production manifest on each dispatch row so
@@ -400,6 +443,8 @@ export async function createDispatches(params: {
     where: { id: order.brandId },
     select: { name: true },
   })
+  // Dedupe by userId so a partner who covers multiple legs isn't pinged twice.
+  const printUserIds = [...new Set(printLegs.map((leg) => leg.userId))]
   await Promise.allSettled([
     dispatchNotification({
       userId: routing.manufacturingUserId,
@@ -407,12 +452,14 @@ export async function createDispatches(params: {
       data: { orderId: order.id, brandName: brand?.name, type: 'PRODUCT' },
       audience: 'partner',
     }),
-    dispatchNotification({
-      userId: routing.labelPrintingUserId,
-      event: 'DISPATCH_RECEIVED',
-      data: { orderId: order.id, brandName: brand?.name, type: 'LABEL' },
-      audience: 'partner',
-    }),
+    ...printUserIds.map((userId) =>
+      dispatchNotification({
+        userId,
+        event: 'DISPATCH_RECEIVED',
+        data: { orderId: order.id, brandName: brand?.name, type: 'LABEL' },
+        audience: 'partner',
+      }),
+    ),
   ])
 
   return { ok: true }
