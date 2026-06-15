@@ -300,139 +300,179 @@ export async function createDispatches(params: {
     return { ok: false, reason: 'WRONG_STATUS', message: `Order is ${order.status}, expected PAID` }
   }
 
-  // V1 assumes one product per order. V1.5+: split orders with multiple products
-  // into multiple sets of dispatches.
-  const item = order.items[0]
-  if (!item) return { ok: false, reason: 'NO_ITEMS', message: 'Order has no items' }
+  if (order.items.length === 0) return { ok: false, reason: 'NO_ITEMS', message: 'Order has no items' }
 
-  const routing = await findRouting({
-    productId: item.productId,
-    quantity: item.quantity,
-    weights: params.weights,
-  })
+  // Multi-SKU (Phase 3, docs/MULTI_COMPONENT_DISPATCH.md): build the FULL dispatch
+  // graph PER OrderItem and stamp each dispatch with its orderItemId. A single-item
+  // order behaves exactly as before — the loop just runs once. If ANY item can't be
+  // routed, the WHOLE order goes ON_HOLD for admin: we never half-fulfill a basket.
+  const acceptDeadlineAt = new Date(
+    Date.now() + (params.acceptWindowHours ?? 24) * 60 * 60 * 1000,
+  )
+  const isLive = (svc: { status: string; partner: { status: string; user: { stripeAccountStatus: string } | null } } | null | undefined) =>
+    !!svc && svc.status === 'ACTIVE' && svc.partner.status === 'ACTIVE' && svc.partner.user?.stripeAccountStatus === 'ACTIVE'
 
-  if (!routing.ok) {
-    // Park the order on hold for admin manual routing
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: 'ON_HOLD', internalNotes: `Auto-routing failed: ${routing.message}` },
-    })
-    return routing
+  type DispatchRow = {
+    orderId: string
+    orderItemId: string
+    type: 'PRODUCT' | 'LABEL' | 'COPACKING'
+    partnerServiceId: string
+    status: 'PENDING_ACCEPT'
+    acceptDeadlineAt: Date
+    costCents: number
   }
+  const dispatchRows: DispatchRow[] = []
+  const manufacturerUserIds = new Set<string>()
+  const printUserIds = new Set<string>()
+  const assemblyUserIds = new Set<string>()
+  const failures: string[] = []
+  let primaryManufacturerId: string | null = null
+  let primaryPrintId: string | null = null
 
-  // Phase 1 multi-component (docs/MULTI_COMPONENT_DISPATCH.md): expand the print
-  // leg per DISTINCT decorated-component provider. Each decorated component already
-  // carries the provider it chose (partnerOfferingId); components that share a
-  // provider collapse into ONE label dispatch. No decorated-component providers →
-  // the single leg findRouting resolved (chosen offering or owner self-label),
-  // preserving today's behavior for simple products.
-  const components = await prisma.packagingComponent.findMany({
-    where: { productId: item.productId },
-    select: {
-      role: true,
-      decorationMethod: true,
-      partnerOffering: {
-        select: {
-          partnerService: {
-            select: {
-              id: true,
-              type: true,
-              status: true,
-              partner: { select: { status: true, userId: true, user: { select: { stripeAccountStatus: true } } } },
+  for (const item of order.items) {
+    const routing = await findRouting({
+      productId: item.productId,
+      quantity: item.quantity,
+      weights: params.weights,
+    })
+    if (!routing.ok) {
+      failures.push(`${item.product.name} (${item.productId}): ${routing.message}`)
+      continue
+    }
+
+    // Phase 1 multi-component (docs/MULTI_COMPONENT_DISPATCH.md): expand the print
+    // leg per DISTINCT decorated-component provider. Each decorated component already
+    // carries the provider it chose (partnerOfferingId); components that share a
+    // provider collapse into ONE label dispatch. No decorated-component providers →
+    // the single leg findRouting resolved (chosen offering or owner self-label),
+    // preserving today's behavior for simple products.
+    const components = await prisma.packagingComponent.findMany({
+      where: { productId: item.productId },
+      select: {
+        role: true,
+        decorationMethod: true,
+        partnerOffering: {
+          select: {
+            partnerService: {
+              select: {
+                id: true,
+                type: true,
+                status: true,
+                partner: { select: { status: true, userId: true, user: { select: { stripeAccountStatus: true } } } },
+              },
             },
           },
         },
       },
-    },
-  })
-  const isLive = (svc: { status: string; partner: { status: string; user: { stripeAccountStatus: string } | null } } | null | undefined) =>
-    !!svc && svc.status === 'ACTIVE' && svc.partner.status === 'ACTIVE' && svc.partner.user?.stripeAccountStatus === 'ACTIVE'
-
-  // Print legs — one per distinct decorated-component LABEL_PRINTING provider.
-  const printLegMap = new Map<string, { serviceId: string; userId: string }>()
-  for (const c of components) {
-    const svc = c.partnerOffering?.partnerService
-    if (c.decorationMethod !== 'NONE' && svc && svc.type === 'LABEL_PRINTING' && isLive(svc)) {
-      printLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
-    }
-  }
-  const printLegs =
-    printLegMap.size > 0
-      ? [...printLegMap.values()]
-      : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
-
-  // Phase 2b assembly legs — a CARTON/SHIPPER component implies a fill/assembly
-  // leg (variety pack, multipack). Routed to the assembling co-packer (the
-  // component's chosen offering), else the manufacturer self-assembles. No
-  // CARTON/SHIPPER component → no co-pack dispatch (simple product, back-compat).
-  const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
-  const assemblyLegMap = new Map<string, { serviceId: string; userId: string }>()
-  if (assemblyComponents.length > 0) {
-    for (const c of assemblyComponents) {
-      const svc = c.partnerOffering?.partnerService
-      if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
-    }
-    if (assemblyLegMap.size === 0) {
-      // Self-assembly by the manufacturer.
-      assemblyLegMap.set(routing.manufacturingServiceId, { serviceId: routing.manufacturingServiceId, userId: routing.manufacturingUserId })
-    }
-  }
-  const assemblyLegs = [...assemblyLegMap.values()]
-
-  const costs = estimateDispatchCosts({
-    productId: item.productId,
-    quantity: item.quantity,
-    unitPriceCents: item.unitPriceCents,
-  })
-  // C1 (Phase 1): split the naive print cost evenly across the label legs.
-  const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
-  const perAssemblyCostCents = assemblyLegs.length > 0 ? Math.floor(costs.coPackerCostCents / assemblyLegs.length) : 0
-
-  const acceptDeadlineAt = new Date(
-    Date.now() + (params.acceptWindowHours ?? 24) * 60 * 60 * 1000,
-  )
-
-  await prisma.$transaction(async (tx) => {
-    await tx.orderDispatch.createMany({
-      data: [
-        {
-          orderId: order.id,
-          type: 'PRODUCT',
-          partnerServiceId: routing.manufacturingServiceId,
-          status: 'PENDING_ACCEPT',
-          acceptDeadlineAt,
-          costCents: costs.manufacturerCostCents,
-        },
-        ...printLegs.map((leg) => ({
-          orderId: order.id,
-          type: 'LABEL' as const,
-          partnerServiceId: leg.serviceId,
-          status: 'PENDING_ACCEPT' as const,
-          acceptDeadlineAt,
-          costCents: perPrintCostCents,
-        })),
-      ],
     })
-    // Assembly legs use the COPACKING dispatch type, which ships with a pending
-    // migration — cast-guarded createMany so this compiles before db push.
-    if (assemblyLegs.length > 0) {
-      await (tx as unknown as { orderDispatch: { createMany: (a: unknown) => Promise<unknown> } }).orderDispatch.createMany({
-        data: assemblyLegs.map((leg) => ({
-          orderId: order.id,
-          type: 'COPACKING',
-          partnerServiceId: leg.serviceId,
-          status: 'PENDING_ACCEPT',
-          acceptDeadlineAt,
-          costCents: perAssemblyCostCents,
-        })),
+
+    // Print legs — one per distinct decorated-component LABEL_PRINTING provider.
+    const printLegMap = new Map<string, { serviceId: string; userId: string }>()
+    for (const c of components) {
+      const svc = c.partnerOffering?.partnerService
+      if (c.decorationMethod !== 'NONE' && svc && svc.type === 'LABEL_PRINTING' && isLive(svc)) {
+        printLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
+      }
+    }
+    const printLegs =
+      printLegMap.size > 0
+        ? [...printLegMap.values()]
+        : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
+
+    // Phase 2b assembly legs — a CARTON/SHIPPER component implies a fill/assembly
+    // leg (variety pack, multipack). Routed to the assembling co-packer (the
+    // component's chosen offering), else the manufacturer self-assembles. No
+    // CARTON/SHIPPER component → no co-pack dispatch (simple product, back-compat).
+    const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+    const assemblyLegMap = new Map<string, { serviceId: string; userId: string }>()
+    if (assemblyComponents.length > 0) {
+      for (const c of assemblyComponents) {
+        const svc = c.partnerOffering?.partnerService
+        if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
+      }
+      if (assemblyLegMap.size === 0) {
+        // Self-assembly by the manufacturer.
+        assemblyLegMap.set(routing.manufacturingServiceId, { serviceId: routing.manufacturingServiceId, userId: routing.manufacturingUserId })
+      }
+    }
+    const assemblyLegs = [...assemblyLegMap.values()]
+
+    const costs = estimateDispatchCosts({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPriceCents: item.unitPriceCents,
+    })
+    // C1 (Phase 1): split the naive print cost evenly across the label legs.
+    const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
+    const perAssemblyCostCents = assemblyLegs.length > 0 ? Math.floor(costs.coPackerCostCents / assemblyLegs.length) : 0
+
+    dispatchRows.push({
+      orderId: order.id,
+      orderItemId: item.id,
+      type: 'PRODUCT',
+      partnerServiceId: routing.manufacturingServiceId,
+      status: 'PENDING_ACCEPT',
+      acceptDeadlineAt,
+      costCents: costs.manufacturerCostCents,
+    })
+    for (const leg of printLegs) {
+      dispatchRows.push({
+        orderId: order.id,
+        orderItemId: item.id,
+        type: 'LABEL',
+        partnerServiceId: leg.serviceId,
+        status: 'PENDING_ACCEPT',
+        acceptDeadlineAt,
+        costCents: perPrintCostCents,
       })
     }
+    for (const leg of assemblyLegs) {
+      dispatchRows.push({
+        orderId: order.id,
+        orderItemId: item.id,
+        type: 'COPACKING',
+        partnerServiceId: leg.serviceId,
+        status: 'PENDING_ACCEPT',
+        acceptDeadlineAt,
+        costCents: perAssemblyCostCents,
+      })
+    }
+
+    manufacturerUserIds.add(routing.manufacturingUserId)
+    for (const leg of printLegs) printUserIds.add(leg.userId)
+    for (const leg of assemblyLegs) assemblyUserIds.add(leg.userId)
+    if (!primaryManufacturerId) {
+      primaryManufacturerId = routing.manufacturingServiceId
+      primaryPrintId = printLegs[0]!.serviceId
+    }
+  }
+
+  // Any unroutable item parks the whole order for admin — no half-fulfillment.
+  if (failures.length > 0) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: 'ON_HOLD', internalNotes: `Auto-routing failed: ${failures.join(' | ')}` },
+    })
+    return { ok: false, reason: 'ROUTING_FAILED', message: failures.join(' | ') }
+  }
+  if (!primaryManufacturerId || !primaryPrintId) {
+    return { ok: false, reason: 'NO_DISPATCHES', message: 'No dispatches were produced' }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // orderItemId (Phase 3) + the COPACKING type (Phase 2b) are both pending the
+    // Mac migration, so the generated client doesn't type them yet — cast-guarded
+    // createMany so this compiles before `prisma db push`. One createMany for every
+    // leg of every item.
+    await (tx as unknown as { orderDispatch: { createMany: (a: unknown) => Promise<unknown> } }).orderDispatch.createMany({
+      data: dispatchRows,
+    })
     await tx.order.update({
       where: { id: order.id },
       data: {
         status: 'ROUTING',
-        manufacturerServiceId: routing.manufacturingServiceId,
-        printProviderServiceId: printLegs[0]!.serviceId,
+        manufacturerServiceId: primaryManufacturerId,
+        printProviderServiceId: primaryPrintId,
       },
     })
     // Phase G8 — stamp the production manifest on each dispatch row so
@@ -479,17 +519,18 @@ export async function createDispatches(params: {
     where: { id: order.brandId },
     select: { name: true },
   })
-  // Dedupe by userId so a partner who covers multiple legs isn't pinged twice.
-  const printUserIds = [...new Set(printLegs.map((leg) => leg.userId))]
-  const assemblyUserIds = [...new Set(assemblyLegs.map((leg) => leg.userId))]
+  // Dedupe by userId across ALL items so a partner covering multiple legs/items
+  // isn't pinged repeatedly (the sets were accumulated in the per-item loop).
   await Promise.allSettled([
-    dispatchNotification({
-      userId: routing.manufacturingUserId,
-      event: 'DISPATCH_RECEIVED',
-      data: { orderId: order.id, brandName: brand?.name, type: 'PRODUCT' },
-      audience: 'partner',
-    }),
-    ...printUserIds.map((userId) =>
+    ...[...manufacturerUserIds].map((userId) =>
+      dispatchNotification({
+        userId,
+        event: 'DISPATCH_RECEIVED',
+        data: { orderId: order.id, brandName: brand?.name, type: 'PRODUCT' },
+        audience: 'partner',
+      }),
+    ),
+    ...[...printUserIds].map((userId) =>
       dispatchNotification({
         userId,
         event: 'DISPATCH_RECEIVED',
@@ -497,7 +538,7 @@ export async function createDispatches(params: {
         audience: 'partner',
       }),
     ),
-    ...assemblyUserIds.map((userId) =>
+    ...[...assemblyUserIds].map((userId) =>
       dispatchNotification({
         userId,
         event: 'DISPATCH_RECEIVED',

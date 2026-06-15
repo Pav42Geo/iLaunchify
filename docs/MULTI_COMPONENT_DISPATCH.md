@@ -80,7 +80,20 @@ Each dispatch still carries its own manifest (`generateOrderManifest`) scoped to
     component → no co-pack leg (simple products untouched). Co-pack cost slice (7%, C1) split across
     legs; notifications + per-component manifest scoping (assembler sees the carton/shipper
     components) extended. Cast-guarded for the enum pre-migration.
-- **Phase 3:** multi-SKU orders (`order.items` > 1) → repeat the whole graph per item.
+- **Phase 3: multi-SKU orders ✅ SHIPPED 2026-06-14** — `createDispatches` now loops over
+  EVERY `order.items` row (was `items[0]` only) and builds the full per-item graph (PRODUCT +
+  print legs + assembly legs), stamping each dispatch with a new additive `OrderDispatch.orderItemId`
+  FK (← `OrderItem.dispatches`, nullable for back-compat; Mac migration pending). A single-item
+  order is identical to before (loop runs once, behaviour unchanged). **All-or-nothing routing:**
+  if ANY item can't be routed, the whole order goes `ON_HOLD` with every failure listed — no
+  half-fulfilled baskets. `generateOrderManifest` scopes to the dispatch's own `orderItemId`
+  (falls back to `items[0]` when null), so each partner's manifest shows the right product +
+  components even in a mixed basket. Cost is per-item (`estimateDispatchCosts` already takes the
+  item's unit price × qty); notifications dedupe by userId across all items. `manufacturerServiceId`
+  / `printProviderServiceId` on the Order record the first item's primary legs (denormalized
+  summary only). `recomputeAggregateApprovalStatus` already counts N dispatches generically, so the
+  order enters fulfillment only when every leg of every item accepts — the basket ships together.
+  Cast-guarded `createMany` for the new column + COPACKING type so it compiles pre-migration.
 
 ---
 

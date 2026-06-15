@@ -144,13 +144,18 @@ export async function generateOrderManifest(
     },
   })
 
-  if (!dispatch.order.items[0]) {
+  // Multi-SKU (Phase 3) — scope the manifest to THIS dispatch's OrderItem. The
+  // dispatch carries orderItemId (pending the Mac migration → cast); pre-Phase-3 /
+  // single-item dispatches leave it null and fall back to the first item.
+  const orderItemId = (dispatch as unknown as { orderItemId: string | null }).orderItemId
+  const item =
+    (orderItemId ? dispatch.order.items.find((i) => i.id === orderItemId) : null) ??
+    dispatch.order.items[0]
+  if (!item) {
     throw new Error(
       `OrderDispatch ${args.orderDispatchId} has no OrderItem — cannot generate manifest.`,
     )
   }
-
-  const item = dispatch.order.items[0]
   const product = item.product
   const variant = product.variant
   const die = variant?.dieCutTemplate ?? null

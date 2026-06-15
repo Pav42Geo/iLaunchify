@@ -2163,6 +2163,8 @@ model OrderItem {
   order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product        @relation(fields: [productId], references: [id])
   designVersion   DesignVersion? @relation(fields: [designVersionId], references: [id])
+  // Multi-SKU dispatches (Phase 3) — the dispatches fulfilling this specific item.
+  dispatches      OrderDispatch[]
 }
 
 // OrderDispatch — one of N dispatches per Order. Per the dual-dispatch model:
@@ -2171,6 +2173,11 @@ model OrderItem {
 model OrderDispatch {
   id                       String                 @id @default(cuid())
   orderId                  String
+  // Multi-SKU orders (Phase 3, docs/MULTI_COMPONENT_DISPATCH.md). Which OrderItem
+  // this dispatch fulfills. Nullable: pre-Phase-3 / single-item orders leave it
+  // null and the manifest falls back to order.items[0] (back-compat). When set,
+  // generateOrderManifest scopes the manifest to THIS item's product + components.
+  orderItemId              String?
   type                     DispatchType
   partnerServiceId         String
   status                   DispatchStatus         @default(PENDING_ACCEPT)
@@ -2232,11 +2239,13 @@ model OrderDispatch {
   withdrawReason           String?
   // Relations
   order                    Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem                OrderItem?             @relation(fields: [orderItemId], references: [id])
   partnerService           PartnerService         @relation(fields: [partnerServiceId], references: [id])
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
   @@index([orderId])
+  @@index([orderItemId])
   @@index([partnerServiceId, status])
 }
 
