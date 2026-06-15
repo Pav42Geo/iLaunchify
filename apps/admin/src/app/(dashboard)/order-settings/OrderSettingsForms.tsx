@@ -89,6 +89,7 @@ export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
   const [capabilityWeightPct, setCap] = React.useState(initial.capabilityWeightPct)
   const [proximityWeightPct, setProx] = React.useState(initial.proximityWeightPct)
   const [certWeightPct, setCert] = React.useState(initial.certWeightPct)
+  const [changeoverDays, setChg] = React.useState(initial.changeoverDays)
   const { pending, status, setStatus, save } = useSaver('routing')
   const wSum = capabilityWeightPct + proximityWeightPct + certWeightPct
   const norm = (n: number) => (wSum > 0 ? `${Math.round((n / wSum) * 100)}%` : '—')
@@ -101,8 +102,13 @@ export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
         <Field label="Max auto-reroutes" hint="Reroute attempts before the order holds for admin. (Not yet enforced — V1 reroute is manual.)">
           <input className={NUM} type="number" min={0} max={20} value={maxReroutes} onChange={(e) => { setRer(intOr(e, 0)); setStatus(null) }} />
         </Field>
-        <Field label="Auto-cancel after (hours)" hint="Unpaid / stuck orders auto-cancel past this age. (Not yet enforced — future job.)">
+        <Field label="Auto-cancel after (hours)" hint="Unpaid orders auto-cancel past this age (runs every minute via the auto-cancel cron).">
           <input className={NUM} type="number" min={1} max={2160} value={autoCancelAfterHours} onChange={(e) => { setAc(intOr(e, 1)); setStatus(null) }} />
+        </Field>
+      </Card>
+      <Card icon={Workflow} title="Lead time" desc="Production-time model for multi-flavor packs.">
+        <Field label="Changeover days per extra flavor" hint="A variety pack made in N flavors quotes lead = base + (N−1) × this, covering the line changeover between flavor runs. Single-flavor orders add nothing.">
+          <input className={NUM} type="number" min={0} max={60} value={changeoverDays} onChange={(e) => { setChg(intOr(e, 0)); setStatus(null) }} />
         </Field>
       </Card>
       <Card icon={Workflow} title="Match scoring weights" desc="How the engine ranks partners for a dispatch. Weights are relative — they're renormalized over the dimensions that apply to each order.">
@@ -116,7 +122,7 @@ export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
           <input className={NUM} type="number" min={0} max={100} value={certWeightPct} onChange={(e) => { setCert(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))); setStatus(null) }} />
         </Field>
       </Card>
-      <SaveBar pending={pending} status={status} onSave={() => save({ acceptWindowHours, maxReroutes, autoCancelAfterHours, capabilityWeightPct, proximityWeightPct, certWeightPct })} />
+      <SaveBar pending={pending} status={status} onSave={() => save({ acceptWindowHours, maxReroutes, autoCancelAfterHours, capabilityWeightPct, proximityWeightPct, certWeightPct, changeoverDays })} />
     </div>
   )
 }

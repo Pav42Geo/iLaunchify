@@ -2062,7 +2062,11 @@ model OrderSettings {
   capabilityWeightPct  Int @default(40) // capacity headroom above order qty
   proximityWeightPct   Int @default(35) // region/country closeness to destination
   certWeightPct        Int @default(25) // holds an active cert for the target market
-  autoCancelAfterHours Int @default(72) // unpaid/stuck order auto-cancel window (no consumer yet)
+  autoCancelAfterHours Int @default(72) // unpaid order auto-cancel window (runStaleOrderAutoCancel)
+  // Lead-time model (D5): a variety/multipack made in N flavors needs a line
+  // changeover between flavor runs, so quoted lead = max(flavorLeads) + (N-1) *
+  // changeoverDays. Conservative default; admin-tunable. N<=1 adds nothing.
+  changeoverDays       Int @default(1) // extra production days per additional flavor
 
   // ---- Shipping & fulfillment ----
   flatShippingBaseCents      Int  @default(0) // flat base added to every order

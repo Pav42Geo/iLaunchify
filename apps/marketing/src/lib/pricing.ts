@@ -1,7 +1,27 @@
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { buildSamplePricingRows, type PricingTierRow } from '@ilaunchify/ui'
 import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
 import type { TierKey } from '@ilaunchify/auth'
+
+/**
+ * D5 — multi-flavor lead-time model. A variety/multipack made in N distinct
+ * flavors needs a line changeover between flavor runs, so the quoted production
+ * lead is `max(flavorLeads) + (N-1) * changeoverDays`. Here each pricing band
+ * already carries the single-flavor `leadTimeDays` (= the "max" for one recipe),
+ * so we add the changeover increment for the configured distinct-flavor count.
+ *
+ * Pure + null-safe: N<=1 (or null base) returns the base unchanged, so a
+ * single-flavor product is never penalised.
+ */
+export function applyFlavorChangeover(
+  baseLeadDays: number | null | undefined,
+  flavorCount: number,
+  changeoverDays: number,
+): number | null {
+  if (baseLeadDays == null) return null
+  const extraFlavors = Math.max(0, Math.floor(flavorCount) - 1)
+  return baseLeadDays + extraFlavors * Math.max(0, changeoverDays)
+}
 
 /**
  * Server helper — real per-unit pricing for a ProductTemplate, by quantity band.
@@ -18,6 +38,14 @@ import type { TierKey } from '@ilaunchify/auth'
 export async function getPricingTierRows(
   slug: string,
   fallbackBasePrice: number,
+  /**
+   * D5 — the number of DISTINCT flavors in the configured pack. Default 1 (a
+   * single-flavor order), which is a no-op for the changeover increment. The
+   * variety-pack builder passes the live distinct-flavor count so each band's
+   * lead time reflects the changeovers. `changeoverDays` is read from
+   * OrderSettings unless supplied (e.g. when the caller already loaded it).
+   */
+  opts?: { flavorCount?: number; changeoverDays?: number },
 ): Promise<PricingTierRow[]> {
   const template = await prisma.productTemplate.findUnique({
     where: { slug },
@@ -38,12 +66,18 @@ export async function getPricingTierRows(
   const tiers = template?.pricingTiers ?? []
   if (tiers.length === 0) return buildSamplePricingRows(fallbackBasePrice)
 
+  const flavorCount = opts?.flavorCount ?? 1
+  // Only pay for the settings read when the changeover increment can actually
+  // apply (multi-flavor) and the caller didn't already supply the knob.
+  const changeoverDays =
+    opts?.changeoverDays ?? (flavorCount > 1 ? (await getOrderSettings()).changeoverDays : 0)
+
   return tiers.map((t) => ({
     band: formatBand(t.minQty, t.maxQty),
     bandMin: t.minQty,
     perUnitCents: t.perUnitCostCents,
     perUnitFloorCents: t.perUnitFloorCents,
-    leadTimeDays: t.leadTimeDays,
+    leadTimeDays: applyFlavorChangeover(t.leadTimeDays, flavorCount, changeoverDays),
   }))
 }
 

@@ -16,6 +16,7 @@ export interface OrderSettingsValues {
   proximityWeightPct: number
   certWeightPct: number
   autoCancelAfterHours: number
+  changeoverDays: number
   // Shipping & fulfillment
   flatShippingBaseCents: number
   flatShippingPerUnitCents: number
@@ -39,6 +40,7 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
   proximityWeightPct: 35,
   certWeightPct: 25,
   autoCancelAfterHours: 72,
+  changeoverDays: 1,
   flatShippingBaseCents: 0,
   flatShippingPerUnitCents: 0,
   freeShippingThresholdCents: null,
@@ -60,7 +62,7 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
         where: { id: 'default' },
         select: {
           productionFeeBps: true, warehouseReferralFeeBps: true,
-          acceptWindowHours: true, maxReroutes: true, capabilityWeightPct: true, proximityWeightPct: true, certWeightPct: true, autoCancelAfterHours: true,
+          acceptWindowHours: true, maxReroutes: true, capabilityWeightPct: true, proximityWeightPct: true, certWeightPct: true, autoCancelAfterHours: true, changeoverDays: true,
           flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true, defaultMoq: true,
           creatorCancelWindowHours: true, cancellationFeeBps: true, refundProcessingFeeBps: true,
           partnerStrikeOnCancel: true, autoApproveCreatorCancelBeforeRouting: true, disputeWindowDays: true,
