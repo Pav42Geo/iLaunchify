@@ -141,7 +141,10 @@ mis-routing it.
   treat null-owner as un-routable → ON_HOLD? *(open, low stakes)*
 - **D3 — owner as default downstream provider:** auto-assign the owner's own
   LABEL_PRINTING / COPACKING / WAREHOUSE service when they offer it, before searching other
-  partners? *(open — recommended yes; matches full-service reality, minimizes splitting)*
+  partners? *(PARTIAL — print leg now prefers the owner's own qualifying print service,
+  shipped 2026-06-14. Still open: tighten the print match to the full capability tuple
+  — die-line + decoration + substrate + material — instead of die-cut + MOQ only; and apply
+  the same owner-preference to co-pack / warehouse legs when those legs are routed.)*
 - **D4 — generic-BOM products:** confirm "shop the manufacturer" is V2-only (platform-owned
   commodity SKUs), out of V1. *(open — recommended yes)*
 - **D5 — multi-flavor lead time (§9):** does each flavor add a production run (sequential)

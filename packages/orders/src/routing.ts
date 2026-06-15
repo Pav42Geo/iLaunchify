@@ -182,12 +182,18 @@ export async function findRouting(params: {
     include: { partner: { include: { user: true } } },
   })
 
-  const printProvider = printServices.find((s) => {
+  const eligiblePrinters = printServices.filter((s) => {
     if (excluded.has(s.id)) return false
     const caps = s.capabilities as Record<string, unknown>
     const moqMin = (caps.moqMin as number | undefined) ?? 0
     return params.quantity >= moqMin && s.partner.user.stripeAccountStatus === 'ACTIVE'
   })
+
+  // D3 — full-service reality: most makers print the label for the product they
+  // built. Prefer the OWNING manufacturer's OWN print service when it qualifies,
+  // before shopping other printers — minimizes splitting the order across partners.
+  const printProvider =
+    eligiblePrinters.find((s) => s.partnerId === manufacturer.partnerId) ?? eligiblePrinters[0]
 
   if (!printProvider) {
     return {
