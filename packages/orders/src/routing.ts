@@ -53,8 +53,29 @@ export async function findRouting(params: {
       template: { include: { dieCutTemplate: true } },
       // The NEW product template carries the owning manufacturer (the partner who
       // built this product). Owner-pinned routing reads it; the legacy `template`
-      // above is still used for the print-leg die-cut.
+      // above is still used for the print-leg die-cut fallback.
       productTemplate: { select: { manufacturerServiceId: true } },
+      // The print/decoration provider the product already SELECTED at config time
+      // (PartnerPackagingOffering = packagingType × decorationMethod × dieline —
+      // capability-matched then). Routing honors this binding instead of re-deriving
+      // it by die-cut. Only decorated components carry an offering.
+      packagingComponents: {
+        where: { partnerOfferingId: { not: null } },
+        select: {
+          partnerOffering: {
+            select: {
+              partnerService: {
+                select: {
+                  id: true,
+                  type: true,
+                  status: true,
+                  partner: { select: { status: true, userId: true, user: { select: { stripeAccountStatus: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   })
   if (!product) {
@@ -162,7 +183,35 @@ export async function findRouting(params: {
     manufacturer = gated.find((s) => s.id === best?.serviceId) ?? gated[0]!
   }
 
-  // -------- Print provider --------
+  // -------- Print / decoration provider --------
+  // Honor the offering the product already SELECTED at configuration time
+  // (capability-matched against the partner's PartnerPackagingOffering then —
+  // packagingType × decorationMethod × dieline). This is the correct binding;
+  // re-deriving by die-cut below is only the legacy fallback for products that
+  // were never configured through the component flow.
+  const chosenPrintSvc = product.packagingComponents
+    .map((c) => c.partnerOffering?.partnerService)
+    .find(
+      (svc): svc is NonNullable<typeof svc> =>
+        !!svc &&
+        svc.type === 'LABEL_PRINTING' &&
+        svc.status === 'ACTIVE' &&
+        svc.partner.status === 'ACTIVE' &&
+        svc.partner.user?.stripeAccountStatus === 'ACTIVE' &&
+        !excluded.has(svc.id),
+    )
+
+  if (chosenPrintSvc) {
+    return {
+      ok: true,
+      manufacturingServiceId: manufacturer.id,
+      manufacturingUserId: manufacturer.partner.userId,
+      labelPrintingServiceId: chosenPrintSvc.id,
+      labelPrintingUserId: chosenPrintSvc.partner.userId,
+    }
+  }
+
+  // ----- Legacy fallback: die-cut match (+ owner preference) -----
   const dieCutTemplateId = product.template?.dieCutTemplateId
   if (!dieCutTemplateId) {
     return {

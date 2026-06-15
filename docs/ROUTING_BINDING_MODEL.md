@@ -139,12 +139,16 @@ mis-routing it.
   recoverable cases.
 - **D2 — null `manufacturerServiceId`:** category-match fallback (nothing breaks today) vs
   treat null-owner as un-routable → ON_HOLD? *(open, low stakes)*
-- **D3 — owner as default downstream provider:** auto-assign the owner's own
-  LABEL_PRINTING / COPACKING / WAREHOUSE service when they offer it, before searching other
-  partners? *(PARTIAL — print leg now prefers the owner's own qualifying print service,
-  shipped 2026-06-14. Still open: tighten the print match to the full capability tuple
-  — die-line + decoration + substrate + material — instead of die-cut + MOQ only; and apply
-  the same owner-preference to co-pack / warehouse legs when those legs are routed.)*
+- **D3 — owner as default downstream provider + tighter print match:** *(LARGELY DONE
+  2026-06-14.)* KEY REFRAMING from the investigation: the print/decoration provider is NOT
+  re-derived at routing time — it is **already SELECTED at configuration time** and stored on
+  `PackagingComponent.partnerOfferingId` (capability-matched then against the partner's
+  `PartnerPackagingOffering` = packagingType × decorationMethod × dieline). So "tighten the
+  match" → "**honor the chosen offering binding**", analogous to owner-pinned manufacturing.
+  Shipped: the print leg now resolves from the product's chosen LABEL_PRINTING offering when
+  present (health-checked: active + payouts + not excluded), and only falls back to the
+  legacy die-cut match (now owner-preferred) for unconfigured products. Still open: apply the
+  same owner-preference to co-pack / warehouse legs once those legs are actually routed.
 - **D4 — generic-BOM products:** confirm "shop the manufacturer" is V2-only (platform-owned
   commodity SKUs), out of V1. *(open — recommended yes)*
 - **D5 — multi-flavor lead time (§9):** does each flavor add a production run (sequential)
