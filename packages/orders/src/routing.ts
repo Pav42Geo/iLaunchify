@@ -14,6 +14,10 @@
 import { prisma } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
+import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+
+// Re-exported for back-compat: estimateDispatchCosts now lives in the pure planner.
+export { estimateDispatchCosts } from './dispatch-planner'
 
 export interface RoutingResult {
   ok: true
@@ -262,26 +266,6 @@ export async function findRouting(params: {
 }
 
 /**
- * Estimate dispatch costs from the service's capabilities. V1 uses naive defaults;
- * V1.5+ pulls real cost-per-unit data from the partner profile.
- */
-export function estimateDispatchCosts(params: {
-  productId: string
-  quantity: number
-  unitPriceCents: number
-}): { manufacturerCostCents: number; printProviderCostCents: number; coPackerCostCents: number } {
-  // V1 placeholder economics — manufacturer 30%, printer 8%, co-packer 7% (only
-  // applied when there's an assembly leg). Replaced by real per-component pricing
-  // in Phase 2 (docs/MULTI_COMPONENT_DISPATCH.md C1).
-  const total = params.unitPriceCents * params.quantity
-  return {
-    manufacturerCostCents: Math.floor(total * 0.3),
-    printProviderCostCents: Math.floor(total * 0.08),
-    coPackerCostCents: Math.floor(total * 0.07),
-  }
-}
-
-/**
  * Create the two OrderDispatch rows (PRODUCT + LABEL) for a paid order.
  * Called from the Stripe webhook after payment_intent.succeeded.
  */
@@ -309,18 +293,7 @@ export async function createDispatches(params: {
   const acceptDeadlineAt = new Date(
     Date.now() + (params.acceptWindowHours ?? 24) * 60 * 60 * 1000,
   )
-  const isLive = (svc: { status: string; partner: { status: string; user: { stripeAccountStatus: string } | null } } | null | undefined) =>
-    !!svc && svc.status === 'ACTIVE' && svc.partner.status === 'ACTIVE' && svc.partner.user?.stripeAccountStatus === 'ACTIVE'
 
-  type DispatchRow = {
-    orderId: string
-    orderItemId: string
-    type: 'PRODUCT' | 'LABEL' | 'COPACKING'
-    partnerServiceId: string
-    status: 'PENDING_ACCEPT'
-    acceptDeadlineAt: Date
-    costCents: number
-  }
   const dispatchRows: DispatchRow[] = []
   const manufacturerUserIds = new Set<string>()
   const printUserIds = new Set<string>()
@@ -366,84 +339,33 @@ export async function createDispatches(params: {
       },
     })
 
-    // Print legs — one per distinct decorated-component LABEL_PRINTING provider.
-    const printLegMap = new Map<string, { serviceId: string; userId: string }>()
-    for (const c of components) {
-      const svc = c.partnerOffering?.partnerService
-      if (c.decorationMethod !== 'NONE' && svc && svc.type === 'LABEL_PRINTING' && isLive(svc)) {
-        printLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
-      }
-    }
-    const printLegs =
-      printLegMap.size > 0
-        ? [...printLegMap.values()]
-        : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
-
-    // Phase 2b assembly legs — a CARTON/SHIPPER component implies a fill/assembly
-    // leg (variety pack, multipack). Routed to the assembling co-packer (the
-    // component's chosen offering), else the manufacturer self-assembles. No
-    // CARTON/SHIPPER component → no co-pack dispatch (simple product, back-compat).
-    const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
-    const assemblyLegMap = new Map<string, { serviceId: string; userId: string }>()
-    if (assemblyComponents.length > 0) {
-      for (const c of assemblyComponents) {
-        const svc = c.partnerOffering?.partnerService
-        if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
-      }
-      if (assemblyLegMap.size === 0) {
-        // Self-assembly by the manufacturer.
-        assemblyLegMap.set(routing.manufacturingServiceId, { serviceId: routing.manufacturingServiceId, userId: routing.manufacturingUserId })
-      }
-    }
-    const assemblyLegs = [...assemblyLegMap.values()]
-
-    const costs = estimateDispatchCosts({
-      productId: item.productId,
-      quantity: item.quantity,
-      unitPriceCents: item.unitPriceCents,
-    })
-    // C1 (Phase 1): split the naive print cost evenly across the label legs.
-    const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
-    const perAssemblyCostCents = assemblyLegs.length > 0 ? Math.floor(costs.coPackerCostCents / assemblyLegs.length) : 0
-
-    dispatchRows.push({
+    // All the per-item dispatch decisions (print-leg collapse, assembly legs,
+    // cost split, row construction) live in the pure planner so they're unit-
+    // testable without a DB. We just normalize the prisma rows to ComponentLeg.
+    const plan = deriveItemDispatch({
       orderId: order.id,
-      orderItemId: item.id,
-      type: 'PRODUCT',
-      partnerServiceId: routing.manufacturingServiceId,
-      status: 'PENDING_ACCEPT',
+      item: {
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+      },
+      routing,
+      components: components.map((c) => ({
+        role: c.role as string,
+        decorationMethod: c.decorationMethod as string,
+        partnerService: c.partnerOffering?.partnerService ?? null,
+      })),
       acceptDeadlineAt,
-      costCents: costs.manufacturerCostCents,
     })
-    for (const leg of printLegs) {
-      dispatchRows.push({
-        orderId: order.id,
-        orderItemId: item.id,
-        type: 'LABEL',
-        partnerServiceId: leg.serviceId,
-        status: 'PENDING_ACCEPT',
-        acceptDeadlineAt,
-        costCents: perPrintCostCents,
-      })
-    }
-    for (const leg of assemblyLegs) {
-      dispatchRows.push({
-        orderId: order.id,
-        orderItemId: item.id,
-        type: 'COPACKING',
-        partnerServiceId: leg.serviceId,
-        status: 'PENDING_ACCEPT',
-        acceptDeadlineAt,
-        costCents: perAssemblyCostCents,
-      })
-    }
 
-    manufacturerUserIds.add(routing.manufacturingUserId)
-    for (const leg of printLegs) printUserIds.add(leg.userId)
-    for (const leg of assemblyLegs) assemblyUserIds.add(leg.userId)
+    dispatchRows.push(...plan.rows)
+    manufacturerUserIds.add(plan.manufacturerUserId)
+    for (const u of plan.printUserIds) printUserIds.add(u)
+    for (const u of plan.assemblyUserIds) assemblyUserIds.add(u)
     if (!primaryManufacturerId) {
       primaryManufacturerId = routing.manufacturingServiceId
-      primaryPrintId = printLegs[0]!.serviceId
+      primaryPrintId = plan.primaryPrintServiceId
     }
   }
 

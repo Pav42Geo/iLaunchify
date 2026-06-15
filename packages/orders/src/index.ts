@@ -16,6 +16,14 @@ export {
   estimateDispatchCosts,
   createDispatches,
 } from './routing'
+export { deriveItemDispatch, isLive } from './dispatch-planner'
+export type {
+  DispatchRow,
+  ComponentLeg,
+  ItemRouting,
+  ItemDispatchPlan,
+  PlannerLiveService,
+} from './dispatch-planner'
 export type { RoutingResult, RoutingFailure } from './routing'
 export { previewManufacturerMatches } from './routing'
 export type { RoutingPreviewResult, RoutingPreviewCandidate } from './routing'
