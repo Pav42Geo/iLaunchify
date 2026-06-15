@@ -252,3 +252,32 @@ offer; if none accept within **48–72 h**, cancel + refund. Doubles as manufact
 
 This is essentially the V2 pooling mechanic (pool window, fairness, who-fills-it) applied to
 order recovery — build on that infrastructure, not before it.
+
+---
+
+## 11. Cross-domain / cross-type audit (2026-06-14)
+
+Reviewed `findRouting` + `createDispatches` + checkout against every domain
+(FOOD / DIETARY_SUPPLEMENT / COSMETIC / PET_PRODUCT / OTC) and product type (PackingProfiles).
+
+**REAL BUG FOUND + FIXED — universal strand on the print leg.** A product with no chosen
+print offering AND no legacy `dieCutTemplateId` returned `NO_PRINT_PROVIDER` → ON_HOLD. This
+hit **all non-food domains** (supplements/cosmetics/pet/OTC are built by full-service makers
+who label in-house, no separate printer) and new-builder food. Fix: when no SEPARATE printer
+qualifies, the **owning manufacturer self-labels** (`labelPrintingServiceId := manufacturer`),
+so an order is never stranded for lack of a distinct print partner.
+
+**By-design (not bugs):**
+- Owner-pin does NOT re-gate the manufacturer by `product.category` — the owner built the
+  product, so they can make it (the category gate is only for the legacy null-owner shop path).
+- Auto-cancel escalates the ORDER to ON_HOLD once (first timed-out dispatch); each dispatch
+  still gets its own `DISPATCH_AUTO_CANCEL` audit.
+
+**Remaining V1 limitations (documented, not fixed):**
+- **One product per order** (`createDispatches` reads `order.items[0]`). Multi-SKU / bundle
+  orders need the V1.5 multi-item split.
+- **One PRODUCT + one LABEL dispatch** — multi-component packaging (carton + inner units +
+  seal, each possibly a different provider) isn't decomposed; only the primary LABEL leg
+  routes. Needs the BOM-driven graph (PRODUCTION_ORCHESTRATION §4) — V1.5+.
+- A future refinement should collapse PRODUCT+LABEL into a single dispatch when the
+  manufacturer self-labels (today both go to the same partner — correct, just redundant).

@@ -211,44 +211,44 @@ export async function findRouting(params: {
     }
   }
 
-  // ----- Legacy fallback: die-cut match (+ owner preference) -----
+  // ----- Legacy fallback: die-cut match (owner-preferred), else self-label -----
+  // No chosen offering on the product. Try to match a separate printer by the
+  // legacy die-cut; if there is no die-cut, or no separate printer qualifies, the
+  // OWNING MANUFACTURER labels the product in-house. This is the common case for
+  // full-service makers — most partner-built supplements / cosmetics / pet / OTC
+  // (and new-builder food) are manufactured AND labeled by the same partner, and
+  // have no `dieCutTemplateId`. Defaulting the label leg to the owner means an
+  // order is NEVER stranded just because no SEPARATE print partner exists. (Future:
+  // collapse to a single dispatch when the manufacturer self-labels.)
+  let printSvcId = manufacturer.id
+  let printUserId = manufacturer.partner.userId
+
   const dieCutTemplateId = product.template?.dieCutTemplateId
-  if (!dieCutTemplateId) {
-    return {
-      ok: false,
-      reason: 'NO_PRINT_PROVIDER',
-      message: 'Product has no template / die-cut assigned',
-    }
-  }
+  if (dieCutTemplateId) {
+    const printServices = await prisma.partnerService.findMany({
+      where: {
+        type: 'LABEL_PRINTING',
+        status: 'ACTIVE',
+        partner: { status: 'ACTIVE' },
+        dieCutSupport: { some: { dieCutTemplateId } },
+      },
+      include: { partner: { include: { user: true } } },
+    })
 
-  const printServices = await prisma.partnerService.findMany({
-    where: {
-      type: 'LABEL_PRINTING',
-      status: 'ACTIVE',
-      partner: { status: 'ACTIVE' },
-      dieCutSupport: { some: { dieCutTemplateId } },
-    },
-    include: { partner: { include: { user: true } } },
-  })
+    const eligiblePrinters = printServices.filter((s) => {
+      if (excluded.has(s.id)) return false
+      const caps = s.capabilities as Record<string, unknown>
+      const moqMin = (caps.moqMin as number | undefined) ?? 0
+      return params.quantity >= moqMin && s.partner.user.stripeAccountStatus === 'ACTIVE'
+    })
 
-  const eligiblePrinters = printServices.filter((s) => {
-    if (excluded.has(s.id)) return false
-    const caps = s.capabilities as Record<string, unknown>
-    const moqMin = (caps.moqMin as number | undefined) ?? 0
-    return params.quantity >= moqMin && s.partner.user.stripeAccountStatus === 'ACTIVE'
-  })
-
-  // D3 — full-service reality: most makers print the label for the product they
-  // built. Prefer the OWNING manufacturer's OWN print service when it qualifies,
-  // before shopping other printers — minimizes splitting the order across partners.
-  const printProvider =
-    eligiblePrinters.find((s) => s.partnerId === manufacturer.partnerId) ?? eligiblePrinters[0]
-
-  if (!printProvider) {
-    return {
-      ok: false,
-      reason: 'NO_PRINT_PROVIDER',
-      message: `No active print provider supports the chosen die-cut at qty ${params.quantity}`,
+    // D3 — prefer the OWNING manufacturer's OWN print service when it qualifies,
+    // before shopping other printers (minimizes splitting the order).
+    const printProvider =
+      eligiblePrinters.find((s) => s.partnerId === manufacturer.partnerId) ?? eligiblePrinters[0]
+    if (printProvider) {
+      printSvcId = printProvider.id
+      printUserId = printProvider.partner.userId
     }
   }
 
@@ -256,8 +256,8 @@ export async function findRouting(params: {
     ok: true,
     manufacturingServiceId: manufacturer.id,
     manufacturingUserId: manufacturer.partner.userId,
-    labelPrintingServiceId: printProvider.id,
-    labelPrintingUserId: printProvider.partner.userId,
+    labelPrintingServiceId: printSvcId,
+    labelPrintingUserId: printUserId,
   }
 }
 
