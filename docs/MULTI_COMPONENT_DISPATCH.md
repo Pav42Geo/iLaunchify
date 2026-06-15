@@ -72,7 +72,14 @@ Each dispatch still carries its own manifest (`generateOrderManifest`) scoped to
     chosen offering belongs to its `partnerService` (re-derived, NO schema change); self-label
     covers all decorated components; PRODUCT dispatches stay empty. `ProductionManifestView` renders
     a "Components to print" block. So each printer in a multi-component order sees exactly their
-    components. 2b co-pack/assembly dispatch still pending.
+    components.
+  - **2b co-pack / assembly dispatch ✅ SHIPPED 2026-06-14** — `DispatchType += COPACKING`
+    (additive enum, Mac migration pending). `createDispatches` now emits a COPACKING dispatch per
+    distinct assembler when the product has a CARTON/SHIPPER component (variety/multipack): routed
+    to that component's chosen offering, else the **manufacturer self-assembles**. No CARTON/SHIPPER
+    component → no co-pack leg (simple products untouched). Co-pack cost slice (7%, C1) split across
+    legs; notifications + per-component manifest scoping (assembler sees the carton/shipper
+    components) extended. Cast-guarded for the enum pre-migration.
 - **Phase 3:** multi-SKU orders (`order.items` > 1) → repeat the whole graph per item.
 
 ---

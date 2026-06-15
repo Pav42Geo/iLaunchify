@@ -23,7 +23,7 @@ import {
 interface Props {
   dispatchId: string
   status: string
-  type: 'PRODUCT' | 'LABEL'
+  type: 'PRODUCT' | 'LABEL' | 'COPACKING'
 }
 
 export function DispatchActions({ dispatchId, status, type }: Props) {
@@ -320,7 +320,7 @@ function AcceptDeclinePanel({
   onChange,
 }: {
   dispatchId: string
-  type: 'PRODUCT' | 'LABEL'
+  type: 'PRODUCT' | 'LABEL' | 'COPACKING'
   onChange: () => void
 }) {
   const [busy, setBusy] = useState(false)

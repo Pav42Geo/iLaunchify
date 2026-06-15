@@ -255,6 +255,11 @@ enum OrderType {
 enum DispatchType {
   PRODUCT
   LABEL
+  // Multi-component dispatch Phase 2b (docs/MULTI_COMPONENT_DISPATCH.md): the
+  // fill / assembly leg for parent-carton products (variety packs, multipacks) —
+  // routed to the assembling co-packer (a CARTON/SHIPPER component's chosen
+  // offering) or the manufacturer when they self-assemble.
+  COPACKING
 }
 
 enum DispatchStatus {

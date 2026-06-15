@@ -269,12 +269,15 @@ export function estimateDispatchCosts(params: {
   productId: string
   quantity: number
   unitPriceCents: number
-}): { manufacturerCostCents: number; printProviderCostCents: number } {
-  // V1 placeholder economics — manufacturer gets 30% of unit price, printer 8%
+}): { manufacturerCostCents: number; printProviderCostCents: number; coPackerCostCents: number } {
+  // V1 placeholder economics — manufacturer 30%, printer 8%, co-packer 7% (only
+  // applied when there's an assembly leg). Replaced by real per-component pricing
+  // in Phase 2 (docs/MULTI_COMPONENT_DISPATCH.md C1).
   const total = params.unitPriceCents * params.quantity
   return {
     manufacturerCostCents: Math.floor(total * 0.3),
     printProviderCostCents: Math.floor(total * 0.08),
+    coPackerCostCents: Math.floor(total * 0.07),
   }
 }
 
@@ -323,9 +326,11 @@ export async function createDispatches(params: {
   // provider collapse into ONE label dispatch. No decorated-component providers →
   // the single leg findRouting resolved (chosen offering or owner self-label),
   // preserving today's behavior for simple products.
-  const decoratedComponents = await prisma.packagingComponent.findMany({
-    where: { productId: item.productId, partnerOfferingId: { not: null }, decorationMethod: { not: 'NONE' } },
+  const components = await prisma.packagingComponent.findMany({
+    where: { productId: item.productId },
     select: {
+      role: true,
+      decorationMethod: true,
       partnerOffering: {
         select: {
           partnerService: {
@@ -340,16 +345,14 @@ export async function createDispatches(params: {
       },
     },
   })
+  const isLive = (svc: { status: string; partner: { status: string; user: { stripeAccountStatus: string } | null } } | null | undefined) =>
+    !!svc && svc.status === 'ACTIVE' && svc.partner.status === 'ACTIVE' && svc.partner.user?.stripeAccountStatus === 'ACTIVE'
+
+  // Print legs — one per distinct decorated-component LABEL_PRINTING provider.
   const printLegMap = new Map<string, { serviceId: string; userId: string }>()
-  for (const c of decoratedComponents) {
+  for (const c of components) {
     const svc = c.partnerOffering?.partnerService
-    if (
-      svc &&
-      svc.type === 'LABEL_PRINTING' &&
-      svc.status === 'ACTIVE' &&
-      svc.partner.status === 'ACTIVE' &&
-      svc.partner.user?.stripeAccountStatus === 'ACTIVE'
-    ) {
+    if (c.decorationMethod !== 'NONE' && svc && svc.type === 'LABEL_PRINTING' && isLive(svc)) {
       printLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
     }
   }
@@ -358,6 +361,24 @@ export async function createDispatches(params: {
       ? [...printLegMap.values()]
       : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
 
+  // Phase 2b assembly legs — a CARTON/SHIPPER component implies a fill/assembly
+  // leg (variety pack, multipack). Routed to the assembling co-packer (the
+  // component's chosen offering), else the manufacturer self-assembles. No
+  // CARTON/SHIPPER component → no co-pack dispatch (simple product, back-compat).
+  const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+  const assemblyLegMap = new Map<string, { serviceId: string; userId: string }>()
+  if (assemblyComponents.length > 0) {
+    for (const c of assemblyComponents) {
+      const svc = c.partnerOffering?.partnerService
+      if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
+    }
+    if (assemblyLegMap.size === 0) {
+      // Self-assembly by the manufacturer.
+      assemblyLegMap.set(routing.manufacturingServiceId, { serviceId: routing.manufacturingServiceId, userId: routing.manufacturingUserId })
+    }
+  }
+  const assemblyLegs = [...assemblyLegMap.values()]
+
   const costs = estimateDispatchCosts({
     productId: item.productId,
     quantity: item.quantity,
@@ -365,6 +386,7 @@ export async function createDispatches(params: {
   })
   // C1 (Phase 1): split the naive print cost evenly across the label legs.
   const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
+  const perAssemblyCostCents = assemblyLegs.length > 0 ? Math.floor(costs.coPackerCostCents / assemblyLegs.length) : 0
 
   const acceptDeadlineAt = new Date(
     Date.now() + (params.acceptWindowHours ?? 24) * 60 * 60 * 1000,
@@ -391,6 +413,20 @@ export async function createDispatches(params: {
         })),
       ],
     })
+    // Assembly legs use the COPACKING dispatch type, which ships with a pending
+    // migration — cast-guarded createMany so this compiles before db push.
+    if (assemblyLegs.length > 0) {
+      await (tx as unknown as { orderDispatch: { createMany: (a: unknown) => Promise<unknown> } }).orderDispatch.createMany({
+        data: assemblyLegs.map((leg) => ({
+          orderId: order.id,
+          type: 'COPACKING',
+          partnerServiceId: leg.serviceId,
+          status: 'PENDING_ACCEPT',
+          acceptDeadlineAt,
+          costCents: perAssemblyCostCents,
+        })),
+      })
+    }
     await tx.order.update({
       where: { id: order.id },
       data: {
@@ -445,6 +481,7 @@ export async function createDispatches(params: {
   })
   // Dedupe by userId so a partner who covers multiple legs isn't pinged twice.
   const printUserIds = [...new Set(printLegs.map((leg) => leg.userId))]
+  const assemblyUserIds = [...new Set(assemblyLegs.map((leg) => leg.userId))]
   await Promise.allSettled([
     dispatchNotification({
       userId: routing.manufacturingUserId,
@@ -457,6 +494,14 @@ export async function createDispatches(params: {
         userId,
         event: 'DISPATCH_RECEIVED',
         data: { orderId: order.id, brandName: brand?.name, type: 'LABEL' },
+        audience: 'partner',
+      }),
+    ),
+    ...assemblyUserIds.map((userId) =>
+      dispatchNotification({
+        userId,
+        event: 'DISPATCH_RECEIVED',
+        data: { orderId: order.id, brandName: brand?.name, type: 'COPACKING' },
         audience: 'partner',
       }),
     ),

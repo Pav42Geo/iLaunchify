@@ -173,10 +173,15 @@ export async function generateOrderManifest(
     },
   })
   const decorated = allComponents.filter((c) => c.decorationMethod !== 'NONE')
-  let scopedComponents: typeof decorated = []
+  let scopedComponents: typeof allComponents = []
   if (dispatch.type === 'LABEL') {
     const mine = decorated.filter((c) => c.partnerOffering?.partnerServiceId === dispatch.partnerServiceId)
     scopedComponents = mine.length > 0 ? mine : decorated
+  } else if ((dispatch.type as string) === 'COPACKING') {
+    // The assembler sees the carton/shipper components they assemble.
+    const assembly = allComponents.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+    const mine = assembly.filter((c) => c.partnerOffering?.partnerServiceId === dispatch.partnerServiceId)
+    scopedComponents = mine.length > 0 ? mine : assembly
   }
 
   // Pull substrate / packaging from the Order's internalNotes (set by
