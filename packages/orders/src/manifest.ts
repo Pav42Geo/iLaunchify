@@ -63,6 +63,20 @@ export interface ProductionManifest {
     bleedMm: number
     safeAreaMm: number
   } | null
+  // ---- Per-component scope (multi-component dispatch Phase 2) ---------------
+  // For a LABEL dispatch, the decorated component(s) THIS partner prints — the
+  // ones whose chosen offering belongs to this dispatch's partnerService. When a
+  // dispatch self-labels (no offering matches), it covers all decorated
+  // components. PRODUCT dispatches leave this empty (production, not decoration).
+  components: Array<{
+    componentId: string
+    tier: string
+    role: string
+    packagingTypeId: string
+    packagingTypeName: string | null
+    decorationMethod: string
+    dielineId: string | null
+  }>
   // ---- Ship-to summary -----------------------------------------------------
   shipTo: {
     type: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER'
@@ -141,6 +155,30 @@ export async function generateOrderManifest(
   const variant = product.variant
   const die = variant?.dieCutTemplate ?? null
 
+  // Phase 2 — scope the decorated components THIS dispatch covers. A LABEL
+  // dispatch prints the components whose chosen offering belongs to its
+  // partnerService; if none match (self-label / owner does it), it covers every
+  // decorated component. PRODUCT dispatches are production-focused → empty.
+  const allComponents = await tx.packagingComponent.findMany({
+    where: { productId: product.id },
+    select: {
+      id: true,
+      tier: true,
+      role: true,
+      decorationMethod: true,
+      dielineId: true,
+      packagingTypeId: true,
+      packagingType: { select: { displayName: true } },
+      partnerOffering: { select: { partnerServiceId: true } },
+    },
+  })
+  const decorated = allComponents.filter((c) => c.decorationMethod !== 'NONE')
+  let scopedComponents: typeof decorated = []
+  if (dispatch.type === 'LABEL') {
+    const mine = decorated.filter((c) => c.partnerOffering?.partnerServiceId === dispatch.partnerServiceId)
+    scopedComponents = mine.length > 0 ? mine : decorated
+  }
+
   // Pull substrate / packaging from the Order's internalNotes (set by
   // placeOrderFromCheckoutDraft as a structured block). When V1.5 wires
   // typed Order.substrateSlug / Order.packagingMaterialSlug + Order
@@ -217,6 +255,15 @@ export async function generateOrderManifest(
           safeAreaMm: die.safeAreaMm,
         }
       : null,
+    components: scopedComponents.map((c) => ({
+      componentId: c.id,
+      tier: String(c.tier),
+      role: String(c.role),
+      packagingTypeId: c.packagingTypeId,
+      packagingTypeName: c.packagingType?.displayName ?? null,
+      decorationMethod: String(c.decorationMethod),
+      dielineId: c.dielineId,
+    })),
     shipTo: {
       type: dispatch.order.shipToType,
       contactName: dispatch.order.shipToContactName,

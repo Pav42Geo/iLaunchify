@@ -67,6 +67,12 @@ Each dispatch still carries its own manifest (`generateOrderManifest`) scoped to
   2). Notifications dedupe by userId. Each LABEL dispatch currently gets the order-level manifest;
   per-component manifest scoping is a Phase-2 refinement.
 - **Phase 2:** co-pack/assembly dispatch for parent-carton products (variety/multipack).
+  - **2a per-component manifest scoping ✅ SHIPPED 2026-06-14** — `generateOrderManifest` adds a
+    `components[]` scoped to the dispatch: a LABEL dispatch carries the decorated components whose
+    chosen offering belongs to its `partnerService` (re-derived, NO schema change); self-label
+    covers all decorated components; PRODUCT dispatches stay empty. `ProductionManifestView` renders
+    a "Components to print" block. So each printer in a multi-component order sees exactly their
+    components. 2b co-pack/assembly dispatch still pending.
 - **Phase 3:** multi-SKU orders (`order.items` > 1) → repeat the whole graph per item.
 
 ---

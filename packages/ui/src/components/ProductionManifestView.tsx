@@ -24,6 +24,15 @@ export interface ProductionManifestData {
   packaging: { name: string; slug: string; topology: string; foodSafe: boolean } | null
   finishes: Array<{ partnerFinishId: string; finishName: string; category: string; pricingMode: string }>
   dieCut: { name: string; widthMm: number; heightMm: number; bleedMm: number; safeAreaMm: number } | null
+  /** Multi-component dispatch (Phase 2) — the decorated components THIS partner
+   *  prints. Optional/empty for simple single-component products. */
+  components?: Array<{
+    componentId: string
+    tier: string
+    role: string
+    packagingTypeName: string | null
+    decorationMethod: string
+  }>
   shipTo: {
     type: string
     contactName: string
@@ -141,6 +150,22 @@ export function ProductionManifestView({
           </Block>
         )}
 
+        {manifest.components && manifest.components.length > 0 && (
+          <Block title={`Components to print (${manifest.components.length})`}>
+            <ul className="space-y-1.5">
+              {manifest.components.map((c) => (
+                <li key={c.componentId} className="rounded-lg border border-ink-100 bg-cream px-2.5 py-1.5">
+                  <div className="text-[13px] font-medium text-ink-900">
+                    {humanRole(c.role)}
+                    {c.packagingTypeName ? <span className="text-ink-500"> · {c.packagingTypeName}</span> : null}
+                  </div>
+                  <div className="text-[11.5px] text-ink-500">{humanTier(c.tier)} · {humanDecoration(c.decorationMethod)}</div>
+                </li>
+              ))}
+            </ul>
+          </Block>
+        )}
+
         <Block title="Ship to">
           <Row label="Type" value={manifest.shipTo.type === 'WAREHOUSE_PARTNER' ? 'Warehouse partner' : 'Creator address'} />
           <Row label="Recipient" value={manifest.shipTo.contactName} />
@@ -227,4 +252,25 @@ function humanFinishCategory(cat: string): string {
     CUT: 'Cut / die', INK: 'Ink type', SPECIAL: 'Specialty effect',
   }
   return m[cat] ?? cat
+}
+
+function humanRole(role: string): string {
+  const m: Record<string, string> = {
+    CONTAINER: 'Container', CARTON: 'Carton', CLOSURE: 'Closure', SEAL: 'Seal',
+    INSERT: 'Insert', LABEL: 'Label', SHIPPER: 'Shipper',
+  }
+  return m[role] ?? role
+}
+
+function humanTier(tier: string): string {
+  const m: Record<string, string> = { PRIMARY: 'Primary', SECONDARY: 'Secondary', TERTIARY: 'Tertiary' }
+  return m[tier] ?? tier
+}
+
+function humanDecoration(method: string): string {
+  const m: Record<string, string> = {
+    NONE: 'No decoration', CMYK_DIGITAL: 'CMYK digital', FLEXO: 'Flexo', SCREEN: 'Screen print',
+    FOIL: 'Foil', EMBOSS: 'Emboss', DEBOSS: 'Deboss', SPOT_UV: 'Spot UV', SHRINK_SLEEVE: 'Shrink sleeve',
+  }
+  return m[method] ?? method
 }
