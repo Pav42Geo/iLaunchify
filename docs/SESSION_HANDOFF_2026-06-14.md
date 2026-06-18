@@ -82,6 +82,7 @@ top-to-bottom; don't skip the cache clear (the 3-layer stale-client trap from CL
 | 3 | New enum value | `DispatchType += COPACKING` (was PRODUCT \| LABEL) | Multi-component **2b** | additive enum |
 | 4 | New column + index + relation | `OrderDispatch.orderItemId?` + `@@index([orderItemId])` + `OrderItem.dispatches` back-relation | Multi-component **3** | nullable FK |
 | 5 | New column | `OrderSettings.changeoverDays` (Int `@default(1)`) | D5 multi-flavor lead time | additive, defaulted |
+| 6 | New model + relations | `OrderItemFlavor` + `OrderItem.flavors` + `FlavorPreset.orderItemFlavors` | Variety-pack builder Slice 1 | additive model |
 
 All code that reads #2/#3/#4 is **cast-guarded** so it compiled before the push. After `generate`
 the generated client will type them natively — the casts keep working (they're widening, not lying),
@@ -144,6 +145,15 @@ Because every change is additive and nullable, rolling back code does **not** re
   partial-fulfillment + partial-refund until there's real multi-SKU volume. (V1 checkout is
   single-product — `orderItem.create` once — so this is a non-issue today.)
 - **C1–C3** locked as recommended; multi-component **Phases 1–3 are all shipped** (see §4).
+- **Variety-pack builder — Slice 1 SHIPPED 2026-06-14.** Creator picks N≤`maxFlavorsPerPack`
+  distinct flavors and splits the order quantity across them (capacity = order qty, so no new
+  partner data). Shared pure engine `@ilaunchify/ui/lib/pack-composition` (`validatePackSelection`
+  / `evenSplit` / `applyFlavorChangeover`); shared `PackBuilder` component. Renders in BOTH the
+  marketing product detail (live D5 quote) and the creator checkout Step 2 (gated on
+  `packingProfile.flavorMode === 'MULTI'`). Persists normalized `OrderItemFlavor` rows at checkout
+  (validated pre-payment), and the production manifest surfaces the per-flavor splits to the
+  manufacturer. **Slice 2 (fast follow):** live multi-column `VarietyFactsSvg` preview in the
+  builder; carry OrderItemFlavor into the adjust/resubmit flow (currently re-picks).
 - **Recovery Mode (§10)** — broadcast-to-alternate-manufacturers — DEFERRED to a dedicated
   discussion (recipe IP, FDA label-as-legal-artifact, re-quote, system-vs-creator pick).
 
