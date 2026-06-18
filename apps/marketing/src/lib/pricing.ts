@@ -1,27 +1,11 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import { buildSamplePricingRows, type PricingTierRow } from '@ilaunchify/ui'
+import { buildSamplePricingRows, applyFlavorChangeover, type PricingTierRow } from '@ilaunchify/ui'
 import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
 import type { TierKey } from '@ilaunchify/auth'
 
-/**
- * D5 — multi-flavor lead-time model. A variety/multipack made in N distinct
- * flavors needs a line changeover between flavor runs, so the quoted production
- * lead is `max(flavorLeads) + (N-1) * changeoverDays`. Here each pricing band
- * already carries the single-flavor `leadTimeDays` (= the "max" for one recipe),
- * so we add the changeover increment for the configured distinct-flavor count.
- *
- * Pure + null-safe: N<=1 (or null base) returns the base unchanged, so a
- * single-flavor product is never penalised.
- */
-export function applyFlavorChangeover(
-  baseLeadDays: number | null | undefined,
-  flavorCount: number,
-  changeoverDays: number,
-): number | null {
-  if (baseLeadDays == null) return null
-  const extraFlavors = Math.max(0, Math.floor(flavorCount) - 1)
-  return baseLeadDays + extraFlavors * Math.max(0, changeoverDays)
-}
+// D5 multi-flavor lead-time model now lives in @ilaunchify/ui (shared with the
+// creator checkout pack-builder). Re-exported here for existing callers.
+export { applyFlavorChangeover } from '@ilaunchify/ui'
 
 /**
  * Server helper — real per-unit pricing for a ProductTemplate, by quantity band.

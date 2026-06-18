@@ -2169,6 +2169,29 @@ model OrderItem {
   designVersion   DesignVersion? @relation(fields: [designVersionId], references: [id])
   // Multi-SKU dispatches (Phase 3) — the dispatches fulfilling this specific item.
   dispatches      OrderDispatch[]
+  // Variety-pack builder — the distinct flavors + per-flavor quantities the creator
+  // composed into this item's pack. Empty for single-flavor items.
+  flavors         OrderItemFlavor[]
+}
+
+// OrderItemFlavor — one row per distinct flavor in a variety/multipack item (the
+// creator pack-builder). Captures the per-flavor quantity plus a snapshot of the
+// flavor's name + Statement of Identity at order time, since the FlavorPreset can
+// change later but the produced labels must reflect exactly what was sold. The
+// production manifest reads these to tell the manufacturer the per-flavor splits.
+model OrderItemFlavor {
+  id             String       @id @default(cuid())
+  orderItemId    String
+  flavorPresetId String
+  qty            Int // units of THIS flavor in the pack
+  flavorName     String // snapshot of FlavorPreset.name at order time
+  soiSnapshot    String? // snapshot of the flavor's Statement of Identity at order time
+  orderItem      OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  flavorPreset   FlavorPreset @relation(fields: [flavorPresetId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([orderItemId])
+  @@index([flavorPresetId])
 }
 
 // OrderDispatch — one of N dispatches per Order. Per the dual-dispatch model:
@@ -4360,6 +4383,7 @@ model FlavorPreset {
   // V1 — per-flavor nutrient overrides (e.g., strawberry adds water content; shifts moisture)
   nutrientOverrides   Json? // [{ nutrient, value, reason }] — preset overrides win on conflict with ProductTemplate.nutrientOverrides
   productTemplate     ProductTemplate    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  orderItemFlavors    OrderItemFlavor[] // variety-pack builder selections referencing this flavor
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
