@@ -203,6 +203,47 @@ function fixtureResolve(categorySlug: string, slug: string): ResolvedMarketplace
   }
 }
 
+/** A "browse by category" section for the marketplace landing view. */
+export interface MarketplaceCategorySection {
+  title: string
+  slug: string
+  templates: SampleTemplate[]
+}
+
+/**
+ * Browse-by-category sections for the marketplace landing view — PUBLISHED
+ * templates grouped by their category. Falls back to the sample fixture when the
+ * DB is empty / the query fails so the default landing view always renders.
+ */
+export async function getMarketplaceCategorySections(): Promise<MarketplaceCategorySection[]> {
+  const sampleSections = (): MarketplaceCategorySection[] =>
+    CATEGORY_ROWS.map((r) => ({ title: r.title, slug: r.slug, templates: [...r.templates] }))
+  try {
+    const rows = await prisma.productTemplate.findMany({
+      where: { status: 'PUBLISHED' },
+      include: includeForCard,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    if (rows.length === 0) return sampleSections()
+    const byCat = new Map<string, MarketplaceCategorySection>()
+    for (const row of rows) {
+      const db = row as unknown as DbTemplate
+      const cat = db.subcategory.category
+      let section = byCat.get(cat.slug)
+      if (!section) {
+        section = { title: cat.name, slug: cat.slug, templates: [] }
+        byCat.set(cat.slug, section)
+      }
+      section.templates.push(mapToCard(db))
+    }
+    return [...byCat.values()]
+  } catch (err) {
+    console.warn('[marketplace] category sections DB query failed, using sample:', (err as Error).message)
+    return sampleSections()
+  }
+}
+
 /* ============ Prisma helpers ============ */
 
 const includeForCard = {

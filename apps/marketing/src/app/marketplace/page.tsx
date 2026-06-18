@@ -7,9 +7,11 @@ import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
 import { LifestyleTagFilters } from '@/components/LifestyleTagFilters'
-import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
+import { templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import {
   getMarketplaceTemplates,
+  getMarketplaceCategorySections,
+  type MarketplaceCategorySection,
   getTrendingTemplates,
   getQuickLaunchTemplates,
   getCatalogCount,
@@ -108,6 +110,7 @@ export default async function MarketplacePage({
     catalogTotal,
     niches,
     lifestyleTagGroups,
+    categorySections,
   ] = await Promise.all([
     getMarketplaceTemplates({
       sort,
@@ -123,6 +126,7 @@ export default async function MarketplacePage({
     getCatalogCount(),
     loadActiveNiches(),
     loadLifestyleTagGroups(),
+    getMarketplaceCategorySections(),
   ])
 
   return (
@@ -214,7 +218,7 @@ export default async function MarketplacePage({
               )}
 
               {/* Category rows */}
-              {CATEGORY_ROWS.map((row) => (
+              {categorySections.map((row) => (
                 <CategorySection key={row.slug} row={row} />
               ))}
 
@@ -281,11 +285,11 @@ function ResultsGrid({
 function CategorySection({
   row,
 }: {
-  row: (typeof CATEGORY_ROWS)[number]
+  row: MarketplaceCategorySection
 }) {
-  const avgLead = Math.round(
-    row.templates.reduce((sum, t) => sum + t.leadTimeDays, 0) / row.templates.length,
-  )
+  const avgLead = row.templates.length
+    ? Math.round(row.templates.reduce((sum, t) => sum + t.leadTimeDays, 0) / row.templates.length)
+    : 0
 
   return (
     <section className="mb-12">
