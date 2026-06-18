@@ -253,3 +253,95 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
 
   return { ok: true, data: labels }
 }
+
+// ---------------------------------------------------------------------------
+// getVarietyPreviewColumns — per-flavor VarietyColumn data for the pack-builder
+// live preview (variety-pack builder Slice 2b). UNGATED (it's a preview, not a
+// download) but still ownership-scoped. FOOD only — the VarietyFactsSvg renderer
+// is Nutrition Facts; non-food multi-flavor previews are out of scope. Reuses the
+// exact per-flavor recompute as the FOOD label download above (buildFoodLabel),
+// so the preview matches what prints. Returns columns keyed by flavorPresetId so
+// the builder can filter to the picked flavors.
+// ---------------------------------------------------------------------------
+
+export interface VarietyPreviewColumn {
+  flavorPresetId: string
+  label: string
+  panel: PanelData
+  contains: string
+}
+export type VarietyPreviewResult = { ok: true; columns: VarietyPreviewColumn[] } | { ok: false; error: string }
+
+export async function getVarietyPreviewColumns(productId: string): Promise<VarietyPreviewResult> {
+  const user = await requireUser()
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    select: {
+      productTemplateId: true,
+      recipe: {
+        select: {
+          servingSizeG: true,
+          servingsPerContainer: true,
+          servingSizeDesc: true,
+          ingredients: {
+            orderBy: { position: 'asc' },
+            select: {
+              weightG: true,
+              ingredient: { select: { name: true, internalName: true, labelDeclarationName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } },
+            },
+          },
+        },
+      },
+      productTemplate: {
+        select: { flavorPresets: { where: { status: 'ACTIVE' }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, extras: true } } },
+      },
+    },
+  })
+  if (!product) return { ok: false, error: 'Product not found.' }
+
+  // FOOD only — the variety panel is Nutrition Facts. Cast-guarded domain read.
+  const tmpl = product.productTemplateId
+    ? await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null } | null> }
+      }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true } })
+    : null
+  if ((tmpl?.labelingType ?? 'FOOD') !== 'FOOD') return { ok: true, columns: [] }
+  if (!product.recipe || product.recipe.ingredients.length === 0) return { ok: true, columns: [] }
+
+  const r = product.recipe
+  const geo = { servingSizeG: Number(r.servingSizeG) || 1, servingsPerPackage: Number(r.servingsPerContainer) || 1, servingSizeDesc: r.servingSizeDesc ?? undefined }
+  const baseLines: Line[] = r.ingredients.map((ri, i) => ({
+    row: { id: `b${i}`, name: ri.ingredient.internalName ?? ri.ingredient.name, per100g: (ri.ingredient.nutritionPer100g ?? {}) as Record<string, number>, quantity: Number(ri.weightG) || 0, unit: 'g', category: 'base', selected: true },
+    declarationName: (ri.ingredient.labelDeclarationName ?? ri.ingredient.internalName ?? ri.ingredient.name) ?? '',
+    allergens: ri.ingredient.allergenFlags ?? [],
+  }))
+
+  type Extra = { ingredientId: string; name?: string; qty: number; unit: string }
+  const flavors = (product.productTemplate?.flavorPresets ?? [])
+    .map((f) => ({ id: f.id, name: f.name, extras: (Array.isArray(f.extras) ? (f.extras as Extra[]) : []).filter((e) => e && e.ingredientId && Number(e.qty) > 0) }))
+    .filter((f) => f.name.trim().length > 0 && f.extras.length > 0)
+  if (flavors.length === 0) return { ok: true, columns: [] }
+
+  const ids = [...new Set(flavors.flatMap((f) => f.extras.map((e) => e.ingredientId)))]
+  const ingByIdRows = await prisma.ingredient.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, internalName: true, labelDeclarationName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
+  })
+  const ingById = new Map(ingByIdRows.map((x) => [x.id, x]))
+
+  const columns: VarietyPreviewColumn[] = flavors.map((f) => {
+    const overlay: Line[] = f.extras.map((e, i) => {
+      const ing = ingById.get(e.ingredientId)
+      const grams = toGrams(Number(e.qty) || 0, e.unit || 'g', { densityGPerMl: ing?.densityGPerML ?? undefined })
+      return {
+        row: { id: `f${i}`, name: ing?.internalName ?? ing?.name ?? e.name ?? 'Ingredient', per100g: (ing?.nutritionPer100g ?? {}) as Record<string, number>, quantity: grams, unit: 'g', category: 'base', selected: true },
+        declarationName: (ing?.labelDeclarationName ?? ing?.internalName ?? ing?.name ?? e.name) ?? '',
+        allergens: ing?.allergenFlags ?? [],
+      }
+    })
+    const lbl = buildFoodLabel(baseLines, overlay, geo, '', f.name) as Extract<ProductLabel, { domain: 'FOOD' }>
+    return { flavorPresetId: f.id, label: f.name, panel: lbl.panel, contains: lbl.contains }
+  })
+
+  return { ok: true, columns }
+}

@@ -14,6 +14,11 @@ import {
   type FlavorPick,
   type PackRules,
 } from '../lib/pack-composition'
+import { VarietyFactsSvg } from '../nutrition/VarietyFactsSvg'
+import type { VarietyColumn } from '../nutrition/variety-layout'
+
+/** A per-flavor Nutrition Facts column keyed to its flavor preset (Slice 2b). */
+export type PackPreviewColumn = VarietyColumn & { flavorPresetId: string }
 
 export interface PackBuilderFlavor {
   id: string
@@ -32,6 +37,10 @@ export interface PackBuilderProps {
   minPerFlavor?: number
   value: FlavorPick[]
   onChange: (picks: FlavorPick[]) => void
+  /** Slice 2b — per-flavor Nutrition Facts columns. When supplied, a live
+   *  multi-column variety panel renders below the picker, filtered to the chosen
+   *  flavors. Omit (e.g. pre-auth marketing) to hide the preview. */
+  previewColumns?: PackPreviewColumn[]
   className?: string
 }
 
@@ -42,6 +51,7 @@ export function PackBuilder({
   minPerFlavor = 1,
   value,
   onChange,
+  previewColumns,
   className,
 }: PackBuilderProps) {
   const rules: PackRules = { maxFlavors, minPerFlavor, capacity }
@@ -173,6 +183,30 @@ export function PackBuilder({
           ))}
         </ul>
       )}
+
+      {/* Slice 2b — live multi-column Nutrition Facts for the chosen flavors. */}
+      {(() => {
+        if (!previewColumns || previewColumns.length === 0) return null
+        // Keep the creator's pick order; only flavors with a computed column show.
+        const byId = new Map(previewColumns.map((c) => [c.flavorPresetId, c]))
+        const picked = chosen
+          .map((p) => byId.get(p.flavorPresetId))
+          .filter((c): c is PackPreviewColumn => !!c)
+        if (picked.length === 0) return null
+        return (
+          <div className="mt-4 border-t border-ink-100 pt-4">
+            <h4 className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+              Variety label preview · {picked.length} flavor{picked.length === 1 ? '' : 's'}
+            </h4>
+            <div className="overflow-x-auto">
+              <VarietyFactsSvg columns={picked} widthPx={Math.min(880, 200 + picked.length * 96)} />
+            </div>
+            <p className="mt-1.5 text-[11px] text-ink-400">
+              Aggregate multi-column panel for the outer carton (21 CFR 101.9(d)(13)). Each unit still carries its own single-flavor label.
+            </p>
+          </div>
+        )
+      })()}
     </div>
   )
 }
