@@ -83,6 +83,10 @@ top-to-bottom; don't skip the cache clear (the 3-layer stale-client trap from CL
 | 4 | New column + index + relation | `OrderDispatch.orderItemId?` + `@@index([orderItemId])` + `OrderItem.dispatches` back-relation | Multi-component **3** | nullable FK |
 | 5 | New column | `OrderSettings.changeoverDays` (Int `@default(1)`) | D5 multi-flavor lead time | additive, defaulted |
 | 6 | New model + relations | `OrderItemFlavor` + `OrderItem.flavors` + `FlavorPreset.orderItemFlavors` | Variety-pack builder Slice 1 | additive model |
+| 7 | New column | `ProductTemplate.marketingDetail` (Json?) | Marketplace V1.1 detail copy | additive, nullable |
+
+> **Run order note:** apply this `db push` BEFORE re-running `seed:variety-demo` — the seed now
+> writes `ProductTemplate.marketingDetail` + sets `status: PUBLISHED` directly (not cast-guarded).
 
 All code that reads #2/#3/#4 is **cast-guarded** so it compiled before the push. After `generate`
 the generated client will type them natively — the casts keep working (they're widening, not lying),
