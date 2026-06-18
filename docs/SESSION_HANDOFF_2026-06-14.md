@@ -162,9 +162,12 @@ extracted into pure, dependency-free cores and unit-tested, so `createDispatches
 - `aggregate-approval.ts` (`computeAggregateStatus`) + `aggregate-approval.test.ts` — the
   ships-together rollup incl. rerouted/failure-terminal exclusion + multi-SKU baskets.
 - `auto-cancel.ts` (`isOrderStale`) + `auto-cancel.test.ts` — the stale-unpaid-order window.
+- `manifest.ts` (`scopeDispatchComponents`) + `manifest-scope.test.ts` — the per-partner
+  component scoping (each printer/assembler sees only their components + self-do fallback).
 
 These run with the existing `scoring` / `fsm` / `transfer-planner` suites under
 `pnpm --filter @ilaunchify/orders test` (§5.3). All assertions were additionally runtime-verified
-in the sandbox via a TS-transpile harness (47 total: 26 planner + 15 aggregate + 6 stale-order)
-since vitest itself can't run here. The remaining untested surface is the I/O shells' transaction
-wiring + manifest stamping — that's what the multi-SKU smoke test in §5.3 exercises.
+in the sandbox via a TS-transpile harness (54 total: 26 planner + 15 aggregate + 6 stale-order + 7
+manifest-scope) since vitest itself can't run here. Every pure decision in the multi-component /
+multi-SKU path is now covered; the remaining untested surface is the I/O shells' transaction wiring
++ manifest stamping — that's what the multi-SKU smoke test in §5.3 exercises.
