@@ -22,6 +22,7 @@ import { SampleOrderCard } from '@/components/SampleOrderCard'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
+import { getMarketplaceTemplateBySlug } from '@/lib/templates'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -80,13 +81,19 @@ export default async function ProductDetailPage({
     })) ?? []
   const activeBrandId = session?.activeBrandId ?? ''
 
-  const row = CATEGORY_ROWS.find((r) => r.slug === category)
-  if (!row) notFound()
-  const template = row.templates.find((t) => t.slug === slug)
-  if (!template) notFound()
+  // DB-driven resolution (falls back to the sample fixture when the DB is empty
+  // or the slug isn't a published template). Replaces the old CATEGORY_ROWS-only
+  // lookup so real published ProductTemplates render their detail page.
+  const resolved = await getMarketplaceTemplateBySlug(category, slug)
+  if (!resolved) notFound()
+  const template = resolved.template
+  const related = resolved.related
+  const categoryTitle = resolved.categoryTitle
 
+  // Marketing copy (specs, bullets, packing) is still fixture-backed per slug;
+  // unknown slugs get the neutral GENERIC_DETAIL. Flavors are overridden from the
+  // DB flavor pool below so the configurator shows the template's real flavors.
   const detail = findTemplateDetail(template.slug)
-  const related = row.templates.filter((t) => t.slug !== slug).slice(0, 4)
 
   // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
   // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
@@ -114,6 +121,15 @@ export default async function ProductDetailPage({
   // Variety-pack builder data — flavorMode + flavor pool + maxFlavorsPerPack +
   // changeover days. Drives the PackBuilder + live D5 lead-time in MULTI mode.
   const packData = await getPackBuilderData(template.slug)
+
+  // Override the fixture flavor list with the template's REAL flavor pool from the
+  // DB when present (single-flavor swatch in SINGLE mode; PackBuilder uses the pool
+  // directly in MULTI mode). Keeps the fixture flavors as fallback for fixture-only
+  // demo templates with no DB flavor presets.
+  const detailForConfigurator =
+    packData.pool.length > 0
+      ? { ...detail, flavors: packData.pool.map((f) => ({ id: f.id, name: f.name, color: f.swatchHex ?? '#E7E2D8' })) }
+      : detail
 
   // Sample policy — enabled sample kinds the partner offers for this product
   // (Pavel 2026-06-10). Empty → the "Order a sample" card hides (fixture-only /
@@ -169,7 +185,7 @@ export default async function ProductDetailPage({
       />
 
       <div className="max-w-[1400px] mx-auto px-6 py-6">
-        <Breadcrumb category={category} categoryTitle={row.title} title={template.title} />
+        <Breadcrumb category={category} categoryTitle={categoryTitle} title={template.title} />
 
         {/* Restricted-category notice (labeling ≠ licensing) — this product
             falls into a category iLaunchify doesn't support yet, so it can't be
@@ -265,7 +281,7 @@ export default async function ProductDetailPage({
             {/* Client-side configurator handles all variant picking + pricing math */}
             <ProductDetailConfigurator
               template={template}
-              detail={detail}
+              detail={detailForConfigurator}
               pricingRows={pricingRows}
               viewerTier={viewerTier}
               feePctByTier={feePctByTier}

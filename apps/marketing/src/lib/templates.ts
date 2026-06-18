@@ -150,6 +150,59 @@ export async function getQuickLaunchTemplates(limit = 4): Promise<SampleTemplate
   return templates.map((t) => ({ ...t, status: 'fast-ship' as const }))
 }
 
+/** Resolved detail-page template: the card-shape template + its related set +
+ *  the category display title (for the breadcrumb). */
+export interface ResolvedMarketplaceTemplate {
+  template: SampleTemplate
+  related: SampleTemplate[]
+  categoryTitle: string
+}
+
+/**
+ * Detail-page resolver — the DB-driven counterpart to the fixture lookup the
+ * detail page used to do (`CATEGORY_ROWS.find(...).templates.find(...)`). Looks
+ * up a PUBLISHED ProductTemplate by slug, maps it to the card shape, and pulls a
+ * few related templates from the same subcategory. Falls back to the sample
+ * fixture (by categorySlug+slug) when the DB is empty / the slug isn't a
+ * published template / the query fails, so dev + fixture-only catalogs still work.
+ * Returns null only when neither the DB nor the fixture has the slug → notFound().
+ */
+export async function getMarketplaceTemplateBySlug(
+  categorySlug: string,
+  slug: string,
+): Promise<ResolvedMarketplaceTemplate | null> {
+  try {
+    const row = await prisma.productTemplate.findUnique({ where: { slug }, include: includeForCard })
+    if (!row || row.status !== 'PUBLISHED') return fixtureResolve(categorySlug, slug)
+    const db = row as unknown as DbTemplate
+    const relatedRows = await prisma.productTemplate.findMany({
+      where: { status: 'PUBLISHED', subcategoryId: row.subcategoryId, slug: { not: slug } },
+      include: includeForCard,
+      take: 4,
+    })
+    return {
+      template: mapToCard(db),
+      related: relatedRows.map((r) => mapToCard(r as unknown as DbTemplate)),
+      categoryTitle: db.subcategory.category.name,
+    }
+  } catch (err) {
+    console.warn('[marketplace] detail DB query failed, using sample:', (err as Error).message)
+    return fixtureResolve(categorySlug, slug)
+  }
+}
+
+function fixtureResolve(categorySlug: string, slug: string): ResolvedMarketplaceTemplate | null {
+  const r = CATEGORY_ROWS.find((x) => x.slug === categorySlug)
+  if (!r) return null
+  const template = r.templates.find((t) => t.slug === slug)
+  if (!template) return null
+  return {
+    template,
+    related: r.templates.filter((t) => t.slug !== slug).slice(0, 4),
+    categoryTitle: r.title,
+  }
+}
+
 /* ============ Prisma helpers ============ */
 
 const includeForCard = {
