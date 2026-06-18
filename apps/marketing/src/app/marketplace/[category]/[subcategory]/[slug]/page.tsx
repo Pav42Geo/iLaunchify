@@ -15,6 +15,7 @@ import {
   NutritionFactsRenderer,
   productGradient,
   type ProductGradient,
+  type IngredientRow,
 } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurator'
@@ -23,6 +24,7 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides } from '@/lib/templates'
+import { getTemplateRecipeDetail } from '@/lib/recipe-detail'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -94,7 +96,18 @@ export default async function ProductDetailPage({
   // unknown slugs), then merge any DB-authored copy on top (ProductTemplate.
   // marketingDetail + longDescription→about) so real templates carry their own.
   // Flavors are overridden from the DB flavor pool below.
-  const detail = { ...findTemplateDetail(template.slug), ...(await getTemplateDetailOverrides(template.slug)) }
+  const baseDetail = { ...findTemplateDetail(template.slug), ...(await getTemplateDetailOverrides(template.slug)) }
+
+  // Recipe-derived ingredients + Nutrition Facts — computed from the template's
+  // real recipe slots via the nutrition engine (FOOD domain). Overrides the
+  // fixture when the template carries recipe data; otherwise leaves the fixture
+  // (fixture-only demos + non-food domains render unchanged).
+  const recipeDetail = await getTemplateRecipeDetail(template.slug)
+  const detail = {
+    ...baseDetail,
+    ...(recipeDetail.ingredients.length > 0 ? { ingredients: recipeDetail.ingredients } : {}),
+    ...(recipeDetail.nutrition ? { nutrition: recipeDetail.nutrition } : {}),
+  }
 
   // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
   // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
@@ -377,7 +390,10 @@ export default async function ProductDetailPage({
           </TabsContent>
 
           <TabsContent value="ingredients">
-            <IngredientsTabClient slug={template.slug} />
+            <IngredientsTabClient
+              slug={template.slug}
+              ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="compliance">
@@ -684,9 +700,17 @@ function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> 
   )
 }
 
-/* Ingredients tab — uses a client component for the swap/add interactivity. */
-function IngredientsTabClient({ slug }: { slug: string }) {
-  return <IngredientsTabInner slug={slug} />
+/* Ingredients tab — uses a client component for the swap/add interactivity.
+   `ingredients` (when present) are the DB recipe-derived rows; the inner
+   component falls back to the fixture when omitted. */
+function IngredientsTabClient({
+  slug,
+  ingredients,
+}: {
+  slug: string
+  ingredients?: IngredientRow[]
+}) {
+  return <IngredientsTabInner slug={slug} ingredients={ingredients} />
 }
 
 /* ============ helpers ============ */

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { IngredientsList } from '@ilaunchify/ui'
+import { IngredientsList, type IngredientRow } from '@ilaunchify/ui'
 import { findTemplateDetail } from '@/lib/template-detail'
 
 /**
@@ -22,10 +22,19 @@ import { findTemplateDetail } from '@/lib/template-detail'
  */
 export interface IngredientsTabInnerProps {
   slug: string
+  /** DB recipe-derived base ingredients. When present, these override the
+   *  fixture's base list (add-ons stay fixture-backed — they map to optional
+   *  ingredients, a separate slice). */
+  ingredients?: IngredientRow[]
 }
 
-export function IngredientsTabInner({ slug }: IngredientsTabInnerProps) {
-  const detail = findTemplateDetail(slug)
+export function IngredientsTabInner({ slug, ingredients }: IngredientsTabInnerProps) {
+  const fixture = findTemplateDetail(slug)
+  // Prefer real DB ingredients for the base list; keep fixture add-ons.
+  const detail = React.useMemo(
+    () => (ingredients && ingredients.length > 0 ? { ...fixture, ingredients } : fixture),
+    [fixture, ingredients],
+  )
 
   const [replacements, setReplacements] = React.useState<Record<string, string>>({})
   const [addOnIds, setAddOnIds] = React.useState<string[]>([])
