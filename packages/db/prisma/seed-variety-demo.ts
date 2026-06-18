@@ -42,24 +42,31 @@ async function main() {
     (await prisma.productTemplate.findFirst({ where: { labelingType: 'FOOD' }, orderBy: { name: 'asc' } }))
   if (!template) throw new Error('No FOOD ProductTemplate found — run the catalog seed first.')
 
-  // --- 2. Owner: User (must exist) → CreatorProfile → Brand -----------------
-  const user = await prisma.user.findUnique({ where: { email: EMAIL }, select: { id: true } })
-  if (!user) throw new Error(`No User with email ${EMAIL}. Log into the creator app (localhost:3000) once, then re-run. Or set VARIETY_DEMO_EMAIL.`)
-
-  const creatorProfile = await prisma.creatorProfile.upsert({
-    where: { userId: user.id },
-    update: {},
-    // handle is a required UNIQUE slug — derive it from the user id so re-runs +
-    // multiple owners never collide.
-    create: { userId: user.id, displayName: 'Demo Creator', handle: `demo-${user.id.slice(0, 12)}` },
-    select: { id: true },
-  })
-  const brand =
-    (await prisma.brand.findFirst({ where: { creatorProfileId: creatorProfile.id }, select: { id: true } })) ??
-    (await prisma.brand.create({
-      data: { creatorProfileId: creatorProfile.id, name: 'Demo Brand', handle: `demo-brand-${creatorProfile.id.slice(0, 10)}` },
+  // --- 2. Owner brand. PREFER an explicit brand id (the one you see on the
+  // creator dashboard) so the product is owned by EXACTLY the account you're
+  // logged into. Fall back to resolving via email → CreatorProfile → Brand.
+  const brandIdEnv = process.env.VARIETY_DEMO_BRAND_ID
+  let brand: { id: string }
+  if (brandIdEnv) {
+    const b = await prisma.brand.findUnique({ where: { id: brandIdEnv }, select: { id: true } })
+    if (!b) throw new Error(`No Brand with id ${brandIdEnv} — copy the brand id from your creator dashboard.`)
+    brand = b
+  } else {
+    const user = await prisma.user.findUnique({ where: { email: EMAIL }, select: { id: true } })
+    if (!user) throw new Error(`No User with email ${EMAIL}. Set VARIETY_DEMO_BRAND_ID to the brand id on your creator dashboard instead.`)
+    const creatorProfile = await prisma.creatorProfile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id, displayName: 'Demo Creator', handle: `demo-${user.id.slice(0, 12)}` },
       select: { id: true },
-    }))
+    })
+    brand =
+      (await prisma.brand.findFirst({ where: { creatorProfileId: creatorProfile.id }, select: { id: true } })) ??
+      (await prisma.brand.create({
+        data: { creatorProfileId: creatorProfile.id, name: 'Demo Brand', handle: `demo-brand-${creatorProfile.id.slice(0, 10)}` },
+        select: { id: true },
+      }))
+  }
 
   const market =
     (await prisma.market.findFirst({ where: { code: 'US' }, select: { id: true } })) ??
