@@ -23,6 +23,7 @@ import { seedCertificateTypes } from './seed-certificate-types'
 import { seedCertificateCatalog } from './seed-certificate-catalog'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
+import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedFinishTypes } from './seed-finish-types'
@@ -639,6 +640,10 @@ async function main() {
   // Platform-curated, manufacturerServiceId=NULL. Partners clone these as
   // a head start on /products/new/starter.
   await seedStarterTemplates(prisma)
+
+  // --- Marketplace filter dimensions (§7) ---
+  // Demo Format + process tags on templates so the §7 filters return results.
+  await seedFilterDimensions(prisma)
 
   // --- Pricing bridge (punch-list #2) ---
   // One real ProductTemplate matching a marketplace fixture slug + real pricing

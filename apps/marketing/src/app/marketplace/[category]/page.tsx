@@ -10,6 +10,12 @@ import {
   getMarketplaceTemplates,
   type MarketplaceSortKey,
 } from '@/lib/templates'
+import { loadLifestyleTagGroups } from '@/lib/lifestyle-tags-db'
+import {
+  getCertificationOptions,
+  getPackagingFilterGroups,
+  getMarketOptions,
+} from '@/lib/filter-options'
 
 const VALID_SORTS: MarketplaceSortKey[] = [
   'popular',
@@ -23,6 +29,12 @@ function parseSort(v: string | undefined): MarketplaceSortKey {
   return v && (VALID_SORTS as string[]).includes(v)
     ? (v as MarketplaceSortKey)
     : 'popular'
+}
+
+function csv(v: string | undefined): string[] | undefined {
+  if (!v) return undefined
+  const list = v.split(',').map((s) => s.trim()).filter(Boolean)
+  return list.length ? list : undefined
 }
 
 /**
@@ -40,9 +52,19 @@ export default async function CategoryPage({
   params: Promise<{ category: string }>
   searchParams: Promise<{
     sort?: string
-    diet?: string
-    moq?: string
     q?: string
+    format?: string
+    diet?: string
+    audience?: string
+    trend?: string
+    moq?: string
+    lead?: string
+    market?: string
+    cert?: string
+    free?: string
+    process?: string
+    pkg?: string
+    pkgc?: string
   }>
 }) {
   const { category } = await params
@@ -51,23 +73,41 @@ export default async function CategoryPage({
   if (!row) notFound()
 
   const sort = parseSort(sp.sort)
-  const tags = sp.diet
-    ? sp.diet
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : undefined
   const moqMax =
     sp.moq && Number.isFinite(Number(sp.moq)) ? Number(sp.moq) : undefined
+  const marketCode = sp.market || undefined
+  const packagingChildren = csv(sp.pkgc)
+  const packagingParents = csv(sp.pkg)
 
-  const { templates, totalCount } = await getMarketplaceTemplates({
-    sort,
-    tags,
-    moqMax,
-    q: sp.q,
-    categorySlugs: [category],
-    take: 60,
-  })
+  const [
+    { templates, totalCount },
+    lifestyleTagGroups,
+    certOptions,
+    packagingGroups,
+    marketOptions,
+  ] = await Promise.all([
+    getMarketplaceTemplates({
+      sort,
+      moqMax,
+      q: sp.q,
+      categorySlugs: [category],
+      format: sp.format || undefined,
+      dietSlugs: csv(sp.diet),
+      audienceSlugs: csv(sp.audience),
+      trendSlugs: csv(sp.trend),
+      leadBucket: sp.lead || undefined,
+      marketCode,
+      certSlugs: csv(sp.cert),
+      allergenFreeSlugs: csv(sp.free),
+      processSlugs: csv(sp.process),
+      ...(packagingChildren ? { packagingChildren } : { packagingParents }),
+      take: 60,
+    }),
+    loadLifestyleTagGroups(),
+    getCertificationOptions(marketCode),
+    getPackagingFilterGroups(),
+    getMarketOptions(),
+  ])
 
   return (
     <>
@@ -82,7 +122,12 @@ export default async function CategoryPage({
           › <span>{row.title}</span>
         </div>
 
-        <MarketplaceFilters />
+        <MarketplaceFilters
+          lifestyleGroups={lifestyleTagGroups}
+          certOptions={certOptions}
+          packagingGroups={packagingGroups}
+          marketOptions={marketOptions}
+        />
 
         <main className="flex flex-col">
           <header className="mb-7">

@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '@ilaunchify/db'
+import { prisma, Prisma } from '@ilaunchify/db'
 import type { ProductGradient } from '@ilaunchify/ui'
 import { CATEGORY_ROWS, type SampleTemplate } from './sample-templates'
 import type { TemplateDetail } from './template-detail'
@@ -38,10 +38,34 @@ export interface MarketplaceFilters {
   /**
    * Slice 2B — LifestyleTag slugs from the marketplace chip rail.
    * V1 semantics: AND across the tag list (template must carry every
-   * selected tag). When the AND-within-group / OR-across-group split lands
-   * in V1.1, the marketplace page can pass pre-grouped slug arrays.
+   * selected tag). Kept for back-compat; the grouped diet/audience/trend
+   * params below are the §7 surface (OR within group, AND across groups).
    */
   lifestyleTagSlugs?: string[]
+
+  /* ===== §7 full filter set (docs/MARKETPLACE_DESIGN.md, 2026-06-18) ===== */
+  /** Format (Layer 3) — single ManufacturingFormat enum value (e.g. 'POWDER'). */
+  format?: string
+  /** Diet — LifestyleTag LIFESTYLE-group slugs. OR within the group. */
+  dietSlugs?: string[]
+  /** Audience — LifestyleTag AUDIENCE-group slugs. OR within the group. */
+  audienceSlugs?: string[]
+  /** Trend — LifestyleTag TREND-group slugs (More-filters). OR within. */
+  trendSlugs?: string[]
+  /** Lead-time bucket: 'lt2w' | '2-4w' | '4-8w' | '8w+' (variant leadTimeDays). */
+  leadBucket?: string
+  /** Market code (single-select): 'US' | 'CA' | 'EU'. */
+  marketCode?: string
+  /** Certification slugs (More-filters) — CertificateType.slug, VERIFIED only. */
+  certSlugs?: string[]
+  /** Allergen-free claim slugs (More-filters): 'dairy-free','gluten-free',… */
+  allergenFreeSlugs?: string[]
+  /** Manufacturing-process slugs (More-filters): 'cold-pressed','freeze-dried',… */
+  processSlugs?: string[]
+  /** Packaging parent groups — ContainerCategory values (e.g. 'BOTTLE','POUCH'). */
+  packagingParents?: string[]
+  /** Packaging child types — PackagingType.slug. */
+  packagingChildren?: string[]
 }
 
 /** Sort keys supported by the marketplace controls bar. */
@@ -284,39 +308,93 @@ const includeForCard = {
   variants: { where: { isActive: true }, take: 1 },
 } as const
 
-function buildWhere(args: GetTemplatesArgs) {
-  const { q, categorySlugs, subcategorySlugs, moqMax, niche, lifestyleTagSlugs } =
-    args
-  // Slice 2B: niche filter now joins through ProductTemplateNiche (Layer 1
-  // taxonomy) — not the legacy Category.mainCategory shortcut, which never
-  // matched the niche slugs the marketplace was sending. Lifestyle tags
-  // (Layer 4) join through ProductTemplateLifestyleTag with AND semantics.
-  return {
-    status: 'PUBLISHED' as const,
+/** Lead-time bucket → variant leadTimeDays range (days). */
+function leadRange(bucket?: string): { gte?: number; lte?: number } | undefined {
+  switch (bucket) {
+    case 'lt2w':
+      return { lte: 14 }
+    case '2-4w':
+      return { gte: 15, lte: 28 }
+    case '4-8w':
+      return { gte: 29, lte: 56 }
+    case '8w+':
+      return { gte: 57 }
+    default:
+      return undefined
+  }
+}
+
+function buildWhere(args: GetTemplatesArgs): Prisma.ProductTemplateWhereInput {
+  const {
+    q, categorySlugs, subcategorySlugs, moqMax, niche, lifestyleTagSlugs,
+    format, dietSlugs, audienceSlugs, trendSlugs, leadBucket, marketCode,
+    certSlugs, allergenFreeSlugs, processSlugs, packagingParents, packagingChildren,
+  } = args
+
+  // §7 semantics: OR within a group, AND across groups. Each clause that must
+  // co-hold is pushed into `and`; clauses with a single field stay top-level.
+  const and: Record<string, unknown>[] = []
+
+  // Lifestyle groups (Layer 4) — Diet / Audience / Trend. OR within each group.
+  const lifeGroup = (slugs?: string[]) => {
+    if (slugs?.length) {
+      and.push({ lifestyleTags: { some: { lifestyleTag: { slug: { in: slugs } } } } })
+    }
+  }
+  lifeGroup(dietSlugs)
+  lifeGroup(audienceSlugs)
+  lifeGroup(trendSlugs)
+  // Legacy generic tag list (AND per tag) — kept for back-compat `?tag=`.
+  if (lifestyleTagSlugs?.length) {
+    for (const slug of lifestyleTagSlugs) {
+      and.push({ lifestyleTags: { some: { lifestyleTag: { slug } } } })
+    }
+  }
+
+  // Certifications (More-filters) — VERIFIED instances of the selected types.
+  if (certSlugs?.length) {
+    and.push({
+      certificates: {
+        some: {
+          instance: { status: 'VERIFIED', certificateType: { slug: { in: certSlugs } } },
+        },
+      },
+    })
+  }
+
+  // Variant-scoped numeric/relation filters (MOQ, lead time, packaging).
+  if (moqMax !== undefined) and.push({ variants: { some: { moqMin: { lte: moqMax } } } })
+  const lead = leadRange(leadBucket)
+  if (lead) and.push({ variants: { some: { leadTimeDays: lead } } })
+  if (packagingParents?.length) {
+    and.push({ variants: { some: { packagingType: { containerCategory: { in: packagingParents } } } } })
+  }
+  if (packagingChildren?.length) {
+    and.push({ variants: { some: { packagingType: { slug: { in: packagingChildren } } } } })
+  }
+
+  const where: Record<string, unknown> = {
+    status: 'PUBLISHED',
     ...(q && {
       OR: [
-        { name: { contains: q, mode: 'insensitive' as const } },
-        { description: { contains: q, mode: 'insensitive' as const } },
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
       ],
     }),
-    ...(subcategorySlugs?.length && {
-      subcategory: { slug: { in: subcategorySlugs } },
-    }),
+    ...(subcategorySlugs?.length && { subcategory: { slug: { in: subcategorySlugs } } }),
     ...(categorySlugs?.length && !subcategorySlugs?.length && {
       subcategory: { category: { slug: { in: categorySlugs } } },
     }),
-    ...(niche && {
-      niches: { some: { niche: { slug: niche } } },
-    }),
-    ...(lifestyleTagSlugs?.length && {
-      AND: lifestyleTagSlugs.map((slug) => ({
-        lifestyleTags: { some: { lifestyleTag: { slug } } },
-      })),
-    }),
-    ...(moqMax !== undefined && {
-      variants: { some: { moqMin: { lte: moqMax } } },
-    }),
+    ...(niche && { niches: { some: { niche: { slug: niche } } } }),
+    // New §7 dimensions (cast at return — these columns ship with a pending
+    // migration so the generated client may not type them yet).
+    ...(format && { manufacturingFormat: format }),
+    ...(marketCode && { marketCodes: { has: marketCode } }),
+    ...(allergenFreeSlugs?.length && { allergenFreeClaims: { hasSome: allergenFreeSlugs } }),
+    ...(processSlugs?.length && { manufacturingProcesses: { hasSome: processSlugs } }),
+    ...(and.length ? { AND: and } : {}),
   }
+  return where as unknown as Prisma.ProductTemplateWhereInput
 }
 
 function buildOrderBy(sort?: MarketplaceSortKey) {

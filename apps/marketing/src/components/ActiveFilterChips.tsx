@@ -4,85 +4,44 @@ import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Chip } from '@ilaunchify/ui'
 import { findNiche } from '@/lib/niches'
+import { formatLabel, leadLabel } from '@/lib/filter-constants'
 
 /**
- * ActiveFilterChips — renders a removable chip per active URL filter and
- * a "Clear all" link. Sits below MarketplaceControlsBar and mirrors what
- * the sidebar has applied (DS-40.C).
+ * ActiveFilterChips — one removable chip per active §7 filter + Clear all.
+ * Mirrors the sidebar; sort/pagination are untouched.
  *
- * Only filter params (diet, moq, q, niche, …) are listed — sort and
- * pagination stay untouched. The niche chip is the inbound trail from
- * /launch/[niche] landings (REBUILD R3.6) so users keep their niche
- * context after the SEO-driven jump to the marketplace.
+ * Comma-separated multi-selects (diet, audience, trend, cert, free, process,
+ * pkg, pkgc) render one chip per value; single-selects (format, moq, lead,
+ * market, q, niche) render one chip. The legacy repeated `?tag=` rail param is
+ * still rendered for back-compat.
  */
 
-const FILTER_PARAMS = ['diet', 'moq', 'q', 'niche', 'tag'] as const
-type FilterParam = (typeof FILTER_PARAMS)[number]
+// Multi-select (comma-separated) params + a short prefix for the chip label.
+const CSV_PARAMS: { key: string; prefix: string }[] = [
+  { key: 'diet', prefix: '' },
+  { key: 'audience', prefix: '' },
+  { key: 'trend', prefix: '' },
+  { key: 'cert', prefix: 'Cert' },
+  { key: 'free', prefix: '' },
+  { key: 'process', prefix: '' },
+  { key: 'pkg', prefix: 'Pack' },
+  { key: 'pkgc', prefix: 'Pack' },
+]
+const SINGLE_PARAMS = ['format', 'moq', 'lead', 'market', 'q', 'niche'] as const
+const ALL_FILTER_PARAMS = [
+  ...CSV_PARAMS.map((c) => c.key),
+  ...SINGLE_PARAMS,
+  'tag',
+]
 
 function titleCase(s: string) {
-  return s.replace(/(^|\s|-)([a-z])/g, (_, sep, ch) => sep + ch.toUpperCase())
+  return s.replace(/(^|\s|-)([a-z])/g, (_, sep, ch) => sep + ch.toUpperCase()).replace(/-/g, ' ')
 }
 
 export function ActiveFilterChips() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
-  const chips = React.useMemo(() => {
-    const list: { key: string; label: string; remove: () => void }[] = []
-    const diet = searchParams.get('diet')
-    if (diet) {
-      diet
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .forEach((tag) => {
-          list.push({
-            key: `diet:${tag}`,
-            label: titleCase(tag),
-            remove: () => removeDietTag(tag),
-          })
-        })
-    }
-    const moq = searchParams.get('moq')
-    if (moq) {
-      list.push({
-        key: 'moq',
-        label: `MOQ ≤${Number(moq).toLocaleString()}`,
-        remove: () => removeParam('moq'),
-      })
-    }
-    const q = searchParams.get('q')
-    if (q) {
-      list.push({
-        key: 'q',
-        label: `“${q}”`,
-        remove: () => removeParam('q'),
-      })
-    }
-    const niche = searchParams.get('niche')
-    if (niche) {
-      // Resolve the slug to the canonical name; fall back to the slug
-      // (title-cased) if the niche library doesn't know it.
-      const resolved = findNiche(niche)
-      list.push({
-        key: 'niche',
-        label: `Niche · ${resolved?.shortName ?? titleCase(niche.replace(/-/g, ' '))}`,
-        remove: () => removeParam('niche'),
-      })
-    }
-    // Slice 2B — LifestyleTag chips (Layer 4). Repeated ?tag=keto&tag=vegan.
-    const tagSlugs = searchParams.getAll('tag')
-    tagSlugs.forEach((slug) => {
-      list.push({
-        key: `tag:${slug}`,
-        label: titleCase(slug.replace(/-/g, ' ')),
-        remove: () => removeTag(slug),
-      })
-    })
-    return list
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
 
   function pushParams(updater: (p: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString())
@@ -91,36 +50,71 @@ export function ActiveFilterChips() {
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  function removeParam(name: FilterParam) {
-    pushParams((p) => p.delete(name))
-  }
-
-  function removeDietTag(tag: string) {
+  function removeCsvValue(param: string, value: string) {
     pushParams((p) => {
-      const current = (p.get('diet') ?? '')
+      const remaining = (p.get(param) ?? '')
         .split(',')
         .map((s) => s.trim())
-        .filter((s) => s && s.toLowerCase() !== tag.toLowerCase())
-      if (current.length) p.set('diet', current.join(','))
-      else p.delete('diet')
+        .filter((s) => s && s !== value)
+      if (remaining.length) p.set(param, remaining.join(','))
+      else p.delete(param)
     })
   }
-
-  /** Remove one lifestyle-tag slug (LifestyleTag, repeated ?tag= values). */
+  function removeSingle(param: string) {
+    pushParams((p) => p.delete(param))
+  }
   function removeTag(slug: string) {
     pushParams((p) => {
-      const remaining = p
-        .getAll('tag')
-        .filter((s) => s.toLowerCase() !== slug.toLowerCase())
+      const remaining = p.getAll('tag').filter((s) => s.toLowerCase() !== slug.toLowerCase())
       p.delete('tag')
       remaining.forEach((s) => p.append('tag', s))
     })
   }
 
-  function clearAll() {
-    pushParams((p) => {
-      FILTER_PARAMS.forEach((name) => p.delete(name))
+  const chips = React.useMemo(() => {
+    const list: { key: string; label: string; remove: () => void }[] = []
+
+    // Single-selects
+    for (const param of SINGLE_PARAMS) {
+      const v = searchParams.get(param)
+      if (!v) continue
+      let label = v
+      if (param === 'format') label = formatLabel(v)
+      else if (param === 'lead') label = leadLabel(v)
+      else if (param === 'moq') label = `MOQ ≤${Number(v).toLocaleString()}`
+      else if (param === 'market') label = `Market · ${v}`
+      else if (param === 'q') label = `“${v}”`
+      else if (param === 'niche') {
+        const n = findNiche(v)
+        label = `Niche · ${n?.shortName ?? titleCase(v)}`
+      }
+      list.push({ key: param, label, remove: () => removeSingle(param) })
+    }
+
+    // Multi-selects
+    for (const { key, prefix } of CSV_PARAMS) {
+      const raw = searchParams.get(key)
+      if (!raw) continue
+      raw.split(',').map((s) => s.trim()).filter(Boolean).forEach((val) => {
+        list.push({
+          key: `${key}:${val}`,
+          label: prefix ? `${prefix} · ${titleCase(val)}` : titleCase(val),
+          remove: () => removeCsvValue(key, val),
+        })
+      })
+    }
+
+    // Legacy repeated ?tag=
+    searchParams.getAll('tag').forEach((slug) => {
+      list.push({ key: `tag:${slug}`, label: titleCase(slug), remove: () => removeTag(slug) })
     })
+
+    return list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  function clearAll() {
+    pushParams((p) => ALL_FILTER_PARAMS.forEach((name) => p.delete(name)))
   }
 
   if (chips.length === 0) {

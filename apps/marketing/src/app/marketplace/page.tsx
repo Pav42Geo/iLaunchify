@@ -6,7 +6,6 @@ import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
-import { LifestyleTagFilters } from '@/components/LifestyleTagFilters'
 import { templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import {
   getMarketplaceTemplates,
@@ -19,6 +18,18 @@ import {
 } from '@/lib/templates'
 import { loadActiveNiches } from '@/lib/niches-db'
 import { loadLifestyleTagGroups } from '@/lib/lifestyle-tags-db'
+import {
+  getCertificationOptions,
+  getPackagingFilterGroups,
+  getMarketOptions,
+} from '@/lib/filter-options'
+
+/** Parse a comma-separated multi-select param into a slug list. */
+function csvParam(v: string | undefined): string[] | undefined {
+  if (!v) return undefined
+  const list = v.split(',').map((s) => s.trim()).filter(Boolean)
+  return list.length ? list : undefined
+}
 
 const VALID_SORTS: MarketplaceSortKey[] = [
   'popular',
@@ -55,33 +66,43 @@ export default async function MarketplacePage({
   searchParams: Promise<{
     as?: string
     sort?: string
-    diet?: string
-    moq?: string
     q?: string
-    /**
-     * Niche slug from the /launch/[niche] landings (SEO funnel) — now
-     * also a real filter dimension (Slice 2B): joins on
-     * ProductTemplateNiche.some.niche.slug.
-     */
     niche?: string
-    /**
-     * Slice 2B — LifestyleTag slugs from the marketplace chip rail.
-     * URLSearchParams allows repeated `?tag=keto&tag=vegan` values; Next
-     * 15 surfaces them as `string | string[] | undefined`.
-     */
+    // §7 filter params (docs/MARKETPLACE_DESIGN.md). Multi-selects are
+    // comma-separated; single-selects hold one value.
+    format?: string
+    diet?: string
+    audience?: string
+    trend?: string
+    moq?: string
+    lead?: string
+    market?: string
+    cert?: string
+    free?: string
+    process?: string
+    pkg?: string
+    pkgc?: string
+    /** Legacy lifestyle chip rail param — still honored (AND per tag). */
     tag?: string | string[]
   }>
 }) {
   const sp = await searchParams
-  const { sort: sortParam, diet, moq, q, niche } = sp
+  const { sort: sortParam, moq, q, niche } = sp
   const sort = parseSort(sortParam)
-  const tags = diet
-    ? diet
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : undefined
-  // Lifestyle tag slugs (Layer 4). Tolerate scalar OR repeated values.
+
+  const dietSlugs = csvParam(sp.diet)
+  const audienceSlugs = csvParam(sp.audience)
+  const trendSlugs = csvParam(sp.trend)
+  const certSlugs = csvParam(sp.cert)
+  const allergenFreeSlugs = csvParam(sp.free)
+  const processSlugs = csvParam(sp.process)
+  const packagingParents = csvParam(sp.pkg)
+  const packagingChildren = csvParam(sp.pkgc)
+  const format = sp.format || undefined
+  const leadBucket = sp.lead || undefined
+  const marketCode = sp.market || undefined
+
+  // Legacy lifestyle tag rail (repeated ?tag=). Tolerate scalar OR repeated.
   const lifestyleTagSlugs = (() => {
     const raw = sp.tag
     if (!raw) return undefined
@@ -90,11 +111,13 @@ export default async function MarketplacePage({
     return cleaned.length > 0 ? cleaned : undefined
   })()
   const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
+
   const hasActiveFilters = Boolean(
-    tags?.length ||
-      moqMax !== undefined ||
-      q ||
-      niche ||
+    moqMax !== undefined || q || niche ||
+      format || leadBucket || marketCode ||
+      dietSlugs?.length || audienceSlugs?.length || trendSlugs?.length ||
+      certSlugs?.length || allergenFreeSlugs?.length || processSlugs?.length ||
+      packagingParents?.length || packagingChildren?.length ||
       lifestyleTagSlugs?.length,
   )
   const session = await getMarketingSession()
@@ -111,14 +134,28 @@ export default async function MarketplacePage({
     niches,
     lifestyleTagGroups,
     categorySections,
+    certOptions,
+    packagingGroups,
+    marketOptions,
   ] = await Promise.all([
     getMarketplaceTemplates({
       sort,
-      tags,
       moqMax,
       q,
       niche,
       lifestyleTagSlugs,
+      format,
+      dietSlugs,
+      audienceSlugs,
+      trendSlugs,
+      leadBucket,
+      marketCode,
+      certSlugs,
+      allergenFreeSlugs,
+      processSlugs,
+      // Children narrow within a parent — when present they supersede the
+      // parent-level selection to avoid over-constraining the query.
+      ...(packagingChildren ? { packagingChildren } : { packagingParents }),
       take: 60,
     }),
     getTrendingTemplates(4),
@@ -127,6 +164,9 @@ export default async function MarketplacePage({
     loadActiveNiches(),
     loadLifestyleTagGroups(),
     getMarketplaceCategorySections(),
+    getCertificationOptions(marketCode),
+    getPackagingFilterGroups(),
+    getMarketOptions(),
   ])
 
   return (
@@ -145,7 +185,12 @@ export default async function MarketplacePage({
             "Marketplace" label adds nothing. Deeper pages still show
             the trail ending at the current page. */}
 
-        <MarketplaceFilters />
+        <MarketplaceFilters
+          lifestyleGroups={lifestyleTagGroups}
+          certOptions={certOptions}
+          packagingGroups={packagingGroups}
+          marketOptions={marketOptions}
+        />
 
         <main className="flex flex-col">
           <HeroBanner
@@ -183,10 +228,9 @@ export default async function MarketplacePage({
             </div>
           )}
 
-          {/* Lifestyle tag chips (Layer 4) — DB-driven, multi-select, URL.
-              Hidden entirely when no LifestyleTag rows exist yet so the
-              marketplace stays clean pre-seed. */}
-          <LifestyleTagFilters groups={lifestyleTagGroups} />
+          {/* Lifestyle tags (Diet/Audience/Trend) now live in the §7 sidebar
+              (Diet + Audience default, Trend under More-filters), so the
+              separate horizontal rail is retired to avoid duplication. */}
 
           {/* Controls + active filters */}
           <MarketplaceControlsBar
