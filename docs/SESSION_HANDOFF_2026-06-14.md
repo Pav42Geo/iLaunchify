@@ -157,18 +157,15 @@ Because every change is additive and nullable, rolling back code does **not** re
     wizard's flavors from the order's `OrderItemFlavor` rows; `applyOrderAdjustment` detects a
     flavor change, adds a `flavors` impact (PRODUCT+LABEL re-review), and replaces the rows from the
     adjusted selection (re-snapshotting name + SoI). All cast-guarded.
-  - **Slice 2b — live multi-column label preview: SPEC'd, NOT built.** The `VarietyFactsSvg` +
-    `LabelViewerModal` exist, but they're driven by `VarietyColumn[]` (label + PanelData) that the
-    partner builder computes **live from in-memory recipe state** (`RecipeBuilderStep.tsx:764`:
-    `flavorResult(fl)` → `toPanelData`). Per-flavor panels are **not persisted** (only
-    `ComplianceCheck.panelData` for the BASE recipe). So a creator-side live preview needs a new
-    **server-side per-flavor nutrition recompute**: load the product's recipe + each `FlavorPreset`
-    overlay (`slotResolution`/`extras`/`nutrientOverrides`) + serving config, run
-    `@ilaunchify/nutrition` `configured-selection` → `calculateLabel` → `toPanelData` per flavor →
-    `VarietyColumn[]`, expose via an action (e.g. `getVarietyPreviewColumns(productId)`), then the
-    PackBuilder filters columns to the picked flavors and renders `<VarietyFactsSvg>`. Bounded but a
-    real pipeline — its own slice. Recommended to cache the computed columns as a product asset so
-    it isn't recomputed on every checkout.
+  - **Slice 2b — live multi-column label preview SHIPPED 2026-06-14.** The per-flavor recompute
+    already existed (`computeProductLabel` builds one FOOD label per flavor via `buildFoodLabel`), so
+    this exposed it: `getVarietyPreviewColumns(productId)` (ungated preview, ownership-scoped,
+    FOOD-only, reuses `buildFoodLabel` so the preview matches the printed label) returns per-flavor
+    `{flavorPresetId, label, panel, contains}`. `PackBuilder` gained an optional `previewColumns`
+    prop and renders `<VarietyFactsSvg>` below the picker, filtered to the chosen flavors in pick
+    order; the creator checkout `ProductionStep` fetches + passes them, marketing omits them
+    (pre-auth). **Follow-ups:** marketing (public) preview by slug; cache the columns as a product
+    asset to avoid recomputing each checkout; supplement multi-flavor preview (FOOD-only today).
 - **Recovery Mode (§10)** — broadcast-to-alternate-manufacturers — DEFERRED to a dedicated
   discussion (recipe IP, FDA label-as-legal-artifact, re-quote, system-vs-creator pick).
 
