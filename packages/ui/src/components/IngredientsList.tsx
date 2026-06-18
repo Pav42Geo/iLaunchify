@@ -42,7 +42,10 @@ export interface IngredientAddOn {
   id: string
   name: string
   description?: string
-  priceDelta: number
+  /** Per-unit upcharge. Optional: omitted when no authoritative price exists
+   *  (e.g. a template's optional ingredient with no cost on record) — the UI
+   *  then shows the add-on as a toggle without a price chip. */
+  priceDelta?: number
   allergens?: string[]
 }
 
@@ -223,9 +226,11 @@ export function IngredientsList({
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <span className="text-[13px] font-bold text-ink-900">
-                          +${ao.priceDelta.toFixed(2)}
-                        </span>
+                        {ao.priceDelta !== undefined && (
+                          <span className="text-[13px] font-bold text-ink-900">
+                            +${ao.priceDelta.toFixed(2)}
+                          </span>
+                        )}
                         <span
                           className={cn(
                             'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',

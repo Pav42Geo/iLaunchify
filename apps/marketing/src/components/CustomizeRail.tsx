@@ -73,7 +73,7 @@ export function CustomizeRail({
     let sum = 0
     for (const id of addOnIds) {
       const ao = ingredientAddOns.find((a) => a.id === id)
-      if (ao) sum += ao.priceDelta
+      if (ao?.priceDelta) sum += ao.priceDelta
     }
     return sum
   }, [addOnIds, ingredientAddOns])
@@ -273,14 +273,16 @@ export function CustomizeRail({
                           )}
                         </span>
                       </span>
-                      <span
-                        className={
-                          'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
-                          (ao.priceDelta > 0 ? 'text-ink-700' : 'text-emerald-700')
-                        }
-                      >
-                        {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
-                      </span>
+                      {ao.priceDelta !== undefined && (
+                        <span
+                          className={
+                            'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
+                            (ao.priceDelta > 0 ? 'text-ink-700' : 'text-emerald-700')
+                          }
+                        >
+                          {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
+                        </span>
+                      )}
                     </button>
                   </li>
                 )

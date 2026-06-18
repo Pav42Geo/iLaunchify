@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { IngredientsList, type IngredientRow } from '@ilaunchify/ui'
+import { IngredientsList, type IngredientRow, type IngredientAddOn } from '@ilaunchify/ui'
 import { findTemplateDetail } from '@/lib/template-detail'
 
 /**
@@ -22,18 +22,23 @@ import { findTemplateDetail } from '@/lib/template-detail'
  */
 export interface IngredientsTabInnerProps {
   slug: string
-  /** DB recipe-derived base ingredients. When present, these override the
-   *  fixture's base list (add-ons stay fixture-backed — they map to optional
-   *  ingredients, a separate slice). */
+  /** DB recipe-derived base ingredients. When present, override the fixture. */
   ingredients?: IngredientRow[]
+  /** DB optional add-ons (from the template's optional ingredients). When
+   *  present, override the fixture add-ons. */
+  addOns?: IngredientAddOn[]
 }
 
-export function IngredientsTabInner({ slug, ingredients }: IngredientsTabInnerProps) {
+export function IngredientsTabInner({ slug, ingredients, addOns }: IngredientsTabInnerProps) {
   const fixture = findTemplateDetail(slug)
-  // Prefer real DB ingredients for the base list; keep fixture add-ons.
+  // Prefer real DB ingredients + add-ons; fall back to the fixture per-field.
   const detail = React.useMemo(
-    () => (ingredients && ingredients.length > 0 ? { ...fixture, ingredients } : fixture),
-    [fixture, ingredients],
+    () => ({
+      ...fixture,
+      ...(ingredients && ingredients.length > 0 ? { ingredients } : {}),
+      ...(addOns ? { ingredientAddOns: addOns } : {}),
+    }),
+    [fixture, ingredients, addOns],
   )
 
   const [replacements, setReplacements] = React.useState<Record<string, string>>({})
@@ -54,7 +59,7 @@ export function IngredientsTabInner({ slug, ingredients }: IngredientsTabInnerPr
     let sum = 0
     for (const id of addOnIds) {
       const ao = detail.ingredientAddOns.find((a) => a.id === id)
-      if (ao) sum += ao.priceDelta
+      if (ao?.priceDelta) sum += ao.priceDelta
     }
     return sum
   }, [addOnIds, detail.ingredientAddOns])

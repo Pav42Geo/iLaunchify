@@ -2,7 +2,7 @@ import 'server-only'
 import { prisma } from '@ilaunchify/db'
 import { calculateLabel, toPanelData, type RecipeRow } from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
-import type { IngredientRow } from '@ilaunchify/ui'
+import type { IngredientRow, IngredientAddOn } from '@ilaunchify/ui'
 
 /**
  * Recipe-derived detail for the marketplace product page — the REAL base
@@ -30,11 +30,15 @@ import type { IngredientRow } from '@ilaunchify/ui'
 export interface TemplateRecipeDetail {
   /** Base recipe rows (label-declaration names, %-of-recipe, allergens, swaps). */
   ingredients: IngredientRow[]
+  /** Optional add-ons the creator can toggle (from the template's optional
+   *  ingredients). priceDelta is omitted — optional ingredients carry no
+   *  authoritative per-unit cost — so the toggle shows without a price chip. */
+  addOns: IngredientAddOn[]
   /** Computed (or declared) Nutrition Facts panel; null → use the fixture. */
   nutrition: PanelData | null
 }
 
-const EMPTY: TemplateRecipeDetail = { ingredients: [], nutrition: null }
+const EMPTY: TemplateRecipeDetail = { ingredients: [], addOns: [], nutrition: null }
 
 // FALCPA Big-9 allergen codes → display labels for the ingredient/allergen pills.
 const ALLERGEN_DISPLAY: Record<string, string> = {
@@ -99,6 +103,16 @@ export async function getTemplateRecipeDetail(slug: string): Promise<TemplateRec
             },
           },
         },
+        optionalIngredients: {
+          orderBy: { displayOrder: 'asc' },
+          select: {
+            id: true,
+            calloutText: true,
+            ingredient: {
+              select: { name: true, internalName: true, labelDeclarationName: true, allergenFlags: true },
+            },
+          },
+        },
         // Representative serving geometry — the panel needs a serving size +
         // servings/container. Take the first active variant (single-flavor
         // templates have one; multi keep consistent geometry across flavors).
@@ -132,6 +146,16 @@ export async function getTemplateRecipeDetail(slug: string): Promise<TemplateRec
         })),
       }
     })
+
+    // --- optional add-ons (template optional ingredients) ---
+    const addOns: IngredientAddOn[] = tmpl.optionalIngredients.map((o) => ({
+      id: o.id,
+      name: o.ingredient.labelDeclarationName ?? o.ingredient.internalName ?? o.ingredient.name,
+      description: o.calloutText ?? undefined,
+      allergens: displayAllergens(o.ingredient.allergenFlags),
+      // priceDelta intentionally omitted — no authoritative per-unit cost on an
+      // optional ingredient. The UI renders the toggle without a price chip.
+    }))
 
     // --- nutrition panel ---
     let nutrition: PanelData | null = null
@@ -168,7 +192,7 @@ export async function getTemplateRecipeDetail(slug: string): Promise<TemplateRec
       }
     }
 
-    return { ingredients, nutrition }
+    return { ingredients, addOns, nutrition }
   } catch (err) {
     console.warn('[recipe-detail] failed, using fixture:', (err as Error).message)
     return EMPTY

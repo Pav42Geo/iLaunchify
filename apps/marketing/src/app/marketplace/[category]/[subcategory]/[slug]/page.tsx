@@ -16,6 +16,7 @@ import {
   productGradient,
   type ProductGradient,
   type IngredientRow,
+  type IngredientAddOn,
 } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurator'
@@ -106,6 +107,7 @@ export default async function ProductDetailPage({
   const detail = {
     ...baseDetail,
     ...(recipeDetail.ingredients.length > 0 ? { ingredients: recipeDetail.ingredients } : {}),
+    ...(recipeDetail.addOns.length > 0 ? { ingredientAddOns: recipeDetail.addOns } : {}),
     ...(recipeDetail.nutrition ? { nutrition: recipeDetail.nutrition } : {}),
   }
 
@@ -393,6 +395,7 @@ export default async function ProductDetailPage({
             <IngredientsTabClient
               slug={template.slug}
               ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
+              addOns={recipeDetail.addOns.length > 0 ? recipeDetail.addOns : undefined}
             />
           </TabsContent>
 
@@ -706,11 +709,13 @@ function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> 
 function IngredientsTabClient({
   slug,
   ingredients,
+  addOns,
 }: {
   slug: string
   ingredients?: IngredientRow[]
+  addOns?: IngredientAddOn[]
 }) {
-  return <IngredientsTabInner slug={slug} ingredients={ingredients} />
+  return <IngredientsTabInner slug={slug} ingredients={ingredients} addOns={addOns} />
 }
 
 /* ============ helpers ============ */
