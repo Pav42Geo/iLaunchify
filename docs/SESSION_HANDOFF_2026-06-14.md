@@ -152,8 +152,23 @@ Because every change is additive and nullable, rolling back code does **not** re
   marketing product detail (live D5 quote) and the creator checkout Step 2 (gated on
   `packingProfile.flavorMode === 'MULTI'`). Persists normalized `OrderItemFlavor` rows at checkout
   (validated pre-payment), and the production manifest surfaces the per-flavor splits to the
-  manufacturer. **Slice 2 (fast follow):** live multi-column `VarietyFactsSvg` preview in the
-  builder; carry OrderItemFlavor into the adjust/resubmit flow (currently re-picks).
+  manufacturer.
+  - **Slice 2a — adjust/resubmit carry-over SHIPPED 2026-06-14.** `buildAdjustmentDraft` seeds the
+    wizard's flavors from the order's `OrderItemFlavor` rows; `applyOrderAdjustment` detects a
+    flavor change, adds a `flavors` impact (PRODUCT+LABEL re-review), and replaces the rows from the
+    adjusted selection (re-snapshotting name + SoI). All cast-guarded.
+  - **Slice 2b — live multi-column label preview: SPEC'd, NOT built.** The `VarietyFactsSvg` +
+    `LabelViewerModal` exist, but they're driven by `VarietyColumn[]` (label + PanelData) that the
+    partner builder computes **live from in-memory recipe state** (`RecipeBuilderStep.tsx:764`:
+    `flavorResult(fl)` → `toPanelData`). Per-flavor panels are **not persisted** (only
+    `ComplianceCheck.panelData` for the BASE recipe). So a creator-side live preview needs a new
+    **server-side per-flavor nutrition recompute**: load the product's recipe + each `FlavorPreset`
+    overlay (`slotResolution`/`extras`/`nutrientOverrides`) + serving config, run
+    `@ilaunchify/nutrition` `configured-selection` → `calculateLabel` → `toPanelData` per flavor →
+    `VarietyColumn[]`, expose via an action (e.g. `getVarietyPreviewColumns(productId)`), then the
+    PackBuilder filters columns to the picked flavors and renders `<VarietyFactsSvg>`. Bounded but a
+    real pipeline — its own slice. Recommended to cache the computed columns as a product asset so
+    it isn't recomputed on every checkout.
 - **Recovery Mode (§10)** — broadcast-to-alternate-manufacturers — DEFERRED to a dedicated
   discussion (recipe IP, FDA label-as-legal-artifact, re-quote, system-vs-creator pick).
 
