@@ -66,6 +66,7 @@ import {
 } from '@ilaunchify/marketplace'
 import { ProductReviewer } from './ProductReviewer'
 import { MarketplacePlacementPanel } from './MarketplacePlacementPanel'
+import { MarketingCopyPanel } from './MarketingCopyPanel'
 import type {
   NicheOption,
   LifestyleTagOption,
@@ -322,6 +323,16 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     },
   })
   if (!template) notFound()
+
+  // Marketplace marketing copy (longDescription + marketingDetail). Cast-guarded —
+  // marketingDetail ships with a pending migration.
+  const marketingCopy = await (prisma as unknown as {
+    productTemplate: {
+      findUnique: (a: unknown) => Promise<{ longDescription: string | null; marketingDetail: Record<string, unknown> | null } | null>
+    }
+  }).productTemplate
+    .findUnique({ where: { id }, select: { longDescription: true, marketingDetail: true } })
+    .catch(() => null)
 
   // Restricted-category eligibility (labeling ≠ licensing). Read-only signal so
   // ops can see why a product would be blocked at checkout. Evaluates the
@@ -1696,6 +1707,16 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             suggestedNicheIds={suggestedNicheIds}
             lockedNicheIds={lockedNicheIds}
             ruleHits={ruleHits}
+          />
+
+          {/* Marketplace detail-page marketing copy — admin authors the per-template
+              copy the public detail page merges over the fixture. */}
+          <MarketingCopyPanel
+            productTemplateId={template.id}
+            initial={{
+              longDescription: marketingCopy?.longDescription ?? null,
+              marketingDetail: marketingCopy?.marketingDetail ?? null,
+            }}
           />
 
           {/* Label phrases — admin can override the per-product label-phrase

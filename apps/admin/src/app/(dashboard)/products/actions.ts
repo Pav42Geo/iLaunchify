@@ -275,6 +275,47 @@ export async function setProductPaused(
 }
 
 // -----------------------------------------------------------------------------
+// Marketplace detail-page marketing copy — admin authors the per-template copy
+// (longDescription + marketingDetail JSON) the marketing detail page merges over
+// the fixture. marketingDetail ships with a pending migration → cast-guarded.
+// -----------------------------------------------------------------------------
+
+export async function adminSetMarketingDetail(input: {
+  productTemplateId: string
+  longDescription: string | null
+  marketingDetail: Record<string, unknown>
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: input.productTemplateId },
+    select: { id: true, name: true },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+
+  await (prisma as unknown as {
+    productTemplate: { update: (a: unknown) => Promise<unknown> }
+  }).productTemplate.update({
+    where: { id: input.productTemplateId },
+    data: {
+      longDescription: input.longDescription,
+      marketingDetail: input.marketingDetail,
+    },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: input.productTemplateId,
+    action: 'PRODUCT_TEMPLATE_MARKETING_EDIT',
+    payload: { name: tpl.name },
+  })
+
+  revalidatePath('/products')
+  revalidatePath(`/products/${input.productTemplateId}`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
 // POST NOTE — admin adds a message to the partner-visible thread.
 // -----------------------------------------------------------------------------
 
