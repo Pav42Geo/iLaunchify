@@ -70,6 +70,15 @@ export async function startOrderAdjustment(input: {
   const item = order.items[0]
   if (!item) return { ok: false, error: 'Order has no items.' }
 
+  // Carry the original variety-pack composition into the adjustment so the
+  // creator doesn't have to re-pick flavors. Cast-guarded — OrderItemFlavor
+  // post-dates the generated client until the migration.
+  const existingFlavors = await (prisma as unknown as {
+    orderItemFlavor: { findMany: (a: unknown) => Promise<Array<{ flavorPresetId: string; qty: number }>> }
+  }).orderItemFlavor
+    .findMany({ where: { orderItemId: item.id }, select: { flavorPresetId: true, qty: true } })
+    .catch(() => [] as Array<{ flavorPresetId: string; qty: number }>)
+
   // Reconstruct manifest picks from Order.internalNotes (V1 transport;
   // V1.5 promotes these to first-class columns).
   const lookups = parseInternalNotesLookups(order.internalNotes)
@@ -112,9 +121,8 @@ export async function startOrderAdjustment(input: {
       substrateSlug: lookups.substrateSlug,
       packagingMaterialSlug: lookups.packagingSlug,
       finishPartnerFinishIds: lookups.finishPartnerIds,
-      // Slice 1: variety-pack adjustments re-pick flavors in the wizard. Carrying
-      // the original OrderItemFlavor rows into an adjustment is a follow-up.
-      flavors: [],
+      // Slice 2: carry the original variety-pack flavors into the adjustment.
+      flavors: existingFlavors.map((f) => ({ flavorPresetId: f.flavorPresetId, qty: f.qty })),
     },
     fulfillment,
     designVersionId: item.designVersionId,
@@ -160,6 +168,9 @@ const FIELD_IMPACTS: Record<string, Array<'PRODUCT' | 'LABEL' | 'WAREHOUSE'>> = 
   finishes: ['LABEL'],
   shipTo: ['WAREHOUSE'],
   leadTime: ['PRODUCT', 'LABEL', 'WAREHOUSE'],
+  // A variety-pack flavor change alters the production splits (PRODUCT) and the
+  // per-flavor label columns (LABEL).
+  flavors: ['PRODUCT', 'LABEL'],
 }
 
 export async function applyOrderAdjustment(input: {
@@ -203,6 +214,23 @@ export async function applyOrderAdjustment(input: {
   // partners are routed by ZIP).
   const draftShipKey = shipKey(input.draft.fulfillment, order)
   if (draftShipKey !== orderShipKey(order)) changed.add('shipTo')
+
+  // Variety-pack flavor comparison — normalize both to a stable
+  // "flavorPresetId:qty" key set. Cast-guarded read (new model).
+  const existingFlavors = await (prisma as unknown as {
+    orderItemFlavor: { findMany: (a: unknown) => Promise<Array<{ flavorPresetId: string; qty: number }>> }
+  }).orderItemFlavor
+    .findMany({ where: { orderItemId: item.id }, select: { flavorPresetId: true, qty: true } })
+    .catch(() => [] as Array<{ flavorPresetId: string; qty: number }>)
+  const flavorKey = (rows: Array<{ flavorPresetId: string; qty: number }>) =>
+    rows
+      .filter((f) => f.qty > 0)
+      .map((f) => `${f.flavorPresetId}:${f.qty}`)
+      .sort()
+      .join('|')
+  if (flavorKey(existingFlavors) !== flavorKey(input.draft.production.flavors ?? [])) {
+    changed.add('flavors')
+  }
 
   if (changed.size === 0) {
     return {
@@ -251,6 +279,36 @@ export async function applyOrderAdjustment(input: {
       where: { id: item.id },
       data: { quantity: input.draft.production.quantity ?? item.quantity },
     })
+
+    // Replace the variety-pack composition with the adjusted selection so the
+    // regenerated manifest reflects the new per-flavor splits. Cast-guarded
+    // (OrderItemFlavor post-dates the generated client until the migration).
+    if (changed.has('flavors')) {
+      const flavorClient = tx as unknown as {
+        orderItemFlavor: {
+          deleteMany: (a: unknown) => Promise<unknown>
+          createMany: (a: unknown) => Promise<unknown>
+        }
+      }
+      await flavorClient.orderItemFlavor.deleteMany({ where: { orderItemId: item.id } })
+      const draftFlavors = (input.draft.production.flavors ?? []).filter((f) => f.qty > 0)
+      if (draftFlavors.length > 0) {
+        const presets = await tx.flavorPreset.findMany({
+          where: { id: { in: draftFlavors.map((f) => f.flavorPresetId) } },
+          select: { id: true, name: true, statementOfIdentity: true },
+        })
+        const byId = new Map(presets.map((p) => [p.id, p]))
+        await flavorClient.orderItemFlavor.createMany({
+          data: draftFlavors.map((f) => ({
+            orderItemId: item.id,
+            flavorPresetId: f.flavorPresetId,
+            qty: f.qty,
+            flavorName: byId.get(f.flavorPresetId)?.name ?? 'Flavor',
+            soiSnapshot: byId.get(f.flavorPresetId)?.statementOfIdentity ?? null,
+          })),
+        })
+      }
+    }
 
     for (const d of order.dispatches) {
       const impacted = impactedTypes.has(d.type)
