@@ -112,6 +112,9 @@ export async function startOrderAdjustment(input: {
       substrateSlug: lookups.substrateSlug,
       packagingMaterialSlug: lookups.packagingSlug,
       finishPartnerFinishIds: lookups.finishPartnerIds,
+      // Slice 1: variety-pack adjustments re-pick flavors in the wizard. Carrying
+      // the original OrderItemFlavor rows into an adjustment is a follow-up.
+      flavors: [],
     },
     fulfillment,
     designVersionId: item.designVersionId,

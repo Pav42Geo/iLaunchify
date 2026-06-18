@@ -57,6 +57,10 @@ export interface ProductionState {
   // PartnerFinish IDs the creator picked. Each becomes a
   // DesignFinishApplication when the order finalises (Phase F2+).
   finishPartnerFinishIds: string[]
+  // Variety-pack builder (Slice 1) — distinct flavors + per-flavor unit splits the
+  // creator composed. Empty for single-flavor products. Persisted to OrderItemFlavor
+  // at checkout; the sum must equal `quantity` for a fixed-capacity pack.
+  flavors: Array<{ flavorPresetId: string; qty: number }>
 }
 
 export interface SubscriptionState {
@@ -167,6 +171,7 @@ export function emptyDraftState(): CheckoutDraftState {
       substrateSlug: null,
       packagingMaterialSlug: null,
       finishPartnerFinishIds: [],
+      flavors: [],
     },
     subscription: {
       seenOffer: false,

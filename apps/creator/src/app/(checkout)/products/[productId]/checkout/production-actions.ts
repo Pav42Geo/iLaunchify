@@ -140,6 +140,54 @@ export async function getProductionOptions(
 }
 
 // -----------------------------------------------------------------------------
+// getPackBuilderConfig — variety-pack flavor rules + pool for Step 2 (Slice 1)
+// -----------------------------------------------------------------------------
+
+export interface PackBuilderConfig {
+  flavorMode: 'SINGLE' | 'MULTI'
+  maxFlavorsPerPack: number | null
+  pool: Array<{ id: string; name: string; swatchHex: string | null; statementOfIdentity: string | null }>
+}
+
+export async function getPackBuilderConfig(
+  productId: string,
+): Promise<Result<PackBuilderConfig>> {
+  const { user, error } = await authorize(productId)
+  if (error || !user) return { ok: false, error: error ?? 'NOT_A_CREATOR' }
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    select: {
+      productTemplate: {
+        select: {
+          maxFlavorsPerPack: true,
+          packingProfile: { select: { flavorMode: true } },
+          flavorPresets: {
+            where: { status: 'ACTIVE' },
+            orderBy: { sortOrder: 'asc' },
+            select: { id: true, name: true, swatchHex: true, statementOfIdentity: true },
+          },
+        },
+      },
+    },
+  })
+  const t = product?.productTemplate
+  return {
+    ok: true,
+    data: {
+      flavorMode: t?.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
+      maxFlavorsPerPack: t?.maxFlavorsPerPack ?? null,
+      pool: (t?.flavorPresets ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        swatchHex: f.swatchHex,
+        statementOfIdentity: f.statementOfIdentity,
+      })),
+    },
+  }
+}
+
+// -----------------------------------------------------------------------------
 // estimateProductionCost — cent-precise breakdown for OrderSummary
 // -----------------------------------------------------------------------------
 

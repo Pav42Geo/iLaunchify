@@ -26,6 +26,7 @@ import {
   getOrCreateCreatorCustomer,
 } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
+import { validatePackSelection } from '@ilaunchify/ui'
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
 
@@ -132,6 +133,42 @@ export async function placeOrderFromCheckoutDraft(
   }
   if (!state.fulfillment.shipToType) {
     return { ok: false, error: 'Pick a destination in step 4 before paying.' }
+  }
+
+  // --- 2b. Variety-pack flavor composition (Slice 1) -------------------------
+  // A MULTI-flavor product requires a valid pack: up to maxFlavorsPerPack distinct
+  // flavors whose per-flavor quantities sum to the order quantity. We snapshot the
+  // flavor name + Statement of Identity at order time (the FlavorPreset can change
+  // later but the produced labels must reflect what was sold).
+  let flavorRows: Array<{ flavorPresetId: string; qty: number; flavorName: string; soiSnapshot: string | null }> = []
+  const packRules = product.productTemplateId
+    ? await prisma.productTemplate.findUnique({
+        where: { id: product.productTemplateId },
+        select: { maxFlavorsPerPack: true, packingProfile: { select: { flavorMode: true } } },
+      })
+    : null
+  if (packRules?.packingProfile?.flavorMode === 'MULTI') {
+    const picks = state.production.flavors ?? []
+    const validation = validatePackSelection(picks, {
+      maxFlavors: packRules.maxFlavorsPerPack,
+      minPerFlavor: 1,
+      capacity: qty,
+    })
+    if (!validation.ok) {
+      return { ok: false, error: validation.errors[0]?.message ?? 'Adjust your variety-pack flavors in step 2 before paying.' }
+    }
+    const chosen = picks.filter((p) => p.qty > 0)
+    const presets = await prisma.flavorPreset.findMany({
+      where: { id: { in: chosen.map((p) => p.flavorPresetId) } },
+      select: { id: true, name: true, statementOfIdentity: true },
+    })
+    const byId = new Map(presets.map((p) => [p.id, p]))
+    flavorRows = chosen.map((p) => ({
+      flavorPresetId: p.flavorPresetId,
+      qty: p.qty,
+      flavorName: byId.get(p.flavorPresetId)?.name ?? 'Flavor',
+      soiSnapshot: byId.get(p.flavorPresetId)?.statementOfIdentity ?? null,
+    }))
   }
 
   // --- 3. Resolve ship-to + warehouse-partner ID -----------------------------
@@ -299,7 +336,7 @@ export async function placeOrderFromCheckoutDraft(
         internalNotes,
       },
     })
-    await tx.orderItem.create({
+    const orderItem = await tx.orderItem.create({
       data: {
         orderId: created.id,
         productId: product.id,
@@ -309,6 +346,20 @@ export async function placeOrderFromCheckoutDraft(
         designVersionId: lockedDesignVersionId,
       },
     })
+
+    // Variety-pack composition — one OrderItemFlavor per distinct flavor (Slice 1).
+    // Cast-guarded: the model post-dates the generated client until the migration.
+    if (flavorRows.length > 0) {
+      await (tx as unknown as { orderItemFlavor: { createMany: (a: unknown) => Promise<unknown> } }).orderItemFlavor.createMany({
+        data: flavorRows.map((f) => ({
+          orderItemId: orderItem.id,
+          flavorPresetId: f.flavorPresetId,
+          qty: f.qty,
+          flavorName: f.flavorName,
+          soiSnapshot: f.soiSnapshot,
+        })),
+      })
+    }
 
     // Consume the applied sample credit. The `status: 'AVAILABLE'` guard in the
     // where-clause makes this a no-op if a concurrent order already spent it

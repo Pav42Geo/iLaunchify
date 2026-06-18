@@ -26,13 +26,16 @@ import {
   ShieldCheck,
   Truck,
 } from 'lucide-react'
+import { PackBuilder } from '@ilaunchify/ui'
 import { StepShell } from './_StepShell'
 import { ComponentsPanel } from './ComponentsPanel'
 import type { ProductionState } from '../types'
 import {
   getProductionOptions,
+  getPackBuilderConfig,
   estimateProductionCost,
   type CostBreakdown,
+  type PackBuilderConfig,
   type PackagingMaterialOption,
   type SubstrateOption,
 } from '../production-actions'
@@ -73,6 +76,7 @@ export function ProductionStep({
 }: Props) {
   const [substrates, setSubstrates] = useState<SubstrateOption[]>([])
   const [packagings, setPackagings] = useState<PackagingMaterialOption[]>([])
+  const [packConfig, setPackConfig] = useState<PackBuilderConfig | null>(null)
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
   const [isEstimating, startEstimating] = useTransition()
@@ -83,14 +87,17 @@ export function ProductionStep({
   useEffect(() => {
     let cancelled = false
     setLoadingOptions(true)
-    getProductionOptions(productId).then((result) => {
-      if (cancelled) return
-      if (result.ok) {
-        setSubstrates(result.data.substrates)
-        setPackagings(result.data.packagingMaterials)
-      }
-      setLoadingOptions(false)
-    })
+    Promise.all([getProductionOptions(productId), getPackBuilderConfig(productId)]).then(
+      ([options, pack]) => {
+        if (cancelled) return
+        if (options.ok) {
+          setSubstrates(options.data.substrates)
+          setPackagings(options.data.packagingMaterials)
+        }
+        if (pack.ok) setPackConfig(pack.data)
+        setLoadingOptions(false)
+      },
+    )
     return () => {
       cancelled = true
     }
@@ -285,6 +292,23 @@ export function ProductionStep({
             </div>
           </div>
         </article>
+
+        {/* Variety-pack builder (Slice 1) — only for MULTI-flavor products. Splits
+            the order quantity across the chosen distinct flavors. */}
+        {packConfig?.flavorMode === 'MULTI' && packConfig.pool.length > 0 && (
+          <PackBuilder
+            pool={packConfig.pool.map((f) => ({
+              id: f.id,
+              name: f.name,
+              swatchHex: f.swatchHex,
+              statementOfIdentity: f.statementOfIdentity,
+            }))}
+            maxFlavors={packConfig.maxFlavorsPerPack}
+            capacity={qty}
+            value={state.flavors ?? []}
+            onChange={(picks) => onChange({ flavors: picks })}
+          />
+        )}
 
         {/* C7.f — packaging components (primary / closure / seal). */}
         <ComponentsPanel productId={productId} />
