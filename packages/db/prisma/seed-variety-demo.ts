@@ -49,12 +49,17 @@ async function main() {
   const creatorProfile = await prisma.creatorProfile.upsert({
     where: { userId: user.id },
     update: {},
-    create: { userId: user.id, displayName: 'Demo Creator' },
+    // handle is a required UNIQUE slug — derive it from the user id so re-runs +
+    // multiple owners never collide.
+    create: { userId: user.id, displayName: 'Demo Creator', handle: `demo-${user.id.slice(0, 12)}` },
     select: { id: true },
   })
   const brand =
     (await prisma.brand.findFirst({ where: { creatorProfileId: creatorProfile.id }, select: { id: true } })) ??
-    (await prisma.brand.create({ data: { creatorProfileId: creatorProfile.id, name: 'Demo Brand' }, select: { id: true } }))
+    (await prisma.brand.create({
+      data: { creatorProfileId: creatorProfile.id, name: 'Demo Brand', handle: `demo-brand-${creatorProfile.id.slice(0, 10)}` },
+      select: { id: true },
+    }))
 
   const market =
     (await prisma.market.findFirst({ where: { code: 'US' }, select: { id: true } })) ??
