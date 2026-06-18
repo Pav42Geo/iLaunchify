@@ -80,7 +80,29 @@ async function main() {
   // --- 4. Convert the template to a variety pack ----------------------------
   await prisma.productTemplate.update({
     where: { id: template.id },
-    data: { packingProfileId: profile.id, maxFlavorsPerPack: 4 },
+    // Publish it + give it DB-authored marketing copy so it renders fully
+    // DB-driven in the marketing marketplace too (not just the creator checkout).
+    data: {
+      packingProfileId: profile.id,
+      maxFlavorsPerPack: 4,
+      status: 'PUBLISHED',
+      longDescription:
+        `${template.name} is a small-batch, co-packer-ready variety pack. Pick up to four ` +
+        `flavors, split your run across them, and we orchestrate production, printing, and ` +
+        `fulfillment behind the scenes.`,
+      marketingDetail: {
+        format: `${template.name} · variety pack`,
+        productionMethod: 'Small-batch cooked + bottled',
+        netWeight: '5 fl oz (148 mL) per unit',
+        performanceBullets: [
+          'Up to 4 distinct flavors per pack',
+          'Shelf-stable 18 months',
+          'Custom label print included',
+          'Low MOQ for first runs',
+          'One order, fully orchestrated fulfillment',
+        ],
+      },
+    },
   })
   const demoNames = DEMO_FLAVORS.map((f) => f.name)
   await prisma.flavorPreset.deleteMany({ where: { productTemplateId: template.id, name: { in: demoNames } } })

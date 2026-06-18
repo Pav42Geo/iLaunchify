@@ -2,6 +2,7 @@ import 'server-only'
 import { prisma } from '@ilaunchify/db'
 import type { ProductGradient } from '@ilaunchify/ui'
 import { CATEGORY_ROWS, type SampleTemplate } from './sample-templates'
+import type { TemplateDetail } from './template-detail'
 
 /**
  * Server-only marketplace data layer.
@@ -200,6 +201,38 @@ function fixtureResolve(categorySlug: string, slug: string): ResolvedMarketplace
     template,
     related: r.templates.filter((t) => t.slug !== slug).slice(0, 4),
     categoryTitle: r.title,
+  }
+}
+
+/**
+ * Marketplace detail-page marketing-copy overrides from the DB. Reads
+ * `ProductTemplate.marketingDetail` (a partial TemplateDetail JSON authored per
+ * template) + `longDescription` (→ about). The caller merges these OVER the
+ * per-slug fixture, so a real template carries its own copy and unknown-slug
+ * fixtures stay as the neutral fallback. Returns {} when absent. Cast-guarded —
+ * marketingDetail ships with a pending migration.
+ */
+export async function getTemplateDetailOverrides(slug: string): Promise<Partial<TemplateDetail>> {
+  try {
+    const t = await (prisma as unknown as {
+      productTemplate: {
+        findUnique: (a: unknown) => Promise<{
+          marketingDetail: Partial<TemplateDetail> | null
+          longDescription: string | null
+          description: string | null
+        } | null>
+      }
+    }).productTemplate.findUnique({
+      where: { slug },
+      select: { marketingDetail: true, longDescription: true, description: true },
+    })
+    if (!t) return {}
+    const overrides: Partial<TemplateDetail> = { ...(t.marketingDetail ?? {}) }
+    const about = t.longDescription ?? t.description ?? undefined
+    if (about && overrides.about == null) overrides.about = about
+    return overrides
+  } catch {
+    return {}
   }
 }
 

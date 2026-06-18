@@ -22,7 +22,7 @@ import { SampleOrderCard } from '@/components/SampleOrderCard'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
-import { getMarketplaceTemplateBySlug } from '@/lib/templates'
+import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides } from '@/lib/templates'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -90,10 +90,11 @@ export default async function ProductDetailPage({
   const related = resolved.related
   const categoryTitle = resolved.categoryTitle
 
-  // Marketing copy (specs, bullets, packing) is still fixture-backed per slug;
-  // unknown slugs get the neutral GENERIC_DETAIL. Flavors are overridden from the
-  // DB flavor pool below so the configurator shows the template's real flavors.
-  const detail = findTemplateDetail(template.slug)
+  // Marketing copy: start from the per-slug fixture (neutral GENERIC_DETAIL for
+  // unknown slugs), then merge any DB-authored copy on top (ProductTemplate.
+  // marketingDetail + longDescription→about) so real templates carry their own.
+  // Flavors are overridden from the DB flavor pool below.
+  const detail = { ...findTemplateDetail(template.slug), ...(await getTemplateDetailOverrides(template.slug)) }
 
   // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
   // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when

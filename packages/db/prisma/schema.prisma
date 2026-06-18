@@ -2633,6 +2633,12 @@ model ProductTemplate {
   storageTempMaxF            Int?
   // Detail-page long description (Basics short = `description`).
   longDescription            String?
+  // Marketplace detail-page marketing copy (format, productionMethod, netWeight,
+  // performanceBullets, properties, sizeChart, packingSpecs, …). A partial
+  // TemplateDetail JSON, merged OVER the per-slug fixture by the marketing detail
+  // loader so real templates carry their own copy. Null = use the fixture/generic.
+  // V1: populated by seed; V1.1 gets an admin editor.
+  marketingDetail            Json?
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
