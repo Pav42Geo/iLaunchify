@@ -2639,6 +2639,19 @@ model ProductTemplate {
   // loader so real templates carry their own copy. Null = use the fixture/generic.
   // V1: populated by seed; V1.1 gets an admin editor.
   marketingDetail            Json?
+  // ---- Marketplace filter dimensions (docs/MARKETPLACE_DESIGN.md §7, 2026-06-18) ----
+  // Format (Layer 3) — single physical production form. Null = unspecified.
+  manufacturingFormat        ManufacturingFormat?
+  // Manufacturing process tags (More-filters): 'cold-pressed','freeze-dried',
+  // 'fermented','encapsulated',… Free-form slugs, admin/seed-curated, hasSome filter.
+  manufacturingProcesses     String[]
+  // Explicit allergen-free CLAIMS (More-filters): 'dairy-free','gluten-free',
+  // 'nut-free','soy-free','egg-free',… Admin-set claim, NOT inferred from the
+  // recipe (absence of data ≠ free-from). hasSome filter.
+  allergenFreeClaims         String[]
+  // Markets the template is available in (filter "Market"). Codes mirror
+  // Market.code ('US','CA','EU'). Default US for V1 (US-only ACTIVE). hasSome filter.
+  marketCodes                String[]                      @default(["US"])
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
@@ -2680,6 +2693,31 @@ model ProductTemplate {
 
   @@index([subcategoryId, status])
   @@index([familyCode])
+}
+
+// Physical production form of a template (marketplace "Format" filter, Layer 3
+// Manufacturing Formats). Single-select per template; a flat cross-domain set
+// (food / supplement / beverage / cosmetic) the UI groups for display. Additive
+// 2026-06-18.
+enum ManufacturingFormat {
+  POWDER
+  CAPSULE
+  TABLET
+  SOFTGEL
+  GUMMY
+  SOFT_CHEW
+  LIQUID
+  READY_TO_DRINK
+  CONCENTRATE
+  EFFERVESCENT
+  BAR
+  CREAM
+  LOTION
+  SERUM
+  OIL
+  BALM
+  SPRAY
+  OTHER
 }
 
 // One slot per BASE ingredient. The base is the default; replacements[] are
