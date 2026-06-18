@@ -197,3 +197,52 @@ in the sandbox via a TS-transpile harness (54 total: 26 planner + 15 aggregate +
 manifest-scope) since vitest itself can't run here. Every pure decision in the multi-component /
 multi-SKU path is now covered; the remaining untested surface is the I/O shells' transaction wiring
 + manifest stamping — that's what the multi-SKU smoke test in §5.3 exercises.
+
+## 8. Marketplace DB-wiring + §7 filters (2026-06-18)
+
+### 8.1 Additive migration (ONE `prisma db push` covers all rows below)
+
+Run on the Mac (NOT in the Cowork sandbox — no Prisma engines / no DB there):
+
+```bash
+pnpm --filter @ilaunchify/db prisma db push        # additive, no data loss
+pnpm --filter @ilaunchify/db prisma generate        # regen client (NEW fields/enum)
+rm -rf apps/*/.next                                  # transpilePackages bundles the client
+pnpm --filter @ilaunchify/db prisma db seed          # seed-filter-dimensions runs in main seed
+```
+
+New schema (all additive, Cockroach-safe — no `@db.Text`, String[] + enum only):
+
+| # | Change | Model | Notes |
+|---|--------|-------|-------|
+| 8a | `marketingDetail Json?` | ProductTemplate | marketplace detail copy (V1.1, already in §1 if present) |
+| 8b | `enum ManufacturingFormat` | — | 18 values (powder…spray) |
+| 8c | `manufacturingFormat ManufacturingFormat?` | ProductTemplate | Format filter (single) |
+| 8d | `manufacturingProcesses String[]` | ProductTemplate | Process filter (hasSome) |
+| 8e | `allergenFreeClaims String[]` | ProductTemplate | Allergen-free filter (explicit CLAIM, not inferred) |
+| 8f | `marketCodes String[] @default(["US"])` | ProductTemplate | Market filter; default backfills existing rows to US |
+
+`seed-filter-dimensions.ts` (wired into `seed.ts` after `seedStarterTemplates`) sets a demo
+`manufacturingFormat` + one process per template by domain; `marketCodes` comes from the column
+default; `allergenFreeClaims` left empty (a regulatory claim — set per-product when real).
+
+### 8.2 What shipped (all marketing-app + db; typecheck clean: marketing 0, db 0)
+
+- **Marketplace is DB-driven** — listing + detail read PUBLISHED ProductTemplates; fixture is the
+  empty-DB fallback only. `marketingDetail` carries detail copy (admin editor on
+  `/admin/products/[id]`). Recipe-derived **ingredients + Nutrition Facts** computed from
+  `ingredientSlots` via `@ilaunchify/nutrition` (FOOD); **add-ons** from `optionalIngredients`.
+- **§7 filter system** (`docs/MARKETPLACE_DESIGN.md §7`), full set wired end-to-end:
+  - Default 6: **Format** (manufacturingFormat), **Diet** / **Audience** (LifestyleTag groups),
+    **MOQ** (variant.moqMin), **Lead time** (variant.leadTimeDays buckets), **Market** (marketCodes).
+  - More-filters: **Trend** (LifestyleTag TREND), **Certifications** (ProductCertificate →
+    VERIFIED instance → CertificateType.slug, market-scoped), **Allergen-free** (allergenFreeClaims),
+    **Manufacturing process** (manufacturingProcesses), **Packaging type** (parent
+    ContainerCategory → child PackagingType.slug).
+  - Query in `apps/marketing/src/lib/templates.ts` `buildWhere` (OR within a group, AND across).
+    Option loaders in `filter-options.ts` (server) + constants in `filter-constants.ts` (client).
+  - Sidebar `MarketplaceFilters.tsx` rebuilt (foldable, DB-driven); `ActiveFilterChips` covers every
+    param; the separate horizontal `LifestyleTagFilters` rail was RETIRED (moved into the sidebar).
+- **Verification:** typecheck-only in the sandbox (Prisma engines can't be fetched here, so
+  `prisma validate`/`generate` and any live query were NOT run). After the migration above, smoke
+  test: select each filter on `/marketplace` and confirm the grid + active chips + URL params.
