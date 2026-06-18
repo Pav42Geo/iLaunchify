@@ -6,10 +6,15 @@ import {
   Button,
   FlavorSwatch,
   PackagingPicker,
+  PackBuilder,
   EarningsCalculator,
   ShippingInfoCard,
   PricingTierModal,
+  applyFlavorChangeover,
+  distinctFlavorCount,
   type PricingTierRow,
+  type PackBuilderFlavor,
+  type FlavorPick,
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
@@ -55,6 +60,15 @@ export interface ProductDetailConfiguratorProps {
   feePctByTier?: { maker: number; builder: number; agency: number }
   /** On-demand bands — when present, the modal shows a Bulk/On-demand switcher. */
   onDemandRows?: PricingTierRow[]
+  /** Variety-pack builder (Slice 1). When `flavorMode === 'MULTI'` and a pool is
+   * supplied, the single FlavorSwatch is replaced by the PackBuilder: pick up to
+   * `maxFlavorsPerPack` distinct flavors and split the order quantity across them.
+   * `changeoverDays` (OrderSettings) drives the live D5 lead-time increment. */
+  flavorMode?: 'SINGLE' | 'MULTI'
+  maxFlavorsPerPack?: number | null
+  flavorPool?: PackBuilderFlavor[]
+  changeoverDays?: number
+  minPerFlavor?: number
 }
 
 export function ProductDetailConfigurator({
@@ -66,12 +80,21 @@ export function ProductDetailConfigurator({
   decorationOfferings = [],
   feePctByTier,
   onDemandRows,
+  flavorMode = 'SINGLE',
+  maxFlavorsPerPack = null,
+  flavorPool = [],
+  changeoverDays = 0,
+  minPerFlavor = 1,
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
 
   const [flavorId, setFlavorId] = React.useState<string>(
     detail.flavors[0]?.id ?? '',
   )
+  // Variety-pack mode: pick N distinct flavors + split the quantity across them.
+  const isMultiFlavor = flavorMode === 'MULTI' && flavorPool.length > 0
+  const [packPicks, setPackPicks] = React.useState<FlavorPick[]>([])
+  const flavorCount = isMultiFlavor ? Math.max(1, distinctFlavorCount(packPicks)) : 1
   const [sizeKey, setSizeKey] = React.useState<string>(sizeOptions[0] ?? '')
   const [packagingId, setPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
@@ -113,20 +136,33 @@ export function ProductDetailConfigurator({
   // Lead time scales with quantity — read it from the matched pricing band first
   // (production time differs at 500 vs 50,000 units), then fall back to the chosen
   // packaging, then the template default.
-  const leadTimeDays =
+  const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
     template.leadTimeDays
+  // D5 — a multi-flavor pack adds a line changeover per extra flavor.
+  const leadTimeDays = applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Variant pickers */}
-      {detail.flavors.length > 0 && (
-        <FlavorSwatch
-          options={detail.flavors}
-          value={flavorId}
-          onChange={setFlavorId}
+      {/* Variant pickers — variety-pack builder in MULTI mode, single swatch otherwise. */}
+      {isMultiFlavor ? (
+        <PackBuilder
+          pool={flavorPool}
+          maxFlavors={maxFlavorsPerPack}
+          capacity={quantity}
+          minPerFlavor={minPerFlavor}
+          value={packPicks}
+          onChange={setPackPicks}
         />
+      ) : (
+        detail.flavors.length > 0 && (
+          <FlavorSwatch
+            options={detail.flavors}
+            value={flavorId}
+            onChange={setFlavorId}
+          />
+        )
       )}
 
       {sizeOptions.length > 1 && (

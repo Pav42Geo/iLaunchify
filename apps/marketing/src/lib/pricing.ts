@@ -1,11 +1,55 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import { buildSamplePricingRows, applyFlavorChangeover, type PricingTierRow } from '@ilaunchify/ui'
+import { buildSamplePricingRows, applyFlavorChangeover, type PricingTierRow, type PackBuilderFlavor } from '@ilaunchify/ui'
 import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
 import type { TierKey } from '@ilaunchify/auth'
 
 // D5 multi-flavor lead-time model now lives in @ilaunchify/ui (shared with the
 // creator checkout pack-builder). Re-exported here for existing callers.
 export { applyFlavorChangeover } from '@ilaunchify/ui'
+
+/**
+ * Variety-pack builder data for a ProductTemplate. The configurator renders the
+ * PackBuilder only when `flavorMode === 'MULTI'`; otherwise it keeps the single
+ * FlavorSwatch. `changeoverDays` (OrderSettings) drives the live D5 lead-time.
+ */
+export interface PackBuilderData {
+  flavorMode: 'SINGLE' | 'MULTI'
+  maxFlavorsPerPack: number | null
+  pool: PackBuilderFlavor[]
+  changeoverDays: number
+}
+
+export async function getPackBuilderData(slug: string): Promise<PackBuilderData> {
+  const [template, settings] = await Promise.all([
+    prisma.productTemplate.findUnique({
+      where: { slug },
+      select: {
+        maxFlavorsPerPack: true,
+        packingProfile: { select: { flavorMode: true } },
+        flavorPresets: {
+          where: { status: 'ACTIVE' },
+          orderBy: { sortOrder: 'asc' },
+          select: { id: true, name: true, swatchHex: true, statementOfIdentity: true },
+        },
+      },
+    }),
+    getOrderSettings(),
+  ])
+  if (!template) {
+    return { flavorMode: 'SINGLE', maxFlavorsPerPack: null, pool: [], changeoverDays: settings.changeoverDays }
+  }
+  return {
+    flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
+    maxFlavorsPerPack: template.maxFlavorsPerPack,
+    pool: template.flavorPresets.map((f) => ({
+      id: f.id,
+      name: f.name,
+      swatchHex: f.swatchHex,
+      statementOfIdentity: f.statementOfIdentity,
+    })),
+    changeoverDays: settings.changeoverDays,
+  }
+}
 
 /**
  * Server helper — real per-unit pricing for a ProductTemplate, by quantity band.

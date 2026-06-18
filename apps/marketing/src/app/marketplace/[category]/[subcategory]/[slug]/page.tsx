@@ -23,7 +23,7 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { findTemplateDetail } from '@/lib/template-detail'
-import { getCreatorPricingMatrix, getCreatorFeePcts } from '@/lib/pricing'
+import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
@@ -110,6 +110,10 @@ export default async function ProductDetailPage({
   const pricingRows = pricingMatrix.rows
   // Per-tier fee % for the modal's Maker/Builder/Agency columns.
   const feePctByTier = await getCreatorFeePcts()
+
+  // Variety-pack builder data — flavorMode + flavor pool + maxFlavorsPerPack +
+  // changeover days. Drives the PackBuilder + live D5 lead-time in MULTI mode.
+  const packData = await getPackBuilderData(template.slug)
 
   // Sample policy — enabled sample kinds the partner offers for this product
   // (Pavel 2026-06-10). Empty → the "Order a sample" card hides (fixture-only /
@@ -267,6 +271,10 @@ export default async function ProductDetailPage({
               feePctByTier={feePctByTier}
               isAuthenticated={isAuthenticated}
               decorationOfferings={decorationOfferings}
+              flavorMode={packData.flavorMode}
+              maxFlavorsPerPack={packData.maxFlavorsPerPack}
+              flavorPool={packData.pool}
+              changeoverDays={packData.changeoverDays}
             />
 
             {/* Order a sample — only when the partner enabled sample orders */}
