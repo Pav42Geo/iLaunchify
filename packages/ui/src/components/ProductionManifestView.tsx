@@ -33,6 +33,8 @@ export interface ProductionManifestData {
     packagingTypeName: string | null
     decorationMethod: string
   }>
+  /** Variety-pack per-flavor production splits. Optional/empty for single-flavor. */
+  flavors?: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null }>
   shipTo: {
     type: string
     contactName: string
@@ -160,6 +162,22 @@ export function ProductionManifestView({
                     {c.packagingTypeName ? <span className="text-ink-500"> · {c.packagingTypeName}</span> : null}
                   </div>
                   <div className="text-[11.5px] text-ink-500">{humanTier(c.tier)} · {humanDecoration(c.decorationMethod)}</div>
+                </li>
+              ))}
+            </ul>
+          </Block>
+        )}
+
+        {manifest.flavors && manifest.flavors.length > 0 && (
+          <Block title={`Pack flavors (${manifest.flavors.length})`}>
+            <ul className="space-y-1.5">
+              {manifest.flavors.map((f, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 bg-cream px-2.5 py-1.5">
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13px] font-medium text-ink-900">{f.flavorName}</span>
+                    {f.statementOfIdentity ? <span className="block truncate text-[11px] text-ink-500">{f.statementOfIdentity}</span> : null}
+                  </span>
+                  <span className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-ink-800">{f.qty.toLocaleString()} units</span>
                 </li>
               ))}
             </ul>

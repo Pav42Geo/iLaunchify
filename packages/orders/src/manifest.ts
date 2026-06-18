@@ -121,6 +121,11 @@ export interface ProductionManifest {
     decorationMethod: string
     dielineId: string | null
   }>
+  // ---- Variety-pack per-flavor splits (OrderItemFlavor) ---------------------
+  // The distinct flavors + per-flavor unit quantities the creator composed. The
+  // manufacturer produces these splits. Empty for single-flavor items. Each carries
+  // the flavor's Statement of Identity snapshot for the per-flavor label column.
+  flavors: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null }>
   // ---- Ship-to summary -----------------------------------------------------
   shipTo: {
     type: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER'
@@ -203,6 +208,20 @@ export async function generateOrderManifest(
   const product = item.product
   const variant = product.variant
   const die = variant?.dieCutTemplate ?? null
+
+  // Variety-pack per-flavor splits for THIS item (Slice 1). Cast-guarded — the
+  // OrderItemFlavor model post-dates the generated client until the migration.
+  const itemFlavors = await (tx as unknown as {
+    orderItemFlavor: {
+      findMany: (a: unknown) => Promise<Array<{ flavorName: string; qty: number; soiSnapshot: string | null }>>
+    }
+  }).orderItemFlavor
+    .findMany({
+      where: { orderItemId: item.id },
+      select: { flavorName: true, qty: true, soiSnapshot: true },
+      orderBy: { qty: 'desc' },
+    })
+    .catch(() => [] as Array<{ flavorName: string; qty: number; soiSnapshot: string | null }>)
 
   // Phase 2 — scope the decorated components THIS dispatch covers. A LABEL
   // dispatch prints the components whose chosen offering belongs to its
@@ -321,6 +340,11 @@ export async function generateOrderManifest(
       packagingTypeName: c.packagingTypeName,
       decorationMethod: c.decorationMethod,
       dielineId: c.dielineId,
+    })),
+    flavors: itemFlavors.map((f) => ({
+      flavorName: f.flavorName,
+      qty: f.qty,
+      statementOfIdentity: f.soiSnapshot,
     })),
     shipTo: {
       type: dispatch.order.shipToType,
