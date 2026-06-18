@@ -67,6 +67,7 @@ import {
 import { ProductReviewer } from './ProductReviewer'
 import { MarketplacePlacementPanel } from './MarketplacePlacementPanel'
 import { MarketingCopyPanel } from './MarketingCopyPanel'
+import { MarketplaceAttributesPanel } from './MarketplaceAttributesPanel'
 import type {
   NicheOption,
   LifestyleTagOption,
@@ -332,6 +333,29 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     }
   }).productTemplate
     .findUnique({ where: { id }, select: { longDescription: true, marketingDetail: true } })
+    .catch(() => null)
+
+  // Marketplace filter attributes (§7) — Format / processes / allergen-free /
+  // markets. Cast-guarded — these columns ship with a pending migration.
+  const filterAttrs = await (prisma as unknown as {
+    productTemplate: {
+      findUnique: (a: unknown) => Promise<{
+        manufacturingFormat: string | null
+        manufacturingProcesses: string[]
+        allergenFreeClaims: string[]
+        marketCodes: string[]
+      } | null>
+    }
+  }).productTemplate
+    .findUnique({
+      where: { id },
+      select: {
+        manufacturingFormat: true,
+        manufacturingProcesses: true,
+        allergenFreeClaims: true,
+        marketCodes: true,
+      },
+    })
     .catch(() => null)
 
   // Restricted-category eligibility (labeling ≠ licensing). Read-only signal so
@@ -1716,6 +1740,18 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             initial={{
               longDescription: marketingCopy?.longDescription ?? null,
               marketingDetail: marketingCopy?.marketingDetail ?? null,
+            }}
+          />
+
+          {/* Marketplace filter attributes (§7) — Format / process / allergen-free
+              / markets. Drives the public catalog filters. */}
+          <MarketplaceAttributesPanel
+            productTemplateId={template.id}
+            initial={{
+              manufacturingFormat: filterAttrs?.manufacturingFormat ?? null,
+              manufacturingProcesses: filterAttrs?.manufacturingProcesses ?? [],
+              allergenFreeClaims: filterAttrs?.allergenFreeClaims ?? [],
+              marketCodes: filterAttrs?.marketCodes ?? [],
             }}
           />
 

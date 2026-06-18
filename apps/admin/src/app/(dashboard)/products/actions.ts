@@ -18,6 +18,12 @@ import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
 import type { PhraseRequirement } from '@ilaunchify/db'
+import {
+  FORMAT_OPTIONS,
+  MANUFACTURING_PROCESS_OPTIONS,
+  ALLERGEN_FREE_OPTIONS,
+  MARKET_FILTER_OPTIONS,
+} from '@ilaunchify/types'
 import { revalidatePath } from 'next/cache'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 
@@ -308,6 +314,68 @@ export async function adminSetMarketingDetail(input: {
     entityId: input.productTemplateId,
     action: 'PRODUCT_TEMPLATE_MARKETING_EDIT',
     payload: { name: tpl.name },
+  })
+
+  revalidatePath('/products')
+  revalidatePath(`/products/${input.productTemplateId}`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// SET MARKETPLACE ATTRIBUTES — the §7 filter dimensions an admin curates on a
+// template: Format, Manufacturing processes, Allergen-free claims, Markets.
+// Values are validated against the shared option lists so a stray slug can't
+// land in the DB and silently break a marketplace filter. Cast-guarded — these
+// columns ship with a pending migration.
+// -----------------------------------------------------------------------------
+
+export async function adminSetMarketplaceAttributes(input: {
+  productTemplateId: string
+  manufacturingFormat: string | null
+  manufacturingProcesses: string[]
+  allergenFreeClaims: string[]
+  marketCodes: string[]
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: input.productTemplateId },
+    select: { id: true, name: true },
+  })
+  if (!tpl) return { ok: false, error: 'Product not found.' }
+
+  // Validate against the canonical option lists (shared with the marketplace
+  // filters). Unknown values are dropped rather than persisted.
+  const formatValues = new Set(FORMAT_OPTIONS.map((o) => o.value))
+  const processValues = new Set(MANUFACTURING_PROCESS_OPTIONS.map((o) => o.value))
+  const allergenValues = new Set(ALLERGEN_FREE_OPTIONS.map((o) => o.value))
+  const marketValues = new Set(MARKET_FILTER_OPTIONS.map((o) => o.value))
+
+  const format =
+    input.manufacturingFormat && formatValues.has(input.manufacturingFormat)
+      ? input.manufacturingFormat
+      : null
+  const processes = [...new Set(input.manufacturingProcesses)].filter((s) => processValues.has(s))
+  const allergenFree = [...new Set(input.allergenFreeClaims)].filter((s) => allergenValues.has(s))
+  const markets = [...new Set(input.marketCodes)].filter((s) => marketValues.has(s))
+
+  await (prisma as unknown as {
+    productTemplate: { update: (a: unknown) => Promise<unknown> }
+  }).productTemplate.update({
+    where: { id: input.productTemplateId },
+    data: {
+      manufacturingFormat: format,
+      manufacturingProcesses: processes,
+      allergenFreeClaims: allergenFree,
+      marketCodes: markets,
+    },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: input.productTemplateId,
+    action: 'PRODUCT_TEMPLATE_MARKETING_EDIT',
+    payload: { name: tpl.name, kind: 'marketplace-attributes' },
   })
 
   revalidatePath('/products')

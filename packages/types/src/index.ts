@@ -16,3 +16,6 @@ export * from './brand'
 export * from './payments'
 // Tier 1.2 (docs/SECURITY_ARCHITECTURE.md) — Zod at server-action boundaries.
 export * from './action-input'
+// Marketplace filter option constants (§7) — shared by the marketing sidebar
+// and the admin product editor so filter slugs never drift.
+export * from './marketplace-filters'
