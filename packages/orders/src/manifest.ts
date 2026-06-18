@@ -16,6 +16,50 @@ import type { PrismaClient, Prisma } from '@ilaunchify/db'
 
 export const MANIFEST_VERSION = '1.0.0'
 
+/** A packaging component reduced to what manifest scoping needs. */
+export interface ManifestComponent {
+  id: string
+  tier: string
+  role: string
+  decorationMethod: string
+  dielineId: string | null
+  packagingTypeId: string
+  packagingTypeName: string | null
+  /** partnerService of the component's chosen offering, if any. */
+  partnerServiceId: string | null
+}
+
+/**
+ * PURE — which packaging components a dispatch is responsible for (multi-component
+ * Phase 2). Kept side-effect-free so the per-partner scoping (each printer/assembler
+ * sees exactly their components, with the self-do fallback) is unit-testable.
+ *
+ *  - LABEL dispatch → the DECORATED components whose chosen offering belongs to this
+ *    partnerService; if none match (the owner self-labels), it covers EVERY decorated
+ *    component.
+ *  - COPACKING dispatch → the CARTON/SHIPPER components this assembler packs; if none
+ *    match (manufacturer self-assembles), it covers every assembly component.
+ *  - PRODUCT (and anything else) → empty: production, not decoration.
+ */
+export function scopeDispatchComponents(params: {
+  dispatchType: string
+  partnerServiceId: string
+  components: ManifestComponent[]
+}): ManifestComponent[] {
+  const { dispatchType, partnerServiceId, components } = params
+  if (dispatchType === 'LABEL') {
+    const decorated = components.filter((c) => c.decorationMethod !== 'NONE')
+    const mine = decorated.filter((c) => c.partnerServiceId === partnerServiceId)
+    return mine.length > 0 ? mine : decorated
+  }
+  if (dispatchType === 'COPACKING') {
+    const assembly = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+    const mine = assembly.filter((c) => c.partnerServiceId === partnerServiceId)
+    return mine.length > 0 ? mine : assembly
+  }
+  return []
+}
+
 export interface ProductionManifest {
   manifestVersion: typeof MANIFEST_VERSION
   generatedAt: string                      // ISO
@@ -177,17 +221,21 @@ export async function generateOrderManifest(
       partnerOffering: { select: { partnerServiceId: true } },
     },
   })
-  const decorated = allComponents.filter((c) => c.decorationMethod !== 'NONE')
-  let scopedComponents: typeof allComponents = []
-  if (dispatch.type === 'LABEL') {
-    const mine = decorated.filter((c) => c.partnerOffering?.partnerServiceId === dispatch.partnerServiceId)
-    scopedComponents = mine.length > 0 ? mine : decorated
-  } else if ((dispatch.type as string) === 'COPACKING') {
-    // The assembler sees the carton/shipper components they assemble.
-    const assembly = allComponents.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
-    const mine = assembly.filter((c) => c.partnerOffering?.partnerServiceId === dispatch.partnerServiceId)
-    scopedComponents = mine.length > 0 ? mine : assembly
-  }
+  const normalizedComponents: ManifestComponent[] = allComponents.map((c) => ({
+    id: c.id,
+    tier: String(c.tier),
+    role: String(c.role),
+    decorationMethod: String(c.decorationMethod),
+    dielineId: c.dielineId,
+    packagingTypeId: c.packagingTypeId,
+    packagingTypeName: c.packagingType?.displayName ?? null,
+    partnerServiceId: c.partnerOffering?.partnerServiceId ?? null,
+  }))
+  const scopedComponents = scopeDispatchComponents({
+    dispatchType: dispatch.type as string,
+    partnerServiceId: dispatch.partnerServiceId,
+    components: normalizedComponents,
+  })
 
   // Pull substrate / packaging from the Order's internalNotes (set by
   // placeOrderFromCheckoutDraft as a structured block). When V1.5 wires
@@ -267,11 +315,11 @@ export async function generateOrderManifest(
       : null,
     components: scopedComponents.map((c) => ({
       componentId: c.id,
-      tier: String(c.tier),
-      role: String(c.role),
+      tier: c.tier,
+      role: c.role,
       packagingTypeId: c.packagingTypeId,
-      packagingTypeName: c.packagingType?.displayName ?? null,
-      decorationMethod: String(c.decorationMethod),
+      packagingTypeName: c.packagingTypeName,
+      decorationMethod: c.decorationMethod,
       dielineId: c.dielineId,
     })),
     shipTo: {
