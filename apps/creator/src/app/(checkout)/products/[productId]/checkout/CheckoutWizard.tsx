@@ -61,6 +61,7 @@ import { applyOrderAdjustment } from './adjust-actions'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
 import { RestrictedProductNotice } from './RestrictedProductNotice'
+import { LabelComplianceNotice, type LabelFrameIssue } from './LabelComplianceNotice'
 import type { RestrictionHit } from '@ilaunchify/marketplace'
 
 interface Props {
@@ -85,6 +86,10 @@ interface Props {
   // Restricted-category eligibility hits (labeling ≠ licensing). Non-empty →
   // notice banner + Pay disabled. The server action hard-blocks regardless.
   restrictions: RestrictionHit[]
+  // Die-line label-frame compliance — required frames missing from the saved
+  // design. Non-empty → notice + Pay disabled (mirrors restrictions); the server
+  // action hard-blocks regardless. DIELINE_FRAME_EDITOR_SPEC §5.
+  labelIssues: LabelFrameIssue[]
 }
 
 export function CheckoutWizard({
@@ -103,9 +108,11 @@ export function CheckoutWizard({
   creatorTier,
   subscribeAndSaveEnabled,
   restrictions,
+  labelIssues,
 }: Props) {
   const router = useRouter()
   const isRestricted = restrictions.length > 0
+  const isLabelIncomplete = labelIssues.length > 0
   const [state, setState] = useState<CheckoutDraftState>(initialState)
   const [currentStep, setCurrentStep] = useState<WizardStepIndex>(initialStep)
   const [completedSteps, setCompletedSteps] = useState<WizardStepIndex[]>(
@@ -127,6 +134,12 @@ export function CheckoutWizard({
     if (isRestricted) {
       toast.error(
         'This product is in a restricted category iLaunchify doesn’t support yet.',
+      )
+      return
+    }
+    if (isLabelIncomplete) {
+      toast.error(
+        'This label is missing required elements for its packaging — finish it in the Design Studio before ordering.',
       )
       return
     }
@@ -387,6 +400,14 @@ export function CheckoutWizard({
         </div>
       )}
 
+      {/* Die-line label-frame notice — required label elements missing from the
+          saved design (DIELINE_FRAME_EDITOR_SPEC §5). */}
+      {isLabelIncomplete && (
+        <div className="mx-auto max-w-6xl px-6 pt-6">
+          <LabelComplianceNotice issues={labelIssues} />
+        </div>
+      )}
+
       {/* Body */}
       <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1fr,340px]">
         {/* Active step */}
@@ -465,6 +486,7 @@ export function CheckoutWizard({
               isPaying={isPaying}
               isAdjustment={isAdjustment}
               isRestricted={isRestricted}
+              isLabelIncomplete={isLabelIncomplete}
               onPlaceOrder={placeOrder}
             />
           )}
@@ -698,11 +720,13 @@ function PlaceOrderCard({
   isPaying,
   isAdjustment,
   isRestricted,
+  isLabelIncomplete,
   onPlaceOrder,
 }: {
   isPaying: boolean
   isAdjustment: boolean
   isRestricted: boolean
+  isLabelIncomplete: boolean
   onPlaceOrder: () => void
 }) {
   return (
@@ -710,11 +734,13 @@ function PlaceOrderCard({
       <button
         type="button"
         onClick={onPlaceOrder}
-        disabled={isPaying || isRestricted}
+        disabled={isPaying || isRestricted || isLabelIncomplete}
         className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
       >
         {isRestricted ? (
           'Ordering unavailable'
+        ) : isLabelIncomplete ? (
+          'Finish label to order'
         ) : isPaying ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

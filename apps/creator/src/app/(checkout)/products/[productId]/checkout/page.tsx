@@ -19,6 +19,7 @@ import { CheckoutWizard } from './CheckoutWizard'
 import { loadCheckoutDraft } from './actions'
 import { loadReviewSnapshot } from './review-actions'
 import { checkProductRestrictions } from './restriction-actions'
+import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,6 +86,18 @@ export default async function CheckoutPage({ params }: PageProps) {
   // wizard shows the notice + disables Pay; the server action hard-blocks too.
   const restrictions = await checkProductRestrictions(productId)
 
+  // Die-line label-frame compliance (DIELINE_FRAME_EDITOR_SPEC §5). When the
+  // product's die-line declares required frames the saved design is missing,
+  // the wizard shows the notice + disables Pay; placeOrderFromCheckoutDraft
+  // hard-blocks regardless.
+  const labelCompliance = await loadProductLabelCompliance(productId, user.id)
+  const labelIssues =
+    labelCompliance?.hasDieline && labelCompliance.report?.status === 'fail'
+      ? labelCompliance.report.checks
+          .filter((c) => c.status === 'fail')
+          .map((c) => ({ kind: c.kind, message: c.issues[0]?.message ?? `${c.kind} is required.` }))
+      : []
+
   // R16.a — Subscribe & save now resolves through the data-driven plans
   // layer. The plan code is derived from the creator's tier; if no plan
   // row exists (seed hasn't run) the feature fails-closed.
@@ -127,6 +140,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       creatorTier={creatorTier}
       subscribeAndSaveEnabled={subscribeAndSaveEnabled}
       restrictions={restrictions}
+      labelIssues={labelIssues}
     />
   )
 }
