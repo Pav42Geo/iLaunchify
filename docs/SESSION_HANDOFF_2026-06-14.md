@@ -246,3 +246,22 @@ default; `allergenFreeClaims` left empty (a regulatory claim — set per-product
 - **Verification:** typecheck-only in the sandbox (Prisma engines can't be fetched here, so
   `prisma validate`/`generate` and any live query were NOT run). After the migration above, smoke
   test: select each filter on `/marketplace` and confirm the grid + active chips + URL params.
+
+## 9. Marketplace polish + mockup substrate (2026-06-18, additive)
+
+Same single `prisma db push` covers these (all additive; then generate → `rm -rf apps/*/.next`):
+
+| Change | Model | Notes |
+|--------|-------|-------|
+| `ratingAvg Float?` + `ratingCount Int @default(0)` | ProductTemplate | marketplace rating (null=New); admin-curated via MarketplaceAttributesPanel |
+| `enum ManufacturingFormat` consumers + filter cols | (shipped in §8) | — |
+| `enum MockupTemplateStatus` | — | DRAFT/ACTIVE/ARCHIVED |
+| `model MockupTemplate` | NEW | packagingTypeId→PackagingType, baseImageAssetId, printAreaQuad Json, surfaceKey?, status, displayOrder |
+| `PackagingType.mockupTemplates` back-relation | PackagingType | — |
+| `AssetType += MOCKUP_TEMPLATE` | enum | mockup base photo asset type |
+
+**Shipped this pass (typecheck clean; NOT live-tested — no DB/R2 in the Cowork sandbox):**
+- Marketplace: real card lead-time/MOQ/tags + images (Asset→publicUrl), DB-driven category page, non-FOOD detail panels (Supplement/INCI/GA from formulationData), real star rating.
+- **Mockup Slice 1** — admin `/asset-management/product-mockups`: upload white-label photo (R2 via `@ilaunchify/storage`), draggable 4-corner print-area editor, DRAFT→ACTIVE→ARCHIVE, per PackagingType. Sidebar item unhidden. Audited (`MOCKUP_TEMPLATE_*` on `PackagingType`).
+- **Pending (Code):** Slice 2 studio composite (warp creator design into `printAreaQuad`; creator Design Studio is Code's hot-file zone) — spec to follow. Slice 3 browseable library.
+- After push: smoke-test the mockup upload + print-area save on `/asset-management/product-mockups` (needs R2 env + an ACTIVE PackagingType).
