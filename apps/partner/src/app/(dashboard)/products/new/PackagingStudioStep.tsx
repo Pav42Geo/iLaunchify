@@ -30,19 +30,25 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
-  Maximize2,
-  Minimize2,
   Plus,
   Trash2,
   Box as BoxIcon,
   PencilRuler,
   Upload,
   Lock,
+  Undo2,
+  Redo2,
+  Menu,
+  ArrowLeft,
+  Search,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
   FRAME_SCOPE,
   validateFrameLayout,
+  SavedIndicator,
+  VersionHistoryDrawer,
+  type SnapshotItem,
   type Frame,
   type FrameKind,
   type FrameLayout,
@@ -52,6 +58,9 @@ import {
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
 import { loadPackagingStudio, type PackagingStudioData, type StudioPackaging } from './packaging-studio-actions'
+import { listDraftSnapshots } from './snapshot-actions'
+import { loadPackaging } from './build-actions'
+import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
 import {
   loadDieline,
   saveDielineFrames,
@@ -59,6 +68,8 @@ import {
   confirmDieline,
   type DielineEditorData,
 } from '../../packaging/dielines/actions'
+
+export interface StudioPackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number }
 
 type Tool = 'library' | 'frames' | 'guides' | 'layers'
 
@@ -115,12 +126,11 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 let _id = 0
 const newFrameId = (k: string) => `f_${k}_${Date.now()}_${_id++}`
 
-export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step →' }: { draftId: string | null; onNext?: () => void; nextLabel?: string }) {
+export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nextLabel = 'Next step →' }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; nextLabel?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
   const [data, setData] = useState<PackagingStudioData | null>(null)
-  const [fullscreen, setFullscreen] = useState(false)
   const [view, setView] = useState<'3d' | 'die'>('die')
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
@@ -139,6 +149,18 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
   const [zoom, setZoom] = useState(1)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved')
   const [confirmed, setConfirmed] = useState(false)
+
+  // ---- chrome: history drawer, version snapshots, undo/redo, menu, library tab ----
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([])
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [past, setPast] = useState<FrameLayout[]>([])
+  const [future, setFuture] = useState<FrameLayout[]>([])
+  const [libTab, setLibTab] = useState<'library' | 'my'>('my')
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [attached, setAttached] = useState<string[]>([])
+  const [busyAttach, setBusyAttach] = useState<string | null>(null)
 
   const artRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ kind: 'frame' | 'trim' | 'safe'; id?: string; mode: 'move' | 'resize'; startX: number; startY: number; startBox: NormBox } | null>(null)
@@ -189,9 +211,34 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
       .catch(() => { if (!cancelled) setSceneError('3D preview could not load. Check your connection and retry.') })
     return () => { cancelled = true; handleRef.current?.dispose(); handleRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, fullscreen])
+  }, [view])
 
   useEffect(() => { if (view === '3d') handleRef.current?.setTopology(topology) }, [topology, view])
+
+  // Load which packaging is already attached (for the Library → My tab toggles).
+  const refreshAttached = useCallback(() => { if (draftId) void loadPackaging(draftId).then(setAttached) }, [draftId])
+  useEffect(() => { refreshAttached() }, [refreshAttached])
+
+  function toggleAttach(id: string, on: boolean) {
+    if (!draftId) return
+    setBusyAttach(id)
+    void (on
+      ? addPackagingLink({ productTemplateId: draftId, packagingSystemId: id, basePriceCents: 0, leadTimeDays: 21 })
+      : removePackagingLink({ productTemplateId: draftId, packagingSystemId: id })
+    ).then((r) => {
+      setBusyAttach(null)
+      if (!r.ok) { toast.error(r.error ?? 'Could not update'); return }
+      toast.success(on ? 'Packaging attached' : 'Packaging removed')
+      refreshAttached()
+      if (draftId) void loadPackagingStudio(draftId).then((res) => { if (res.ok) setData(res.data) })
+    })
+  }
+
+  const loadHistory = useCallback(async () => {
+    if (!draftId) return
+    const rows = await listDraftSnapshots(draftId)
+    setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail })))
+  }, [draftId])
 
   // Load the resolved die-line into the inline editor whenever it changes.
   useEffect(() => {
@@ -215,15 +262,15 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
     return () => { alive = false }
   }, [resolvedDielineId, ded?.id])
 
-  // Esc collapses full-screen; lock body scroll only while full-screen.
+  // Studio is full-screen while mounted (Step 4) — lock body scroll; Esc clears
+  // the frame selection.
   useEffect(() => {
-    if (!fullscreen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
-    window.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedFrameId(null) }
+    window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow }
-  }, [fullscreen])
+  }, [])
 
   // ---- autosave (debounced) ----
   const queueSave = useCallback((nextLayout: FrameLayout, nextTrim: NormBox, nextSafe: NormBox) => {
@@ -241,9 +288,34 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
   }, [resolvedDielineId])
 
   const commit = useCallback((nextLayout: FrameLayout, nextTrim = trim, nextSafe = safe) => {
+    setPast((p) => [...p.slice(-49), layout])
+    setFuture([])
     setLayout(nextLayout)
+    setLastSavedAt(new Date())
     queueSave(nextLayout, nextTrim, nextSafe)
-  }, [queueSave, trim, safe])
+  }, [queueSave, trim, safe, layout])
+
+  const undo = useCallback(() => {
+    setPast((p) => {
+      if (p.length === 0) return p
+      const prev = p[p.length - 1]!
+      setFuture((f) => [layout, ...f])
+      setLayout(prev)
+      queueSave(prev, trim, safe)
+      return p.slice(0, -1)
+    })
+  }, [layout, queueSave, trim, safe])
+
+  const redo = useCallback(() => {
+    setFuture((f) => {
+      if (f.length === 0) return f
+      const next = f[0]!
+      setPast((p) => [...p, layout])
+      setLayout(next)
+      queueSave(next, trim, safe)
+      return f.slice(1)
+    })
+  }, [layout, queueSave, trim, safe])
 
   // ---- drag handlers (normalized 0..1 over the artboard) ----
   const onPointerDown = (e: React.PointerEvent, kind: 'frame' | 'trim' | 'safe', mode: 'move' | 'resize', id?: string) => {
@@ -332,12 +404,42 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
     <div className="flex h-full min-h-0 w-full flex-col bg-zinc-100 font-sans text-ink-900">
       {/* ---- Top bar ---- */}
       <header className="flex h-[56px] shrink-0 items-center justify-between gap-3 border-b border-ink-200 bg-white px-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
-          <div className="min-w-0">
-            <div className="font-display text-[13.5px] font-bold leading-tight tracking-tight">Packaging Studio</div>
-            <div className="truncate text-[11px] leading-tight text-ink-500">{activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}</div>
+          {/* Studio menu (to the right of the logo). */}
+          <div className="relative">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
+              <Menu className="h-4 w-4" />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute left-0 top-10 z-50 w-60 rounded-xl border border-ink-200 bg-white p-1.5 shadow-lg">
+                  <div className="px-2.5 py-1.5 text-[11px] leading-snug text-ink-500">
+                    <span className="font-semibold text-ink-700">Packaging Studio</span><br />
+                    {activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}
+                  </div>
+                  {onBack && (
+                    <button type="button" onClick={() => { setMenuOpen(false); onBack() }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
+                      <ArrowLeft className="h-3.5 w-3.5" /> Back to recipe step
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
+          <div className="mx-0.5 h-6 w-px bg-ink-200" />
+          <SavedIndicator
+            status={saveStatus === 'saving' ? 'saving' : 'saved'}
+            savedAt={lastSavedAt}
+            onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
+          />
+          <button type="button" onClick={undo} disabled={past.length === 0} title="Undo" aria-label="Undo" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:hover:bg-white">
+            <Undo2 className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={redo} disabled={future.length === 0} title="Redo" aria-label="Redo" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:hover:bg-white">
+            <Redo2 className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -368,12 +470,8 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
             </>
           )}
 
-          <button type="button" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? 'Collapse studio' : 'Expand studio full screen'} className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
-            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-
           {onNext && (
-            <button type="button" className="ml-0.5 inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => { setFullscreen(false); onNext() }}>{nextLabel}</button>
+            <button type="button" className="ml-0.5 inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => onNext()}>{nextLabel}</button>
           )}
         </div>
       </header>
@@ -391,6 +489,14 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
         <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-ink-200 bg-white">
           {tool === 'library' && (
             <LibraryDrawer
+              tab={libTab}
+              onTab={setLibTab}
+              search={librarySearch}
+              onSearch={setLibrarySearch}
+              systems={systems}
+              attachedIds={attached}
+              busyAttach={busyAttach}
+              onToggleAttach={toggleAttach}
               attached={data?.attached ?? []}
               dielines={data?.dielines ?? []}
               activeSystemId={activeSystem?.systemId ?? null}
@@ -495,25 +601,25 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
     </div>
   )
 
-  return (
-    <div>
-      <div className="banner">
-        ℹ︎ <b>Platform library is the default.</b> Admin curates 3D mockups + normalized die-lines. Custom uploads route to an admin verification queue; the product can&apos;t go LIVE until die-lines are verified.
-      </div>
-
-      {/* Inline studio — full Design-Studio chrome embedded in the step. */}
-      {!fullscreen && (
-        <div className="mt-3.5 h-[78vh] min-h-[520px] overflow-hidden rounded-2xl border border-ink-200">
-          {shell}
-        </div>
-      )}
-
-      {/* Full-screen — same shell, portaled out of the builder layout. */}
-      {fullscreen && typeof document !== 'undefined'
-        ? createPortal(<div className="fixed inset-0 z-[80]">{shell}</div>, document.body)
-        : null}
-    </div>
-  )
+  // Step 4 IS the studio — a full-screen portal (no inline / expand toggle).
+  return typeof document !== 'undefined'
+    ? createPortal(
+      <div className="fixed inset-0 z-[80]">
+        {shell}
+        <VersionHistoryDrawer
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          items={snapshots}
+          onRestore={() => undefined}
+          allowRestore={false}
+          title="Draft version history"
+          emptyHint="Versions are saved as you work — and pinned at each step you complete."
+          footnote="Your draft autosaves continuously. Restoring a past version is coming soon."
+        />
+      </div>,
+      document.body,
+    )
+    : null
 }
 
 // =============================================================================
@@ -573,7 +679,17 @@ function DrawerHead({ title, sub }: { title: string; sub?: string }) {
   )
 }
 
+const LIBRARY_SUGGESTIONS = ['Water bottle', 'Stand-up pouch', 'Tuck-end box', 'Glass jar', 'Drink can', 'Dropper bottle', 'Shipping box']
+
 function LibraryDrawer({
+  tab,
+  onTab,
+  search,
+  onSearch,
+  systems,
+  attachedIds,
+  busyAttach,
+  onToggleAttach,
   attached,
   dielines,
   activeSystemId,
@@ -583,6 +699,14 @@ function LibraryDrawer({
   onSelectSurface,
   hasDraft,
 }: {
+  tab: 'library' | 'my'
+  onTab: (t: 'library' | 'my') => void
+  search: string
+  onSearch: (s: string) => void
+  systems: StudioPackagingOption[]
+  attachedIds: string[]
+  busyAttach: string | null
+  onToggleAttach: (id: string, on: boolean) => void
   attached: StudioPackaging[]
   dielines: { id: string; packagingTypeId: string; decorationMethod: string; status: string }[]
   activeSystemId: string | null
@@ -592,56 +716,124 @@ function LibraryDrawer({
   onSelectSurface: (key: string) => void
   hasDraft: boolean
 }) {
+  const q = search.trim().toLowerCase()
+  const filtered = q ? systems.filter((s) => s.partnerName.toLowerCase().includes(q) || s.topology.toLowerCase().includes(q)) : systems
+  const tabCls = (on: boolean) => `flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${on ? 'bg-pink-500 text-white' : 'text-ink-600 hover:bg-ink-100'}`
+
   return (
-    <div>
-      <DrawerHead title="Library" sub="The packaging attached to this product. Pick one to design its die-line." />
-      <div className="space-y-1.5 px-3 py-3">
-        {!hasDraft && <p className="px-1 text-[12px] text-ink-500">Save the draft to load your attached packaging.</p>}
-        {hasDraft && attached.length === 0 && <p className="px-1 text-[12px] text-ink-500">No packaging attached. Attach one in the Packaging systems card above.</p>}
-        {attached.map((a) => {
-          const hasDie = a.packagingTypeId ? dielines.some((d) => d.packagingTypeId === a.packagingTypeId) : false
-          const on = a.systemId === activeSystemId
-          return (
-            <button
-              key={a.systemId}
-              type="button"
-              onClick={() => onPick(a.systemId)}
-              className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 hover:border-pink-200 hover:bg-pink-50/40'}`}
-            >
-              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${on ? 'bg-pink-500 text-white' : 'bg-ink-50 text-ink-500'}`}><BoxIcon className="h-4 w-4" /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12.5px] font-semibold text-ink-900">{a.name}</span>
-                <span className="block truncate text-[11px] text-ink-500">{a.packagingTypeName ?? a.topology}</span>
-              </span>
-              <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
-            </button>
-          )
-        })}
+    <div className="flex h-full flex-col">
+      {/* Library / My tabs */}
+      <div className="flex gap-1 border-b border-ink-100 p-2">
+        <button type="button" onClick={() => onTab('library')} className={tabCls(tab === 'library')}>Library</button>
+        <button type="button" onClick={() => onTab('my')} className={tabCls(tab === 'my')}>My</button>
       </div>
 
-      <div className="border-t border-ink-100 px-3 py-3">
-        <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Surfaces (3D)</p>
-        <div className="space-y-1">
-          {surfaces.map((s) => {
-            const on = s.key === selectedSurfaceKey
-            return (
-              <button
-                key={s.key}
-                type="button"
-                disabled={!s.decorable}
-                onClick={() => s.decorable && onSelectSurface(s.key)}
-                className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors disabled:opacity-50 ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 hover:border-pink-200 hover:bg-pink-50/40'}`}
-              >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: s.decorable ? '#FF2E63' : '#9A9CA6' }} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink-800">{s.label}</span>
-                  <span className="block truncate text-[10.5px] text-ink-500">role: {s.role}{s.defaultBleedMm ? ` · bleed ${s.defaultBleedMm}mm` : ''}</span>
-                </span>
-              </button>
-            )
-          })}
+      {/* Search (packaging-specific suggestions) */}
+      <div className="px-3 pt-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+          <input
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder={tab === 'library' ? 'Try “water bottle”, “tuck-end box”…' : 'Search your packaging…'}
+            className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-2 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+          />
         </div>
+        {tab === 'library' && !q && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {LIBRARY_SUGGESTIONS.map((s) => (
+              <button key={s} type="button" onClick={() => onSearch(s)} className="rounded-full border border-ink-200 px-2 py-0.5 text-[10.5px] text-ink-600 hover:border-pink-300 hover:bg-pink-50">{s}</button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {tab === 'library' ? (
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-4 text-center">
+            <BoxIcon className="mx-auto mb-2 h-5 w-5 text-ink-300" />
+            <div className="text-[12.5px] font-semibold text-ink-700">Admin packaging catalog</div>
+            <p className="mx-auto mt-1 max-w-[15rem] text-[11.5px] leading-relaxed text-ink-500">
+              Browse admin-curated containers (3D models + die-lines) by category here — bottles, boxes, pouches, jars. Coming in the next slice; for now use <b>My</b> to attach your own.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          {/* Upload → admin approval */}
+          <div className="px-3 pt-3">
+            <Link href="/packaging/new" className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 bg-white px-3 py-2.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
+              <Upload className="h-3.5 w-3.5" /> Upload packaging
+            </Link>
+            <p className="mt-1 px-0.5 text-[10.5px] leading-snug text-ink-400">Custom uploads go to admin for 3D/2D mockup prep; once approved they appear in the Library under their category.</p>
+          </div>
+
+          {/* Your packaging — attach + pick to design */}
+          <div className="px-3 py-3">
+            <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Your packaging</p>
+            {!hasDraft && <p className="px-1 text-[12px] text-ink-500">Save the draft to attach packaging.</p>}
+            {hasDraft && filtered.length === 0 && <p className="px-1 text-[12px] text-ink-500">{q ? 'No matches.' : 'No packaging yet — upload one above.'}</p>}
+            <div className="space-y-1.5">
+              {filtered.map((s) => {
+                const on = attachedIds.includes(s.id)
+                const att = attached.find((a) => a.systemId === s.id)
+                const picked = s.id === activeSystemId
+                const hasDie = att?.packagingTypeId ? dielines.some((d) => d.packagingTypeId === att.packagingTypeId) : false
+                return (
+                  <div key={s.id} className={`rounded-xl border px-3 py-2.5 ${picked ? 'border-pink-500 bg-pink-50' : 'border-ink-200'}`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-50 text-ink-500"><BoxIcon className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px] font-semibold text-ink-900">{s.partnerName}</span>
+                        <span className="block truncate text-[11px] text-ink-500">{s.topology} · MOQ {s.moq.toLocaleString()}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onToggleAttach(s.id, !on)}
+                        disabled={busyAttach === s.id || !hasDraft}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${on ? 'border border-pink-200 bg-pink-50 text-pink-700' : 'bg-pink-600 text-white hover:bg-pink-700'}`}
+                      >
+                        {busyAttach === s.id ? '…' : on ? 'Attached ✓' : '+ Attach'}
+                      </button>
+                    </div>
+                    {on && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
+                        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Surfaces (3D) */}
+          <div className="border-t border-ink-100 px-3 py-3">
+            <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Surfaces (3D)</p>
+            <div className="space-y-1">
+              {surfaces.map((s) => {
+                const on = s.key === selectedSurfaceKey
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    disabled={!s.decorable}
+                    onClick={() => s.decorable && onSelectSurface(s.key)}
+                    className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors disabled:opacity-50 ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 hover:border-pink-200 hover:bg-pink-50/40'}`}
+                  >
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: s.decorable ? '#FF2E63' : '#9A9CA6' }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-ink-800">{s.label}</span>
+                      <span className="block truncate text-[10.5px] text-ink-500">role: {s.role}{s.defaultBleedMm ? ` · bleed ${s.defaultBleedMm}mm` : ''}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
