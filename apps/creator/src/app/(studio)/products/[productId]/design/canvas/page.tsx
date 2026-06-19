@@ -226,10 +226,11 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // canvas can render frame guides + run the staleness/bounds gate.
   const dielineFrames = await loadDielineFrames(productId, user.id)
 
-  // Mockup Slice 2 — resolve the ACTIVE photo-mockup for this product's packaging
-  // type so MockupModal can warp the design into a real product photo. Null →
-  // MockupModal keeps its stylized CSS variants (graceful fallback).
-  const mockup = await loadActiveMockup(product.variant?.packagingTypeId ?? null)
+  // Mockup Slice 2/3 — resolve ALL ACTIVE photo-mockups for this product's
+  // packaging type so MockupModal can warp the design onto real product photos
+  // and the creator can browse/switch between surfaces (front/back/wrap).
+  // Empty → MockupModal keeps its stylized CSS variants (graceful fallback).
+  const mockups = await loadActiveMockups(product.variant?.packagingTypeId ?? null)
 
   return (
     <CanvasLayoutShell
@@ -250,20 +251,20 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
         barcodeMode: product.barcodeMode as 'NONE' | 'RETAIL_UPC' | 'INTERNAL_SKU',
       }}
       dielineFrames={dielineFrames}
-      mockup={mockup}
+      mockups={mockups}
     />
   )
 }
 
 /**
- * Resolve the ACTIVE photo-mockup for a packaging type (Mockup Slice 2). Prefers
- * a 'front' surface, else the lowest displayOrder. Cast-guarded: the
- * MockupTemplate migration may be pending → any failure yields null, and the
- * Studio falls back to the stylized CSS mockups. Returns null when nothing is
- * curated, the base photo has no public URL, or the quad is malformed.
+ * Resolve ALL ACTIVE photo-mockups for a packaging type (Mockup Slice 2/3), so
+ * the creator can browse/switch between surfaces. Ordered front-first, then
+ * displayOrder. Cast-guarded: the MockupTemplate migration may be pending → any
+ * failure yields [], and the Studio falls back to the stylized CSS mockups.
+ * Skips any row whose base photo has no public URL or whose quad is malformed.
  */
-async function loadActiveMockup(packagingTypeId: string | null): Promise<StudioMockup | null> {
-  if (!packagingTypeId) return null
+async function loadActiveMockups(packagingTypeId: string | null): Promise<StudioMockup[]> {
+  if (!packagingTypeId) return []
   try {
     const rows = await (
       prisma as unknown as {
@@ -283,19 +284,27 @@ async function loadActiveMockup(packagingTypeId: string | null): Promise<StudioM
       orderBy: { displayOrder: 'asc' },
       select: { label: true, baseImageAssetId: true, printAreaQuad: true, surfaceKey: true },
     })
-    if (!rows.length) return null
-    const chosen = rows.find((r) => r.surfaceKey === 'front') ?? rows[0]
-    if (!chosen) return null
-    const quad = normalizeQuad(chosen.printAreaQuad)
-    if (!quad) return null
-    const asset = await prisma.asset.findUnique({
-      where: { id: chosen.baseImageAssetId },
-      select: { publicUrl: true },
+    if (!rows.length) return []
+
+    const assetIds = [...new Set(rows.map((r) => r.baseImageAssetId))]
+    const assets = await prisma.asset.findMany({
+      where: { id: { in: assetIds } },
+      select: { id: true, publicUrl: true },
     })
-    if (!asset?.publicUrl) return null
-    return { imageUrl: asset.publicUrl, printAreaQuad: quad, label: chosen.label }
+    const urlById = new Map(assets.map((a) => [a.id, a.publicUrl]))
+
+    const out: StudioMockup[] = []
+    for (const r of rows) {
+      const quad = normalizeQuad(r.printAreaQuad)
+      const url = urlById.get(r.baseImageAssetId)
+      if (!quad || !url) continue
+      out.push({ imageUrl: url, printAreaQuad: quad, label: r.label, surfaceKey: r.surfaceKey })
+    }
+    // Front surface first; the rest keep their displayOrder (stable sort).
+    out.sort((a, b) => Number(b.surfaceKey === 'front') - Number(a.surfaceKey === 'front'))
+    return out
   } catch {
-    return null
+    return []
   }
 }
 

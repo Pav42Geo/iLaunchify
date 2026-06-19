@@ -40,6 +40,8 @@ export interface StudioMockup {
   /** Print area as 4 corner points (TL, TR, BR, BL) in image-relative 0..1. */
   printAreaQuad: Array<{ x: number; y: number }>
   label: string
+  /** Optional surface this maps to ('front' | 'back' | 'wrap' | 'lid'). */
+  surfaceKey?: string | null
 }
 
 interface Props {
@@ -51,8 +53,9 @@ interface Props {
   brandName: string
   open: boolean
   onClose: () => void
-  /** Real photo-mockup; when present the "Product photo" variant is the default. */
-  mockup?: StudioMockup | null
+  /** Real photo-mockups (front-first); when present the "Product photo" variant
+   *  is the default, and >1 enables the surface switcher. */
+  mockups: StudioMockup[]
 }
 
 export function MockupModal({
@@ -64,27 +67,35 @@ export function MockupModal({
   brandName,
   open,
   onClose,
-  mockup,
+  mockups,
 }: Props) {
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
   const [variant, setVariant] = React.useState<MockupVariant>(() =>
-    mockup ? 'product' : inferVariant(dieCut.category),
+    mockups.length > 0 ? 'product' : inferVariant(dieCut.category),
   )
   const [saving, setSaving] = React.useState(false)
   const [saveMsg, setSaveMsg] = React.useState<string | null>(null)
+  // Which mockup surface the creator is viewing (browse across front/back/wrap).
+  const [selectedMockup, setSelectedMockup] = React.useState(0)
+  const activeMockup = mockups[selectedMockup] ?? mockups[0] ?? null
 
-  const isProductVariant = variant === 'product' && !!mockup
+  const isProductVariant = variant === 'product' && !!activeMockup
+
+  // Keep the selection in range if the mockup set changes.
+  React.useEffect(() => {
+    setSelectedMockup((i) => (i < mockups.length ? i : 0))
+  }, [mockups.length])
 
   // Compose the warped PNG client-side (mirrors the live matrix3d preview).
   // Returns null on failure so callers fall back to the flat snapshot.
   const composite = React.useCallback(async (): Promise<string | null> => {
-    if (!mockup || !snapshot) return null
+    if (!activeMockup || !snapshot) return null
     return compositeMockup({
-      baseImageUrl: mockup.imageUrl,
+      baseImageUrl: activeMockup.imageUrl,
       artworkDataUrl: snapshot,
-      quad: mockup.printAreaQuad,
+      quad: activeMockup.printAreaQuad,
     })
-  }, [mockup, snapshot])
+  }, [activeMockup, snapshot])
 
   async function handleDownload() {
     if (!snapshot) return
@@ -141,8 +152,8 @@ export function MockupModal({
   // Reset variant choice when die-cut changes — prefer the real photo mockup
   // when one is curated, else the inferred CSS shape.
   React.useEffect(() => {
-    setVariant(mockup ? 'product' : inferVariant(dieCut.category))
-  }, [dieCut.category, mockup])
+    setVariant(mockups.length > 0 ? 'product' : inferVariant(dieCut.category))
+  }, [dieCut.category, mockups.length])
 
   // Close on Escape.
   React.useEffect(() => {
@@ -172,7 +183,7 @@ export function MockupModal({
         onClose={onClose}
         onDownload={handleDownload}
         hasSnapshot={!!snapshot}
-        hasMockup={!!mockup}
+        hasMockup={mockups.length > 0}
         showSave={isProductVariant}
         onSave={handleSaveToProduct}
         saving={saving}
@@ -185,7 +196,16 @@ export function MockupModal({
         onClick={(e) => e.stopPropagation()}
       >
         {snapshot ? (
-          <Mockup variant={variant} snapshot={snapshot} dieCut={dieCut} mockup={mockup ?? null} />
+          <div className="flex flex-col items-center gap-4">
+            {isProductVariant && mockups.length > 1 && (
+              <MockupSwitcher
+                mockups={mockups}
+                selected={selectedMockup}
+                onSelect={setSelectedMockup}
+              />
+            )}
+            <Mockup variant={variant} snapshot={snapshot} dieCut={dieCut} mockup={activeMockup} />
+          </div>
         ) : (
           <div className="text-white/70 text-sm">Preparing preview…</div>
         )}
@@ -373,6 +393,45 @@ function Mockup({
     default:
       return <FlatMockup snapshot={snapshot} dieCut={dieCut} />
   }
+}
+
+// ----- Surface switcher: browse the ACTIVE mockups for this packaging type
+// (front / back / wrap …) — Mockup Slice 3, creator-facing half. -----
+
+function MockupSwitcher({
+  mockups,
+  selected,
+  onSelect,
+}: {
+  mockups: StudioMockup[]
+  selected: number
+  onSelect: (i: number) => void
+}) {
+  const labelFor = (m: StudioMockup, i: number) =>
+    m.surfaceKey
+      ? m.surfaceKey.charAt(0).toUpperCase() + m.surfaceKey.slice(1)
+      : m.label || `View ${i + 1}`
+  return (
+    <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+      {mockups.map((m, i) => (
+        <button
+          key={`${m.imageUrl}-${i}`}
+          type="button"
+          onClick={() => onSelect(i)}
+          aria-pressed={i === selected}
+          title={m.label}
+          className={
+            'rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ' +
+            (i === selected
+              ? 'bg-white text-ink-900'
+              : 'text-white/70 hover:bg-white/10 hover:text-white')
+          }
+        >
+          {labelFor(m, i)}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 // ----- Product photo: the flat artwork perspective-warped into the curated

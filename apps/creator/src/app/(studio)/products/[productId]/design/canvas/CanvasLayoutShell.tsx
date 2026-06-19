@@ -216,9 +216,10 @@ interface Props {
   /** Dieline Phase B — resolved die-line frames + context, or null when the
    *  product has no ACTIVE/PARTNER_CONFIRMED die-line. Drives the frame guides. */
   dielineFrames: DielineFramesData | null
-  /** Mockup Slice 2 — ACTIVE photo-mockup for the product's packaging type, or
-   *  null when none is curated (MockupModal falls back to stylized variants). */
-  mockup: StudioMockup | null
+  /** Mockup Slice 2/3 — ACTIVE photo-mockups for the product's packaging type,
+   *  front-first. Empty when none is curated (MockupModal falls back to
+   *  stylized variants). >1 enables the surface switcher. */
+  mockups: StudioMockup[]
 }
 
 type ToolKey =
@@ -288,7 +289,7 @@ export function CanvasLayoutShell({
   restrictionLabels = [],
   retailIdentity,
   dielineFrames,
-  mockup,
+  mockups,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -965,7 +966,7 @@ export function CanvasLayoutShell({
         brandName={brandAssets.brandName}
         open={mockupOpen}
         onClose={() => setMockupOpen(false)}
-        mockup={mockup}
+        mockups={mockups}
       />
 
       {/* C8 — consent-at-claim before a cert badge is placed on the label. */}
