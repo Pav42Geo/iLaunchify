@@ -40,7 +40,7 @@ import {
   reconcileCertBadges,
   addCertBadge,
   SavedIndicator,
-  VersionHistoryDrawer,
+  snapshotCanvasAsPng,
   type SnapshotItem,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -87,6 +87,7 @@ import { MockupModal, type StudioMockup } from './MockupModal'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot } from './actions'
+import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -635,27 +636,44 @@ export function CanvasLayoutShell({
 
   const autosave = useAutoSave(canvas, productId, { flavorPresetId: activeFlavorPresetId })
 
-  // Version history (EditSnapshot): throttled AUTO snapshots + drawer + restore.
-  // Snapshots copy the server-side working DesignVersion row, so we only trigger
-  // them — no client serialization. Retention/coalesce handled in @ilaunchify/db.
+  // Version history (EditSnapshot): docked panel + thumbnail previews + restore.
+  // Snapshots copy the server-side working DesignVersion row; the client only
+  // triggers them + supplies a small canvas PNG thumbnail. Prev/next move the
+  // SELECTED version in the panel (browsing is safe — only Restore touches the
+  // canvas). Retention/coalesce handled in @ilaunchify/db.
   const [historyOpen, setHistoryOpen] = useState(false)
   const [snapshots, setSnapshots] = useState<SnapshotItem[]>([])
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const lastSnapAtRef = React.useRef(0)
 
   const loadHistory = React.useCallback(async () => {
     const rows = await listDesignSnapshots(productId)
-    setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt) })))
+    setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail })))
   }, [productId])
 
-  // Throttle background snapshots to once per 2 min after a successful save.
+  // Capture a small PNG of the live canvas for the version thumbnail.
+  const grabThumb = React.useCallback((): string | null => {
+    if (!canvas) return null
+    const url = snapshotCanvasAsPng(canvas, { multiplier: 0.25 })
+    return url || null
+  }, [canvas])
+
+  // Load the history list once the canvas is ready (so prev/next + panel work
+  // without opening anything first).
+  React.useEffect(() => {
+    if (canvas) void loadHistory()
+  }, [canvas, loadHistory])
+
+  // Throttle background snapshots to once per 2 min after a successful save,
+  // then refresh the list so the panel + prev/next see the new version.
   React.useEffect(() => {
     if (autosave.status !== 'saved' || !autosave.lastSavedAt) return
     const now = Date.now()
     if (now - lastSnapAtRef.current < 120_000) return
     lastSnapAtRef.current = now
-    void snapshotDesign(productId, 'AUTO')
-  }, [autosave.status, autosave.lastSavedAt, productId])
+    void snapshotDesign(productId, 'AUTO', undefined, grabThumb()).then(() => loadHistory())
+  }, [autosave.status, autosave.lastSavedAt, productId, grabThumb, loadHistory])
 
   const handleRestore = React.useCallback(
     async (snapshotId: string) => {
@@ -671,10 +689,32 @@ export function CanvasLayoutShell({
         c.loadFromJSON(res.json, () => c.requestRenderAll())
       }
       toast.success('Version restored')
-      setHistoryOpen(false)
+      setSelectedVersionId(null)
       void loadHistory()
     },
     [productId, canvas, loadHistory],
+  )
+
+  // Prev/next step the selected version through the list (newest = index 0).
+  const selectedIdx = selectedVersionId ? snapshots.findIndex((s) => s.id === selectedVersionId) : 0
+  const curIdx = selectedIdx < 0 ? 0 : selectedIdx
+  const canPrevVersion = snapshots.length > 0 && curIdx < snapshots.length - 1 // older exists
+  const canNextVersion = snapshots.length > 0 && curIdx > 0 // newer exists
+  const stepVersion = React.useCallback(
+    (dir: 1 | -1) => {
+      setSnapshots((cur) => {
+        if (cur.length === 0) return cur
+        setSelectedVersionId((sel) => {
+          const i = sel ? cur.findIndex((s) => s.id === sel) : 0
+          const base = i < 0 ? 0 : i
+          const next = Math.max(0, Math.min(cur.length - 1, base + dir))
+          return cur[next]?.id ?? sel
+        })
+        return cur
+      })
+      setHistoryOpen(true)
+    },
+    [],
   )
 
   const { panMode, togglePan } = usePanMode(canvas)
@@ -801,7 +841,6 @@ export function CanvasLayoutShell({
       {/* Top bar */}
       <TopBar
         productName={productName}
-        brandName={brandAssets.brandName}
         productId={productId}
         flavors={flavors}
         activeFlavorPresetId={activeFlavorPresetId}
@@ -812,6 +851,10 @@ export function CanvasLayoutShell({
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
+        onPrevVersion={() => stepVersion(1)}
+        onNextVersion={() => stepVersion(-1)}
+        canPrevVersion={canPrevVersion}
+        canNextVersion={canNextVersion}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -992,6 +1035,18 @@ export function CanvasLayoutShell({
             frameDims={frameDims}
           />
 
+          {/* Version history — right dock with thumbnail previews + restore. */}
+          <VersionHistoryPanel
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            items={snapshots}
+            selectedId={selectedVersionId}
+            onSelect={setSelectedVersionId}
+            onRestore={handleRestore}
+            restoringId={restoringId}
+            currentId={snapshots[0]?.id ?? null}
+          />
+
           {/* Bottom floating controls */}
           <BottomToolbar
             zoom={zoom}
@@ -1048,19 +1103,9 @@ export function CanvasLayoutShell({
         onOpenCompliance={() => setComplianceOpen(true)}
         onExported={async (ack) => {
           await recordDesignExport(productId, ack)
-          // Pin a milestone version at each export.
-          void snapshotDesign(productId, 'MILESTONE', 'Exported')
+          // Pin a milestone version (with a fresh thumbnail) at each export.
+          void snapshotDesign(productId, 'MILESTONE', 'Exported', grabThumb()).then(() => loadHistory())
         }}
-      />
-
-      {/* Version history (EditSnapshot) — restorable snapshots of this design. */}
-      <VersionHistoryDrawer
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        items={snapshots}
-        onRestore={handleRestore}
-        restoringId={restoringId}
-        title="Design version history"
       />
 
       {/* DS-73d — Maker-tier upgrade overlay. Slides down from under the
@@ -1114,7 +1159,6 @@ function FlavorPill({
 
 function TopBar({
   productName,
-  brandName,
   productId,
   flavors,
   activeFlavorPresetId,
@@ -1133,9 +1177,12 @@ function TopBar({
   exportLocked,
   canDownloadLabels,
   onOpenHistory,
+  onPrevVersion,
+  onNextVersion,
+  canPrevVersion,
+  canNextVersion,
 }: {
   productName: string
-  brandName: string
   productId: string
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   activeFlavorPresetId: string | null
@@ -1146,6 +1193,10 @@ function TopBar({
   saveStatus: SaveStatus
   lastSavedAt: Date | null
   onOpenHistory: () => void
+  onPrevVersion: () => void
+  onNextVersion: () => void
+  canPrevVersion: boolean
+  canNextVersion: boolean
   complianceOpen: boolean
   onToggleCompliance: () => void
   mockupOpen: boolean
@@ -1160,8 +1211,7 @@ function TopBar({
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
-      <div className="flex items-center gap-4">
-        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
+      <div className="flex items-center gap-2.5">
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">
             iL
@@ -1170,18 +1220,18 @@ function TopBar({
             iLaunchify
           </span>
         </Link>
-        <div className="ml-2 border-l border-ink-200 pl-4">
-          <div className="text-xs text-ink-500">{brandName}</div>
-          <div className="text-sm font-medium text-ink-900">
-            {productName}
-            {activeFlavorPresetId && (
-              <span className="text-ink-500">
-                {' · '}
-                {flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Flavor'}
-              </span>
-            )}
-          </div>
-        </div>
+        {/* 3-line menu sits to the right of the logo. */}
+        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
+        {/* Autosave + version controls (icon + tooltip), left-aligned. */}
+        <SavedIndicator
+          status={saveStatus}
+          savedAt={lastSavedAt}
+          onOpenHistory={onOpenHistory}
+          onPrev={onPrevVersion}
+          onNext={onNextVersion}
+          canPrev={canPrevVersion}
+          canNext={canNextVersion}
+        />
 
         {/* Per-flavor labels — switch which flavor's Design is open. Plain <a>
             (full reload) so the canvas re-hydrates that flavor's saved art. */}
@@ -1206,11 +1256,6 @@ function TopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <SavedIndicator
-          status={saveStatus}
-          savedAt={lastSavedAt}
-          onOpenHistory={onOpenHistory}
-        />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>

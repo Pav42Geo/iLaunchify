@@ -426,13 +426,14 @@ export async function snapshotDesign(
   productId: string,
   kind: SnapshotKind = 'AUTO',
   label?: string,
+  thumbnail?: string | null,
 ): Promise<{ ok: true } | SaveError> {
   try {
     const user = await requireUser()
     const d = await ownedDesign(productId, user.id)
     if (!d) return { ok: false, error: 'Design not found or access denied' }
     if (d.json == null) return { ok: true }
-    await createSnapshot({ entityType: 'DESIGN', entityId: d.id, snapshot: d.json, kind, label: label ?? null, createdById: user.id })
+    await createSnapshot({ entityType: 'DESIGN', entityId: d.id, snapshot: d.json, kind, label: label ?? null, createdById: user.id, thumbnail: thumbnail ?? null })
     return { ok: true }
   } catch (err) {
     console.warn('[design/snapshotDesign] failed:', err)
