@@ -58,15 +58,15 @@ export function useAutoSave(
     setStatus('saving')
     setError(null)
     try {
-      // Pass our custom properties so customType / customRole round-trip
-      // through save/load (DS-53). Without this, on reload selection-aware
-      // toolbars wouldn't know what object type they were dealing with.
-      // Fabric v6 accepts an extra args array at runtime; the types ship as
-      // () so we cast through here.
-      const toJson = canvasRef.current.toJSON as (
+      // Pass our custom properties so customType / customRole / customData /
+      // recipeHash / frameSnapped round-trip through save/load (DS-53). Fabric
+      // v6's toJSON() IGNORES a propertiesToInclude argument (that was a v5 API),
+      // so we must use toObject(propertiesToInclude), which forwards the list to
+      // each object — otherwise custom stamps are silently dropped on save.
+      const toObj = canvasRef.current.toObject as (
         propertiesToInclude?: string[],
       ) => object
-      const json = toJson.call(
+      const json = toObj.call(
         canvasRef.current,
         Array.from(CANVAS_PROPERTIES_TO_INCLUDE),
       )

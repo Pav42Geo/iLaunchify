@@ -6,10 +6,10 @@ import {
   type FabricCanvas,
 } from '@ilaunchify/ui'
 
-// Fabric v6 toJSON accepts an array of extra props at runtime; the types
-// ship as () so we cast through a helper.
+// Fabric v6's toJSON() ignores a propertiesToInclude argument (v5 API), so use
+// toObject(propertiesToInclude) to actually round-trip our custom stamps.
 function toJsonWithProps(canvas: FabricCanvas): object {
-  const fn = canvas.toJSON as (propertiesToInclude?: string[]) => object
+  const fn = canvas.toObject as (propertiesToInclude?: string[]) => object
   return fn.call(canvas, Array.from(CANVAS_PROPERTIES_TO_INCLUDE))
 }
 
