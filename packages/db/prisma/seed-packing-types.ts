@@ -48,6 +48,41 @@ const TYPES: Row[] = [
 // SINGLE = one label for the pack; AGGREGATE = one combined multi-column label
 // listing all flavors; PER_FLAVOR = each flavored unit gets its own label/die-line.
 // Admin-overridable via /admin/packing-types.
+// CONSOLIDATION (docs/PACKING_TYPE_CONSOLIDATION.md): the 15 rows are
+// merchandising presets; the engine branches on these 6 structural types.
+type Structural =
+  | 'SINGLE_UNIT' | 'MULTI_UNIT_SAME' | 'MULTI_FLAVOR_MIXED'
+  | 'MULTI_FLAVOR_COMPARTMENT' | 'PER_FLAVOR_IN_OUTER' | 'CUSTOMIZABLE_PICK_N'
+const STRUCTURAL: Record<Group, Structural> = {
+  SINGLE_FLAVOR_SINGLE_PACK: 'SINGLE_UNIT',
+  SINGLE_FLAVOR_MULTIPACK: 'MULTI_UNIT_SAME',
+  VALUE_BULK_SINGLE: 'MULTI_UNIT_SAME',
+  MULTI_FLAVOR_MIXED_PACK: 'MULTI_FLAVOR_MIXED',
+  MULTI_FLAVOR_COMPARTMENT_PACK: 'MULTI_FLAVOR_COMPARTMENT',
+  MULTI_FLAVOR_INDIVIDUAL_IN_OUTER: 'PER_FLAVOR_IN_OUTER',
+  SAMPLER_MINI: 'PER_FLAVOR_IN_OUTER',
+  SUBSCRIPTION_ROTATING: 'PER_FLAVOR_IN_OUTER',
+  GIFT_PREMIUM: 'PER_FLAVOR_IN_OUTER',
+  VALUE_BULK_VARIETY: 'PER_FLAVOR_IN_OUTER',
+  SEASONAL_LIMITED: 'PER_FLAVOR_IN_OUTER',
+  PAIRING_FUNCTIONAL: 'PER_FLAVOR_IN_OUTER',
+  RETAIL_COUNTER_DISPLAY: 'PER_FLAVOR_IN_OUTER',
+  REFILL_ECO: 'PER_FLAVOR_IN_OUTER',
+  CUSTOMIZABLE_PICK_N: 'CUSTOMIZABLE_PICK_N',
+}
+// Merchandising framing (null = the base structure itself, not a marketing variant).
+const MERCH: Partial<Record<Group, string>> = {
+  SAMPLER_MINI: 'sampler',
+  SUBSCRIPTION_ROTATING: 'subscription',
+  GIFT_PREMIUM: 'gift',
+  VALUE_BULK_SINGLE: 'bulk',
+  VALUE_BULK_VARIETY: 'bulk',
+  SEASONAL_LIMITED: 'seasonal',
+  PAIRING_FUNCTIONAL: 'pairing',
+  RETAIL_COUNTER_DISPLAY: 'retail',
+  REFILL_ECO: 'refill',
+}
+
 const TOPOLOGY: Record<Group, 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'> = {
   SINGLE_FLAVOR_SINGLE_PACK: 'SINGLE',
   SINGLE_FLAVOR_MULTIPACK: 'SINGLE',
@@ -78,6 +113,8 @@ export async function seedPackingTypes(prisma: PrismaClient): Promise<void> {
       name: t.name, group: t.group, example: t.example, flavorMode: t.flavorMode,
       packStructure: t.packStructure, labelColumns: t.labelColumns,
       labelTopology: TOPOLOGY[t.group],
+      structuralType: STRUCTURAL[t.group],
+      merchandisingTag: MERCH[t.group] ?? null,
       isSubscription: t.isSubscription ?? false, isCustomizable: t.isCustomizable ?? false,
       sortOrder: i,
     }
