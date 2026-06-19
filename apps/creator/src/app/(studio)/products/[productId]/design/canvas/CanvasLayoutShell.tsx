@@ -695,28 +695,6 @@ export function CanvasLayoutShell({
     [productId, canvas, loadHistory],
   )
 
-  // Prev/next step the selected version through the list (newest = index 0).
-  const selectedIdx = selectedVersionId ? snapshots.findIndex((s) => s.id === selectedVersionId) : 0
-  const curIdx = selectedIdx < 0 ? 0 : selectedIdx
-  const canPrevVersion = snapshots.length > 0 && curIdx < snapshots.length - 1 // older exists
-  const canNextVersion = snapshots.length > 0 && curIdx > 0 // newer exists
-  const stepVersion = React.useCallback(
-    (dir: 1 | -1) => {
-      setSnapshots((cur) => {
-        if (cur.length === 0) return cur
-        setSelectedVersionId((sel) => {
-          const i = sel ? cur.findIndex((s) => s.id === sel) : 0
-          const base = i < 0 ? 0 : i
-          const next = Math.max(0, Math.min(cur.length - 1, base + dir))
-          return cur[next]?.id ?? sel
-        })
-        return cur
-      })
-      setHistoryOpen(true)
-    },
-    [],
-  )
-
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
@@ -851,10 +829,6 @@ export function CanvasLayoutShell({
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
-        onPrevVersion={() => stepVersion(1)}
-        onNextVersion={() => stepVersion(-1)}
-        canPrevVersion={canPrevVersion}
-        canNextVersion={canNextVersion}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -1177,10 +1151,6 @@ function TopBar({
   exportLocked,
   canDownloadLabels,
   onOpenHistory,
-  onPrevVersion,
-  onNextVersion,
-  canPrevVersion,
-  canNextVersion,
 }: {
   productName: string
   productId: string
@@ -1193,10 +1163,6 @@ function TopBar({
   saveStatus: SaveStatus
   lastSavedAt: Date | null
   onOpenHistory: () => void
-  onPrevVersion: () => void
-  onNextVersion: () => void
-  canPrevVersion: boolean
-  canNextVersion: boolean
   complianceOpen: boolean
   onToggleCompliance: () => void
   mockupOpen: boolean
@@ -1222,16 +1188,18 @@ function TopBar({
         </Link>
         {/* 3-line menu sits to the right of the logo. */}
         <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
-        {/* Autosave + version controls (icon + tooltip), left-aligned. */}
+        {/* Autosave status + history, then undo/redo — all icon + tooltip, left-aligned. */}
         <SavedIndicator
           status={saveStatus}
           savedAt={lastSavedAt}
           onOpenHistory={onOpenHistory}
-          onPrev={onPrevVersion}
-          onNext={onNextVersion}
-          canPrev={canPrevVersion}
-          canNext={canNextVersion}
         />
+        <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
+          <Undo2 className="h-4 w-4" />
+        </IconButton>
+        <IconButton ariaLabel="Redo (⇧⌘Z)" onClick={onRedo} disabled={!canRedo}>
+          <Redo2 className="h-4 w-4" />
+        </IconButton>
 
         {/* Per-flavor labels — switch which flavor's Design is open. Plain <a>
             (full reload) so the canvas re-hydrates that flavor's saved art. */}
@@ -1256,13 +1224,6 @@ function TopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
-          <Undo2 className="h-4 w-4" />
-        </IconButton>
-        <IconButton ariaLabel="Redo (⇧⌘Z)" onClick={onRedo} disabled={!canRedo}>
-          <Redo2 className="h-4 w-4" />
-        </IconButton>
-        <div className="mx-1 h-6 w-px bg-ink-200" />
         {/* Compliance — DS-68 styled as a primary pink CTA so creators
             don't ship un-checked. When the panel is open we switch to a
             quieter outline state to signal "engaged." */}
