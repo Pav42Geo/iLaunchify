@@ -9,7 +9,14 @@
 // export / publish, not on every keystroke.
 
 import { revalidatePath } from 'next/cache'
-import { prisma } from '@ilaunchify/db'
+import {
+  prisma,
+  createSnapshot,
+  listSnapshots,
+  getSnapshotJson,
+  type SnapshotKind,
+  type SnapshotMeta,
+} from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { uploadFile, canvasAssetKey } from '@ilaunchify/storage'
 
@@ -376,4 +383,84 @@ export async function loadDesignJson(productId: string): Promise<unknown | null>
     select: { designJson: true },
   })
   return (row?.designJson as unknown) ?? null
+}
+
+// ===========================================================================
+// VERSION HISTORY — EditSnapshot-backed (entityType = 'DESIGN', entityId =
+// Design.id). The working DesignVersion row is the live state; these snapshots
+// are the browsable, restorable history. Snapshotting reads the working row
+// server-side (no client serialization), so the client just triggers it.
+// ===========================================================================
+
+/** Resolve the creator-owned Design for a product (id + working JSON). */
+async function ownedDesign(productId: string, userId: string): Promise<{ id: string; json: unknown } | null> {
+  const design = await prisma.design.findFirst({
+    where: { productId, product: { brand: { creatorProfile: { userId } } } },
+    select: { id: true, versions: { where: { version: WORKING_VERSION }, select: { designJson: true }, take: 1 } },
+  })
+  if (!design) return null
+  return { id: design.id, json: design.versions[0]?.designJson ?? null }
+}
+
+/**
+ * Snapshot the current working design into history. `kind` AUTO is the throttled
+ * background save (coalesced server-side); MILESTONE is pinned (export / submit).
+ * No-op (ok:true) when there's no working JSON yet.
+ */
+export async function snapshotDesign(
+  productId: string,
+  kind: SnapshotKind = 'AUTO',
+  label?: string,
+): Promise<{ ok: true } | SaveError> {
+  try {
+    const user = await requireUser()
+    const d = await ownedDesign(productId, user.id)
+    if (!d) return { ok: false, error: 'Design not found or access denied' }
+    if (d.json == null) return { ok: true }
+    await createSnapshot({ entityType: 'DESIGN', entityId: d.id, snapshot: d.json, kind, label: label ?? null, createdById: user.id })
+    return { ok: true }
+  } catch (err) {
+    console.warn('[design/snapshotDesign] failed:', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'Snapshot failed' }
+  }
+}
+
+/** List version-history metadata (newest first) for the drawer. */
+export async function listDesignSnapshots(productId: string): Promise<SnapshotMeta[]> {
+  const user = await requireUser()
+  const d = await ownedDesign(productId, user.id)
+  if (!d) return []
+  return listSnapshots('DESIGN', d.id)
+}
+
+/**
+ * Restore a snapshot: copy its JSON into the working DesignVersion row and return
+ * it so the client can reload the canvas. A MILESTONE 'Before restore' snapshot is
+ * pinned first so the restore itself is undoable.
+ */
+export async function restoreDesignSnapshot(
+  productId: string,
+  snapshotId: string,
+): Promise<{ ok: true; json: unknown } | SaveError> {
+  try {
+    const user = await requireUser()
+    const d = await ownedDesign(productId, user.id)
+    if (!d) return { ok: false, error: 'Design not found or access denied' }
+    const json = await getSnapshotJson(snapshotId, 'DESIGN', d.id)
+    if (json == null) return { ok: false, error: 'Snapshot not found' }
+    // Pin the pre-restore state so the restore is reversible.
+    if (d.json != null) {
+      await createSnapshot({ entityType: 'DESIGN', entityId: d.id, snapshot: d.json, kind: 'MILESTONE', label: 'Before restore', createdById: user.id })
+    }
+    await prisma.designVersion.upsert({
+      where: { designId_version: { designId: d.id, version: WORKING_VERSION } },
+      create: { designId: d.id, version: WORKING_VERSION, designJson: json as never, source: 'USER_UPLOAD' },
+      update: { designJson: json as never },
+    })
+    revalidatePath(`/products/${productId}/design/canvas`)
+    return { ok: true, json }
+  } catch (err) {
+    console.warn('[design/restoreDesignSnapshot] failed:', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'Restore failed' }
+  }
 }

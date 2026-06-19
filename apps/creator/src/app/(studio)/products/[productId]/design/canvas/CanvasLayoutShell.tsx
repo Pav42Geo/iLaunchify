@@ -39,6 +39,9 @@ import {
   mmToInchesStr,
   reconcileCertBadges,
   addCertBadge,
+  SavedIndicator,
+  VersionHistoryDrawer,
+  type SnapshotItem,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
@@ -83,7 +86,7 @@ import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
-import { recordDesignExport } from './actions'
+import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot } from './actions'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -624,6 +627,49 @@ export function CanvasLayoutShell({
   }, [fontDrawerOpen, showTextToolbar])
 
   const autosave = useAutoSave(canvas, productId)
+
+  // Version history (EditSnapshot): throttled AUTO snapshots + drawer + restore.
+  // Snapshots copy the server-side working DesignVersion row, so we only trigger
+  // them — no client serialization. Retention/coalesce handled in @ilaunchify/db.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([])
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+  const lastSnapAtRef = React.useRef(0)
+
+  const loadHistory = React.useCallback(async () => {
+    const rows = await listDesignSnapshots(productId)
+    setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt) })))
+  }, [productId])
+
+  // Throttle background snapshots to once per 2 min after a successful save.
+  React.useEffect(() => {
+    if (autosave.status !== 'saved' || !autosave.lastSavedAt) return
+    const now = Date.now()
+    if (now - lastSnapAtRef.current < 120_000) return
+    lastSnapAtRef.current = now
+    void snapshotDesign(productId, 'AUTO')
+  }, [autosave.status, autosave.lastSavedAt, productId])
+
+  const handleRestore = React.useCallback(
+    async (snapshotId: string) => {
+      setRestoringId(snapshotId)
+      const res = await restoreDesignSnapshot(productId, snapshotId)
+      setRestoringId(null)
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      if (canvas) {
+        const c = canvas as unknown as { loadFromJSON: (j: unknown, cb?: () => void) => void; requestRenderAll: () => void }
+        c.loadFromJSON(res.json, () => c.requestRenderAll())
+      }
+      toast.success('Version restored')
+      setHistoryOpen(false)
+      void loadHistory()
+    },
+    [productId, canvas, loadHistory],
+  )
+
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
@@ -756,7 +802,7 @@ export function CanvasLayoutShell({
         onRedo={history.redo}
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
-        saveError={autosave.error}
+        onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -993,7 +1039,19 @@ export function CanvasLayoutShell({
         onOpenCompliance={() => setComplianceOpen(true)}
         onExported={async (ack) => {
           await recordDesignExport(productId, ack)
+          // Pin a milestone version at each export.
+          void snapshotDesign(productId, 'MILESTONE', 'Exported')
         }}
+      />
+
+      {/* Version history (EditSnapshot) — restorable snapshots of this design. */}
+      <VersionHistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        items={snapshots}
+        onRestore={handleRestore}
+        restoringId={restoringId}
+        title="Design version history"
       />
 
       {/* DS-73d — Maker-tier upgrade overlay. Slides down from under the
@@ -1022,7 +1080,6 @@ function TopBar({
   onRedo,
   saveStatus,
   lastSavedAt,
-  saveError,
   complianceOpen,
   onToggleCompliance,
   mockupOpen,
@@ -1031,6 +1088,7 @@ function TopBar({
   onToggleExport,
   exportLocked,
   canDownloadLabels,
+  onOpenHistory,
 }: {
   productName: string
   brandName: string
@@ -1041,7 +1099,7 @@ function TopBar({
   onRedo: () => void
   saveStatus: SaveStatus
   lastSavedAt: Date | null
-  saveError: string | null
+  onOpenHistory: () => void
   complianceOpen: boolean
   onToggleCompliance: () => void
   mockupOpen: boolean
@@ -1073,10 +1131,10 @@ function TopBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <SaveStatusIndicator
+        <SavedIndicator
           status={saveStatus}
-          lastSavedAt={lastSavedAt}
-          error={saveError}
+          savedAt={lastSavedAt}
+          onOpenHistory={onOpenHistory}
         />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
@@ -1966,77 +2024,6 @@ function PanToggleButton({
       <Hand className="h-4 w-4" />
     </button>
   )
-}
-
-function SaveStatusIndicator({
-  status,
-  lastSavedAt,
-  error,
-}: {
-  status: SaveStatus
-  lastSavedAt: Date | null
-  error: string | null
-}) {
-  // Tick every 15s so "Saved 12s ago" stays approximately fresh.
-  const [, force] = React.useReducer((n: number) => n + 1, 0)
-  React.useEffect(() => {
-    const id = setInterval(force, 15_000)
-    return () => clearInterval(id)
-  }, [])
-
-  let dotColor = 'bg-ink-300'
-  let label: React.ReactNode = 'Not saved yet'
-  let title: string | undefined
-
-  switch (status) {
-    case 'saving':
-      dotColor = 'bg-pink-500 animate-pulse'
-      label = 'Saving…'
-      break
-    case 'saved':
-      dotColor = 'bg-emerald-500'
-      label = lastSavedAt
-        ? `Saved ${relativeTime(lastSavedAt)}`
-        : 'Saved'
-      title = lastSavedAt?.toLocaleString()
-      break
-    case 'dirty':
-      dotColor = 'bg-amber-500'
-      label = 'Unsaved changes'
-      break
-    case 'error':
-      dotColor = 'bg-red-500'
-      label = 'Save failed'
-      title = error ?? undefined
-      break
-    case 'idle':
-    default:
-      label = lastSavedAt
-        ? `Saved ${relativeTime(lastSavedAt)}`
-        : 'Ready'
-      title = lastSavedAt?.toLocaleString()
-      break
-  }
-
-  return (
-    <span
-      className="mr-2 flex items-center gap-1.5 text-xs text-ink-600 tabular-nums"
-      title={title}
-    >
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
-      {label}
-    </span>
-  )
-}
-
-function relativeTime(d: Date): string {
-  const secs = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000))
-  if (secs < 5) return 'just now'
-  if (secs < 60) return `${secs}s ago`
-  const mins = Math.round(secs / 60)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.round(mins / 60)
-  return `${hrs}h ago`
 }
 
 function IconButton({
