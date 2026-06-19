@@ -8,7 +8,7 @@ import {
   saveProductIdentity,
   type BarcodeMode,
   type IdentityCheck,
-} from './identity-actions'
+} from './retail-identity-actions'
 
 interface Props {
   productId: string

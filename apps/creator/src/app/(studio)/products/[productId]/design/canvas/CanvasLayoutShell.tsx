@@ -38,6 +38,8 @@ import {
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
+import { RetailIdentityCard } from './RetailIdentityCard'
+import type { BarcodeMode } from './retail-identity-actions'
 import type { LabelingType } from '@ilaunchify/db'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
@@ -195,6 +197,16 @@ interface Props {
    * here so the block isn't a surprise at the final Pay step.
    */
   restrictionLabels?: string[]
+  /**
+   * Retail identity (GTIN / internal SKU / barcode mode) — relocated from the
+   * retired product hub (2026-06-18) into the Product panel. Persisted on the
+   * Product; the Dieline barcode frame keys off barcodeMode/gtin.
+   */
+  retailIdentity: {
+    gtin: string | null
+    internalSku: string | null
+    barcodeMode: BarcodeMode
+  }
 }
 
 type ToolKey =
@@ -262,6 +274,7 @@ export function CanvasLayoutShell({
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
+  retailIdentity,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -676,6 +689,7 @@ export function CanvasLayoutShell({
               productId={productId}
               productName={productName}
               productCtx={productCtx}
+              retailIdentity={retailIdentity}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1066,6 +1080,7 @@ function ToolDrawer({
   productId,
   productName,
   productCtx,
+  retailIdentity,
   onClose,
 }: {
   tool: ToolKey
@@ -1087,6 +1102,7 @@ function ToolDrawer({
     netQuantity: string | null
     netQuantityKind: 'solid' | 'liquid' | 'count'
   }
+  retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1129,6 +1145,7 @@ function ToolDrawer({
             setGuides={setGuides}
             brandAssets={brandAssets}
             productId={productId}
+            retailIdentity={retailIdentity}
           />
         )}
         {tool === 'label' && (
@@ -1192,12 +1209,14 @@ function ProductDrawer({
   setGuides,
   brandAssets,
   productId,
+  retailIdentity,
 }: {
   dieCut: DieCutSpec
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
   productId: string
+  retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
 }) {
   return (
     <div className="space-y-5">
@@ -1274,6 +1293,16 @@ function ProductDrawer({
           {brandAssets.extraSwatches.length === 0 ? '' : 'es'} ·{' '}
           {brandAssets.logos.length} logo variant{brandAssets.logos.length === 1 ? '' : 's'}
         </p>
+      </section>
+
+      {/* Retail identity — GTIN / internal SKU / barcode mode. Relocated here
+          from the retired product hub (2026-06-18); drives the Dieline barcode
+          frame + retail readiness. */}
+      <section>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          Retail identity
+        </div>
+        <RetailIdentityCard productId={productId} initial={retailIdentity} />
       </section>
     </div>
   )

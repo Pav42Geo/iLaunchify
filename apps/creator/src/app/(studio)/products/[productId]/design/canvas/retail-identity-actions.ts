@@ -159,6 +159,6 @@ export async function saveProductIdentity(
     },
   })
 
-  revalidatePath(`/products/${productId}`)
+  revalidatePath(`/products/${productId}/design/canvas`)
   return { ok: true }
 }

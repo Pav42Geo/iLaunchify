@@ -46,6 +46,11 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       id: true,
       name: true,
       category: true,
+      // Retail identity (GTIN / internal SKU / barcode mode) — relocated from the
+      // retired product hub into the Studio Product panel (2026-06-18).
+      gtin: true,
+      internalSku: true,
+      barcodeMode: true,
       brand: {
         select: {
           id: true,
@@ -225,6 +230,11 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       creatorTier={creatorTier}
       partnerPrintSpec={partnerPrintSpec}
       restrictionLabels={restrictionLabels}
+      retailIdentity={{
+        gtin: product.gtin,
+        internalSku: product.internalSku,
+        barcodeMode: product.barcodeMode as 'NONE' | 'RETAIL_UPC' | 'INTERNAL_SKU',
+      }}
     />
   )
 }
