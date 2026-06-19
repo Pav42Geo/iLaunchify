@@ -1364,6 +1364,43 @@ model DesignVersion {
 }
 
 // =============================================================================
+// EDIT SNAPSHOTS — user-facing version history for the two editor surfaces
+// (partner product-builder draft + creator Design Studio canvas). Distinct from
+// DesignVersion (which holds the live WORKING row + order-locked export
+// lineage): this is a rolling, throttled history the user can browse + restore.
+// Retention = ring buffer (keep last N non-pinned) + pinned milestones, pruned
+// on write. Polymorphic by (entityType, entityId) so ONE model + engine + UI
+// serve both surfaces — no FK (history side-table; ownership enforced in the
+// per-app actions; orphans on hard-delete are harmless + TTL-prunable).
+// docs/VERSION_HISTORY.md.
+// =============================================================================
+
+enum SnapshotEntity {
+  PRODUCT_TEMPLATE_DRAFT // entityId = ProductTemplate.id (partner builder)
+  DESIGN // entityId = Design.id (creator Design Studio)
+}
+
+enum SnapshotKind {
+  AUTO // throttled background snapshot
+  MILESTONE // step-advance / confirm / submit / export — pinned, kept forever
+  MANUAL // user explicitly saved a named version — pinned
+}
+
+model EditSnapshot {
+  id          String         @id @default(uuid())
+  entityType  SnapshotEntity
+  entityId    String
+  kind        SnapshotKind   @default(AUTO)
+  label       String? // milestone/manual label, e.g. "Submitted for review"
+  snapshot    Json // compact editor state (builder fields OR fabric layout w/ ASSET REFS, never embedded data-URLs)
+  pinned      Boolean        @default(false) // milestones + manual are pinned → exempt from ring-buffer prune
+  createdById String? // User.id that triggered it (nullable for system snaps)
+  createdAt   DateTime       @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
+
+// =============================================================================
 // PRINT FINISHES — admin-curated FinishType catalog, partner-offered
 // PartnerFinish rows, per-design DesignFinishApplication. Per
 // docs/PRINT_FINISHES_PLAN.md Phase F1.
