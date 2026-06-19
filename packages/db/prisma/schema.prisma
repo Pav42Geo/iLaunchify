@@ -839,6 +839,14 @@ model PackingProfile {
   // creator designs a shared base + per-flavor overrides). Admin-overridable;
   // default SINGLE. Seeded per the 15 PackingType groups.
   labelTopology LabelTopology     @default(SINGLE)
+  // CONSOLIDATION (Pavel 2026-06-18, docs/PACKING_TYPE_CONSOLIDATION.md): the 15
+  // PackingProfile rows are merchandising PRESETS; the engine branches on the 6
+  // `structuralType` buckets (recipe / label / die-line behavior). Nullable +
+  // seeded; Code migrates the builder/variant reads to structuralType.
+  structuralType StructuralPackType?
+  // Merchandising framing of a preset ('sampler','gift','seasonal','pairing',
+  // 'bulk','retail','refill','subscription'). null = the base structure itself.
+  merchandisingTag String?
   isSubscription Boolean          @default(false)
   isCustomizable Boolean          @default(false) // build-your-own pick-N
   isActive      Boolean           @default(true)
@@ -857,6 +865,18 @@ enum LabelTopology {
   SINGLE
   AGGREGATE
   PER_FLAVOR
+}
+
+// The 6 STRUCTURAL packing types the engine branches on (recipe / label /
+// die-line). The 15 PackingType/PackingProfile rows are merchandising presets
+// that map onto these. docs/PACKING_TYPE_CONSOLIDATION.md (Pavel 2026-06-18).
+enum StructuralPackType {
+  SINGLE_UNIT              // 1 flavor, 1 container (label: SINGLE)
+  MULTI_UNIT_SAME          // 1 flavor, N identical units — multipack / bulk (SINGLE)
+  MULTI_FLAVOR_MIXED       // many flavors loose in one pack — 1 aggregate label (AGGREGATE)
+  MULTI_FLAVOR_COMPARTMENT // many flavors in divided sections — 1 aggregate label (AGGREGATE)
+  PER_FLAVOR_IN_OUTER      // N flavored units in an outer — a label per flavor (PER_FLAVOR)
+  CUSTOMIZABLE_PICK_N      // buyer/creator picks the mix (PER_FLAVOR)
 }
 
 enum PackStructure {
