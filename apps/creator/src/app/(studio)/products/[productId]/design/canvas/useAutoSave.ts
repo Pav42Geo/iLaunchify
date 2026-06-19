@@ -20,6 +20,8 @@ export interface AutoSaveState {
 interface Options {
   /** Debounce window — wait this long after last change before saving. Default 1500ms. */
   debounceMs?: number
+  /** Per-flavor labels — the flavor whose Design this canvas edits (null = base). */
+  flavorPresetId?: string | null
 }
 
 /**
@@ -70,7 +72,7 @@ export function useAutoSave(
         canvasRef.current,
         Array.from(CANVAS_PROPERTIES_TO_INCLUDE),
       )
-      const result = await saveDesignJson(productId, json)
+      const result = await saveDesignJson(productId, json, opts.flavorPresetId ?? null)
       if (result.ok) {
         setLastSavedAt(new Date(result.savedAt))
         setStatus('saved')

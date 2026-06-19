@@ -223,6 +223,11 @@ interface Props {
    *  front-first. Empty when none is curated (MockupModal falls back to
    *  stylized variants). >1 enables the surface switcher. */
   mockups: StudioMockup[]
+  /** Per-flavor labels — the flavor pool when this product is individually
+   *  labeled (labelTopology PER_FLAVOR). Empty = single shared design. */
+  flavors: Array<{ id: string; name: string; swatchHex: string | null }>
+  /** The flavor whose Design is loaded (null = the shared base design). */
+  activeFlavorPresetId: string | null
 }
 
 type ToolKey =
@@ -293,6 +298,8 @@ export function CanvasLayoutShell({
   retailIdentity,
   dielineFrames,
   mockups,
+  flavors,
+  activeFlavorPresetId,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -626,7 +633,7 @@ export function CanvasLayoutShell({
     }
   }, [fontDrawerOpen, showTextToolbar])
 
-  const autosave = useAutoSave(canvas, productId)
+  const autosave = useAutoSave(canvas, productId, { flavorPresetId: activeFlavorPresetId })
 
   // Version history (EditSnapshot): throttled AUTO snapshots + drawer + restore.
   // Snapshots copy the server-side working DesignVersion row, so we only trigger
@@ -796,6 +803,8 @@ export function CanvasLayoutShell({
         productName={productName}
         brandName={brandAssets.brandName}
         productId={productId}
+        flavors={flavors}
+        activeFlavorPresetId={activeFlavorPresetId}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
         onUndo={history.undo}
@@ -1070,10 +1079,45 @@ export function CanvasLayoutShell({
 // Top bar
 // ============================================================================
 
+/** One flavor tab in the TopBar switcher. Plain <a> = full reload so the canvas
+ *  re-hydrates the target flavor's saved Design (no client re-hydration). */
+function FlavorPill({
+  href,
+  active,
+  label,
+  swatch,
+}: {
+  href: string
+  active: boolean
+  label: string
+  swatch?: string | null
+}) {
+  return (
+    <a
+      href={href}
+      aria-current={active ? 'true' : undefined}
+      className={
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ' +
+        (active ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-100')
+      }
+    >
+      {swatch && (
+        <span
+          className="h-2.5 w-2.5 rounded-full border border-black/10"
+          style={{ backgroundColor: swatch }}
+        />
+      )}
+      {label}
+    </a>
+  )
+}
+
 function TopBar({
   productName,
   brandName,
   productId,
+  flavors,
+  activeFlavorPresetId,
   canUndo,
   canRedo,
   onUndo,
@@ -1093,6 +1137,8 @@ function TopBar({
   productName: string
   brandName: string
   productId: string
+  flavors: Array<{ id: string; name: string; swatchHex: string | null }>
+  activeFlavorPresetId: string | null
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -1126,8 +1172,37 @@ function TopBar({
         </Link>
         <div className="ml-2 border-l border-ink-200 pl-4">
           <div className="text-xs text-ink-500">{brandName}</div>
-          <div className="text-sm font-medium text-ink-900">{productName}</div>
+          <div className="text-sm font-medium text-ink-900">
+            {productName}
+            {activeFlavorPresetId && (
+              <span className="text-ink-500">
+                {' · '}
+                {flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Flavor'}
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Per-flavor labels — switch which flavor's Design is open. Plain <a>
+            (full reload) so the canvas re-hydrates that flavor's saved art. */}
+        {flavors.length > 0 && (
+          <div className="ml-2 flex items-center gap-1 border-l border-ink-200 pl-4">
+            <FlavorPill
+              href={`/products/${productId}/design/canvas`}
+              active={!activeFlavorPresetId}
+              label="Base"
+            />
+            {flavors.map((f) => (
+              <FlavorPill
+                key={f.id}
+                href={`/products/${productId}/design/canvas?flavor=${f.id}`}
+                active={activeFlavorPresetId === f.id}
+                label={f.name}
+                swatch={f.swatchHex}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

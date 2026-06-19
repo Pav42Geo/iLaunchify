@@ -33,10 +33,16 @@ export interface SaveError {
   error: string
 }
 
-/** Persist a Fabric.js canvas state for the given product. Owned-by-user check enforced. */
+/**
+ * Persist a Fabric.js canvas state for the given product. Owned-by-user check
+ * enforced. `flavorPresetId` selects the per-flavor Design (per-flavor labels):
+ * null = the product's shared/base design; a FlavorPreset id = that flavor's
+ * own label. Resolved per (productId, flavorPresetId).
+ */
 export async function saveDesignJson(
   productId: string,
   designJson: unknown,
+  flavorPresetId?: string | null,
 ): Promise<SaveResult | SaveError> {
   try {
     const user = await requireUser()
@@ -51,8 +57,9 @@ export async function saveDesignJson(
       return { ok: false, error: 'Product not found or access denied' }
     }
 
+    const flavor = flavorPresetId ?? null
     let design = await prisma.design.findFirst({
-      where: { productId: product.id },
+      where: { productId: product.id, flavorPresetId: flavor },
       select: { id: true },
     })
     if (!design) {
@@ -61,6 +68,7 @@ export async function saveDesignJson(
           productId: product.id,
           brandId: product.brandId,
           status: 'DRAFT',
+          flavorPresetId: flavor,
         },
         select: { id: true },
       })
@@ -369,14 +377,19 @@ export async function recordDesignExport(
   }
 }
 
-/** Server-only fetch — returns the latest working-version JSON or null. */
-export async function loadDesignJson(productId: string): Promise<unknown | null> {
+/** Server-only fetch — returns the latest working-version JSON or null.
+ *  `flavorPresetId` selects the per-flavor design (null = shared/base). */
+export async function loadDesignJson(
+  productId: string,
+  flavorPresetId?: string | null,
+): Promise<unknown | null> {
   const user = await requireUser()
   const row = await prisma.designVersion.findFirst({
     where: {
       version: WORKING_VERSION,
       design: {
         productId,
+        flavorPresetId: flavorPresetId ?? null,
         product: { brand: { creatorProfile: { userId: user.id } } },
       },
     },
@@ -394,8 +407,10 @@ export async function loadDesignJson(productId: string): Promise<unknown | null>
 
 /** Resolve the creator-owned Design for a product (id + working JSON). */
 async function ownedDesign(productId: string, userId: string): Promise<{ id: string; json: unknown } | null> {
+  // Scope to the shared/base design (flavorPresetId = null) — the canvas's
+  // default surface. Per-flavor designs get their own history later if needed.
   const design = await prisma.design.findFirst({
-    where: { productId, product: { brand: { creatorProfile: { userId } } } },
+    where: { productId, flavorPresetId: null, product: { brand: { creatorProfile: { userId } } } },
     select: { id: true, versions: { where: { version: WORKING_VERSION }, select: { designJson: true }, take: 1 } },
   })
   if (!design) return null

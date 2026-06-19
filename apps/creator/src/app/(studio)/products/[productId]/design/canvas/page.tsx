@@ -33,10 +33,12 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ productId: string }>
+  searchParams: Promise<{ flavor?: string }>
 }
 
-export default async function DesignStudioCanvasPage({ params }: PageProps) {
+export default async function DesignStudioCanvasPage({ params, searchParams }: PageProps) {
   const { productId } = await params
+  const { flavor: flavorParam } = await searchParams
   const user = await requireUser()
 
   const product = await prisma.product.findFirst({
@@ -100,10 +102,36 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       // C4.b — labeling type drives label-format recommendation. Lives on the
       // manufacturer template; default to FOOD when unbound.
       // phraseFacts also feeds the restricted-category eligibility check.
-      productTemplate: { select: { labelingType: true, phraseFacts: true } },
+      productTemplate: {
+        select: {
+          labelingType: true,
+          phraseFacts: true,
+          // Per-flavor labels — labelTopology PER_FLAVOR + the flavor pool drive
+          // the Studio's flavor switcher; each flavor persists its own Design.
+          packingProfile: { select: { labelTopology: true } },
+          flavorPresets: {
+            orderBy: { sortOrder: 'asc' },
+            select: { id: true, name: true, swatchHex: true },
+          },
+        },
+      },
     },
   })
   if (!product) notFound()
+
+  // Per-flavor label design (docs/HANDOFF-TO-CODE-per-flavor-labels.md). When the
+  // packing type is individually-labeled and the template offers flavors, the
+  // Studio shows a flavor switcher; ?flavor=<id> selects which flavor's Design to
+  // load/save (null/absent = the shared base design).
+  const flavorPresets = product.productTemplate?.flavorPresets ?? []
+  const perFlavor =
+    product.productTemplate?.packingProfile?.labelTopology === 'PER_FLAVOR' && flavorPresets.length > 0
+  const flavors = perFlavor
+    ? flavorPresets.map((f) => ({ id: f.id, name: f.name, swatchHex: f.swatchHex }))
+    : []
+  // Validate the requested flavor against the pool; unknown/absent → base (null).
+  const activeFlavorPresetId =
+    perFlavor && flavorParam && flavors.some((f) => f.id === flavorParam) ? flavorParam : null
 
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
@@ -163,7 +191,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
 
   // Hydrate the canvas with any previously-saved Fabric state. Null → fresh
   // empty canvas (first time editing this product).
-  const initialDesignJson = (await loadDesignJson(product.id)) as object | null
+  const initialDesignJson = (await loadDesignJson(product.id, activeFlavorPresetId)) as object | null
 
   // Cert badges (DESIGN_STUDIO.md §Certificate badges V1) — the product's earned
   // certs, surfaced as managed vector badges on the host surface's canvas.
@@ -252,6 +280,8 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
       }}
       dielineFrames={dielineFrames}
       mockups={mockups}
+      flavors={flavors}
+      activeFlavorPresetId={activeFlavorPresetId}
     />
   )
 }
