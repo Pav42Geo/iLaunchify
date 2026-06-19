@@ -25,6 +25,8 @@ import Link from 'next/link'
 import {
   DieCutFrame,
   DieCutLegend,
+  resolveLayout,
+  type ResolvedFrame,
   type BrandCanvasAssets,
   type DieCutSpec,
   type FabricCanvas,
@@ -40,6 +42,7 @@ import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
 import { RetailIdentityCard } from './RetailIdentityCard'
 import type { BarcodeMode } from './retail-identity-actions'
+import type { DielineFramesData } from '@/lib/dieline-frames'
 import type { LabelingType } from '@ilaunchify/db'
 import { useCanvasHistory } from './useCanvasHistory'
 import {
@@ -207,6 +210,9 @@ interface Props {
     internalSku: string | null
     barcodeMode: BarcodeMode
   }
+  /** Dieline Phase B — resolved die-line frames + context, or null when the
+   *  product has no ACTIVE/PARTNER_CONFIRMED die-line. Drives the frame guides. */
+  dielineFrames: DielineFramesData | null
 }
 
 type ToolKey =
@@ -275,9 +281,17 @@ export function CanvasLayoutShell({
   partnerPrintSpec = null,
   restrictionLabels = [],
   retailIdentity,
+  dielineFrames,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
+  const [showFrames, setShowFrames] = useState(true)
+  // Resolve die-line frames for the current context. Empty when no die-line —
+  // resolveLayout would otherwise fall back to a DEFAULT layout, so guard on it.
+  const resolvedFrames = useMemo<ResolvedFrame[]>(
+    () => (dielineFrames?.layout ? resolveLayout(dielineFrames.layout, dielineFrames.ctx) : []),
+    [dielineFrames],
+  )
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
 
@@ -715,6 +729,7 @@ export function CanvasLayoutShell({
                   pxPerMm={pxPerMm}
                   viewZoom={zoom}
                   guides={guides}
+                  frames={showFrames ? resolvedFrames : []}
                   initialDesignJson={initialDesignJson}
                   onReady={setCanvas}
                   onHydrated={handleCertReconcile}
@@ -1568,6 +1583,7 @@ function CanvasStageWithFrame({
   dieCut,
   pxPerMm,
   guides,
+  frames,
   initialDesignJson,
   onReady,
   onHydrated,
@@ -1576,6 +1592,7 @@ function CanvasStageWithFrame({
   dieCut: DieCutSpec
   pxPerMm: number
   guides: GuideVisibility
+  frames: ResolvedFrame[]
   initialDesignJson: object | null
   onReady: (canvas: FabricCanvas) => void
   onHydrated: (canvas: FabricCanvas) => void
@@ -1603,6 +1620,68 @@ function CanvasStageWithFrame({
         onHydrated={onHydrated}
       />
       <DieCutFrame dieCut={dieCut} pxPerMm={pxPerMm} guides={guides} />
+      <FrameGuides frames={frames} dieCut={dieCut} pxPerMm={pxPerMm} />
+    </div>
+  )
+}
+
+// Dieline Phase B — soft label-frame guide overlays. Each frame.box is a NormBox
+// (0..1 of the trim area); map it into the bleed-inclusive stage px space. Scope
+// drives the color (Recipe/Material/Product/Identity/Creative). Non-interactive
+// for now (pointer-events:none) — movability lands with object pre-placement.
+const FRAME_SCOPE_COLOR: Record<string, string> = {
+  RECIPE: '#FF2E63', // pink — recipe-derived (Nutrition/Ingredients/Allergens)
+  MATERIAL: '#0EA5E9', // sky — recycling / disposal marks
+  PRODUCT: '#16A34A', // green — certifications / phrases
+  IDENTITY: '#7C3AED', // violet — SOI / net qty / manufacturer / barcode
+  CREATIVE: '#9CA3AF', // gray — logo / imagery / custom
+}
+
+function FrameGuides({
+  frames,
+  dieCut,
+  pxPerMm,
+}: {
+  frames: ResolvedFrame[]
+  dieCut: DieCutSpec
+  pxPerMm: number
+}) {
+  if (frames.length === 0) return null
+  const bleedPx = dieCut.bleedMm * pxPerMm
+  const trimWpx = dieCut.widthMm * pxPerMm
+  const trimHpx = dieCut.heightMm * pxPerMm
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {frames.map((rf) => {
+        const b = rf.frame.box
+        const color = FRAME_SCOPE_COLOR[rf.scope] ?? '#9CA3AF'
+        const left = bleedPx + b.x * trimWpx
+        const top = bleedPx + b.y * trimHpx
+        const width = b.w * trimWpx
+        const height = b.h * trimHpx
+        return (
+          <div
+            key={rf.frame.id}
+            className="absolute rounded-[2px]"
+            style={{
+              left,
+              top,
+              width,
+              height,
+              border: `1.5px dashed ${color}`,
+              background: `${color}0F`,
+            }}
+          >
+            <span
+              className="absolute left-0 top-0 -translate-y-full whitespace-nowrap rounded-t px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-white"
+              style={{ background: color }}
+            >
+              {rf.frame.kind.replace(/_/g, ' ')}
+              {rf.frame.required ? '' : ' (opt)'}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }

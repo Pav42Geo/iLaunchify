@@ -26,6 +26,7 @@ import { loadDesignJson } from './actions'
 import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
+import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
 
 export const dynamic = 'force-dynamic'
 
@@ -217,6 +218,10 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
     ),
   }).map((h) => h.label)
 
+  // Dieline Phase B — resolve the product's die-line frames + context so the
+  // canvas can render frame guides + run the staleness/bounds gate.
+  const dielineFrames = await loadDielineFrames(productId, user.id)
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -235,6 +240,7 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
         internalSku: product.internalSku,
         barcodeMode: product.barcodeMode as 'NONE' | 'RETAIL_UPC' | 'INTERNAL_SKU',
       }}
+      dielineFrames={dielineFrames}
     />
   )
 }
