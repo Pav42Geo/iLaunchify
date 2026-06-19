@@ -131,6 +131,10 @@ export const AUDIT_ACTIONS = [
   'PRODUCT_TEMPLATE_REACTIVATE',
   'PRODUCT_TEMPLATE_ARCHIVE',
   'PRODUCT_TEMPLATE_MARKETING_EDIT',
+  // §7 marketplace filter attributes set by the partner builder (format /
+  // process / allergen-free claims / markets).
+  'MARKETPLACE_ATTRIBUTES_SET',
+  'INTENDED_AGE_GROUP_SET',
   // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5)
   'PRODUCT_TEMPLATE_BANNED_BLOCK',
   // Banned-product-category gate (FDA_REGULATORY_POSTURE §5 item 14 / risk #9)

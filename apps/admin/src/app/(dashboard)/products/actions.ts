@@ -76,6 +76,7 @@ export async function approveProductTemplate(productTemplateId: string): Promise
         'unitCostCents',
         'allergenCrossContamination',
         'allergenManualOverrides',
+        'allergenFreeClaims',
         'customMeta',
         'nutrientOverrides',
         'ingredientGroups',

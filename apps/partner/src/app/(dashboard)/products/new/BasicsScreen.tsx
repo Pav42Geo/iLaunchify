@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { createDraftShell, updateBasics, type InitialDraft } from './build-actions'
 import { saveProductNiches, saveProductLifestyleTags } from '../[id]/edit/card-actions'
 import { CertificatesCard } from './CertificatesCard'
+import { MarketplaceAttributesCard } from './MarketplaceAttributesCard'
 import { MediaUpload } from './MediaUpload'
 
 interface Opt { id: string; label: string }
@@ -186,6 +187,15 @@ export function BasicsScreen({
           <Field full label="Lifestyle tags · feed the marketplace filter">
             <ChipSelect options={lifestyleTags} selected={selTags} onToggle={(id) => toggleChip(selTags, setSelTags, id)} placeholder="Add a lifestyle tag…" />
           </Field>
+          <MarketplaceAttributesCard
+            draftId={draftId}
+            initial={{
+              format: initial?.manufacturingFormat ?? null,
+              processes: initial?.manufacturingProcesses ?? [],
+              allergenFree: initial?.allergenFreeClaims ?? [],
+              markets: initial?.marketCodes ?? [],
+            }}
+          />
 
           <Field full label="Short description · marketplace card">
             <input className="input" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="Crisp Japanese yuzu, lightly sparkling, zero sugar." />

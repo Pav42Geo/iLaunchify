@@ -13,6 +13,7 @@ import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
 import { uploadFile, getSignedReadUrl, deleteFile } from '@ilaunchify/storage'
 import { lookupFeeRate, creatorTierToPlanCode, FEE_EVENTS } from '@ilaunchify/plans'
+import { FORMAT_OPTIONS, MANUFACTURING_PROCESS_OPTIONS, ALLERGEN_FREE_OPTIONS, MARKET_FILTER_OPTIONS } from '@ilaunchify/types'
 
 const FALLBACK_FEE_PCT = 15
 
@@ -263,6 +264,11 @@ export interface InitialDraft {
   maxFlavorsPerPack: number | null
   nicheIds: string[]
   lifestyleTagIds: string[]
+  // §7 marketplace filter attributes (format / process / allergen-free / markets).
+  manufacturingFormat: string | null
+  manufacturingProcesses: string[]
+  allergenFreeClaims: string[]
+  marketCodes: string[]
   flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[] }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
@@ -311,6 +317,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
+      manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
@@ -337,6 +344,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
+        manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
@@ -383,6 +391,10 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       intendedAgeGroup: String(tpl.intendedAgeGroup ?? 'GENERAL'),
       nicheIds: tpl.niches.map((n) => n.nicheId),
       lifestyleTagIds: tpl.lifestyleTags.map((l) => l.lifestyleTagId),
+      manufacturingFormat: tpl.manufacturingFormat ?? null,
+      manufacturingProcesses: tpl.manufacturingProcesses ?? [],
+      allergenFreeClaims: tpl.allergenFreeClaims ?? [],
+      marketCodes: tpl.marketCodes ?? [],
       flavors: tpl.flavorPresets.map((f) => ({
         name: f.name,
         soi: f.statementOfIdentity ?? '',
@@ -1422,6 +1434,104 @@ export async function setIntendedAgeGroup(
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not save age group: ${(err as Error).message}` }
+  }
+}
+
+// §7 marketplace FILTER attributes (format / process / allergen-free / markets).
+// Widens Result with `staged` so the card can distinguish a live save from an
+// allergen-free change sent for admin re-review on a PUBLISHED template.
+type AttrResult = { ok: true; staged?: boolean } | { ok: false; error: string }
+
+export async function setMarketplaceAttributes(
+  productTemplateId: string,
+  input: {
+    manufacturingFormat: string | null
+    manufacturingProcesses: string[]
+    allergenFreeClaims: string[]
+    marketCodes: string[]
+  },
+): Promise<AttrResult> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+
+    // Status + current allergen claims + pending payload (cast-guarded; these
+    // columns ship with a pending migration on the dev machine).
+    const tpl = await (prisma as unknown as {
+      productTemplate: { findUnique: (a: unknown) => Promise<{
+        manufacturerServiceId: string | null
+        status: string
+        allergenFreeClaims: string[]
+        pendingEditPayload: Record<string, unknown> | null
+      } | null> }
+    }).productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true, status: true, allergenFreeClaims: true, pendingEditPayload: true },
+    })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) {
+      return { ok: false, error: 'Not your product.' }
+    }
+
+    // Validate against the shared option lists — drop unknowns, dedupe. These are
+    // the SAME slugs the marketplace sidebar filters on, so anything off-list
+    // would silently never match a filter.
+    const fmt = new Set(FORMAT_OPTIONS.map((o) => o.value))
+    const prc = new Set(MANUFACTURING_PROCESS_OPTIONS.map((o) => o.value))
+    const alg = new Set(ALLERGEN_FREE_OPTIONS.map((o) => o.value))
+    const mkt = new Set(MARKET_FILTER_OPTIONS.map((o) => o.value))
+
+    const format = input.manufacturingFormat && fmt.has(input.manufacturingFormat) ? input.manufacturingFormat : null
+    const processes = [...new Set(input.manufacturingProcesses)].filter((s) => prc.has(s))
+    const allergenFree = [...new Set(input.allergenFreeClaims)].filter((s) => alg.has(s))
+    const markets = [...new Set(input.marketCodes)].filter((s) => mkt.has(s))
+
+    const pt = (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } }).productTemplate
+    const sameSet = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|')
+
+    // §4 LOCKED policy: DRAFT → all live. PUBLISHED → format/process/markets are
+    // low-risk metadata (live), but a CHANGED allergen-free claim is a public
+    // regulatory claim → stage to pendingEditPayload + PENDING_EDIT_REVIEW; the
+    // live allergenFreeClaims is untouched until admin approves.
+    let staged = false
+    if (tpl.status === 'DRAFT') {
+      await pt.update({
+        where: { id: productTemplateId },
+        data: { manufacturingFormat: format, manufacturingProcesses: processes, allergenFreeClaims: allergenFree, marketCodes: markets },
+      })
+    } else {
+      await pt.update({
+        where: { id: productTemplateId },
+        data: { manufacturingFormat: format, manufacturingProcesses: processes, marketCodes: markets },
+      })
+      if (!sameSet(tpl.allergenFreeClaims ?? [], allergenFree)) {
+        await pt.update({
+          where: { id: productTemplateId },
+          data: {
+            pendingEditPayload: { ...(tpl.pendingEditPayload ?? {}), allergenFreeClaims: allergenFree },
+            status: 'PENDING_EDIT_REVIEW',
+          },
+        })
+        staged = true
+      }
+    }
+
+    try {
+      await logAuditAs(user, {
+        entityType: 'ProductTemplate',
+        entityId: productTemplateId,
+        action: 'MARKETPLACE_ATTRIBUTES_SET',
+        payload: { manufacturingFormat: format, manufacturingProcesses: processes, allergenFreeClaims: allergenFree, marketCodes: markets, stagedForReview: staged },
+      })
+    } catch (auditErr) {
+      console.error('[setMarketplaceAttributes] audit log failed (non-fatal):', auditErr)
+    }
+
+    return { ok: true, staged }
+  } catch (err) {
+    return { ok: false, error: `Could not save attributes: ${(err as Error).message}` }
   }
 }
 
