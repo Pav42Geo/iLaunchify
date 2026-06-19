@@ -44,16 +44,44 @@ const TYPES: Row[] = [
   { slug: 'refill-eco', name: 'Refill / eco-friendly', group: 'REFILL_ECO', flavorMode: 'MULTI', packStructure: 'OUTER_WITH_INNERS', labelColumns: 1, example: 'Loose-leaf jar + compostable sachets · kibble refill + 3 toppers' },
 ]
 
+// Default label topology per packing type (docs/HANDOFF-TO-CODE-per-flavor-labels.md).
+// SINGLE = one label for the pack; AGGREGATE = one combined multi-column label
+// listing all flavors; PER_FLAVOR = each flavored unit gets its own label/die-line.
+// Admin-overridable via /admin/packing-types.
+const TOPOLOGY: Record<Group, 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'> = {
+  SINGLE_FLAVOR_SINGLE_PACK: 'SINGLE',
+  SINGLE_FLAVOR_MULTIPACK: 'SINGLE',
+  VALUE_BULK_SINGLE: 'SINGLE',
+  MULTI_FLAVOR_MIXED_PACK: 'AGGREGATE', // all flavors mixed in one bag → one combined label
+  MULTI_FLAVOR_COMPARTMENT_PACK: 'AGGREGATE', // sections share one label (multi-column Facts)
+  MULTI_FLAVOR_INDIVIDUAL_IN_OUTER: 'PER_FLAVOR', // each flavor its own pack
+  CUSTOMIZABLE_PICK_N: 'PER_FLAVOR',
+  SAMPLER_MINI: 'PER_FLAVOR',
+  SUBSCRIPTION_ROTATING: 'PER_FLAVOR',
+  GIFT_PREMIUM: 'PER_FLAVOR', // full-size inners are individually labeled (override → AGGREGATE for praline-style boxes)
+  VALUE_BULK_VARIETY: 'PER_FLAVOR',
+  SEASONAL_LIMITED: 'PER_FLAVOR',
+  PAIRING_FUNCTIONAL: 'PER_FLAVOR', // distinct items (coffee + creamer)
+  RETAIL_COUNTER_DISPLAY: 'PER_FLAVOR', // each inner bag its own flavor label
+  REFILL_ECO: 'PER_FLAVOR',
+}
+
 export async function seedPackingTypes(prisma: PrismaClient): Promise<void> {
+  // Cast-guarded — labelTopology ships with a pending migration so the generated
+  // client may not type it yet.
+  const pp = (prisma as unknown as {
+    packingProfile: { upsert: (a: unknown) => Promise<unknown> }
+  }).packingProfile
   let i = 0
   for (const t of TYPES) {
     const fields = {
       name: t.name, group: t.group, example: t.example, flavorMode: t.flavorMode,
       packStructure: t.packStructure, labelColumns: t.labelColumns,
+      labelTopology: TOPOLOGY[t.group],
       isSubscription: t.isSubscription ?? false, isCustomizable: t.isCustomizable ?? false,
       sortOrder: i,
     }
-    await prisma.packingProfile.upsert({
+    await pp.upsert({
       where: { slug: t.slug },
       update: fields,
       create: { slug: t.slug, isActive: true, ...fields },
