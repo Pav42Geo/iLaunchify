@@ -8,6 +8,8 @@ import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { CATEGORY_ROWS, templateToCardProps } from '@/lib/sample-templates'
 import {
   getMarketplaceTemplates,
+  getMarketplaceCategory,
+  getCategoryTemplateCount,
   type MarketplaceSortKey,
 } from '@/lib/templates'
 import { loadLifestyleTagGroups } from '@/lib/lifestyle-tags-db'
@@ -69,8 +71,10 @@ export default async function CategoryPage({
 }) {
   const { category } = await params
   const sp = await searchParams
-  const row = CATEGORY_ROWS.find((r) => r.slug === category)
-  if (!row) notFound()
+  // DB-driven category header (fixture fallback inside the resolver). notFound
+  // only when neither the DB nor the fixture knows the slug.
+  const categoryInfo = await getMarketplaceCategory(category)
+  if (!categoryInfo) notFound()
 
   const sort = parseSort(sp.sort)
   const moqMax =
@@ -81,6 +85,7 @@ export default async function CategoryPage({
 
   const [
     { templates, totalCount },
+    categoryCatalogCount,
     lifestyleTagGroups,
     certOptions,
     packagingGroups,
@@ -103,6 +108,7 @@ export default async function CategoryPage({
       ...(packagingChildren ? { packagingChildren } : { packagingParents }),
       take: 60,
     }),
+    getCategoryTemplateCount(category),
     loadLifestyleTagGroups(),
     getCertificationOptions(marketCode),
     getPackagingFilterGroups(),
@@ -119,7 +125,7 @@ export default async function CategoryPage({
           <Link href="/marketplace" className="hover:text-ink-900">
             Marketplace
           </Link>{' '}
-          › <span>{row.title}</span>
+          › <span>{categoryInfo.title}</span>
         </div>
 
         <MarketplaceFilters
@@ -135,10 +141,10 @@ export default async function CategoryPage({
               Category
             </div>
             <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-[-0.03em] mb-3 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
-              {row.title}.
+              {categoryInfo.title}.
             </h1>
             <p className="text-ink-600 text-[15px] max-w-[52ch] leading-[1.55]">
-              {row.templates.length} curated templates in {row.title.toLowerCase()}.
+              {categoryCatalogCount} curated templates in {categoryInfo.title.toLowerCase()}.
               Filter by diet, MOQ, or search across the row — the URL keeps
               your view shareable.
             </p>
@@ -146,7 +152,7 @@ export default async function CategoryPage({
 
           <MarketplaceControlsBar
             resultCount={totalCount}
-            totalCount={row.templates.length}
+            totalCount={categoryCatalogCount}
           />
 
           <ActiveFilterChips />

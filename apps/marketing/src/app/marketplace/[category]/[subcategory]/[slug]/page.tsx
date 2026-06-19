@@ -13,6 +13,8 @@ import {
   TabsTrigger,
   TabsContent,
   NutritionFactsRenderer,
+  InciDeclarationSvg,
+  GuaranteedAnalysisSvg,
   productGradient,
   type ProductGradient,
   type IngredientRow,
@@ -25,7 +27,7 @@ import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides } from '@/lib/templates'
-import { getTemplateRecipeDetail } from '@/lib/recipe-detail'
+import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -388,7 +390,7 @@ export default async function ProductDetailPage({
           </TabsContent>
 
           <TabsContent value="recipe">
-            <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} />
+            <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} domain={recipeDetail.domain} />
           </TabsContent>
 
           <TabsContent value="ingredients">
@@ -570,11 +572,60 @@ function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDeta
 function RecipeNutritionTab({
   detail,
   nutrientSource,
+  domain,
 }: {
   detail: ReturnType<typeof findTemplateDetail>
   nutrientSource: 'COMPUTED' | 'DECLARED' | null
+  /** Cosmetic INCI / pet Guaranteed Analysis — when present, the domain block
+   *  replaces the (food/supplement) nutrition panel on the right. */
+  domain?: DomainFacts
 }) {
   const declared = nutrientSource === 'DECLARED'
+  // A real domain declaration (cosmetic/pet) takes precedence over any fixture
+  // nutrition panel — a cosmetic must never show a food/supplement panel.
+  if (domain) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12 items-start">
+        <div>
+          <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+            About this product
+          </h3>
+          <p className="text-[15px] text-ink-700 leading-relaxed mb-6">{detail.about}</p>
+          {domain.kind === 'COSMETIC' && (
+            <div className="text-[13px] text-ink-600 leading-relaxed">
+              Full ingredient declaration follows INCI naming per 21 CFR 701.3.
+            </div>
+          )}
+        </div>
+        <div className="lg:justify-self-end">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+            {domain.kind === 'COSMETIC' ? 'INCI declaration' : 'Guaranteed Analysis'}
+          </div>
+          {domain.kind === 'COSMETIC' ? (
+            <InciDeclarationSvg
+              ingredients={domain.ingredients}
+              netContents={domain.netContents}
+              responsiblePerson={domain.responsiblePerson}
+              adverseEventContact={domain.adverseEventContact}
+              widthPx={340}
+            />
+          ) : (
+            <GuaranteedAnalysisSvg
+              gaRows={domain.gaRows}
+              ingredients={domain.ingredients}
+              adequacyStatement={domain.adequacyStatement}
+              feedingDirections={domain.feedingDirections}
+              widthPx={340}
+            />
+          )}
+          <div className="text-[11px] text-ink-500 mt-2 max-w-[340px]">
+            Computed from the manufacturer&rsquo;s formulation. Final label is
+            re-validated by the compliance service before production.
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 items-start">
       <div>

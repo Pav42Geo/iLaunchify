@@ -301,11 +301,61 @@ export async function getMarketplaceCategorySections(): Promise<MarketplaceCateg
   }
 }
 
+/** Category header info for the /marketplace/[category] page. */
+export interface MarketplaceCategoryInfo {
+  slug: string
+  title: string
+}
+
+/**
+ * Resolve a category by slug from the DB (name + active check), so the category
+ * page header + notFound come from real data, not the CATEGORY_ROWS fixture.
+ * Falls back to the fixture title when the DB is empty / errors; returns null
+ * only when neither knows the slug → notFound().
+ */
+export async function getMarketplaceCategory(slug: string): Promise<MarketplaceCategoryInfo | null> {
+  const fixture = (): MarketplaceCategoryInfo | null => {
+    const r = CATEGORY_ROWS.find((x) => x.slug === slug)
+    return r ? { slug: r.slug, title: r.title } : null
+  }
+  try {
+    const cat = await prisma.category.findUnique({
+      where: { slug },
+      select: { slug: true, name: true, isActive: true },
+    })
+    if (cat && cat.isActive !== false) return { slug: cat.slug, title: cat.name }
+    // Inactive or missing in DB → fixture (keeps demo categories rendering).
+    return fixture() ?? (cat ? { slug: cat.slug, title: cat.name } : null)
+  } catch {
+    return fixture()
+  }
+}
+
+/**
+ * Count of PUBLISHED templates in a category (the catalog denominator the
+ * category page shows). Fixture count fallback when the DB is empty.
+ */
+export async function getCategoryTemplateCount(slug: string): Promise<number> {
+  const fixtureCount = () => CATEGORY_ROWS.find((x) => x.slug === slug)?.templates.length ?? 0
+  try {
+    const n = await prisma.productTemplate.count({
+      where: { status: 'PUBLISHED', subcategory: { category: { slug } } },
+    })
+    return n > 0 ? n : fixtureCount()
+  } catch {
+    return fixtureCount()
+  }
+}
+
 /* ============ Prisma helpers ============ */
 
 const includeForCard = {
   subcategory: { include: { category: true } },
-  variants: { where: { isActive: true }, take: 1 },
+  // All active variants (not take:1) so the card can show the LOWEST MOQ + lead
+  // time across them ("from" semantics).
+  variants: { where: { isActive: true }, select: { moqMin: true, leadTimeDays: true } },
+  // Lifestyle tags → card chips (diet/cert-ish). Capped to 3 in mapToCard.
+  lifestyleTags: { include: { lifestyleTag: { select: { name: true, slug: true } } } },
 } as const
 
 /** Lead-time bucket → variant leadTimeDays range (days). */
@@ -424,11 +474,19 @@ type DbTemplate = Awaited<
   ReturnType<typeof prisma.productTemplate.findMany>
 >[number] & {
   subcategory: { slug: string; category: { slug: string; mainCategory: string; name: string } }
-  variants: Array<{ moqMin: number }>
+  variants: Array<{ moqMin: number; leadTimeDays: number }>
+  lifestyleTags?: Array<{ lifestyleTag: { name: string; slug: string } }>
 }
 
 function mapToCard(t: DbTemplate): SampleTemplate {
   const category = t.subcategory.category
+  const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
+  const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+  // Card chips from lifestyle tags (real data, domain-agnostic). Cap 3 for density.
+  const tags = (t.lifestyleTags ?? []).slice(0, 3).map((j) => ({
+    label: j.lifestyleTag.name,
+    organic: j.lifestyleTag.slug === 'organic',
+  }))
   return {
     slug: t.slug,
     categorySlug: category.slug,
@@ -437,9 +495,9 @@ function mapToCard(t: DbTemplate): SampleTemplate {
     niche: category.name,
     icon: iconForCategory(category.mainCategory),
     gradient: gradientForSlug(t.slug),
-    tags: [], // V1: no cert-on-card yet; derived in a follow-up
-    minUnits: t.variants[0]?.moqMin ?? 500,
-    leadTimeDays: 10, // V1: no leadTime field on template; manufacturer-derived in V2
+    tags,
+    minUnits: moqs.length ? Math.min(...moqs) : 500,
+    leadTimeDays: leads.length ? Math.min(...leads) : 10,
     pricePerUnit: t.priceFloorCents / 100,
   }
 }

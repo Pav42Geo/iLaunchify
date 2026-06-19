@@ -1,6 +1,12 @@
 import 'server-only'
 import { prisma } from '@ilaunchify/db'
-import { calculateLabel, toPanelData, type RecipeRow } from '@ilaunchify/nutrition'
+import {
+  calculateLabel, toPanelData, type RecipeRow,
+  toSupplementPanelData, toInciDeclaration, formatGuaranteedAnalysis,
+  petIngredientOrder, adequacyStatement,
+  type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition,
+  type CosmeticIngredient, type GuaranteedAnalysis, type PetSpecies, type LifeStage, type AdequacyMethod,
+} from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
 import type { IngredientRow, IngredientAddOn } from '@ilaunchify/ui'
 
@@ -16,16 +22,24 @@ import type { IngredientRow, IngredientAddOn } from '@ilaunchify/ui'
  * the detail page then keeps the fixture, so fixture-only demo templates and
  * non-food domains render exactly as before.
  *
- * SCOPE (intentional):
- *   - FOOD domain only. Supplement / cosmetic / pet formulations live in
- *     ProductTemplate.formulationData (a different shape) and are computed by
- *     the non-food renderers — not wired here yet.
- *   - BASE recipe only (TemplateIngredientSlot.baseIngredient). Swaps + optional
- *     add-ons are surfaced as choices but the public panel is the default recipe
- *     (matches @ilaunchify/nutrition `publicSelection` semantics).
+ * Domain coverage:
+ *   - FOOD → Nutrition Facts computed from TemplateIngredientSlot recipe.
+ *   - DIETARY_SUPPLEMENT → Supplement Facts computed from formulationData →
+ *     a SUPPLEMENT_FACTS PanelData (rendered by the same NutritionFactsRenderer).
+ *   - COSMETIC → INCI declaration; PET_PRODUCT → Guaranteed Analysis — returned
+ *     in `domain` for the detail page's domain-specific renderer.
+ *   - BASE recipe only for FOOD (TemplateIngredientSlot.baseIngredient); swaps +
+ *     optional add-ons are choices but the public panel is the default recipe.
  *   - DECLARED templates (manufacturer-entered panel) return their stored
  *     declaredPanel instead of a computed one.
+ * Returns empty/null on missing data so the detail page keeps the fixture.
  */
+
+/** Non-food domain declaration for the public detail page. */
+export type DomainFacts =
+  | { kind: 'COSMETIC'; ingredients: string; netContents?: string; responsiblePerson?: string; adverseEventContact?: string }
+  | { kind: 'PET'; gaRows: { label: string; value: string }[]; ingredients: string; adequacyStatement?: string; feedingDirections?: string }
+  | null
 
 export interface TemplateRecipeDetail {
   /** Base recipe rows (label-declaration names, %-of-recipe, allergens, swaps). */
@@ -34,11 +48,42 @@ export interface TemplateRecipeDetail {
    *  ingredients). priceDelta is omitted — optional ingredients carry no
    *  authoritative per-unit cost — so the toggle shows without a price chip. */
   addOns: IngredientAddOn[]
-  /** Computed (or declared) Nutrition Facts panel; null → use the fixture. */
+  /** Computed (or declared) Nutrition / Supplement Facts panel; null → fixture. */
   nutrition: PanelData | null
+  /** Cosmetic INCI / pet Guaranteed Analysis declaration; null for food/supplement. */
+  domain: DomainFacts
 }
 
-const EMPTY: TemplateRecipeDetail = { ingredients: [], addOns: [], nutrition: null }
+const EMPTY: TemplateRecipeDetail = { ingredients: [], addOns: [], nutrition: null, domain: null }
+
+// ---- ProductTemplate.formulationData payload shapes (mirror the creator's
+// computeProductLabel; this is the read-only public counterpart). ----
+interface SupplementPayload {
+  dietaryIngredients: Array<{ uid: string; name: string; amount: number; unit: string; percentDV: string; blendId: string; isOther: boolean; amountLessThan?: boolean; symbol?: string }>
+  blends: Array<{ id: string; name: string; total: number; unit: string; amountLessThan?: boolean }>
+  servingForm: string
+  servingsPerContainer: number
+  nutrition?: SupplementNutrition
+  nutritionLessThan?: Record<string, boolean>
+  noDvSymbol?: string
+  customFootnotes?: Array<{ symbol: string; text: string }>
+}
+interface CosmeticPayload {
+  ingredients: Array<{ uid: string; inciName: string; pct: number; isColorAdditive: boolean; isFragrance: boolean }>
+  netContentsQty: number
+  netContentsUnit: string
+  responsiblePerson: string
+  adverseEventContact: string
+}
+interface PetPayload {
+  ingredients: Array<{ uid: string; name: string; weight: number }>
+  ga: GuaranteedAnalysis
+  species: PetSpecies
+  lifeStage: LifeStage
+  method: AdequacyMethod
+  feedingDirections: string
+}
+interface FormulationData { supplement?: SupplementPayload; cosmetic?: CosmeticPayload; pet?: PetPayload }
 
 // FALCPA Big-9 allergen codes → display labels for the ingredient/allergen pills.
 const ALLERGEN_DISPLAY: Record<string, string> = {
@@ -192,7 +237,53 @@ export async function getTemplateRecipeDetail(slug: string): Promise<TemplateRec
       }
     }
 
-    return { ingredients, addOns, nutrition }
+    // --- non-food domains: compute from formulationData (cast-guarded) ---
+    let domain: DomainFacts = null
+    const lt = tmpl.labelingType
+    if (lt === 'DIETARY_SUPPLEMENT' || lt === 'COSMETIC' || lt === 'PET_PRODUCT') {
+      const fd = await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ name: string; formulationData: FormulationData | null } | null> }
+      }).productTemplate
+        .findUnique({ where: { slug }, select: { name: true, formulationData: true } })
+        .catch(() => null)
+      const f = fd?.formulationData ?? null
+
+      if (lt === 'DIETARY_SUPPLEMENT' && !nutrition && f?.supplement?.dietaryIngredients?.length) {
+        // Supplement Facts → a SUPPLEMENT_FACTS PanelData (rendered by the same
+        // NutritionFactsRenderer the food panel uses). Mirrors computeProductLabel.
+        const p = f.supplement
+        const dietary: DietaryIngredient[] = p.dietaryIngredients.filter((r) => r.name?.trim()).map((r, i, arr) => ({
+          id: r.uid, name: r.name.trim(), amountPerServing: r.amount, unit: r.unit,
+          percentDV: r.percentDV?.trim() === '' || r.percentDV == null ? null : Number(r.percentDV),
+          blendId: r.blendId || null, isOtherIngredient: r.isOther, sortWeight: arr.length - i,
+          amountLessThan: r.amountLessThan, symbol: r.symbol?.trim() || undefined,
+        }))
+        const blends: ProprietaryBlend[] = (p.blends ?? []).map((b) => ({ id: b.id, name: b.name, totalAmount: b.total, unit: b.unit, percentDV: null, amountLessThan: b.amountLessThan }))
+        const { panel } = toSupplementPanelData(dietary, blends, {
+          servingSize: p.servingForm, servingsPerContainer: p.servingsPerContainer,
+          nutrition: p.nutrition, nutritionLessThan: p.nutritionLessThan as Partial<Record<keyof SupplementNutrition, boolean>> | undefined,
+          noDvSymbol: p.noDvSymbol, customFootnotes: p.customFootnotes,
+        })
+        nutrition = panel
+      } else if (lt === 'COSMETIC' && f?.cosmetic?.ingredients?.length) {
+        const p = f.cosmetic
+        const items: CosmeticIngredient[] = p.ingredients.map((r) => ({ id: r.uid, inciName: r.inciName, pct: Number(r.pct) || 0, isColorAdditive: r.isColorAdditive, isFragrance: r.isFragrance }))
+        const decl = toInciDeclaration(items)
+        const netContents = Number(p.netContentsQty) > 0 ? `Net contents: ${p.netContentsQty} ${p.netContentsUnit}`.trim() : undefined
+        domain = { kind: 'COSMETIC', ingredients: decl.text, netContents, responsiblePerson: p.responsiblePerson || undefined, adverseEventContact: p.adverseEventContact || undefined }
+      } else if (lt === 'PET_PRODUCT' && f?.pet?.ga) {
+        const p = f.pet
+        const gaRows = formatGuaranteedAnalysis(p.ga)
+        const ingredients = petIngredientOrder((p.ingredients ?? []).map((r) => ({ id: r.uid, name: r.name, weight: Number(r.weight) || 0 }))).join(', ')
+        domain = {
+          kind: 'PET', gaRows, ingredients,
+          adequacyStatement: adequacyStatement(fd?.name ?? '', p.species, p.lifeStage, p.method),
+          feedingDirections: p.feedingDirections || undefined,
+        }
+      }
+    }
+
+    return { ingredients, addOns, nutrition, domain }
   } catch (err) {
     console.warn('[recipe-detail] failed, using fixture:', (err as Error).message)
     return EMPTY
