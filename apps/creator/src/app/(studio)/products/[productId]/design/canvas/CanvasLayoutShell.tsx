@@ -704,6 +704,9 @@ export function CanvasLayoutShell({
               productName={productName}
               productCtx={productCtx}
               retailIdentity={retailIdentity}
+              frameCount={resolvedFrames.length}
+              showFrames={showFrames}
+              setShowFrames={setShowFrames}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1096,6 +1099,9 @@ function ToolDrawer({
   productName,
   productCtx,
   retailIdentity,
+  frameCount,
+  showFrames,
+  setShowFrames,
   onClose,
 }: {
   tool: ToolKey
@@ -1118,6 +1124,9 @@ function ToolDrawer({
     netQuantityKind: 'solid' | 'liquid' | 'count'
   }
   retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
+  frameCount: number
+  showFrames: boolean
+  setShowFrames: (v: boolean) => void
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1161,6 +1170,9 @@ function ToolDrawer({
             brandAssets={brandAssets}
             productId={productId}
             retailIdentity={retailIdentity}
+            frameCount={frameCount}
+            showFrames={showFrames}
+            setShowFrames={setShowFrames}
           />
         )}
         {tool === 'label' && (
@@ -1225,6 +1237,9 @@ function ProductDrawer({
   brandAssets,
   productId,
   retailIdentity,
+  frameCount,
+  showFrames,
+  setShowFrames,
 }: {
   dieCut: DieCutSpec
   guides: GuideVisibility
@@ -1232,6 +1247,9 @@ function ProductDrawer({
   brandAssets: BrandCanvasAssets
   productId: string
   retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
+  frameCount: number
+  showFrames: boolean
+  setShowFrames: (v: boolean) => void
 }) {
   return (
     <div className="space-y-5">
@@ -1289,6 +1307,13 @@ function ProductDrawer({
             checked={guides.zones}
             onChange={(v) => setGuides({ ...guides, zones: v })}
           />
+          {frameCount > 0 && (
+            <GuideToggle
+              label={`Show label frames (${frameCount})`}
+              checked={showFrames}
+              onChange={setShowFrames}
+            />
+          )}
         </div>
         <div className="mt-3">
           <DieCutLegend guides={guides} />
