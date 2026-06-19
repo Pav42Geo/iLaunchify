@@ -265,3 +265,14 @@ Same single `prisma db push` covers these (all additive; then generate → `rm -
 - **Mockup Slice 1** — admin `/asset-management/product-mockups`: upload white-label photo (R2 via `@ilaunchify/storage`), draggable 4-corner print-area editor, DRAFT→ACTIVE→ARCHIVE, per PackagingType. Sidebar item unhidden. Audited (`MOCKUP_TEMPLATE_*` on `PackagingType`).
 - **Pending (Code):** Slice 2 studio composite (warp creator design into `printAreaQuad`; creator Design Studio is Code's hot-file zone) — spec to follow. Slice 3 browseable library.
 - After push: smoke-test the mockup upload + print-area save on `/asset-management/product-mockups` (needs R2 env + an ACTIVE PackagingType).
+
+## 10. Per-flavor label substrate (2026-06-18, additive — same `prisma db push`)
+
+| Change | Model | Notes |
+|--------|-------|-------|
+| `enum LabelTopology { SINGLE, AGGREGATE, PER_FLAVOR }` | — | label behavior per packing type |
+| `PackingProfile.labelTopology @default(SINGLE)` | PackingProfile | seeded per the 15 PackingType groups (3 SINGLE / 2 AGGREGATE / 10 PER_FLAVOR), admin-overridable |
+| `Design.flavorPresetId String?` + `@@index([productId, flavorPresetId])` | Design | per-flavor design home (null = shared base) |
+| `FlavorPreset.dielineId String?` | FlavorPreset | optional per-flavor die-line (null = shared) |
+
+`seed-packing-types.ts` now sets `labelTopology` per type (cast-guarded). This is the no-regret substrate for the per-flavor-labels feature (`docs/HANDOFF-TO-CODE-per-flavor-labels.md`); the app wiring (Studio loaders/UI, partner per-flavor die-line slot, checkout copy to PackagingComponent.designVersionId) is Code's. db typecheck clean.

@@ -16,15 +16,14 @@
 - **Authoring scope = partner pre-defines per-flavor die-line slots.** The partner declares, in the builder, that a packing type's flavors are individually labeled and which die-line/surface each flavor uses (default: the shared template die-line). The creator fills each flavor's artwork.
 - Design the FLAVOR POOL, not the order-time pack picks: the creator authors per-flavor labels for the FlavorPresets the product offers; checkout pack composition then reuses them.
 
-## 2. Schema (proposed — Code finalizes; all additive)
+## 2. Schema — SUBSTRATE ALREADY LAID (commits `3574a43` + `8262205`, additive, Mac migration pending)
 
-**Partner per-flavor slot:**
-- `FlavorPreset.dielineId String?` — optional per-flavor die-line override; null = use the template/packaging die-line shared by all flavors (the common case: same can, different label).
-- A marker that flavors are individually labeled. Prefer deriving from the packing type (`PackingType` / `ProductTemplateVariant.flavorArrangement`) if a value already means "separate flavored units"; otherwise add `ProductTemplate.perFlavorLabels Boolean @default(false)`.
+Cowork laid the no-regret columns + enum:
+- **`enum LabelTopology { SINGLE, AGGREGATE, PER_FLAVOR }`** + **`PackingProfile.labelTopology LabelTopology @default(SINGLE)`** — the "is this individually-labeled?" marker, declared PER PACKING TYPE (the 15 types), seeded with sensible defaults (3 SINGLE, 2 AGGREGATE, 10 PER_FLAVOR — see `seed-packing-types.ts TOPOLOGY`), admin-overridable via `/admin/packing-types`. **This replaces the earlier "perFlavorLabels marker" open question.** Gate per-flavor design on `PackingProfile.labelTopology === 'PER_FLAVOR'`; keep the aggregate path for `AGGREGATE`; single label for `SINGLE`.
+- **`Design.flavorPresetId String?`** (+ `@@index([productId, flavorPresetId])`) — null = the shared BASE design; a FlavorPreset id = that flavor's label. Reuses `DesignVersion` versioning. (No `@@unique` added — a product already has multiple Designs per surface; enforce one-design-per-(product,flavor,surface) in app logic.)
+- **`FlavorPreset.dielineId String?`** — optional per-flavor die-line override; null = the shared template/packaging die-line (the common case: same can, different label).
 
-**Creator per-flavor design home (pre-checkout):**
-- `Design.flavorPresetId String?` (nullable). A product gets ONE base Design (`flavorPresetId = null`) + one Design per flavor (`flavorPresetId` set). Reuses `DesignVersion` versioning unchanged. Adjust the Design unique/index so `(productId, flavorPresetId)` is unique.
-- The "shared base + override" deltas are mostly AUTO (name/color/nutrition derive from `FlavorPreset` + the per-flavor recipe), so no separate override table is required for V1 — the per-flavor `DesignVersion.designJson` = base JSON with the flavor name/color tokens swapped + the flavor's nutrition panel bound. If you want explicit manual per-flavor tweaks beyond auto, store them in that flavor's `DesignVersion.designJson` (it's already a full canvas).
+Code still owns the app wiring (loaders/UI/checkout) below; the schema is staged so you don't start with a migration. The "shared base + override" deltas are mostly AUTO (name/color/nutrition derive from `FlavorPreset` + the per-flavor recipe) — the per-flavor `DesignVersion.designJson` = base JSON with the flavor name/color tokens swapped + the flavor's nutrition panel bound; explicit manual per-flavor tweaks just live in that flavor's `DesignVersion.designJson`.
 
 ## 3. Partner builder change
 
