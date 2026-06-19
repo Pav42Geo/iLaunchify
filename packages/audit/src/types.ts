@@ -110,6 +110,9 @@ export const AUDIT_ACTIONS = [
   'ORDER_CANCELLED',
   // Restricted-category eligibility gate (labeling ≠ licensing)
   'ORDER_BLOCKED_RESTRICTED',
+  // Die-line label-frame compliance hard gate at checkout (a required regulatory
+  // frame is missing from the saved design) — DIELINE_FRAME_EDITOR_SPEC §5.
+  'ORDER_BLOCKED_LABEL_FRAMES',
   // B.4 — order cancellation paths (locked 2026-05-19)
   'CANCELLATION_REQUESTED',
   'CANCELLATION_APPROVED',

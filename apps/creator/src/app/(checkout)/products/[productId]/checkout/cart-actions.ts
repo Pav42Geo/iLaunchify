@@ -29,6 +29,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { validatePackSelection } from '@ilaunchify/ui'
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
+import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -95,6 +96,36 @@ export async function placeOrderFromCheckoutDraft(
       error:
         `This product can't be ordered: ${labels}. These categories require licensing ` +
         `iLaunchify doesn't support yet. This is not legal advice.`,
+    }
+  }
+
+  // --- 1c. Die-line label-frame HARD GATE (DIELINE_FRAME_EDITOR_SPEC §5) -----
+  //         If the product's die-line declares required label frames and the
+  //         saved design is missing one (presence gate, V1), block the order:
+  //         the platform-owned regulatory objects must be on the printed label.
+  //         The Studio surfaces these as soft warnings while editing; this is the
+  //         server-side hard stop a creator can't bypass client-side. (Safe-area
+  //         + recipe-staleness activate once Phase B stamps objects on canvas.)
+  const labelCompliance = await loadProductLabelCompliance(productId, user.id)
+  if (labelCompliance?.hasDieline && labelCompliance.report?.status === 'fail') {
+    const failing = labelCompliance.report.checks.filter((c) => c.status === 'fail')
+    await logAuditAs(user, {
+      entityType: 'Product',
+      entityId: product.id,
+      action: 'ORDER_BLOCKED_LABEL_FRAMES',
+      payload: {
+        brandId: product.brandId,
+        productId: product.id,
+        failingFrames: failing.map((c) => ({ kind: c.kind, issues: c.issues.map((i) => i.code) })),
+        surface: 'checkout-wizard',
+      },
+    })
+    const kinds = [...new Set(failing.map((c) => c.kind.replace(/_/g, ' ').toLowerCase()))].join(', ')
+    return {
+      ok: false,
+      error:
+        `This label is missing required elements for its packaging: ${kinds}. ` +
+        `Open the Design Studio and add them before ordering.`,
     }
   }
 
