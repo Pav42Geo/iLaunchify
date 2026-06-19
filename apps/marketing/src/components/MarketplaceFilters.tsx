@@ -20,13 +20,25 @@ import type { CertOption, PackagingFilterGroup, MarketOption } from '@/lib/filte
  * URL-driven: every control reads/writes search params so the server page
  * passes them to Prisma and back/forward restores state.
  *
- * Default visible (6): Format · Diet · Audience · MOQ · Lead time · Market.
- * `More filters →` reveals: Trend · Certifications · Allergen-free ·
- * Manufacturing process · Packaging type (parent → child).
+ * Layout rules (Pavel):
+ *   - EVERY filter group is always visible (no global "more/fewer filters").
+ *   - WITHIN a group, the first 6 options show; "Show more" reveals 10 at a
+ *     time, with a "Show fewer" to collapse back to 6.
+ *   - A "Clear all" control wipes every active filter param at once.
  *
  * Multi-selects store comma-separated slugs (`?diet=vegan,keto`); single-selects
  * store one value. Semantics consumed server-side: OR within a group, AND across.
  */
+
+/** Every filter param this sidebar owns — used by Clear all + active check. */
+const FILTER_PARAMS = [
+  'format', 'diet', 'audience', 'trend', 'moq', 'lead', 'market',
+  'cert', 'free', 'process', 'pkg', 'pkgc', 'tag', 'q', 'niche',
+]
+
+const INITIAL_VISIBLE = 6
+const STEP = 10
+
 export function MarketplaceFilters({
   lifestyleGroups,
   certOptions,
@@ -41,7 +53,6 @@ export function MarketplaceFilters({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [showMore, setShowMore] = React.useState(false)
 
   /* ---- URL helpers ---- */
   function push(updater: (p: URLSearchParams) => void) {
@@ -75,6 +86,11 @@ export function MarketplaceFilters({
     })
   }
 
+  const anyActive = FILTER_PARAMS.some((p) => searchParams.has(p))
+  function clearAll() {
+    push((p) => FILTER_PARAMS.forEach((name) => p.delete(name)))
+  }
+
   const diet = lifestyleGroups.lifestyle.map((t) => ({ value: t.slug, label: t.name }))
   const audience = lifestyleGroups.audience.map((t) => ({ value: t.slug, label: t.name }))
   const trend = lifestyleGroups.trend.map((t) => ({ value: t.slug, label: t.name }))
@@ -82,17 +98,28 @@ export function MarketplaceFilters({
 
   return (
     <aside className="sticky top-[124px] flex max-h-[calc(100vh-140px)] flex-col overflow-y-auto pr-1">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-1.5">
-        Filter
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
+          Filter
+        </span>
+        {anyActive && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="text-[11px] font-semibold text-pink-700 hover:text-pink-600"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
-      {/* --- Default 6 --- */}
       <SingleGroup
         title="Format"
         options={FORMAT_OPTIONS}
         value={single('format')}
         onSelect={(v) => setSingle('format', v)}
         firstBorderless
+        pill
       />
       <MultiGroup
         title="Diet"
@@ -126,61 +153,90 @@ export function MarketplaceFilters({
         value={single('market')}
         onSelect={(v) => setSingle('market', v)}
       />
-
-      {/* --- More filters --- */}
-      <button
-        type="button"
-        onClick={() => setShowMore((s) => !s)}
-        className="mt-1 flex items-center gap-1.5 border-t border-ink-200 py-3.5 text-sm font-semibold text-pink-700 hover:text-pink-600"
-      >
-        <ChevronDown
-          className={'h-4 w-4 transition-transform ' + (showMore ? 'rotate-180' : '')}
-        />
-        {showMore ? 'Fewer filters' : 'More filters'}
-      </button>
-
-      {showMore && (
-        <>
-          <MultiGroup
-            title="Trend"
-            options={trend}
-            active={csv('trend')}
-            onToggle={(v) => toggleCsv('trend', v)}
-            emptyHint="No trend tags yet"
-          />
-          <MultiGroup
-            title="Certifications"
-            options={certs}
-            active={csv('cert')}
-            onToggle={(v) => toggleCsv('cert', v)}
-            emptyHint="No certifications available"
-          />
-          <MultiGroup
-            title="Allergen-free"
-            options={ALLERGEN_FREE_OPTIONS}
-            active={csv('free')}
-            onToggle={(v) => toggleCsv('free', v)}
-          />
-          <MultiGroup
-            title="Manufacturing process"
-            options={MANUFACTURING_PROCESS_OPTIONS}
-            active={csv('process')}
-            onToggle={(v) => toggleCsv('process', v)}
-          />
-          <PackagingGroup
-            groups={packagingGroups}
-            parents={csv('pkg')}
-            children_={csv('pkgc')}
-            onToggleParent={(v) => toggleCsv('pkg', v)}
-            onToggleChild={(v) => toggleCsv('pkgc', v)}
-          />
-        </>
-      )}
+      <MultiGroup
+        title="Trend"
+        options={trend}
+        active={csv('trend')}
+        onToggle={(v) => toggleCsv('trend', v)}
+        emptyHint="No trend tags yet"
+      />
+      <MultiGroup
+        title="Certifications"
+        options={certs}
+        active={csv('cert')}
+        onToggle={(v) => toggleCsv('cert', v)}
+        emptyHint="No certifications available"
+      />
+      <MultiGroup
+        title="Allergen-free"
+        options={ALLERGEN_FREE_OPTIONS}
+        active={csv('free')}
+        onToggle={(v) => toggleCsv('free', v)}
+      />
+      <MultiGroup
+        title="Manufacturing process"
+        options={MANUFACTURING_PROCESS_OPTIONS}
+        active={csv('process')}
+        onToggle={(v) => toggleCsv('process', v)}
+      />
+      <PackagingGroup
+        groups={packagingGroups}
+        parents={csv('pkg')}
+        children_={csv('pkgc')}
+        onToggleParent={(v) => toggleCsv('pkg', v)}
+        onToggleChild={(v) => toggleCsv('pkgc', v)}
+      />
     </aside>
   )
 }
 
-/* ===================== sub-components ===================== */
+/* ===================== shared bits ===================== */
+
+/** Per-group "show 6 → +10 → show fewer" state. */
+function useLimited(total: number) {
+  const [visible, setVisible] = React.useState(INITIAL_VISIBLE)
+  return {
+    visible,
+    showMore: () => setVisible((v) => Math.min(total, v + STEP)),
+    showFewer: () => setVisible(INITIAL_VISIBLE),
+  }
+}
+
+function MoreControls({
+  total,
+  visible,
+  onMore,
+  onFewer,
+}: {
+  total: number
+  visible: number
+  onMore: () => void
+  onFewer: () => void
+}) {
+  if (total <= INITIAL_VISIBLE) return null
+  return (
+    <div className="mt-2.5 flex items-center gap-3">
+      {visible < total && (
+        <button
+          type="button"
+          onClick={onMore}
+          className="text-[12px] font-semibold text-pink-700 hover:text-pink-600"
+        >
+          Show {Math.min(STEP, total - visible)} more
+        </button>
+      )}
+      {visible > INITIAL_VISIBLE && (
+        <button
+          type="button"
+          onClick={onFewer}
+          className="text-[12px] font-semibold text-ink-500 hover:text-ink-800"
+        >
+          Show fewer
+        </button>
+      )}
+    </div>
+  )
+}
 
 function GroupShell({
   title,
@@ -204,7 +260,7 @@ function GroupShell({
   )
 }
 
-/** Multi-select checkbox list. */
+/** Multi-select checkbox list with per-group show-more. */
 function MultiGroup({
   title,
   options,
@@ -218,6 +274,7 @@ function MultiGroup({
   onToggle: (value: string) => void
   emptyHint?: string
 }) {
+  const { visible, showMore, showFewer } = useLimited(options.length)
   if (options.length === 0) {
     return (
       <GroupShell title={title}>
@@ -228,7 +285,7 @@ function MultiGroup({
   return (
     <GroupShell title={title}>
       <div className="flex flex-col gap-2.5">
-        {options.map((opt) => {
+        {options.slice(0, visible).map((opt) => {
           const on = active.has(opt.value)
           return (
             <label
@@ -255,11 +312,12 @@ function MultiGroup({
           )
         })}
       </div>
+      <MoreControls total={options.length} visible={visible} onMore={showMore} onFewer={showFewer} />
     </GroupShell>
   )
 }
 
-/** Single-select pill / row list. Clicking the active option clears it. */
+/** Single-select pill / row list with per-group show-more. Clicking the active option clears it. */
 function SingleGroup({
   title,
   options,
@@ -275,6 +333,7 @@ function SingleGroup({
   pill?: boolean
   firstBorderless?: boolean
 }) {
+  const { visible, showMore, showFewer } = useLimited(options.length)
   return (
     <GroupShell
       title={title}
@@ -292,7 +351,7 @@ function SingleGroup({
       }
     >
       <div className={pill ? 'flex flex-wrap gap-1.5' : 'flex flex-col gap-2'}>
-        {options.map((opt) => {
+        {options.slice(0, visible).map((opt) => {
           const on = value === opt.value
           if (pill) {
             return (
@@ -326,6 +385,7 @@ function SingleGroup({
           )
         })}
       </div>
+      <MoreControls total={options.length} visible={visible} onMore={showMore} onFewer={showFewer} />
     </GroupShell>
   )
 }
@@ -372,7 +432,7 @@ function MarketGroup({
   )
 }
 
-/** Packaging type — parent checkbox + expandable child checkboxes. */
+/** Packaging type — parent checkbox + expandable child checkboxes, with show-more on parents. */
 function PackagingGroup({
   groups,
   parents,
@@ -387,6 +447,7 @@ function PackagingGroup({
   onToggleChild: (value: string) => void
 }) {
   const [open, setOpen] = React.useState<string | null>(null)
+  const { visible, showMore, showFewer } = useLimited(groups.length)
   if (groups.length === 0) {
     return (
       <GroupShell title="Packaging type">
@@ -397,7 +458,7 @@ function PackagingGroup({
   return (
     <GroupShell title="Packaging type">
       <div className="flex flex-col gap-1.5">
-        {groups.map((g) => {
+        {groups.slice(0, visible).map((g) => {
           const on = parents.has(g.parent)
           const isOpen = open === g.parent
           const childActive = g.children.filter((c) => children_.has(c.slug)).length
@@ -467,6 +528,7 @@ function PackagingGroup({
           )
         })}
       </div>
+      <MoreControls total={groups.length} visible={visible} onMore={showMore} onFewer={showFewer} />
     </GroupShell>
   )
 }
