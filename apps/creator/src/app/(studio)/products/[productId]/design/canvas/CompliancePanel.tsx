@@ -35,9 +35,18 @@ import {
   type LabelScanResult,
   type ScanFinding,
   type ScanSeverity,
+  type FrameLayout,
+  type ComplianceContext,
+  type ComplianceReport,
+  type FrameCheck,
 } from '@ilaunchify/ui'
 import type { CertBadge } from './cert-badge-actions'
 import { findClearSpaceViolations, type ClearSpaceViolation } from './clearSpace'
+import {
+  runFrameComplianceFromCanvas,
+  selectObjectForKind,
+  type FrameDims,
+} from './frameComplianceCanvas'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -61,6 +70,12 @@ interface Props {
   certBadges?: CertBadge[]
   /** Request to add a cert (routes through the shell's consent gate). */
   onAddCert?: (badge: CertBadge) => void
+  /** Die-line frame layout for this product (null when no die-line). */
+  frameLayout?: FrameLayout | null
+  /** Frame composition context incl. currentRecipeHash + safeAreaBySurface. */
+  frameCtx?: ComplianceContext | null
+  /** Trim geometry to map live object boxes into frame-normalized space. */
+  frameDims?: FrameDims | null
 }
 
 export function CompliancePanel({
@@ -70,11 +85,16 @@ export function CompliancePanel({
   productCtx,
   certBadges = [],
   onAddCert,
+  frameLayout,
+  frameCtx,
+  frameDims,
 }: Props) {
   const [result, setResult] = React.useState<LabelScanResult | null>(null)
   // Which cert instances are currently on the canvas — drives the unused list.
   const [placedCertIds, setPlacedCertIds] = React.useState<Set<string>>(new Set())
   const [clearSpace, setClearSpace] = React.useState<ClearSpaceViolation[]>([])
+  // Die-line frame gate run off live canvas coords — null when no die-line.
+  const [frameReport, setFrameReport] = React.useState<ComplianceReport | null>(null)
 
   // Re-scan whenever the canvas mutates. The scan is pure so we can run it
   // freely; keeps the counts honest while the user edits.
@@ -89,6 +109,7 @@ export function CompliancePanel({
       setResult(scanLabelCompliance(canvas, productCtx))
       setPlacedCertIds(certBadgeIdsOnCanvas(canvas))
       setClearSpace(findClearSpaceViolations(canvas))
+      setFrameReport(runFrameComplianceFromCanvas(canvas, frameLayout, frameCtx, frameDims))
     }
 
     rescan()
@@ -100,7 +121,7 @@ export function CompliancePanel({
       canvas.off('object:removed', rescan)
       canvas.off('object:modified', rescan)
     }
-  }, [canvas, open, productCtx])
+  }, [canvas, open, productCtx, frameLayout, frameCtx, frameDims])
 
   // Verified certs with art that aren't on the label yet — an opt-in nudge.
   const unusedCerts = certBadges.filter(
@@ -114,6 +135,9 @@ export function CompliancePanel({
       <Header onClose={onClose} result={result} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {result && <Summary result={result} />}
+        {frameReport && frameReport.checks.length > 0 && (
+          <FrameComplianceSection report={frameReport} canvas={canvas} />
+        )}
         {result?.findings.length === 0 && <PassState />}
         {result && result.findings.length > 0 && (
           <Findings findings={result.findings} canvas={canvas} />
@@ -408,6 +432,104 @@ function FindingCard({
             )}
           </div>
         </div>
+      </div>
+    </li>
+  )
+}
+
+// ============================================================================
+// Die-line frames — placement gate run off live canvas coords (presence +
+// safe-area bounds + recipe freshness). Mirrors the server checkout gate so the
+// creator fixes issues here before they hit "Pay". OUT_OF_BOUNDS / STALE catch
+// the cases presence alone can't: an element dragged off-spec or left stale.
+// ============================================================================
+
+function humanFrameKind(k: string): string {
+  return k
+    .toLowerCase()
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+function FrameComplianceSection({
+  report,
+  canvas,
+}: {
+  report: ComplianceReport
+  canvas: FabricCanvas | null
+}) {
+  const failing = report.checks.filter((c) => c.status === 'fail')
+  const passing = report.checks.length - failing.length
+
+  return (
+    <section className="rounded-md border border-ink-200 bg-white p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+          <Target className="h-3 w-3" />
+          Die-line frames
+        </div>
+        {report.status === 'pass' ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+            <CheckCircle2 className="h-3 w-3" />
+            All placed
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-800 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+            <AlertOctagon className="h-3 w-3" />
+            {failing.length} to fix
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[11px] text-ink-600 leading-[1.45]">
+        Every required slot on this product&apos;s die-line must hold its element,
+        inside the safe area, matching the current recipe.{' '}
+        {passing > 0 && (
+          <span className="text-ink-500">{passing} slot{passing === 1 ? '' : 's'} OK.</span>
+        )}
+      </p>
+      {failing.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {failing.map((check) => (
+            <FrameCheckRow key={check.frameId} check={check} canvas={canvas} />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function FrameCheckRow({
+  check,
+  canvas,
+}: {
+  check: FrameCheck
+  canvas: FabricCanvas | null
+}) {
+  // MISSING means nothing to jump to; OUT_OF_BOUNDS / STALE have a placed object.
+  const hasObject = check.issues.every((i) => i.code !== 'MISSING')
+  return (
+    <li className="rounded-md border border-red-200 bg-red-50/40 p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[12px] font-semibold text-ink-900">
+            {humanFrameKind(check.kind)}
+          </div>
+          {check.issues.map((issue) => (
+            <p key={issue.code} className="mt-0.5 text-[11px] text-ink-700 leading-[1.4]">
+              {issue.message}
+            </p>
+          ))}
+        </div>
+        {hasObject && (
+          <button
+            type="button"
+            onClick={() => selectObjectForKind(canvas, check.kind)}
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] font-semibold text-red-700 hover:bg-red-100"
+          >
+            <Target className="h-3 w-3" /> Find
+          </button>
+        )}
       </div>
     </li>
   )

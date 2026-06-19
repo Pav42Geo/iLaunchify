@@ -28,6 +28,7 @@ import {
   resolveLayout,
   frameKindFromCanvasRole,
   type ResolvedFrame,
+  type ComplianceContext,
   type BrandCanvasAssets,
   type DieCutSpec,
   type FabricCanvas,
@@ -78,6 +79,7 @@ import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
 import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
+import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal } from './MockupModal'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
@@ -496,6 +498,33 @@ export function CanvasLayoutShell({
   const basePxPerMm = 3.0
   const pxPerMm = basePxPerMm * zoom
 
+  // Inputs for the CompliancePanel's live die-line frame gate. Memoized so the
+  // panel's rescan effect (which depends on these) doesn't re-fire every render.
+  const frameLayout = dielineFrames?.layout ?? null
+  const frameComplianceCtx = useMemo<ComplianceContext | null>(
+    () =>
+      dielineFrames
+        ? {
+            ...dielineFrames.ctx,
+            currentRecipeHash: recipeHash,
+            safeAreaBySurface: dielineFrames.safeAreaBySurface,
+          }
+        : null,
+    [dielineFrames, recipeHash],
+  )
+  const frameDims = useMemo<FrameDims | null>(
+    () =>
+      dielineFrames
+        ? {
+            widthMm: dieCut.widthMm,
+            heightMm: dieCut.heightMm,
+            bleedMm: dieCut.bleedMm,
+            basePxPerMm,
+          }
+        : null,
+    [dielineFrames, dieCut, basePxPerMm],
+  )
+
   // Dieline Phase B step 3 — snap a newly-added platform object into its die-line
   // frame (so required elements land IN the frame, not free-floating), and stamp
   // recipe-derived objects with the current recipeHash for the staleness gate.
@@ -898,6 +927,9 @@ export function CanvasLayoutShell({
             productCtx={productCtx}
             certBadges={certBadges}
             onAddCert={handleRequestAddCert}
+            frameLayout={frameLayout}
+            frameCtx={frameComplianceCtx}
+            frameDims={frameDims}
           />
 
           {/* Bottom floating controls */}
