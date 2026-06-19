@@ -23,6 +23,7 @@ import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveS
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
+import { packUiKindForProfile } from './structuralPackType'
 
 interface FacilityOption { id: string; name: string }
 
@@ -32,8 +33,6 @@ const BUCKETS: Array<{ title: string; groups: string[] }> = [
   { title: 'Curated & custom', groups: ['CUSTOMIZABLE_PICK_N', 'SAMPLER_MINI', 'GIFT_PREMIUM', 'SEASONAL_LIMITED', 'PAIRING_FUNCTIONAL', 'RETAIL_COUNTER_DISPLAY', 'REFILL_ECO'] },
   { title: 'Recurring', groups: ['SUBSCRIPTION_ROTATING'] },
 ]
-
-const PACK_STRUCTS = ['OUTER_WITH_INNERS', 'INDIVIDUAL_IN_OUTER', 'CUSTOMIZABLE']
 
 // A flavor-specific overlay ingredient line (added on top of the shared base
 // recipe). Each carries its own amount + unit, so the engine recomputes that
@@ -108,9 +107,10 @@ export function VariantsPacksStep({
     }
   }
 
-  const kind = !selected ? null
-    : selected.flavorMode === 'SINGLE' ? 'single'
-    : PACK_STRUCTS.includes(selected.packStructure) ? 'pack' : 'multi'
+  // Packing-type consolidation: the config UI keys off the 6-value structuralType
+  // (single source), falling back to flavorMode + packStructure for any profile
+  // not yet carrying one. See ./structuralPackType + docs/PACKING_TYPE_CONSOLIDATION.md.
+  const kind = selected ? packUiKindForProfile(selected) : null
 
   // M (available flavors) for the pick-N config.
   const flavorCount = flavors.filter((f) => f.name.trim()).length

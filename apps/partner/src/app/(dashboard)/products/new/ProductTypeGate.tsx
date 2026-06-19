@@ -8,6 +8,8 @@
 //
 // Rendered inside GuidedBuilder's `.gb` style scope.
 
+import type { StructuralPackType } from './structuralPackType'
+
 export interface PackingProfileOption {
   id: string
   name: string
@@ -18,6 +20,9 @@ export interface PackingProfileOption {
   labelColumns: number
   isSubscription: boolean
   isCustomizable: boolean
+  /** 6-value structural bucket the engine branches on (consolidation); null
+   *  until seeded → callers fall back to flavorMode + packStructure. */
+  structuralType: StructuralPackType | null
 }
 
 // Coarse buckets to organize the 15 profiles into scannable columns.
