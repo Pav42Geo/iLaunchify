@@ -1,20 +1,19 @@
 'use client'
 
 // =============================================================================
-// Step 4 — Packaging Studio. A compact launch card opens an IMMERSIVE full-screen
-// studio that MIRRORS the creator Design Studio chrome (docs/DESIGN_STUDIO_REBUILD
-// §3 + docs/prototypes/new-product-flow.html Step 4):
+// Step 4 — Packaging Studio. Renders INLINE on the builder page (not behind a
+// launch button) so the partner immediately sees a Design-Studio-shaped surface
+// (docs/DESIGN_STUDIO_REBUILD §3 + docs/prototypes/new-product-flow.html Step 4):
 //
 //   Top bar · Left tool rail (Library · Frames · Guides · Layers) · slide-out
 //   Drawer · Center canvas (3D package  ⇄  inline die-line frame editor) · Bottom
-//   zoom toolbar.
+//   zoom toolbar.   An Expand control pops the same shell full-screen.
 //
-// The die-line frame editor is now INLINE (not a link-out to /dielines/[id]). It
-// reuses the shared frame model from @ilaunchify/ui and persists through the same
-// die-line actions the standalone Die-line Studio uses (loadDieline /
-// saveDielineFrames / saveDielineGeometry / confirmDieline). three.js loads from
-// the CDN at runtime via ./packaging-3d (no npm dependency). The full-screen
-// surface is portaled to <body> so it escapes the builder layout.
+// The die-line frame editor is INLINE (not a link-out): it reuses the shared
+// frame model from @ilaunchify/ui and persists through the same die-line actions
+// the standalone Die-line Studio uses (loadDieline / saveDielineFrames /
+// saveDielineGeometry / confirmDieline). three.js loads from the CDN at runtime
+// via ./packaging-3d (no npm dependency).
 // =============================================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -31,12 +30,14 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
+  Maximize2,
+  Minimize2,
   Plus,
   Trash2,
-  ArrowLeft,
   Box as BoxIcon,
   PencilRuler,
   Upload,
+  Lock,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -119,7 +120,7 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
   const [data, setData] = useState<PackagingStudioData | null>(null)
-  const [open, setOpen] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const [view, setView] = useState<'3d' | 'die'>('die')
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
@@ -173,8 +174,9 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
   const resolvedDielineId = resolvedDieline?.id ?? null
 
   // Spin up / tear down the three.js scene only while the 3D view is showing.
+  // Re-inits when toggling fullscreen (the canvas element remounts).
   useEffect(() => {
-    if (!open || view !== '3d') return
+    if (view !== '3d') return
     const canvas = canvasRef.current
     if (!canvas) return
     let cancelled = false
@@ -187,13 +189,13 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
       .catch(() => { if (!cancelled) setSceneError('3D preview could not load. Check your connection and retry.') })
     return () => { cancelled = true; handleRef.current?.dispose(); handleRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, view])
+  }, [view, fullscreen])
 
-  useEffect(() => { if (open && view === '3d') handleRef.current?.setTopology(topology) }, [topology, open, view])
+  useEffect(() => { if (view === '3d') handleRef.current?.setTopology(topology) }, [topology, view])
 
   // Load the resolved die-line into the inline editor whenever it changes.
   useEffect(() => {
-    if (!open || !resolvedDielineId) { if (!resolvedDielineId) setDed(null); return }
+    if (!resolvedDielineId) { setDed(null); return }
     if (ded?.id === resolvedDielineId) return
     let alive = true
     setLoadingDieline(true)
@@ -211,17 +213,17 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
       setSaveStatus('saved')
     })
     return () => { alive = false }
-  }, [open, resolvedDielineId, ded?.id])
+  }, [resolvedDielineId, ded?.id])
 
-  // Esc closes the studio.
+  // Esc collapses full-screen; lock body scroll only while full-screen.
   useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    if (!fullscreen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
     window.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow }
-  }, [open])
+  }, [fullscreen])
 
   // ---- autosave (debounced) ----
   const queueSave = useCallback((nextLayout: FrameLayout, nextTrim: NormBox, nextSafe: NormBox) => {
@@ -321,173 +323,177 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
   }
 
   const surfaces = PACKAGING_DEFS[topology].surfaces
-  const attachedCount = data?.attached.length ?? 0
-  const dielineCount = data?.dielines.length ?? 0
 
   // ---------------------------------------------------------------------------
-  // Full-screen studio (portaled to <body> so it escapes the builder layout).
+  // The studio shell — rendered once, placed either inline or in the full-screen
+  // portal. Same chrome as the creator Design Studio.
   // ---------------------------------------------------------------------------
-  const overlay = open && typeof document !== 'undefined'
-    ? createPortal(
-      <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-100 font-sans text-ink-900" role="dialog" aria-modal="true" aria-label="Packaging Studio">
-        {/* ---- Top bar ---- */}
-        <header className="flex h-[57px] shrink-0 items-center justify-between border-b border-ink-200 bg-white px-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={() => setOpen(false)} className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink-600 hover:text-ink-900">
-              <ArrowLeft className="h-4 w-4" /> Exit
-            </button>
-            <span className="h-5 w-px bg-ink-200" />
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
-            <div className="min-w-0">
-              <div className="font-display text-[14px] font-bold leading-tight tracking-tight">Packaging Studio</div>
-              <div className="truncate text-[11.5px] leading-tight text-ink-500">{activeSystem ? activeSystem.name : 'No packaging attached'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}</div>
-            </div>
+  const shell = (
+    <div className="flex h-full min-h-0 w-full flex-col bg-zinc-100 font-sans text-ink-900">
+      {/* ---- Top bar ---- */}
+      <header className="flex h-[56px] shrink-0 items-center justify-between gap-3 border-b border-ink-200 bg-white px-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
+          <div className="min-w-0">
+            <div className="font-display text-[13.5px] font-bold leading-tight tracking-tight">Packaging Studio</div>
+            <div className="truncate text-[11px] leading-tight text-ink-500">{activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}</div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {/* View toggle — 3D package ⇄ inline die-line editor */}
-            <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
-              <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
-                <BoxIcon className="h-3.5 w-3.5" /> 3D
-              </button>
-              <button type="button" aria-pressed={view === 'die'} onClick={() => setView('die')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === 'die' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
-                <PencilRuler className="h-3.5 w-3.5" /> Die-line
-              </button>
-            </div>
-
-            {resolvedDielineId && (
-              <>
-                <span className="ml-1 flex items-center gap-1 text-[11.5px] text-ink-500">
-                  {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>)}
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${issues.length === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}
-                  title={issues.map((i) => i.message).join('\n')}
-                >
-                  {issues.length === 0 ? 'Preflight clear' : `${issues.length} to fix`}
-                </span>
-                <button type="button" onClick={onConfirm} disabled={confirmed || issues.length > 0} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
-                  <CircleCheck className="h-4 w-4" /> {confirmed ? 'Confirmed' : 'Confirm die-line'}
-                </button>
-              </>
-            )}
-
-            <span className="mx-1 h-6 w-px bg-ink-200" />
-            <button type="button" className="inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => { setOpen(false); onNext?.() }}>{nextLabel}</button>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1">
-          {/* ---- Left tool rail ---- */}
-          <nav className="flex w-20 shrink-0 flex-col items-center gap-1 border-r border-ink-200 bg-white py-3" role="toolbar" aria-label="Studio tools">
-            <RailButton icon={Inbox} label="Library" active={tool === 'library'} onClick={() => setTool('library')} />
-            <RailButton icon={Shapes} label="Frames" active={tool === 'frames'} onClick={() => setTool('frames')} />
-            <RailButton icon={SquareDashedBottom} label="Guides" active={tool === 'guides'} onClick={() => setTool('guides')} />
-            <RailButton icon={LayersIcon} label="Layers" active={tool === 'layers'} onClick={() => setTool('layers')} />
-          </nav>
-
-          {/* ---- Drawer ---- */}
-          <aside className="w-[340px] shrink-0 overflow-y-auto border-r border-ink-200 bg-white">
-            {tool === 'library' && (
-              <LibraryDrawer
-                attached={data?.attached ?? []}
-                dielines={data?.dielines ?? []}
-                activeSystemId={activeSystem?.systemId ?? null}
-                onPick={(id) => { setActiveSystemId(id); const sys = data?.attached.find((a) => a.systemId === id); if (sys) setTopology(toStudioTopology(sys.topology)) }}
-                surfaces={surfaces}
-                selectedSurfaceKey={selectedSurfaceKey}
-                onSelectSurface={(k) => { setSelectedSurfaceKey(k); handleRef.current?.select(k) }}
-              />
-            )}
-            {tool === 'frames' && (
-              resolvedDielineId ? (
-                <FramesDrawer layout={layout} selected={selectedFrame} issues={issues} onAdd={addFrame} onRemove={removeFrame} onPatch={patchFrame} onSelect={setSelectedFrameId} />
-              ) : (
-                <NoDielineDrawer />
-              )
-            )}
-            {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId} />}
-            {tool === 'layers' && <LayersDrawer layout={layout} selectedId={selectedFrameId} onSelect={setSelectedFrameId} onRemove={removeFrame} />}
-          </aside>
-
-          {/* ---- Canvas ---- */}
-          <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto">
-            {view === '3d' ? (
-              <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#eceef0_70%,#e2e4e7)]">
-                <canvas ref={canvasRef} className="block h-full w-full" />
-                {sceneError
-                  ? <div className="absolute bottom-4 left-4 rounded-lg border border-pink-100 bg-pink-50 px-3 py-1.5 text-[11.5px] text-pink-700">{sceneError}</div>
-                  : <div className="absolute bottom-4 left-4 rounded-lg border border-ink-200 bg-white/80 px-3 py-1.5 text-[11.5px] text-ink-500">Drag to orbit · scroll to zoom · click a pink surface, then switch to Die-line to lay its frames</div>}
-                <div className="absolute right-4 top-4 flex gap-3 rounded-lg border border-ink-200 bg-white/80 px-2.5 py-1.5 text-[11px] text-ink-500">
-                  <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-pink-500" /> Decorable</span>
-                  <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-ink-400" /> Non-printed</span>
-                </div>
-              </div>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center overflow-auto bg-[radial-gradient(circle,#e4e4e7_1px,transparent_1px)] bg-[length:18px_18px] p-8">
-                {loadingDieline ? (
-                  <div className="text-[12.5px] text-ink-400">Loading die-line…</div>
-                ) : !resolvedDielineId ? (
-                  <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
-                    <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><PencilRuler className="h-5 w-5" /></div>
-                    <div className="text-[13.5px] font-semibold text-ink-800">No die-line for this packaging yet</div>
-                    <p className="mx-auto mt-1.5 max-w-[16rem] text-[12px] leading-relaxed text-ink-500">
-                      {activeSystem?.packagingTypeName ? `Upload or create a die-line of type "${activeSystem.packagingTypeName}" to lay its mandatory-element frames.` : 'Attach a typed packaging system, then add a die-line to start laying frames.'}
-                    </p>
-                    <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-pink-700">
-                      <Upload className="h-3.5 w-3.5" /> Upload / create a die-line
-                    </Link>
-                  </div>
-                ) : (
-                  <div style={{ transform: `scale(${zoom})` }} className="transition-transform">
-                    <div
-                      ref={artRef}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={onPointerUp}
-                      onPointerDown={() => setSelectedFrameId(null)}
-                      className="relative h-[600px] w-[420px] select-none rounded-sm bg-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.3)] ring-1 ring-ink-200"
-                    >
-                      {/* backdrop */}
-                      {ded?.fileUrl && ded.originalFileFormat === 'PDF' && (
-                        <embed src={ded.fileUrl} type="application/pdf" className="pointer-events-none absolute inset-0 h-full w-full opacity-90" />
-                      )}
-                      {ded?.fileUrl && ded.originalFileFormat !== 'PDF' && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={ded.fileUrl} alt="die-line" className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-90" />
-                      )}
-                      {!ded?.fileUrl && (
-                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[12px] text-ink-300">No file uploaded — frames still save</div>
-                      )}
-
-                      {/* guides */}
-                      {showGuides.trim && <GuideBox box={trim} color="#ec4899" label="Trim" onPointerDown={(e, m) => onPointerDown(e, 'trim', m)} />}
-                      {showGuides.safe && <GuideBox box={safe} color="#0ea5e9" label="Safe" dashed onPointerDown={(e, m) => onPointerDown(e, 'safe', m)} />}
-
-                      {/* frames */}
-                      {layout.frames.map((f) => (
-                        <FrameRect key={f.id} frame={f} selected={selectedFrameId === f.id} onPointerDown={(e, m) => onPointerDown(e, 'frame', m, f.id)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* bottom zoom toolbar */}
-                {resolvedDielineId && !loadingDieline && (
-                  <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-1 shadow-sm">
-                    <IconBtn icon={ZoomOut} onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} />
-                    <span className="w-12 text-center text-[11.5px] tabular-nums text-ink-600">{Math.round(zoom * 100)}%</span>
-                    <IconBtn icon={ZoomIn} onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))} />
-                    <IconBtn icon={Maximize} onClick={() => setZoom(1)} />
-                  </div>
-                )}
-              </div>
-            )}
-          </main>
         </div>
-      </div>,
-      document.body,
-    )
-    : null
+
+        <div className="flex items-center gap-2">
+          {/* View toggle — 3D package ⇄ inline die-line editor */}
+          <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
+            <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
+              <BoxIcon className="h-3.5 w-3.5" /> 3D
+            </button>
+            <button type="button" aria-pressed={view === 'die'} onClick={() => setView('die')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === 'die' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
+              <PencilRuler className="h-3.5 w-3.5" /> Die-line
+            </button>
+          </div>
+
+          {resolvedDielineId && (
+            <>
+              <span className="ml-1 hidden items-center gap-1 text-[11.5px] text-ink-500 sm:flex">
+                {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>)}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${issues.length === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}
+                title={issues.map((i) => i.message).join('\n')}
+              >
+                {issues.length === 0 ? 'Preflight clear' : `${issues.length} to fix`}
+              </span>
+              <button type="button" onClick={onConfirm} disabled={confirmed || issues.length > 0} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
+                <CircleCheck className="h-4 w-4" /> {confirmed ? 'Confirmed' : 'Confirm die-line'}
+              </button>
+            </>
+          )}
+
+          <button type="button" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? 'Collapse studio' : 'Expand studio full screen'} className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+
+          {onNext && (
+            <button type="button" className="ml-0.5 inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => { setFullscreen(false); onNext() }}>{nextLabel}</button>
+          )}
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        {/* ---- Left tool rail ---- */}
+        <nav className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-ink-200 bg-white py-3" role="toolbar" aria-label="Studio tools">
+          <RailButton icon={Inbox} label="Library" active={tool === 'library'} onClick={() => setTool('library')} />
+          <RailButton icon={Shapes} label="Frames" active={tool === 'frames'} onClick={() => setTool('frames')} />
+          <RailButton icon={SquareDashedBottom} label="Guides" active={tool === 'guides'} onClick={() => setTool('guides')} />
+          <RailButton icon={LayersIcon} label="Layers" active={tool === 'layers'} onClick={() => setTool('layers')} />
+        </nav>
+
+        {/* ---- Drawer ---- */}
+        <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-ink-200 bg-white">
+          {tool === 'library' && (
+            <LibraryDrawer
+              attached={data?.attached ?? []}
+              dielines={data?.dielines ?? []}
+              activeSystemId={activeSystem?.systemId ?? null}
+              onPick={(id) => { setActiveSystemId(id); const sys = data?.attached.find((a) => a.systemId === id); if (sys) setTopology(toStudioTopology(sys.topology)) }}
+              surfaces={surfaces}
+              selectedSurfaceKey={selectedSurfaceKey}
+              onSelectSurface={(k) => { setSelectedSurfaceKey(k); handleRef.current?.select(k) }}
+              hasDraft={Boolean(draftId)}
+            />
+          )}
+          {tool === 'frames' && (
+            resolvedDielineId ? (
+              <FramesDrawer layout={layout} selected={selectedFrame} issues={issues} onAdd={addFrame} onRemove={removeFrame} onPatch={patchFrame} onSelect={setSelectedFrameId} />
+            ) : (
+              <NoDielineDrawer />
+            )
+          )}
+          {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId} />}
+          {tool === 'layers' && <LayersDrawer layout={layout} selectedId={selectedFrameId} onSelect={setSelectedFrameId} onRemove={removeFrame} />}
+        </aside>
+
+        {/* ---- Canvas ---- */}
+        <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto">
+          {!draftId ? (
+            <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
+              <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><Lock className="h-5 w-5" /></div>
+              <div className="text-[13.5px] font-semibold text-ink-800">Save your draft to start designing</div>
+              <p className="mx-auto mt-1.5 max-w-[18rem] text-[12px] leading-relaxed text-ink-500">Finish Basics (or hit “Save draft”) and your attached packaging + die-lines load here automatically.</p>
+            </div>
+          ) : view === '3d' ? (
+            <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#eceef0_70%,#e2e4e7)]">
+              <canvas ref={canvasRef} className="block h-full w-full" />
+              {sceneError
+                ? <div className="absolute bottom-4 left-4 rounded-lg border border-pink-100 bg-pink-50 px-3 py-1.5 text-[11.5px] text-pink-700">{sceneError}</div>
+                : <div className="absolute bottom-4 left-4 rounded-lg border border-ink-200 bg-white/80 px-3 py-1.5 text-[11.5px] text-ink-500">Drag to orbit · scroll to zoom · click a pink surface, then switch to Die-line to lay its frames</div>}
+              <div className="absolute right-4 top-4 flex gap-3 rounded-lg border border-ink-200 bg-white/80 px-2.5 py-1.5 text-[11px] text-ink-500">
+                <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-pink-500" /> Decorable</span>
+                <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-ink-400" /> Non-printed</span>
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center overflow-auto bg-[radial-gradient(circle,#e4e4e7_1px,transparent_1px)] bg-[length:18px_18px] p-8">
+              {loadingDieline ? (
+                <div className="text-[12.5px] text-ink-400">Loading die-line…</div>
+              ) : !resolvedDielineId ? (
+                <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
+                  <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><PencilRuler className="h-5 w-5" /></div>
+                  <div className="text-[13.5px] font-semibold text-ink-800">No die-line for this packaging yet</div>
+                  <p className="mx-auto mt-1.5 max-w-[16rem] text-[12px] leading-relaxed text-ink-500">
+                    {activeSystem?.packagingTypeName ? `Upload or create a die-line of type "${activeSystem.packagingTypeName}" to lay its mandatory-element frames.` : 'Attach a typed packaging system, then add a die-line to start laying frames.'}
+                  </p>
+                  <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-pink-700">
+                    <Upload className="h-3.5 w-3.5" /> Upload / create a die-line
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ transform: `scale(${zoom})` }} className="transition-transform">
+                  <div
+                    ref={artRef}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerDown={() => setSelectedFrameId(null)}
+                    className="relative h-[560px] w-[392px] select-none rounded-sm bg-white shadow-[0_8px_40px_-12px_rgba(0,0,0,0.3)] ring-1 ring-ink-200"
+                  >
+                    {/* backdrop */}
+                    {ded?.fileUrl && ded.originalFileFormat === 'PDF' && (
+                      <embed src={ded.fileUrl} type="application/pdf" className="pointer-events-none absolute inset-0 h-full w-full opacity-90" />
+                    )}
+                    {ded?.fileUrl && ded.originalFileFormat !== 'PDF' && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ded.fileUrl} alt="die-line" className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-90" />
+                    )}
+                    {!ded?.fileUrl && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[12px] text-ink-300">No file uploaded — frames still save</div>
+                    )}
+
+                    {/* guides */}
+                    {showGuides.trim && <GuideBox box={trim} color="#ec4899" label="Trim" onPointerDown={(e, m) => onPointerDown(e, 'trim', m)} />}
+                    {showGuides.safe && <GuideBox box={safe} color="#0ea5e9" label="Safe" dashed onPointerDown={(e, m) => onPointerDown(e, 'safe', m)} />}
+
+                    {/* frames */}
+                    {layout.frames.map((f) => (
+                      <FrameRect key={f.id} frame={f} selected={selectedFrameId === f.id} onPointerDown={(e, m) => onPointerDown(e, 'frame', m, f.id)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* bottom zoom toolbar */}
+              {resolvedDielineId && !loadingDieline && (
+                <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-1 shadow-sm">
+                  <IconBtn icon={ZoomOut} onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} />
+                  <span className="w-12 text-center text-[11.5px] tabular-nums text-ink-600">{Math.round(zoom * 100)}%</span>
+                  <IconBtn icon={ZoomIn} onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))} />
+                  <IconBtn icon={Maximize} onClick={() => setZoom(1)} />
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  )
 
   return (
     <div>
@@ -495,34 +501,17 @@ export function PackagingStudioStep({ draftId, onNext, nextLabel = 'Next step �
         ℹ︎ <b>Platform library is the default.</b> Admin curates 3D mockups + normalized die-lines. Custom uploads route to an admin verification queue; the product can&apos;t go LIVE until die-lines are verified.
       </div>
 
-      <div className="card pst-launch">
-        <div className="pst-launch-l">
-          <div className="section-title" style={{ fontSize: 15 }}>
-            <span className="ic">◳</span> Packaging Studio <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· 3D · die-line frames</span>
-          </div>
-          <p className="tiny muted" style={{ marginTop: 6, maxWidth: 460 }}>
-            Open the full-screen studio — rotate the package in 3D, then lay out its mandatory-element die-line frames on the same canvas the Creator&apos;s Design Studio locks onto.
-          </p>
-          <div className="pst-launch-meta">
-            <span className="pill">{attachedCount} packaging attached</span>
-            <span className="pill">{dielineCount} die-line{dielineCount === 1 ? '' : 's'}</span>
-          </div>
+      {/* Inline studio — full Design-Studio chrome embedded in the step. */}
+      {!fullscreen && (
+        <div className="mt-3.5 h-[78vh] min-h-[520px] overflow-hidden rounded-2xl border border-ink-200">
+          {shell}
         </div>
-        <button type="button" className="pst-open" disabled={!draftId} onClick={() => setOpen(true)}>
-          {draftId ? 'Open Packaging Studio →' : 'Save the draft first'}
-        </button>
-      </div>
+      )}
 
-      {overlay}
-
-      <style>{`
-        .gb .pst-launch{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
-        .gb .pst-launch-meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-        .gb .pst-launch .pill{font-size:11px;font-weight:600;color:var(--ink-600);background:var(--ink-50);border:1px solid var(--ink-200);border-radius:999px;padding:4px 11px}
-        .gb .pst-open{flex:none;border-radius:999px;padding:11px 20px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--pink);background:var(--pink);color:#fff;transition:.15s}
-        .gb .pst-open:hover:not(:disabled){background:var(--pink-700);border-color:var(--pink-700)}
-        .gb .pst-open:disabled{background:#fff;border-color:var(--ink-200);color:var(--ink-400);cursor:not-allowed}
-      `}</style>
+      {/* Full-screen — same shell, portaled out of the builder layout. */}
+      {fullscreen && typeof document !== 'undefined'
+        ? createPortal(<div className="fixed inset-0 z-[80]">{shell}</div>, document.body)
+        : null}
     </div>
   )
 }
@@ -578,7 +567,7 @@ function GuideBox({ box, color, label, dashed, onPointerDown }: { box: NormBox; 
 function DrawerHead({ title, sub }: { title: string; sub?: string }) {
   return (
     <div className="border-b border-ink-100 px-4 py-3">
-      <h2 className="font-display text-[14px] font-semibold">{title}</h2>
+      <div className="font-display text-[14px] font-semibold">{title}</div>
       {sub && <p className="mt-0.5 text-[11.5px] text-ink-500">{sub}</p>}
     </div>
   )
@@ -592,6 +581,7 @@ function LibraryDrawer({
   surfaces,
   selectedSurfaceKey,
   onSelectSurface,
+  hasDraft,
 }: {
   attached: StudioPackaging[]
   dielines: { id: string; packagingTypeId: string; decorationMethod: string; status: string }[]
@@ -600,12 +590,14 @@ function LibraryDrawer({
   surfaces: StudioSurfaceDef[]
   selectedSurfaceKey: string | null
   onSelectSurface: (key: string) => void
+  hasDraft: boolean
 }) {
   return (
     <div>
       <DrawerHead title="Library" sub="The packaging attached to this product. Pick one to design its die-line." />
       <div className="space-y-1.5 px-3 py-3">
-        {attached.length === 0 && <p className="px-1 text-[12px] text-ink-500">No packaging attached. Attach one in the Packaging systems card above.</p>}
+        {!hasDraft && <p className="px-1 text-[12px] text-ink-500">Save the draft to load your attached packaging.</p>}
+        {hasDraft && attached.length === 0 && <p className="px-1 text-[12px] text-ink-500">No packaging attached. Attach one in the Packaging systems card above.</p>}
         {attached.map((a) => {
           const hasDie = a.packagingTypeId ? dielines.some((d) => d.packagingTypeId === a.packagingTypeId) : false
           const on = a.systemId === activeSystemId
