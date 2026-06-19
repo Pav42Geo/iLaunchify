@@ -116,8 +116,9 @@ export async function getMarketplaceTemplates(
       return fallbackToSample(args)
     }
 
+    const heroMap = await getHeroImageMap(rows.map((r) => ({ id: r.id, imageAssetId: r.imageAssetId })))
     return {
-      templates: rows.map(mapToCard),
+      templates: rows.map((r) => mapToCard(r as unknown as DbTemplate, heroMap.get(r.id))),
       fromSample: false,
       totalCount,
     }
@@ -205,9 +206,12 @@ export async function getMarketplaceTemplateBySlug(
       include: includeForCard,
       take: 4,
     })
+    const heroMap = await getHeroImageMap(
+      [row, ...relatedRows].map((r) => ({ id: r.id, imageAssetId: r.imageAssetId })),
+    )
     return {
-      template: mapToCard(db),
-      related: relatedRows.map((r) => mapToCard(r as unknown as DbTemplate)),
+      template: mapToCard(db, heroMap.get(db.id)),
+      related: relatedRows.map((r) => mapToCard(r as unknown as DbTemplate, heroMap.get(r.id))),
       categoryTitle: db.subcategory.category.name,
     }
   } catch (err) {
@@ -283,6 +287,7 @@ export async function getMarketplaceCategorySections(): Promise<MarketplaceCateg
       take: 200,
     })
     if (rows.length === 0) return sampleSections()
+    const heroMap = await getHeroImageMap(rows.map((r) => ({ id: r.id, imageAssetId: r.imageAssetId })))
     const byCat = new Map<string, MarketplaceCategorySection>()
     for (const row of rows) {
       const db = row as unknown as DbTemplate
@@ -292,7 +297,7 @@ export async function getMarketplaceCategorySections(): Promise<MarketplaceCateg
         section = { title: cat.name, slug: cat.slug, templates: [] }
         byCat.set(cat.slug, section)
       }
-      section.templates.push(mapToCard(db))
+      section.templates.push(mapToCard(db, heroMap.get(db.id)))
     }
     return [...byCat.values()]
   } catch (err) {
@@ -478,7 +483,7 @@ type DbTemplate = Awaited<
   lifestyleTags?: Array<{ lifestyleTag: { name: string; slug: string } }>
 }
 
-function mapToCard(t: DbTemplate): SampleTemplate {
+function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
   const category = t.subcategory.category
   const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
   const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
@@ -495,10 +500,83 @@ function mapToCard(t: DbTemplate): SampleTemplate {
     niche: category.name,
     icon: iconForCategory(category.mainCategory),
     gradient: gradientForSlug(t.slug),
+    imageUrl: heroUrl, // real product hero when available; card falls back to gradient
     tags,
     minUnits: moqs.length ? Math.min(...moqs) : 500,
     leadTimeDays: leads.length ? Math.min(...leads) : 10,
     pricePerUnit: t.priceFloorCents / 100,
+  }
+}
+
+/**
+ * Batch-resolve the hero image URL per template (one query). Assets are stored
+ * with ownerType 'PRODUCT' + ownerId = template id; the hero is the one whose id
+ * matches ProductTemplate.imageAssetId, else the earliest. Returns a Map of
+ * templateId → publicUrl; empty on error so cards fall back to the gradient.
+ */
+async function getHeroImageMap(
+  rows: Array<{ id: string; imageAssetId: string | null }>,
+): Promise<Map<string, string>> {
+  const ids = rows.map((r) => r.id)
+  if (ids.length === 0) return new Map()
+  try {
+    const assets = await prisma.asset.findMany({
+      where: {
+        ownerType: 'PRODUCT',
+        ownerId: { in: ids },
+        type: { in: ['PRODUCT_IMAGE', 'HERO_IMAGE'] },
+        publicUrl: { not: null },
+      },
+      select: { ownerId: true, id: true, publicUrl: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    const heroIdByOwner = new Map(rows.map((r) => [r.id, r.imageAssetId]))
+    const byOwner = new Map<string, { id: string; url: string }[]>()
+    for (const a of assets) {
+      if (!a.ownerId || !a.publicUrl) continue
+      const list = byOwner.get(a.ownerId) ?? []
+      list.push({ id: a.id, url: a.publicUrl })
+      byOwner.set(a.ownerId, list)
+    }
+    const out = new Map<string, string>()
+    for (const [owner, list] of byOwner) {
+      const heroId = heroIdByOwner.get(owner)
+      const hero = list.find((x) => x.id === heroId) ?? list[0]
+      if (hero) out.set(owner, hero.url)
+    }
+    return out
+  } catch {
+    return new Map()
+  }
+}
+
+/**
+ * All public images for one template's detail-page gallery (hero first), so the
+ * gallery shows real product shots instead of the emoji+gradient placeholder.
+ * Returns [] on empty/error → the gallery falls back to the placeholder.
+ */
+export async function getTemplateGalleryImages(slug: string): Promise<string[]> {
+  try {
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { slug },
+      select: { id: true, imageAssetId: true },
+    })
+    if (!tpl) return []
+    const assets = await prisma.asset.findMany({
+      where: {
+        ownerType: 'PRODUCT',
+        ownerId: tpl.id,
+        type: { in: ['PRODUCT_IMAGE', 'HERO_IMAGE'] },
+        publicUrl: { not: null },
+      },
+      select: { id: true, publicUrl: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    return [...assets]
+      .sort((a, b) => (a.id === tpl.imageAssetId ? -1 : b.id === tpl.imageAssetId ? 1 : 0))
+      .map((a) => a.publicUrl as string)
+  } catch {
+    return []
   }
 }
 

@@ -60,8 +60,10 @@ export interface ProductCardProps {
   verified?: boolean
   /** Gradient key — defaults to a stable hash of the title. */
   gradient?: ProductGradient
-  /** Centered illustration (emoji string for V1; eventual <img> URL). */
+  /** Centered illustration (emoji string for V1). */
   icon: string
+  /** Real product hero image URL. When present, replaces the emoji+gradient. */
+  imageUrl?: string
   /** Cert tag chips below the title. Cap at 3 visible. */
   tags?: ProductCardTag[]
   /** Footer stats — minimum order quantity. */
@@ -109,6 +111,7 @@ export function ProductCard({
   verified = true,
   gradient,
   icon,
+  imageUrl,
   tags = [],
   minUnits,
   leadTimeDays,
@@ -143,6 +146,15 @@ export function ProductCard({
         {verified && (
           <VerifyCheck size="sm" className="absolute top-2.5 right-2.5" />
         )}
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
         <span
           className="text-[46px] leading-none"
           style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.08))' }}
@@ -150,6 +162,7 @@ export function ProductCard({
         >
           {icon}
         </span>
+        )}
         <HeartFavorite
           value={favorited}
           onToggle={onFavorite}

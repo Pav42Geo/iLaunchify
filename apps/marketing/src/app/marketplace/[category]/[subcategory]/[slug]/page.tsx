@@ -26,7 +26,7 @@ import { SampleOrderCard } from '@/components/SampleOrderCard'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
-import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides } from '@/lib/templates'
+import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
@@ -106,6 +106,8 @@ export default async function ProductDetailPage({
   // fixture when the template carries recipe data; otherwise leaves the fixture
   // (fixture-only demos + non-food domains render unchanged).
   const recipeDetail = await getTemplateRecipeDetail(template.slug)
+  // Real product images (hero first) for the gallery; [] → emoji+gradient fallback.
+  const galleryImages = await getTemplateGalleryImages(template.slug)
   const detail = {
     ...baseDetail,
     ...(recipeDetail.ingredients.length > 0 ? { ingredients: recipeDetail.ingredients } : {}),
@@ -234,7 +236,7 @@ export default async function ProductDetailPage({
             Gallery ratio held at 1.4fr so the main image doesn't grow
             when the rail width changes; rail track locked at 250px. */}
         <section className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_250px] gap-6 lg:gap-8 mb-12 items-start">
-          <DetailGallery template={template} certs={certs} />
+          <DetailGallery template={template} certs={certs} images={galleryImages} />
 
           <div className="flex flex-col">
             <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500 mb-2">
@@ -456,6 +458,8 @@ function Breadcrumb({
 
 interface DetailGalleryProps {
   template: SampleTemplate
+  /** Real product images (hero first). When present, replaces emoji+gradient. */
+  images?: string[]
   certs?: Array<{
     name: string
     qualifier?: string
@@ -465,42 +469,51 @@ interface DetailGalleryProps {
   }>
 }
 
-function DetailGallery({ template, certs = [] }: DetailGalleryProps) {
+function DetailGallery({ template, certs = [], images = [] }: DetailGalleryProps) {
   const mainGradient = (template.gradient ?? 'mint') as ProductGradient
-  const thumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
+  const hasImages = images.length > 0
+  const gradientThumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
   return (
     // REBUILD R3.1 — sticky inside col 1. As the page scrolls the
-    // gallery stays pinned below the sticky AppHeader (top bar +
-    // niche subnav ≈ 108px) with a little breathing room above the
-    // image, until the parent hero section ends and the column
-    // releases naturally. Self-start keeps col 1 from stretching to
-    // match the taller middle column.
+    // gallery stays pinned below the sticky AppHeader.
     <div className="lg:sticky lg:top-32 lg:self-start space-y-4">
       <div className="flex gap-3">
-        {/* Vertical thumbnail strip on the LEFT */}
+        {/* Vertical thumbnail strip on the LEFT — real images or gradient swatches */}
         <div className="flex flex-col gap-2 flex-shrink-0">
-          {thumbs.map((g) => (
-            <button
-              key={g}
-              className="w-14 h-14 rounded-md border border-ink-200 hover:border-pink-500 transition-colors"
-              style={{ background: productGradient[g] }}
-              aria-label={`Color variant ${g}`}
-            />
-          ))}
+          {hasImages
+            ? images.slice(0, 4).map((src, i) => (
+                <div key={i} className="h-14 w-14 overflow-hidden rounded-md border border-ink-200">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                </div>
+              ))
+            : gradientThumbs.map((g) => (
+                <button
+                  key={g}
+                  className="w-14 h-14 rounded-md border border-ink-200 hover:border-pink-500 transition-colors"
+                  style={{ background: productGradient[g] }}
+                  aria-label={`Color variant ${g}`}
+                />
+              ))}
         </div>
 
-        {/* Main image */}
+        {/* Main image — real hero shot or emoji+gradient placeholder */}
         <div
-          className="flex-1 aspect-square rounded-xl flex items-center justify-center"
-          style={{ background: productGradient[mainGradient] }}
+          className="flex-1 aspect-square overflow-hidden rounded-xl flex items-center justify-center"
+          style={hasImages ? undefined : { background: productGradient[mainGradient] }}
         >
-          <span
-            className="text-[140px] leading-none"
-            style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
-            aria-hidden="true"
-          >
-            {template.icon}
-          </span>
+          {hasImages ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={images[0]} alt={template.title} className="h-full w-full object-cover" />
+          ) : (
+            <span
+              className="text-[140px] leading-none"
+              style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
+              aria-hidden="true"
+            >
+              {template.icon}
+            </span>
+          )}
         </div>
       </div>
 
