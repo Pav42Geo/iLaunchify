@@ -59,3 +59,23 @@ So Layers B and C reuse infrastructure that's already built: Fabric canvas, die-
 - Marketplace: the white-label product photo (Layer A) already shows; nothing new needed there.
 
 Everything in §5 is 2D + reuses existing canvas/Asset code — no Pacdora, no three.js, no AI. It's the honest, cheap path that makes "design your branded product and see it real" work, and it stays compatible with the 3D upgrade later.
+
+## 6. LOCKED decisions (Pavel 2026-06-18)
+
+- **V1 source = 2D photo-mask, manufacturer-supplied.** Manufacturer uploads a white-label product photo → admin draws the print area → creator's artwork warps onto it. No Pacdora / 3D / AI dependency.
+- **Owner = PackagingType.** One mockup per physical container, inherited by every product on it.
+- **AI = labeled placeholders / scenes only**, never the production-accurate checkout preview.
+- **3D = deferred** to the Pacdora decision (`PACDORA_EVALUATION.md`); schema staged (`PackagingType.model3dKey`).
+
+## 7. Build slices
+
+**Substrate — DONE (commit `db07fbb`, additive; Mac migration pending):**
+- `enum MockupTemplateStatus`, `model MockupTemplate` (packagingTypeId, baseImageAssetId, printAreaQuad JSON [TL,TR,BR,BL in 0..1], surfaceKey?, status, displayOrder), `PackagingType.mockupTemplates`, and `AssetType.MOCKUP_TEMPLATE`.
+
+**Slice 1 — Admin curation (Cowork-buildable, admin app):** an admin surface to manage a packaging type's mockup templates — upload the white-label base photo (needs an admin R2 upload path; reuse the existing upload mechanism), draw/enter the print-area quad (reuse the partner-side Fabric frame editor), set status DRAFT→ACTIVE. `@@index([packagingTypeId, status])` already supports the read.
+
+**Slice 2 — Studio composite (HAND TO CODE — creator Design Studio is its hot-file zone):** resolve the active mockup template for the variant's PackagingType; composite the creator's Fabric snapshot into the `printAreaQuad` (CSS `clip-path`/perspective for the live preview; a server `sharp` perspective-warp for the checkout-grade render). Replaces `MockupModal`'s stylized CSS shapes with the real photo-mockup. Store the render as an `Asset` linked to the `DesignVersion`.
+
+**Slice 3 — Library + browse (Cowork-buildable):** roll mockup templates into a browseable library (extend `DesignLibraryItem` or a thin view), filterable by packaging type + style, for admin curation + creator selection.
+
+Marketplace needs nothing new — the white-label product photo (Layer A) already renders on cards + detail (`getHeroImageMap` / `getTemplateGalleryImages`, commit `ac89ecb`).
