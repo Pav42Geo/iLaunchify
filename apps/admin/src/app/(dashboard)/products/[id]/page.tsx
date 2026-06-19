@@ -344,6 +344,8 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
         manufacturingProcesses: string[]
         allergenFreeClaims: string[]
         marketCodes: string[]
+        ratingAvg: number | null
+        ratingCount: number
       } | null>
     }
   }).productTemplate
@@ -354,6 +356,8 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
         manufacturingProcesses: true,
         allergenFreeClaims: true,
         marketCodes: true,
+        ratingAvg: true,
+        ratingCount: true,
       },
     })
     .catch(() => null)
@@ -1752,6 +1756,8 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               manufacturingProcesses: filterAttrs?.manufacturingProcesses ?? [],
               allergenFreeClaims: filterAttrs?.allergenFreeClaims ?? [],
               marketCodes: filterAttrs?.marketCodes ?? [],
+              ratingAvg: filterAttrs?.ratingAvg ?? null,
+              ratingCount: filterAttrs?.ratingCount ?? 0,
             }}
           />
 

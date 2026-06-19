@@ -10,6 +10,10 @@ export type SampleTemplate = Omit<ProductCardProps, 'href'> & {
   slug: string
   categorySlug: string
   subcategorySlug?: string
+  /** Marketplace rating (0–5); null/undefined → "New" (no fabricated score). */
+  ratingAvg?: number | null
+  /** Number of ratings backing ratingAvg. */
+  ratingCount?: number
 }
 
 function href(t: { categorySlug: string; subcategorySlug?: string; slug: string }) {

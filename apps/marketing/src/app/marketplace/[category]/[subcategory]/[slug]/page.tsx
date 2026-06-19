@@ -246,8 +246,9 @@ export default async function ProductDetailPage({
               {template.title}
             </h1>
             <div className="text-[13px] text-ink-500 mb-5 flex items-center gap-2">
-              <span className="text-warning-500">★★★★★</span>
-              <span>Premier-tier · {template.leadTimeDays}-day lead</span>
+              <RatingStars avg={template.ratingAvg} count={template.ratingCount} />
+              <span className="text-ink-300">·</span>
+              <span>{template.leadTimeDays}-day lead</span>
             </div>
 
             {/* Slice 2B — niche + lifestyle-tag chips. Renders nothing
@@ -790,6 +791,26 @@ function allergensFromIngredients(
   const set = new Set<string>()
   for (const ing of ingredients) for (const a of ing.allergens ?? []) set.add(a)
   return Array.from(set)
+}
+
+/** Marketplace rating display — real stars when rated, "New" otherwise (never a
+ *  fabricated score). avg is 0–5; count is the number of ratings. */
+function RatingStars({ avg, count }: { avg?: number | null; count?: number }) {
+  if (!count || avg == null) {
+    return <span className="font-semibold text-ink-600">New</span>
+  }
+  const filled = Math.round(avg)
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="text-warning-500" aria-hidden="true">
+        {'★'.repeat(filled)}
+        <span className="text-ink-300">{'★'.repeat(5 - filled)}</span>
+      </span>
+      <span className="tabular-nums">
+        {avg.toFixed(1)} · {count.toLocaleString()} {count === 1 ? 'rating' : 'ratings'}
+      </span>
+    </span>
+  )
 }
 
 function certIconForLabel(label: string): string {

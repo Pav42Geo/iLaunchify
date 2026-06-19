@@ -481,6 +481,10 @@ type DbTemplate = Awaited<
   subcategory: { slug: string; category: { slug: string; mainCategory: string; name: string } }
   variants: Array<{ moqMin: number; leadTimeDays: number }>
   lifestyleTags?: Array<{ lifestyleTag: { name: string; slug: string } }>
+  // Rating columns ship with a pending migration; typed via the intersection so
+  // reads compile against the (possibly stale) generated client.
+  ratingAvg?: number | null
+  ratingCount?: number
 }
 
 function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
@@ -505,6 +509,8 @@ function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
     minUnits: moqs.length ? Math.min(...moqs) : 500,
     leadTimeDays: leads.length ? Math.min(...leads) : 10,
     pricePerUnit: t.priceFloorCents / 100,
+    ratingAvg: t.ratingAvg ?? null,
+    ratingCount: t.ratingCount ?? 0,
   }
 }
 

@@ -336,6 +336,9 @@ export async function adminSetMarketplaceAttributes(input: {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
+  /** Curated marketplace rating (0–5) + count. null avg = "New" (no score). */
+  ratingAvg?: number | null
+  ratingCount?: number
 }): Promise<Result> {
   const admin = await requireRole('ADMIN')
 
@@ -360,6 +363,14 @@ export async function adminSetMarketplaceAttributes(input: {
   const allergenFree = [...new Set(input.allergenFreeClaims)].filter((s) => allergenValues.has(s))
   const markets = [...new Set(input.marketCodes)].filter((s) => marketValues.has(s))
 
+  // Rating: clamp avg to 0–5 (null = "New"); count ≥ 0. A null/0 count implies
+  // no rating yet → the storefront shows "New", never a fabricated score.
+  const ratingAvg =
+    input.ratingAvg == null || !Number.isFinite(input.ratingAvg)
+      ? null
+      : Math.max(0, Math.min(5, Math.round(input.ratingAvg * 10) / 10))
+  const ratingCount = Math.max(0, Math.round(Number(input.ratingCount) || 0))
+
   await (prisma as unknown as {
     productTemplate: { update: (a: unknown) => Promise<unknown> }
   }).productTemplate.update({
@@ -369,6 +380,8 @@ export async function adminSetMarketplaceAttributes(input: {
       manufacturingProcesses: processes,
       allergenFreeClaims: allergenFree,
       marketCodes: markets,
+      ratingAvg,
+      ratingCount,
     },
   })
 

@@ -24,6 +24,8 @@ export interface MarketplaceAttributesInitial {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
+  ratingAvg: number | null
+  ratingCount: number
 }
 
 export function MarketplaceAttributesPanel({
@@ -41,6 +43,8 @@ export function MarketplaceAttributesPanel({
   const [markets, setMarkets] = useState<Set<string>>(
     new Set(initial.marketCodes.length ? initial.marketCodes : ['US']),
   )
+  const [ratingAvg, setRatingAvg] = useState<string>(initial.ratingAvg == null ? '' : String(initial.ratingAvg))
+  const [ratingCount, setRatingCount] = useState<string>(String(initial.ratingCount ?? 0))
   const [status, setStatus] = useState<string | null>(null)
 
   const toggle = (set: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
@@ -61,6 +65,8 @@ export function MarketplaceAttributesPanel({
         manufacturingProcesses: [...processes],
         allergenFreeClaims: [...allergenFree],
         marketCodes: [...markets],
+        ratingAvg: ratingAvg.trim() === '' ? null : Number(ratingAvg),
+        ratingCount: Number(ratingCount) || 0,
       })
       if (res.ok) {
         setStatus('Saved')
@@ -129,6 +135,35 @@ export function MarketplaceAttributesPanel({
           active={markets}
           onToggle={(v) => toggle(setMarkets, v)}
         />
+
+        <div>
+          <div className="mb-2">
+            <span className="text-[12px] font-semibold text-ink-800">Rating</span>
+            <span className="ml-2 text-[11.5px] text-ink-500">
+              Curated for V1. Leave avg blank (or count 0) → the storefront shows “New”, not a score.
+            </span>
+          </div>
+          <div className="flex items-center gap-5">
+            <label className="flex items-center gap-2 text-[13px] text-ink-700">
+              Avg (0–5)
+              <input
+                type="number" min={0} max={5} step={0.1}
+                value={ratingAvg}
+                onChange={(e) => { setRatingAvg(e.target.value); setStatus(null) }}
+                className="w-20 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-ink-700">
+              Count
+              <input
+                type="number" min={0} step={1}
+                value={ratingCount}
+                onChange={(e) => { setRatingCount(e.target.value); setStatus(null) }}
+                className="w-24 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+              />
+            </label>
+          </div>
+        </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-ink-100 pt-4">
           {status && <span className="text-[12px] text-ink-500">{status}</span>}
