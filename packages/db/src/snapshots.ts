@@ -36,6 +36,8 @@ export interface SnapshotMeta {
   label: string | null
   pinned: boolean
   createdAt: Date
+  /** Small PNG data URL preview (design studio); null for builder/old rows. */
+  thumbnail: string | null
 }
 
 interface EditSnapshotDelegate {
@@ -58,6 +60,8 @@ interface CreateSnapshotInput {
   /** Milestone/manual label, e.g. "Submitted for review". */
   label?: string | null
   createdById?: string | null
+  /** Small PNG data URL preview captured from the live canvas. */
+  thumbnail?: string | null
 }
 
 /**
@@ -86,7 +90,7 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<{ id: 
   if (kind === 'AUTO') {
     const targetId = coalesceTarget(existing, now)
     if (targetId) {
-      await es().update({ where: { id: targetId }, data: { snapshot: input.snapshot as never, createdAt: now } })
+      await es().update({ where: { id: targetId }, data: { snapshot: input.snapshot as never, thumbnail: input.thumbnail ?? null, createdAt: now } })
       return { id: targetId, coalesced: true }
     }
   }
@@ -98,6 +102,7 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<{ id: 
       kind,
       label: input.label ?? null,
       snapshot: input.snapshot as never,
+      thumbnail: input.thumbnail ?? null,
       pinned,
       createdById: input.createdById ?? null,
     },
@@ -117,12 +122,12 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<{ id: 
 export async function listSnapshots(entityType: SnapshotEntity, entityId: string, take = 30): Promise<SnapshotMeta[]> {
   const raw = await es().findMany({
     where: { entityType, entityId },
-    select: { id: true, kind: true, label: true, pinned: true, createdAt: true },
+    select: { id: true, kind: true, label: true, pinned: true, createdAt: true, thumbnail: true },
     orderBy: { createdAt: 'desc' },
     take,
   })
-  const rows = raw as Array<{ id: string; kind: SnapshotKind; label: string | null; pinned: boolean; createdAt: Date }>
-  return rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt) }))
+  const rows = raw as Array<{ id: string; kind: SnapshotKind; label: string | null; pinned: boolean; createdAt: Date; thumbnail: string | null }>
+  return rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail ?? null }))
 }
 
 /** Fetch one snapshot's JSON payload (scoped to its entity) for restore/preview. */

@@ -1393,6 +1393,7 @@ model EditSnapshot {
   kind        SnapshotKind   @default(AUTO)
   label       String? // milestone/manual label, e.g. "Submitted for review"
   snapshot    Json // compact editor state (builder fields OR fabric layout w/ ASSET REFS, never embedded data-URLs)
+  thumbnail   String? // small PNG data URL captured from the live canvas (design studio); null for builder/old rows
   pinned      Boolean        @default(false) // milestones + manual are pinned → exempt from ring-buffer prune
   createdById String? // User.id that triggered it (nullable for system snaps)
   createdAt   DateTime       @default(now())
