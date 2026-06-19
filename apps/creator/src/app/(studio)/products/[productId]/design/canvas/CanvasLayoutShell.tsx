@@ -1186,6 +1186,7 @@ function TopBar({
             iLaunchify
           </span>
         </Link>
+        <div className="mx-1 h-6 w-px bg-ink-200" />
         {/* 3-line menu sits to the right of the logo. */}
         <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
         {/* Autosave status + history, then undo/redo — all icon + tooltip, left-aligned. */}
