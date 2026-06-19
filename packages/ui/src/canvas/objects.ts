@@ -49,6 +49,11 @@ export const CANVAS_PROPERTIES_TO_INCLUDE = [
   'customType',
   'customData',
   'customRole',
+  // Dieline Phase B — staleness hash on recipe-derived objects + a flag marking
+  // an object already snapped into its die-line frame (so reload/undo don't
+  // re-snap and clobber the creator's manual positioning).
+  'recipeHash',
+  'frameSnapped',
 ] as const
 
 /** Add an editable text object at the canvas viewport center + select it. */

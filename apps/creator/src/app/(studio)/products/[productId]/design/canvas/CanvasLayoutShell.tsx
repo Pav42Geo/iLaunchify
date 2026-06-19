@@ -26,6 +26,7 @@ import {
   DieCutFrame,
   DieCutLegend,
   resolveLayout,
+  frameKindFromCanvasRole,
   type ResolvedFrame,
   type BrandCanvasAssets,
   type DieCutSpec,
@@ -292,6 +293,7 @@ export function CanvasLayoutShell({
     () => (dielineFrames?.layout ? resolveLayout(dielineFrames.layout, dielineFrames.ctx) : []),
     [dielineFrames],
   )
+  const recipeHash = dielineFrames?.recipeHash ?? null
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
 
@@ -361,6 +363,9 @@ export function CanvasLayoutShell({
   // Stage fires onHydrated post-loadFromJSON, so badges aren't wiped by the
   // async load and re-opens don't duplicate (identity = certInstanceId, which
   // round-trips through customData). DESIGN_STUDIO.md §Certificate badges V1.
+  // Dieline Phase B — frame snapping is dormant until the saved design has
+  // hydrated, so loading a design never re-snaps already-placed objects.
+  const framesLiveRef = React.useRef(false)
   const handleCertReconcile = React.useCallback(
     (c: FabricCanvas) => {
       void reconcileCertBadges(c, certBadges, {
@@ -369,6 +374,7 @@ export function CanvasLayoutShell({
         bleedMm: dieCut.bleedMm,
         safeAreaMm: dieCut.safeAreaMm,
       })
+      framesLiveRef.current = true
     },
     [certBadges, dieCut],
   )
@@ -471,6 +477,54 @@ export function CanvasLayoutShell({
   )
   const basePxPerMm = 3.0
   const pxPerMm = basePxPerMm * zoom
+
+  // Dieline Phase B step 3 — snap a newly-added platform object into its die-line
+  // frame (so required elements land IN the frame, not free-floating), and stamp
+  // recipe-derived objects with the current recipeHash for the staleness gate.
+  // Guards: only after hydration (framesLiveRef) and only once per object
+  // (frameSnapped, persisted) so reload/undo never re-snap a moved object.
+  useEffect(() => {
+    if (!canvas || resolvedFrames.length === 0) return
+    const RECIPE_DERIVED = new Set(['NUTRITION_FACTS', 'INGREDIENTS', 'ALLERGENS'])
+    const onAdded = (e: { target?: unknown }) => {
+      if (!framesLiveRef.current) return
+      const obj = e.target as
+        | (Record<string, unknown> & { set: (o: Record<string, unknown>) => void; setCoords?: () => void })
+        | undefined
+      if (!obj || obj.frameSnapped) return
+      const kind = frameKindFromCanvasRole(obj.customType as string | undefined, obj.customRole as string | undefined)
+      if (!kind) return
+      const rf = resolvedFrames.find((r) => r.frame.kind === kind)
+      if (!rf) return
+      const box = rf.frame.box
+      const fx = (dieCut.bleedMm + box.x * dieCut.widthMm) * basePxPerMm
+      const fy = (dieCut.bleedMm + box.y * dieCut.heightMm) * basePxPerMm
+      const fw = box.w * dieCut.widthMm * basePxPerMm
+      const fh = box.h * dieCut.heightMm * basePxPerMm
+      const ow = (Number(obj.width) || 1) * (Number(obj.scaleX) || 1)
+      const oh = (Number(obj.height) || 1) * (Number(obj.scaleY) || 1)
+      const fit = Math.min(fw / ow, fh / oh)
+      const next: Record<string, unknown> = {
+        originX: 'center',
+        originY: 'center',
+        left: fx + fw / 2,
+        top: fy + fh / 2,
+        frameSnapped: true,
+      }
+      if (isFinite(fit) && fit > 0 && fit < 1) {
+        next.scaleX = (Number(obj.scaleX) || 1) * fit
+        next.scaleY = (Number(obj.scaleY) || 1) * fit
+      }
+      if (RECIPE_DERIVED.has(kind) && recipeHash) next.recipeHash = recipeHash
+      obj.set(next)
+      obj.setCoords?.()
+      canvas.requestRenderAll()
+    }
+    canvas.on('object:added', onAdded)
+    return () => {
+      canvas.off('object:added', onAdded)
+    }
+  }, [canvas, resolvedFrames, dieCut, basePxPerMm, recipeHash])
 
   const history = useCanvasHistory(canvas)
   const selected = useSelectedObject(canvas)
