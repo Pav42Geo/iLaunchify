@@ -34,6 +34,10 @@ import {
   MARKET_FILTER_OPTIONS,
 } from '@ilaunchify/types'
 
+// Return widens Result with `staged` so the card can distinguish a live save
+// from an allergen-free change sent for review.
+type AttrResult = { ok: true; staged?: boolean } | { ok: false; error: string }
+
 export async function setMarketplaceAttributes(
   productTemplateId: string,
   input: {
@@ -42,16 +46,25 @@ export async function setMarketplaceAttributes(
     allergenFreeClaims: string[]
     marketCodes: string[]
   },
-): Promise<Result> {
+): Promise<AttrResult> {
   try {
     // (a) auth + ownership — identical to setIntendedAgeGroup
     const { user, partner, error } = await requirePartner()
     if (error) return { ok: false, error }
     if (!partner) return { ok: false, error: 'Partner profile not found.' }
 
-    const tpl = await prisma.productTemplate.findUnique({
+    // Cast-guarded read — status + current allergen claims + pending payload
+    // (these columns ship with a pending migration).
+    const tpl = await (prisma as unknown as {
+      productTemplate: { findUnique: (a: unknown) => Promise<{
+        manufacturerServiceId: string | null
+        status: string
+        allergenFreeClaims: string[]
+        pendingEditPayload: Record<string, unknown> | null
+      } | null> }
+    }).productTemplate.findUnique({
       where: { id: productTemplateId },
-      select: { manufacturerServiceId: true, status: true },
+      select: { manufacturerServiceId: true, status: true, allergenFreeClaims: true, pendingEditPayload: true },
     })
     if (!tpl) return { ok: false, error: 'Draft not found.' }
     const ownIds = partner.services.map((s) => s.id)
@@ -73,34 +86,62 @@ export async function setMarketplaceAttributes(
     const allergenFree = [...new Set(input.allergenFreeClaims)].filter((s) => alg.has(s))
     const markets = [...new Set(input.marketCodes)].filter((s) => mkt.has(s))
 
-    const data = {
-      manufacturingFormat: format,
-      manufacturingProcesses: processes,
-      allergenFreeClaims: allergenFree,
-      marketCodes: markets,
+    const pt = (prisma as unknown as {
+      productTemplate: { update: (a: unknown) => Promise<unknown> }
+    }).productTemplate
+    const sameSet = (a: string[], b: string[]) =>
+      a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|')
+
+    // (c) §4 LOCKED policy:
+    //   DRAFT      → everything saves live (no review).
+    //   PUBLISHED  → Format / process / markets are low-risk metadata → live.
+    //                allergen-free is a public regulatory CLAIM → a CHANGED value
+    //                must NOT go live without admin re-review: stage it into
+    //                pendingEditPayload + set status PENDING_EDIT_REVIEW. The live
+    //                allergenFreeClaims is left untouched until admin approves
+    //                (approveProductTemplate applies pendingEditPayload).
+    let staged = false
+    if (tpl.status === 'DRAFT') {
+      await pt.update({
+        where: { id: productTemplateId },
+        data: { manufacturingFormat: format, manufacturingProcesses: processes, allergenFreeClaims: allergenFree, marketCodes: markets },
+      })
+    } else {
+      // live: the three low-risk fields
+      await pt.update({
+        where: { id: productTemplateId },
+        data: { manufacturingFormat: format, manufacturingProcesses: processes, marketCodes: markets },
+      })
+      // allergen-free: stage for review ONLY if it actually changed
+      if (!sameSet(tpl.allergenFreeClaims ?? [], allergenFree)) {
+        await pt.update({
+          where: { id: productTemplateId },
+          data: {
+            pendingEditPayload: { ...(tpl.pendingEditPayload ?? {}), allergenFreeClaims: allergenFree },
+            status: 'PENDING_EDIT_REVIEW',
+          },
+        })
+        staged = true
+      }
     }
 
-    // (c) DRAFT → direct update. PUBLISHED → see §4 (decision point).
-    // Cast-guard the update (columns ship with a pending migration).
-    await (prisma as unknown as {
-      productTemplate: { update: (a: unknown) => Promise<unknown> }
-    }).productTemplate.update({ where: { id: productTemplateId }, data })
-
-    // (d) audit (non-fatal). 'MARKETPLACE_ATTRIBUTES_SET' is free-form-allowed
-    // by the AuditAction union; optionally add it to AUDIT_ACTIONS in
+    // (d) audit (non-fatal). 'MARKETPLACE_ATTRIBUTES_SET' is free-form-allowed by
+    // the AuditAction union; optionally add it to AUDIT_ACTIONS in
     // packages/audit/src/types.ts for the review dashboard.
     try {
       await logAuditAs(user, {
         entityType: 'ProductTemplate',
         entityId: productTemplateId,
         action: 'MARKETPLACE_ATTRIBUTES_SET',
-        payload: data,
+        payload: { manufacturingFormat: format, manufacturingProcesses: processes, allergenFreeClaims: allergenFree, marketCodes: markets, stagedForReview: staged },
       })
     } catch (e) {
       console.error('[setMarketplaceAttributes] audit failed (non-fatal):', e)
     }
 
-    return { ok: true }
+    // Return whether the allergen-free change was staged so the card can toast
+    // "Sent for review" instead of "Saved" in that case.
+    return { ok: true, staged }
   } catch (err) {
     return { ok: false, error: `Could not save attributes: ${(err as Error).message}` }
   }
@@ -159,6 +200,8 @@ export function MarketplaceAttributesCard({
         marketCodes: [...(next.markets ?? markets)],
       })
       if (!r.ok) toast.error(r.error ?? 'Could not save')
+      else if (r.staged) toast('Allergen-free change sent for admin review')
+      // (no toast on a plain live save — autosave is silent, matching the builder)
     })
   }
   // ... render Format pills + three checkbox groups; each onToggle updates
@@ -201,15 +244,20 @@ UX requirements:
 
 ---
 
-## 4. Decision point for Pavel — PUBLISHED-template edits
+## 4. LOCKED — PUBLISHED-template edits (Pavel 2026-06-18)
 
-The builder is primarily for DRAFTs (simple direct save). When a partner edits a **PUBLISHED** template, other partner edit flows route through `pendingEditPayload` + `status → PENDING_EDIT_REVIEW` so admin re-reviews before changes go live.
+Implemented in the §1 action above; do not re-open. The rule:
 
-**Question:** do marketplace-attribute edits (Format / process / allergen-free / markets) on a live product require admin re-review?
-- **If yes** (recommended for **allergen-free** at minimum — it's a public claim): on `status !== 'DRAFT'`, write to `pendingEditPayload` and set `PENDING_EDIT_REVIEW` instead of a direct update, mirroring the existing published-edit actions.
-- **If no** (treat as low-risk metadata): direct update always.
+| Field | DRAFT | PUBLISHED |
+|---|---|---|
+| `manufacturingFormat` | live | **live** (low-risk metadata) |
+| `manufacturingProcesses` | live | **live** |
+| `marketCodes` | live | **live** |
+| `allergenFreeClaims` | live | **re-review** — stage to `pendingEditPayload`, set `PENDING_EDIT_REVIEW`; live value unchanged until admin approves |
 
-Default to **re-review for allergen-free, direct for the rest** unless Pavel says otherwise. The action above does a direct update for all — split it per the decision.
+Rationale: Format / process / markets are discovery metadata — a wrong value just mis-files the product in the catalog, fixable instantly. `allergenFreeClaims` is a **public regulatory claim** (dairy-free, gluten-free, …); changing it on a live product must pass admin review, same as other published-edit flows. Only a *changed* allergen-free set triggers review (no-op edits don't bounce a live product into PENDING_EDIT_REVIEW).
+
+Admin side already exists: `approveProductTemplate` applies `pendingEditPayload` to the live row on approval — `allergenFreeClaims` flows through that with no admin change needed. (If the admin approve flow doesn't yet copy `pendingEditPayload.allergenFreeClaims` onto the live column, add that one field to its apply step.)
 
 ---
 
@@ -219,6 +267,11 @@ Default to **re-review for allergen-free, direct for the rest** unless Pavel say
 - Validation: unknown slugs dropped; arrays deduped; bad format → null.
 - Round-trip: set in builder → `loadDraft` returns them → card rehydrates.
 - Cross-check: a value set here makes the template appear under that filter on `/marketplace` (e.g. set Format = Powder, then `?format=POWDER` includes it).
+- **§4 policy (PUBLISHED template):**
+  - Editing Format / process / markets → updates live immediately, status stays PUBLISHED, no review.
+  - Editing allergen-free to a **new** set → status → PENDING_EDIT_REVIEW, live `allergenFreeClaims` unchanged, action returns `staged: true`, card toasts "sent for review".
+  - Re-saving the **same** allergen-free set → no status change (not staged).
+  - After admin `approveProductTemplate`, the staged allergen-free value is live.
 - Typecheck `apps/partner` clean. (Migration must be applied + client regenerated on the dev machine first, or the cast-guards carry it.)
 
 ---
@@ -229,5 +282,6 @@ Default to **re-review for allergen-free, direct for the rest** unless Pavel say
 - `apps/partner/.../products/new/MarketplaceAttributesCard.tsx` — new.
 - `apps/partner/.../products/new/BasicsStep.tsx` (+ `GuidedBuilder.tsx` if it threads `initial`) — render the card.
 - `packages/audit/src/types.ts` — optional: add `'MARKETPLACE_ATTRIBUTES_SET'` to `AUDIT_ACTIONS`.
+- `apps/admin/.../products/actions.ts` `approveProductTemplate` — verify its `pendingEditPayload`-apply step copies `allergenFreeClaims` onto the live column; add that one field if missing (it's the only new field that routes through re-review).
 
-No schema change (done). No marketing change (done). No admin change (the admin editor already ships).
+No schema change (done). No marketing change (done). Admin editor already ships; the only possible admin touch is the one-field approve-apply check above.
