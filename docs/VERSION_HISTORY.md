@@ -47,7 +47,13 @@ Re-applying an `InitialDraft` spans ~10 child tables (recipe slots, axes, flavor
 
 ## Shared building blocks
 - `@ilaunchify/db`: `createSnapshot` / `listSnapshots` / `getSnapshotJson` + the pure engine (`snapshotsToPrune`, `coalesceTarget`) with a node test (`snapshots-engine.test.mjs`, run with `node --experimental-strip-types`).
-- `@ilaunchify/ui`: `<SavedIndicator>` + `<VersionHistoryDrawer>` (`allowRestore`, `footnote`, `relativeTime`).
+- `@ilaunchify/ui`: `<SavedIndicator>` (icon+tooltip cluster: saved · prev · next · history) + `<VersionHistoryDrawer>` (`allowRestore`, `footnote`) + `relativeTime`.
+
+## Design Studio top bar + visual history (a4940fd)
+- `EditSnapshot.thumbnail String?` — small PNG (`snapshotCanvasAsPng` ×0.25) captured from the LIVE canvas at snapshot time (images already loaded → reliable). Stored as a data URL; ~10 KB × ≤10 ≈ negligible. Builder/old rows = null.
+- `SavedIndicator` = icon + native tooltip ("Saved 2 min ago"), no inline text; optional prev/next-version + history icons. Moved to the LEFT of the top bar (logo · 3-line menu · indicator cluster); brand + product name hidden.
+- `VersionHistoryPanel` (creator `canvas/`) docks under the header on the right like `CompliancePanel` — thumbnail per version + a larger selected preview + Restore. **Prev/next step the SELECTED version only; Restore is the only thing that mutates the canvas** (browsing is non-destructive, sidesteps autosave-clobber). Partner builder keeps the simpler shared `VersionHistoryDrawer` (no canvas thumbnails).
+- Follow-up: history is scoped to the BASE design (`flavorPresetId: null`); per-flavor design history is a later add (Code's per-flavor model is live).
 
 ## Mac steps
 `prisma db push` (EditSnapshot is additive) → `pnpm db:generate` → `rm -rf apps/*/.next` → restart. Then smoke-test: design-canvas History drawer + restore; builder History drawer (read-only).
