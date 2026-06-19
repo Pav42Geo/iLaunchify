@@ -2652,6 +2652,12 @@ model ProductTemplate {
   // Markets the template is available in (filter "Market"). Codes mirror
   // Market.code ('US','CA','EU'). Default US for V1 (US-only ACTIVE). hasSome filter.
   marketCodes                String[]                      @default(["US"])
+  // Marketplace rating (2026-06-18). ratingAvg is 0–5 (null = no rating yet →
+  // card/detail show "New" rather than a fabricated score); ratingCount is the
+  // number of ratings. V1: admin/seed-curated; a future Review model writes
+  // these aggregates from real buyer reviews.
+  ratingAvg                  Float?
+  ratingCount                Int                           @default(0)
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
