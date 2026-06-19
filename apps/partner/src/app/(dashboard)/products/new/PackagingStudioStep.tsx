@@ -57,7 +57,7 @@ import {
   type NormBox,
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
-import { loadPackagingStudio, type PackagingStudioData, type StudioPackaging } from './packaging-studio-actions'
+import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -78,6 +78,20 @@ function toStudioTopology(enumValue: string | undefined): TopologyKey {
   if (enumValue === 'MULTI_CONTAINER_BOX' || enumValue === 'CASE') return 'box'
   return 'can'
 }
+
+// Map an admin ContainerCategory → the studio's 3D topology (can/jar/box).
+function catalogTopologyKey(category: string): TopologyKey {
+  if (category === 'JAR' || category === 'TUBE') return 'jar'
+  if (category === 'BOX' || category === 'CARTON' || category === 'CASE') return 'box'
+  return 'can'
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  BOTTLE: 'Bottles', JAR: 'Jars', CAN: 'Cans', TUBE: 'Tubes', POUCH: 'Pouches',
+  SACHET: 'Sachets', STICK_PACK: 'Stick packs', BOX: 'Boxes', CARTON: 'Cartons',
+  CASE: 'Cases', OTHER: 'Other',
+}
+const CATEGORY_ORDER = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
 
 const SCOPE_COLOR: Record<FrameScope, { stroke: string; fill: string; chip: string }> = {
   RECIPE: { stroke: '#059669', fill: 'rgba(5,150,105,0.08)', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -157,10 +171,12 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
   const [menuOpen, setMenuOpen] = useState(false)
   const [past, setPast] = useState<FrameLayout[]>([])
   const [future, setFuture] = useState<FrameLayout[]>([])
-  const [libTab, setLibTab] = useState<'library' | 'my'>('my')
+  const [libTab, setLibTab] = useState<'library' | 'my'>('library')
   const [librarySearch, setLibrarySearch] = useState('')
   const [attached, setAttached] = useState<string[]>([])
   const [busyAttach, setBusyAttach] = useState<string | null>(null)
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [busyCatalog, setBusyCatalog] = useState<string | null>(null)
 
   const artRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ kind: 'frame' | 'trim' | 'safe'; id?: string; mode: 'move' | 'resize'; startX: number; startY: number; startBox: NormBox } | null>(null)
@@ -239,6 +255,23 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
     const rows = await listDraftSnapshots(draftId)
     setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail })))
   }, [draftId])
+
+  // Admin packaging catalog (Library tab) — load once.
+  useEffect(() => { void loadPackagingCatalog().then(setCatalog) }, [])
+
+  // "Use this packaging" from the catalog → find-or-create a partner system + attach.
+  function onUseCatalog(packagingTypeId: string) {
+    if (!draftId) { toast.error('Save the draft first.'); return }
+    setBusyCatalog(packagingTypeId)
+    void attachCatalogType(draftId, packagingTypeId).then((r) => {
+      setBusyCatalog(null)
+      if (!r.ok) { toast.error(r.error); return }
+      toast.success('Packaging added')
+      refreshAttached()
+      void loadPackagingStudio(draftId).then((res) => { if (res.ok) { setData(res.data); setActiveSystemId(r.systemId) } })
+      setLibTab('my')
+    })
+  }
 
   // Load the resolved die-line into the inline editor whenever it changes.
   useEffect(() => {
@@ -493,6 +526,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
               onTab={setLibTab}
               search={librarySearch}
               onSearch={setLibrarySearch}
+              catalog={catalog}
+              busyCatalog={busyCatalog}
+              onUseCatalog={onUseCatalog}
+              onCatalogPreview={(cat) => { setView('3d'); setTopology(catalogTopologyKey(cat)) }}
               systems={systems}
               attachedIds={attached}
               busyAttach={busyAttach}
@@ -686,6 +723,10 @@ function LibraryDrawer({
   onTab,
   search,
   onSearch,
+  catalog,
+  busyCatalog,
+  onUseCatalog,
+  onCatalogPreview,
   systems,
   attachedIds,
   busyAttach,
@@ -703,6 +744,10 @@ function LibraryDrawer({
   onTab: (t: 'library' | 'my') => void
   search: string
   onSearch: (s: string) => void
+  catalog: CatalogItem[]
+  busyCatalog: string | null
+  onUseCatalog: (packagingTypeId: string) => void
+  onCatalogPreview: (category: string) => void
   systems: StudioPackagingOption[]
   attachedIds: string[]
   busyAttach: string | null
@@ -718,6 +763,8 @@ function LibraryDrawer({
 }) {
   const q = search.trim().toLowerCase()
   const filtered = q ? systems.filter((s) => s.partnerName.toLowerCase().includes(q) || s.topology.toLowerCase().includes(q)) : systems
+  const catFiltered = q ? catalog.filter((c) => c.displayName.toLowerCase().includes(q) || (CATEGORY_LABEL[c.category] ?? c.category).toLowerCase().includes(q)) : catalog
+  const catGroups = CATEGORY_ORDER.map((cat) => ({ cat, items: catFiltered.filter((c) => c.category === cat) })).filter((g) => g.items.length > 0)
   const tabCls = (on: boolean) => `flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${on ? 'bg-pink-500 text-white' : 'text-ink-600 hover:bg-ink-100'}`
 
   return (
@@ -750,13 +797,48 @@ function LibraryDrawer({
 
       {tab === 'library' ? (
         <div className="flex-1 overflow-y-auto px-3 py-3">
-          <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-4 text-center">
-            <BoxIcon className="mx-auto mb-2 h-5 w-5 text-ink-300" />
-            <div className="text-[12.5px] font-semibold text-ink-700">Admin packaging catalog</div>
-            <p className="mx-auto mt-1 max-w-[15rem] text-[11.5px] leading-relaxed text-ink-500">
-              Browse admin-curated containers (3D models + die-lines) by category here — bottles, boxes, pouches, jars. Coming in the next slice; for now use <b>My</b> to attach your own.
-            </p>
-          </div>
+          {catalog.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-4 text-center">
+              <BoxIcon className="mx-auto mb-2 h-5 w-5 text-ink-300" />
+              <div className="text-[12.5px] font-semibold text-ink-700">Catalog is empty</div>
+              <p className="mx-auto mt-1 max-w-[15rem] text-[11.5px] leading-relaxed text-ink-500">No admin-curated packaging types yet. Use the <b>My</b> tab to upload your own.</p>
+            </div>
+          ) : catGroups.length === 0 ? (
+            <p className="px-1 py-4 text-center text-[12px] text-ink-500">No catalog matches “{search}”.</p>
+          ) : (
+            catGroups.map((g) => (
+              <div key={g.cat} className="mb-3">
+                <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">{CATEGORY_LABEL[g.cat] ?? g.cat}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {g.items.map((c) => (
+                    <div key={c.id} className="overflow-hidden rounded-xl border border-ink-200 bg-white transition-colors hover:border-pink-200">
+                      <button type="button" onClick={() => onCatalogPreview(c.category)} className="block w-full" title="Preview in 3D">
+                        <div className="grid aspect-square place-items-center bg-ink-50">
+                          {c.thumbUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.thumbUrl} alt={c.displayName} className="h-full w-full object-contain p-1.5" />
+                          ) : (
+                            <BoxIcon className="h-6 w-6 text-ink-300" />
+                          )}
+                        </div>
+                      </button>
+                      <div className="px-2 pb-2 pt-1.5">
+                        <div className="truncate text-[11.5px] font-semibold text-ink-900" title={c.displayName}>{c.displayName}</div>
+                        <button
+                          type="button"
+                          onClick={() => onUseCatalog(c.id)}
+                          disabled={busyCatalog === c.id || !hasDraft}
+                          className="mt-1 w-full rounded-lg bg-pink-600 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50"
+                        >
+                          {busyCatalog === c.id ? '…' : 'Use this'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">

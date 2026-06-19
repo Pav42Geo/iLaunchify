@@ -14,6 +14,8 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { getSignedReadUrl } from '@ilaunchify/storage'
+import { addPackagingLink } from '../[id]/edit/card-actions'
 
 export interface StudioSurface {
   name: string
@@ -105,4 +107,83 @@ export async function loadPackagingStudio(draftId: string): Promise<Result> {
   }))
 
   return { ok: true, data: { attached, dielines } }
+}
+
+// =============================================================================
+// ADMIN PACKAGING CATALOG (Library tab) — the admin-curated PackagingType
+// taxonomy, grouped by container category, with 3D-preview thumbnails. The
+// partner browses it and "uses" a type, which find-or-creates a partner-owned
+// PackagingSystem of that type + attaches it to the draft.
+// =============================================================================
+
+export interface CatalogItem {
+  id: string
+  slug: string
+  displayName: string
+  category: string // ContainerCategory | 'OTHER'
+  topology: string // PackagingTopology
+  thumbUrl: string | null
+}
+
+export async function loadPackagingCatalog(): Promise<CatalogItem[]> {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') return []
+  const types = await prisma.packagingType.findMany({
+    where: { status: 'ACTIVE' },
+    select: { id: true, slug: true, displayName: true, containerCategory: true, defaultTopology: true, model3dThumbKey: true },
+    orderBy: { displayName: 'asc' },
+  })
+  return Promise.all(
+    types.map(async (t) => ({
+      id: t.id,
+      slug: t.slug,
+      displayName: t.displayName,
+      category: t.containerCategory ?? 'OTHER',
+      topology: t.defaultTopology,
+      thumbUrl: t.model3dThumbKey ? await getSignedReadUrl(t.model3dThumbKey).catch(() => null) : null,
+    })),
+  )
+}
+
+type AttachResult = { ok: true; systemId: string } | { ok: false; error: string }
+
+/**
+ * "Use this packaging" from the admin catalog: ensure the partner has a
+ * PackagingSystem of the given type (find-or-create a minimal DRAFT one), then
+ * attach it to the draft. Bridges the Library tab → the partner's My packaging.
+ */
+export async function attachCatalogType(draftId: string, packagingTypeId: string): Promise<AttachResult> {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') return { ok: false, error: 'Not a partner account.' }
+  const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true } })
+  if (!partner) return { ok: false, error: 'Partner not found.' }
+
+  const pt = await prisma.packagingType.findUnique({
+    where: { id: packagingTypeId },
+    select: { id: true, displayName: true, defaultTopology: true, status: true },
+  })
+  if (!pt || pt.status !== 'ACTIVE') return { ok: false, error: 'Packaging type unavailable.' }
+
+  let system = await prisma.packagingSystem.findFirst({
+    where: { partnerId: partner.id, packagingTypeId: pt.id },
+    select: { id: true },
+  })
+  if (!system) {
+    system = await prisma.packagingSystem.create({
+      data: {
+        partnerId: partner.id,
+        packagingTypeId: pt.id,
+        partnerName: pt.displayName,
+        topology: pt.defaultTopology,
+        unitCount: 1,
+        moq: 1,
+        status: 'DRAFT',
+      },
+      select: { id: true },
+    })
+  }
+
+  const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })
+  if (!r.ok) return { ok: false, error: r.error ?? 'Could not attach.' }
+  return { ok: true, systemId: system.id }
 }
