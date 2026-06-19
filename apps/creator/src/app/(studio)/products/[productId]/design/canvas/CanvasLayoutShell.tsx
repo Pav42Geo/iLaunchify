@@ -80,7 +80,7 @@ import { ImageToolbar } from './ImageToolbar'
 import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
-import { MockupModal } from './MockupModal'
+import { MockupModal, type StudioMockup } from './MockupModal'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport } from './actions'
@@ -216,6 +216,9 @@ interface Props {
   /** Dieline Phase B — resolved die-line frames + context, or null when the
    *  product has no ACTIVE/PARTNER_CONFIRMED die-line. Drives the frame guides. */
   dielineFrames: DielineFramesData | null
+  /** Mockup Slice 2 — ACTIVE photo-mockup for the product's packaging type, or
+   *  null when none is curated (MockupModal falls back to stylized variants). */
+  mockup: StudioMockup | null
 }
 
 type ToolKey =
@@ -285,6 +288,7 @@ export function CanvasLayoutShell({
   restrictionLabels = [],
   retailIdentity,
   dielineFrames,
+  mockup,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -960,6 +964,7 @@ export function CanvasLayoutShell({
         brandName={brandAssets.brandName}
         open={mockupOpen}
         onClose={() => setMockupOpen(false)}
+        mockup={mockup}
       />
 
       {/* C8 — consent-at-claim before a cert badge is placed on the label. */}

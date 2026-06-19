@@ -25,6 +25,20 @@ import {
   type DieCutSpec,
   type FabricCanvas,
 } from '@ilaunchify/ui'
+import { matrix3dForQuad, type Pt } from './lib/quadTransform'
+
+/**
+ * An admin-curated photo mockup (Mockup Slice 2): a white-label product photo
+ * plus the print area to warp the creator's flat artwork into. Resolved by the
+ * canvas page loader from the ACTIVE `MockupTemplate` for the product's
+ * PackagingType; null when none is curated.
+ */
+export interface StudioMockup {
+  imageUrl: string
+  /** Print area as 4 corner points (TL, TR, BR, BL) in image-relative 0..1. */
+  printAreaQuad: Array<{ x: number; y: number }>
+  label: string
+}
 
 interface Props {
   canvas: FabricCanvas | null
@@ -34,6 +48,8 @@ interface Props {
   brandName: string
   open: boolean
   onClose: () => void
+  /** Real photo-mockup; when present the "Product photo" variant is the default. */
+  mockup?: StudioMockup | null
 }
 
 export function MockupModal({
@@ -44,10 +60,11 @@ export function MockupModal({
   brandName,
   open,
   onClose,
+  mockup,
 }: Props) {
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
   const [variant, setVariant] = React.useState<MockupVariant>(() =>
-    inferVariant(dieCut.category),
+    mockup ? 'product' : inferVariant(dieCut.category),
   )
 
   // Take a fresh snapshot when the modal opens. We re-snapshot rather
@@ -68,11 +85,11 @@ export function MockupModal({
     }
   }, [open, canvas, dieCut, pxPerMm])
 
-  // Reset variant choice when die-cut changes — the inferred default
-  // is usually right.
+  // Reset variant choice when die-cut changes — prefer the real photo mockup
+  // when one is curated, else the inferred CSS shape.
   React.useEffect(() => {
-    setVariant(inferVariant(dieCut.category))
-  }, [dieCut.category])
+    setVariant(mockup ? 'product' : inferVariant(dieCut.category))
+  }, [dieCut.category, mockup])
 
   // Close on Escape.
   React.useEffect(() => {
@@ -102,6 +119,7 @@ export function MockupModal({
         onClose={onClose}
         onDownload={() => snapshot && downloadDataUrl(snapshot, `${productName}-flat.png`)}
         hasSnapshot={!!snapshot}
+        hasMockup={!!mockup}
       />
 
       {/* Stage — stops propagation so clicks inside don't dismiss. */}
@@ -110,7 +128,7 @@ export function MockupModal({
         onClick={(e) => e.stopPropagation()}
       >
         {snapshot ? (
-          <Mockup variant={variant} snapshot={snapshot} dieCut={dieCut} />
+          <Mockup variant={variant} snapshot={snapshot} dieCut={dieCut} mockup={mockup ?? null} />
         ) : (
           <div className="text-white/70 text-sm">Preparing preview…</div>
         )}
@@ -123,9 +141,10 @@ export function MockupModal({
 // Header
 // ============================================================================
 
-type MockupVariant = 'bottle' | 'tub' | 'pouch' | 'box' | 'sticker' | 'flat'
+type MockupVariant = 'product' | 'bottle' | 'tub' | 'pouch' | 'box' | 'sticker' | 'flat'
 
 const VARIANT_LABELS: Record<MockupVariant, string> = {
+  product: 'Product photo',
   bottle: 'Bottle',
   tub: 'Tub',
   pouch: 'Pouch',
@@ -159,6 +178,7 @@ function Header({
   onClose,
   onDownload,
   hasSnapshot,
+  hasMockup,
 }: {
   productName: string
   brandName: string
@@ -167,8 +187,17 @@ function Header({
   onClose: () => void
   onDownload: () => void
   hasSnapshot: boolean
+  hasMockup: boolean
 }) {
-  const variants: MockupVariant[] = ['flat', 'bottle', 'tub', 'pouch', 'box', 'sticker']
+  const variants: MockupVariant[] = [
+    ...(hasMockup ? (['product'] as const) : []),
+    'flat',
+    'bottle',
+    'tub',
+    'pouch',
+    'box',
+    'sticker',
+  ]
   return (
     <header
       className="flex items-center justify-between px-6 py-4 bg-white/5"
@@ -233,12 +262,20 @@ function Mockup({
   variant,
   snapshot,
   dieCut,
+  mockup,
 }: {
   variant: MockupVariant
   snapshot: string
   dieCut: DieCutSpec
+  mockup: StudioMockup | null
 }) {
   switch (variant) {
+    case 'product':
+      return mockup ? (
+        <ProductMockup snapshot={snapshot} mockup={mockup} />
+      ) : (
+        <FlatMockup snapshot={snapshot} dieCut={dieCut} />
+      )
     case 'bottle':
       return <BottleMockup snapshot={snapshot} />
     case 'tub':
@@ -253,6 +290,94 @@ function Mockup({
     default:
       return <FlatMockup snapshot={snapshot} dieCut={dieCut} />
   }
+}
+
+// ----- Product photo: the flat artwork perspective-warped into the curated
+// print area on a real white-label product photo (Mockup Slice 2). -----
+
+function ProductMockup({
+  snapshot,
+  mockup,
+}: {
+  snapshot: string
+  mockup: StudioMockup
+}) {
+  // Displayed size of the base photo (fit into a stage box, preserving aspect).
+  const [base, setBase] = React.useState<{ w: number; h: number } | null>(null)
+  // Natural size of the snapshot — the source rect we warp (keeps it crisp).
+  const [snap, setSnap] = React.useState<{ w: number; h: number } | null>(null)
+
+  React.useEffect(() => {
+    const img = new window.Image()
+    img.onload = () => {
+      const maxW = 560
+      const maxH = 560
+      const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1)
+      let w = maxW
+      let h = maxW / ar
+      if (h > maxH) {
+        h = maxH
+        w = maxH * ar
+      }
+      setBase({ w, h })
+    }
+    img.src = mockup.imageUrl
+  }, [mockup.imageUrl])
+
+  React.useEffect(() => {
+    const img = new window.Image()
+    img.onload = () => setSnap({ w: img.naturalWidth || 600, h: img.naturalHeight || 600 })
+    img.src = snapshot
+  }, [snapshot])
+
+  if (!base) {
+    return <div className="text-white/70 text-sm">Loading product photo…</div>
+  }
+
+  // Map the 0..1 print-area quad onto the displayed photo, then warp the
+  // snapshot's source rect into it. Guard the 4-corner shape defensively.
+  const q = mockup.printAreaQuad
+  const [a, b, c, d] = q
+  const transform =
+    q.length === 4 && a && b && c && d
+      ? matrix3dForQuad(snap?.w ?? 600, snap?.h ?? 600, [
+          { x: a.x * base.w, y: a.y * base.h },
+          { x: b.x * base.w, y: b.y * base.h },
+          { x: c.x * base.w, y: c.y * base.h },
+          { x: d.x * base.w, y: d.y * base.h },
+        ] as [Pt, Pt, Pt, Pt])
+      : null
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative shadow-2xl" style={{ width: base.w, height: base.h }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={mockup.imageUrl}
+          alt={mockup.label}
+          className="absolute inset-0 h-full w-full object-contain"
+        />
+        {transform && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={snapshot}
+            alt="Your design on the product"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: snap?.w ?? 600,
+              height: snap?.h ?? 600,
+              transformOrigin: '0 0',
+              transform,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </div>
+      <div className="text-[10.5px] font-mono text-white/60">{mockup.label}</div>
+    </div>
+  )
 }
 
 // ----- Flat: just the trimmed label on a paper-like surface -----

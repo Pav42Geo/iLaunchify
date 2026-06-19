@@ -22,6 +22,7 @@ import {
 } from '@ilaunchify/ui'
 import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
+import type { StudioMockup } from './MockupModal'
 import { loadDesignJson } from './actions'
 import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
@@ -91,6 +92,9 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
         select: {
           containerFormat: true,
           containerSizeG: true,
+          // Mockup Slice 2 — drives which photo-mockup (by PackagingType) to warp
+          // the design into.
+          packagingTypeId: true,
         },
       },
       // C4.b — labeling type drives label-format recommendation. Lives on the
@@ -222,6 +226,11 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
   // canvas can render frame guides + run the staleness/bounds gate.
   const dielineFrames = await loadDielineFrames(productId, user.id)
 
+  // Mockup Slice 2 — resolve the ACTIVE photo-mockup for this product's packaging
+  // type so MockupModal can warp the design into a real product photo. Null →
+  // MockupModal keeps its stylized CSS variants (graceful fallback).
+  const mockup = await loadActiveMockup(product.variant?.packagingTypeId ?? null)
+
   return (
     <CanvasLayoutShell
       productId={product.id}
@@ -241,8 +250,67 @@ export default async function DesignStudioCanvasPage({ params }: PageProps) {
         barcodeMode: product.barcodeMode as 'NONE' | 'RETAIL_UPC' | 'INTERNAL_SKU',
       }}
       dielineFrames={dielineFrames}
+      mockup={mockup}
     />
   )
+}
+
+/**
+ * Resolve the ACTIVE photo-mockup for a packaging type (Mockup Slice 2). Prefers
+ * a 'front' surface, else the lowest displayOrder. Cast-guarded: the
+ * MockupTemplate migration may be pending → any failure yields null, and the
+ * Studio falls back to the stylized CSS mockups. Returns null when nothing is
+ * curated, the base photo has no public URL, or the quad is malformed.
+ */
+async function loadActiveMockup(packagingTypeId: string | null): Promise<StudioMockup | null> {
+  if (!packagingTypeId) return null
+  try {
+    const rows = await (
+      prisma as unknown as {
+        mockupTemplate: {
+          findMany: (a: unknown) => Promise<
+            Array<{
+              label: string
+              baseImageAssetId: string
+              printAreaQuad: unknown
+              surfaceKey: string | null
+            }>
+          >
+        }
+      }
+    ).mockupTemplate.findMany({
+      where: { packagingTypeId, status: 'ACTIVE' },
+      orderBy: { displayOrder: 'asc' },
+      select: { label: true, baseImageAssetId: true, printAreaQuad: true, surfaceKey: true },
+    })
+    if (!rows.length) return null
+    const chosen = rows.find((r) => r.surfaceKey === 'front') ?? rows[0]
+    if (!chosen) return null
+    const quad = normalizeQuad(chosen.printAreaQuad)
+    if (!quad) return null
+    const asset = await prisma.asset.findUnique({
+      where: { id: chosen.baseImageAssetId },
+      select: { publicUrl: true },
+    })
+    if (!asset?.publicUrl) return null
+    return { imageUrl: asset.publicUrl, printAreaQuad: quad, label: chosen.label }
+  } catch {
+    return null
+  }
+}
+
+/** Validate a printAreaQuad Json into exactly 4 {x,y} points (image-relative 0..1). */
+function normalizeQuad(raw: unknown): Array<{ x: number; y: number }> | null {
+  if (!Array.isArray(raw) || raw.length !== 4) return null
+  const pts: Array<{ x: number; y: number }> = []
+  for (const p of raw) {
+    if (!p || typeof p !== 'object') return null
+    const x = (p as { x?: unknown }).x
+    const y = (p as { y?: unknown }).y
+    if (typeof x !== 'number' || typeof y !== 'number') return null
+    pts.push({ x, y })
+  }
+  return pts
 }
 
 /**
