@@ -140,6 +140,8 @@ export function VersionHistoryDrawer({
   currentId = null,
   title = 'Version history',
   emptyHint = 'Snapshots appear here as you work — and at each milestone (step advance, confirm, submit).',
+  allowRestore = true,
+  footnote,
 }: {
   open: boolean
   onClose: () => void
@@ -149,6 +151,10 @@ export function VersionHistoryDrawer({
   currentId?: string | null
   title?: string
   emptyHint?: string
+  /** When false, snapshots are shown read-only (no Restore button). */
+  allowRestore?: boolean
+  /** Optional override for the footer note. */
+  footnote?: string
 }) {
   if (!open) return null
   return (
@@ -193,7 +199,7 @@ export function VersionHistoryDrawer({
                       </div>
                       <KindBadge item={it} />
                     </div>
-                    {!isCurrent && (
+                    {allowRestore && !isCurrent && (
                       <button
                         type="button"
                         onClick={() => onRestore(it.id)}
@@ -212,7 +218,7 @@ export function VersionHistoryDrawer({
         </div>
 
         <footer className="border-t border-ink-100 px-4 py-2.5 text-[10.5px] leading-relaxed text-ink-400">
-          <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Milestones are kept; autosaves roll over after the latest 10.</span>
+          <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> {footnote ?? 'Milestones are kept; autosaves roll over after the latest 10.'}</span>
         </footer>
       </aside>
     </div>

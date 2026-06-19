@@ -9,10 +9,12 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu, CheckCircle2 } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
 import { createDraftShell, saveOptionAxes, hasRecipeRows, type InitialDraft } from './build-actions'
+import { snapshotDraft, listDraftSnapshots } from './snapshot-actions'
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
@@ -180,7 +182,10 @@ export function GuidedBuilder({
   }
 
   function go(i: number) {
-    setCur(Math.max(0, Math.min(STEPS.length - 1, i)))
+    const next = Math.max(0, Math.min(STEPS.length - 1, i))
+    // Pin a milestone version when moving forward to a new step.
+    if (next > cur && draftId) snapshotMilestone(`Reached: ${STEPS[next]?.t ?? 'next step'}`)
+    setCur(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -261,19 +266,53 @@ export function GuidedBuilder({
     setTopSlots({ left: document.getElementById('gb-topbar-center'), right: document.getElementById('gb-topbar-right') })
   }, [])
 
+  // Version history (EditSnapshot, entityType PRODUCT_TEMPLATE_DRAFT). The draft
+  // autosaves continuously; these are the browsable milestones. Restore is a
+  // follow-up (multi-table writer) so the drawer is read-only on the builder.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([])
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  useEffect(() => { if (draftId) setLastSavedAt((p) => p ?? new Date()) }, [draftId])
+
+  async function loadHistory() {
+    if (!draftId) return
+    const rows = await listDraftSnapshots(draftId)
+    setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt) })))
+  }
+  // Pin a milestone snapshot when the maker advances to a new step.
+  function snapshotMilestone(label: string) {
+    if (!draftId) return
+    setLastSavedAt(new Date())
+    void snapshotDraft(draftId, 'MILESTONE', label)
+  }
+
   return (
     <div className="gb">
       <style>{CSS}</style>
       {topSlots.left && createPortal(
         <span className="gb gb-topinject">
           <TopMenu />
-          {draftId && <span className="gb-saveicon" title="All changes save automatically — your draft is up to date"><CheckCircle2 size={18} /></span>}
-          <button className="btn sm" type="button" onClick={saveDraft} disabled={isPending}>Save draft</button>
+          <SavedIndicator
+            status={isPending ? 'saving' : 'saved'}
+            savedAt={draftId ? lastSavedAt : null}
+            onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
+          />
         </span>, topSlots.left)}
       {topSlots.right && createPortal(
         <span className="gb gb-topinject">
           <button className="gb-nextbtn" type="button" onClick={goNext} disabled={nextDisabled}>{nextLabel}</button>
         </span>, topSlots.right)}
+
+      <VersionHistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        items={snapshots}
+        onRestore={() => undefined}
+        allowRestore={false}
+        title="Draft version history"
+        emptyHint="Versions are saved as you work — and pinned at each step you complete."
+        footnote="Your draft autosaves continuously. Restoring a past version is coming soon."
+      />
 
       <div className="gb-shell">
         {/* LEFT RAIL */}
