@@ -9,7 +9,7 @@
 // Backed by @ilaunchify/db EditSnapshot (createSnapshot/listSnapshots/getSnapshotJson).
 
 import * as React from 'react'
-import { Check, Clock, History, Loader2, Lock, RotateCcw, Pin, Bookmark, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clock, History, Loader2, Lock, RotateCcw, Pin, Bookmark, X } from 'lucide-react'
 
 export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL'
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -20,6 +20,8 @@ export interface SnapshotItem {
   label: string | null
   pinned: boolean
   createdAt: Date
+  /** Small PNG data URL preview (design studio). */
+  thumbnail?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -49,14 +51,24 @@ export function SavedIndicator({
   status,
   savedAt,
   onOpenHistory,
+  onPrev,
+  onNext,
+  canPrev = false,
+  canNext = false,
   className = '',
 }: {
   status: SaveStatus
   savedAt: Date | null
   onOpenHistory?: () => void
+  /** Step to the previous (older) version in the history panel. */
+  onPrev?: () => void
+  /** Step to the next (newer) version in the history panel. */
+  onNext?: () => void
+  canPrev?: boolean
+  canNext?: boolean
   className?: string
 }) {
-  // Re-render every 30s so "2 min ago" stays fresh while the tab is open.
+  // Re-render every 30s so the "Saved 2 min ago" tooltip stays fresh.
   const [, tick] = React.useState(0)
   React.useEffect(() => {
     if (!savedAt) return
@@ -64,39 +76,49 @@ export function SavedIndicator({
     return () => clearInterval(t)
   }, [savedAt])
 
-  let icon: React.ReactNode
-  let text: string
-  let tone = 'text-ink-500'
+  let StatusIcon = Check
+  let tip = savedAt ? `Saved ${relativeTime(savedAt)}` : 'All changes saved automatically'
+  let tone = 'text-emerald-600'
+  let spin = false
   if (status === 'saving') {
-    icon = <Loader2 className="h-3.5 w-3.5 animate-spin" />
-    text = 'Saving…'
+    StatusIcon = Loader2
+    tip = 'Saving…'
+    tone = 'text-ink-500'
+    spin = true
   } else if (status === 'error') {
-    icon = <X className="h-3.5 w-3.5" />
-    text = 'Save failed — retrying'
+    StatusIcon = X
+    tip = 'Save failed — retrying'
     tone = 'text-rose-600'
   } else if (status === 'dirty') {
-    icon = <Clock className="h-3.5 w-3.5" />
-    text = 'Unsaved changes…'
-  } else {
-    icon = <Check className="h-3.5 w-3.5 text-emerald-600" />
-    text = savedAt ? `Saved · ${relativeTime(savedAt)}` : 'All changes saved automatically'
+    StatusIcon = Clock
+    tip = 'Unsaved changes…'
+    tone = 'text-ink-500'
   }
 
+  const btn =
+    'grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-600'
+
   return (
-    <div className={`inline-flex items-center gap-2 ${className}`}>
-      <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${tone}`} title="Your work saves automatically">
-        {icon}
-        {text}
+    <div className={`inline-flex items-center gap-1 ${className}`}>
+      {/* Autosave status — icon + native tooltip, no inline text. */}
+      <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`} title={tip} aria-label={tip}>
+        <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
       </span>
+
+      {(onPrev || onNext) && (
+        <>
+          <button type="button" className={btn} onClick={onPrev} disabled={!canPrev} title="Previous version" aria-label="Previous version">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" className={btn} onClick={onNext} disabled={!canNext} title="Next version" aria-label="Next version">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </>
+      )}
+
       {onOpenHistory && (
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[12px] font-medium text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
-          title="Version history"
-        >
-          <History className="h-3.5 w-3.5" />
-          History
+        <button type="button" className={btn} onClick={onOpenHistory} title="Version history" aria-label="Version history">
+          <History className="h-4 w-4" />
         </button>
       )}
     </div>
