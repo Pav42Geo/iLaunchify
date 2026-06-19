@@ -323,26 +323,25 @@ The category page uses the **same two-column shell** as landing (§4). The left 
 
 ---
 
-## 7. Filter behavior — foldable, grouped, 6→show-all→see-less
+## 7. Filter behavior — every group visible, 6 options per group then show-more
 
-Pavel's instinct was right: the default filter rail must not be a wall.
+Pavel's rule (re-locked 2026-06-18, supersedes any earlier "default-6 + More-filters" framing): the filter rail must not be a wall, but **the answer is NOT to hide whole groups**. EVERY filter group is always visible. The "show 6 then more" rule is applied **WITHIN each group, to its OPTIONS** — a group shows its first 6 options, "Show more" reveals 10 at a time, "Show fewer" collapses back to 6. There is **no global "More filters / Fewer filters" expander**. A **"Clear all"** control wipes every active filter at once.
 
-**Default visible filters (6):**
+**All filter groups (always visible):**
 
-1. Format (single-select dropdown sourced from Manufacturing Formats §2 Layer 3)
-2. Diet (multi-select sourced from Lifestyle tags §2 Layer 4)
-3. Audience (multi-select sourced from Audience tags)
-4. MOQ range (slider; presets: ≤100, 100–500, 500–2k, 2k+)
+1. Format (single-select, sourced from Manufacturing Formats §2 Layer 3)
+2. Diet (multi-select, Lifestyle tags §2 Layer 4 — LIFESTYLE group)
+3. Audience (multi-select, AUDIENCE tags)
+4. MOQ range (single-select presets: ≤100, ≤500, ≤2k, ≤5k)
 5. Lead time (single-select: <2 wk, 2–4 wk, 4–8 wk, 8+ wk)
 6. Market (single-select: US, CA, EU — V1 US only ACTIVE, per [[ilaunchify-markets-and-regions]])
+7. Trend tags (multi-select, TREND tags)
+8. Certifications (multi-select, scoped to the selected Market: USDA Organic / Non-GMO Project / NSF Certified for Sport / EU Organic / etc.)
+9. Allergen-free (multi-select: dairy-free, gluten-free, nut-free, soy-free, egg-free, …)
+10. Manufacturing process (multi-select: cold-pressed, freeze-dried, fermented, encapsulated, …)
+11. Packaging type (multi-select, 10 parent groups → children — see below)
 
-**`More filters →` reveals (collapsed by default):**
-
-- Trend tags (multi-select)
-- Certifications (multi-select, grouped by market: USDA Organic / Non-GMO Project / NSF Certified for Sport / EU Organic / etc. — visibility scoped to selected Market)
-- Allergen-free (multi-select: dairy-free, gluten-free, nut-free, soy-free, egg-free, …)
-- Manufacturing process (multi-select: cold-pressed, freeze-dried, fermented, encapsulated, …)
-- Packaging type (multi-select, grouped into 10 parent groups — see below)
+Groups with more than 6 options (Format, Diet, Trend, Certifications, Process, Packaging) get the per-group "Show 6 → +10 → Show fewer" control; groups with ≤6 show everything.
 
 **Packaging type grouping** (collapses Pavel's 60-item flat list into 10 parents that the creator picks first):
 
