@@ -276,3 +276,7 @@ Same single `prisma db push` covers these (all additive; then generate → `rm -
 | `FlavorPreset.dielineId String?` | FlavorPreset | optional per-flavor die-line (null = shared) |
 
 `seed-packing-types.ts` now sets `labelTopology` per type (cast-guarded). This is the no-regret substrate for the per-flavor-labels feature (`docs/HANDOFF-TO-CODE-per-flavor-labels.md`); the app wiring (Studio loaders/UI, partner per-flavor die-line slot, checkout copy to PackagingComponent.designVersionId) is Code's. db typecheck clean.
+
+## 11. Packing-type consolidation (2026-06-18, additive)
+
+`enum StructuralPackType` (6) + `PackingProfile.structuralType?` + `PackingProfile.merchandisingTag?` — the 15 packing presets now map to 6 structures the engine branches on (seeded in seed-packing-types.ts). Additive; the 15 rows stay as presets. Cutover (builder/variant read structuralType) is Code's — see docs/PACKING_TYPE_CONSOLIDATION.md. Same single `prisma db push`.
