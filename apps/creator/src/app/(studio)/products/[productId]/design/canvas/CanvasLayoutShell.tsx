@@ -958,6 +958,7 @@ export function CanvasLayoutShell({
           MOCKUP top-bar button. */}
       <MockupModal
         canvas={canvas}
+        productId={productId}
         dieCut={dieCut}
         pxPerMm={pxPerMm}
         productName={productName}

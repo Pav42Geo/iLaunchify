@@ -19,13 +19,15 @@
 // shapes / colors creators ship most.
 
 import * as React from 'react'
-import { X, Download } from 'lucide-react'
+import { X, Download, Save, Loader2 } from 'lucide-react'
 import {
   snapshotCanvasTrimmed,
   type DieCutSpec,
   type FabricCanvas,
 } from '@ilaunchify/ui'
 import { matrix3dForQuad, type Pt } from './lib/quadTransform'
+import { compositeMockup } from './lib/compositeMockup'
+import { saveDesignMockupRender } from './mockup-render-actions'
 
 /**
  * An admin-curated photo mockup (Mockup Slice 2): a white-label product photo
@@ -42,6 +44,7 @@ export interface StudioMockup {
 
 interface Props {
   canvas: FabricCanvas | null
+  productId: string
   dieCut: DieCutSpec
   pxPerMm: number
   productName: string
@@ -54,6 +57,7 @@ interface Props {
 
 export function MockupModal({
   canvas,
+  productId,
   dieCut,
   pxPerMm,
   productName,
@@ -66,6 +70,55 @@ export function MockupModal({
   const [variant, setVariant] = React.useState<MockupVariant>(() =>
     mockup ? 'product' : inferVariant(dieCut.category),
   )
+  const [saving, setSaving] = React.useState(false)
+  const [saveMsg, setSaveMsg] = React.useState<string | null>(null)
+
+  const isProductVariant = variant === 'product' && !!mockup
+
+  // Compose the warped PNG client-side (mirrors the live matrix3d preview).
+  // Returns null on failure so callers fall back to the flat snapshot.
+  const composite = React.useCallback(async (): Promise<string | null> => {
+    if (!mockup || !snapshot) return null
+    return compositeMockup({
+      baseImageUrl: mockup.imageUrl,
+      artworkDataUrl: snapshot,
+      quad: mockup.printAreaQuad,
+    })
+  }, [mockup, snapshot])
+
+  async function handleDownload() {
+    if (!snapshot) return
+    if (isProductVariant) {
+      const png = await composite()
+      downloadDataUrl(png ?? snapshot, `${productName}-mockup.png`)
+    } else {
+      downloadDataUrl(snapshot, `${productName}-flat.png`)
+    }
+  }
+
+  async function handleSaveToProduct() {
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const png = await composite()
+      if (!png) {
+        setSaveMsg('Could not render — the product photo may block cross-origin export.')
+        return
+      }
+      const base64 = png.split(',')[1] ?? ''
+      const res = await saveDesignMockupRender(productId, base64)
+      setSaveMsg(res.ok ? 'Saved to product ✓' : res.error)
+    } catch {
+      setSaveMsg('Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Clear any save feedback when the variant changes.
+  React.useEffect(() => {
+    setSaveMsg(null)
+  }, [variant])
 
   // Take a fresh snapshot when the modal opens. We re-snapshot rather
   // than caching so edits since the last open show up.
@@ -117,9 +170,13 @@ export function MockupModal({
         variant={variant}
         onVariant={setVariant}
         onClose={onClose}
-        onDownload={() => snapshot && downloadDataUrl(snapshot, `${productName}-flat.png`)}
+        onDownload={handleDownload}
         hasSnapshot={!!snapshot}
         hasMockup={!!mockup}
+        showSave={isProductVariant}
+        onSave={handleSaveToProduct}
+        saving={saving}
+        saveMsg={saveMsg}
       />
 
       {/* Stage — stops propagation so clicks inside don't dismiss. */}
@@ -179,6 +236,10 @@ function Header({
   onDownload,
   hasSnapshot,
   hasMockup,
+  showSave,
+  onSave,
+  saving,
+  saveMsg,
 }: {
   productName: string
   brandName: string
@@ -188,6 +249,10 @@ function Header({
   onDownload: () => void
   hasSnapshot: boolean
   hasMockup: boolean
+  showSave: boolean
+  onSave: () => void
+  saving: boolean
+  saveMsg: string | null
 }) {
   const variants: MockupVariant[] = [
     ...(hasMockup ? (['product'] as const) : []),
@@ -232,6 +297,24 @@ function Header({
       </div>
 
       <div className="flex items-center gap-1">
+        {saveMsg && (
+          <span className="mr-1 text-[10.5px] font-medium text-white/70">{saveMsg}</span>
+        )}
+        {showSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!hasSnapshot || saving}
+            className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-ink-900 hover:bg-white/90 disabled:opacity-40 transition-colors"
+          >
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save to product
+          </button>
+        )}
         <button
           type="button"
           onClick={onDownload}
