@@ -832,6 +832,13 @@ model PackingProfile {
   flavorMode    FlavorMode        @default(SINGLE) // SINGLE recipe vs MULTI (base + presets)
   packStructure PackStructure     @default(SINGLE)
   labelColumns  Int               @default(1) // 1 / 2 / 3 → dual/triple-column Facts
+  // How LABELS work for this packing type (docs/MOCKUP_STRATEGY.md / per-flavor
+  // labels spec). SINGLE = one label for the pack; AGGREGATE = one combined
+  // label listing all flavors (multi-column Nutrition Facts, e.g. a variety
+  // box/bag); PER_FLAVOR = each flavored unit gets its OWN label/die-line (the
+  // creator designs a shared base + per-flavor overrides). Admin-overridable;
+  // default SINGLE. Seeded per the 15 PackingType groups.
+  labelTopology LabelTopology     @default(SINGLE)
   isSubscription Boolean          @default(false)
   isCustomizable Boolean          @default(false) // build-your-own pick-N
   isActive      Boolean           @default(true)
@@ -841,6 +848,15 @@ model PackingProfile {
   updatedAt     DateTime          @updatedAt
 
   @@index([group, isActive, sortOrder])
+}
+
+// Label topology per packing type (additive 2026-06-18). Drives whether the
+// Design Studio shows one label, one aggregate multi-column label, or a
+// per-flavor label per unit. See docs/HANDOFF-TO-CODE-per-flavor-labels.md.
+enum LabelTopology {
+  SINGLE
+  AGGREGATE
+  PER_FLAVOR
 }
 
 enum PackStructure {
@@ -1288,6 +1304,11 @@ model Design {
   // that hosts the managed cert-badge zone. Auto-defaults to the product's
   // first Design; creator can move it (app logic enforces at-most-one true).
   showsCertifications Boolean          @default(false)
+  // Per-flavor labels (PackingProfile.labelTopology = PER_FLAVOR; see
+  // docs/HANDOFF-TO-CODE-per-flavor-labels.md). null = the shared BASE design;
+  // a FlavorPreset id = that flavor's label (shared base + per-flavor overrides).
+  // Soft FK (FlavorPreset is template-scoped). Resolve per (productId, flavorPresetId).
+  flavorPresetId      String?
   // Relations
   product             Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   brand               Brand            @relation(fields: [brandId], references: [id])
@@ -1295,6 +1316,8 @@ model Design {
   versions            DesignVersion[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+
+  @@index([productId, flavorPresetId])
 }
 
 model DesignVersion {
@@ -4463,6 +4486,11 @@ model FlavorPreset {
   statementOfIdentity String?
   swatchHex           String? // '#5C3317' for picker
   swatchImageFileId   String? // small jar/scoop photo for picker
+  // Per-flavor die-line slot (PER_FLAVOR packing types; docs/HANDOFF-TO-CODE-
+  // per-flavor-labels.md). null = this flavor uses the template/packaging die-line
+  // shared by all flavors (the common case: same container, different label). Set
+  // when a flavor's physical unit genuinely differs. Soft FK to PackagingDieline.
+  dielineId           String?
   // The overlay — defines which slot picks apply for this flavor + flavor-only extras
   slotResolution      Json // [{ slotId, optionId | { customIngredientId, qty, unit } }]
   extras              Json? // [{ name, ingredientId, qty, unit }] flavor-only ingredients
