@@ -4,21 +4,50 @@
 // docs/DIELINE_FRAME_EDITOR_SPEC.md §5 · HANDOFF-TO-CODE-dieline-phase-b.md.
 // =============================================================================
 //
-// Presence gate (V1): for every required frame on the product's die-line, is a
-// correspondingly-tagged object present + visible on the saved design? Bounds
-// (safe-area) and recipe-freshness activate once Code stamps objects + supplies
-// normalized bounds (Phase B step 3) — until then we run presence-only so we
-// never false-positive on un-stamped designs.
+// Presence + freshness gate: for every required frame on the product's die-line,
+// is a correspondingly-tagged object present + visible on the saved design, and
+// — for recipe-derived frames (Nutrition/Ingredients/Allergens) — does its
+// stamped recipeHash still match the current recipe? Bounds (safe-area) stay
+// dormant (no normalized bounds supplied). An UN-stamped recipe object is
+// treated as fresh, so freshness never false-blocks pre-Phase-B designs.
 
 import { prisma } from '@ilaunchify/db'
 import {
   checkFrameCompliance,
   frameKindFromCanvasRole,
+  stableHash,
   type FrameLayout,
   type PlacedObject,
   type ComplianceReport,
-  type FrameContext,
+  type ComplianceContext,
 } from '@ilaunchify/ui'
+import { recipeFingerprint, publicSelection, type RecipeRow } from '@ilaunchify/nutrition'
+
+/** Hash of the template's current base recipe — recipe-derived label objects are
+ *  stamped with this; a mismatch on the saved design means the label is stale. */
+async function currentRecipeHashFor(productTemplateId: string | null): Promise<string | null> {
+  if (!productTemplateId) return null
+  const tmpl = await prisma.productTemplate
+    .findUnique({
+      where: { id: productTemplateId },
+      select: {
+        ingredientSlots: {
+          orderBy: { displayOrder: 'asc' },
+          select: { id: true, weightG: true, baseIngredient: { select: { name: true, nutritionPer100g: true } } },
+        },
+      },
+    })
+    .catch(() => null)
+  const rows: RecipeRow[] = (tmpl?.ingredientSlots ?? []).map((s) => ({
+    id: s.id,
+    name: s.baseIngredient?.name ?? '',
+    per100g: (s.baseIngredient?.nutritionPer100g ?? {}) as Record<string, number>,
+    quantity: Number(s.weightG ?? 0),
+    unit: 'g',
+    category: 'base',
+  }))
+  return rows.length ? stableHash(recipeFingerprint(publicSelection(rows))) : null
+}
 
 export interface LabelComplianceResult {
   hasDieline: boolean
@@ -40,11 +69,13 @@ export async function loadProductLabelCompliance(
   const certCount = product.productTemplateId
     ? await prisma.productCertificate.count({ where: { productTemplateId: product.productTemplateId } }).catch(() => 0)
     : 0
-  const ctx: FrameContext = {
+  const currentRecipeHash = await currentRecipeHashFor(product.productTemplateId)
+  const ctx: ComplianceContext = {
     materialSlug: null,
     marketCode: 'US',
     hasCerts: certCount > 0,
     hasBarcode: product.barcodeMode !== 'NONE' || Boolean(product.gtin),
+    currentRecipeHash,
   }
 
   // Resolve a die-line by packaging type (best-effort, V1).
@@ -98,16 +129,21 @@ export async function loadProductLabelCompliance(
       o.customRole as string | undefined,
     )
     if (!kind) continue
+    // An object stamped with a recipeHash is compared to the current recipe; an
+    // UN-stamped recipe object inherits currentRecipeHash so it reads as fresh
+    // (presence-only) rather than false-flagging as stale.
+    const stamped = o.recipeHash as string | undefined
     placed.push({
       kind,
       visible: o.visible !== false,
       box: { x: 0, y: 0, w: 0, h: 0 }, // bounds n/a in V1 — no safe-area passed → bounds check skipped
-      recipeHash: null,
+      recipeHash: stamped ?? currentRecipeHash,
     })
   }
 
-  // Presence-only V1: no safeAreaBySurface + no currentRecipeHash → the gate
-  // checks presence only (bounds + freshness stay dormant until Phase B stamps).
+  // Presence + freshness: a recipe-derived object whose stamped recipeHash no
+  // longer matches the current recipe flags STALE. Bounds stay dormant (no
+  // safeAreaBySurface supplied).
   const report = checkFrameCompliance(layout, placed, ctx)
   return { hasDieline: true, report, productName: product.name, frameCount: layout.frames.length }
 }
