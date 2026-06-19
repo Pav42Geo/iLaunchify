@@ -216,6 +216,10 @@ enum AssetType {
   TEMPLATE_THUMBNAIL
   LABEL_PDF
   COMPLIANCE_DOC
+  // Base white-label product photo a creator's artwork is composited onto in the
+  // Design Studio (mockup substrate; docs/MOCKUP_STRATEGY.md). NOT the marketplace
+  // hero image (that's PRODUCT_IMAGE/HERO_IMAGE).
+  MOCKUP_TEMPLATE
   OTHER
 }
 
@@ -3744,6 +3748,41 @@ model PackagingType {
   templateVariants   ProductTemplateVariant[]
   // Slice C9 Phase 1 — typed packaging dielines for this container type
   dielines           PackagingDieline[]
+  // Mockup templates (docs/MOCKUP_STRATEGY.md) — admin-curated 2D photo-mockups
+  // a creator's artwork is composited onto. Owned by the packaging type so every
+  // product on this container inherits them.
+  mockupTemplates    MockupTemplate[]
+}
+
+// A 2D photo-mockup (docs/MOCKUP_STRATEGY.md, locked 2026-06-18): a base white-
+// label product photo + a print-area quad the creator's artwork is perspective-
+// warped into. Owned by a PackagingType so every product on that container reuses
+// it. (V2 3D via Pacdora reuses PackagingType.model3dKey — see PACDORA_EVALUATION.)
+enum MockupTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model MockupTemplate {
+  id               String               @id @default(cuid())
+  packagingTypeId  String
+  packagingType    PackagingType        @relation(fields: [packagingTypeId], references: [id], onDelete: Cascade)
+  label            String // "16oz HDPE jar — front"
+  // Base white-label photo (Asset id, type MOCKUP_TEMPLATE). Resolved to a URL.
+  baseImageAssetId String
+  // Print area as 4 corner points in image-relative coords (0..1), order
+  // TL,TR,BR,BL: [{x,y},…]. The creator's flat artwork is warped into this quad.
+  printAreaQuad    Json
+  // Optional surface this maps to ('front' | 'back' | 'wrap' | 'lid'); matches a
+  // PackagingType.defaultSurfaces key when present.
+  surfaceKey       String?
+  status           MockupTemplateStatus @default(DRAFT)
+  displayOrder     Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([packagingTypeId, status])
 }
 
 // Partner-owned packaging system — links optionally to a canonical PackagingType.
