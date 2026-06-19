@@ -294,6 +294,14 @@ export function CanvasLayoutShell({
     [dielineFrames],
   )
   const recipeHash = dielineFrames?.recipeHash ?? null
+  // Frame KINDs currently satisfied by an object on the canvas — a frame guide
+  // is a placeholder that hides once its element fills it, and reappears when
+  // the element is removed. Only EMPTY frames render a guide.
+  const [filledFrameKinds, setFilledFrameKinds] = useState<Set<string>>(() => new Set())
+  const emptyFrames = useMemo(
+    () => resolvedFrames.filter((rf) => !filledFrameKinds.has(rf.frame.kind)),
+    [resolvedFrames, filledFrameKinds],
+  )
   const [zoom, setZoom] = useState(1) // multiplier on top of pxPerMm
   const [canvas, setCanvas] = useState<FabricCanvas | null>(null)
 
@@ -375,6 +383,16 @@ export function CanvasLayoutShell({
         safeAreaMm: dieCut.safeAreaMm,
       })
       framesLiveRef.current = true
+      // loadFromJSON doesn't fire object:added, so seed filledFrameKinds from the
+      // hydrated objects here (the live listeners keep it in sync afterwards).
+      const kinds = new Set<string>()
+      for (const o of c.getObjects()) {
+        const obj = o as { customType?: string; customRole?: string; visible?: boolean }
+        if (obj.visible === false) continue
+        const k = frameKindFromCanvasRole(obj.customType, obj.customRole)
+        if (k) kinds.add(k)
+      }
+      setFilledFrameKinds(kinds)
     },
     [certBadges, dieCut],
   )
@@ -525,6 +543,34 @@ export function CanvasLayoutShell({
       canvas.off('object:added', onAdded)
     }
   }, [canvas, resolvedFrames, dieCut, basePxPerMm, recipeHash])
+
+  // Keep filledFrameKinds in sync with the canvas so a frame guide hides when a
+  // matching element is present and reappears when it's removed.
+  useEffect(() => {
+    if (!canvas) return
+    const rescan = () => {
+      const kinds = new Set<string>()
+      for (const o of canvas.getObjects()) {
+        const obj = o as { customType?: string; customRole?: string; visible?: boolean }
+        if (obj.visible === false) continue
+        const k = frameKindFromCanvasRole(obj.customType, obj.customRole)
+        if (k) kinds.add(k)
+      }
+      setFilledFrameKinds((prev) => {
+        if (prev.size === kinds.size && [...kinds].every((k) => prev.has(k))) return prev
+        return kinds
+      })
+    }
+    rescan()
+    canvas.on('object:added', rescan)
+    canvas.on('object:removed', rescan)
+    canvas.on('object:modified', rescan)
+    return () => {
+      canvas.off('object:added', rescan)
+      canvas.off('object:removed', rescan)
+      canvas.off('object:modified', rescan)
+    }
+  }, [canvas])
 
   const history = useCanvasHistory(canvas)
   const selected = useSelectedObject(canvas)
@@ -758,7 +804,7 @@ export function CanvasLayoutShell({
               productName={productName}
               productCtx={productCtx}
               retailIdentity={retailIdentity}
-              frameCount={resolvedFrames.length}
+              frameCount={emptyFrames.length}
               showFrames={showFrames}
               setShowFrames={setShowFrames}
               onClose={closeDrawer}
@@ -786,7 +832,7 @@ export function CanvasLayoutShell({
                   pxPerMm={pxPerMm}
                   viewZoom={zoom}
                   guides={guides}
-                  frames={showFrames ? resolvedFrames : []}
+                  frames={showFrames ? emptyFrames : []}
                   initialDesignJson={initialDesignJson}
                   onReady={setCanvas}
                   onHydrated={handleCertReconcile}
