@@ -45,6 +45,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -810,8 +811,18 @@ function LibraryDrawer({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={tab === 'library' ? 'Try “water bottle”, “tuck-end box”…' : 'Search your packaging…'}
-            className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-2 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+            className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-8 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
           />
+          {search && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => onSearch('')}
+              className="absolute right-1.5 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
