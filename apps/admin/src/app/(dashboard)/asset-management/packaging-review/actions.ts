@@ -149,6 +149,25 @@ export async function approvePackagingReview(systemId: string, displayName: stri
     select: { id: true },
   })
 
+  // Carry the partner's first uploaded mockup over as the new type's catalog
+  // thumbnail (model3dThumbKey is an R2 key, same as PartnerFile.r2Key). Falls
+  // back to the legacy partnerImageFileId. Cast-guarded — PackagingSystemFile is
+  // a pending-migration model.
+  const mockupRow = await (prisma as unknown as {
+    packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
+  }).packagingSystemFile
+    .findFirst({ where: { packagingSystemId: systemId, role: 'MOCKUP' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
+    .catch(() => null)
+  let thumbFileId = mockupRow?.partnerFileId ?? null
+  if (!thumbFileId) {
+    const legacy = (await ps().findFirst({ where: { id: systemId }, select: { partnerImageFileId: true } })) as { partnerImageFileId: string | null } | null
+    thumbFileId = legacy?.partnerImageFileId ?? null
+  }
+  if (thumbFileId) {
+    const pf = await prisma.partnerFile.findUnique({ where: { id: thumbFileId }, select: { r2Key: true } })
+    if (pf?.r2Key) await prisma.packagingType.update({ where: { id: created.id }, data: { model3dThumbKey: pf.r2Key } })
+  }
+
   await ps().update({
     where: { id: systemId },
     data: { reviewStatus: 'APPROVED', packagingTypeId: created.id, approvedPackagingTypeId: created.id, reviewNotes: null },
