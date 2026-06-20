@@ -27,7 +27,7 @@ import type {
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
-import { impliedComponentSlots, sealIsFdaMandatory } from './component-slots'
+import { impliedComponentSlots, sealIsFdaMandatory, cartonRecommended } from './component-slots'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -100,6 +100,20 @@ export async function listProductComponents(
       displayOrder: r.displayOrder,
       fdaLocked: sealLocked && r.role === 'SEAL',
     })),
+  }
+}
+
+/** Lightweight per-product packaging context for the Components UI (e.g. whether
+ *  to nudge toward an outer carton). Kept separate from listProductComponents so
+ *  its Result shape stays stable. */
+export async function getComponentsContext(
+  productId: string,
+): Promise<Result<{ cartonRecommended: boolean }>> {
+  const { product, error } = await authorizeProduct(productId)
+  if (!product) return { ok: false, error: error ?? 'NOT_FOUND' }
+  return {
+    ok: true,
+    data: { cartonRecommended: cartonRecommended(product.productTemplate?.labelingType ?? 'FOOD') },
   }
 }
 

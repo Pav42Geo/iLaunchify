@@ -20,6 +20,7 @@ import {
   listComponentVariants,
   createDefaultComponentSlots,
   addOuterCarton,
+  getComponentsContext,
   setComponentVariant,
   removePackagingComponent,
   type ComponentRow,
@@ -41,6 +42,7 @@ export function ComponentsPanel({ productId }: { productId: string }) {
   const [rows, setRows] = React.useState<ComponentRow[] | null>(null)
   const [containers, setContainers] = React.useState<ContainerTypeOption[]>([])
   const [cartons, setCartons] = React.useState<ContainerTypeOption[]>([])
+  const [cartonRecommended, setCartonRecommended] = React.useState(false)
   const [primaryId, setPrimaryId] = React.useState('')
   const [busy, setBusy] = React.useState(false)
 
@@ -57,7 +59,10 @@ export function ComponentsPanel({ productId }: { productId: string }) {
     listCartonPackagingTypes().then((r) => {
       if (r.ok) setCartons(r.data)
     })
-  }, [reload])
+    getComponentsContext(productId).then((r) => {
+      if (r.ok) setCartonRecommended(r.data.cartonRecommended)
+    })
+  }, [reload, productId])
 
   async function setUp() {
     if (!primaryId) return
@@ -138,7 +143,12 @@ export function ComponentsPanel({ productId }: { productId: string }) {
           {/* Single-unit products that ship inside an outer folding box (e.g. a
               supplement bottle in a carton). Optional — hidden once added. */}
           {!rows.some((r) => r.role === 'CARTON') && cartons.length > 0 && (
-            <AddOuterCarton productId={productId} cartons={cartons} onAdded={reload} />
+            <AddOuterCarton
+              productId={productId}
+              cartons={cartons}
+              recommended={cartonRecommended}
+              onAdded={reload}
+            />
           )}
         </>
       )}
@@ -149,15 +159,27 @@ export function ComponentsPanel({ productId }: { productId: string }) {
 function AddOuterCarton({
   productId,
   cartons,
+  recommended,
   onAdded,
 }: {
   productId: string
   cartons: ContainerTypeOption[]
+  recommended: boolean
   onAdded: () => Promise<void>
 }) {
   const [open, setOpen] = React.useState(false)
   const [cartonId, setCartonId] = React.useState('')
   const [busy, setBusy] = React.useState(false)
+
+  // Auto-expand once when a carton is recommended (supplement/OTC). One-shot, so
+  // it won't re-open if the creator deliberately collapses it.
+  const autoOpenedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (recommended && !autoOpenedRef.current) {
+      setOpen(true)
+      autoOpenedRef.current = true
+    }
+  }, [recommended])
 
   async function add() {
     if (!cartonId) return
@@ -185,12 +207,22 @@ function AddOuterCarton({
         className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-dashed border-ink-300 px-3 py-1.5 text-[12px] font-medium text-ink-600 hover:border-pink-400 hover:text-pink-700"
       >
         <Plus className="h-3.5 w-3.5" /> Add outer carton
+        {recommended && <span className="text-[11px] font-normal text-pink-600">· recommended</span>}
       </button>
     )
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-ink-200 bg-ink-50/50 px-3 py-2.5">
+    <div
+      className={`mt-3 rounded-lg border px-3 py-2.5 ${
+        recommended ? 'border-pink-200 bg-pink-50/40' : 'border-ink-200 bg-ink-50/50'
+      }`}
+    >
+      {recommended && (
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-pink-700">
+          Recommended for supplements &amp; OTC
+        </p>
+      )}
       <p className="text-[12px] text-ink-600">
         Add a secondary folding box this unit ships inside (the carton becomes its own
         component for production &amp; routing).

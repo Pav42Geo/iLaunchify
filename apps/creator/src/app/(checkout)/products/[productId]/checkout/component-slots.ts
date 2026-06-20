@@ -32,6 +32,13 @@ export function sealIsFdaMandatory(labelingType: LabelingType): boolean {
   return labelingType === 'DIETARY_SUPPLEMENT' || labelingType === 'OTC'
 }
 
+/** Whether to *suggest* (not force) a secondary outer carton. Supplement and OTC
+ *  products conventionally ship a rigid bottle inside a folding carton, so we
+ *  nudge the creator toward adding one — but it stays opt-in (plenty don't). */
+export function cartonRecommended(labelingType: LabelingType): boolean {
+  return labelingType === 'DIETARY_SUPPLEMENT' || labelingType === 'OTC'
+}
+
 /** Categories whose seal is structural (heat-sealed) — no discrete SEAL slot. */
 const STRUCTURALLY_SEALED: ReadonlySet<ContainerCategory> = new Set<ContainerCategory>([
   'POUCH',
