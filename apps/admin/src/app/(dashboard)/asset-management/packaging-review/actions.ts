@@ -10,6 +10,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 
 /** Resolve the owning partner's user id + a display name for notifications. */
@@ -26,12 +27,26 @@ const PATH = '/asset-management/packaging-review'
 
 type Result = { ok: true } | { ok: false; error: string }
 
+export interface ReviewFile {
+  url: string | null
+  name: string
+  role: string // 'MOCKUP' | 'DIELINE'
+  panel: string | null
+  label: string | null
+}
+
 export interface ReviewRow {
   id: string
   name: string
   topology: string
   suggestedCategory: string | null
   submittedAt: string | null
+  // Parameters + uploaded artwork (cast-guarded — material + PackagingSystemFile
+  // ship with a pending migration).
+  material: string | null
+  dimensions: { lengthMm?: number | null; widthMm?: number | null; heightMm?: number | null } | null
+  maxWeightG: number | null
+  files: ReviewFile[]
 }
 
 interface PsDelegate {
@@ -45,18 +60,63 @@ function ps(): PsDelegate {
 
 export async function loadPackagingReviewQueue(): Promise<ReviewRow[]> {
   await requireRole('ADMIN')
+  // Base query (existing columns only — `material` ships with a pending migration
+  // so it's fetched separately, cast-guarded, to keep this safe pre-push).
   const rows = await ps().findMany({
     where: { reviewStatus: 'SUBMITTED' },
-    select: { id: true, partnerName: true, overrideDisplayName: true, topology: true, suggestedCategory: true, submittedForReviewAt: true },
+    select: { id: true, partnerName: true, overrideDisplayName: true, topology: true, suggestedCategory: true, submittedForReviewAt: true, dimensions: true, maxWeightG: true },
     orderBy: { submittedForReviewAt: 'asc' },
   })
-  return rows.map((r) => ({
-    id: String(r.id),
-    name: String(r.overrideDisplayName ?? r.partnerName ?? 'Custom packaging'),
-    topology: String(r.topology ?? 'OTHER'),
-    suggestedCategory: r.suggestedCategory ? String(r.suggestedCategory) : null,
-    submittedAt: r.submittedForReviewAt ? new Date(r.submittedForReviewAt as string).toISOString() : null,
-  }))
+  const ids = rows.map((r) => String(r.id))
+  if (ids.length === 0) return []
+
+  // Material (cast-guarded — new column).
+  const materialRows = await (prisma as unknown as {
+    packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; material: string | null }>> }
+  }).packagingSystem
+    .findMany({ where: { id: { in: ids } }, select: { id: true, material: true } })
+    .catch(() => [] as Array<{ id: string; material: string | null }>)
+  const materialById = new Map(materialRows.map((m) => [m.id, m.material]))
+
+  // Uploaded files (cast-guarded — PackagingSystemFile is a new model).
+  const fileRows = await (prisma as unknown as {
+    packagingSystemFile: { findMany: (a: unknown) => Promise<Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }>> }
+  }).packagingSystemFile
+    .findMany({ where: { packagingSystemId: { in: ids } }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] })
+    .catch(() => [] as Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }>)
+
+  // Resolve PartnerFile r2Key → signed URL.
+  const partnerFileIds = [...new Set(fileRows.map((f) => f.partnerFileId))]
+  const partnerFiles = partnerFileIds.length
+    ? await prisma.partnerFile.findMany({ where: { id: { in: partnerFileIds } }, select: { id: true, r2Key: true, originalFilename: true } })
+    : []
+  const pfById = new Map(partnerFiles.map((p) => [p.id, p]))
+  const urlByPf = new Map<string, string | null>()
+  await Promise.all(partnerFiles.map(async (p) => { urlByPf.set(p.id, p.r2Key ? await getSignedReadUrl(p.r2Key).catch(() => null) : null) }))
+
+  const filesBySystem = new Map<string, ReviewFile[]>()
+  for (const f of fileRows) {
+    const pf = pfById.get(f.partnerFileId)
+    const arr = filesBySystem.get(f.packagingSystemId) ?? []
+    arr.push({ url: urlByPf.get(f.partnerFileId) ?? null, name: pf?.originalFilename ?? 'file', role: f.role, panel: f.panel, label: f.label })
+    filesBySystem.set(f.packagingSystemId, arr)
+  }
+
+  return rows.map((r) => {
+    const id = String(r.id)
+    const dims = (r.dimensions && typeof r.dimensions === 'object') ? r.dimensions as ReviewRow['dimensions'] : null
+    return {
+      id,
+      name: String(r.overrideDisplayName ?? r.partnerName ?? 'Custom packaging'),
+      topology: String(r.topology ?? 'OTHER'),
+      suggestedCategory: r.suggestedCategory ? String(r.suggestedCategory) : null,
+      submittedAt: r.submittedForReviewAt ? new Date(r.submittedForReviewAt as string).toISOString() : null,
+      material: materialById.get(id) ?? null,
+      dimensions: dims,
+      maxWeightG: typeof r.maxWeightG === 'number' ? r.maxWeightG : null,
+      files: filesBySystem.get(id) ?? [],
+    }
+  })
 }
 
 function slugify(s: string): string {

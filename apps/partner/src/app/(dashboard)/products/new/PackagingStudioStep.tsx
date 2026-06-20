@@ -191,7 +191,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // appear in My immediately (the page prop only carries ACTIVE ones).
   const [uploadOpen, setUploadOpen] = useState(false)
   const [localSystems, setLocalSystems] = useState<StudioPackagingOption[]>([])
-  const [tool, setTool] = useState<Tool>('frames')
+  const [tool, setTool] = useState<Tool>('library')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
   const [selectedSurfaceKey, setSelectedSurfaceKey] = useState<string | null>(null)

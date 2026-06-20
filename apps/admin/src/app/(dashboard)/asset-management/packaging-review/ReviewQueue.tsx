@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { approvePackagingReview, rejectPackagingReview, type ReviewRow } from './actions'
+import { approvePackagingReview, rejectPackagingReview, type ReviewRow, type ReviewFile } from './actions'
+
+const isImage = (name: string) => /\.(png|jpe?g|webp|gif|avif)$/i.test(name)
+const fmtPanel = (p: string | null) => (p ? p[0] + p.slice(1).toLowerCase() : '')
 
 const CATEGORIES = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
 const CAT_LABEL: Record<string, string> = {
@@ -62,6 +65,27 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
               </div>
             </div>
 
+            {/* Parameters supplied by the partner. */}
+            {(r.material || r.dimensions || r.maxWeightG != null) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {r.material && <span className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] text-ink-600">Material: <b className="font-semibold text-ink-800">{r.material}</b></span>}
+                {r.dimensions && (r.dimensions.lengthMm || r.dimensions.widthMm || r.dimensions.heightMm) && (
+                  <span className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] text-ink-600">{r.dimensions.lengthMm ?? '–'} × {r.dimensions.widthMm ?? '–'} × {r.dimensions.heightMm ?? '–'} mm</span>
+                )}
+                {r.maxWeightG != null && <span className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] text-ink-600">Max {r.maxWeightG} g</span>}
+              </div>
+            )}
+
+            {/* Partner-uploaded mockups + die-lines (each die-line panel-tagged). */}
+            {r.files.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Uploaded artwork ({r.files.length})</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {r.files.map((f, i) => <FileTile key={i} f={f} />)}
+                </div>
+              </div>
+            )}
+
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <label className="text-xs font-medium text-ink-600">
                 Catalog name
@@ -113,4 +137,27 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
       })}
     </div>
   )
+}
+
+// One uploaded artwork tile — image thumbnail for photos/mockups, a doc tile for
+// die-lines, with a role/panel chip. Click opens the signed URL in a new tab.
+function FileTile({ f }: { f: ReviewFile }) {
+  const chip = f.role === 'DIELINE' ? (f.panel ? fmtPanel(f.panel) : 'Die-line') : (f.label || 'Mockup')
+  const body = (
+    <>
+      <div className="relative grid aspect-square place-items-center overflow-hidden bg-ink-50">
+        {f.url && isImage(f.name) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={f.url} alt={f.name} className="h-full w-full object-contain p-1" />
+        ) : (
+          <span className="text-[11px] font-semibold uppercase text-ink-400">{f.name.split('.').pop() ?? 'file'}</span>
+        )}
+        <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${f.role === 'DIELINE' ? 'bg-sky-100 text-sky-700' : 'bg-pink-100 text-pink-700'}`}>{chip}</span>
+      </div>
+      <div className="truncate px-1.5 py-1 text-[10.5px] text-ink-600" title={f.name}>{f.name}</div>
+    </>
+  )
+  return f.url
+    ? <a href={f.url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-ink-200 bg-white transition-colors hover:border-pink-300">{body}</a>
+    : <div className="block overflow-hidden rounded-xl border border-ink-200 bg-white opacity-70">{body}</div>
 }
