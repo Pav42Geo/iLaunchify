@@ -43,13 +43,17 @@ the package. **Inert until `STRIPE_REFUNDS_ENABLED=true`.**
 - `charge.refunded` webhook reconciles `Refund.status` by `stripeRefundId` and FSM-guards the
   order→REFUNDED flip (never overrides a CANCELLED order).
 
+**Dispute-resolve refund — wired (2026-06-20).** Policy decided: **admin-discretionary**.
+When `resolveOrderDispute` is called with `decision: 'RESOLVED'`, the admin sets a
+`refundCents` (capped at the order total; 0 = none). The `ResolveDisputeControls` UI
+shows a refund field pre-filled to the full order total. Reason `NOT_AS_DESCRIBED`. The
+order stays `COMPLETED`; the webhook moves it `COMPLETED → REFUNDED` when the real refund
+settles. Same gating/dry-run as the cancellation path.
+
 **Still to do (with review):**
-1. **Dispute-resolve refund** is intentionally NOT wired — resolving a dispute "in the
-   creator's favor" needs a refund-amount policy (full order total? partial?) decided
-   before calling `executeOrderRefund` from `resolveOrderDispute`.
-2. **Stripe test-mode** end-to-end verification, THEN set `STRIPE_REFUNDS_ENABLED=true`.
+1. **Stripe test-mode** end-to-end verification, THEN set `STRIPE_REFUNDS_ENABLED=true`.
    Until then everything is dry-run (records the plan, moves nothing).
-3. Admin now depends on `@ilaunchify/payments` — `pnpm install` on the Mac links it.
+2. Admin now depends on `@ilaunchify/payments` — `pnpm install` on the Mac links it.
 
 ## Original spec — executor design
 

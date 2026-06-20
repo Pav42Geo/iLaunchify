@@ -4,18 +4,35 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { resolveOrderDispute } from './dispute-actions'
 
-export function ResolveDisputeControls({ disputeId }: { disputeId: string }) {
+export function ResolveDisputeControls({
+  disputeId,
+  orderTotalCents,
+}: {
+  disputeId: string
+  orderTotalCents: number
+}) {
   const [resolution, setResolution] = useState('')
+  // Refund (dollars) issued when resolving in the creator's favor — pre-filled to the
+  // full order total, editable, 0 = no refund. Gated by STRIPE_REFUNDS_ENABLED.
+  const [refundDollars, setRefundDollars] = useState((orderTotalCents / 100).toFixed(2))
   const [pending, start] = useTransition()
 
   function act(decision: 'RESOLVED' | 'REJECTED') {
+    const refundCents =
+      decision === 'RESOLVED' ? Math.max(0, Math.round(parseFloat(refundDollars || '0') * 100)) : undefined
     start(async () => {
-      const res = await resolveOrderDispute({ disputeId, decision, resolution })
+      const res = await resolveOrderDispute({ disputeId, decision, resolution, refundCents })
       if (!res.ok) {
         toast.error(res.error)
         return
       }
-      toast.success(decision === 'RESOLVED' ? 'Dispute resolved.' : 'Dispute rejected.')
+      toast.success(
+        decision === 'RESOLVED'
+          ? refundCents && refundCents > 0
+            ? `Dispute resolved · refund $${(refundCents / 100).toFixed(2)} recorded.`
+            : 'Dispute resolved.'
+          : 'Dispute rejected.',
+      )
     })
   }
 
@@ -28,6 +45,21 @@ export function ResolveDisputeControls({ disputeId }: { disputeId: string }) {
         rows={2}
         className="w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
       />
+      <label className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-600">
+        Refund if resolved:
+        <span className="inline-flex items-center">
+          <span className="text-ink-500">$</span>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={refundDollars}
+            onChange={(e) => setRefundDollars(e.target.value)}
+            className="ml-0.5 w-28 rounded-lg border border-ink-200 px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+          />
+        </span>
+        <span className="text-[11px] text-ink-400">of ${(orderTotalCents / 100).toFixed(2)} total · 0 = none</span>
+      </label>
       <div className="mt-2 flex gap-2">
         <button
           type="button"

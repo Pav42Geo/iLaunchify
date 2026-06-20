@@ -269,7 +269,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
             </span>
           </div>
           <p className="mt-1.5 text-[13px] text-ink-800">{openDispute.description}</p>
-          <ResolveDisputeControls disputeId={openDispute.id} />
+          <ResolveDisputeControls disputeId={openDispute.id} orderTotalCents={order.totalCents} />
         </section>
       )}
 
