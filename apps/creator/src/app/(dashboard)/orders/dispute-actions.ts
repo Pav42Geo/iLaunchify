@@ -54,15 +54,21 @@ export async function openOrderDispute({
     return { ok: false, error: 'You can only dispute an order after it’s delivered.' }
   }
 
-  // Window gate: N days after delivery.
+  // Window gate: N days after delivery. A delivered/completed order with no recorded
+  // delivery date is a data inconsistency — reject rather than allow an unbounded
+  // window.
   const settings = await getOrderSettings()
-  if (order.deliveredAt) {
-    const windowMs = settings.disputeWindowDays * 24 * 60 * 60 * 1000
-    if (Date.now() - order.deliveredAt.getTime() > windowMs) {
-      return {
-        ok: false,
-        error: `The ${settings.disputeWindowDays}-day dispute window for this order has closed — contact support.`,
-      }
+  if (!order.deliveredAt) {
+    return {
+      ok: false,
+      error: 'This order has no recorded delivery date — contact support to dispute it.',
+    }
+  }
+  const windowMs = settings.disputeWindowDays * 24 * 60 * 60 * 1000
+  if (Date.now() - order.deliveredAt.getTime() > windowMs) {
+    return {
+      ok: false,
+      error: `The ${settings.disputeWindowDays}-day dispute window for this order has closed — contact support.`,
     }
   }
 
@@ -70,7 +76,6 @@ export async function openOrderDispute({
     prisma as unknown as {
       orderDispute: {
         findFirst: (a: unknown) => Promise<{ id: string } | null>
-        create: (a: unknown) => Promise<{ id: string }>
       }
     }
   ).orderDispute
@@ -85,20 +90,31 @@ export async function openOrderDispute({
   // FSM-safe DELIVERED/COMPLETED → DISPUTED (throws if the FSM ever disallows it).
   assertOrderTransition(order.status as never, 'DISPUTED')
 
-  const created = await disputeModel.create({
-    data: {
-      orderId: order.id,
-      openedById: user.id,
-      category,
-      description: description.trim(),
-      status: 'OPEN',
-    },
+  // Create the dispute and flip the order atomically — otherwise a failure between
+  // the two leaves a dispute with no DISPUTED order (or vice-versa). Pre-migration
+  // the whole transaction throws (feature simply unavailable until the table exists).
+  let createdId = ''
+  await prisma.$transaction(async (tx) => {
+    const created = await (
+      tx as unknown as {
+        orderDispute: { create: (a: unknown) => Promise<{ id: string }> }
+      }
+    ).orderDispute.create({
+      data: {
+        orderId: order.id,
+        openedById: user.id,
+        category,
+        description: description.trim(),
+        status: 'OPEN',
+      },
+    })
+    createdId = created.id
+    await tx.order.update({ where: { id: order.id }, data: { status: 'DISPUTED' } })
   })
-  await prisma.order.update({ where: { id: order.id }, data: { status: 'DISPUTED' } })
 
   await logAuditAs(user, {
     entityType: 'OrderDispute',
-    entityId: created.id,
+    entityId: createdId,
     action: 'ORDER_DISPUTE_OPENED',
     payload: {
       orderId: order.id,

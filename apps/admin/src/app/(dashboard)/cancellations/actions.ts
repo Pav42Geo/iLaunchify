@@ -74,26 +74,34 @@ export async function reviewCancellation({
         where: { id: req.orderId },
         data: { status: 'CANCELLED' },
       })
-      // PartnerStrike is a pending-migration model → cast-guarded until the
-      // migration lands (then remove the cast per POST_MIGRATION_CLEANUP).
-      if (willStrike && strikePartner) {
-        await (
-          tx as unknown as {
-            partnerStrike: { create: (a: unknown) => Promise<unknown> }
-          }
-        ).partnerStrike.create({
-          data: {
-            partnerId: strikePartner.id,
-            cancellationRequestId: req.id,
-            orderId: req.orderId,
-            dispatchId: req.dispatchId,
-            reason: 'Approved cancellation request',
-            status: 'ACTIVE',
-          },
-        })
-      }
     }
   })
+
+  // The strike is SUPPLEMENTARY — recorded after the cancellation commits, never
+  // inside its transaction. A failed statement inside an interactive transaction
+  // poisons the whole tx (CockroachDB), so a missing partner_strike table (before
+  // the migration lands, with partnerStrikeOnCancel defaulting true) would otherwise
+  // roll back the entire approval. Best-effort + cast-guarded.
+  let strikeRecorded = false
+  if (willStrike && strikePartner) {
+    strikeRecorded = await (
+      prisma as unknown as {
+        partnerStrike: { create: (a: unknown) => Promise<unknown> }
+      }
+    ).partnerStrike
+      .create({
+        data: {
+          partnerId: strikePartner.id,
+          cancellationRequestId: req.id,
+          orderId: req.orderId,
+          dispatchId: req.dispatchId,
+          reason: 'Approved cancellation request',
+          status: 'ACTIVE',
+        },
+      })
+      .then(() => true)
+      .catch(() => false)
+  }
 
   // Snapshot the money breakdown the policy produces against the order total, so
   // the record is reproducible (the project values audit reproducibility). The
@@ -135,9 +143,12 @@ export async function reviewCancellation({
             feesExceededBasis: outcome.feesExceededBasis,
           }
         : undefined,
-      // Strike recorded against the at-fault partner, if the policy is on and the
-      // requester is a partner.
-      strike: willStrike ? { partnerId: strikePartner?.id ?? null } : undefined,
+      // Strike against the at-fault partner — `recorded` is false if the write
+      // failed (e.g. partner_strike table not yet migrated), so the approval still
+      // succeeds and the gap is visible in the audit trail.
+      strike: willStrike
+        ? { partnerId: strikePartner?.id ?? null, recorded: strikeRecorded }
+        : undefined,
     },
   })
 
