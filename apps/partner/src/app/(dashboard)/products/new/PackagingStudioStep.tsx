@@ -169,6 +169,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // meaningful for foldable cartons (box topology); rigid containers stay solid.
   const [foldAmt, setFoldAmt] = useState(1)
   const setFold3d = (t: number) => { setFoldAmt(t); handleRef.current?.setFoldAmount(t) }
+  // Custom saved camera angles ("Save view" — Pacdora-style).
+  const [savedViews, setSavedViews] = useState<{ theta: number; phi: number; radius: number }[]>([])
+  const saveCurrentView = () => { const c = handleRef.current?.getCamera(); if (c) setSavedViews((v) => [...v, c]) }
+  const removeSavedView = (i: number) => setSavedViews((v) => v.filter((_, idx) => idx !== i))
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
@@ -611,18 +615,52 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               </div>
 
               {/* Preset camera views — floats above the main control bar (Pacdora-style). */}
-              <div className="absolute bottom-[70px] left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-2xl border border-ink-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+              <div className="absolute bottom-[70px] left-1/2 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-2xl border border-ink-200 bg-white/95 p-1 shadow-sm backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {VIEW_PRESETS.map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => handleRef.current?.setCameraView(CAMERA_PRESETS[key].theta, CAMERA_PRESETS[key].phi)}
-                    className="grid place-items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10.5px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                    className="grid shrink-0 place-items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10.5px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
                   >
                     <BoxIcon className="h-4 w-4" />
                     {label}
                   </button>
                 ))}
+
+                {/* Custom saved views */}
+                {savedViews.map((v, i) => (
+                  <div key={i} className="group relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleRef.current?.setCameraView(v.theta, v.phi, v.radius)}
+                      className="grid place-items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10.5px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                    >
+                      <BoxIcon className="h-4 w-4" />
+                      View {i + 1}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove saved view ${i + 1}`}
+                      onClick={() => removeSavedView(i)}
+                      className="absolute right-0.5 top-0.5 hidden h-4 w-4 place-items-center rounded-full bg-ink-200 text-ink-600 hover:bg-ink-300 group-hover:grid"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ))}
+
+                <span className="mx-0.5 h-7 w-px shrink-0 bg-ink-200" />
+                {/* Save view — captures the current camera angle. */}
+                <button
+                  type="button"
+                  onClick={saveCurrentView}
+                  title="Save current view"
+                  className="grid shrink-0 place-items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-50"
+                >
+                  <span className="grid h-4 w-4 place-items-center rounded bg-pink-500 text-white"><Plus className="h-3 w-3" /></span>
+                  Save view
+                </button>
               </div>
 
               {/* Main 3D controls — zoom + Open/Close (fold). */}
