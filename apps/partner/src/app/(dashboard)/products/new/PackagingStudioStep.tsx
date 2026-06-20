@@ -729,8 +729,6 @@ function DrawerHead({ title, sub }: { title: string; sub?: string }) {
   )
 }
 
-const LIBRARY_SUGGESTIONS = ['Water bottle', 'Stand-up pouch', 'Tuck-end box', 'Glass jar', 'Drink can', 'Dropper bottle', 'Shipping box']
-
 function LibraryDrawer({
   tab,
   onTab,
@@ -815,13 +813,6 @@ function LibraryDrawer({
             className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-2 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
           />
         </div>
-        {tab === 'library' && !q && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {LIBRARY_SUGGESTIONS.map((s) => (
-              <button key={s} type="button" onClick={() => onSearch(s)} className="rounded-full border border-ink-200 px-2 py-0.5 text-[10.5px] text-ink-600 hover:border-pink-300 hover:bg-pink-50">{s}</button>
-            ))}
-          </div>
-        )}
       </div>
 
       {tab === 'library' ? (
