@@ -373,6 +373,25 @@ export async function submitProductForReview(productTemplateId: string): Promise
     return { ok: false, error: 'Configure at least one variant (container size).' }
   }
 
+  // Custom-packaging approval gate. A product that uses CUSTOM packaging (no
+  // catalog packagingTypeId) can't be reviewed until that packaging is at least
+  // in admin review — and it only goes LIVE once the packaging is APPROVED.
+  // reviewStatus ships with a pending migration → cast-guarded (.catch → []).
+  const pkgSysIds = tpl.packagingSystems.map((p) => p.packagingSystemId)
+  if (pkgSysIds.length > 0) {
+    const sysRows = await prisma.packagingSystem.findMany({ where: { id: { in: pkgSysIds } }, select: { id: true, packagingTypeId: true, partnerName: true } })
+    const reviewRows = await (prisma as unknown as {
+      packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; reviewStatus: string | null }>> }
+    }).packagingSystem
+      .findMany({ where: { id: { in: pkgSysIds } }, select: { id: true, reviewStatus: true } })
+      .catch(() => [] as Array<{ id: string; reviewStatus: string | null }>)
+    const reviewById = new Map(reviewRows.map((r) => [r.id, r.reviewStatus]))
+    const unsubmitted = sysRows.filter((s) => !s.packagingTypeId && !['SUBMITTED', 'APPROVED'].includes(reviewById.get(s.id) ?? 'NONE'))
+    if (unsubmitted.length > 0) {
+      return { ok: false, error: `Submit your custom packaging for admin review first: ${unsubmitted.map((s) => s.partnerName).join(', ')}. Open the product’s Packaging Studio → My tab → “Submit for catalog review”.` }
+    }
+  }
+
   // Banned-ingredient runtime enforcement (FDA_REGULATORY_POSTURE §5). Re-check
   // the full composition at the publish gate — refuse the transition + audit
   // the block if any base/optional ingredient matches the dictionary.
