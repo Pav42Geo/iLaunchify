@@ -218,6 +218,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Product Mockups', icon: Eye, href: '/asset-management/product-mockups' },
+        { kind: 'item', label: 'Packaging Review', icon: Package, href: '/asset-management/packaging-review' },
         { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/applications/packaging-mockups', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },

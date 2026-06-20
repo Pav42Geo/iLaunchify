@@ -13,7 +13,8 @@
 // =============================================================================
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerActor } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { addPackagingLink } from '../[id]/edit/card-actions'
 
@@ -186,4 +187,23 @@ export async function attachCatalogType(draftId: string, packagingTypeId: string
   const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })
   if (!r.ok) return { ok: false, error: r.error ?? 'Could not attach.' }
   return { ok: true, systemId: system.id }
+}
+
+/**
+ * Submit a partner's custom packaging for admin catalog review. Admin approves it
+ * into an ACTIVE PackagingType (docs/PACKAGING_REVIEW.md). Cast-guarded — the
+ * review columns ship with a pending migration.
+ */
+export async function submitPackagingForReview(systemId: string, suggestedCategory?: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return { ok: false, error: actor.error }
+  const sys = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
+  if (!sys) return { ok: false, error: 'Packaging not found.' }
+  const ps = (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
+  await ps.update({
+    where: { id: systemId },
+    data: { reviewStatus: 'SUBMITTED', submittedForReviewAt: new Date(), suggestedCategory: suggestedCategory ?? null, reviewNotes: null },
+  })
+  await logAuditAs(actor.user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_SUBMIT_REVIEW', payload: { suggestedCategory: suggestedCategory ?? null } })
+  return { ok: true }
 }

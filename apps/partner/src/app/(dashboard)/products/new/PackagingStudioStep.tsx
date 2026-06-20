@@ -57,7 +57,7 @@ import {
   type NormBox,
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
-import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
+import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -177,6 +177,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
   const [busyAttach, setBusyAttach] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [busyCatalog, setBusyCatalog] = useState<string | null>(null)
+  const [busyReview, setBusyReview] = useState<string | null>(null)
 
   const artRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ kind: 'frame' | 'trim' | 'safe'; id?: string; mode: 'move' | 'resize'; startX: number; startY: number; startBox: NormBox } | null>(null)
@@ -270,6 +271,16 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
       refreshAttached()
       void loadPackagingStudio(draftId).then((res) => { if (res.ok) { setData(res.data); setActiveSystemId(r.systemId) } })
       setLibTab('my')
+    })
+  }
+
+  // Submit a custom (non-catalog) packaging for admin catalog review.
+  function onSubmitReview(systemId: string) {
+    setBusyReview(systemId)
+    void submitPackagingForReview(systemId).then((r) => {
+      setBusyReview(null)
+      if (!r.ok) { toast.error(r.error); return }
+      toast.success('Submitted for catalog review — admin will prep mockups and publish it.')
     })
   }
 
@@ -530,6 +541,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
               busyCatalog={busyCatalog}
               onUseCatalog={onUseCatalog}
               onCatalogPreview={(cat) => { setView('3d'); setTopology(catalogTopologyKey(cat)) }}
+              onSubmitReview={onSubmitReview}
+              busyReview={busyReview}
               systems={systems}
               attachedIds={attached}
               busyAttach={busyAttach}
@@ -727,6 +740,8 @@ function LibraryDrawer({
   busyCatalog,
   onUseCatalog,
   onCatalogPreview,
+  onSubmitReview,
+  busyReview,
   systems,
   attachedIds,
   busyAttach,
@@ -748,6 +763,8 @@ function LibraryDrawer({
   busyCatalog: string | null
   onUseCatalog: (packagingTypeId: string) => void
   onCatalogPreview: (category: string) => void
+  onSubmitReview: (systemId: string) => void
+  busyReview: string | null
   systems: StudioPackagingOption[]
   attachedIds: string[]
   busyAttach: string | null
@@ -879,10 +896,24 @@ function LibraryDrawer({
                       </button>
                     </div>
                     {on && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
-                        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
-                      </div>
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
+                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
+                        </div>
+                        {/* Custom (non-catalog) packaging can be submitted to admin to join the Library. */}
+                        {att && !att.packagingTypeId && (
+                          <button
+                            type="button"
+                            onClick={() => onSubmitReview(s.id)}
+                            disabled={busyReview === s.id}
+                            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
+                            title="Send to admin to prep 3D/2D mockups and publish into the Library catalog"
+                          >
+                            <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : 'Submit for catalog review'}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 )
