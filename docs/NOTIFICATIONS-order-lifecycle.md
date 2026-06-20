@@ -15,22 +15,28 @@ admin `/orders/[id]` page), fanned out to every admin, best-effort:
 Before this, admins got no push signal at all for either — they'd have to poll the
 queue. This closes the highest-value gap.
 
-## Follow-up — needs new NotificationEvent values (Mac migration)
+## Wired — built, pending the enum migration (2026-06-20)
 
-`NotificationEvent` is a Prisma enum, so these need a schema migration + `db push` +
-`db:generate` before they can be dispatched (the generated type gates the literal at
-the call site). Add to `enum NotificationEvent`, add a `TemplateData` entry + switch
-case in `packages/notifications/src/templates.ts`, then wire the dispatch:
+Schema (`enum NotificationEvent`) + templates + dispatch calls are all in. They fire
+correctly once the new enum values exist in the DB + generated client; the dispatcher
+is best-effort so they're safe to call before then (a bad-enum write is swallowed).
 
 | Event | Recipient | Fires from | Payload |
 |---|---|---|---|
-| `CREATOR_ORDER_CANCELLED` | order's creator | admin `reviewCancellation` (APPROVED) | `{ orderId, refundCents? }` |
+| `CREATOR_ORDER_CANCELLED` | order's creator (`Order.creatorUserId`) | admin `reviewCancellation` (APPROVED) | `{ orderId, refundCents? }` |
 | `CREATOR_ORDER_DISPUTE_RESOLVED` | order's creator | admin `resolveOrderDispute` | `{ orderId, decision }` |
-| `PARTNER_CANCELLATION_REVIEWED` | the requesting partner | admin `reviewCancellation` | `{ orderId, decision }` |
+| `PARTNER_CANCELLATION_REVIEWED` | requesting partner (`requestedById`, if a Partner) | admin `reviewCancellation` (approve/deny) | `{ orderId, decision }` |
 
-Recipient resolution: creator = `Order.creatorUserId`; partner = the request's
-`requestedById`. Pattern mirrors the admin fan-out already in `cancel-actions.ts` /
-`dispute-actions.ts`, but to a single user.
+### Migration + cleanup (Mac)
 
-These were left for a migration rather than forcing enum casts through the
-notifications layer (cleaner to add them properly with the schema change).
+1. `pnpm db:push` (adds the 3 enum values) → `pnpm db:generate` → `rm -rf apps/*/.next`.
+2. Drop the temporary casts once the generated type knows the values:
+   - `packages/notifications/src/templates.ts` — `switch (event as string)` → `switch (event)`.
+   - `apps/admin/src/app/(dashboard)/cancellations/actions.ts` — remove the `evt()` cast helper, pass the literals directly.
+   - `apps/admin/src/app/(dashboard)/orders/[orderId]/dispute-actions.ts` — drop the `as unknown as NotificationEvent` cast.
+
+### Known small gap
+
+A **creator** whose own cancellation request is DENIED gets no push (there's no
+`CREATOR_CANCELLATION_DENIED` event). Low priority — they initiated it and saw the
+in-app confirmation. Add an event if it proves needed.

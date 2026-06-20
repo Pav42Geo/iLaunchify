@@ -3182,6 +3182,10 @@ enum NotificationEvent {
   // Phase H4 — admin needs visibility on manufacturer-cancel + withdrawal
   ADMIN_ORDER_CANCELLED_BY_MANUFACTURER
   ADMIN_DISPATCH_WITHDRAWN
+  // Cancellation / dispute review outcomes (docs/NOTIFICATIONS-order-lifecycle.md)
+  CREATOR_ORDER_CANCELLED // a creator's order was cancelled (admin approved a request)
+  CREATOR_ORDER_DISPUTE_RESOLVED // admin resolved/rejected the creator's dispute
+  PARTNER_CANCELLATION_REVIEWED // the requesting partner's cancellation was approved/denied
   // C4 — certificate expiry tracking
   CERT_EXPIRING_SOON
   CERT_EXPIRED

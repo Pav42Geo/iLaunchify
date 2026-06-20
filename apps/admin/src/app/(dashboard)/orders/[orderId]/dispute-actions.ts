@@ -6,9 +6,11 @@
 // cast-guarded until it lands.
 
 import { prisma } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertOrderTransition } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -44,7 +46,7 @@ export async function resolveOrderDispute({
 
   const order = await prisma.order.findUnique({
     where: { id: dispute.orderId },
-    select: { status: true },
+    select: { status: true, creatorUserId: true },
   })
 
   await prisma.$transaction(async (tx) => {
@@ -76,6 +78,17 @@ export async function resolveOrderDispute({
     toValue: decision,
     payload: { orderId: dispute.orderId, resolution: resolution?.trim() || null },
   })
+
+  // Notify the creator of the outcome (best-effort). Pending NotificationEvent
+  // migration — cast the literal until the enum lands.
+  if (order?.creatorUserId) {
+    await dispatchNotification({
+      userId: order.creatorUserId,
+      event: 'CREATOR_ORDER_DISPUTE_RESOLVED' as unknown as NotificationEvent,
+      data: { orderId: dispute.orderId, decision },
+      audience: 'creator',
+    })
+  }
   revalidatePath(`/orders/${dispute.orderId}`)
   revalidatePath('/orders')
   return { ok: true }

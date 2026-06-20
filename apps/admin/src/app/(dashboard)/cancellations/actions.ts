@@ -1,10 +1,16 @@
 'use server'
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { computeCancellationOutcome, assertOrderTransition } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
+
+// Pending NotificationEvent migration — cast the new literals until the enum lands
+// (docs/NOTIFICATIONS-order-lifecycle.md). Drop the cast post-migration.
+const evt = (e: string): NotificationEvent => e as unknown as NotificationEvent
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -37,7 +43,7 @@ export async function reviewCancellation({
       orderId: true,
       dispatchId: true,
       requestedById: true,
-      order: { select: { totalCents: true, status: true } },
+      order: { select: { totalCents: true, status: true, creatorUserId: true } },
     },
   })
   if (!req) return { ok: false, error: 'Cancellation request not found.' }
@@ -66,14 +72,14 @@ export async function reviewCancellation({
   // partner who asked to cancel a dispatch they couldn't fulfill. Creator-initiated
   // requests have no Partner row for the requester, so no strike is recorded.
   const policy = await getOrderSettings()
-  const strikePartner =
-    decision === 'APPROVED'
-      ? await prisma.partner.findFirst({
-          where: { userId: req.requestedById },
-          select: { id: true },
-        })
-      : null
-  const willStrike = decision === 'APPROVED' && policy.partnerStrikeOnCancel && !!strikePartner
+  // The requester is a partner when a Partner row exists for their user (B.4 partner
+  // request); creator-initiated requests have none. Resolved regardless of decision
+  // so we can notify the partner of either outcome.
+  const requesterPartner = await prisma.partner.findFirst({
+    where: { userId: req.requestedById },
+    select: { id: true },
+  })
+  const willStrike = decision === 'APPROVED' && policy.partnerStrikeOnCancel && !!requesterPartner
 
   await prisma.$transaction(async (tx) => {
     await tx.cancellationRequest.update({
@@ -99,7 +105,7 @@ export async function reviewCancellation({
   // the migration lands, with partnerStrikeOnCancel defaulting true) would otherwise
   // roll back the entire approval. Best-effort + cast-guarded.
   let strikeRecorded = false
-  if (willStrike && strikePartner) {
+  if (willStrike && requesterPartner) {
     strikeRecorded = await (
       prisma as unknown as {
         partnerStrike: { create: (a: unknown) => Promise<unknown> }
@@ -107,7 +113,7 @@ export async function reviewCancellation({
     ).partnerStrike
       .create({
         data: {
-          partnerId: strikePartner.id,
+          partnerId: requesterPartner.id,
           cancellationRequestId: req.id,
           orderId: req.orderId,
           dispatchId: req.dispatchId,
@@ -163,10 +169,28 @@ export async function reviewCancellation({
       // failed (e.g. partner_strike table not yet migrated), so the approval still
       // succeeds and the gap is visible in the audit trail.
       strike: willStrike
-        ? { partnerId: strikePartner?.id ?? null, recorded: strikeRecorded }
+        ? { partnerId: requesterPartner?.id ?? null, recorded: strikeRecorded }
         : undefined,
     },
   })
+
+  // Notify the affected parties (best-effort — dispatcher never throws).
+  if (decision === 'APPROVED' && req.order?.creatorUserId) {
+    await dispatchNotification({
+      userId: req.order.creatorUserId,
+      event: evt('CREATOR_ORDER_CANCELLED'),
+      data: { orderId: req.orderId, refundCents: outcome?.refundCents },
+      audience: 'creator',
+    })
+  }
+  if (requesterPartner) {
+    await dispatchNotification({
+      userId: req.requestedById,
+      event: evt('PARTNER_CANCELLATION_REVIEWED'),
+      data: { orderId: req.orderId, decision },
+      audience: 'partner',
+    })
+  }
 
   revalidatePath('/cancellations')
   revalidatePath(`/orders/${req.orderId}`)

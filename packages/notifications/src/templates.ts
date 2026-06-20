@@ -93,6 +93,10 @@ interface TemplateData {
     affectedProductCount: number
     creatorNames: string[]
   }
+  // Cancellation / dispute review outcomes
+  CREATOR_ORDER_CANCELLED: { orderId: string; refundCents?: number }
+  CREATOR_ORDER_DISPUTE_RESOLVED: { orderId: string; decision: 'RESOLVED' | 'REJECTED' }
+  PARTNER_CANCELLATION_REVIEWED: { orderId: string; decision: 'APPROVED' | 'DENIED' }
 }
 
 function fmtSection(sectionType: string): string {
@@ -111,7 +115,10 @@ export function renderTemplate<E extends NotificationEvent>(
   event: E,
   data: TemplateData[E],
 ): NotificationTemplate {
-  switch (event) {
+  // Switch on the string so newly-added events (pending the NotificationEvent enum
+  // migration) compile here before the generated client knows them. The `default`
+  // case keeps it total.
+  switch (event as string) {
     case 'PACKAGING_APPROVED': {
       const d = data as TemplateData['PACKAGING_APPROVED']
       return {
@@ -314,6 +321,40 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `Expired cert on ${d.affectedProductCount} live product${d.affectedProductCount === 1 ? '' : 's'}`,
         body: `${d.companyName}'s ${d.certName} expired while attached to ${d.affectedProductCount} PUBLISHED product${d.affectedProductCount === 1 ? '' : 's'}.${creators} Products are flagged "needs cert refresh".`,
         link: `/audit`,
+      }
+    }
+    case 'CREATOR_ORDER_CANCELLED': {
+      const d = data as TemplateData['CREATOR_ORDER_CANCELLED']
+      const refund =
+        typeof d.refundCents === 'number'
+          ? ` A refund of $${(d.refundCents / 100).toFixed(2)} will follow per our cancellation policy.`
+          : ''
+      return {
+        title: `Order #${d.orderId.slice(-8)} was cancelled`,
+        body: `Your order has been cancelled.${refund}`,
+        link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'CREATOR_ORDER_DISPUTE_RESOLVED': {
+      const d = data as TemplateData['CREATOR_ORDER_DISPUTE_RESOLVED']
+      return {
+        title: `Your dispute on order #${d.orderId.slice(-8)} was ${d.decision.toLowerCase()}`,
+        body:
+          d.decision === 'RESOLVED'
+            ? 'We reviewed your report and resolved it in your favor. See the order for details.'
+            : 'We reviewed your report and were unable to uphold it. See the order for details.',
+        link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'PARTNER_CANCELLATION_REVIEWED': {
+      const d = data as TemplateData['PARTNER_CANCELLATION_REVIEWED']
+      return {
+        title: `Cancellation request ${d.decision.toLowerCase()}`,
+        body:
+          d.decision === 'APPROVED'
+            ? `Your cancellation request for order #${d.orderId.slice(-8)} was approved.`
+            : `Your cancellation request for order #${d.orderId.slice(-8)} was denied — please fulfill the order.`,
+        link: `/orders/${d.orderId}`,
       }
     }
     default:
