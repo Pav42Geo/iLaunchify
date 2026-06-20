@@ -52,5 +52,19 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   the two `if (ev === …)` blocks back into the switch and drop the `as never`
   casts. Runtime works only once the enum migration runs.
 
+## In-studio upload (2026-06-19)
+The studio Library **My** tab "Upload packaging" opens an **in-studio modal** (no
+navigation to `/packaging/new`). It collects name, type, **material**, **parameters**
+(L/W/H mm, max weight, units, MOQ) and two files — a **packaging photo / 3D mockup**
+and a **die-line** — then calls `createCustomPackaging(FormData)`: creates a DRAFT
+`PackagingSystem`, uploads files to R2 (`uploadFile` + `packagingAssetKey`
+`reference_photo` / `die_line`) as `PartnerFile` rows, sets `partnerImageFileId`
+(typed) + cast-guarded `material` / `dielineFileId`, attaches it to the draft, audits
+`PACKAGING_CREATE`. The new system shows in **My** immediately (local state) for
+Submit-for-review. Additive schema: `PackagingSystem.material String?` +
+`dielineFileId String?` (cast-guarded until migrated).
+
 ## Mac
-`prisma db push` (additive) → `pnpm db:generate` → `rm -rf apps/*/.next` → restart.
+`prisma db push` (additive — incl. `PackagingSystem.material` + `dielineFileId`) →
+`pnpm db:generate` → `rm -rf apps/*/.next` → restart. Post-migration: drop the
+cast-guard on the material/dielineFileId update in `createCustomPackaging`.

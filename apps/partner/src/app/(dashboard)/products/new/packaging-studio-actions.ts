@@ -15,7 +15,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerActor } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { getSignedReadUrl } from '@ilaunchify/storage'
+import { getSignedReadUrl, uploadFile, packagingAssetKey } from '@ilaunchify/storage'
 import { addPackagingLink } from '../[id]/edit/card-actions'
 
 export interface StudioSurface {
@@ -233,25 +233,118 @@ export async function attachCatalogType(draftId: string, packagingTypeId: string
   return { ok: true, systemId: system.id }
 }
 
+/** One uploaded file → R2 + a PartnerFile row. Returns the PartnerFile id. */
+async function storePackagingFile(opts: {
+  partnerId: string
+  uploaderId: string
+  packagingSystemId: string
+  kind: 'die_line' | 'reference_photo'
+  file: File
+}): Promise<string | null> {
+  const { partnerId, uploaderId, packagingSystemId, kind, file } = opts
+  if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is too large (max 25 MB).`)
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const key = packagingAssetKey({ partnerId, packagingSystemId, kind, filename: file.name })
+  const upload = await uploadFile({ key, body: buffer, contentType: file.type || 'application/octet-stream' })
+  const record = await prisma.partnerFile.create({
+    data: {
+      partnerId,
+      sectionType: 'FACILITY',
+      kind: 'OTHER',
+      r2Key: upload.key,
+      originalFilename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      sizeBytes: upload.sizeBytes,
+      uploadedById: uploaderId,
+    },
+    select: { id: true },
+  })
+  return record.id
+}
+
 /**
- * Create a minimal custom PackagingSystem (DRAFT) IN-STUDIO and attach it to the
- * draft — the "Upload packaging" modal in the Library "My" tab. Keeps the partner
- * inside the fullscreen studio (no navigation to /packaging/new). The partner can
- * then submit it for catalog review from the same tab.
+ * Create a custom PackagingSystem (DRAFT) IN-STUDIO from the "Upload packaging"
+ * modal (Library → My) and attach it to the draft — no navigation out of the
+ * fullscreen studio. Accepts FormData so the partner can attach a packaging
+ * photo / 3D mockup + a die-line file alongside the parameters (dimensions,
+ * weight, unit count, MOQ) and material. The partner then submits it for admin
+ * catalog review. `material` + `dielineFileId` ship with a pending migration →
+ * a cast-guarded follow-up update writes them (skipped pre-migration).
  */
-export async function createCustomPackaging(draftId: string, name: string, topology: string): Promise<AttachResult> {
+export async function createCustomPackaging(form: FormData): Promise<AttachResult> {
   const user = await requireUser()
   if (user.role !== 'PARTNER') return { ok: false, error: 'Not a partner account.' }
   const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true } })
   if (!partner) return { ok: false, error: 'Partner not found.' }
-  const n = name.trim()
-  if (n.length < 2) return { ok: false, error: 'Give the packaging a name (2+ characters).' }
+
+  const draftId = String(form.get('draftId') ?? '')
+  const name = String(form.get('name') ?? '').trim()
+  const topology = String(form.get('topology') ?? 'OTHER')
+  const material = String(form.get('material') ?? '').trim()
+  if (!draftId) return { ok: false, error: 'Save the draft first.' }
+  if (name.length < 2) return { ok: false, error: 'Give the packaging a name (2+ characters).' }
+
+  const num = (k: string): number | null => {
+    const v = form.get(k)
+    if (v == null || String(v).trim() === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) && n >= 0 ? n : null
+  }
+  const unitCount = Math.max(1, Math.round(num('unitCount') ?? 1))
+  const moq = Math.max(1, Math.round(num('moq') ?? 1))
+  const lengthMm = num('lengthMm')
+  const widthMm = num('widthMm')
+  const heightMm = num('heightMm')
+  const maxWeightG = num('maxWeightG')
+  const dims = lengthMm || widthMm || heightMm ? { lengthMm, widthMm, heightMm } : null
 
   const system = await prisma.packagingSystem.create({
-    data: { partnerId: partner.id, partnerName: n, topology: topology as never, unitCount: 1, moq: 1, status: 'DRAFT' },
+    data: {
+      partnerId: partner.id,
+      partnerName: name,
+      topology: topology as never,
+      unitCount,
+      moq,
+      dimensions: dims ?? undefined,
+      maxWeightG: maxWeightG == null ? undefined : Math.round(maxWeightG),
+      status: 'DRAFT',
+    },
     select: { id: true },
   })
-  await logAuditAs(user, { entityType: 'PackagingSystem', entityId: system.id, action: 'PACKAGING_CREATE', payload: { name: n, topology } })
+
+  // Uploads (best-effort — a failed upload shouldn't lose the created system).
+  let photoFileId: string | null = null
+  let dielineFileId: string | null = null
+  try {
+    const photo = form.get('photo')
+    if (photo instanceof File && photo.size > 0) {
+      photoFileId = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'reference_photo', file: photo })
+    }
+    const dieline = form.get('dieline')
+    if (dieline instanceof File && dieline.size > 0) {
+      dielineFileId = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'die_line', file: dieline })
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'File upload failed.' }
+  }
+
+  // Photo → existing partnerImageFileId (typed). Material + dieline → cast-guarded
+  // (pending migration); .catch keeps creation working before `prisma db push`.
+  if (photoFileId) {
+    await prisma.packagingSystem.update({ where: { id: system.id }, data: { partnerImageFileId: photoFileId } })
+  }
+  if (material || dielineFileId) {
+    await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
+      .update({ where: { id: system.id }, data: { material: material || null, dielineFileId: dielineFileId ?? null } })
+      .catch(() => undefined)
+  }
+
+  await logAuditAs(user, {
+    entityType: 'PackagingSystem',
+    entityId: system.id,
+    action: 'PACKAGING_CREATE',
+    payload: { name, topology, material: material || null, hasPhoto: Boolean(photoFileId), hasDieline: Boolean(dielineFileId) },
+  })
 
   const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })
   if (!r.ok) return { ok: false, error: r.error ?? 'Could not attach.' }

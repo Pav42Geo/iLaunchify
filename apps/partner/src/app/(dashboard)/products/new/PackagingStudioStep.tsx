@@ -811,8 +811,12 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     : null
 }
 
-// In-studio "Upload packaging" modal — creates a custom PackagingSystem + attaches
-// it to the draft without leaving the fullscreen studio (Library → My tab).
+// Common substrates for the material datalist (free-text still allowed).
+const MATERIAL_SUGGESTIONS = ['PET', 'HDPE', 'PP', 'Glass', 'Aluminium', 'Tinplate', 'SBS folding carton', 'Kraft board', 'Corrugated', 'PE film', 'Foil laminate', 'Compostable PLA']
+
+// In-studio "Upload packaging" modal — creates a custom PackagingSystem (with
+// parameters, material, a packaging photo / 3D mockup, and a die-line file) and
+// attaches it to the draft, all without leaving the fullscreen studio.
 function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
   open: boolean
   draftId: string | null
@@ -821,58 +825,131 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
 }) {
   const [name, setName] = useState('')
   const [topology, setTopology] = useState(TOPOLOGY_OPTIONS[0]!.value)
+  const [material, setMaterial] = useState('')
+  const [lengthMm, setLengthMm] = useState('')
+  const [widthMm, setWidthMm] = useState('')
+  const [heightMm, setHeightMm] = useState('')
+  const [maxWeightG, setMaxWeightG] = useState('')
+  const [unitCount, setUnitCount] = useState('1')
+  const [moq, setMoq] = useState('1')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [dieline, setDieline] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { if (open) { setName(''); setTopology(TOPOLOGY_OPTIONS[0]!.value); setBusy(false) } }, [open])
+
+  useEffect(() => {
+    if (open) {
+      setName(''); setTopology(TOPOLOGY_OPTIONS[0]!.value); setMaterial('')
+      setLengthMm(''); setWidthMm(''); setHeightMm(''); setMaxWeightG(''); setUnitCount('1'); setMoq('1')
+      setPhoto(null); setDieline(null); setBusy(false)
+    }
+  }, [open])
   if (!open) return null
 
   async function submit() {
     if (!draftId) { toast.error('Save the draft first.'); return }
     if (name.trim().length < 2) { toast.error('Give the packaging a name.'); return }
+    const fd = new FormData()
+    fd.set('draftId', draftId)
+    fd.set('name', name)
+    fd.set('topology', topology)
+    fd.set('material', material)
+    fd.set('lengthMm', lengthMm); fd.set('widthMm', widthMm); fd.set('heightMm', heightMm)
+    fd.set('maxWeightG', maxWeightG); fd.set('unitCount', unitCount); fd.set('moq', moq)
+    if (photo) fd.set('photo', photo)
+    if (dieline) fd.set('dieline', dieline)
     setBusy(true)
-    const r = await createCustomPackaging(draftId, name, topology)
+    const r = await createCustomPackaging(fd)
     setBusy(false)
     if (!r.ok) { toast.error(r.error); return }
     onCreated(r.systemId, name.trim(), topology)
   }
 
+  const numInput = 'w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100'
+  const labelCls = 'mb-1 block text-[11px] font-semibold text-ink-600'
+
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-ink-200 bg-white p-5 shadow-xl">
-        <div className="mb-1 flex items-center gap-2">
+      <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-ink-200 bg-white shadow-xl">
+        <div className="flex items-center gap-2 border-b border-ink-100 px-5 py-4">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-pink-50 text-pink-600"><Upload className="h-4 w-4" /></span>
-          <h3 className="text-[15px] font-semibold text-ink-900">Upload custom packaging</h3>
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold text-ink-900">Upload custom packaging</h3>
+            <p className="truncate text-[11.5px] text-ink-500">Parameters + artwork go to admin to prep the 3D/2D mockups.</p>
+          </div>
         </div>
-        <p className="mb-4 text-[12px] leading-relaxed text-ink-500">
-          Adds a custom packaging to your list and attaches it to this product. Submit it for catalog review and admin preps the 3D/2D mockups — then it appears in the Library.
-        </p>
 
-        <label className="mb-1 block text-[11.5px] font-semibold text-ink-700">Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void submit() }}
-          autoFocus
-          placeholder="e.g. 500 ml matte HDPE bottle"
-          className="mb-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
-        />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {/* Identity */}
+          <div>
+            <label className={labelCls}>Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. 500 ml matte HDPE bottle" className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Type</label>
+              <select value={topology} onChange={(e) => setTopology(e.target.value)} className="w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+                {TOPOLOGY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Material</label>
+              <input list="pkg-materials" value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="e.g. PET, kraft board" className={numInput} />
+              <datalist id="pkg-materials">{MATERIAL_SUGGESTIONS.map((m) => <option key={m} value={m} />)}</datalist>
+            </div>
+          </div>
 
-        <label className="mb-1 block text-[11.5px] font-semibold text-ink-700">Type</label>
-        <select
-          value={topology}
-          onChange={(e) => setTopology(e.target.value)}
-          className="mb-5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
-        >
-          {TOPOLOGY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+          {/* Parameters */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Parameters</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div><label className={labelCls}>Length (mm)</label><input type="number" min={0} value={lengthMm} onChange={(e) => setLengthMm(e.target.value)} className={numInput} /></div>
+              <div><label className={labelCls}>Width (mm)</label><input type="number" min={0} value={widthMm} onChange={(e) => setWidthMm(e.target.value)} className={numInput} /></div>
+              <div><label className={labelCls}>Height (mm)</label><input type="number" min={0} value={heightMm} onChange={(e) => setHeightMm(e.target.value)} className={numInput} /></div>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <div><label className={labelCls}>Max weight (g)</label><input type="number" min={0} value={maxWeightG} onChange={(e) => setMaxWeightG(e.target.value)} className={numInput} /></div>
+              <div><label className={labelCls}>Units</label><input type="number" min={1} value={unitCount} onChange={(e) => setUnitCount(e.target.value)} className={numInput} /></div>
+              <div><label className={labelCls}>MOQ</label><input type="number" min={1} value={moq} onChange={(e) => setMoq(e.target.value)} className={numInput} /></div>
+            </div>
+          </div>
 
-        <div className="flex justify-end gap-2">
+          {/* Files */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Artwork & references</p>
+            <div className="grid grid-cols-2 gap-3">
+              <FilePicker label="Photo / 3D mockup" hint="JPG, PNG, GLB, GLTF, OBJ" accept="image/*,.glb,.gltf,.obj,.usdz" file={photo} onPick={setPhoto} />
+              <FilePicker label="Die-line file" hint="PDF, AI, SVG, DXF" accept=".pdf,.ai,.svg,.dxf,image/*" file={dieline} onPick={setDieline} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
           <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Cancel</button>
           <button type="button" onClick={() => void submit()} disabled={busy || !draftId} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
-            {busy ? 'Adding…' : 'Add packaging'}
+            {busy ? 'Uploading…' : 'Add packaging'}
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Compact file picker with a selected-filename chip.
+function FilePicker({ label, hint, accept, file, onPick }: { label: string; hint: string; accept: string; file: File | null; onPick: (f: File | null) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-semibold text-ink-600">{label}</label>
+      <button type="button" onClick={() => ref.current?.click()} className="flex w-full items-center gap-2 rounded-lg border border-dashed border-ink-300 bg-white px-2.5 py-2 text-left transition-colors hover:border-pink-300 hover:bg-pink-50">
+        <Upload className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[11.5px] font-medium text-ink-700">{file ? file.name : 'Choose file'}</span>
+          <span className="block truncate text-[10px] text-ink-400">{file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : hint}</span>
+        </span>
+        {file && <span role="button" tabIndex={0} aria-label="Remove file" onClick={(e) => { e.stopPropagation(); onPick(null); if (ref.current) ref.current.value = '' }} className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-ink-400 hover:bg-ink-200 hover:text-ink-700"><X className="h-3 w-3" /></span>}
+      </button>
+      <input ref={ref} type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
     </div>
   )
 }

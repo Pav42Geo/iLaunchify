@@ -3902,6 +3902,8 @@ model PackagingSystem {
   moq                 Int
   dimensions          Json? // { lengthMm, widthMm, heightMm }
   maxWeightG          Int?
+  material            String? // free-text substrate/material, e.g. "PET", "SBS folding carton"
+  dielineFileId       String? // soft FK to PartnerFile — partner-supplied die-line/artwork reference
   status              PackagingStatus            @default(DRAFT)
   // Admin-catalog review (docs/PACKAGING_REVIEW.md). When a partner submits a
   // custom upload, admin approves it into an ACTIVE PackagingType + assigns a
