@@ -3,7 +3,7 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { computeCancellationOutcome } from '@ilaunchify/orders'
+import { computeCancellationOutcome, assertOrderTransition } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -37,12 +37,28 @@ export async function reviewCancellation({
       orderId: true,
       dispatchId: true,
       requestedById: true,
-      order: { select: { totalCents: true } },
+      order: { select: { totalCents: true, status: true } },
     },
   })
   if (!req) return { ok: false, error: 'Cancellation request not found.' }
   if (req.status !== 'PENDING_REVIEW') {
     return { ok: false, error: `Already ${req.status.toLowerCase()}.` }
+  }
+
+  // On approval the order is voided (CANCELLED). The FSM allows that only up to the
+  // point goods leave the facility (PAID/ROUTING/IN_FULFILLMENT/ON_HOLD/PENDING_PAYMENT).
+  // A shipped/delivered order can't be cancelled — surface that instead of writing an
+  // illegal state. Any captured payment is returned via a separate Refund record.
+  if (decision === 'APPROVED' && req.order) {
+    try {
+      assertOrderTransition(req.order.status, 'CANCELLED')
+    } catch {
+      return {
+        ok: false,
+        error:
+          'This order has already shipped or been delivered and can’t be cancelled — handle it as a dispute or refund instead.',
+      }
+    }
   }
 
   // Policy + the at-fault partner are resolved up front so the strike is created

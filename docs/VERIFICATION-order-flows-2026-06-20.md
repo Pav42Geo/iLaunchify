@@ -30,20 +30,20 @@ and refund-plan engines. Self-review + an independent subagent pass.
    `deliveredAt` skipped the window check entirely (unbounded dispute window). → Now
    rejects with "no recorded delivery date — contact support."
 
+## Resolved (Pavel decision — option B, 2026-06-20)
+
+4. **Admin cancellation approve wrote an FSM-illegal `PAID → CANCELLED` (high,
+   pre-existing).** Decided: **CANCELLED is the "order voided" terminal**; any captured
+   payment is returned via a separate `Refund` record (the deferred executor), not
+   modeled in the FSM. → `order-fsm.ts` now allows `CANCELLED` from
+   `PAID` / `ROUTING` / `IN_FULFILLMENT` (plus the existing `PENDING_PAYMENT` /
+   `ON_HOLD`); `SHIPPED+` still can't be cancelled. `reviewCancellation` now
+   `assertOrderTransition`s before approving and returns a clear error for shipped/
+   delivered orders instead of writing an illegal state. FSM tests pin both the new
+   legal edges and the shipped-is-illegal cases.
+
 ## Open — needs a decision (NOT changed here)
 
-4. **Admin cancellation approve writes an FSM-illegal `PAID → CANCELLED` (high,
-   pre-existing).** The B.4 flow force-writes `Order.status = 'CANCELLED'` on approve
-   without `assertOrderTransition`. The FSM only allows `CANCELLED` from
-   `PENDING_PAYMENT` / `ON_HOLD`; a paid order should go `REFUNDED`. But REFUNDED
-   without a real refund is equally misleading, and `ROUTING`/`IN_FULFILLMENT` allow
-   neither — so the correct target depends on cancellation semantics that are tied to
-   the (deferred) refund executor. This predates this session and is a product
-   decision, not a silent fix. Options: (a) target by status — CANCELLED when legal,
-   REFUNDED for paid/delivered, error for mid-fulfillment; (b) add `PAID → CANCELLED`
-   to the FSM with refund as a side effect; (c) leave order status unchanged on approve
-   until the executor ships. Recommend deciding alongside the refund executor
-   (`docs/REFUND_EXECUTION.md`).
 5. **Dedup is check-then-create, not atomic (low).** Concurrent requests could create
    two PENDING cancellation requests / OPEN disputes on one order. Single-click use is
    fine; harden later with a partial unique index.

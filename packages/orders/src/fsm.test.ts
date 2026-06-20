@@ -12,9 +12,9 @@ type DS = Parameters<typeof assertDispatchTransition>[0]
 // transition" fails; loosen a guard and "rejects undocumented" fails.
 const ORDER_ALLOWED: Record<string, string[]> = {
   PENDING_PAYMENT: ['PAID', 'CANCELLED'],
-  PAID: ['ROUTING', 'REFUNDED', 'DISPUTED'],
-  ROUTING: ['IN_FULFILLMENT', 'ON_HOLD'],
-  IN_FULFILLMENT: ['READY_TO_SHIP', 'ON_HOLD'],
+  PAID: ['ROUTING', 'REFUNDED', 'DISPUTED', 'CANCELLED'],
+  ROUTING: ['IN_FULFILLMENT', 'ON_HOLD', 'CANCELLED'],
+  IN_FULFILLMENT: ['READY_TO_SHIP', 'ON_HOLD', 'CANCELLED'],
   READY_TO_SHIP: ['SHIPPED'],
   SHIPPED: ['IN_TRANSIT', 'DELIVERED'],
   IN_TRANSIT: ['DELIVERED'],
@@ -57,6 +57,19 @@ describe('assertOrderTransition', () => {
     expect(() => assertOrderTransition('PAID' as OS, 'SHIPPED' as OS)).toThrow()
     expect(() => assertOrderTransition('COMPLETED' as OS, 'PAID' as OS)).toThrow()
     expect(() => assertOrderTransition('READY_TO_SHIP' as OS, 'PAID' as OS)).toThrow()
+  })
+
+  it('an order can be cancelled up to the point goods leave the facility', () => {
+    // Admin cancellation approve / creator cancel — legal before SHIPPED.
+    for (const from of ['PENDING_PAYMENT', 'PAID', 'ROUTING', 'IN_FULFILLMENT', 'ON_HOLD']) {
+      expect(() => assertOrderTransition(from as OS, 'CANCELLED' as OS)).not.toThrow()
+    }
+  })
+
+  it('a shipped/delivered order cannot be CANCELLED (use dispute/refund)', () => {
+    for (const from of ['READY_TO_SHIP', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED']) {
+      expect(() => assertOrderTransition(from as OS, 'CANCELLED' as OS)).toThrow()
+    }
   })
 
   it('terminal states permit no outgoing transition', () => {
