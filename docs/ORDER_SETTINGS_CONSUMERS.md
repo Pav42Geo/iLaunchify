@@ -15,6 +15,7 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 | `autoCancelAfterHours` | `runStaleOrderAutoCancel` (`packages/orders/auto-cancel.ts`), called by the admin cron |
 | `changeoverDays` | marketing `pricing.ts` (D5 multi-flavor lead-time model) |
 | `defaultMoq` | **2026-06-20** — marketing `launch-actions` clamp floor + creator `ProductionStep` UI min/clamp/helper (via `getProductionOptions`) |
+| `creatorCancelWindowHours` / `autoApproveCreatorCancelBeforeRouting` | **2026-06-20** — creator `requestOrderCancellation` (`orders/cancel-actions.ts`): unpaid + within window + auto-approve → cancel outright; otherwise files a `CancellationRequest` for admin review. UI: Cancel order button on the order detail page. |
 
 ## Policy-only (no consumer yet — by design)
 
@@ -22,7 +23,6 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 |---|---|
 | `maxReroutes` | V1 parks a declined/timed-out order at `ON_HOLD` for **manual** admin reroute. The auto-reroute loop that would consume a reroute cap is V1.5 marketplace matching (#153). Wiring it now would imply a loop that doesn't exist. |
 | `warehouseReferralFeeBps` | Warehouse-referral revenue path not built. |
-| `creatorCancelWindowHours` / `autoApproveCreatorCancelBeforeRouting` | No creator-initiated order-cancel flow exists yet. These gate that flow when it ships. |
 | `partnerStrikeOnCancel` | No `PartnerStrike` model exists (only `PartnerClawback`, which is money). Recorded in the cancellation audit snapshot; enforcement awaits a strike model + flow. |
 | `disputeWindowDays` | The `Dispute` model is Stripe-chargeback-shaped (`stripeDisputeId`, `evidenceDueBy`), not a creator-opened post-delivery dispute. Needs its own flow. |
 

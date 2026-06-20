@@ -39,6 +39,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { AdjustOrderButton } from './AdjustOrderButton'
+import { CancelOrderButton } from './CancelOrderButton'
 import { DelayApprovalPrompt } from './DelayApprovalPrompt'
 
 export const dynamic = 'force-dynamic'
@@ -199,6 +200,19 @@ export default async function OrderDetailPage({
   )
   const needsAdjust = changeRequestedDispatches.length > 0
   const isDelivered = status === 'DELIVERED'
+  // Creator self-cancel is offered until the order is in/after fulfillment (mirrors
+  // the guard in requestOrderCancellation).
+  const cancellable = ![
+    'IN_FULFILLMENT',
+    'READY_TO_SHIP',
+    'SHIPPED',
+    'IN_TRANSIT',
+    'DELIVERED',
+    'COMPLETED',
+    'CANCELLED',
+    'REFUNDED',
+    'DISPUTED',
+  ].includes(order.status)
 
   return (
     <div className="space-y-6">
@@ -317,6 +331,7 @@ export default async function OrderDetailPage({
             orderId={order.id}
             needsAdjust={needsAdjust}
             isDelivered={isDelivered}
+            cancellable={cancellable}
             supportUnlocked={supportUnlocked}
           />
           <TotalsCard
@@ -691,12 +706,14 @@ function ActionsCard({
   orderId,
   needsAdjust,
   isDelivered,
+  cancellable,
   supportUnlocked,
 }: {
   productId: string | null
   orderId: string
   needsAdjust: boolean
   isDelivered: boolean
+  cancellable: boolean
   supportUnlocked: boolean
 }) {
   // R16.a — supportUnlocked is now resolved server-side through
@@ -784,6 +801,11 @@ function ActionsCard({
               <Package className="h-3.5 w-3.5" aria-hidden="true" />
               View product
             </Link>
+          </li>
+        )}
+        {cancellable && (
+          <li>
+            <CancelOrderButton orderId={orderId} />
           </li>
         )}
       </ul>

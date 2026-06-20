@@ -108,6 +108,8 @@ export const AUDIT_ACTIONS = [
   'ORDER_CREATED',
   'ORDER_PAID',
   'ORDER_CANCELLED',
+  // Creator self-cancel of an unpaid order before routing (auto-approved)
+  'ORDER_CREATOR_CANCELLED',
   // Restricted-category eligibility gate (labeling ≠ licensing)
   'ORDER_BLOCKED_RESTRICTED',
   // Die-line label-frame compliance hard gate at checkout (a required regulatory
