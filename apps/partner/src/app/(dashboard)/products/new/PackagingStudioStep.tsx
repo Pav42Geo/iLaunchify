@@ -46,6 +46,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Clock,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -97,6 +98,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   CASE: 'Cases', OTHER: 'Other',
 }
 const CATEGORY_ORDER = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
+const RECENT_SEARCH_KEY = 'ilf:pkgStudio:recentSearch'
 
 const SCOPE_COLOR: Record<FrameScope, { stroke: string; fill: string; chip: string }> = {
   RECIPE: { stroke: '#059669', fill: 'rgba(5,150,105,0.08)', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -789,6 +791,49 @@ function LibraryDrawer({
   const [catOpen, setCatOpen] = useState(false)
   const stripRef = useRef<HTMLDivElement>(null)
   const scrollStrip = (dx: number) => stripRef.current?.scrollBy({ left: dx, behavior: 'smooth' })
+
+  // Smart search. The typed `draft` only drives the suggestions dropdown — it
+  // does NOT filter the grid (the packaging stays visible while typing). The grid
+  // filters by the COMMITTED `search` (parent state), applied only when the user
+  // picks a suggestion or presses Enter.
+  const [draft, setDraft] = useState(search)
+  const dq = draft.trim().toLowerCase()
+  const [searchFocused, setSearchFocused] = useState(false)
+  const [recent, setRecent] = useState<string[]>([])
+  useEffect(() => {
+    try { const raw = localStorage.getItem(RECENT_SEARCH_KEY); if (raw) setRecent(JSON.parse(raw) as string[]) } catch { /* ignore */ }
+  }, [])
+  const pushRecent = useCallback((term: string) => {
+    const t = term.trim()
+    if (!t) return
+    setRecent((prev) => {
+      const next = [t, ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 6)
+      try { localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+  // Commit a search term: filters the grid + records it as recent.
+  const commitSearch = useCallback((term: string) => {
+    setDraft(term)
+    onSearch(term)
+    pushRecent(term)
+    setSearchFocused(false)
+  }, [onSearch, pushRecent])
+  const clearSearch = useCallback(() => { setDraft(''); onSearch('') }, [onSearch])
+  // Searchable vocabulary for the active tab.
+  const vocab = useMemo(() => {
+    const names = tab === 'library'
+      ? [...catalog.map((c) => c.displayName), ...catalog.map((c) => CATEGORY_LABEL[c.category] ?? c.category)]
+      : systems.map((s) => s.partnerName)
+    return [...new Set(names)]
+  }, [tab, catalog, systems])
+  const suggestions = useMemo(() => {
+    if (!dq) return recent.slice(0, 6)
+    return vocab
+      .filter((v) => v.toLowerCase().includes(dq))
+      .sort((a, b) => (Number(b.toLowerCase().startsWith(dq)) - Number(a.toLowerCase().startsWith(dq))) || a.localeCompare(b))
+      .slice(0, 7)
+  }, [dq, vocab, recent])
   // Categories that actually have items under the current search.
   const availableCats = CATEGORY_ORDER.filter((cat) => catFiltered.some((c) => c.category === cat))
   // If the active category is filtered away (by search), fall back to All.
@@ -803,25 +848,52 @@ function LibraryDrawer({
         <button type="button" onClick={() => onTab('my')} className={tabCls(tab === 'my')}>My</button>
       </div>
 
-      {/* Search (packaging-specific suggestions) */}
+      {/* Search — smart suggestions (recent + typeahead). Typing only drives the
+          dropdown; the grid filters only on commit (Enter / pick a suggestion). */}
       <div className="px-3 pt-3">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 z-[1] h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
           <input
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setSearchFocused(true) }}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); commitSearch(draft) }
+              else if (e.key === 'Escape') { setSearchFocused(false) }
+            }}
             placeholder={tab === 'library' ? 'Try “water bottle”, “tuck-end box”…' : 'Search your packaging…'}
             className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-8 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
           />
-          {search && (
+          {draft && (
             <button
               type="button"
               aria-label="Clear search"
-              onClick={() => onSearch('')}
-              className="absolute right-1.5 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+              onClick={clearSearch}
+              className="absolute right-1.5 top-1/2 z-[1] grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
             >
               <X className="h-3.5 w-3.5" />
             </button>
+          )}
+
+          {/* Suggestions dropdown */}
+          {searchFocused && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
+              {!dq && <p className="px-2.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">Recent searches</p>}
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); commitSearch(s) }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-ink-700 transition-colors hover:bg-pink-50 hover:text-pink-700"
+                >
+                  {dq
+                    ? <Search className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                    : <Clock className="h-3.5 w-3.5 shrink-0 text-ink-400" />}
+                  <span className="truncate">{s}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
