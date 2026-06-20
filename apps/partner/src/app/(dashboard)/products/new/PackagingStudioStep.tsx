@@ -63,7 +63,7 @@ import {
   type NormBox,
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
-import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
+import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -99,6 +99,19 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 const CATEGORY_ORDER = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
 const RECENT_SEARCH_KEY = 'ilf:pkgStudio:recentSearch'
+// PackagingTopology options for the in-studio "Upload packaging" modal.
+const TOPOLOGY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'SINGLE_CONTAINER', label: 'Single container (bottle / jar / can / box)' },
+  { value: 'MULTI_CONTAINER_BOX', label: 'Outer carton (variety pack / sampler)' },
+  { value: 'POUCH_STAND_UP', label: 'Stand-up pouch' },
+  { value: 'POUCH_FLAT', label: 'Flat pouch' },
+  { value: 'SACHET', label: 'Sachet' },
+  { value: 'STICK_PACK', label: 'Stick pack' },
+  { value: 'TUBE', label: 'Squeeze tube' },
+  { value: 'CAPSULE_JAR', label: 'Capsule / tablet bottle' },
+  { value: 'CASE', label: 'Shipper case' },
+  { value: 'OTHER', label: 'Other' },
+]
 // Bottom 3D-view camera presets (Pacdora-style view bar).
 const VIEW_PRESETS: [CameraPreset, string][] = [
   ['frontRight', 'Front Right'],
@@ -173,6 +186,11 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   const [savedViews, setSavedViews] = useState<{ theta: number; phi: number; radius: number }[]>([])
   const saveCurrentView = () => { const c = handleRef.current?.getCamera(); if (c) setSavedViews((v) => [...v, c]) }
   const removeSavedView = (i: number) => setSavedViews((v) => v.filter((_, idx) => idx !== i))
+  // In-studio "Upload packaging" (My tab) — creates a custom packaging without
+  // leaving the fullscreen studio. Newly created systems are kept locally so they
+  // appear in My immediately (the page prop only carries ACTIVE ones).
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [localSystems, setLocalSystems] = useState<StudioPackagingOption[]>([])
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
@@ -570,7 +588,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               onCatalogPreview={(cat) => { setView('3d'); setTopology(catalogTopologyKey(cat)) }}
               onSubmitReview={onSubmitReview}
               busyReview={busyReview}
-              systems={systems}
+              systems={[...localSystems, ...systems]}
+              onUpload={() => setUploadOpen(true)}
               attachedIds={attached}
               busyAttach={busyAttach}
               onToggleAttach={toggleAttach}
@@ -772,10 +791,90 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           emptyHint="Versions are saved as you work — and pinned at each step you complete."
           footnote="Your draft autosaves continuously. Restoring a past version is coming soon."
         />
+        <UploadPackagingModal
+          open={uploadOpen}
+          draftId={draftId}
+          onClose={() => setUploadOpen(false)}
+          onCreated={(systemId, name, topology) => {
+            setLocalSystems((p) => [{ id: systemId, partnerName: name, topology, unitCount: 1, moq: 1 }, ...p])
+            setLibTab('my')
+            setActiveSystemId(systemId)
+            setTopology(toStudioTopology(topology))
+            refreshAttached()
+            setUploadOpen(false)
+            toast.success('Packaging added to your list')
+          }}
+        />
       </div>,
       document.body,
     )
     : null
+}
+
+// In-studio "Upload packaging" modal — creates a custom PackagingSystem + attaches
+// it to the draft without leaving the fullscreen studio (Library → My tab).
+function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
+  open: boolean
+  draftId: string | null
+  onClose: () => void
+  onCreated: (systemId: string, name: string, topology: string) => void
+}) {
+  const [name, setName] = useState('')
+  const [topology, setTopology] = useState(TOPOLOGY_OPTIONS[0]!.value)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { if (open) { setName(''); setTopology(TOPOLOGY_OPTIONS[0]!.value); setBusy(false) } }, [open])
+  if (!open) return null
+
+  async function submit() {
+    if (!draftId) { toast.error('Save the draft first.'); return }
+    if (name.trim().length < 2) { toast.error('Give the packaging a name.'); return }
+    setBusy(true)
+    const r = await createCustomPackaging(draftId, name, topology)
+    setBusy(false)
+    if (!r.ok) { toast.error(r.error); return }
+    onCreated(r.systemId, name.trim(), topology)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-ink-200 bg-white p-5 shadow-xl">
+        <div className="mb-1 flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-pink-50 text-pink-600"><Upload className="h-4 w-4" /></span>
+          <h3 className="text-[15px] font-semibold text-ink-900">Upload custom packaging</h3>
+        </div>
+        <p className="mb-4 text-[12px] leading-relaxed text-ink-500">
+          Adds a custom packaging to your list and attaches it to this product. Submit it for catalog review and admin preps the 3D/2D mockups — then it appears in the Library.
+        </p>
+
+        <label className="mb-1 block text-[11.5px] font-semibold text-ink-700">Name</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void submit() }}
+          autoFocus
+          placeholder="e.g. 500 ml matte HDPE bottle"
+          className="mb-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+        />
+
+        <label className="mb-1 block text-[11.5px] font-semibold text-ink-700">Type</label>
+        <select
+          value={topology}
+          onChange={(e) => setTopology(e.target.value)}
+          className="mb-5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+        >
+          {TOPOLOGY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Cancel</button>
+          <button type="button" onClick={() => void submit()} disabled={busy || !draftId} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
+            {busy ? 'Adding…' : 'Add packaging'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // =============================================================================
@@ -847,6 +946,7 @@ function LibraryDrawer({
   onSubmitReview,
   busyReview,
   systems,
+  onUpload,
   attachedIds,
   busyAttach,
   onToggleAttach,
@@ -870,6 +970,7 @@ function LibraryDrawer({
   onSubmitReview: (systemId: string) => void
   busyReview: string | null
   systems: StudioPackagingOption[]
+  onUpload: () => void
   attachedIds: string[]
   busyAttach: string | null
   onToggleAttach: (id: string, on: boolean) => void
@@ -1107,9 +1208,9 @@ function LibraryDrawer({
         <div className="flex-1 overflow-y-auto">
           {/* Upload → admin approval */}
           <div className="px-3 pt-3">
-            <Link href="/packaging/new" className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 bg-white px-3 py-2.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
+            <button type="button" onClick={onUpload} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 bg-white px-3 py-2.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
               <Upload className="h-3.5 w-3.5" /> Upload packaging
-            </Link>
+            </button>
             <p className="mt-1 px-0.5 text-[10.5px] leading-snug text-ink-400">Custom uploads go to admin for 3D/2D mockup prep; once approved they appear in the Library under their category.</p>
           </div>
 

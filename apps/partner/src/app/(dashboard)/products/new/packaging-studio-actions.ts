@@ -234,6 +234,31 @@ export async function attachCatalogType(draftId: string, packagingTypeId: string
 }
 
 /**
+ * Create a minimal custom PackagingSystem (DRAFT) IN-STUDIO and attach it to the
+ * draft — the "Upload packaging" modal in the Library "My" tab. Keeps the partner
+ * inside the fullscreen studio (no navigation to /packaging/new). The partner can
+ * then submit it for catalog review from the same tab.
+ */
+export async function createCustomPackaging(draftId: string, name: string, topology: string): Promise<AttachResult> {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') return { ok: false, error: 'Not a partner account.' }
+  const partner = await prisma.partner.findUnique({ where: { userId: user.id }, select: { id: true } })
+  if (!partner) return { ok: false, error: 'Partner not found.' }
+  const n = name.trim()
+  if (n.length < 2) return { ok: false, error: 'Give the packaging a name (2+ characters).' }
+
+  const system = await prisma.packagingSystem.create({
+    data: { partnerId: partner.id, partnerName: n, topology: topology as never, unitCount: 1, moq: 1, status: 'DRAFT' },
+    select: { id: true },
+  })
+  await logAuditAs(user, { entityType: 'PackagingSystem', entityId: system.id, action: 'PACKAGING_CREATE', payload: { name: n, topology } })
+
+  const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })
+  if (!r.ok) return { ok: false, error: r.error ?? 'Could not attach.' }
+  return { ok: true, systemId: system.id }
+}
+
+/**
  * Submit a partner's custom packaging for admin catalog review. Admin approves it
  * into an ACTIVE PackagingType (docs/PACKAGING_REVIEW.md). Cast-guarded — the
  * review columns ship with a pending migration.
