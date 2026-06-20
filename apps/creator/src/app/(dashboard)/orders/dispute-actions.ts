@@ -11,7 +11,24 @@ import { requireUser } from '@ilaunchify/auth'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertOrderTransition } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
+
+/** Fan an "order needs attention" notification out to every admin. Best-effort —
+ *  the dispatcher never throws, and we don't let a notify failure break the action. */
+async function notifyAdminsOrderNeedsAttention(orderId: string, status: string): Promise<void> {
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+  await Promise.allSettled(
+    admins.map((a) =>
+      dispatchNotification({
+        userId: a.id,
+        event: 'ORDER_NEEDS_ATTENTION',
+        data: { orderId, status },
+        audience: 'admin',
+      }),
+    ),
+  )
+}
 
 export type DisputeCategory =
   | 'DAMAGED'
@@ -123,6 +140,7 @@ export async function openOrderDispute({
       windowDays: settings.disputeWindowDays,
     },
   })
+  await notifyAdminsOrderNeedsAttention(order.id, 'DISPUTED')
   revalidatePath(`/orders/${order.id}`)
   revalidatePath('/orders')
   return { ok: true }

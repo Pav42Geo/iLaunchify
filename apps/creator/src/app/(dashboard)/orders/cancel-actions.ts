@@ -21,6 +21,7 @@ import {
   canCreatorSelfCancel,
   type CreatorCancelBlockReason,
 } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 export type CancelResult =
@@ -138,6 +139,21 @@ export async function requestOrderCancellation({
       },
     },
   })
+
+  // Tell admins a cancellation needs review (reuses the existing ORDER_NEEDS_ATTENTION
+  // event). Best-effort — the dispatcher never throws.
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+  await Promise.allSettled(
+    admins.map((a) =>
+      dispatchNotification({
+        userId: a.id,
+        event: 'ORDER_NEEDS_ATTENTION',
+        data: { orderId: order.id, status: 'CANCELLATION_REQUESTED' },
+        audience: 'admin',
+      }),
+    ),
+  )
+
   revalidatePath(`/orders/${order.id}`)
   revalidatePath('/orders')
   return { ok: true, outcome: 'PENDING_REVIEW' }
