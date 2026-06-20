@@ -13,7 +13,7 @@ import { Menu } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
-import { createDraftShell, saveOptionAxes, hasRecipeRows, type InitialDraft } from './build-actions'
+import { createDraftShell, saveOptionAxes, hasRecipeRows, loadDraft, type InitialDraft } from './build-actions'
 import { snapshotDraft, listDraftSnapshots } from './snapshot-actions'
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
@@ -95,7 +95,7 @@ export function GuidedBuilder({
   lifestyleTags,
   facilities,
   packingProfiles,
-  initial,
+  initial: initialProp,
   aiAvailable = false,
   declareAvailable = false,
   currencies = ['USD'],
@@ -127,6 +127,12 @@ export function GuidedBuilder({
   }, [])
 
   const [cur, setCur] = useState(0)
+  // Live draft snapshot — reloaded from the DB on every step change so each step
+  // rehydrates from the autosaved values when you navigate back and forth (fixes
+  // fields appearing empty after going forward then back). Seeded from the server
+  // prop (only set when resuming via ?draft=). `initial` below feeds all steps.
+  const [draftData, setDraftData] = useState<InitialDraft | null>(initialProp ?? null)
+  const initial = draftData
   const [ptype, setPtype] = useState<ProductType>('single')
   const [ltype, setLtype] = useState<Ltype>(LT_TO_LTYPE[initial?.labelingType ?? 'FOOD'] ?? 'Recipe')
   // Persist the domain choice to the draft's labelingType (drives rule pack + panel).
@@ -196,10 +202,17 @@ export function GuidedBuilder({
     else toast.error(`Up to ${max} allowed.`)
   }
 
-  function go(i: number) {
+  async function go(i: number) {
     const next = Math.max(0, Math.min(STEPS.length - 1, i))
     // Pin a milestone version when moving forward to a new step.
     if (next > cur && draftId) snapshotMilestone(`Reached: ${STEPS[next]?.t ?? 'next step'}`)
+    // Reload the autosaved draft BEFORE switching so the target step mounts with
+    // the latest field values (steps unmount when inactive — without this they'd
+    // remount empty). loadDraft returns the freshly persisted scalars/relations.
+    if (draftId) {
+      const d = await loadDraft(draftId)
+      if (d) setDraftData(d)
+    }
     setCur(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
