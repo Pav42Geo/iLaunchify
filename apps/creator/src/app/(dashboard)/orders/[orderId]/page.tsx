@@ -15,6 +15,7 @@
 
 import Link from 'next/link'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { canCreatorSelfCancel } from '@ilaunchify/orders'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { notFound } from 'next/navigation'
@@ -202,22 +203,9 @@ export default async function OrderDetailPage({
   )
   const needsAdjust = changeRequestedDispatches.length > 0
   const isDelivered = status === 'DELIVERED'
-  // Creator self-cancel is offered until the order is in/after fulfillment (mirrors
-  // the guard in requestOrderCancellation).
-  const cancellable =
-    ![
-      'IN_FULFILLMENT',
-      'READY_TO_SHIP',
-      'SHIPPED',
-      'IN_TRANSIT',
-      'DELIVERED',
-      'COMPLETED',
-      'CANCELLED',
-      'REFUNDED',
-      'DISPUTED',
-    ].includes(order.status) &&
-    // Also blocked once any partner has accepted (order may still read ROUTING).
-    !['PARTIALLY_ACCEPTED', 'FULLY_ACCEPTED'].includes(order.aggregateApprovalStatus ?? 'AWAITING_PARTNERS')
+  // Creator self-cancel eligibility — same shared rule the action enforces, so the
+  // button and the action can't disagree.
+  const cancellable = canCreatorSelfCancel(order).allowed
 
   // Creator can open a dispute on a delivered/completed order within
   // OrderSettings.disputeWindowDays of delivery.

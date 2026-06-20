@@ -16,33 +16,28 @@
 import { requireUser } from '@ilaunchify/auth'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
-import { computeCancellationOutcome } from '@ilaunchify/orders'
+import {
+  computeCancellationOutcome,
+  canCreatorSelfCancel,
+  type CreatorCancelBlockReason,
+} from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 export type CancelResult =
   | { ok: true; outcome: 'CANCELLED' | 'PENDING_REVIEW' }
   | { ok: false; error: string }
 
-// Already in/after fulfillment (or terminal) — a creator can no longer self-cancel.
-const UNCANCELLABLE = new Set([
-  'IN_FULFILLMENT',
-  'READY_TO_SHIP',
-  'SHIPPED',
-  'IN_TRANSIT',
-  'DELIVERED',
-  'COMPLETED',
-  'CANCELLED',
-  'REFUNDED',
-  'DISPUTED',
-])
-
 // Pre-routing states — an order here hasn't been handed to partners for production.
 const PRE_ROUTING = new Set(['PENDING_PAYMENT', 'PAID', 'ROUTING'])
 
-// Once a partner has accepted (and likely started producing their leg), the creator
-// can no longer self-cancel — even though the order may still read ROUTING until
-// every partner accepts. An admin can still force-cancel for genuine exceptions.
-const PARTNER_COMMITTED_AGGREGATES = new Set(['PARTIALLY_ACCEPTED', 'FULLY_ACCEPTED'])
+// Creator-facing message per block reason (the eligibility rule itself lives in the
+// shared canCreatorSelfCancel helper so the action + the button can't disagree).
+const BLOCK_MESSAGE: Record<CreatorCancelBlockReason, string> = {
+  TERMINAL: 'This order is already closed and can’t be cancelled.',
+  IN_PRODUCTION: 'This order is already in production or shipping and can’t be self-cancelled — contact support.',
+  PARTNER_COMMITTED:
+    'A partner has already accepted this order and begun production — contact support to cancel.',
+}
 
 export async function requestOrderCancellation({
   orderId,
@@ -65,17 +60,9 @@ export async function requestOrderCancellation({
     },
   })
   if (!order) return { ok: false, error: 'Order not found.' }
-  if (UNCANCELLABLE.has(order.status)) {
-    return {
-      ok: false,
-      error: 'This order is already in production or complete and can’t be self-cancelled — contact support.',
-    }
-  }
-  if (PARTNER_COMMITTED_AGGREGATES.has(order.aggregateApprovalStatus)) {
-    return {
-      ok: false,
-      error: 'A partner has already accepted this order and begun production — contact support to cancel.',
-    }
+  const eligibility = canCreatorSelfCancel(order)
+  if (!eligibility.allowed && eligibility.reason) {
+    return { ok: false, error: BLOCK_MESSAGE[eligibility.reason] }
   }
 
   // Don't stack requests on the same order.

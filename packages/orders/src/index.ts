@@ -39,6 +39,8 @@ export { runAutoCancel, runStaleOrderAutoCancel, isOrderStale } from './auto-can
 export type { AutoCancelResult, StaleOrderCancelResult } from './auto-cancel'
 export { computeCancellationOutcome } from './cancellation-refund'
 export type { CancellationFeePolicy, CancellationOutcome } from './cancellation-refund'
+export { canCreatorSelfCancel } from './cancellation-policy'
+export type { CreatorCancelEligibility, CreatorCancelBlockReason } from './cancellation-policy'
 export {
   generateOrderManifest,
   parseInternalNotesLookups,
