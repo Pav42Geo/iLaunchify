@@ -3756,6 +3756,17 @@ enum PackagingStatus {
   RETIRED
 }
 
+// Partner-uploaded packaging review lifecycle (Packaging Studio "My" tab → admin
+// catalog). A partner submits a custom packaging; admin approves it into an ACTIVE
+// PackagingType (then preps 3D/2D mockups via the existing mockup tool), and it
+// surfaces in the Library catalog. docs/PACKAGING_REVIEW.md.
+enum PackagingReviewStatus {
+  NONE // not submitted
+  SUBMITTED // awaiting admin review
+  APPROVED // admin promoted it to the catalog
+  REJECTED // admin declined (see reviewNotes)
+}
+
 enum PackagingTypeStatus {
   ACTIVE
   DEPRECATED
@@ -3890,6 +3901,14 @@ model PackagingSystem {
   dimensions          Json? // { lengthMm, widthMm, heightMm }
   maxWeightG          Int?
   status              PackagingStatus            @default(DRAFT)
+  // Admin-catalog review (docs/PACKAGING_REVIEW.md). When a partner submits a
+  // custom upload, admin approves it into an ACTIVE PackagingType + assigns a
+  // category; approvedPackagingTypeId points at the created catalog row.
+  reviewStatus            PackagingReviewStatus  @default(NONE)
+  submittedForReviewAt    DateTime?
+  reviewNotes             String?
+  suggestedCategory       ContainerCategory?
+  approvedPackagingTypeId String?
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
   // Relations

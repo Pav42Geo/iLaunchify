@@ -141,6 +141,10 @@ export const AUDIT_ACTIONS = [
   'MOCKUP_TEMPLATE_UPDATE',
   'MOCKUP_TEMPLATE_STATUS',
   'MOCKUP_TEMPLATE_DELETE',
+  // Packaging catalog review (docs/PACKAGING_REVIEW.md)
+  'PACKAGING_SUBMIT_REVIEW',
+  'PACKAGING_REVIEW_APPROVE',
+  'PACKAGING_REVIEW_REJECT',
   // §7 marketplace filter attributes set by the partner builder (format /
   // process / allergen-free claims / markets).
   'MARKETPLACE_ATTRIBUTES_SET',
