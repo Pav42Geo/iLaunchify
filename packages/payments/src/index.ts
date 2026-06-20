@@ -17,6 +17,15 @@ export {
   APPLICATION_FEE_FLOOR_CENTS,
   computeApplicationFee,
 } from './fees'
+// Refund money math (pure) — see docs/REFUND_EXECUTION.md for the executor.
+export { planRefund } from './refund-plan'
+export type {
+  RefundPlan,
+  RefundPlanInput,
+  RefundPlanTransfer,
+  RefundPlanReversal,
+  TransferReversalAction,
+} from './refund-plan'
 // Phase G6.b — production-run subscription helpers.
 export {
   getOrCreateCreatorCustomer,
