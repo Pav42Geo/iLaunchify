@@ -23,7 +23,25 @@ refund (e.g. from `computeCancellationOutcome`), it returns the deterministic pl
 
 No Prisma, no Stripe — fully reviewable in isolation.
 
-## Executor (to build — money-moving, review required)
+## Executor — BUILT, gated off (2026-06-20)
+
+`executeOrderRefund(input)` — `packages/payments/src/refund-execute.ts`, exported from
+the package. **Inert until `STRIPE_REFUNDS_ENABLED=true`.**
+
+- Flag OFF (default) → computes the plan, no Stripe call, no DB write; returns
+  `{ executed: false, plan }` so the caller can audit the intended refund.
+- Flag ON → `stripe.refunds.create` (idempotency-keyed) → `Refund` row → per-partner
+  `stripe.transfers.createReversal` (for sent transfers) / DB-cancel (for unsent) +
+  `PartnerClawback` rows. Returns `{ executed: true, plan, refundId }`.
+- Does NOT change `Order.status` (CANCELLED stays terminal; the refund is a separate
+  record). The caller owns status + audit.
+
+**Still to do (next, with review):** (1) wire the two call sites below to call it
+(dry-run by default); (2) a `charge.refunded` / `refund.updated` webhook handler to
+reconcile `Refund.status`; (3) Stripe **test-mode** end-to-end verification before
+anyone sets the flag.
+
+## Original spec — executor design
 
 `executeOrderRefund(orderId, { reason, initiatedByUserId })`:
 

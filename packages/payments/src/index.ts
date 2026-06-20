@@ -26,6 +26,8 @@ export type {
   RefundPlanReversal,
   TransferReversalAction,
 } from './refund-plan'
+export { executeOrderRefund, refundsEnabled } from './refund-execute'
+export type { ExecuteRefundInput, ExecuteRefundResult } from './refund-execute'
 // Phase G6.b — production-run subscription helpers.
 export {
   getOrCreateCreatorCustomer,
