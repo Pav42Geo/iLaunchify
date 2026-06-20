@@ -75,7 +75,7 @@ export function computePackSplits(capacity: number, minPerFlavor: number, evenOn
 }
 
 export function VariantsPacksStep({
-  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial, locked = false,
+  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial, locked = false, registerFlush,
 }: {
   packingProfiles: PackingProfileOption[]
   facilities: FacilityOption[]
@@ -91,6 +91,8 @@ export function VariantsPacksStep({
   /** Lock-after-recipe (#38): once a recipe is authored the structural type is
    *  fixed — disable changing it. The rest of the step stays editable. */
   locked?: boolean
+  /** Register an immediate flush of the debounced draft-level autosaves. */
+  registerFlush?: (fn: () => Promise<void> | void) => () => void
 }) {
   const [, start] = useTransition()
   const [open, setOpen] = useState(false)
@@ -186,7 +188,7 @@ export function VariantsPacksStep({
       {/* Shared production block — applies to EVERY product type */}
       {selected && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} initial={initial} />
+          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} initial={initial} registerFlush={registerFlush} />
         </div>
       )}
 
@@ -257,7 +259,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 /** Production & availability — shared across all product types. Fulfillment mode
  *  drives MOQ/increment; capacity vs MOQ raises a warning. */
-function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; initial?: InitialDraft | null }) {
+function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; initial?: InitialDraft | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
   const p = initial?.production
   const fmInit: 'bulk' | 'mto' | 'both' = p?.fulfillmentMode === 'ON_DEMAND' ? 'mto' : p?.fulfillmentMode === 'BOTH' ? 'both' : 'bulk'
   const [fulfillment, setFulfillment] = useState<'bulk' | 'mto' | 'both'>(fmInit)
@@ -317,6 +319,34 @@ function SharedProduction({ draftId, facilities, baseSku, initial }: { draftId: 
     return () => { if (prodTimer.current) clearTimeout(prodTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, sku, draftId])
+
+  // Immediate flush of the two draft-level autosaves before navigation (registry).
+  const flushRef = useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (!draftId) return
+    if (t.current) clearTimeout(t.current)
+    if (prodTimer.current) clearTimeout(prodTimer.current)
+    await updateBasics(draftId, {
+      storageClass,
+      storageTempMinF: tempMin === '' ? null : tempMin,
+      storageTempMaxF: tempMax === '' ? null : tempMax,
+      leadTimeRepeatDays: leadRepeat,
+      leadTimeFirstRunDays: leadFirstRun,
+    })
+    await saveProduction(draftId, {
+      fulfillmentMode: fulfillmentEnum,
+      moqMin: effMoq,
+      orderIncrement: effInc,
+      monthlyCapacity: capacity || null,
+      shelfLifeDays: shelfLife,
+      lotTracking,
+      sku,
+    })
+  }
+  useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   return (
     <>

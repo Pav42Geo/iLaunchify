@@ -40,7 +40,7 @@ function split(initial: InitialTier[] | undefined): { bulk: TierRow[]; onDemand:
   return { bulk: bulk.length ? bulk : DEFAULT_BULK, onDemand }
 }
 
-export function PricingTiersCard({ draftId, initialTiers }: { draftId: string | null; initialTiers?: InitialTier[] }) {
+export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { draftId: string | null; initialTiers?: InitialTier[]; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
   const init = split(initialTiers)
   const [bulk, setBulk] = useState<TierRow[]>(init.bulk)
   const [onDemand, setOnDemand] = useState<TierRow[]>(init.onDemand)
@@ -49,20 +49,30 @@ export function PricingTiersCard({ draftId, initialTiers }: { draftId: string | 
 
   useEffect(() => { void getCreatorFeePercents().then(setFee).catch(() => {}) }, [])
 
+  const buildPayload = (): PricingTierInput[] => [
+    ...bulk.map((t, i) => ({ fulfillmentMode: 'BULK_PRODUCTION' as const, minQty: t.minQty, maxQty: t.maxQty, perUnitCostCents: t.perUnitCents, perUnitFloorCents: t.floorCents, leadTimeDays: t.leadTimeDays, sortOrder: i })),
+    ...onDemand.map((t, i) => ({ fulfillmentMode: 'ON_DEMAND' as const, minQty: t.minQty, maxQty: t.maxQty, perUnitCostCents: t.perUnitCents, perUnitFloorCents: t.floorCents, leadTimeDays: t.leadTimeDays, sortOrder: i })),
+  ]
+
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      const payload: PricingTierInput[] = [
-        ...bulk.map((t, i) => ({ fulfillmentMode: 'BULK_PRODUCTION' as const, minQty: t.minQty, maxQty: t.maxQty, perUnitCostCents: t.perUnitCents, perUnitFloorCents: t.floorCents, leadTimeDays: t.leadTimeDays, sortOrder: i })),
-        ...onDemand.map((t, i) => ({ fulfillmentMode: 'ON_DEMAND' as const, minQty: t.minQty, maxQty: t.maxQty, perUnitCostCents: t.perUnitCents, perUnitFloorCents: t.floorCents, leadTimeDays: t.leadTimeDays, sortOrder: i })),
-      ]
-      void savePricingTiers(draftId, payload)
-    }, 800)
+    timer.current = setTimeout(() => { void savePricingTiers(draftId, buildPayload()) }, 800)
     return () => { if (timer.current) clearTimeout(timer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulk, onDemand, draftId])
+
+  // Immediate flush before navigation (registry).
+  const flushRef = useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (timer.current) clearTimeout(timer.current)
+    if (draftId) await savePricingTiers(draftId, buildPayload())
+  }
+  useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   const rows = tab === 'BULK_PRODUCTION' ? bulk : onDemand
   const setRows = tab === 'BULK_PRODUCTION' ? setBulk : setOnDemand

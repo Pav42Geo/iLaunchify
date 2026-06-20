@@ -239,6 +239,7 @@ export function RecipeBuilderStep({
   initialAgeGroup = 'GENERAL',
   unitsPerPack = 1,
   currencies = ['USD'],
+  registerFlush,
 }: {
   productName: string
   /** Units per outer pack/box (packingConfig.unitsPerPack) — drives the
@@ -274,6 +275,8 @@ export function RecipeBuilderStep({
   /** ISO currency codes of the product's ACTIVE target markets (V1: ['USD']).
    *  One Cost input per currency; the first is primary (persisted per-kg). */
   currencies?: string[]
+  /** Register an immediate flush of the debounced recipe/flavor autosaves. */
+  registerFlush?: (fn: () => Promise<void> | void) => () => void
 }) {
   // Start from the restored recipe, or empty — a new product begins with no
   // ingredients (the partner adds real ones via the picker). The old demo seed
@@ -626,6 +629,30 @@ export function RecipeBuilderStep({
     return () => { if (flavorSaveTimer.current) clearTimeout(flavorSaveTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flavors, draftId, flavorMode])
+
+  // Immediate flush of both debounced recipe autosaves before navigation (registry).
+  const flushRef = useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (!draftId) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (flavorSaveTimer.current) clearTimeout(flavorSaveTimer.current)
+    if (entryMode !== 'DECLARED_PANEL') {
+      const slots = rows
+        .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
+        .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
+      await saveRecipeSlots(draftId, slots)
+    }
+    if (flavorMode === 'MULTI') {
+      await saveFlavors(draftId, flavors.map((f, i) => ({
+        name: f.name, statementOfIdentity: f.soi, sortOrder: i,
+        extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
+      })))
+    }
+  }
+  useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   function patch(u: string, p: Partial<Row>) { setRows((rs) => rs.map((r) => (r.uid === u ? { ...r, ...p } : r))) }
   function remove(u: string) { setRows((rs) => rs.filter((r) => r.uid !== u)) }

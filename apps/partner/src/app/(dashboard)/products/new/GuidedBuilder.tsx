@@ -467,6 +467,7 @@ export function GuidedBuilder({
                 axes={axes}
                 onAxes={setAxes}
                 initial={initial}
+                registerFlush={registerFlush}
               />
               <NavBtns onBack={() => go(0)} onNext={() => go(2)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Recipe →" nextDisabled={!profile} />
             </section>
@@ -504,6 +505,7 @@ export function GuidedBuilder({
                   initialAgeGroup={initial?.intendedAgeGroup ?? 'GENERAL'}
                   unitsPerPack={Number((initial?.packing?.packingConfig as Record<string, unknown> | undefined)?.unitsPerPack) || 1}
                   currencies={currencies}
+                  registerFlush={registerFlush}
                 />
               )}
               <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
@@ -523,7 +525,7 @@ export function GuidedBuilder({
           {/* ===== STEP 5 — COST & PRICING ===== */}
           {cur === 4 && (
             <section>
-              <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} />
+              <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} registerFlush={registerFlush} />
               <NavBtns onBack={() => go(3)} onNext={() => go(5)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Review →" />
             </section>
           )}
