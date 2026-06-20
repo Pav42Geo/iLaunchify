@@ -940,26 +940,26 @@ function LibraryDrawer({
                   <ChevronDown className={`h-4 w-4 transition-transform ${catOpen ? 'rotate-180' : ''}`} />
                 </button>
               </div>
-              {/* Expanded taxonomy — every category as a text link (click → select + collapse). */}
-              {catOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setCatOpen(false)} />
-                  <div className="absolute left-0 right-0 top-full z-20 max-h-[60vh] overflow-y-auto border-b border-ink-200 bg-white p-3 shadow-lg">
-                    <p className="mb-2 px-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">All categories</p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                      <button type="button" onClick={() => { setActiveCat(null); setCatOpen(false) }} className={`rounded-md px-1.5 py-1 text-left text-[12.5px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === null ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>All</button>
-                      {availableCats.map((cat) => (
-                        <button key={cat} type="button" onClick={() => { setActiveCat(cat); setCatOpen(false) }} className={`rounded-md px-1.5 py-1 text-left text-[12.5px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === cat ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>{CATEGORY_LABEL[cat] ?? cat}</button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           )}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-          {catalog.length === 0 ? (
+          {catOpen ? (
+            /* In-drawer taxonomy — replaces the grid (not a floating dropdown).
+               Every category as a text link; click selects it + collapses. */
+            <div>
+              <p className="mb-2 px-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">All categories</p>
+              <div className="flex flex-col">
+                <button type="button" onClick={() => { setActiveCat(null); setCatOpen(false) }} className={`rounded-md px-1.5 py-2 text-left text-[13px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === null ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>All</button>
+                {availableCats.map((cat) => (
+                  <button key={cat} type="button" onClick={() => { setActiveCat(cat); setCatOpen(false) }} className={`flex items-center justify-between rounded-md px-1.5 py-2 text-left text-[13px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === cat ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>
+                    <span>{CATEGORY_LABEL[cat] ?? cat}</span>
+                    <span className="text-[11px] text-ink-400">{catFiltered.filter((c) => c.category === cat).length}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : catalog.length === 0 ? (
             <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-4 text-center">
               <BoxIcon className="mx-auto mb-2 h-5 w-5 text-ink-300" />
               <div className="text-[12.5px] font-semibold text-ink-700">Catalog is empty</div>
