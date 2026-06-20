@@ -235,6 +235,65 @@ Add an explicit schedule of documents the Partner must provide and keep current,
 
 ---
 
+## Order Cancellation, Refund & Dispute Policy (added 2026-06-20)
+
+These describe **platform behavior now implemented in software** so counsel can translate
+it into binding contract language. Not legal advice and not final contract text. Technical
+source of truth: `docs/ORDER_SETTINGS_CONSUMERS.md` (every parameter), `docs/REFUND_EXECUTION.md`
+(refund mechanics), `docs/VERIFICATION-order-flows-2026-06-20.md` (the cancellation state model).
+
+**All numeric thresholds are admin-configurable** (`OrderSettings`: cancellation-fee bps,
+refund-processing-fee bps, creator-cancel window hours, dispute window days, etc.). Draft the
+contracts to reference "the fee schedule and timeframes disclosed at checkout / in the platform
+fee schedule," NOT hardcoded numbers, so a settings change doesn't require re-papering.
+
+### Implemented mechanics (for translation)
+
+1. **Creator cancellation rights terminate at partner acceptance.** A creator may self-cancel
+   only *before any producing partner accepts* the order. Unpaid orders auto-cancel within the
+   self-cancel window; paid-but-not-yet-accepted orders go to platform review; once a partner
+   has accepted or production has begun, the creator cannot self-cancel and must request support.
+2. **Cancellation + refund-processing fees may be retained.** A cancellation fee and a separate,
+   non-refundable refund-processing fee may be withheld from a refund, per the disclosed fee
+   schedule, after a free-cancellation window.
+3. **Refund computation.** Refund = amount paid − applicable fees, issued to the original payment
+   method. Amounts already transferred to producing partners are recouped proportionally; the
+   platform absorbs rounding. Refund issuance is platform-reviewed.
+4. **A cancelled order is final.** Cancellation is a terminal state; any refund is processed as a
+   separate transaction and tracked separately from order status.
+5. **Post-delivery disputes.** A creator may report an issue / open a dispute within a defined
+   window after delivery. The platform reviews and may resolve it (issuing a refund at platform
+   discretion, in whole or in part) or deny it.
+6. **Partner strikes + payout clawback.** A producing partner whose cancellation request is
+   approved (a partner-caused cancellation) may receive a recorded "strike." When a refund is
+   issued, amounts previously paid to that partner may be clawed back proportionally.
+
+### Where to place it
+
+- **Creator Agreement — ADD §[new] "Cancellations, Refunds & Disputes":** the acceptance cutoff
+  for self-cancellation (#1), the fee schedule + free window (#2–#3), order finality (#4), and the
+  post-delivery dispute window + platform's resolution discretion (#5).
+- **Partner Agreement — ADD §[new] "Cancellation Requests, Strikes & Payout Clawback":** the
+  partner-initiated cancellation-request + review process, the strike record and its consequences
+  (#6), and the partner's consent to proportional clawback of transferred funds on an approved
+  refund.
+- **Terms of Service — ADD/REFERENCE** a general order cancellation/refund/dispute framework that
+  points to the role-specific agreements and the fee schedule, and reconciles "cancelled order is
+  final, refund is separate" with applicable consumer chargeback/refund rights.
+
+### Counsel review items for cancellation/refund/dispute
+
+- Enforceability of cancellation-fee and non-refundable processing-fee retention under applicable
+  consumer-protection and unfair-practices law, and adequacy of checkout disclosure.
+- Whether the post-delivery dispute window + "platform discretion" resolution is sufficiently
+  defined and disclosed to be enforceable.
+- Whether partner **strikes** and **payout clawback** require explicit, separately-acknowledged
+  partner consent (and any limits on clawback timing/amount).
+- Consistency of the "cancelled order is final; refund is a separate transaction" model with
+  card-network chargeback rights and any state automatic-refund-timing statutes.
+
+---
+
 ## Cross-document changes
 
 ### New referenced document: `subprocessors.md` published at `/legal/subprocessors`
