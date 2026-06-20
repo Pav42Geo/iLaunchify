@@ -136,7 +136,7 @@ Each line: **what's missing · which surface · why it blocks V1.**
 - CockroachDB Serverless tier is the dev database; production cluster sizing + region + backup configuration [VERIFY].
 - R2 production bucket [VERIFY] (dev bucket exists per `packages/storage`).
 - Resend production sender domain + SPF/DKIM warmup is an explicit open item in PLATFORM_SPEC §"Open items".
-- Vercel Cron is mentioned for auto-cancel-dispatches; for V1.5 cron count Pavel flagged moving to Fly scheduled worker — [VERIFY] no cron currently fires on production.
+- Vercel Cron: `apps/admin/vercel.json` now registers `cert-expiry` (daily), `auto-cancel-dispatches` (hourly — was missing, fixed 2026-06-20), and `accept-reminders` (hourly). RESOLVED the prior "no cron fires on production" gap for auto-cancel. For V1.5 cron count Pavel flagged moving to a Fly scheduled worker; cadence can be tightened (e.g. */15) within Vercel plan limits if dispatch-timeout latency matters.
 - No CDN / image-optimization decisions surfaced. `next/image` will be the default but cert thumbnails / die-line PDFs go through R2 directly.
 
 ### Support & customer success
