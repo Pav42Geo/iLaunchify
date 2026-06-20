@@ -134,7 +134,7 @@ export async function approvePackagingReview(systemId: string, displayName: stri
   const name = displayName.trim()
   if (name.length < 2) return { ok: false, error: 'Give the catalog entry a name.' }
 
-  const sys = (await ps().findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true, topology: true } })) as { id: string; topology: string } | null
+  const sys = (await ps().findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true, topology: true, partnerId: true } })) as { id: string; topology: string; partnerId: string } | null
   if (!sys) return { ok: false, error: 'Submission not found or already handled.' }
 
   const slug = `${slugify(name)}-${systemId.slice(-6)}`
@@ -166,6 +166,42 @@ export async function approvePackagingReview(systemId: string, displayName: stri
   if (thumbFileId) {
     const pf = await prisma.partnerFile.findUnique({ where: { id: thumbFileId }, select: { r2Key: true } })
     if (pf?.r2Key) await prisma.packagingType.update({ where: { id: created.id }, data: { model3dThumbKey: pf.r2Key } })
+  }
+
+  // Promote the partner's inline die-line work: if they laid mandatory frames on
+  // the custom packaging (customDielineLayout), create a PackagingDieline of the
+  // NEW type carrying those frames + the uploaded die-line file, so when the
+  // partner's product uses the now-typed packaging the die-line resolves with the
+  // frames already placed (no re-doing). customDielineLayout + PackagingSystemFile
+  // are pending-migration → cast-guarded reads.
+  const cdlRow = await (prisma as unknown as {
+    packagingSystem: { findUnique: (a: unknown) => Promise<{ customDielineLayout: { layout?: unknown; trim?: unknown; safe?: unknown } | null } | null> }
+  }).packagingSystem
+    .findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
+    .catch(() => null)
+  const cdl = cdlRow?.customDielineLayout
+  if (cdl?.layout) {
+    const svc = await prisma.partnerService.findFirst({ where: { partnerId: sys.partnerId }, select: { id: true } })
+    const dlFileRow = await (prisma as unknown as {
+      packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
+    }).packagingSystemFile
+      .findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
+      .catch(() => null)
+    if (svc) {
+      await prisma.packagingDieline.create({
+        data: {
+          partnerServiceId: svc.id,
+          packagingTypeId: created.id,
+          decorationMethod: 'DIRECT_PRINT',
+          frames: cdl.layout as never,
+          trimBox: (cdl.trim ?? undefined) as never,
+          safeAreaBox: (cdl.safe ?? undefined) as never,
+          partnerFileId: dlFileRow?.partnerFileId ?? undefined,
+          framesUpdatedAt: new Date(),
+          status: 'PARTNER_CONFIRMED',
+        },
+      }).catch(() => undefined)
+    }
   }
 
   await ps().update({

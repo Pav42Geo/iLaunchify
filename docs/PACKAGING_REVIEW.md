@@ -74,8 +74,14 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   Layers + undo/redo/zoom all live. Frames autosave via `queueSave` → `saveCustomDieline`
   (not a `PackagingDieline`). `loadCustomDieline(systemId)` returns `{ layout, trim,
   safe, backdropUrl }`. Confirm is a no-op (toasts "saved with your packaging — admin
-  finalizes on approval"). All cast-guarded. **Follow-up:** admin approve should
-  promote `customDielineLayout` onto the created type's die-line.
+  finalizes on approval"). All cast-guarded.
+- ✅ **Approve promotes the die-line** — `approvePackagingReview`, after creating the
+  type, reads `customDielineLayout` (cast-guarded) and, if frames exist, creates a
+  `PackagingDieline` of the new type for the submitting partner's first
+  `PartnerService` (decorationMethod `DIRECT_PRINT`, status `PARTNER_CONFIRMED`,
+  `frames`/`trimBox`/`safeAreaBox` from the layout, `partnerFileId` = first uploaded
+  die-line). So when the partner's product uses the now-typed packaging, the die-line
+  resolves with the mandatory frames already placed — nothing to redo.
 
 ## In-studio upload (2026-06-19)
 The studio Library **My** tab "Upload packaging" opens an **in-studio modal** (no
