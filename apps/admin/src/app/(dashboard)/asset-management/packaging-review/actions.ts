@@ -139,30 +139,45 @@ export async function approvePackagingReview(systemId: string, displayName: stri
     if (pf?.r2Key) await prisma.packagingType.update({ where: { id: created.id }, data: { model3dThumbKey: pf.r2Key } })
   }
 
-  // Promote the partner's inline die-line work: if they laid mandatory frames on
-  // the custom packaging (customDielineLayout), create a PackagingDieline of the
-  // NEW type carrying those frames + the uploaded die-line file, so when the
-  // partner's product uses the now-typed packaging the die-line resolves with the
-  // frames already placed (no re-doing).
+  // Promote the partner's die-line work into the new catalog type. A multi-package
+  // upload (e.g. supplement bottle + outer carton) carries MORE THAN ONE DIELINE
+  // file — promote EVERY one so nothing is dropped. The partner's inline mandatory
+  // frames (customDielineLayout) describe a single die-line, so they attach to the
+  // FIRST die-line (PARTNER_CONFIRMED); the remaining packages' die-lines come over
+  // as UPLOADED (file preserved, frames to be placed later). If the partner only
+  // laid inline frames with no uploaded file, we still create one from the layout.
   const cdlRow = await prisma.packagingSystem.findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
   const cdl = (cdlRow?.customDielineLayout ?? null) as { layout?: unknown; trim?: unknown; safe?: unknown } | null
-  if (cdl?.layout) {
+  const dlFileRows = await prisma.packagingSystemFile.findMany({
+    where: { packagingSystemId: systemId, role: 'DIELINE' },
+    orderBy: { displayOrder: 'asc' },
+    select: { partnerFileId: true },
+  })
+  if (cdl?.layout || dlFileRows.length > 0) {
     const svc = await prisma.partnerService.findFirst({ where: { partnerId: sys.partnerId }, select: { id: true } })
-    const dlFileRow = await prisma.packagingSystemFile.findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
     if (svc) {
-      await prisma.packagingDieline.create({
-        data: {
-          partnerServiceId: svc.id,
-          packagingTypeId: created.id,
-          decorationMethod: 'DIRECT_PRINT',
-          frames: cdl.layout as never,
-          trimBox: (cdl.trim ?? undefined) as never,
-          safeAreaBox: (cdl.safe ?? undefined) as never,
-          partnerFileId: dlFileRow?.partnerFileId ?? undefined,
-          framesUpdatedAt: new Date(),
-          status: 'PARTNER_CONFIRMED',
-        },
-      })
+      // One die-line per uploaded file; fall back to a single layout-only die-line
+      // when the partner placed frames but uploaded no file.
+      const fileIds: Array<string | undefined> =
+        dlFileRows.length > 0 ? dlFileRows.map((f) => f.partnerFileId) : [undefined]
+      await Promise.all(
+        fileIds.map((partnerFileId, i) => {
+          const carriesFrames = i === 0 && Boolean(cdl?.layout)
+          return prisma.packagingDieline.create({
+            data: {
+              partnerServiceId: svc.id,
+              packagingTypeId: created.id,
+              decorationMethod: 'DIRECT_PRINT',
+              frames: carriesFrames ? (cdl!.layout as never) : undefined,
+              trimBox: carriesFrames ? ((cdl!.trim ?? undefined) as never) : undefined,
+              safeAreaBox: carriesFrames ? ((cdl!.safe ?? undefined) as never) : undefined,
+              partnerFileId: partnerFileId ?? undefined,
+              framesUpdatedAt: carriesFrames ? new Date() : undefined,
+              status: carriesFrames ? 'PARTNER_CONFIRMED' : 'UPLOADED',
+            },
+          })
+        }),
+      )
     }
   }
 

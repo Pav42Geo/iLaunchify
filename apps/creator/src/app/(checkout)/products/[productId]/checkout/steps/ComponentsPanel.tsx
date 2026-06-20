@@ -16,8 +16,10 @@ import { Loader2, Plus, Trash2, Lock } from 'lucide-react'
 import {
   listProductComponents,
   listContainerPackagingTypes,
+  listCartonPackagingTypes,
   listComponentVariants,
   createDefaultComponentSlots,
+  addOuterCarton,
   setComponentVariant,
   removePackagingComponent,
   type ComponentRow,
@@ -38,6 +40,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function ComponentsPanel({ productId }: { productId: string }) {
   const [rows, setRows] = React.useState<ComponentRow[] | null>(null)
   const [containers, setContainers] = React.useState<ContainerTypeOption[]>([])
+  const [cartons, setCartons] = React.useState<ContainerTypeOption[]>([])
   const [primaryId, setPrimaryId] = React.useState('')
   const [busy, setBusy] = React.useState(false)
 
@@ -50,6 +53,9 @@ export function ComponentsPanel({ productId }: { productId: string }) {
     void reload()
     listContainerPackagingTypes().then((r) => {
       if (r.ok) setContainers(r.data)
+    })
+    listCartonPackagingTypes().then((r) => {
+      if (r.ok) setCartons(r.data)
     })
   }, [reload])
 
@@ -122,13 +128,107 @@ export function ComponentsPanel({ productId }: { productId: string }) {
           </div>
         </div>
       ) : (
-        <ul className="mt-3 space-y-2.5">
-          {rows.map((row) => (
-            <ComponentSlotRow key={row.id} productId={productId} row={row} onChanged={reload} />
-          ))}
-        </ul>
+        <>
+          <ul className="mt-3 space-y-2.5">
+            {rows.map((row) => (
+              <ComponentSlotRow key={row.id} productId={productId} row={row} onChanged={reload} />
+            ))}
+          </ul>
+
+          {/* Single-unit products that ship inside an outer folding box (e.g. a
+              supplement bottle in a carton). Optional — hidden once added. */}
+          {!rows.some((r) => r.role === 'CARTON') && cartons.length > 0 && (
+            <AddOuterCarton productId={productId} cartons={cartons} onAdded={reload} />
+          )}
+        </>
       )}
     </section>
+  )
+}
+
+function AddOuterCarton({
+  productId,
+  cartons,
+  onAdded,
+}: {
+  productId: string
+  cartons: ContainerTypeOption[]
+  onAdded: () => Promise<void>
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [cartonId, setCartonId] = React.useState('')
+  const [busy, setBusy] = React.useState(false)
+
+  async function add() {
+    if (!cartonId) return
+    setBusy(true)
+    try {
+      const res = await addOuterCarton(productId, cartonId)
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      toast.success('Outer carton added')
+      setOpen(false)
+      setCartonId('')
+      await onAdded()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-dashed border-ink-300 px-3 py-1.5 text-[12px] font-medium text-ink-600 hover:border-pink-400 hover:text-pink-700"
+      >
+        <Plus className="h-3.5 w-3.5" /> Add outer carton
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-ink-200 bg-ink-50/50 px-3 py-2.5">
+      <p className="text-[12px] text-ink-600">
+        Add a secondary folding box this unit ships inside (the carton becomes its own
+        component for production &amp; routing).
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <select
+          value={cartonId}
+          onChange={(e) => setCartonId(e.target.value)}
+          className="rounded-md border border-ink-300 px-2.5 py-1.5 text-[12.5px] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        >
+          <option value="">Choose a carton…</option>
+          {cartons.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.displayName}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={add}
+          disabled={!cartonId || busy}
+          className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-black disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          Add carton
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false)
+            setCartonId('')
+          }}
+          className="rounded-md px-2 py-1.5 text-[12px] text-ink-500 hover:text-ink-800"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
 

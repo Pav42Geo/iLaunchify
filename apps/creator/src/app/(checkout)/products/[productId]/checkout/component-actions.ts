@@ -125,6 +125,25 @@ export async function listContainerPackagingTypes(): Promise<Result<ContainerTyp
   }
 }
 
+/** Outer-carton PackagingTypes (BOX / CARTON / CASE) for the "Add outer carton"
+ *  affordance — a single-unit product that ships inside a secondary folding box. */
+const OUTER_CARTON_CATEGORIES: ContainerCategory[] = ['BOX', 'CARTON', 'CASE']
+
+export async function listCartonPackagingTypes(): Promise<Result<ContainerTypeOption[]>> {
+  await requireUser()
+  const rows = await prisma.packagingType.findMany({
+    where: { status: 'ACTIVE', containerCategory: { in: OUTER_CARTON_CATEGORIES } },
+    orderBy: { displayName: 'asc' },
+    select: { id: true, displayName: true, containerCategory: true },
+  })
+  return {
+    ok: true,
+    data: rows
+      .filter((r): r is typeof r & { containerCategory: ContainerCategory } => !!r.containerCategory)
+      .map((r) => ({ id: r.id, displayName: r.displayName, containerCategory: r.containerCategory })),
+  }
+}
+
 export interface ComponentVariantOption {
   id: string
   name: string
@@ -211,6 +230,29 @@ export async function addPackagingComponent(
   })
   revalidatePath(`/products/${productId}/checkout`)
   return { ok: true, data: created }
+}
+
+/** Convenience: attach a SECONDARY outer carton (e.g. a supplement bottle that
+ *  ships inside a folding box). Guards against adding a second carton. */
+export async function addOuterCarton(
+  productId: string,
+  packagingTypeId: string,
+): Promise<Result<{ id: string }>> {
+  const { user, product, error } = await authorizeProduct(productId)
+  if (!user || !product) return { ok: false, error: error ?? 'NOT_FOUND' }
+  if (!packagingTypeId) return { ok: false, error: 'Choose a carton from the catalog.' }
+
+  const existing = await prisma.packagingComponent.findFirst({
+    where: { productId, role: 'CARTON' },
+    select: { id: true },
+  })
+  if (existing) return { ok: false, error: 'This product already has an outer carton.' }
+
+  return addPackagingComponent(productId, {
+    tier: 'SECONDARY',
+    role: 'CARTON',
+    packagingTypeId,
+  })
 }
 
 export async function setComponentVariant(
