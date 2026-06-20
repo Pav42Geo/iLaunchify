@@ -16,7 +16,7 @@
 // via ./packaging-3d (no npm dependency).
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -141,7 +141,7 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 let _id = 0
 const newFrameId = (k: string) => `f_${k}_${Date.now()}_${_id++}`
 
-export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →' }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string }) {
+export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →', headerRight }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string; headerRight?: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
@@ -453,6 +453,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
       <header className="flex h-[56px] shrink-0 items-center justify-between gap-3 border-b border-ink-200 bg-white px-3">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
+          <span className="shrink-0 whitespace-nowrap text-[14px] font-semibold tracking-[-0.01em] text-ink-900">Packaging Studio</span>
           {/* Hamburger menu — holds Save draft + Back. */}
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
@@ -486,8 +487,11 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             savedAt={lastSavedAt}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
-          {/* The ONLY studio-specific header control: 3D (default) ⇄ Die-line (Fabric.js canvas). */}
-          <div className="ml-1 inline-flex rounded-full border border-ink-200 bg-white p-0.5">
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {/* Studio-specific: 3D (default) ⇄ Die-line (Fabric.js canvas), right-aligned. */}
+          <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
               <BoxIcon className="h-3.5 w-3.5" /> 3D
             </button>
@@ -495,12 +499,14 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               <PencilRuler className="h-3.5 w-3.5" /> Die-line
             </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
+          {/* Next — matches the builder steps' gb-nextbtn: pink pill, 13px semibold. */}
           {onNext && (
-            <button type="button" className="inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => onNext()}>{nextLabel}</button>
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
           )}
+
+          {/* App-topbar right cluster (notification bell + account) — same as every other step. */}
+          {headerRight && <div className="ml-0.5 flex items-center gap-2">{headerRight}</div>}
         </div>
       </header>
 

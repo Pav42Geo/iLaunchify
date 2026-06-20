@@ -9,6 +9,7 @@ import { prisma, getEnabledDomains } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { GuidedBuilder } from './GuidedBuilder'
+import { PartnerTopbarRight } from '@/components/nav/PartnerTopbarRight'
 import { loadDraft } from './build-actions'
 import type { StructuralPackType } from './structuralPackType'
 
@@ -27,7 +28,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    select: { id: true, tier: true, services: { select: { type: true } } },
+    select: { id: true, tier: true, companyName: true, services: { select: { type: true } } },
   })
   if (!partner) return null
 
@@ -125,6 +126,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       declareAvailable={declareAvailable}
       currencies={marketCurrencies}
       enabledDomains={enabledDomains}
+      topbarRight={<PartnerTopbarRight email={user.email} name={user.name ?? null} companyName={partner.companyName} />}
     />
   )
 }

@@ -7,7 +7,7 @@
 // wired slice-by-slice). Self-contained — the flow IS the builder, ending in
 // Submit for review.
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Menu } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -71,6 +71,9 @@ interface GuidedBuilderProps {
   /** Admin-enabled product domains (LabelingType keys). Only these appear in the
    *  Step-1 domain picker. Defaults to the four built domains; OTC ships off. */
   enabledDomains?: string[]
+  /** App-topbar right cluster (notification bell + account menu). The fullscreen
+   *  Packaging Studio covers the real topbar, so it re-renders this to match. */
+  topbarRight?: ReactNode
 }
 
 const STEPS = [
@@ -97,6 +100,7 @@ export function GuidedBuilder({
   declareAvailable = false,
   currencies = ['USD'],
   enabledDomains = ['FOOD', 'DIETARY_SUPPLEMENT', 'COSMETIC', 'PET_PRODUCT'],
+  topbarRight,
 }: GuidedBuilderProps) {
   const router = useRouter()
   // Admin domain on/off — only show domain tiles the admin has enabled.
@@ -475,7 +479,7 @@ export function GuidedBuilder({
           {cur === 3 && (
             <section>
               <PackagingPicker draftId={draftId} systems={packagingSystems} />
-              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} />
+              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} headerRight={topbarRight} />
               <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>
