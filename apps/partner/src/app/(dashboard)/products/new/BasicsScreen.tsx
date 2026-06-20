@@ -39,13 +39,15 @@ interface BasicsScreenProps {
   onName: (name: string) => void
   /** Resume — seeds the form fields when reopening an existing draft. */
   initial?: InitialDraft | null
+  /** Register an immediate flush of the debounced autosave; called before nav. */
+  registerFlush?: (fn: () => Promise<void> | void) => () => void
 }
 
 interface Meta { key: string; value: string }
 
 export function BasicsScreen({
   domain, categories, subcategories, niches, lifestyleTags, facilities,
-  draftId, onDraftId, onName, initial,
+  draftId, onDraftId, onName, initial, registerFlush,
 }: BasicsScreenProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [baseSku, setBaseSku] = useState(initial?.familyCode ?? '')
@@ -140,6 +142,35 @@ export function BasicsScreen({
     return () => { if (tagTimer.current) clearTimeout(tagTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selTags, draftId])
+
+  // Immediate flush of all three debounced autosaves — registered with the parent
+  // so navigation can persist last-second edits before reloading the draft. A ref
+  // keeps the closure reading the latest field values on each render.
+  const flushRef = useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (t.current) clearTimeout(t.current)
+    if (nTimer.current) clearTimeout(nTimer.current)
+    if (tagTimer.current) clearTimeout(tagTimer.current)
+    let id = draftId
+    if (ready) {
+      if (!id) {
+        const res = await createDraftShell({ name: name.trim(), subcategoryId, labelingType: domain })
+        if (res?.ok) { id = res.data.id; onDraftId(id) }
+      }
+      if (id) {
+        await updateBasics(id, { name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc, customMeta: meta.filter((m) => m.key.trim()) })
+        setSaving('saved')
+      }
+    }
+    if (id) {
+      await saveProductNiches(id, selNiches)
+      await saveProductLifestyleTags(id, selTags)
+    }
+  }
+  useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   function toggleChip(list: string[], set: (v: string[]) => void, id: string, max?: number) {
     if (list.includes(id)) set(list.filter((x) => x !== id))

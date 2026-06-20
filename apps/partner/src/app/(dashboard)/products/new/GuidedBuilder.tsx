@@ -7,7 +7,7 @@
 // wired slice-by-slice). Self-contained — the flow IS the builder, ending in
 // Submit for review.
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Menu } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -133,6 +133,14 @@ export function GuidedBuilder({
   // prop (only set when resuming via ?draft=). `initial` below feeds all steps.
   const [draftData, setDraftData] = useState<InitialDraft | null>(initialProp ?? null)
   const initial = draftData
+  // Flush registry — steps register a function that immediately flushes their
+  // pending debounced autosave. We run these before navigating so reloading the
+  // draft never misses last-second edits (instant "Next" after typing).
+  const flushers = useRef(new Set<() => Promise<void> | void>())
+  const registerFlush = useCallback((fn: () => Promise<void> | void) => {
+    flushers.current.add(fn)
+    return () => { flushers.current.delete(fn) }
+  }, [])
   const [ptype, setPtype] = useState<ProductType>('single')
   const [ltype, setLtype] = useState<Ltype>(LT_TO_LTYPE[initial?.labelingType ?? 'FOOD'] ?? 'Recipe')
   // Persist the domain choice to the draft's labelingType (drives rule pack + panel).
@@ -206,9 +214,11 @@ export function GuidedBuilder({
     const next = Math.max(0, Math.min(STEPS.length - 1, i))
     // Pin a milestone version when moving forward to a new step.
     if (next > cur && draftId) snapshotMilestone(`Reached: ${STEPS[next]?.t ?? 'next step'}`)
-    // Reload the autosaved draft BEFORE switching so the target step mounts with
-    // the latest field values (steps unmount when inactive — without this they'd
-    // remount empty). loadDraft returns the freshly persisted scalars/relations.
+    // Flush any pending debounced autosaves in the active step first (so an instant
+    // "Next" right after typing doesn't lose the last keystrokes), then reload the
+    // autosaved draft so the target step mounts with the latest values (steps
+    // unmount when inactive — without this they'd remount empty).
+    await Promise.allSettled([...flushers.current].map((f) => f()))
     if (draftId) {
       const d = await loadDraft(draftId)
       if (d) setDraftData(d)
@@ -435,6 +445,7 @@ export function GuidedBuilder({
                 onDraftId={setDraftId}
                 onName={setName}
                 initial={initial}
+                registerFlush={registerFlush}
               />
               <NavBtns onNext={() => go(1)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Variants & packs →" nextDisabled={!draftId} />
             </section>
