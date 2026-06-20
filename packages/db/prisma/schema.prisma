@@ -3904,6 +3904,7 @@ model PackagingSystem {
   maxWeightG          Int?
   material            String? // free-text substrate/material, e.g. "PET", "SBS folding carton"
   dielineFileId       String? // soft FK to PartnerFile — partner-supplied die-line/artwork reference
+  customDielineLayout Json? // inline mandatory-frame layout for a type-less custom packaging: { layout, trim, safe }
   status              PackagingStatus            @default(DRAFT)
   // Admin-catalog review (docs/PACKAGING_REVIEW.md). When a partner submits a
   // custom upload, admin approves it into an ACTIVE PackagingType + assigns a

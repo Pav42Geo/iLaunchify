@@ -461,6 +461,63 @@ export async function addPackagingFilesToSystem(form: FormData): Promise<{ ok: t
   return { ok: true }
 }
 
+// =============================================================================
+// Inline die-line for a TYPE-LESS custom packaging. A custom PackagingSystem has
+// no PackagingType, so there's no PackagingDieline to resolve. Instead the
+// partner lays the mandatory-element frames on a blank board (optionally backed
+// by their first uploaded die-line image) and the layout persists on the system
+// (customDielineLayout Json). Admin promotes it onto the real die-line on approve.
+// =============================================================================
+
+export interface CustomDieline {
+  layout: unknown | null
+  trim: unknown | null
+  safe: unknown | null
+  backdropUrl: string | null
+}
+
+/** Load a custom packaging's inline die-line layout + a backdrop (first uploaded die-line). */
+export async function loadCustomDieline(systemId: string): Promise<CustomDieline | null> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return null
+  const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
+  if (!own) return null
+
+  // customDielineLayout (cast-guarded — pending migration).
+  const row = await (prisma as unknown as {
+    packagingSystem: { findUnique: (a: unknown) => Promise<{ customDielineLayout: { layout?: unknown; trim?: unknown; safe?: unknown } | null } | null> }
+  }).packagingSystem
+    .findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
+    .catch(() => null)
+  const saved = row?.customDielineLayout ?? null
+
+  // Backdrop = first uploaded DIELINE file (cast-guarded), signed.
+  let backdropUrl: string | null = null
+  const dlRow = await (prisma as unknown as {
+    packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
+  }).packagingSystemFile
+    .findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
+    .catch(() => null)
+  if (dlRow?.partnerFileId) {
+    const pf = await prisma.partnerFile.findUnique({ where: { id: dlRow.partnerFileId }, select: { r2Key: true } })
+    if (pf?.r2Key) backdropUrl = await getSignedReadUrl(pf.r2Key).catch(() => null)
+  }
+
+  return { layout: saved?.layout ?? null, trim: saved?.trim ?? null, safe: saved?.safe ?? null, backdropUrl }
+}
+
+/** Persist a custom packaging's inline die-line layout. */
+export async function saveCustomDieline(systemId: string, data: { layout: unknown; trim: unknown; safe: unknown }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return { ok: false, error: actor.error }
+  const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
+  if (!own) return { ok: false, error: 'Packaging not found.' }
+  await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
+    .update({ where: { id: systemId }, data: { customDielineLayout: { layout: data.layout, trim: data.trim, safe: data.safe } } })
+    .catch(() => undefined)
+  return { ok: true }
+}
+
 /** Remove one uploaded file row (ownership-checked). */
 export async function removePackagingFile(fileRowId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const actor = await requirePartnerActor()

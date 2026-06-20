@@ -63,7 +63,7 @@ import {
   type NormBox,
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
-import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, loadPackagingFiles, addPackagingFilesToSystem, removePackagingFile, type PackagingStudioData, type StudioPackaging, type CatalogItem, type StudioFile } from './packaging-studio-actions'
+import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, loadPackagingFiles, addPackagingFilesToSystem, removePackagingFile, loadCustomDieline, saveCustomDieline, type PackagingStudioData, type StudioPackaging, type CatalogItem, type StudioFile } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -257,6 +257,11 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     [data, activeSystem],
   )
   const resolvedDielineId = resolvedDieline?.id ?? null
+  // Custom (type-less) packaging has no PackagingType → no resolvable die-line.
+  // The partner instead lays mandatory frames on a blank/uploaded board that saves
+  // on the system (customDielineLayout). Active in the Die-line view for such systems.
+  const customMode = Boolean(activeSystem) && !activeSystem?.packagingTypeId && !resolvedDielineId
+  const [customBackdrop, setCustomBackdrop] = useState<string | null>(null)
 
   // Spin up / tear down the three.js scene only while the 3D view is showing.
   // Re-inits when toggling fullscreen (the canvas element remounts).
@@ -363,6 +368,25 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     return () => { alive = false }
   }, [resolvedDielineId, ded?.id])
 
+  // Custom (type-less) die-line: load the saved mandatory-frame layout + a backdrop
+  // (the partner's first uploaded die-line image) when a custom system is active.
+  useEffect(() => {
+    if (!customMode || !activeSystemId) { setCustomBackdrop(null); return }
+    let alive = true
+    setDed(null)
+    setLoadingDieline(true)
+    void loadCustomDieline(activeSystemId).then((r) => {
+      if (!alive) return
+      setLoadingDieline(false)
+      setCustomBackdrop(r?.backdropUrl ?? null)
+      setLayout((r?.layout as FrameLayout) ?? structuredClone(DEFAULT_FRAME_LAYOUT))
+      setTrim(asBox(r?.trim, { x: 0, y: 0, w: 1, h: 1 }))
+      setSafe(asBox(r?.safe, { x: 0.05, y: 0.05, w: 0.9, h: 0.9 }))
+      setPast([]); setFuture([]); setSelectedFrameId(null); setSaveStatus('saved')
+    })
+    return () => { alive = false }
+  }, [customMode, activeSystemId])
+
   // Studio is full-screen while mounted (Step 4) — lock body scroll; Esc clears
   // the frame selection.
   useEffect(() => {
@@ -375,18 +399,25 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
 
   // ---- autosave (debounced) ----
   const queueSave = useCallback((nextLayout: FrameLayout, nextTrim: NormBox, nextSafe: NormBox) => {
-    if (!resolvedDielineId) return
+    // Typed packaging → its PackagingDieline; custom (type-less) → the system's
+    // customDielineLayout. Otherwise nothing to persist.
+    if (!resolvedDielineId && !(customMode && activeSystemId)) return
     setSaveStatus('saving')
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      const [a, b] = await Promise.all([
-        saveDielineFrames(resolvedDielineId, nextLayout),
-        saveDielineGeometry(resolvedDielineId, { trimBox: nextTrim, safeAreaBox: nextSafe }),
-      ])
-      setSaveStatus(a.ok && b.ok ? 'saved' : 'idle')
-      if (!a.ok) toast.error(a.error)
+      if (resolvedDielineId) {
+        const [a, b] = await Promise.all([
+          saveDielineFrames(resolvedDielineId, nextLayout),
+          saveDielineGeometry(resolvedDielineId, { trimBox: nextTrim, safeAreaBox: nextSafe }),
+        ])
+        setSaveStatus(a.ok && b.ok ? 'saved' : 'idle')
+        if (!a.ok) toast.error(a.error)
+      } else if (activeSystemId) {
+        const r = await saveCustomDieline(activeSystemId, { layout: nextLayout, trim: nextTrim, safe: nextSafe })
+        setSaveStatus(r.ok ? 'saved' : 'idle')
+      }
     }, 700)
-  }, [resolvedDielineId])
+  }, [resolvedDielineId, customMode, activeSystemId])
 
   const commit = useCallback((nextLayout: FrameLayout, nextTrim = trim, nextSafe = safe) => {
     setPast((p) => [...p.slice(-49), layout])
@@ -481,12 +512,17 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   }
 
   const selectedFrame = useMemo(() => layout.frames.find((f) => f.id === selectedFrameId) ?? null, [layout, selectedFrameId])
-  const issues = useMemo<LayoutIssue[]>(() => (resolvedDielineId ? validateFrameLayout(layout, { safeArea: safe }) : []), [layout, safe, resolvedDielineId])
+  const issues = useMemo<LayoutIssue[]>(() => ((resolvedDielineId || customMode) ? validateFrameLayout(layout, { safeArea: safe }) : []), [layout, safe, resolvedDielineId, customMode])
 
   async function onConfirm() {
-    if (!resolvedDielineId) return
     if (issues.length > 0) {
       toast.error(`Fix ${issues.length} preflight issue${issues.length === 1 ? '' : 's'} first.`)
+      return
+    }
+    // Custom (type-less) packaging has no PackagingDieline to confirm yet — the
+    // frames autosave with the packaging; admin finalizes the die-line on approval.
+    if (!resolvedDielineId) {
+      if (customMode) toast.success('Mandatory frames saved with your packaging — admin finalizes the die-line on approval.')
       return
     }
     const r = await confirmDieline(resolvedDielineId)
@@ -609,13 +645,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             />
           )}
           {tool === 'frames' && (
-            resolvedDielineId ? (
+            (resolvedDielineId || customMode) ? (
               <FramesDrawer layout={layout} selected={selectedFrame} issues={issues} confirmed={confirmed} onConfirm={onConfirm} onAdd={addFrame} onRemove={removeFrame} onPatch={patchFrame} onSelect={setSelectedFrameId} />
             ) : (
               <NoDielineDrawer />
             )
           )}
-          {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId} />}
+          {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId && !customMode} />}
           {tool === 'layers' && <LayersDrawer layout={layout} selectedId={selectedFrameId} onSelect={setSelectedFrameId} onRemove={removeFrame} />}
         </aside>
 
@@ -718,7 +754,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             <div className="absolute inset-0 flex items-center justify-center overflow-auto bg-[radial-gradient(circle,#e4e4e7_1px,transparent_1px)] bg-[length:18px_18px] p-8">
               {loadingDieline ? (
                 <div className="text-[12.5px] text-ink-400">Loading die-line…</div>
-              ) : !resolvedDielineId ? (
+              ) : (!resolvedDielineId && !customMode) ? (
                 <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
                   <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><PencilRuler className="h-5 w-5" /></div>
                   <div className="text-[13.5px] font-semibold text-ink-800">No die-line for this packaging yet</div>
@@ -746,8 +782,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={ded.fileUrl} alt="die-line" className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-90" />
                     )}
-                    {!ded?.fileUrl && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[12px] text-ink-300">No file uploaded — frames still save</div>
+                    {/* Custom packaging: back the board with the partner's first uploaded die-line, if any. */}
+                    {!ded?.fileUrl && customBackdrop && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={customBackdrop} alt="die-line" className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-90" />
+                    )}
+                    {!ded?.fileUrl && !customBackdrop && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-[12px] text-ink-300">{customMode ? 'Blank board — lay the mandatory frames; upload a die-line in the Library “My” tab to trace over it.' : 'No file uploaded — frames still save'}</div>
                     )}
 
                     {/* guides */}
@@ -763,7 +804,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               )}
 
               {/* bottom zoom toolbar */}
-              {resolvedDielineId && !loadingDieline && (
+              {(resolvedDielineId || customMode) && !loadingDieline && (
                 <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-1 shadow-sm">
                   <IconBtn icon={Undo2} onClick={undo} disabled={past.length === 0} title="Undo" />
                   <IconBtn icon={Redo2} onClick={redo} disabled={future.length === 0} title="Redo" />

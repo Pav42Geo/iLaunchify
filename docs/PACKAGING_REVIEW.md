@@ -66,17 +66,16 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   `PACKAGING_SUBMIT_REVIEW` via=product-submit), so admin approves the packaging AND
   the product together in one pass — the partner doesn't return to finalize. The My-tab
   "Submit for catalog review" is now optional/early. (Replaced the earlier hard block.)
-- ⏳ **Inline die-line for type-less custom packaging** (SPEC — needs a focused
-  session; studio is a Code hot-file zone). Plan: additive
-  `PackagingSystem.customDielineLayout Json?`. In `PackagingStudioStep` die-line
-  view, when `!resolvedDielineId` AND the active system is custom
-  (`!att.packagingTypeId`), render the existing frame editor backed by
-  `customDielineLayout` instead of the "no die-line" CTA: new actions
-  `loadCustomDieline(systemId)` / `saveCustomDieline(systemId, layout)` (cast-guarded);
-  branch the studio's load + `queueSave` so custom systems persist frames to the
-  system column rather than a `PackagingDieline` (which requires a type). Validation
-  (`validateFrameLayout`) reused as-is. Admin, on approve, can promote the saved
-  layout onto the created type's die-line.
+- ✅ **Inline die-line for type-less custom packaging** — additive
+  `PackagingSystem.customDielineLayout Json?`. The studio derives `customMode` (active
+  system has no `packagingTypeId` + no resolvable die-line); in the Die-line view it
+  renders the SAME frame editor on a blank board (backed by the partner's first
+  uploaded die-line image as a trace-over backdrop), with preflight + Frames/Guides/
+  Layers + undo/redo/zoom all live. Frames autosave via `queueSave` → `saveCustomDieline`
+  (not a `PackagingDieline`). `loadCustomDieline(systemId)` returns `{ layout, trim,
+  safe, backdropUrl }`. Confirm is a no-op (toasts "saved with your packaging — admin
+  finalizes on approval"). All cast-guarded. **Follow-up:** admin approve should
+  promote `customDielineLayout` onto the created type's die-line.
 
 ## In-studio upload (2026-06-19)
 The studio Library **My** tab "Upload packaging" opens an **in-studio modal** (no
