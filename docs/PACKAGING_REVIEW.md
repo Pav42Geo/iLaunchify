@@ -38,9 +38,17 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
 `reviewStatus`/`reviewNotes` (cast-guarded). Commit `7ca3749`.
 
 ## Follow-ups
-- Admin approve currently creates a bare PackagingType (no 3D thumb until mockups
-  are added). Consider carrying the partner's uploaded image/glTF onto the type.
-- Notify the partner on approve/reject (`@ilaunchify/notifications`).
+- ✅ DONE (commit `3336f50`): catalog thumbnail falls back to the type's first
+  ACTIVE MockupTemplate image (`Asset.publicUrl`) when `model3dThumbKey` is unset —
+  so an approved type shows a real thumbnail once admin preps a mockup. (Carrying a
+  partner-uploaded image was a dead end: `PackagingSystem.partnerImageFileId` is
+  never populated — there's no partner image-upload yet.)
+- Notify the partner on approve/reject (`@ilaunchify/notifications`). Needs new
+  `NotificationEvent` enum values (`PACKAGING_APPROVED`/`PACKAGING_REJECTED`) + a
+  template + dispatch calls in the admin actions. Blocked on the enum migration:
+  `renderTemplate`'s switch is exhaustive over the generated enum, so the cases
+  won't typecheck until `prisma generate` runs. Land the enum + template behind the
+  same migration, then add the two `dispatchNotification` calls.
 
 ## Mac
 `prisma db push` (additive) → `pnpm db:generate` → `rm -rf apps/*/.next` → restart.
