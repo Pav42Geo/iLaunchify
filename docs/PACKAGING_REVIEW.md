@@ -43,12 +43,14 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   so an approved type shows a real thumbnail once admin preps a mockup. (Carrying a
   partner-uploaded image was a dead end: `PackagingSystem.partnerImageFileId` is
   never populated — there's no partner image-upload yet.)
-- Notify the partner on approve/reject (`@ilaunchify/notifications`). Needs new
-  `NotificationEvent` enum values (`PACKAGING_APPROVED`/`PACKAGING_REJECTED`) + a
-  template + dispatch calls in the admin actions. Blocked on the enum migration:
-  `renderTemplate`'s switch is exhaustive over the generated enum, so the cases
-  won't typecheck until `prisma generate` runs. Land the enum + template behind the
-  same migration, then add the two `dispatchNotification` calls.
+- ✅ STAGED (commit `ace77bb`): notify the partner on approve/reject. Added
+  `NotificationEvent.PACKAGING_APPROVED/PACKAGING_REJECTED` (additive) + templates
+  + `dispatchNotification` calls in the admin actions (audience `partner`, link →
+  `/packaging`). Compiles now via a shim: the two events are matched before the
+  typed `renderTemplate` switch (event cast to string) and the call-site `event`
+  is cast `as never`. **Post-migration cleanup (after `prisma generate`):** fold
+  the two `if (ev === …)` blocks back into the switch and drop the `as never`
+  casts. Runtime works only once the enum migration runs.
 
 ## Mac
 `prisma db push` (additive) → `pnpm db:generate` → `rm -rf apps/*/.next` → restart.
