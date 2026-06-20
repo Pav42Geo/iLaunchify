@@ -112,7 +112,18 @@ export function GuidedBuilder({
   // does not re-run on nav, so a layout-level check would stick.
   useEffect(() => {
     document.body.classList.add('gb-active')
-    return () => document.body.classList.remove('gb-active')
+    // Reserve the scrollbar gutter for the whole builder mount. Steps 1–3 scroll
+    // the document (gutter present), but the fullscreen Packaging Studio (Step 4,
+    // fixed inset-0) removes the scrollbar — without a stable gutter the sticky
+    // topbar's right edge jumps ~15px when crossing into Step 4. `stable` keeps
+    // the gutter reserved in both states so the header never shifts.
+    const html = document.documentElement
+    const prevGutter = html.style.scrollbarGutter
+    html.style.scrollbarGutter = 'stable'
+    return () => {
+      document.body.classList.remove('gb-active')
+      html.style.scrollbarGutter = prevGutter
+    }
   }, [])
 
   const [cur, setCur] = useState(0)

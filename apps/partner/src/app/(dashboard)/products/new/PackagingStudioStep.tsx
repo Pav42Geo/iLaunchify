@@ -451,7 +451,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
       {/* ---- Top bar — pixel-matches the standard AppHeader topbar (same brand
            mark, py-3 pl-7 pr-6, gap-5, bell-driven height) so nothing shifts
            when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
-      <header className="relative flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
+      <header className="flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
         {/* Brand mark — identical to AppHeaderBrandMark (pink 26px square + iLaunchify wordmark). */}
         <span className="flex flex-shrink-0 items-center gap-[7px]">
           <span aria-hidden="true" className="h-[26px] w-[26px] rounded-md bg-pink-500" />
@@ -493,10 +493,9 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           />
         </span>
 
-        {/* 3D⇄Die-line toggle — absolutely centered so it NEVER displaces the
-            right cluster (Next/bell/account stay pinned exactly as on steps 1–3). */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="pointer-events-auto inline-flex rounded-full border border-ink-200 bg-white p-0.5">
+        {/* Right cluster — ml-auto gap-2: [3D⇄Die-line] · Next · bell · account. */}
+        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+          <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
               <BoxIcon className="h-3.5 w-3.5" /> 3D
             </button>
@@ -504,10 +503,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               <PencilRuler className="h-3.5 w-3.5" /> Die-line
             </button>
           </div>
-        </div>
 
-        {/* Right cluster — identical to AppHeader / gb-topbar-right: Next · bell · account. */}
-        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
           {/* Next — matches the builder steps' gb-nextbtn: pink pill, 13px semibold. */}
           {onNext && (
             <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
