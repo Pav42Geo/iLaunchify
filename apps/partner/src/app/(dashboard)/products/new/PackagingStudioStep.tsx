@@ -887,6 +887,11 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {!draftId && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-snug text-amber-800">
+              Save your product draft first — finish Basics or hit <b>Save draft</b> (☰ menu). Custom packaging attaches to a saved product.
+            </div>
+          )}
           {/* Identity */}
           <div>
             <label className={labelCls}>Name</label>
@@ -969,11 +974,14 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
           </FileGroup>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
-          <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Cancel</button>
-          <button type="button" onClick={() => void submit()} disabled={busy || !draftId} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
-            {busy ? 'Uploading…' : 'Add packaging'}
-          </button>
+        <div className="flex items-center justify-between gap-2 border-t border-ink-100 px-5 py-3.5">
+          <span className="text-[11px] text-ink-400">{!draftId ? 'Save your product draft first.' : name.trim().length < 2 ? 'Enter a name to continue.' : ''}</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Cancel</button>
+            <button type="button" onClick={() => void submit()} disabled={busy || !draftId || name.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
+              {busy ? 'Uploading…' : 'Add packaging'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
