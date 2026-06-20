@@ -29,10 +29,15 @@ Studio (Phase 2, slice 3, 2026-06-19).
 approvedPackagingTypeId`. Cast-guarded everywhere (pending migration). Audit
 actions `PACKAGING_SUBMIT_REVIEW` / `PACKAGING_REVIEW_APPROVE` / `PACKAGING_REVIEW_REJECT`.
 
+## Where the partner sees status
+**On the partner's `/packaging` page**, NOT in the studio (Pavel 2026-06-19). A
+"Catalog submissions" section lists each submission with a status pill (In review /
+In catalog / Changes requested), submitted date, lifecycle line, and the admin's
+rejection note. The studio My tab only holds the submit entry point + a quiet
+"Submitted · track on your profile" hint. `loadPackagingStudio` also returns
+`reviewStatus`/`reviewNotes` (cast-guarded). Commit `7ca3749`.
+
 ## Follow-ups
-- Surface review STATUS back in the studio My tab (currently fire-and-toast; the
-  partner doesn't see SUBMITTED/APPROVED/REJECTED badges yet — needs reviewStatus
-  in `loadPackagingStudio`).
 - Admin approve currently creates a bare PackagingType (no 3D thumb until mockups
   are added). Consider carrying the partner's uploaded image/glTF onto the type.
 - Notify the partner on approve/reject (`@ilaunchify/notifications`).
