@@ -3093,6 +3093,8 @@ enum NotificationEvent {
   SECTION_VERIFIED // admin approved one of their verification sections
   SECTION_NEEDS_CHANGES // admin requested partner edit a section
   PARTNER_ACTIVATED // welcome / fully approved
+  PACKAGING_APPROVED // admin published a submitted packaging into the Library catalog
+  PACKAGING_REJECTED // admin declined a submitted packaging (see notes)
   DISPATCH_RECEIVED // new order dispatch needs partner action
   DISPATCH_ACCEPT_REMINDER // accept window is closing soon (defer to V1.1)
   // Phase H4 — creator-facing workflow events

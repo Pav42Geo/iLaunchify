@@ -9,7 +9,18 @@
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
+
+/** Resolve the owning partner's user id + a display name for notifications. */
+async function systemOwner(systemId: string): Promise<{ userId: string; name: string } | null> {
+  const row = await prisma.packagingSystem.findUnique({
+    where: { id: systemId },
+    select: { partnerName: true, overrideDisplayName: true, partner: { select: { userId: true } } },
+  })
+  if (!row?.partner?.userId) return null
+  return { userId: row.partner.userId, name: row.overrideDisplayName ?? row.partnerName }
+}
 
 const PATH = '/asset-management/packaging-review'
 
@@ -84,6 +95,9 @@ export async function approvePackagingReview(systemId: string, displayName: stri
   })
 
   await logAuditAs(user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_REVIEW_APPROVE', payload: { packagingTypeId: created.id, category, displayName: name } })
+  const owner = await systemOwner(systemId)
+  // 'PACKAGING_APPROVED' enum value ships with a pending migration → cast until generated.
+  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_APPROVED' as never, data: { name, category }, audience: 'partner' })
   revalidatePath(PATH)
   return { ok: true }
 }
@@ -94,6 +108,8 @@ export async function rejectPackagingReview(systemId: string, notes: string): Pr
   if (!sys) return { ok: false, error: 'Submission not found or already handled.' }
   await ps().update({ where: { id: systemId }, data: { reviewStatus: 'REJECTED', reviewNotes: notes.trim() || null } })
   await logAuditAs(user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_REVIEW_REJECT', payload: { notes: notes.trim() || null } })
+  const owner = await systemOwner(systemId)
+  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_REJECTED' as never, data: { name: owner.name, notes: notes.trim() || undefined }, audience: 'partner' })
   revalidatePath(PATH)
   return { ok: true }
 }

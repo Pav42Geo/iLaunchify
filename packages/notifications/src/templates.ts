@@ -14,6 +14,8 @@ interface TemplateData {
   SECTION_VERIFIED: { sectionType: string; companyName?: string }
   SECTION_NEEDS_CHANGES: { sectionType: string; companyName?: string; notes?: string }
   PARTNER_ACTIVATED: { companyName?: string }
+  PACKAGING_APPROVED: { name: string; category?: string }
+  PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
   DISPATCH_ACCEPT_REMINDER: { dispatchId: string; hoursRemaining: number }
   PARTNER_APPLIED: { companyName: string; partnerEmail: string; partnerId: string }
@@ -109,6 +111,27 @@ export function renderTemplate<E extends NotificationEvent>(
   event: E,
   data: TemplateData[E],
 ): NotificationTemplate {
+  // PACKAGING_* events ship with a pending NotificationEvent migration, so they're
+  // matched here (event cast to string) before the typed switch — keeps this
+  // compiling before `prisma generate` adds the enum values. Fold into the switch
+  // once generated (optional cleanup).
+  const ev = event as string
+  if (ev === 'PACKAGING_APPROVED') {
+    const d = data as TemplateData['PACKAGING_APPROVED']
+    return {
+      title: `“${d.name}” is now in the catalog`,
+      body: `Your packaging was approved${d.category ? ` (${d.category.toLowerCase()})` : ''} and is live in the shared Library. Creators can now build on it.`,
+      link: '/packaging',
+    }
+  }
+  if (ev === 'PACKAGING_REJECTED') {
+    const d = data as TemplateData['PACKAGING_REJECTED']
+    return {
+      title: `“${d.name}” needs changes`,
+      body: d.notes ? `Admin note: "${d.notes.slice(0, 200)}"` : 'An admin requested changes before this packaging can join the catalog — see your Packaging page.',
+      link: '/packaging',
+    }
+  }
   switch (event) {
     case 'SECTION_VERIFIED': {
       const d = data as TemplateData['SECTION_VERIFIED']
