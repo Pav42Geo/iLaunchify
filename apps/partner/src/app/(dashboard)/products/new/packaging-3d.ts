@@ -80,6 +80,8 @@ const C = { pinkSoft: '#FBD2DE', inkSoft: '#D7D9DC' }
 export interface PackagingSceneHandle {
   setTopology(t: TopologyKey): void
   setFold(solid: boolean): void
+  /** Continuous fold: 0 = fully open/flat net, 1 = assembled/solid. */
+  setFoldAmount(t: number): void
   /** Snap the camera to a preset orbit (azimuth θ, polar φ). Stops idle spin. */
   setCameraView(theta: number, phi: number): void
   /** Multiply the orbit radius (factor < 1 zooms in, > 1 zooms out). */
@@ -366,6 +368,7 @@ export async function createPackagingScene(
   return {
     setTopology(t) { if (t !== activeType) { activeType = t; buildPackage(t) } },
     setFold(solid) { targetT = solid ? 1 : 0 },
+    setFoldAmount(t) { targetT = Math.max(0, Math.min(1, t)) },
     setCameraView(t, p) { autoSpin = false; if (group) group.rotation.y = 0; theta = t; phi = p },
     zoomBy(f) { radius = Math.max(2.8, Math.min(12, radius * f)) },
     select(key) { selectedKey = key },

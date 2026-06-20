@@ -165,9 +165,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // loads the Fabric.js-style die-line canvas (existing die-lines) or the
   // add-a-die-line CTA when the attached packaging has none yet.
   const [view, setView] = useState<'3d' | 'die'>('3d')
-  // 3D Open/Close (fold) state — true = assembled/solid, false = unfolded net.
-  const [solid, setSolid] = useState(true)
-  const setFold3d = (next: boolean) => { setSolid(next); handleRef.current?.setFold(next) }
+  // 3D Open/Close fold — continuous 0 (open/flat net) … 1 (assembled/solid). Only
+  // meaningful for foldable cartons (box topology); rigid containers stay solid.
+  const [foldAmt, setFoldAmt] = useState(1)
+  const setFold3d = (t: number) => { setFoldAmt(t); handleRef.current?.setFoldAmount(t) }
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
@@ -253,6 +254,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   }, [view])
 
   useEffect(() => { if (view === '3d') handleRef.current?.setTopology(topology) }, [topology, view])
+
+  // Only foldable cartons (boxes) expose the Open/Close slider; rigid containers
+  // (cans/jars/bottles) snap back to solid so a left-over open state can't linger.
+  const foldable = topology === 'box'
+  useEffect(() => {
+    if (!foldable) { setFoldAmt(1); handleRef.current?.setFoldAmount(1) }
+  }, [foldable])
 
   // Load which packaging is already attached (for the Library → My tab toggles).
   const refreshAttached = useCallback(() => { if (draftId) void loadPackaging(draftId).then(setAttached) }, [draftId])
@@ -622,11 +630,26 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                 <IconBtn icon={ZoomOut} onClick={() => handleRef.current?.zoomBy(1.18)} title="Zoom out" />
                 <IconBtn icon={Maximize} onClick={() => handleRef.current?.setCameraView(CAMERA_PRESETS.frontRight.theta, CAMERA_PRESETS.frontRight.phi)} title="Reset view" />
                 <IconBtn icon={ZoomIn} onClick={() => handleRef.current?.zoomBy(0.85)} title="Zoom in" />
-                <span className="mx-0.5 h-4 w-px bg-ink-200" />
-                <div className="inline-flex rounded-full bg-ink-50 p-0.5 text-[11px] font-semibold">
-                  <button type="button" onClick={() => setFold3d(false)} className={`rounded-full px-2.5 py-1 transition-colors ${!solid ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}>Open</button>
-                  <button type="button" onClick={() => setFold3d(true)} className={`rounded-full px-2.5 py-1 transition-colors ${solid ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}>Close</button>
-                </div>
+                {/* Open ⇄ Close fold slider — foldable cartons only. */}
+                {foldable && (
+                  <>
+                    <span className="mx-0.5 h-4 w-px bg-ink-200" />
+                    <div className="flex items-center gap-2 pl-1 pr-1.5">
+                      <span className="text-[11px] font-medium text-ink-500">Open</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={foldAmt}
+                        onChange={(e) => setFold3d(Number(e.target.value))}
+                        aria-label="Open / close package"
+                        className="h-1 w-28 cursor-pointer appearance-none rounded-full bg-ink-200 accent-pink-500"
+                      />
+                      <span className="text-[11px] font-medium text-ink-500">Close</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (
