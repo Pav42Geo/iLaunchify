@@ -25,13 +25,42 @@ export interface PackingProfileOption {
   structuralType: StructuralPackType | null
 }
 
-// Coarse buckets to organize the 15 profiles into scannable columns.
-const BUCKETS: Array<{ title: string; groups: string[] }> = [
-  { title: 'Single flavor', groups: ['SINGLE_FLAVOR_SINGLE_PACK', 'SINGLE_FLAVOR_MULTIPACK', 'VALUE_BULK_SINGLE'] },
-  { title: 'Multiple flavors', groups: ['MULTI_FLAVOR_MIXED_PACK', 'MULTI_FLAVOR_COMPARTMENT_PACK', 'MULTI_FLAVOR_INDIVIDUAL_IN_OUTER', 'VALUE_BULK_VARIETY'] },
-  { title: 'Curated & custom', groups: ['CUSTOMIZABLE_PICK_N', 'SAMPLER_MINI', 'GIFT_PREMIUM', 'SEASONAL_LIMITED', 'PAIRING_FUNCTIONAL', 'RETAIL_COUNTER_DISPLAY', 'REFILL_ECO'] },
-  { title: 'Recurring', groups: ['SUBSCRIPTION_ROTATING'] },
+// All 15 merchandising presets are kept, but they're organized under the 6
+// STRUCTURAL families the engine actually branches on (StructuralPackType). The
+// section a preset lands in = its `structuralType`; this makes the structural
+// meaning scannable without collapsing the recognizable preset names.
+const SECTIONS: Array<{
+  st: StructuralPackType
+  title: string
+  desc: string
+}> = [
+  { st: 'SINGLE_UNIT', title: 'Single unit', desc: 'One saleable unit, one recipe, one label. A bottle-in-a-box lives here — the carton is a second packaging component you add in the Packaging step.' },
+  { st: 'MULTI_UNIT_SAME', title: 'Multipack — same flavor', desc: 'Many identical units, one recipe, one label.' },
+  { st: 'MULTI_FLAVOR_MIXED', title: 'Multiple flavors — mixed', desc: 'Flavors mixed together in one pack; one aggregate label.' },
+  { st: 'MULTI_FLAVOR_COMPARTMENT', title: 'Multiple flavors — compartments', desc: 'Flavors kept separate in compartments; multi-column label.' },
+  { st: 'PER_FLAVOR_IN_OUTER', title: 'Each flavor its own pack, one outer', desc: 'Variety / gift / sampler / retail — a label & die-line per flavor inside an outer.' },
+  { st: 'CUSTOMIZABLE_PICK_N', title: 'Customizable — build-your-own', desc: 'Buyer picks N from a set of flavors.' },
 ]
+
+// Fallback for any profile not yet carrying a structuralType (un-seeded rows):
+// derive the structural bucket from the legacy packStructure so it still sorts.
+function structuralBucket(p: PackingProfileOption): StructuralPackType {
+  if (p.structuralType) return p.structuralType
+  switch (p.packStructure) {
+    case 'SINGLE':
+      return 'SINGLE_UNIT'
+    case 'MULTI_SAME':
+      return 'MULTI_UNIT_SAME'
+    case 'COMBINED':
+      return 'MULTI_FLAVOR_MIXED'
+    case 'COMPARTMENT':
+      return 'MULTI_FLAVOR_COMPARTMENT'
+    case 'CUSTOMIZABLE':
+      return 'CUSTOMIZABLE_PICK_N'
+    default:
+      return 'PER_FLAVOR_IN_OUTER'
+  }
+}
 
 export function ProductTypeGate({
   profiles,
@@ -55,14 +84,13 @@ export function ProductTypeGate({
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))' }}>
-        {BUCKETS.map((b) => {
-          const items = b.groups
-            .map((g) => profiles.find((p) => p.group === g))
-            .filter((p): p is PackingProfileOption => !!p)
+        {SECTIONS.map((b) => {
+          const items = profiles.filter((p) => structuralBucket(p) === b.st)
           if (items.length === 0) return null
           return (
-            <div key={b.title}>
-              <div className="eyebrow" style={{ marginBottom: 8 }}>{b.title}</div>
+            <div key={b.st}>
+              <div className="eyebrow" style={{ marginBottom: 2 }}>{b.title}</div>
+              <div className="tiny muted" style={{ marginBottom: 8, lineHeight: 1.35 }}>{b.desc}</div>
               <div className="grid" style={{ gap: 8 }}>
                 {items.map((p) => {
                   const on = selectedId === p.id
