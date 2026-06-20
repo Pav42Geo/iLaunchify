@@ -168,6 +168,9 @@ export const AUDIT_ACTIONS = [
   'TRANSFER_QUEUED',
   'TRANSFER_PAID',
   'REFUND_ISSUED',
+  // Refund executor (docs/REFUND_EXECUTION.md) — planned intent / execution failure
+  'REFUND_PLANNED',
+  'REFUND_FAILED',
   // R15.c — admin tier management module
   'CREATOR_TIER_CHANGE',
   'PARTNER_TIER_CHANGE',

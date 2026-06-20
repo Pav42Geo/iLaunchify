@@ -281,14 +281,28 @@ async function mintCreditForPaidSample(orderId: string): Promise<void> {
 }
 
 async function onChargeRefunded(charge: Stripe.Charge) {
-  // V1: record-only. V1.5+: clawback transfers + partner debit logic.
   const orderId = charge.metadata?.ilaunchify_order_id
   if (!orderId) return
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status: 'REFUNDED' },
-  }).catch(() => {/* ignore not-found */})
+  // Reconcile any Refund rows we created (executeOrderRefund) against Stripe's
+  // authoritative status. `charge.refunds.data` carries each refund's id + status.
+  const refunds = charge.refunds?.data ?? []
+  for (const r of refunds) {
+    const status = r.status === 'succeeded' ? 'SUCCEEDED' : r.status === 'failed' ? 'FAILED' : 'PENDING'
+    await prisma.refund
+      .updateMany({ where: { stripeRefundId: r.id }, data: { status } })
+      .catch(() => {/* row may not exist (refund created directly in Stripe) */})
+  }
+
+  // Move the order to REFUNDED — but only from a status the FSM allows. A CANCELLED
+  // order stays CANCELLED (the cancellation decision: CANCELLED is the terminal void
+  // state; the refund is a separate Refund record), so we never override it here.
+  await prisma.order
+    .updateMany({
+      where: { id: orderId, status: { in: ['PAID', 'DELIVERED', 'COMPLETED', 'DISPUTED'] } },
+      data: { status: 'REFUNDED' },
+    })
+    .catch(() => {/* ignore not-found / not-eligible */})
 
   // Refunding a SAMPLE voids its unused credit (Pavel 2026-06-10). APPLIED credit
   // (already consumed on a placed production order) is left for a later clawback

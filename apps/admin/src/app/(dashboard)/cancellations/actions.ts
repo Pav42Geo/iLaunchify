@@ -5,6 +5,7 @@ import type { NotificationEvent } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { computeCancellationOutcome, assertOrderTransition } from '@ilaunchify/orders'
+import { executeOrderRefund } from '@ilaunchify/payments'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
@@ -173,6 +174,45 @@ export async function reviewCancellation({
         : undefined,
     },
   })
+
+  // Refund execution — gated behind STRIPE_REFUNDS_ENABLED (dry-run otherwise, which
+  // just records the planned amounts). Best-effort: a refund failure must never block
+  // an approved cancellation. The order stays CANCELLED regardless (refund is separate).
+  if (decision === 'APPROVED' && outcome && outcome.refundCents > 0) {
+    try {
+      const refundResult = await executeOrderRefund({
+        orderId: req.orderId,
+        refundCents: outcome.refundCents,
+        reason: 'OTHER',
+        initiatedByUserId: admin.id,
+      })
+      await logAuditAs(admin, {
+        entityType: 'Order',
+        entityId: req.orderId,
+        action: refundResult.ok
+          ? refundResult.executed
+            ? 'REFUND_ISSUED'
+            : 'REFUND_PLANNED'
+          : 'REFUND_FAILED',
+        payload: refundResult.ok
+          ? {
+              refundCents: outcome.refundCents,
+              executed: refundResult.executed,
+              refundId: refundResult.refundId ?? null,
+              reversals: refundResult.plan.reversals.length,
+              platformShareCents: refundResult.plan.platformShareCents,
+            }
+          : { refundCents: outcome.refundCents, error: refundResult.error },
+      })
+    } catch (err) {
+      await logAuditAs(admin, {
+        entityType: 'Order',
+        entityId: req.orderId,
+        action: 'REFUND_FAILED',
+        payload: { refundCents: outcome.refundCents, error: (err as Error).message },
+      }).catch(() => {})
+    }
+  }
 
   // Notify the affected parties (best-effort — dispatcher never throws).
   if (decision === 'APPROVED' && req.order?.creatorUserId) {
