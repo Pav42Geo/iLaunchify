@@ -42,6 +42,7 @@ import {
   ArrowLeft,
   Search,
   Save,
+  ChevronDown,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -781,6 +782,16 @@ function LibraryDrawer({
   const catGroups = CATEGORY_ORDER.map((cat) => ({ cat, items: catFiltered.filter((c) => c.category === cat) })).filter((g) => g.items.length > 0)
   const tabCls = (on: boolean) => `flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${on ? 'bg-pink-500 text-white' : 'text-ink-600 hover:bg-ink-100'}`
 
+  // Category navigation (Pacdora-style): a sticky horizontal chip strip + a
+  // chevron that expands the full taxonomy as text. `activeCat === null` = All.
+  const [activeCat, setActiveCat] = useState<string | null>(null)
+  const [catOpen, setCatOpen] = useState(false)
+  // Categories that actually have items under the current search.
+  const availableCats = CATEGORY_ORDER.filter((cat) => catFiltered.some((c) => c.category === cat))
+  // If the active category is filtered away (by search), fall back to All.
+  const effectiveCat = activeCat && availableCats.includes(activeCat) ? activeCat : null
+  const shownGroups = effectiveCat ? catGroups.filter((g) => g.cat === effectiveCat) : catGroups
+
   return (
     <div className="flex h-full flex-col">
       {/* Library / My tabs */}
@@ -810,17 +821,59 @@ function LibraryDrawer({
       </div>
 
       {tab === 'library' ? (
-        <div className="flex-1 overflow-y-auto px-3 py-3">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Sticky category strip — horizontal scroll of category chips + a
+              chevron that expands the full taxonomy as text. Stays put while the
+              grid below scrolls. */}
+          {availableCats.length > 0 && (
+            <div className="relative shrink-0 border-b border-ink-100">
+              <div className="flex items-center gap-1 overflow-x-auto px-3 py-2 pr-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <CatChip label="All" active={effectiveCat === null} onClick={() => { setActiveCat(null); setCatOpen(false) }} />
+                {availableCats.map((cat) => (
+                  <CatChip key={cat} label={CATEGORY_LABEL[cat] ?? cat} active={effectiveCat === cat} onClick={() => { setActiveCat(cat); setCatOpen(false) }} />
+                ))}
+              </div>
+              {/* Chevron expander, pinned right with a fade so chips scroll under it. */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-white via-white to-transparent pl-4 pr-1.5">
+                <button
+                  type="button"
+                  aria-label={catOpen ? 'Hide all categories' : 'Show all categories'}
+                  aria-expanded={catOpen}
+                  onClick={() => setCatOpen((v) => !v)}
+                  className="pointer-events-auto grid h-7 w-7 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-50"
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform ${catOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+              {/* Expanded taxonomy — every category as a text link (click → select + collapse). */}
+              {catOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setCatOpen(false)} />
+                  <div className="absolute left-0 right-0 top-full z-20 max-h-[60vh] overflow-y-auto border-b border-ink-200 bg-white p-3 shadow-lg">
+                    <p className="mb-2 px-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">All categories</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      <button type="button" onClick={() => { setActiveCat(null); setCatOpen(false) }} className={`rounded-md px-1.5 py-1 text-left text-[12.5px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === null ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>All</button>
+                      {availableCats.map((cat) => (
+                        <button key={cat} type="button" onClick={() => { setActiveCat(cat); setCatOpen(false) }} className={`rounded-md px-1.5 py-1 text-left text-[12.5px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === cat ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>{CATEGORY_LABEL[cat] ?? cat}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {catalog.length === 0 ? (
             <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-4 text-center">
               <BoxIcon className="mx-auto mb-2 h-5 w-5 text-ink-300" />
               <div className="text-[12.5px] font-semibold text-ink-700">Catalog is empty</div>
               <p className="mx-auto mt-1 max-w-[15rem] text-[11.5px] leading-relaxed text-ink-500">No admin-curated packaging types yet. Use the <b>My</b> tab to upload your own.</p>
             </div>
-          ) : catGroups.length === 0 ? (
+          ) : shownGroups.length === 0 ? (
             <p className="px-1 py-4 text-center text-[12px] text-ink-500">No catalog matches “{search}”.</p>
           ) : (
-            catGroups.map((g) => (
+            shownGroups.map((g) => (
               <div key={g.cat} className="mb-3">
                 <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">{CATEGORY_LABEL[g.cat] ?? g.cat}</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -853,6 +906,7 @@ function LibraryDrawer({
               </div>
             ))
           )}
+          </div>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
@@ -1115,6 +1169,20 @@ function RailButton({ icon: Icon, label, active, onClick }: { icon: React.Compon
   return (
     <button onClick={onClick} className={`flex w-16 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition-colors ${active ? 'bg-pink-50 text-pink-700' : 'text-ink-500 hover:bg-ink-50'}`} aria-pressed={active}>
       <Icon className="h-5 w-5" />
+      {label}
+    </button>
+  )
+}
+
+// One pill in the Library category strip (Pacdora-style horizontal scroller).
+function CatChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${active ? 'bg-pink-500 text-white' : 'bg-ink-50 text-ink-600 hover:bg-ink-100'}`}
+    >
       {label}
     </button>
   )
