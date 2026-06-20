@@ -30,6 +30,9 @@ export interface StudioPackaging {
   packagingTypeId: string | null
   packagingTypeName: string | null
   defaultSurfaces: StudioSurface[]
+  // Catalog-review state (docs/PACKAGING_REVIEW.md) — null pre-migration.
+  reviewStatus: string | null
+  reviewNotes: string | null
 }
 
 export interface StudioDieline {
@@ -81,6 +84,18 @@ export async function loadPackagingStudio(draftId: string): Promise<Result> {
     return { ok: false, error: 'Not your draft.' }
   }
 
+  // Review state for the attached systems (cast-guarded — review columns ship
+  // with a pending migration; .catch → [] keeps it safe pre-push).
+  const sysIds = tpl.packagingSystems.map(({ packagingSystem: s }) => s.id)
+  const reviewRows = sysIds.length
+    ? await (prisma as unknown as {
+        packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; reviewStatus: string | null; reviewNotes: string | null }>> }
+      }).packagingSystem
+        .findMany({ where: { id: { in: sysIds } }, select: { id: true, reviewStatus: true, reviewNotes: true } })
+        .catch(() => [] as Array<{ id: string; reviewStatus: string | null; reviewNotes: string | null }>)
+    : []
+  const reviewById = new Map(reviewRows.map((r) => [r.id, r]))
+
   const attached: StudioPackaging[] = tpl.packagingSystems.map(({ packagingSystem: s }) => ({
     systemId: s.id,
     name: s.overrideDisplayName ?? s.packagingType?.displayName ?? s.partnerName,
@@ -90,6 +105,8 @@ export async function loadPackagingStudio(draftId: string): Promise<Result> {
     defaultSurfaces: Array.isArray(s.packagingType?.defaultSurfaces)
       ? (s.packagingType!.defaultSurfaces as unknown as StudioSurface[])
       : [],
+    reviewStatus: reviewById.get(s.id)?.reviewStatus ?? null,
+    reviewNotes: reviewById.get(s.id)?.reviewNotes ?? null,
   }))
 
   // The partner's die-lines (scoped via partnerService.partnerId) — candidates for

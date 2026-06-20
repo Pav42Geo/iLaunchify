@@ -27,6 +27,13 @@ const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   RETIRED: { label: 'Retired', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
 }
 
+// Catalog-review lifecycle pills (docs/PACKAGING_REVIEW.md).
+const REVIEW_PILL: Record<string, { label: string; cls: string }> = {
+  SUBMITTED: { label: 'In review', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  APPROVED: { label: 'In catalog', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  REJECTED: { label: 'Changes requested', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
+}
+
 export default async function PackagingListPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
@@ -45,6 +52,20 @@ export default async function PackagingListPage() {
   const active = partner.packagingSystems.filter((s) => s.status === 'ACTIVE')
   const drafts = partner.packagingSystems.filter((s) => s.status === 'DRAFT')
   const retired = partner.packagingSystems.filter((s) => s.status === 'RETIRED')
+
+  // Catalog-review submissions (docs/PACKAGING_REVIEW.md). Cast-guarded — the
+  // review columns ship with a pending migration; .catch → [] keeps it safe.
+  const submissions = await (prisma as unknown as {
+    packagingSystem: {
+      findMany: (a: unknown) => Promise<Array<{ id: string; partnerName: string; overrideDisplayName: string | null; reviewStatus: string | null; reviewNotes: string | null; submittedForReviewAt: Date | null }>>
+    }
+  }).packagingSystem
+    .findMany({
+      where: { partnerId: partner.id, reviewStatus: { in: ['SUBMITTED', 'APPROVED', 'REJECTED'] } },
+      select: { id: true, partnerName: true, overrideDisplayName: true, reviewStatus: true, reviewNotes: true, submittedForReviewAt: true },
+      orderBy: { submittedForReviewAt: 'desc' },
+    })
+    .catch(() => [] as Array<{ id: string; partnerName: string; overrideDisplayName: string | null; reviewStatus: string | null; reviewNotes: string | null; submittedForReviewAt: Date | null }>)
 
   return (
     <div className="space-y-6">
@@ -93,6 +114,35 @@ export default async function PackagingListPage() {
           </div>
         )}
       </div>
+
+      {/* Catalog-review submissions — the partner's own tracker for custom packaging
+          they sent to the iLaunchify team to add to the shared Library. */}
+      {submissions.length > 0 && (
+        <div className="rounded-3xl border border-ink-200 bg-white px-6 py-5">
+          <h2 className="font-display text-[16px] font-semibold tracking-tight text-ink-900">Catalog submissions</h2>
+          <p className="mt-0.5 text-[12.5px] text-ink-600">Custom packaging you submitted for the iLaunchify team to prep mockups and add to the shared Library.</p>
+          <ul className="mt-3 space-y-2">
+            {submissions.map((s) => {
+              const pill = REVIEW_PILL[s.reviewStatus ?? ''] ?? { label: 'In review', cls: 'border-amber-200 bg-amber-50 text-amber-800' }
+              const phase = s.reviewStatus === 'APPROVED' ? 'In catalog' : s.reviewStatus === 'REJECTED' ? 'Changes requested' : 'Pending review'
+              return (
+                <li key={s.id} className="rounded-2xl border border-ink-200 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[13.5px] font-semibold text-ink-900">{s.overrideDisplayName ?? s.partnerName}</span>
+                    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold', pill.cls)}>{pill.label}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-ink-500">
+                    Submitted{s.submittedForReviewAt ? ` ${new Date(s.submittedForReviewAt).toLocaleDateString()}` : ''} → admin review → {phase}
+                  </div>
+                  {s.reviewStatus === 'REJECTED' && s.reviewNotes && (
+                    <p className="mt-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11.5px] leading-snug text-rose-700">{s.reviewNotes}</p>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {partner.packagingSystems.length === 0 ? (
         <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">

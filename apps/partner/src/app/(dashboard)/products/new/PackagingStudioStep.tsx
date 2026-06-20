@@ -281,6 +281,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
       setBusyReview(null)
       if (!r.ok) { toast.error(r.error); return }
       toast.success('Submitted for catalog review — admin will prep mockups and publish it.')
+      if (draftId) void loadPackagingStudio(draftId).then((res) => { if (res.ok) setData(res.data) })
     })
   }
 
@@ -901,17 +902,24 @@ function LibraryDrawer({
                           <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
                           <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
                         </div>
-                        {/* Custom (non-catalog) packaging can be submitted to admin to join the Library. */}
+                        {/* Custom (non-catalog) packaging: submit to admin to join the Library.
+                            Submission STATUS lives on the partner profile, not here. */}
                         {att && !att.packagingTypeId && (
-                          <button
-                            type="button"
-                            onClick={() => onSubmitReview(s.id)}
-                            disabled={busyReview === s.id}
-                            className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
-                            title="Send to admin to prep 3D/2D mockups and publish into the Library catalog"
-                          >
-                            <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : 'Submit for catalog review'}
-                          </button>
+                          att.reviewStatus === 'SUBMITTED' ? (
+                            <div className="mt-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700">
+                              <Check className="h-3 w-3" /> Submitted · track on your profile
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onSubmitReview(s.id)}
+                              disabled={busyReview === s.id}
+                              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
+                              title="Send to admin to prep 3D/2D mockups and publish into the Library catalog"
+                            >
+                              <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review'}
+                            </button>
+                          )
                         )}
                       </>
                     )}
