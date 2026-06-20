@@ -36,10 +36,20 @@ the package. **Inert until `STRIPE_REFUNDS_ENABLED=true`.**
 - Does NOT change `Order.status` (CANCELLED stays terminal; the refund is a separate
   record). The caller owns status + audit.
 
-**Still to do (next, with review):** (1) wire the two call sites below to call it
-(dry-run by default); (2) a `charge.refunded` / `refund.updated` webhook handler to
-reconcile `Refund.status`; (3) Stripe **test-mode** end-to-end verification before
-anyone sets the flag.
+**Wired (2026-06-20):**
+- Admin `reviewCancellation` (APPROVED) calls `executeOrderRefund(refundCents=outcome.refundCents)`,
+  best-effort, auditing `REFUND_PLANNED` (dry-run) / `REFUND_ISSUED` / `REFUND_FAILED`. Order
+  stays CANCELLED regardless.
+- `charge.refunded` webhook reconciles `Refund.status` by `stripeRefundId` and FSM-guards the
+  order→REFUNDED flip (never overrides a CANCELLED order).
+
+**Still to do (with review):**
+1. **Dispute-resolve refund** is intentionally NOT wired — resolving a dispute "in the
+   creator's favor" needs a refund-amount policy (full order total? partial?) decided
+   before calling `executeOrderRefund` from `resolveOrderDispute`.
+2. **Stripe test-mode** end-to-end verification, THEN set `STRIPE_REFUNDS_ENABLED=true`.
+   Until then everything is dry-run (records the plan, moves nothing).
+3. Admin now depends on `@ilaunchify/payments` — `pnpm install` on the Mac links it.
 
 ## Original spec — executor design
 

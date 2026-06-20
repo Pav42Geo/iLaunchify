@@ -30,9 +30,11 @@ real drift, not an additive change.
 
 ## 2. `pnpm install` (run the new tests)
 
-`packages/payments` gained a `vitest` devDep (matches `@ilaunchify/orders`). Until you
-install, the new golden suites can't run and `tsc` reports a `vitest` module-not-found
-in those `*.test.ts` files (harmless — production code is clean).
+`packages/payments` gained a `vitest` devDep, and `apps/admin` now declares
+`@ilaunchify/payments` (the refund executor). `pnpm install` links both. Until you
+install, `tsc` reports `vitest` module-not-found in those `*.test.ts` files and (in a
+clean checkout) `@ilaunchify/payments` unresolved in admin — both harmless, resolved by
+install.
 
 ```bash
 pnpm install
