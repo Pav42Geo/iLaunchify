@@ -23,7 +23,7 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 |---|---|
 | `maxReroutes` | V1 parks a declined/timed-out order at `ON_HOLD` for **manual** admin reroute. The auto-reroute loop that would consume a reroute cap is V1.5 marketplace matching (#153). Wiring it now would imply a loop that doesn't exist. |
 | `warehouseReferralFeeBps` | Warehouse-referral revenue path not built. |
-| `partnerStrikeOnCancel` | No `PartnerStrike` model exists (only `PartnerClawback`, which is money). Recorded in the cancellation audit snapshot; enforcement awaits a strike model + flow. |
+| `partnerStrikeOnCancel` | **2026-06-20 — wired, pending migration.** New `PartnerStrike` model; admin `reviewCancellation` records an ACTIVE strike against the at-fault partner (the requester) on APPROVE when the policy is on. Active count shows on the admin partner detail. Migration runs on Mac — see `docs/HANDOFF-partner-strike-migration.md`; cast-guarded until then. |
 | `disputeWindowDays` | The `Dispute` model is Stripe-chargeback-shaped (`stripeDisputeId`, `evidenceDueBy`), not a creator-opened post-delivery dispute. Needs its own flow. |
 
 ### Partially wired — `cancellationFeeBps` / `refundProcessingFeeBps`

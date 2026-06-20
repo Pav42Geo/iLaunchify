@@ -293,6 +293,16 @@ export default async function PartnerDetail({ params }: PageProps) {
   const totalOrders = orderAgg._count._all
   const totalRevenueCents = totalRevenue._sum?.costCents ?? 0
 
+  // Active cancellation strikes against this partner. Cast-guarded + .catch so the
+  // page is safe before the PartnerStrike migration lands (remove the cast after).
+  const activeStrikes = await (
+    prisma as unknown as {
+      partnerStrike: { count: (a: unknown) => Promise<number> }
+    }
+  ).partnerStrike
+    .count({ where: { partnerId: partner.id, status: 'ACTIVE' } })
+    .catch(() => 0)
+
   return (
     <div className="space-y-6">
       {/* Back link */}
@@ -354,15 +364,25 @@ export default async function PartnerDetail({ params }: PageProps) {
               )}
             </p>
           </div>
-          <span
-            className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold uppercase tracking-wider',
-              tone.bg,
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {activeStrikes > 0 && (
+              <span
+                title="Active cancellation strikes (OrderSettings.partnerStrikeOnCancel)"
+                className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12.5px] font-semibold uppercase tracking-wider text-rose-700"
+              >
+                {activeStrikes} active {activeStrikes === 1 ? 'strike' : 'strikes'}
+              </span>
             )}
-          >
-            <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
-            {tone.label}
-          </span>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold uppercase tracking-wider',
+                tone.bg,
+              )}
+            >
+              <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
+              {tone.label}
+            </span>
+          </div>
         </div>
       </header>
 

@@ -762,6 +762,7 @@ model Partner {
   user                    User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   services                PartnerService[]
   clawbacks               PartnerClawback[]
+  strikes                 PartnerStrike[]
   verificationSections    PartnerVerificationSection[]
   files                   PartnerFile[]
   // V1 new relations (markets/regions)
@@ -944,6 +945,35 @@ model PartnerClawback {
   partner     Partner        @relation(fields: [partnerId], references: [id])
   refund      Refund?        @relation(fields: [refundId], references: [id])
   dispute     Dispute?       @relation(fields: [disputeId], references: [id])
+}
+
+// A demerit recorded against a partner for an approved cancellation (the partner
+// requested to cancel a dispatch they couldn't fulfill). Behaviour-light in V1 —
+// a counted, waivable record; trust/promotion consequences are admin-judged.
+// Gated by OrderSettings.partnerStrikeOnCancel.
+model PartnerStrike {
+  id                    String              @id @default(cuid())
+  partnerId             String
+  // Provenance — what produced the strike.
+  cancellationRequestId String?
+  orderId               String?
+  dispatchId            String?
+  reason                String
+  // Lifecycle — admin can waive; an expiry sweep can age strikes out later.
+  status                PartnerStrikeStatus @default(ACTIVE)
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  waivedAt              DateTime?
+  waivedById            String?
+  partner               Partner             @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId, status])
+}
+
+enum PartnerStrikeStatus {
+  ACTIVE
+  WAIVED
+  EXPIRED
 }
 
 // =============================================================================

@@ -36,6 +36,7 @@ export async function reviewCancellation({
       status: true,
       orderId: true,
       dispatchId: true,
+      requestedById: true,
       order: { select: { totalCents: true } },
     },
   })
@@ -43,6 +44,20 @@ export async function reviewCancellation({
   if (req.status !== 'PENDING_REVIEW') {
     return { ok: false, error: `Already ${req.status.toLowerCase()}.` }
   }
+
+  // Policy + the at-fault partner are resolved up front so the strike is created
+  // atomically with the cancellation. The at-fault partner is the requester — a
+  // partner who asked to cancel a dispatch they couldn't fulfill. Creator-initiated
+  // requests have no Partner row for the requester, so no strike is recorded.
+  const policy = await getOrderSettings()
+  const strikePartner =
+    decision === 'APPROVED'
+      ? await prisma.partner.findFirst({
+          where: { userId: req.requestedById },
+          select: { id: true },
+        })
+      : null
+  const willStrike = decision === 'APPROVED' && policy.partnerStrikeOnCancel && !!strikePartner
 
   await prisma.$transaction(async (tx) => {
     await tx.cancellationRequest.update({
@@ -55,22 +70,36 @@ export async function reviewCancellation({
       },
     })
     if (decision === 'APPROVED') {
-      // TODO(B.4 follow-up): full refund + PartnerStrike + PartnerClawback when
-      // the order was already in production.
       await tx.order.update({
         where: { id: req.orderId },
         data: { status: 'CANCELLED' },
       })
+      // PartnerStrike is a pending-migration model → cast-guarded until the
+      // migration lands (then remove the cast per POST_MIGRATION_CLEANUP).
+      if (willStrike && strikePartner) {
+        await (
+          tx as unknown as {
+            partnerStrike: { create: (a: unknown) => Promise<unknown> }
+          }
+        ).partnerStrike.create({
+          data: {
+            partnerId: strikePartner.id,
+            cancellationRequestId: req.id,
+            orderId: req.orderId,
+            dispatchId: req.dispatchId,
+            reason: 'Approved cancellation request',
+            status: 'ACTIVE',
+          },
+        })
+      }
     }
   })
 
-  // Snapshot the cancellation/refund policy in effect at decision time AND the
-  // money breakdown it produces against the order total, so the record is
-  // reproducible (the project values audit reproducibility). The refund isn't
-  // executed here yet — the Stripe refund call lands with the payments capability —
-  // but the exact fee/refund amounts under the live policy are now recorded at
-  // decision time rather than recomputed later against possibly-changed settings.
-  const policy = await getOrderSettings()
+  // Snapshot the money breakdown the policy produces against the order total, so
+  // the record is reproducible (the project values audit reproducibility). The
+  // refund isn't executed here yet — the Stripe refund call lands with the payments
+  // capability — but the exact fee/refund amounts under the live policy are recorded
+  // at decision time rather than recomputed later against possibly-changed settings.
   const outcome =
     decision === 'APPROVED'
       ? computeCancellationOutcome(req.order?.totalCents ?? 0, {
@@ -106,6 +135,9 @@ export async function reviewCancellation({
             feesExceededBasis: outcome.feesExceededBasis,
           }
         : undefined,
+      // Strike recorded against the at-fault partner, if the policy is on and the
+      // requester is a partner.
+      strike: willStrike ? { partnerId: strikePartner?.id ?? null } : undefined,
     },
   })
 
