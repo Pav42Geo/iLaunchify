@@ -37,6 +37,8 @@ export {
 export type { MatchCandidate, MatchContext, MatchScore, MatchWeights } from './scoring'
 export { runAutoCancel, runStaleOrderAutoCancel, isOrderStale } from './auto-cancel'
 export type { AutoCancelResult, StaleOrderCancelResult } from './auto-cancel'
+export { computeCancellationOutcome } from './cancellation-refund'
+export type { CancellationFeePolicy, CancellationOutcome } from './cancellation-refund'
 export {
   generateOrderManifest,
   parseInternalNotesLookups,

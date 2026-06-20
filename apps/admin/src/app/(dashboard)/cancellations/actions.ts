@@ -3,6 +3,7 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { computeCancellationOutcome } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -30,7 +31,13 @@ export async function reviewCancellation({
 
   const req = await prisma.cancellationRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, status: true, orderId: true, dispatchId: true },
+    select: {
+      id: true,
+      status: true,
+      orderId: true,
+      dispatchId: true,
+      order: { select: { totalCents: true } },
+    },
   })
   if (!req) return { ok: false, error: 'Cancellation request not found.' }
   if (req.status !== 'PENDING_REVIEW') {
@@ -57,10 +64,20 @@ export async function reviewCancellation({
     }
   })
 
-  // Snapshot the cancellation/refund policy in effect at decision time, so when
-  // the strike/refund-retention flows ship the record is reproducible (the
-  // project values audit reproducibility). The policy isn't enforced here yet.
+  // Snapshot the cancellation/refund policy in effect at decision time AND the
+  // money breakdown it produces against the order total, so the record is
+  // reproducible (the project values audit reproducibility). The refund isn't
+  // executed here yet — the Stripe refund call lands with the payments capability —
+  // but the exact fee/refund amounts under the live policy are now recorded at
+  // decision time rather than recomputed later against possibly-changed settings.
   const policy = await getOrderSettings()
+  const outcome =
+    decision === 'APPROVED'
+      ? computeCancellationOutcome(req.order?.totalCents ?? 0, {
+          cancellationFeeBps: policy.cancellationFeeBps,
+          refundProcessingFeeBps: policy.refundProcessingFeeBps,
+        })
+      : null
 
   await logAuditAs(admin, {
     entityType: 'CancellationRequest',
@@ -79,6 +96,16 @@ export async function reviewCancellation({
               refundProcessingFeeBps: policy.refundProcessingFeeBps,
             }
           : undefined,
+      // Computed money breakdown under the policy above (cents). Pending execution.
+      refundBreakdown: outcome
+        ? {
+            basisCents: outcome.basisCents,
+            cancellationFeeCents: outcome.cancellationFeeCents,
+            processingFeeCents: outcome.processingFeeCents,
+            refundCents: outcome.refundCents,
+            feesExceededBasis: outcome.feesExceededBasis,
+          }
+        : undefined,
     },
   })
 
