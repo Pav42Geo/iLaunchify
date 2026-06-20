@@ -17,7 +17,7 @@
 //   otherwise. Shipping + tax remain placeholders (G4 + G5 calculate them
 //   from the chosen ship-to address).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -78,6 +78,9 @@ export interface ProductionOptionsResult {
   // Hint for the UI — when this is non-null it means a partner has been
   // bound and the lists are partner-filtered.
   boundPartnerNames: { labelPrinter: string | null; manufacturer: string | null }
+  // Admin-tunable global minimum order quantity (OrderSettings.defaultMoq) — the
+  // UI floor when the product carries no per-tier MOQ of its own.
+  defaultMoq: number
 }
 
 // -----------------------------------------------------------------------------
@@ -99,7 +102,7 @@ export async function getProductionOptions(
   // Forward-pointer: when product.preferredLabelPrinterServiceId lands,
   // load the junctions and override the cost / lead-time fields.
 
-  const [substrates, packagingMaterials] = await Promise.all([
+  const [substrates, packagingMaterials, orderSettings] = await Promise.all([
     prisma.substrate.findMany({
       where: { status: 'ACTIVE' },
       orderBy: [{ category: 'asc' }, { baseUnitCostCents: 'asc' }],
@@ -108,6 +111,7 @@ export async function getProductionOptions(
       where: { status: 'ACTIVE' },
       orderBy: [{ topology: 'asc' }, { baseUnitCostCents: 'asc' }],
     }),
+    getOrderSettings(),
   ])
 
   return {
@@ -135,6 +139,7 @@ export async function getProductionOptions(
         extraLeadTimeDays: 0,
       })),
       boundPartnerNames: { labelPrinter: null, manufacturer: null },
+      defaultMoq: orderSettings.defaultMoq,
     },
   }
 }

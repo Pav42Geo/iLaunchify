@@ -12,7 +12,7 @@
 // /signup with a return URL preserved (R4 will polish this gate with
 // a modal).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import type { DecorationMethod } from '@ilaunchify/db'
 import { auth } from '@ilaunchify/auth'
 import { creatorUrl } from './app-urls'
@@ -212,7 +212,8 @@ export async function startLaunchFromTemplate(
     // so no CheckoutDraft for it can exist yet. Wrapped in try/catch
     // so a Stripe-style P2002 unique-constraint hiccup never blocks
     // the canvas redirect — wizard will fall back to an empty draft.
-    const clampedQty = clampQuantity(input.quantity)
+    const { defaultMoq } = await getOrderSettings()
+    const clampedQty = clampQuantity(input.quantity, defaultMoq)
     try {
       await prisma.checkoutDraft.create({
         data: {
@@ -286,13 +287,14 @@ function buildSeedDraftState({ quantity }: { quantity: number | null }) {
   }
 }
 
-// Hard MOQ floor matches ProductionStep's DEFAULT_MOQ (100). Anything
-// below gets clamped up so we never persist a sub-minimum quantity.
-const MIN_QTY = 100
+// Hard MOQ floor — anything below `floor` gets clamped up so we never persist a
+// sub-minimum quantity. `floor` comes from OrderSettings.defaultMoq (admin-tunable);
+// FALLBACK_MIN_QTY only applies if a caller omits it.
+const FALLBACK_MIN_QTY = 100
 const MAX_QTY = 100_000
-function clampQuantity(n: number | undefined): number | null {
+function clampQuantity(n: number | undefined, floor: number = FALLBACK_MIN_QTY): number | null {
   if (n == null || Number.isNaN(n)) return null
-  if (n < MIN_QTY) return MIN_QTY
+  if (n < floor) return floor
   if (n > MAX_QTY) return MAX_QTY
   return Math.round(n)
 }

@@ -61,9 +61,11 @@ interface Props {
   brandName: string
 }
 
-// V1 defaults — see `ilaunchify-orchestration-thesis` memory. Real MOQs
-// come from the bound partner once V1.5 introduces pre-bound routing.
-const DEFAULT_MOQ = 100
+// V1 defaults — see `ilaunchify-orchestration-thesis` memory. The MOQ floor is
+// the admin-tunable OrderSettings.defaultMoq (loaded below); FALLBACK_MOQ only
+// applies until that resolves. Real per-product MOQs arrive with V1.5 pre-bound
+// routing.
+const FALLBACK_MOQ = 100
 const DEFAULT_STEP = 50
 const DEFAULT_MAX = 100_000
 
@@ -80,6 +82,7 @@ export function ProductionStep({
   const [packConfig, setPackConfig] = useState<PackBuilderConfig | null>(null)
   const [previewColumns, setPreviewColumns] = useState<PackPreviewColumn[]>([])
   const [loadingOptions, setLoadingOptions] = useState(true)
+  const [moqFloor, setMoqFloor] = useState(FALLBACK_MOQ)
   const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
   const [isEstimating, startEstimating] = useTransition()
 
@@ -98,6 +101,7 @@ export function ProductionStep({
       if (options.ok) {
         setSubstrates(options.data.substrates)
         setPackagings(options.data.packagingMaterials)
+        setMoqFloor(options.data.defaultMoq)
       }
       if (pack.ok) setPackConfig(pack.data)
       if (preview.ok) {
@@ -163,8 +167,8 @@ export function ProductionStep({
   const lineTotalCents = estimate?.totalBeforeShippingAndTaxCents ?? 0
 
   function clampQty(n: number): number {
-    if (Number.isNaN(n)) return DEFAULT_MOQ
-    if (n < DEFAULT_MOQ) return DEFAULT_MOQ
+    if (Number.isNaN(n)) return moqFloor
+    if (n < moqFloor) return moqFloor
     if (n > DEFAULT_MAX) return DEFAULT_MAX
     return n
   }
@@ -264,20 +268,20 @@ export function ProductionStep({
               <div className="mt-1.5 flex items-center gap-3">
                 <QuantityStepper
                   value={qty}
-                  min={DEFAULT_MOQ}
+                  min={moqFloor}
                   max={DEFAULT_MAX}
                   step={DEFAULT_STEP}
                   onChange={(n) => onChange({ quantity: clampQty(n) })}
                 />
                 <span className="text-[11.5px] text-ink-500">
-                  MOQ {DEFAULT_MOQ.toLocaleString()} · steps of{' '}
+                  MOQ {moqFloor.toLocaleString()} · steps of{' '}
                   {DEFAULT_STEP.toLocaleString()}
                 </span>
               </div>
-              {qty > 0 && qty < DEFAULT_MOQ && (
+              {qty > 0 && qty < moqFloor && (
                 <p className="mt-1.5 text-[11.5px] text-pink-700">
                   Production minimums require at least{' '}
-                  {DEFAULT_MOQ.toLocaleString()} units.
+                  {moqFloor.toLocaleString()} units.
                 </p>
               )}
             </div>
