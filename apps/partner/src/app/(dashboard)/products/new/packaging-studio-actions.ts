@@ -84,15 +84,10 @@ export async function loadPackagingStudio(draftId: string): Promise<Result> {
     return { ok: false, error: 'Not your draft.' }
   }
 
-  // Review state for the attached systems (cast-guarded — review columns ship
-  // with a pending migration; .catch → [] keeps it safe pre-push).
+  // Review state for the attached systems.
   const sysIds = tpl.packagingSystems.map(({ packagingSystem: s }) => s.id)
   const reviewRows = sysIds.length
-    ? await (prisma as unknown as {
-        packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; reviewStatus: string | null; reviewNotes: string | null }>> }
-      }).packagingSystem
-        .findMany({ where: { id: { in: sysIds } }, select: { id: true, reviewStatus: true, reviewNotes: true } })
-        .catch(() => [] as Array<{ id: string; reviewStatus: string | null; reviewNotes: string | null }>)
+    ? await prisma.packagingSystem.findMany({ where: { id: { in: sysIds } }, select: { id: true, reviewStatus: true, reviewNotes: true } })
     : []
   const reviewById = new Map(reviewRows.map((r) => [r.id, r]))
 
@@ -338,23 +333,16 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
   if (mockupEntries[0]) {
     await prisma.packagingSystem.update({ where: { id: system.id }, data: { partnerImageFileId: mockupEntries[0].fileId } })
   }
-  // Material → cast-guarded (pending migration); .catch keeps creation working
-  // before `prisma db push`.
   if (material) {
-    await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
-      .update({ where: { id: system.id }, data: { material } })
-      .catch(() => undefined)
+    await prisma.packagingSystem.update({ where: { id: system.id }, data: { material } })
   }
-  // All files → PackagingSystemFile join rows (cast-guarded — new model ships with
-  // a pending migration; createMany .catch keeps it safe pre-push).
+  // All files → PackagingSystemFile join rows.
   const fileRows = [
     ...mockupEntries.map((e, i) => ({ packagingSystemId: system.id, partnerFileId: e.fileId, role: 'MOCKUP', panel: null as string | null, label: e.label, displayOrder: i })),
     ...dielineEntries.map((e, i) => ({ packagingSystemId: system.id, partnerFileId: e.fileId, role: 'DIELINE', panel: e.panel, label: e.label, displayOrder: i })),
   ]
   if (fileRows.length > 0) {
-    await (prisma as unknown as { packagingSystemFile: { createMany: (a: unknown) => Promise<unknown> } }).packagingSystemFile
-      .createMany({ data: fileRows })
-      .catch(() => undefined)
+    await prisma.packagingSystemFile.createMany({ data: fileRows })
   }
 
   await logAuditAs(user, {
@@ -379,10 +367,9 @@ export async function submitPackagingForReview(systemId: string, suggestedCatego
   if (!actor.ok) return { ok: false, error: actor.error }
   const sys = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
   if (!sys) return { ok: false, error: 'Packaging not found.' }
-  const ps = (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
-  await ps.update({
+  await prisma.packagingSystem.update({
     where: { id: systemId },
-    data: { reviewStatus: 'SUBMITTED', submittedForReviewAt: new Date(), suggestedCategory: suggestedCategory ?? null, reviewNotes: null },
+    data: { reviewStatus: 'SUBMITTED', submittedForReviewAt: new Date(), suggestedCategory: (suggestedCategory ?? null) as never, reviewNotes: null },
   })
   await logAuditAs(actor.user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_SUBMIT_REVIEW', payload: { suggestedCategory: suggestedCategory ?? null } })
   return { ok: true }
@@ -390,22 +377,9 @@ export async function submitPackagingForReview(systemId: string, suggestedCatego
 
 // =============================================================================
 // Manage a custom packaging's files AFTER creation (My tab "Manage files").
-// All PackagingSystemFile access is cast-guarded (pending migration).
 // =============================================================================
 
 export interface StudioFile { id: string; url: string | null; name: string; role: string; panel: string | null; label: string | null }
-
-function psf() {
-  return (prisma as unknown as {
-    packagingSystemFile: {
-      findMany: (a: unknown) => Promise<Array<{ id: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number; packagingSystem?: { partnerId: string } }>>
-      findUnique: (a: unknown) => Promise<{ id: string; packagingSystem: { partnerId: string } } | null>
-      createMany: (a: unknown) => Promise<unknown>
-      delete: (a: unknown) => Promise<unknown>
-      count: (a: unknown) => Promise<number>
-    }
-  }).packagingSystemFile
-}
 
 /** List a custom packaging's uploaded mockups + die-lines (signed URLs). */
 export async function loadPackagingFiles(systemId: string): Promise<StudioFile[]> {
@@ -413,7 +387,7 @@ export async function loadPackagingFiles(systemId: string): Promise<StudioFile[]
   if (!actor.ok) return []
   const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
   if (!own) return []
-  const rows = await psf().findMany({ where: { packagingSystemId: systemId }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] }).catch(() => [])
+  const rows = await prisma.packagingSystemFile.findMany({ where: { packagingSystemId: systemId }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] })
   const pfIds = [...new Set(rows.map((r) => r.partnerFileId))]
   const pfs = pfIds.length ? await prisma.partnerFile.findMany({ where: { id: { in: pfIds } }, select: { id: true, r2Key: true, originalFilename: true } }) : []
   const pfById = new Map(pfs.map((p) => [p.id, p]))
@@ -437,7 +411,7 @@ export async function addPackagingFilesToSystem(form: FormData): Promise<{ ok: t
   const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
   if (!own) return { ok: false, error: 'Packaging not found.' }
 
-  const startOrder = await psf().count({ where: { packagingSystemId: systemId } }).catch(() => 0)
+  const startOrder = await prisma.packagingSystemFile.count({ where: { packagingSystemId: systemId } })
   const rows: Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }> = []
   try {
     const mockups = form.getAll('mockup').filter((f): f is File => f instanceof File && f.size > 0)
@@ -456,7 +430,7 @@ export async function addPackagingFilesToSystem(form: FormData): Promise<{ ok: t
   } catch (err) {
     return { ok: false, error: (err as Error).message || 'File upload failed.' }
   }
-  if (rows.length > 0) await psf().createMany({ data: rows }).catch(() => undefined)
+  if (rows.length > 0) await prisma.packagingSystemFile.createMany({ data: rows })
   await logAuditAs(actor.user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_CREATE', payload: { addedFiles: rows.length } })
   return { ok: true }
 }
@@ -483,21 +457,12 @@ export async function loadCustomDieline(systemId: string): Promise<CustomDieline
   const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
   if (!own) return null
 
-  // customDielineLayout (cast-guarded — pending migration).
-  const row = await (prisma as unknown as {
-    packagingSystem: { findUnique: (a: unknown) => Promise<{ customDielineLayout: { layout?: unknown; trim?: unknown; safe?: unknown } | null } | null> }
-  }).packagingSystem
-    .findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
-    .catch(() => null)
-  const saved = row?.customDielineLayout ?? null
+  const row = await prisma.packagingSystem.findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
+  const saved = (row?.customDielineLayout ?? null) as { layout?: unknown; trim?: unknown; safe?: unknown } | null
 
-  // Backdrop = first uploaded DIELINE file (cast-guarded), signed.
+  // Backdrop = first uploaded DIELINE file, signed.
   let backdropUrl: string | null = null
-  const dlRow = await (prisma as unknown as {
-    packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
-  }).packagingSystemFile
-    .findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
-    .catch(() => null)
+  const dlRow = await prisma.packagingSystemFile.findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
   if (dlRow?.partnerFileId) {
     const pf = await prisma.partnerFile.findUnique({ where: { id: dlRow.partnerFileId }, select: { r2Key: true } })
     if (pf?.r2Key) backdropUrl = await getSignedReadUrl(pf.r2Key).catch(() => null)
@@ -512,9 +477,7 @@ export async function saveCustomDieline(systemId: string, data: { layout: unknow
   if (!actor.ok) return { ok: false, error: actor.error }
   const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
   if (!own) return { ok: false, error: 'Packaging not found.' }
-  await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
-    .update({ where: { id: systemId }, data: { customDielineLayout: { layout: data.layout, trim: data.trim, safe: data.safe } } })
-    .catch(() => undefined)
+  await prisma.packagingSystem.update({ where: { id: systemId }, data: { customDielineLayout: { layout: data.layout, trim: data.trim, safe: data.safe } as never } })
   return { ok: true }
 }
 
@@ -522,8 +485,8 @@ export async function saveCustomDieline(systemId: string, data: { layout: unknow
 export async function removePackagingFile(fileRowId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const actor = await requirePartnerActor()
   if (!actor.ok) return { ok: false, error: actor.error }
-  const row = await psf().findUnique({ where: { id: fileRowId }, select: { id: true, packagingSystem: { select: { partnerId: true } } } }).catch(() => null)
+  const row = await prisma.packagingSystemFile.findUnique({ where: { id: fileRowId }, select: { id: true, packagingSystem: { select: { partnerId: true } } } })
   if (!row || row.packagingSystem.partnerId !== actor.partnerId) return { ok: false, error: 'File not found.' }
-  await psf().delete({ where: { id: fileRowId } }).catch(() => undefined)
+  await prisma.packagingSystemFile.delete({ where: { id: fileRowId } })
   return { ok: true }
 }

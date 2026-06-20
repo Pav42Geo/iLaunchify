@@ -1,5 +1,11 @@
 # Post-migration cleanup — packaging custom uploads + die-line
 
+> **✅ APPLIED 2026-06-20** — migration `packaging_custom_uploads_dieline` ran on the
+> Mac (client regenerated); all cast-guards below were removed and typecheck is clean
+> across partner / admin / notifications. The only intentionally-retained guard is the
+> separate **MockupTemplate** cast in `loadPackagingCatalog` (its own pending migration).
+
+
 Apply this **after** the migration `packaging_custom_uploads_dieline` runs on the Mac
 (`prisma migrate dev` → client regenerated). It removes the cast-guards that let the
 code compile before the Prisma client knew the new fields/models. Everything below is

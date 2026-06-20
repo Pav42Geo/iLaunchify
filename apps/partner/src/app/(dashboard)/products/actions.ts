@@ -382,17 +382,11 @@ export async function submitProductForReview(productTemplateId: string): Promise
   const pkgSysIds = tpl.packagingSystems.map((p) => p.packagingSystemId)
   if (pkgSysIds.length > 0) {
     const sysRows = await prisma.packagingSystem.findMany({ where: { id: { in: pkgSysIds } }, select: { id: true, packagingTypeId: true } })
-    const reviewRows = await (prisma as unknown as {
-      packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; reviewStatus: string | null }>> }
-    }).packagingSystem
-      .findMany({ where: { id: { in: pkgSysIds } }, select: { id: true, reviewStatus: true } })
-      .catch(() => [] as Array<{ id: string; reviewStatus: string | null }>)
-    const reviewById = new Map(reviewRows.map((r) => [r.id, r.reviewStatus]))
+    const reviewRows = await prisma.packagingSystem.findMany({ where: { id: { in: pkgSysIds } }, select: { id: true, reviewStatus: true } })
+    const reviewById = new Map(reviewRows.map((r) => [r.id, r.reviewStatus as string]))
     const toCoSubmit = sysRows.filter((s) => !s.packagingTypeId && !['SUBMITTED', 'APPROVED'].includes(reviewById.get(s.id) ?? 'NONE'))
     for (const s of toCoSubmit) {
-      await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
-        .update({ where: { id: s.id }, data: { reviewStatus: 'SUBMITTED', submittedForReviewAt: new Date(), reviewNotes: null } })
-        .catch(() => undefined)
+      await prisma.packagingSystem.update({ where: { id: s.id }, data: { reviewStatus: 'SUBMITTED', submittedForReviewAt: new Date(), reviewNotes: null } })
       await logAuditAs(user, { entityType: 'PackagingSystem', entityId: s.id, action: 'PACKAGING_SUBMIT_REVIEW', payload: { via: 'product-submit', productTemplateId } }).catch(() => undefined)
     }
   }

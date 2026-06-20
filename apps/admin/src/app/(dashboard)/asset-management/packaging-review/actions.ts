@@ -49,41 +49,18 @@ export interface ReviewRow {
   files: ReviewFile[]
 }
 
-interface PsDelegate {
-  findMany: (a: unknown) => Promise<Array<Record<string, unknown>>>
-  findFirst: (a: unknown) => Promise<Record<string, unknown> | null>
-  update: (a: unknown) => Promise<unknown>
-}
-function ps(): PsDelegate {
-  return (prisma as unknown as { packagingSystem: PsDelegate }).packagingSystem
-}
-
 export async function loadPackagingReviewQueue(): Promise<ReviewRow[]> {
   await requireRole('ADMIN')
-  // Base query (existing columns only — `material` ships with a pending migration
-  // so it's fetched separately, cast-guarded, to keep this safe pre-push).
-  const rows = await ps().findMany({
+  const rows = await prisma.packagingSystem.findMany({
     where: { reviewStatus: 'SUBMITTED' },
-    select: { id: true, partnerName: true, overrideDisplayName: true, topology: true, suggestedCategory: true, submittedForReviewAt: true, dimensions: true, maxWeightG: true },
+    select: { id: true, partnerName: true, overrideDisplayName: true, topology: true, suggestedCategory: true, submittedForReviewAt: true, dimensions: true, maxWeightG: true, material: true },
     orderBy: { submittedForReviewAt: 'asc' },
   })
-  const ids = rows.map((r) => String(r.id))
+  const ids = rows.map((r) => r.id)
   if (ids.length === 0) return []
 
-  // Material (cast-guarded — new column).
-  const materialRows = await (prisma as unknown as {
-    packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; material: string | null }>> }
-  }).packagingSystem
-    .findMany({ where: { id: { in: ids } }, select: { id: true, material: true } })
-    .catch(() => [] as Array<{ id: string; material: string | null }>)
-  const materialById = new Map(materialRows.map((m) => [m.id, m.material]))
-
-  // Uploaded files (cast-guarded — PackagingSystemFile is a new model).
-  const fileRows = await (prisma as unknown as {
-    packagingSystemFile: { findMany: (a: unknown) => Promise<Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }>> }
-  }).packagingSystemFile
-    .findMany({ where: { packagingSystemId: { in: ids } }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] })
-    .catch(() => [] as Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }>)
+  // Uploaded files.
+  const fileRows = await prisma.packagingSystemFile.findMany({ where: { packagingSystemId: { in: ids } }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] })
 
   // Resolve PartnerFile r2Key → signed URL.
   const partnerFileIds = [...new Set(fileRows.map((f) => f.partnerFileId))]
@@ -103,18 +80,17 @@ export async function loadPackagingReviewQueue(): Promise<ReviewRow[]> {
   }
 
   return rows.map((r) => {
-    const id = String(r.id)
     const dims = (r.dimensions && typeof r.dimensions === 'object') ? r.dimensions as ReviewRow['dimensions'] : null
     return {
-      id,
-      name: String(r.overrideDisplayName ?? r.partnerName ?? 'Custom packaging'),
+      id: r.id,
+      name: r.overrideDisplayName ?? r.partnerName ?? 'Custom packaging',
       topology: String(r.topology ?? 'OTHER'),
       suggestedCategory: r.suggestedCategory ? String(r.suggestedCategory) : null,
-      submittedAt: r.submittedForReviewAt ? new Date(r.submittedForReviewAt as string).toISOString() : null,
-      material: materialById.get(id) ?? null,
+      submittedAt: r.submittedForReviewAt ? r.submittedForReviewAt.toISOString() : null,
+      material: r.material ?? null,
       dimensions: dims,
-      maxWeightG: typeof r.maxWeightG === 'number' ? r.maxWeightG : null,
-      files: filesBySystem.get(id) ?? [],
+      maxWeightG: r.maxWeightG ?? null,
+      files: filesBySystem.get(r.id) ?? [],
     }
   })
 }
@@ -134,7 +110,7 @@ export async function approvePackagingReview(systemId: string, displayName: stri
   const name = displayName.trim()
   if (name.length < 2) return { ok: false, error: 'Give the catalog entry a name.' }
 
-  const sys = (await ps().findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true, topology: true, partnerId: true } })) as { id: string; topology: string; partnerId: string } | null
+  const sys = await prisma.packagingSystem.findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true, topology: true, partnerId: true } })
   if (!sys) return { ok: false, error: 'Submission not found or already handled.' }
 
   const slug = `${slugify(name)}-${systemId.slice(-6)}`
@@ -151,16 +127,11 @@ export async function approvePackagingReview(systemId: string, displayName: stri
 
   // Carry the partner's first uploaded mockup over as the new type's catalog
   // thumbnail (model3dThumbKey is an R2 key, same as PartnerFile.r2Key). Falls
-  // back to the legacy partnerImageFileId. Cast-guarded — PackagingSystemFile is
-  // a pending-migration model.
-  const mockupRow = await (prisma as unknown as {
-    packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
-  }).packagingSystemFile
-    .findFirst({ where: { packagingSystemId: systemId, role: 'MOCKUP' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
-    .catch(() => null)
+  // back to the legacy partnerImageFileId.
+  const mockupRow = await prisma.packagingSystemFile.findFirst({ where: { packagingSystemId: systemId, role: 'MOCKUP' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
   let thumbFileId = mockupRow?.partnerFileId ?? null
   if (!thumbFileId) {
-    const legacy = (await ps().findFirst({ where: { id: systemId }, select: { partnerImageFileId: true } })) as { partnerImageFileId: string | null } | null
+    const legacy = await prisma.packagingSystem.findFirst({ where: { id: systemId }, select: { partnerImageFileId: true } })
     thumbFileId = legacy?.partnerImageFileId ?? null
   }
   if (thumbFileId) {
@@ -172,21 +143,12 @@ export async function approvePackagingReview(systemId: string, displayName: stri
   // the custom packaging (customDielineLayout), create a PackagingDieline of the
   // NEW type carrying those frames + the uploaded die-line file, so when the
   // partner's product uses the now-typed packaging the die-line resolves with the
-  // frames already placed (no re-doing). customDielineLayout + PackagingSystemFile
-  // are pending-migration → cast-guarded reads.
-  const cdlRow = await (prisma as unknown as {
-    packagingSystem: { findUnique: (a: unknown) => Promise<{ customDielineLayout: { layout?: unknown; trim?: unknown; safe?: unknown } | null } | null> }
-  }).packagingSystem
-    .findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
-    .catch(() => null)
-  const cdl = cdlRow?.customDielineLayout
+  // frames already placed (no re-doing).
+  const cdlRow = await prisma.packagingSystem.findUnique({ where: { id: systemId }, select: { customDielineLayout: true } })
+  const cdl = (cdlRow?.customDielineLayout ?? null) as { layout?: unknown; trim?: unknown; safe?: unknown } | null
   if (cdl?.layout) {
     const svc = await prisma.partnerService.findFirst({ where: { partnerId: sys.partnerId }, select: { id: true } })
-    const dlFileRow = await (prisma as unknown as {
-      packagingSystemFile: { findFirst: (a: unknown) => Promise<{ partnerFileId: string } | null> }
-    }).packagingSystemFile
-      .findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
-      .catch(() => null)
+    const dlFileRow = await prisma.packagingSystemFile.findFirst({ where: { packagingSystemId: systemId, role: 'DIELINE' }, orderBy: { displayOrder: 'asc' }, select: { partnerFileId: true } })
     if (svc) {
       await prisma.packagingDieline.create({
         data: {
@@ -200,31 +162,30 @@ export async function approvePackagingReview(systemId: string, displayName: stri
           framesUpdatedAt: new Date(),
           status: 'PARTNER_CONFIRMED',
         },
-      }).catch(() => undefined)
+      })
     }
   }
 
-  await ps().update({
+  await prisma.packagingSystem.update({
     where: { id: systemId },
     data: { reviewStatus: 'APPROVED', packagingTypeId: created.id, approvedPackagingTypeId: created.id, reviewNotes: null },
   })
 
   await logAuditAs(user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_REVIEW_APPROVE', payload: { packagingTypeId: created.id, category, displayName: name } })
   const owner = await systemOwner(systemId)
-  // 'PACKAGING_APPROVED' enum value ships with a pending migration → cast until generated.
-  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_APPROVED' as never, data: { name, category }, audience: 'partner' })
+  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_APPROVED', data: { name, category }, audience: 'partner' })
   revalidatePath(PATH)
   return { ok: true }
 }
 
 export async function rejectPackagingReview(systemId: string, notes: string): Promise<Result> {
   const user = await requireRole('ADMIN')
-  const sys = (await ps().findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true } })) as { id: string } | null
+  const sys = await prisma.packagingSystem.findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true } })
   if (!sys) return { ok: false, error: 'Submission not found or already handled.' }
-  await ps().update({ where: { id: systemId }, data: { reviewStatus: 'REJECTED', reviewNotes: notes.trim() || null } })
+  await prisma.packagingSystem.update({ where: { id: systemId }, data: { reviewStatus: 'REJECTED', reviewNotes: notes.trim() || null } })
   await logAuditAs(user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_REVIEW_REJECT', payload: { notes: notes.trim() || null } })
   const owner = await systemOwner(systemId)
-  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_REJECTED' as never, data: { name: owner.name, notes: notes.trim() || undefined }, audience: 'partner' })
+  if (owner) await dispatchNotification({ userId: owner.userId, event: 'PACKAGING_REJECTED', data: { name: owner.name, notes: notes.trim() || undefined }, audience: 'partner' })
   revalidatePath(PATH)
   return { ok: true }
 }
