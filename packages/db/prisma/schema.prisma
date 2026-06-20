@@ -2366,6 +2366,7 @@ model OrderDispatch {
   status                   DispatchStatus         @default(PENDING_ACCEPT)
   // Decline / timeout per docs/USER_ROLES.md decision 2026-05-18
   acceptDeadlineAt         DateTime // ASSIGNED + 24h default
+  acceptReminderSentAt     DateTime? // set when the "deadline approaching" reminder fired (dedupe)
   declinedAt               DateTime?
   declineReason            DispatchDeclineReason?
   declineNotes             String?

@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/cert-expiry",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/accept-reminders",
+      "schedule": "0 * * * *"
     }
   ]
 }

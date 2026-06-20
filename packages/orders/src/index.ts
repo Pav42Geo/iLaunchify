@@ -37,6 +37,8 @@ export {
 export type { MatchCandidate, MatchContext, MatchScore, MatchWeights } from './scoring'
 export { runAutoCancel, runStaleOrderAutoCancel, isOrderStale } from './auto-cancel'
 export type { AutoCancelResult, StaleOrderCancelResult } from './auto-cancel'
+export { runAcceptReminders, ACCEPT_REMINDER_LEAD_HOURS } from './accept-reminders'
+export type { AcceptReminder, AcceptReminderResult } from './accept-reminders'
 export { computeCancellationOutcome } from './cancellation-refund'
 export type { CancellationFeePolicy, CancellationOutcome } from './cancellation-refund'
 export { canCreatorSelfCancel } from './cancellation-policy'

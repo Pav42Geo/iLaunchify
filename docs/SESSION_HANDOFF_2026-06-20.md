@@ -15,6 +15,7 @@ One push covers everything added this session:
   `Order.disputes` + `User.disputesOpened/disputesReviewed`
 - `NotificationEvent` += `CREATOR_ORDER_CANCELLED`, `CREATOR_ORDER_DISPUTE_RESOLVED`,
   `PARTNER_CANCELLATION_REVIEWED`
+- `OrderDispatch.acceptReminderSentAt` (accept-window reminder dedupe)
 
 ```bash
 pnpm compose:up                                  # if the DB isn't running
@@ -60,6 +61,10 @@ Once the generated client knows the new models/enum values, remove the temporary
 - `packages/notifications/src/templates.ts` — `switch (event as string)` → `switch (event)`.
 - `apps/admin/.../cancellations/actions.ts` — remove the `evt()` helper; pass the literals directly.
 - `apps/admin/.../orders/[orderId]/dispute-actions.ts` — drop the `as unknown as NotificationEvent` cast.
+
+**OrderDispatch.acceptReminderSentAt**
+- `packages/orders/src/accept-reminders.ts` — drop the `(prisma as unknown as {…}).orderDispatch`
+  cast; use `prisma.orderDispatch` directly.
 
 ## Reference docs (context, not steps)
 

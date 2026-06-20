@@ -14,8 +14,10 @@ genuinely never-dispatched events were:
 - `PARTNER_SUBMITTED` → **fixed**: partner onboarding `submitForReview` promotes to
   `IDENTITY_PENDING_REVIEW` but never told admins. Now fans out `PARTNER_SUBMITTED`
   (existing event + template) to all admins, best-effort, only on real promotion.
-- `DISPATCH_ACCEPT_REMINDER` → intentionally deferred to V1.1 (needs the accept-window
-  cron); left alone.
+- `DISPATCH_ACCEPT_REMINDER` → **fixed**: `runAcceptReminders` (`packages/orders`) +
+  `/api/cron/accept-reminders` (hourly, in `apps/admin/vercel.json`) warn a partner when
+  their dispatch acceptance deadline is within `ACCEPT_REMINDER_LEAD_HOURS` (6), deduped
+  via `OrderDispatch.acceptReminderSentAt`. Needs the migration for that field.
 
 ## Wired (2026-06-20, no migration)
 
