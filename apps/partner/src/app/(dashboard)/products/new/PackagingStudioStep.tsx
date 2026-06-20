@@ -62,7 +62,7 @@ import {
   type LayoutIssue,
   type NormBox,
 } from '@ilaunchify/ui'
-import { PACKAGING_DEFS, createPackagingScene, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
+import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
 import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
@@ -99,6 +99,15 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 const CATEGORY_ORDER = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
 const RECENT_SEARCH_KEY = 'ilf:pkgStudio:recentSearch'
+// Bottom 3D-view camera presets (Pacdora-style view bar).
+const VIEW_PRESETS: [CameraPreset, string][] = [
+  ['frontRight', 'Front Right'],
+  ['frontLeft', 'Front Left'],
+  ['front', 'Front'],
+  ['topLeft', 'Top Left'],
+  ['topRight', 'Top Right'],
+  ['top', 'Top'],
+]
 
 const SCOPE_COLOR: Record<FrameScope, { stroke: string; fill: string; chip: string }> = {
   RECIPE: { stroke: '#059669', fill: 'rgba(5,150,105,0.08)', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -156,6 +165,9 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // loads the Fabric.js-style die-line canvas (existing die-lines) or the
   // add-a-die-line CTA when the attached packaging has none yet.
   const [view, setView] = useState<'3d' | 'die'>('3d')
+  // 3D Open/Close (fold) state — true = assembled/solid, false = unfolded net.
+  const [solid, setSolid] = useState(true)
+  const setFold3d = (next: boolean) => { setSolid(next); handleRef.current?.setFold(next) }
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
@@ -588,6 +600,33 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               <div className="absolute right-4 top-4 flex gap-3 rounded-lg border border-ink-200 bg-white/80 px-2.5 py-1.5 text-[11px] text-ink-500">
                 <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-pink-500" /> Decorable</span>
                 <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-ink-400" /> Non-printed</span>
+              </div>
+
+              {/* Preset camera views — floats above the main control bar (Pacdora-style). */}
+              <div className="absolute bottom-[70px] left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-2xl border border-ink-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+                {VIEW_PRESETS.map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleRef.current?.setCameraView(CAMERA_PRESETS[key].theta, CAMERA_PRESETS[key].phi)}
+                    className="grid place-items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[10.5px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                  >
+                    <BoxIcon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Main 3D controls — zoom + Open/Close (fold). */}
+              <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-1 shadow-sm">
+                <IconBtn icon={ZoomOut} onClick={() => handleRef.current?.zoomBy(1.18)} title="Zoom out" />
+                <IconBtn icon={Maximize} onClick={() => handleRef.current?.setCameraView(CAMERA_PRESETS.frontRight.theta, CAMERA_PRESETS.frontRight.phi)} title="Reset view" />
+                <IconBtn icon={ZoomIn} onClick={() => handleRef.current?.zoomBy(0.85)} title="Zoom in" />
+                <span className="mx-0.5 h-4 w-px bg-ink-200" />
+                <div className="inline-flex rounded-full bg-ink-50 p-0.5 text-[11px] font-semibold">
+                  <button type="button" onClick={() => setFold3d(false)} className={`rounded-full px-2.5 py-1 transition-colors ${!solid ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}>Open</button>
+                  <button type="button" onClick={() => setFold3d(true)} className={`rounded-full px-2.5 py-1 transition-colors ${solid ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'}`}>Close</button>
+                </div>
               </div>
             </div>
           ) : (

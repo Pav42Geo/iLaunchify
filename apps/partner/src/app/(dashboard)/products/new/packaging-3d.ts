@@ -80,9 +80,24 @@ const C = { pinkSoft: '#FBD2DE', inkSoft: '#D7D9DC' }
 export interface PackagingSceneHandle {
   setTopology(t: TopologyKey): void
   setFold(solid: boolean): void
+  /** Snap the camera to a preset orbit (azimuth θ, polar φ). Stops idle spin. */
+  setCameraView(theta: number, phi: number): void
+  /** Multiply the orbit radius (factor < 1 zooms in, > 1 zooms out). */
+  zoomBy(factor: number): void
   select(key: string | null): void
   dispose(): void
 }
+
+/** Preset camera orbits (θ azimuth, φ polar) used by the bottom view bar. */
+export const CAMERA_PRESETS = {
+  front: { theta: 0, phi: 1.45 },
+  frontLeft: { theta: -0.7, phi: 1.3 },
+  frontRight: { theta: 0.7, phi: 1.3 },
+  top: { theta: 0, phi: 0.34 },
+  topLeft: { theta: -0.7, phi: 0.72 },
+  topRight: { theta: 0.7, phi: 0.72 },
+} as const
+export type CameraPreset = keyof typeof CAMERA_PRESETS
 
 export async function createPackagingScene(
   canvas: HTMLCanvasElement,
@@ -287,7 +302,8 @@ export async function createPackagingScene(
   let moved = false
   let lastX = 0
   let lastY = 0
-  function onDown(e: PointerEvent) { dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture?.(e.pointerId) }
+  let autoSpin = true
+  function onDown(e: PointerEvent) { dragging = true; moved = false; autoSpin = false; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture?.(e.pointerId) }
   function onMove(e: PointerEvent) {
     if (dragging) {
       const dx = e.clientX - lastX
@@ -337,7 +353,7 @@ export async function createPackagingScene(
     if (Math.abs(targetT - currentT) > 0.0005) currentT += (targetT - currentT) * 0.1
     else currentT = targetT
     if (pkgUpdate) pkgUpdate(currentT)
-    if (group && !dragging) group.rotation.y += 0.0015 // gentle idle spin
+    if (group && autoSpin && !dragging) group.rotation.y += 0.0015 // gentle idle spin (until first interaction)
     applyCamera()
     refreshHighlights()
     renderer.render(scene, camera)
@@ -350,6 +366,8 @@ export async function createPackagingScene(
   return {
     setTopology(t) { if (t !== activeType) { activeType = t; buildPackage(t) } },
     setFold(solid) { targetT = solid ? 1 : 0 },
+    setCameraView(t, p) { autoSpin = false; if (group) group.rotation.y = 0; theta = t; phi = p },
+    zoomBy(f) { radius = Math.max(2.8, Math.min(12, radius * f)) },
     select(key) { selectedKey = key },
     dispose() {
       disposed = true
