@@ -151,6 +151,33 @@ export async function loadPackagingCatalog(): Promise<CatalogItem[]> {
     select: { id: true, slug: true, displayName: true, containerCategory: true, defaultTopology: true, model3dThumbKey: true },
     orderBy: { displayName: 'asc' },
   })
+
+  // Fallback thumbnail for types without a 3D thumb: their first ACTIVE mockup
+  // image (admin curates these via the Product Mockups tool). Cast-guarded —
+  // MockupTemplate ships with a pending migration; .catch → keeps it safe.
+  const needFallback = types.filter((t) => !t.model3dThumbKey).map((t) => t.id)
+  const thumbByType = new Map<string, string>()
+  if (needFallback.length > 0) {
+    const mockups = await (prisma as unknown as {
+      mockupTemplate: { findMany: (a: unknown) => Promise<Array<{ packagingTypeId: string; baseImageAssetId: string }>> }
+    }).mockupTemplate
+      .findMany({
+        where: { packagingTypeId: { in: needFallback }, status: 'ACTIVE' },
+        select: { packagingTypeId: true, baseImageAssetId: true },
+        orderBy: { displayOrder: 'asc' },
+      })
+      .catch(() => [] as Array<{ packagingTypeId: string; baseImageAssetId: string }>)
+    const assetByType = new Map<string, string>()
+    for (const m of mockups) if (!assetByType.has(m.packagingTypeId)) assetByType.set(m.packagingTypeId, m.baseImageAssetId)
+    const assetIds = [...new Set(assetByType.values())]
+    const assets = assetIds.length > 0 ? await prisma.asset.findMany({ where: { id: { in: assetIds } }, select: { id: true, publicUrl: true } }) : []
+    const urlByAsset = new Map(assets.map((a) => [a.id, a.publicUrl]))
+    for (const [typeId, assetId] of assetByType) {
+      const url = urlByAsset.get(assetId)
+      if (url) thumbByType.set(typeId, url)
+    }
+  }
+
   return Promise.all(
     types.map(async (t) => ({
       id: t.id,
@@ -158,7 +185,7 @@ export async function loadPackagingCatalog(): Promise<CatalogItem[]> {
       displayName: t.displayName,
       category: t.containerCategory ?? 'OTHER',
       topology: t.defaultTopology,
-      thumbUrl: t.model3dThumbKey ? await getSignedReadUrl(t.model3dThumbKey).catch(() => null) : null,
+      thumbUrl: t.model3dThumbKey ? await getSignedReadUrl(t.model3dThumbKey).catch(() => null) : (thumbByType.get(t.id) ?? null),
     })),
   )
 }
