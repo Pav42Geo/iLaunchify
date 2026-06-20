@@ -332,7 +332,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     void submitPackagingForReview(systemId).then((r) => {
       setBusyReview(null)
       if (!r.ok) { toast.error(r.error); return }
-      toast.success('Submitted for catalog review — admin will prep mockups and publish it.')
+      toast.success('Submitted for admin approval', {
+        description: 'Admin must approve this custom packaging + die-line before it goes live — and any product using it needs admin review too. Track status on your Packaging page.',
+        duration: 7000,
+      })
       if (draftId) void loadPackagingStudio(draftId).then((res) => { if (res.ok) setData(res.data) })
     })
   }
@@ -1393,8 +1396,9 @@ function LibraryDrawer({
                             Submission STATUS lives on the partner profile, not here. */}
                         {att && !att.packagingTypeId && (
                           att.reviewStatus === 'SUBMITTED' ? (
-                            <div className="mt-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700">
-                              <Check className="h-3 w-3" /> Submitted · track on your profile
+                            <div className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800"><Check className="h-3 w-3" /> Awaiting admin approval</div>
+                              <p className="mt-0.5 text-[10px] leading-snug text-amber-700">This packaging + die-line need admin sign-off, and the product itself goes through admin review before it can go live. Track status on your Packaging page.</p>
                             </div>
                           ) : (
                             <button
