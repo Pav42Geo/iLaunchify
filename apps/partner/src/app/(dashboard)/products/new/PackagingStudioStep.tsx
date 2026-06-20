@@ -152,7 +152,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
   const [data, setData] = useState<PackagingStudioData | null>(null)
-  const [view, setView] = useState<'3d' | 'die'>('die')
+  // 3D is the default view (its toggle reads black/active); switching to Die-line
+  // loads the Fabric.js-style die-line canvas (existing die-lines) or the
+  // add-a-die-line CTA when the attached packaging has none yet.
+  const [view, setView] = useState<'3d' | 'die'>('3d')
   const [tool, setTool] = useState<Tool>('frames')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
