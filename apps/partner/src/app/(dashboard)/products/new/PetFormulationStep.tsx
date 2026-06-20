@@ -20,7 +20,7 @@ const uid = () => `p${Date.now().toString(36)}${(seq++).toString(36)}`
 interface PetRow { uid: string; name: string; weight: number }
 interface GaOther { name: string; value: number; bound: 'min' | 'max'; unit: string }
 
-export function PetFormulationStep({ productName, draftId }: { productName?: string; draftId?: string | null }) {
+export function PetFormulationStep({ productName, draftId, registerFlush }: { productName?: string; draftId?: string | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
   const [rows, setRows] = React.useState<PetRow[]>([])
   const [cp, setCp] = React.useState(0)
   const [cf, setCf] = React.useState(0)
@@ -66,6 +66,22 @@ export function PetFormulationStep({ productName, draftId }: { productName?: str
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [rows, cp, cf, fiber, moisture, others, species, lifeStage, method, feedingDirections, draftId])
+
+  // Immediate flush before navigation (registry).
+  const flushRef = React.useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (!draftId || !hydrated.current) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    await savePetFormulation(draftId, {
+      ingredients: rows,
+      ga: { crudeProteinMinPct: cp, crudeFatMinPct: cf, crudeFiberMaxPct: fiber, moistureMaxPct: moisture, others },
+      species, lifeStage, method, feedingDirections,
+    })
+  }
+  React.useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   const patch = (id: string, p: Partial<PetRow>) => setRows((rs) => rs.map((r) => (r.uid === id ? { ...r, ...p } : r)))
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), name: '', weight: 0 }])

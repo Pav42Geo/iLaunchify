@@ -21,7 +21,7 @@ const uid = () => `c${Date.now().toString(36)}${(seq++).toString(36)}`
 
 interface CosRow { uid: string; inciName: string; pct: number; isColorAdditive: boolean; isFragrance: boolean }
 
-export function CosmeticFormulationStep({ productName, draftId }: { productName?: string; draftId?: string | null }) {
+export function CosmeticFormulationStep({ productName, draftId, registerFlush }: { productName?: string; draftId?: string | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
   const [rows, setRows] = React.useState<CosRow[]>([])
   const [netQty, setNetQty] = React.useState(0)
   const [netUnit, setNetUnit] = React.useState('fl oz')
@@ -54,6 +54,18 @@ export function CosmeticFormulationStep({ productName, draftId }: { productName?
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [rows, netQty, netUnit, responsiblePerson, adverseEventContact, draftId])
+
+  // Immediate flush before navigation (registry).
+  const flushRef = React.useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (!draftId || !hydrated.current) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    await saveCosmeticFormulation(draftId, { ingredients: rows, netContentsQty: netQty, netContentsUnit: netUnit, responsiblePerson, adverseEventContact })
+  }
+  React.useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   const patch = (id: string, p: Partial<CosRow>) => setRows((rs) => rs.map((r) => (r.uid === id ? { ...r, ...p } : r)))
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), inciName: '', pct: 0, isColorAdditive: false, isFragrance: false }])

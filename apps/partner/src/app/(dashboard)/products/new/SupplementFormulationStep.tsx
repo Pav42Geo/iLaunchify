@@ -71,10 +71,12 @@ export function SupplementFormulationStep({
   productName,
   servingFormDefault = '1 capsule',
   draftId,
+  registerFlush,
 }: {
   productName?: string
   servingFormDefault?: string
   draftId?: string | null
+  registerFlush?: (fn: () => Promise<void> | void) => () => void
 }) {
   const [rows, setRows] = React.useState<DietRow[]>([])
   const [blends, setBlends] = React.useState<{ id: string; name: string; total: number; unit: string }[]>([])
@@ -134,6 +136,18 @@ export function SupplementFormulationStep({
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, nutLt, noDvSymbol, draftId])
+
+  // Immediate flush before navigation (registry).
+  const flushRef = React.useRef<() => Promise<void>>(async () => {})
+  flushRef.current = async () => {
+    if (!draftId || !hydrated.current) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    await saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol })
+  }
+  React.useEffect(() => {
+    if (!registerFlush) return
+    return registerFlush(() => flushRef.current())
+  }, [registerFlush])
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
