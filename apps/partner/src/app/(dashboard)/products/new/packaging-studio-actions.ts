@@ -312,30 +312,48 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
     select: { id: true },
   })
 
-  // Uploads (best-effort — a failed upload shouldn't lose the created system).
-  let photoFileId: string | null = null
-  let dielineFileId: string | null = null
+  // Uploads — MULTIPLE mockups + MULTIPLE die-lines (each die-line panel-tagged).
+  // Best-effort: a failed upload shouldn't lose the created system.
+  const mockupEntries: { fileId: string; label: string | null }[] = []
+  const dielineEntries: { fileId: string; panel: string | null; label: string | null }[] = []
   try {
-    const photo = form.get('photo')
-    if (photo instanceof File && photo.size > 0) {
-      photoFileId = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'reference_photo', file: photo })
+    const mockups = form.getAll('mockup').filter((f): f is File => f instanceof File && f.size > 0)
+    const mockupLabels = form.getAll('mockupLabel').map((v) => String(v))
+    for (let i = 0; i < mockups.length; i++) {
+      const id = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'reference_photo', file: mockups[i]! })
+      if (id) mockupEntries.push({ fileId: id, label: mockupLabels[i] || null })
     }
-    const dieline = form.get('dieline')
-    if (dieline instanceof File && dieline.size > 0) {
-      dielineFileId = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'die_line', file: dieline })
+    const dielines = form.getAll('dieline').filter((f): f is File => f instanceof File && f.size > 0)
+    const dielinePanels = form.getAll('dielinePanel').map((v) => String(v))
+    const dielineLabels = form.getAll('dielineLabel').map((v) => String(v))
+    for (let i = 0; i < dielines.length; i++) {
+      const id = await storePackagingFile({ partnerId: partner.id, uploaderId: user.id, packagingSystemId: system.id, kind: 'die_line', file: dielines[i]! })
+      if (id) dielineEntries.push({ fileId: id, panel: dielinePanels[i] || null, label: dielineLabels[i] || null })
     }
   } catch (err) {
     return { ok: false, error: (err as Error).message || 'File upload failed.' }
   }
 
-  // Photo → existing partnerImageFileId (typed). Material + dieline → cast-guarded
-  // (pending migration); .catch keeps creation working before `prisma db push`.
-  if (photoFileId) {
-    await prisma.packagingSystem.update({ where: { id: system.id }, data: { partnerImageFileId: photoFileId } })
+  // First mockup → existing partnerImageFileId (typed) for thumbnail back-compat.
+  if (mockupEntries[0]) {
+    await prisma.packagingSystem.update({ where: { id: system.id }, data: { partnerImageFileId: mockupEntries[0].fileId } })
   }
-  if (material || dielineFileId) {
+  // Material → cast-guarded (pending migration); .catch keeps creation working
+  // before `prisma db push`.
+  if (material) {
     await (prisma as unknown as { packagingSystem: { update: (a: unknown) => Promise<unknown> } }).packagingSystem
-      .update({ where: { id: system.id }, data: { material: material || null, dielineFileId: dielineFileId ?? null } })
+      .update({ where: { id: system.id }, data: { material } })
+      .catch(() => undefined)
+  }
+  // All files → PackagingSystemFile join rows (cast-guarded — new model ships with
+  // a pending migration; createMany .catch keeps it safe pre-push).
+  const fileRows = [
+    ...mockupEntries.map((e, i) => ({ packagingSystemId: system.id, partnerFileId: e.fileId, role: 'MOCKUP', panel: null as string | null, label: e.label, displayOrder: i })),
+    ...dielineEntries.map((e, i) => ({ packagingSystemId: system.id, partnerFileId: e.fileId, role: 'DIELINE', panel: e.panel, label: e.label, displayOrder: i })),
+  ]
+  if (fileRows.length > 0) {
+    await (prisma as unknown as { packagingSystemFile: { createMany: (a: unknown) => Promise<unknown> } }).packagingSystemFile
+      .createMany({ data: fileRows })
       .catch(() => undefined)
   }
 
@@ -343,7 +361,7 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
     entityType: 'PackagingSystem',
     entityId: system.id,
     action: 'PACKAGING_CREATE',
-    payload: { name, topology, material: material || null, hasPhoto: Boolean(photoFileId), hasDieline: Boolean(dielineFileId) },
+    payload: { name, topology, material: material || null, mockups: mockupEntries.length, dielines: dielineEntries.length },
   })
 
   const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })

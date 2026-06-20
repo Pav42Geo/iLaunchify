@@ -3920,9 +3920,28 @@ model PackagingSystem {
   packagingType       PackagingType?             @relation(fields: [packagingTypeId], references: [id])
   surfaces            PackagingSurface[]
   templates           ProductTemplatePackaging[]
+  files               PackagingSystemFile[]
 
   @@index([partnerId, status])
   @@index([packagingTypeId])
+}
+
+// Multiple partner-supplied artwork files per custom packaging (in-studio upload).
+// A single packaging (e.g. supplement bottle + outer folding box) can carry many
+// MOCKUP photos/3D files and many DIELINE files, each die-line tagged with a panel
+// (FRONT / BACK / TOP / …). soft FK to PartnerFile (r2Key lives there).
+model PackagingSystemFile {
+  id                String          @id @default(uuid())
+  packagingSystemId String
+  partnerFileId     String // soft FK → PartnerFile
+  role              String // 'MOCKUP' | 'DIELINE'
+  panel             String? // die-line panel: FRONT/BACK/TOP/BOTTOM/LEFT/RIGHT/OTHER
+  label             String? // free label, e.g. "Bottle", "Outer box"
+  displayOrder      Int             @default(0)
+  createdAt         DateTime        @default(now())
+  packagingSystem   PackagingSystem @relation(fields: [packagingSystemId], references: [id], onDelete: Cascade)
+
+  @@index([packagingSystemId, role])
 }
 
 // Per-surface die-line + print spec on a PackagingSystem.

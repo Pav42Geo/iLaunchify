@@ -832,18 +832,22 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
   const [maxWeightG, setMaxWeightG] = useState('')
   const [unitCount, setUnitCount] = useState('1')
   const [moq, setMoq] = useState('1')
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [dieline, setDieline] = useState<File | null>(null)
+  // Multiple files: a bottle + outer box may need several mockups + die-lines.
+  const [mockups, setMockups] = useState<{ file: File; label: string }[]>([])
+  const [dielines, setDielines] = useState<{ file: File; panel: string; label: string }[]>([])
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (open) {
       setName(''); setTopology(TOPOLOGY_OPTIONS[0]!.value); setMaterial('')
       setLengthMm(''); setWidthMm(''); setHeightMm(''); setMaxWeightG(''); setUnitCount('1'); setMoq('1')
-      setPhoto(null); setDieline(null); setBusy(false)
+      setMockups([]); setDielines([]); setBusy(false)
     }
   }, [open])
   if (!open) return null
+
+  const addMockups = (files: FileList | null) => { if (files) setMockups((p) => [...p, ...Array.from(files).map((file) => ({ file, label: '' }))]) }
+  const addDielines = (files: FileList | null) => { if (files) setDielines((p) => [...p, ...Array.from(files).map((file) => ({ file, panel: 'FRONT', label: '' }))]) }
 
   async function submit() {
     if (!draftId) { toast.error('Save the draft first.'); return }
@@ -855,8 +859,8 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
     fd.set('material', material)
     fd.set('lengthMm', lengthMm); fd.set('widthMm', widthMm); fd.set('heightMm', heightMm)
     fd.set('maxWeightG', maxWeightG); fd.set('unitCount', unitCount); fd.set('moq', moq)
-    if (photo) fd.set('photo', photo)
-    if (dieline) fd.set('dieline', dieline)
+    mockups.forEach((m) => { fd.append('mockup', m.file); fd.append('mockupLabel', m.label) })
+    dielines.forEach((d) => { fd.append('dieline', d.file); fd.append('dielinePanel', d.panel); fd.append('dielineLabel', d.label) })
     setBusy(true)
     const r = await createCustomPackaging(fd)
     setBusy(false)
@@ -914,14 +918,52 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
             </div>
           </div>
 
-          {/* Files */}
-          <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Artwork & references</p>
-            <div className="grid grid-cols-2 gap-3">
-              <FilePicker label="Photo / 3D mockup" hint="JPG, PNG, GLB, GLTF, OBJ" accept="image/*,.glb,.gltf,.obj,.usdz" file={photo} onPick={setPhoto} />
-              <FilePicker label="Die-line file" hint="PDF, AI, SVG, DXF" accept=".pdf,.ai,.svg,.dxf,image/*" file={dieline} onPick={setDieline} />
-            </div>
-          </div>
+          {/* Mockups — multiple photos / 3D files (bottle + outer box, etc.). */}
+          <FileGroup
+            title="Mockups & photos"
+            hint="JPG, PNG, GLB, GLTF, OBJ — add one per component"
+            accept="image/*,.glb,.gltf,.obj,.usdz"
+            addLabel="Add mockup(s)"
+            count={mockups.length}
+            onAdd={addMockups}
+          >
+            {mockups.map((m, i) => (
+              <FileRow
+                key={i}
+                file={m.file}
+                onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))}
+                meta={
+                  <input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label (e.g. Bottle)" className="w-28 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />
+                }
+              />
+            ))}
+          </FileGroup>
+
+          {/* Die-lines — multiple files, each tagged with a panel. */}
+          <FileGroup
+            title="Die-lines"
+            hint="PDF, AI, SVG, DXF — tag each with its panel"
+            accept=".pdf,.ai,.svg,.dxf,image/*"
+            addLabel="Add die-line(s)"
+            count={dielines.length}
+            onAdd={addDielines}
+          >
+            {dielines.map((d, i) => (
+              <FileRow
+                key={i}
+                file={d.file}
+                onRemove={() => setDielines((p) => p.filter((_, idx) => idx !== i))}
+                meta={
+                  <div className="flex items-center gap-1.5">
+                    <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-300">
+                      {DIELINE_PANELS.map((pn) => <option key={pn} value={pn}>{pn[0] + pn.slice(1).toLowerCase()}</option>)}
+                    </select>
+                    <input value={d.label} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-20 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />
+                  </div>
+                }
+              />
+            ))}
+          </FileGroup>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
@@ -935,21 +977,43 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
   )
 }
 
-// Compact file picker with a selected-filename chip.
-function FilePicker({ label, hint, accept, file, onPick }: { label: string; hint: string; accept: string; file: File | null; onPick: (f: File | null) => void }) {
+const DIELINE_PANELS = ['FRONT', 'BACK', 'TOP', 'BOTTOM', 'LEFT', 'RIGHT', 'OTHER']
+
+// A labelled group: header + "add files" (multiple) + the list of picked rows.
+function FileGroup({ title, hint, accept, addLabel, count, onAdd, children }: { title: string; hint: string; accept: string; addLabel: string; count: number; onAdd: (files: FileList | null) => void; children: ReactNode }) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-semibold text-ink-600">{label}</label>
-      <button type="button" onClick={() => ref.current?.click()} className="flex w-full items-center gap-2 rounded-lg border border-dashed border-ink-300 bg-white px-2.5 py-2 text-left transition-colors hover:border-pink-300 hover:bg-pink-50">
-        <Upload className="h-3.5 w-3.5 shrink-0 text-ink-400" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11.5px] font-medium text-ink-700">{file ? file.name : 'Choose file'}</span>
-          <span className="block truncate text-[10px] text-ink-400">{file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : hint}</span>
-        </span>
-        {file && <span role="button" tabIndex={0} aria-label="Remove file" onClick={(e) => { e.stopPropagation(); onPick(null); if (ref.current) ref.current.value = '' }} className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-ink-400 hover:bg-ink-200 hover:text-ink-700"><X className="h-3 w-3" /></span>}
-      </button>
-      <input ref={ref} type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">{title}</p>
+        <button type="button" onClick={() => ref.current?.click()} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
+          <Plus className="h-3 w-3" /> {addLabel}
+        </button>
+        <input ref={ref} type="file" accept={accept} multiple className="hidden" onChange={(e) => { onAdd(e.target.files); if (ref.current) ref.current.value = '' }} />
+      </div>
+      <div className="space-y-1.5">
+        {children}
+        {count === 0 && (
+          <button type="button" onClick={() => ref.current?.click()} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 bg-white px-2.5 py-2 text-[11.5px] text-ink-500 transition-colors hover:border-pink-300 hover:bg-pink-50">
+            <Upload className="h-3.5 w-3.5" /> {hint}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// One picked file with its metadata controls + remove.
+function FileRow({ file, meta, onRemove }: { file: File; meta: ReactNode; onRemove: () => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5">
+      <Upload className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[11.5px] font-medium text-ink-800">{file.name}</span>
+        <span className="block text-[10px] text-ink-400">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+      </span>
+      {meta}
+      <button type="button" aria-label="Remove file" onClick={onRemove} className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-700"><X className="h-3.5 w-3.5" /></button>
     </div>
   )
 }

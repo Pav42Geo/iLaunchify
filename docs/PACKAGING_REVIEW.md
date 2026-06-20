@@ -60,11 +60,24 @@ and a **die-line** — then calls `createCustomPackaging(FormData)`: creates a D
 `PackagingSystem`, uploads files to R2 (`uploadFile` + `packagingAssetKey`
 `reference_photo` / `die_line`) as `PartnerFile` rows, sets `partnerImageFileId`
 (typed) + cast-guarded `material` / `dielineFileId`, attaches it to the draft, audits
-`PACKAGING_CREATE`. The new system shows in **My** immediately (local state) for
-Submit-for-review. Additive schema: `PackagingSystem.material String?` +
-`dielineFileId String?` (cast-guarded until migrated).
+`PACKAGING_CREATE`. The new system shows in **My** immediately (local state) for Submit-for-review.
+
+**Multiple files (2026-06-19):** the modal takes MANY mockups and MANY die-lines
+(a supplement bottle + outer folding box needs several of each). Each mockup has an
+optional label; each die-line is tagged with a **panel** (FRONT/BACK/TOP/BOTTOM/
+LEFT/RIGHT/OTHER) + optional label. The action reads `form.getAll('mockup' | 'dieline')`
+zipped with parallel `mockupLabel` / `dielinePanel` / `dielineLabel`, uploads each to
+R2 + a `PartnerFile`, and records a `PackagingSystemFile` join row per file. First
+mockup still sets `partnerImageFileId` for thumbnail back-compat.
+
+Additive schema: `PackagingSystem.material String?` + `dielineFileId String?` +
+new model **`PackagingSystemFile`** (`packagingSystemId`, `partnerFileId`, `role`
+MOCKUP|DIELINE, `panel?`, `label?`, `displayOrder`) + `PackagingSystem.files[]`.
+The join-row write + material are cast-guarded (`.catch`) until migrated.
 
 ## Mac
-`prisma db push` (additive — incl. `PackagingSystem.material` + `dielineFileId`) →
-`pnpm db:generate` → `rm -rf apps/*/.next` → restart. Post-migration: drop the
-cast-guard on the material/dielineFileId update in `createCustomPackaging`.
+`prisma db push` (additive — `PackagingSystem.material` + `dielineFileId` +
+`PackagingSystemFile` model) → `pnpm db:generate` → `rm -rf apps/*/.next` → restart.
+Post-migration: drop the cast-guards on the material update + `packagingSystemFile.createMany`
+in `createCustomPackaging`. Admin review queue should then read `PackagingSystemFile`
+to show the partner's mockups/die-lines + panels when prepping the real catalog type.
