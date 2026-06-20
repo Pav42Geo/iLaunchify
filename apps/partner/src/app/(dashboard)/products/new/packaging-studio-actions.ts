@@ -387,3 +387,86 @@ export async function submitPackagingForReview(systemId: string, suggestedCatego
   await logAuditAs(actor.user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_SUBMIT_REVIEW', payload: { suggestedCategory: suggestedCategory ?? null } })
   return { ok: true }
 }
+
+// =============================================================================
+// Manage a custom packaging's files AFTER creation (My tab "Manage files").
+// All PackagingSystemFile access is cast-guarded (pending migration).
+// =============================================================================
+
+export interface StudioFile { id: string; url: string | null; name: string; role: string; panel: string | null; label: string | null }
+
+function psf() {
+  return (prisma as unknown as {
+    packagingSystemFile: {
+      findMany: (a: unknown) => Promise<Array<{ id: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number; packagingSystem?: { partnerId: string } }>>
+      findUnique: (a: unknown) => Promise<{ id: string; packagingSystem: { partnerId: string } } | null>
+      createMany: (a: unknown) => Promise<unknown>
+      delete: (a: unknown) => Promise<unknown>
+      count: (a: unknown) => Promise<number>
+    }
+  }).packagingSystemFile
+}
+
+/** List a custom packaging's uploaded mockups + die-lines (signed URLs). */
+export async function loadPackagingFiles(systemId: string): Promise<StudioFile[]> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return []
+  const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
+  if (!own) return []
+  const rows = await psf().findMany({ where: { packagingSystemId: systemId }, orderBy: [{ role: 'asc' }, { displayOrder: 'asc' }] }).catch(() => [])
+  const pfIds = [...new Set(rows.map((r) => r.partnerFileId))]
+  const pfs = pfIds.length ? await prisma.partnerFile.findMany({ where: { id: { in: pfIds } }, select: { id: true, r2Key: true, originalFilename: true } }) : []
+  const pfById = new Map(pfs.map((p) => [p.id, p]))
+  const urlById = new Map<string, string | null>()
+  await Promise.all(pfs.map(async (p) => { urlById.set(p.id, p.r2Key ? await getSignedReadUrl(p.r2Key).catch(() => null) : null) }))
+  return rows.map((r) => ({
+    id: r.id,
+    url: urlById.get(r.partnerFileId) ?? null,
+    name: pfById.get(r.partnerFileId)?.originalFilename ?? 'file',
+    role: r.role,
+    panel: r.panel,
+    label: r.label,
+  }))
+}
+
+/** Add more mockups / die-lines to an existing custom packaging. */
+export async function addPackagingFilesToSystem(form: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return { ok: false, error: actor.error }
+  const systemId = String(form.get('systemId') ?? '')
+  const own = await prisma.packagingSystem.findFirst({ where: { id: systemId, partnerId: actor.partnerId }, select: { id: true } })
+  if (!own) return { ok: false, error: 'Packaging not found.' }
+
+  const startOrder = await psf().count({ where: { packagingSystemId: systemId } }).catch(() => 0)
+  const rows: Array<{ packagingSystemId: string; partnerFileId: string; role: string; panel: string | null; label: string | null; displayOrder: number }> = []
+  try {
+    const mockups = form.getAll('mockup').filter((f): f is File => f instanceof File && f.size > 0)
+    const mockupLabels = form.getAll('mockupLabel').map((v) => String(v))
+    for (let i = 0; i < mockups.length; i++) {
+      const id = await storePackagingFile({ partnerId: actor.partnerId, uploaderId: actor.user.id, packagingSystemId: systemId, kind: 'reference_photo', file: mockups[i]! })
+      if (id) rows.push({ packagingSystemId: systemId, partnerFileId: id, role: 'MOCKUP', panel: null, label: mockupLabels[i] || null, displayOrder: startOrder + i })
+    }
+    const dielines = form.getAll('dieline').filter((f): f is File => f instanceof File && f.size > 0)
+    const dielinePanels = form.getAll('dielinePanel').map((v) => String(v))
+    const dielineLabels = form.getAll('dielineLabel').map((v) => String(v))
+    for (let i = 0; i < dielines.length; i++) {
+      const id = await storePackagingFile({ partnerId: actor.partnerId, uploaderId: actor.user.id, packagingSystemId: systemId, kind: 'die_line', file: dielines[i]! })
+      if (id) rows.push({ packagingSystemId: systemId, partnerFileId: id, role: 'DIELINE', panel: dielinePanels[i] || null, label: dielineLabels[i] || null, displayOrder: startOrder + i })
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || 'File upload failed.' }
+  }
+  if (rows.length > 0) await psf().createMany({ data: rows }).catch(() => undefined)
+  await logAuditAs(actor.user, { entityType: 'PackagingSystem', entityId: systemId, action: 'PACKAGING_CREATE', payload: { addedFiles: rows.length } })
+  return { ok: true }
+}
+
+/** Remove one uploaded file row (ownership-checked). */
+export async function removePackagingFile(fileRowId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return { ok: false, error: actor.error }
+  const row = await psf().findUnique({ where: { id: fileRowId }, select: { id: true, packagingSystem: { select: { partnerId: true } } } }).catch(() => null)
+  if (!row || row.packagingSystem.partnerId !== actor.partnerId) return { ok: false, error: 'File not found.' }
+  await psf().delete({ where: { id: fileRowId } }).catch(() => undefined)
+  return { ok: true }
+}

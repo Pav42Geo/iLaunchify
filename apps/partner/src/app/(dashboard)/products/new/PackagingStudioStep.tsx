@@ -63,7 +63,7 @@ import {
   type NormBox,
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
-import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, type PackagingStudioData, type StudioPackaging, type CatalogItem } from './packaging-studio-actions'
+import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, loadPackagingFiles, addPackagingFilesToSystem, removePackagingFile, type PackagingStudioData, type StudioPackaging, type CatalogItem, type StudioFile } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -191,6 +191,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // appear in My immediately (the page prop only carries ACTIVE ones).
   const [uploadOpen, setUploadOpen] = useState(false)
   const [localSystems, setLocalSystems] = useState<StudioPackagingOption[]>([])
+  const [manageFilesFor, setManageFilesFor] = useState<{ id: string; name: string } | null>(null)
   const [tool, setTool] = useState<Tool>('library')
   const [topology, setTopology] = useState<TopologyKey>('can')
   const [activeSystemId, setActiveSystemId] = useState<string | null>(null)
@@ -593,6 +594,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               busyReview={busyReview}
               systems={[...localSystems, ...systems]}
               onUpload={() => setUploadOpen(true)}
+              onManageFiles={(id, name) => setManageFilesFor({ id, name })}
               attachedIds={attached}
               busyAttach={busyAttach}
               onToggleAttach={toggleAttach}
@@ -808,10 +810,118 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             toast.success('Packaging added to your list')
           }}
         />
+        <ManageFilesModal
+          system={manageFilesFor}
+          onClose={() => setManageFilesFor(null)}
+        />
       </div>,
       document.body,
     )
     : null
+}
+
+// Manage a custom packaging's uploaded mockups + die-lines after creation.
+function ManageFilesModal({ system, onClose }: { system: { id: string; name: string } | null; onClose: () => void }) {
+  const [files, setFiles] = useState<StudioFile[]>([])
+  const [loading, setLoading] = useState(false)
+  const [mockups, setMockups] = useState<{ file: File; label: string }[]>([])
+  const [dielines, setDielines] = useState<{ file: File; panel: string; label: string }[]>([])
+  const [busy, setBusy] = useState(false)
+
+  const refresh = useCallback((id: string) => { setLoading(true); void loadPackagingFiles(id).then((f) => { setFiles(f); setLoading(false) }) }, [])
+  useEffect(() => {
+    if (system) { setMockups([]); setDielines([]); refresh(system.id) }
+  }, [system, refresh])
+  if (!system) return null
+
+  const addMockups = (fl: FileList | null) => { if (fl) setMockups((p) => [...p, ...Array.from(fl).map((file) => ({ file, label: '' }))]) }
+  const addDielines = (fl: FileList | null) => { if (fl) setDielines((p) => [...p, ...Array.from(fl).map((file) => ({ file, panel: 'FRONT', label: '' }))]) }
+  const hasNew = mockups.length + dielines.length > 0
+
+  async function saveNew() {
+    if (!system || !hasNew) return
+    const fd = new FormData()
+    fd.set('systemId', system.id)
+    mockups.forEach((m) => { fd.append('mockup', m.file); fd.append('mockupLabel', m.label) })
+    dielines.forEach((d) => { fd.append('dieline', d.file); fd.append('dielinePanel', d.panel); fd.append('dielineLabel', d.label) })
+    setBusy(true)
+    const r = await addPackagingFilesToSystem(fd)
+    setBusy(false)
+    if (!r.ok) { toast.error(r.error); return }
+    setMockups([]); setDielines([])
+    toast.success('Files added')
+    refresh(system.id)
+  }
+
+  async function remove(id: string) {
+    setFiles((p) => p.filter((f) => f.id !== id))
+    const r = await removePackagingFile(id)
+    if (!r.ok) { toast.error(r.error); if (system) refresh(system.id) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
+      <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-ink-200 bg-white shadow-xl">
+        <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="truncate text-[15px] font-semibold text-ink-900">Manage files — {system.name}</h3>
+            <p className="text-[11.5px] text-ink-500">Mockups, photos &amp; panel-tagged die-lines for admin review.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-7 w-7 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-700"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {/* Existing files */}
+          <div>
+            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Uploaded ({files.length})</p>
+            {loading ? (
+              <p className="text-[12px] text-ink-400">Loading…</p>
+            ) : files.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-ink-200 px-3 py-3 text-center text-[11.5px] text-ink-400">No files yet — add some below.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {files.map((f) => (
+                  <div key={f.id} className="overflow-hidden rounded-xl border border-ink-200 bg-white">
+                    <div className="relative grid aspect-square place-items-center bg-ink-50">
+                      {f.url && /\.(png|jpe?g|webp|gif|avif)$/i.test(f.name)
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={f.url} alt={f.name} className="h-full w-full object-contain p-1" />
+                        : <span className="text-[10px] font-semibold uppercase text-ink-400">{f.name.split('.').pop() ?? 'file'}</span>}
+                      <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[8.5px] font-bold uppercase ${f.role === 'DIELINE' ? 'bg-sky-100 text-sky-700' : 'bg-pink-100 text-pink-700'}`}>{f.role === 'DIELINE' ? (f.panel ?? 'Die') : (f.label || 'Mockup')}</span>
+                      <button type="button" aria-label="Remove" onClick={() => void remove(f.id)} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-ink-500 hover:bg-white hover:text-pink-600"><Trash2 className="h-3 w-3" /></button>
+                    </div>
+                    <div className="truncate px-1.5 py-1 text-[10px] text-ink-600" title={f.name}>{f.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add new */}
+          <FileGroup title="Add mockups" hint="JPG, PNG, GLB, GLTF, OBJ" accept="image/*,.glb,.gltf,.obj,.usdz" addLabel="Add mockup(s)" count={mockups.length} onAdd={addMockups}>
+            {mockups.map((m, i) => (
+              <FileRow key={i} file={m.file} onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))} meta={<input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-24 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />} />
+            ))}
+          </FileGroup>
+          <FileGroup title="Add die-lines" hint="PDF, AI, SVG, DXF" accept=".pdf,.ai,.svg,.dxf,image/*" addLabel="Add die-line(s)" count={dielines.length} onAdd={addDielines}>
+            {dielines.map((d, i) => (
+              <FileRow key={i} file={d.file} onRemove={() => setDielines((p) => p.filter((_, idx) => idx !== i))} meta={
+                <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-300">
+                  {DIELINE_PANELS.map((pn) => <option key={pn} value={pn}>{pn[0] + pn.slice(1).toLowerCase()}</option>)}
+                </select>
+              } />
+            ))}
+          </FileGroup>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
+          <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Done</button>
+          <button type="button" onClick={() => void saveNew()} disabled={busy || !hasNew} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">{busy ? 'Uploading…' : 'Add files'}</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Common substrates for the material datalist (free-text still allowed).
@@ -1099,6 +1209,7 @@ function LibraryDrawer({
   busyReview,
   systems,
   onUpload,
+  onManageFiles,
   attachedIds,
   busyAttach,
   onToggleAttach,
@@ -1123,6 +1234,7 @@ function LibraryDrawer({
   busyReview: string | null
   systems: StudioPackagingOption[]
   onUpload: () => void
+  onManageFiles: (id: string, name: string) => void
   attachedIds: string[]
   busyAttach: string | null
   onToggleAttach: (id: string, on: boolean) => void
@@ -1419,6 +1531,11 @@ function LibraryDrawer({
                               <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review'}
                             </button>
                           )
+                        )}
+                        {att && !att.packagingTypeId && (
+                          <button type="button" onClick={() => onManageFiles(s.id, s.partnerName)} className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-[10.5px] font-medium text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800">
+                            <Inbox className="h-3 w-3" /> Manage mockups & die-lines
+                          </button>
                         )}
                       </>
                     )}
