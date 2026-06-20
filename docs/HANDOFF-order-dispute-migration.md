@@ -6,18 +6,23 @@
 sandbox can't reach the local CockroachDB). Until it runs, all `orderDispute`
 access is cast-guarded.
 
-## 1. Start the DB (if not running) + migrate
+## 1. Start the DB (if not running) + apply schema
+
+This repo applies local schema with **`prisma db push`**, not `migrate dev` (the
+migrations folder lags far behind the schema, so `migrate dev` would see drift and
+offer to RESET the DB — decline it). One push applies all pending additive models
+(PartnerStrike + OrderDispute together if both are still unapplied).
 
 ```bash
-pnpm compose:up                       # from repo root — starts ilaunchify-cockroach
-cd packages/db
-pnpm exec dotenv -e ../../.env.local -- prisma migrate dev --name order_dispute
+pnpm compose:up                                  # from repo root — starts ilaunchify-cockroach
+docker ps --filter name=ilaunchify-cockroach     # wait for (healthy)
+pnpm db:push                                     # prisma db push, additive
 ```
 
 ## 2. Regenerate + clear stale client (all three layers)
 
 ```bash
-cd ../.. && pnpm db:generate && rm -rf apps/*/.next   # then restart next dev
+pnpm db:generate && rm -rf apps/*/.next   # then restart next dev
 ```
 
 ## 3. Post-migration cleanup — drop the cast-guards

@@ -5,11 +5,15 @@ were added to `packages/db/prisma/schema.prisma` (additive). The migration must 
 on the Mac — the sandbox can't reach the local CockroachDB and the MCP Prisma is v7
 (rejects `url = env()`). Until it runs, all `partnerStrike` access is cast-guarded.
 
-## 1. Run the migration
+## 1. Apply the schema
+
+This repo applies local schema with **`prisma db push`**, not `migrate dev` (the
+migrations folder lags far behind the schema, so `migrate dev` would see drift and
+offer to RESET the DB — decline it). One push applies all pending additive models.
 
 ```bash
-cd packages/db
-pnpm exec dotenv -e ../../.env.local -- prisma migrate dev --name partner_strike
+docker ps --filter name=ilaunchify-cockroach   # confirm (healthy) first
+pnpm db:push        # from repo root — prisma db push, additive
 ```
 
 ## 2. Regenerate + clear stale client (all three layers)
