@@ -105,6 +105,11 @@ What's missing splits into two buckets: a short list of V1-blocking gaps that pr
 > - **Legal surfaces** — ToS/Privacy/Creator+Partner Agreement drafts render at `/terms`
 >   etc.; cancellation/refund/dispute redlines added for counsel.
 >
+> Also verified DONE (were `[VERIFY]`/listed-missing): **Sentry** is wired in all four
+> apps (sentry configs + instrumentation), and **`/healthz`** (DB-probe) is in all four.
+> Confirmed still genuinely OPEN: **support ticketing** — no `SupportTicket` model or UI
+> exists (only a `/help` stub in partner); it's a real unbuilt feature, not a stub-to-finish.
+>
 > Still genuinely open (mostly Pavel-machine / ops, not code): **#1 pending migrations**
 > (now also includes this session's PartnerStrike / OrderDispute / 3 NotificationEvents /
 > acceptReminderSentAt — see `docs/SESSION_HANDOFF_2026-06-20.md`), **#3 Stripe webhook
@@ -180,7 +185,7 @@ Each line: **what's missing · which surface · why it blocks V1.**
 - AuditLog rows are richer than most platforms ship at launch — that's the win.
 - **Missing**: business metrics dashboard. GMV, time-to-first-paid-sample, checkout drop-off funnel, partner accept-rate, time-to-verification. PLATFORM_SPEC §"Activation success criteria" defines TTFPS / D7 retention / sample→main conversion / Builder upgrade rate — none have a live readout. Recharts is pending install (#579).
 - Sentry: not installed.
-- Health check: `/healthz` exists in creator app — [VERIFY] in marketing/partner/admin.
+- Health check: `/healthz` is present in **all four** apps (creator/partner/admin/marketing), each probing DB reachability and returning 503 when the DB is down. RESOLVED 2026-06-20.
 
 ### Pricing live-ness
 
