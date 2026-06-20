@@ -695,6 +695,15 @@ export function CanvasLayoutShell({
     [productId, canvas, loadHistory],
   )
 
+  // "Save draft" (in the studio ☰ menu) — flush the autosave now, then pin a
+  // MILESTONE version so the manual checkpoint is restorable from history.
+  const handleSaveDraft = React.useCallback(async () => {
+    await autosave.saveNow()
+    await snapshotDesign(productId, 'MILESTONE', 'Saved draft', grabThumb())
+    void loadHistory()
+    toast.success('Draft saved')
+  }, [autosave, productId, grabThumb, loadHistory])
+
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
@@ -829,6 +838,7 @@ export function CanvasLayoutShell({
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
+        onSaveDraft={handleSaveDraft}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -1151,6 +1161,7 @@ function TopBar({
   exportLocked,
   canDownloadLabels,
   onOpenHistory,
+  onSaveDraft,
 }: {
   productName: string
   productId: string
@@ -1174,6 +1185,8 @@ function TopBar({
   exportLocked: boolean
   /** Builder+ — show the compliance-label download (hidden for Maker). */
   canDownloadLabels: boolean
+  /** Studio ☰ menu "Save draft" — flush autosave + pin a milestone. */
+  onSaveDraft: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -1187,7 +1200,7 @@ function TopBar({
           </span>
         </Link>
         {/* 3-line menu sits to the right of the logo. */}
-        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} />
+        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} onSaveDraft={onSaveDraft} />
         <div className="mx-1 h-6 w-px bg-ink-200" />
         {/* Autosave status + history, then undo/redo — all icon + tooltip, left-aligned. */}
         <SavedIndicator
