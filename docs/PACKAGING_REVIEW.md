@@ -52,6 +52,28 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   the two `if (ev === …)` blocks back into the switch and drop the `as never`
   casts. Runtime works only once the enum migration runs.
 
+## Roadmap status (2026-06-19)
+- ✅ **Approve carries artwork** — `approvePackagingReview` sets the new
+  `PackagingType.model3dThumbKey` from the partner's first MOCKUP (`PartnerFile.r2Key`,
+  legacy `partnerImageFileId` fallback) so the approved catalog type shows the photo.
+- ✅ **Admin review surfaces uploads** — queue shows params (material/dims/weight)
+  + a thumbnail grid of all mockups/die-lines (panel-chipped, signed-URL tiles).
+- ✅ **Manage files after creation** — My tab "Manage mockups & die-lines" modal
+  (`loadPackagingFiles` / `addPackagingFilesToSystem` / `removePackagingFile`).
+- ✅ **Approval gate** — `submitProductForReview` blocks if attached CUSTOM packaging
+  (no `packagingTypeId`) isn't at least `SUBMITTED`; names the blockers.
+- ⏳ **Inline die-line for type-less custom packaging** (SPEC — needs a focused
+  session; studio is a Code hot-file zone). Plan: additive
+  `PackagingSystem.customDielineLayout Json?`. In `PackagingStudioStep` die-line
+  view, when `!resolvedDielineId` AND the active system is custom
+  (`!att.packagingTypeId`), render the existing frame editor backed by
+  `customDielineLayout` instead of the "no die-line" CTA: new actions
+  `loadCustomDieline(systemId)` / `saveCustomDieline(systemId, layout)` (cast-guarded);
+  branch the studio's load + `queueSave` so custom systems persist frames to the
+  system column rather than a `PackagingDieline` (which requires a type). Validation
+  (`validateFrameLayout`) reused as-is. Admin, on approve, can promote the saved
+  layout onto the created type's die-line.
+
 ## In-studio upload (2026-06-19)
 The studio Library **My** tab "Upload packaging" opens an **in-studio modal** (no
 navigation to `/packaging/new`). It collects name, type, **material**, **parameters**
