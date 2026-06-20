@@ -43,6 +43,8 @@ import {
   Search,
   Save,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -786,6 +788,8 @@ function LibraryDrawer({
   // chevron that expands the full taxonomy as text. `activeCat === null` = All.
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [catOpen, setCatOpen] = useState(false)
+  const stripRef = useRef<HTMLDivElement>(null)
+  const scrollStrip = (dx: number) => stripRef.current?.scrollBy({ left: dx, behavior: 'smooth' })
   // Categories that actually have items under the current search.
   const availableCats = CATEGORY_ORDER.filter((cat) => catFiltered.some((c) => c.category === cat))
   // If the active category is filtered away (by search), fall back to All.
@@ -827,14 +831,28 @@ function LibraryDrawer({
               grid below scrolls. */}
           {availableCats.length > 0 && (
             <div className="relative shrink-0 border-b border-ink-100">
-              <div className="flex items-center gap-1 overflow-x-auto px-3 py-2 pr-10 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* ‹ left scroll — pinned left with a fade. */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] flex items-center bg-gradient-to-r from-white via-white to-transparent pl-1 pr-4">
+                <button type="button" aria-label="Scroll categories left" onClick={() => scrollStrip(-180)} className="pointer-events-auto grid h-7 w-6 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </div>
+              {/* The scrollable chip rail (wheel → horizontal). */}
+              <div
+                ref={stripRef}
+                onWheel={(e) => { if (stripRef.current && e.deltaY !== 0) stripRef.current.scrollLeft += e.deltaY }}
+                className="flex items-center gap-1 overflow-x-auto py-2 pl-8 pr-16 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 <CatChip label="All" active={effectiveCat === null} onClick={() => { setActiveCat(null); setCatOpen(false) }} />
                 {availableCats.map((cat) => (
                   <CatChip key={cat} label={CATEGORY_LABEL[cat] ?? cat} active={effectiveCat === cat} onClick={() => { setActiveCat(cat); setCatOpen(false) }} />
                 ))}
               </div>
-              {/* Chevron expander, pinned right with a fade so chips scroll under it. */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-white via-white to-transparent pl-4 pr-1.5">
+              {/* › right scroll + chevron expander, pinned right with a fade so chips scroll under. */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] flex items-center gap-0.5 bg-gradient-to-l from-white via-white to-transparent pl-4 pr-1.5">
+                <button type="button" aria-label="Scroll categories right" onClick={() => scrollStrip(180)} className="pointer-events-auto grid h-7 w-6 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   aria-label={catOpen ? 'Hide all categories' : 'Show all categories'}
