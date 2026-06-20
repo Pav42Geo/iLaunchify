@@ -89,6 +89,28 @@ What's missing splits into two buckets: a short list of V1-blocking gaps that pr
 
 ## 3. V1-blocking gaps
 
+> **Status update — 2026-06-20 (verified against current code).** Several items below
+> have since shipped; the original text is kept for history. Now RESOLVED:
+> - **#2 marketplace `creatorPrice`** — `apps/marketing/src/lib/pricing.ts::getPricingTierRows()`
+>   reads real `ProductTemplatePricingTier` volume bands from the DB; the synthetic
+>   `buildSamplePricingRows()` is now only the fixture-only-demo fallback. A real creator
+>   sees a real price.
+> - **#7 hardcoded fee constants** — fee sites read `OrderSettings`/`resolveOrderSettings`
+>   (`productionFeeBps`, `computeApplicationFee`); the remaining `PLATFORM_FEE_BPS` is a
+>   `?? fallback` only, and the `0.15` literals are fixture add-on deltas, not live fees.
+> - **#9 order cancellation paths** — creator self-cancel (gated at partner acceptance),
+>   admin review/force-cancel, and a creator post-delivery dispute flow all shipped; refund
+>   math + a gated executor are built (see `docs/REFUND_EXECUTION.md`).
+> - **Vercel cron** — `auto-cancel-dispatches` is now registered (was never scheduled).
+> - **Legal surfaces** — ToS/Privacy/Creator+Partner Agreement drafts render at `/terms`
+>   etc.; cancellation/refund/dispute redlines added for counsel.
+>
+> Still genuinely open (mostly Pavel-machine / ops, not code): **#1 pending migrations**
+> (now also includes this session's PartnerStrike / OrderDispute / 3 NotificationEvents /
+> acceptReminderSentAt — see `docs/SESSION_HANDOFF_2026-06-20.md`), **#3 Stripe webhook
+> CLI test**, **#4 production deployment**, and enabling `STRIPE_REFUNDS_ENABLED` after a
+> test-mode pass.
+
 Each line: **what's missing · which surface · why it blocks V1.**
 
 1. **9+ pending Prisma migrations on Pavel's local machine.** Tasks #168-173, #471, #536, #542, #552-553, #578, #584. Schema is written and committed; Pavel hasn't run `prisma migrate dev` for: G6.a/b ProductionSubscription, G8 OrderItem.designVersionId, H1 multi-partner approval (already marked done #478 but listed pending too — [VERIFY]), R14.b CreatorProfile.subscriptionTier, R15.a/b PartnerTier + SubscriptionPlan, product-plan additions 2026-06-01 (labelingType + ProductTemplatePricingTier + Niche + coPackerServiceId), Slice 1 marketplace taxonomy. **Until these run + `prisma generate` + Next is restarted, every feature touching those columns will SQL-error in dev. Order #1 priority for Pavel personally.**
