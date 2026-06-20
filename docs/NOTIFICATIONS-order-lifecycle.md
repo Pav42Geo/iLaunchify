@@ -3,6 +3,20 @@
 Coverage for the cancellation/dispute flows. Each transition: who should hear about
 it, and whether it's wired.
 
+## Coverage audit (2026-06-20)
+
+Swept every `NotificationEvent` for a dispatch site. Most are wired (often via a
+variable — `notifyAdmins(event, …)` in `workflow-notifications.ts`, the FSM mapper
+`notificationEventForTransition` — so a literal `event: '…'` grep under-reports). The
+genuinely never-dispatched events were:
+
+- `ORDER_NEEDS_ATTENTION` → **fixed** (admin alerts below).
+- `PARTNER_SUBMITTED` → **fixed**: partner onboarding `submitForReview` promotes to
+  `IDENTITY_PENDING_REVIEW` but never told admins. Now fans out `PARTNER_SUBMITTED`
+  (existing event + template) to all admins, best-effort, only on real promotion.
+- `DISPATCH_ACCEPT_REMINDER` → intentionally deferred to V1.1 (needs the accept-window
+  cron); left alone.
+
 ## Wired (2026-06-20, no migration)
 
 Both reuse the existing `ORDER_NEEDS_ATTENTION` event (already templated → links to the

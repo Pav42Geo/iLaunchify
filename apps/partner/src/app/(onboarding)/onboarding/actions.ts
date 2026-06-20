@@ -332,6 +332,7 @@ export async function submitForReview() {
     select: {
       id: true,
       status: true,
+      companyName: true,
       legalName: true,
       addressLine1: true,
       services: { select: { id: true } },
@@ -374,6 +375,26 @@ export async function submitForReview() {
         statusChangeReason: 'Partner submitted onboarding for review',
       },
     })
+
+    // Tell admins a partner finished onboarding and is ready for review. Best-effort,
+    // lazy-imported (the dispatcher swallows its own errors). Only on real promotion,
+    // so a no-op re-submit doesn't re-notify.
+    try {
+      const { dispatchNotification } = await import('@ilaunchify/notifications')
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+      await Promise.allSettled(
+        admins.map((a) =>
+          dispatchNotification({
+            userId: a.id,
+            event: 'PARTNER_SUBMITTED',
+            data: { companyName: partner.companyName, partnerId: partner.id },
+            audience: 'admin',
+          }),
+        ),
+      )
+    } catch {
+      /* swallow — notifications are best-effort */
+    }
   }
 
   revalidatePath('/onboarding')
