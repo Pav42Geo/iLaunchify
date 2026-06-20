@@ -60,8 +60,12 @@ rejection note. The studio My tab only holds the submit entry point + a quiet
   + a thumbnail grid of all mockups/die-lines (panel-chipped, signed-URL tiles).
 - ✅ **Manage files after creation** — My tab "Manage mockups & die-lines" modal
   (`loadPackagingFiles` / `addPackagingFilesToSystem` / `removePackagingFile`).
-- ✅ **Approval gate** — `submitProductForReview` blocks if attached CUSTOM packaging
-  (no `packagingTypeId`) isn't at least `SUBMITTED`; names the blockers.
+- ✅ **Co-review (not a block)** — the partner is never stuck waiting on packaging.
+  `submitProductForReview` AUTO-SUBMITS any attached not-yet-submitted CUSTOM packaging
+  (no `packagingTypeId`) alongside the product (sets `reviewStatus=SUBMITTED`, audits
+  `PACKAGING_SUBMIT_REVIEW` via=product-submit), so admin approves the packaging AND
+  the product together in one pass — the partner doesn't return to finalize. The My-tab
+  "Submit for catalog review" is now optional/early. (Replaced the earlier hard block.)
 - ⏳ **Inline die-line for type-less custom packaging** (SPEC — needs a focused
   session; studio is a Code hot-file zone). Plan: additive
   `PackagingSystem.customDielineLayout Json?`. In `PackagingStudioStep` die-line

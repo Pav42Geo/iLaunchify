@@ -1521,15 +1521,18 @@ function LibraryDrawer({
                               <p className="mt-0.5 text-[10px] leading-snug text-amber-700">This packaging + die-line need admin sign-off, and the product itself goes through admin review before it can go live. Track status on your Packaging page.</p>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => onSubmitReview(s.id)}
-                              disabled={busyReview === s.id}
-                              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
-                              title="Send to admin to prep 3D/2D mockups and publish into the Library catalog"
-                            >
-                              <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review'}
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onSubmitReview(s.id)}
+                                disabled={busyReview === s.id}
+                                className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
+                                title="Optional — send to admin now. Submitting your product also sends this for review automatically."
+                              >
+                                <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review (optional)'}
+                              </button>
+                              <p className="mt-1 px-0.5 text-[10px] leading-snug text-ink-400">Optional — keep building. When you submit your product, this packaging is sent for review with it and admin approves both together.</p>
+                            </>
                           )
                         )}
                         {att && !att.packagingTypeId && (
