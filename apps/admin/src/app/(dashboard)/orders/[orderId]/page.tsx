@@ -38,6 +38,7 @@ import {
   ArrowRightLeft,
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { ResolveDisputeControls } from './ResolveDisputeControls'
 import { cn, ProductionManifestView } from '@ilaunchify/ui'
 import type { ProductionManifest } from '@ilaunchify/orders'
 
@@ -191,6 +192,36 @@ export default async function AdminOrderDetail({ params }: PageProps) {
   })
   if (!order) notFound()
 
+  // Open creator dispute, if any (cast-guarded + .catch so the page is safe before
+  // the OrderDispute migration lands).
+  const openDispute = await (
+    prisma as unknown as {
+      orderDispute: {
+        findFirst: (a: unknown) => Promise<{
+          id: string
+          category: string
+          description: string
+          status: string
+          createdAt: Date
+          openedBy: { email: string | null } | null
+        } | null>
+      }
+    }
+  ).orderDispute
+    .findFirst({
+      where: { orderId, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+      select: {
+        id: true,
+        category: true,
+        description: true,
+        status: true,
+        createdAt: true,
+        openedBy: { select: { email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    .catch(() => null)
+
   const statusTone =
     STATUS_TONE[order.status] ?? STATUS_TONE.CANCELLED ?? {
       bg: 'bg-ink-100 text-ink-700 border-ink-200',
@@ -224,6 +255,23 @@ export default async function AdminOrderDetail({ params }: PageProps) {
           All orders
         </Link>
       </div>
+
+      {/* OPEN DISPUTE — creator-reported issue awaiting resolution */}
+      {openDispute && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-semibold text-amber-900">
+              Open dispute · {String(openDispute.category).replace(/_/g, ' ').toLowerCase()}
+            </p>
+            <span className="text-[11px] text-amber-700">
+              {openDispute.openedBy?.email ?? 'creator'} ·{' '}
+              {new Date(openDispute.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[13px] text-ink-800">{openDispute.description}</p>
+          <ResolveDisputeControls disputeId={openDispute.id} />
+        </section>
+      )}
 
       {/* HEADER */}
       <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

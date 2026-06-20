@@ -494,6 +494,8 @@ model User {
   creatorOrders                Order[]                      @relation("CreatorOrders")
   cancellationRequestsMade     CancellationRequest[]        @relation("CancellationRequester")
   cancellationRequestsReviewed CancellationRequest[]        @relation("CancellationReviewer")
+  disputesOpened               OrderDispute[]               @relation("DisputeOpener")
+  disputesReviewed             OrderDispute[]               @relation("DisputeReviewer")
   channelConnections           ChannelConnection[]          @relation("CreatorChannelConnections")
   // Phase G1 — in-progress checkout wizard drafts
   creatorCheckoutDrafts        CheckoutDraft[]              @relation("CreatorCheckoutDrafts")
@@ -2095,6 +2097,7 @@ model Order {
   charge                   Charge?
   refunds                  Refund[]
   cancellationRequests     CancellationRequest[]
+  disputes                 OrderDispute[]
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
 
@@ -2265,6 +2268,44 @@ enum CancellationRequestStatus {
   PENDING_REVIEW
   APPROVED
   DENIED
+}
+
+// Creator-opened dispute on a delivered order (distinct from the Stripe-chargeback
+// `Dispute` model). Gated by OrderSettings.disputeWindowDays — a creator can open
+// one within N days of delivery. Admin resolves; V1 is record + close (refund
+// execution rides the payments capability).
+model OrderDispute {
+  id           String              @id @default(cuid())
+  orderId      String
+  openedById   String // creator user
+  category     OrderDisputeCategory
+  description  String
+  status       OrderDisputeStatus  @default(OPEN)
+  resolution   String? // admin's closing note
+  reviewedById String? // admin user
+  reviewedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  openedBy     User                @relation("DisputeOpener", fields: [openedById], references: [id])
+  reviewedBy   User?               @relation("DisputeReviewer", fields: [reviewedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([orderId])
+}
+
+enum OrderDisputeCategory {
+  DAMAGED
+  NOT_AS_DESCRIBED
+  NOT_DELIVERED
+  QUALITY
+  OTHER
+}
+
+enum OrderDisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
 }
 
 model OrderItem {

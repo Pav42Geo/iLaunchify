@@ -16,6 +16,7 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 | `changeoverDays` | marketing `pricing.ts` (D5 multi-flavor lead-time model) |
 | `defaultMoq` | **2026-06-20** — marketing `launch-actions` clamp floor + creator `ProductionStep` UI min/clamp/helper (via `getProductionOptions`) |
 | `creatorCancelWindowHours` / `autoApproveCreatorCancelBeforeRouting` | **2026-06-20** — creator `requestOrderCancellation` (`orders/cancel-actions.ts`): unpaid + within window + auto-approve → cancel outright; otherwise files a `CancellationRequest` for admin review. UI: Cancel order button on the order detail page. |
+| `disputeWindowDays` | **2026-06-20 — wired, pending migration.** New `OrderDispute` model. Creator `openOrderDispute` (`orders/dispute-actions.ts`) opens a dispute within N days of `deliveredAt` and flips the order to DISPUTED; admin `resolveOrderDispute` closes it back to COMPLETED. UI: "Report an issue" on the creator order page + a dispute panel on the admin order page. Migration runs on Mac — `docs/HANDOFF-order-dispute-migration.md`; cast-guarded until then. |
 
 ## Policy-only (no consumer yet — by design)
 
@@ -24,7 +25,7 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 | `maxReroutes` | V1 parks a declined/timed-out order at `ON_HOLD` for **manual** admin reroute. The auto-reroute loop that would consume a reroute cap is V1.5 marketplace matching (#153). Wiring it now would imply a loop that doesn't exist. |
 | `warehouseReferralFeeBps` | Warehouse-referral revenue path not built. |
 | `partnerStrikeOnCancel` | **2026-06-20 — wired, pending migration.** New `PartnerStrike` model; admin `reviewCancellation` records an ACTIVE strike against the at-fault partner (the requester) on APPROVE when the policy is on. Active count shows on the admin partner detail. Migration runs on Mac — see `docs/HANDOFF-partner-strike-migration.md`; cast-guarded until then. |
-| `disputeWindowDays` | The `Dispute` model is Stripe-chargeback-shaped (`stripeDisputeId`, `evidenceDueBy`), not a creator-opened post-delivery dispute. Needs its own flow. |
+| _(disputeWindowDays moved to wired — see below)_ | |
 
 ### Partially wired — `cancellationFeeBps` / `refundProcessingFeeBps`
 

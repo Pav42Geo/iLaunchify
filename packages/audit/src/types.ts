@@ -63,6 +63,8 @@ export const AUDIT_ENTITY_TYPES = [
   'PhraseRule',
   // B.4 — order cancellation
   'CancellationRequest',
+  // Creator-opened post-delivery dispute (OrderSettings.disputeWindowDays)
+  'OrderDispute',
   // C8 — admin-curated decoration × container compatibility matrix
   'PackagingDecorationCompatibility',
   // C8 — partner-owned packaging offerings (container × decoration tuples)

@@ -14,7 +14,7 @@
 //   - Footer-style summary card with breakdown + reorder/help links
 
 import Link from 'next/link'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { notFound } from 'next/navigation'
@@ -23,6 +23,7 @@ import { notFound } from 'next/navigation'
 import { marketingUrl } from '@/lib/marketing-url'
 import {
   AlertOctagon,
+  AlertCircle,
   ArrowLeft,
   Building2,
   CheckCircle2,
@@ -40,6 +41,7 @@ import {
 } from 'lucide-react'
 import { AdjustOrderButton } from './AdjustOrderButton'
 import { CancelOrderButton } from './CancelOrderButton'
+import { DisputeOrderButton } from './DisputeOrderButton'
 import { DelayApprovalPrompt } from './DelayApprovalPrompt'
 
 export const dynamic = 'force-dynamic'
@@ -214,6 +216,16 @@ export default async function OrderDetailPage({
     'DISPUTED',
   ].includes(order.status)
 
+  // Creator can open a dispute on a delivered/completed order within
+  // OrderSettings.disputeWindowDays of delivery.
+  const orderSettings = await getOrderSettings()
+  const isDisputed = order.status === 'DISPUTED'
+  const disputable =
+    ['DELIVERED', 'COMPLETED'].includes(order.status) &&
+    (order.deliveredAt == null ||
+      Date.now() - order.deliveredAt.getTime() <=
+        orderSettings.disputeWindowDays * 24 * 60 * 60 * 1000)
+
   return (
     <div className="space-y-6">
       {/* Cream header band — mirrors R10 list-card header */}
@@ -332,6 +344,8 @@ export default async function OrderDetailPage({
             needsAdjust={needsAdjust}
             isDelivered={isDelivered}
             cancellable={cancellable}
+            disputable={disputable}
+            isDisputed={isDisputed}
             supportUnlocked={supportUnlocked}
           />
           <TotalsCard
@@ -707,6 +721,8 @@ function ActionsCard({
   needsAdjust,
   isDelivered,
   cancellable,
+  disputable,
+  isDisputed,
   supportUnlocked,
 }: {
   productId: string | null
@@ -714,6 +730,8 @@ function ActionsCard({
   needsAdjust: boolean
   isDelivered: boolean
   cancellable: boolean
+  disputable: boolean
+  isDisputed: boolean
   supportUnlocked: boolean
 }) {
   // R16.a — supportUnlocked is now resolved server-side through
@@ -806,6 +824,19 @@ function ActionsCard({
         {cancellable && (
           <li>
             <CancelOrderButton orderId={orderId} />
+          </li>
+        )}
+        {disputable && (
+          <li>
+            <DisputeOrderButton orderId={orderId} />
+          </li>
+        )}
+        {isDisputed && (
+          <li>
+            <span className="inline-flex w-full items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-[12px] font-medium text-amber-800">
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              Dispute under review
+            </span>
           </li>
         )}
       </ul>
