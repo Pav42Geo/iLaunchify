@@ -204,17 +204,20 @@ export default async function OrderDetailPage({
   const isDelivered = status === 'DELIVERED'
   // Creator self-cancel is offered until the order is in/after fulfillment (mirrors
   // the guard in requestOrderCancellation).
-  const cancellable = ![
-    'IN_FULFILLMENT',
-    'READY_TO_SHIP',
-    'SHIPPED',
-    'IN_TRANSIT',
-    'DELIVERED',
-    'COMPLETED',
-    'CANCELLED',
-    'REFUNDED',
-    'DISPUTED',
-  ].includes(order.status)
+  const cancellable =
+    ![
+      'IN_FULFILLMENT',
+      'READY_TO_SHIP',
+      'SHIPPED',
+      'IN_TRANSIT',
+      'DELIVERED',
+      'COMPLETED',
+      'CANCELLED',
+      'REFUNDED',
+      'DISPUTED',
+    ].includes(order.status) &&
+    // Also blocked once any partner has accepted (order may still read ROUTING).
+    !['PARTIALLY_ACCEPTED', 'FULLY_ACCEPTED'].includes(order.aggregateApprovalStatus ?? 'AWAITING_PARTNERS')
 
   // Creator can open a dispute on a delivered/completed order within
   // OrderSettings.disputeWindowDays of delivery.

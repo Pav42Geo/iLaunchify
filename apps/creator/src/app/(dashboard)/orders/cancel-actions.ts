@@ -39,6 +39,11 @@ const UNCANCELLABLE = new Set([
 // Pre-routing states — an order here hasn't been handed to partners for production.
 const PRE_ROUTING = new Set(['PENDING_PAYMENT', 'PAID', 'ROUTING'])
 
+// Once a partner has accepted (and likely started producing their leg), the creator
+// can no longer self-cancel — even though the order may still read ROUTING until
+// every partner accepts. An admin can still force-cancel for genuine exceptions.
+const PARTNER_COMMITTED_AGGREGATES = new Set(['PARTIALLY_ACCEPTED', 'FULLY_ACCEPTED'])
+
 export async function requestOrderCancellation({
   orderId,
   reason,
@@ -51,13 +56,25 @@ export async function requestOrderCancellation({
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, creatorUserId: user.id },
-    select: { id: true, status: true, createdAt: true, totalCents: true },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      totalCents: true,
+      aggregateApprovalStatus: true,
+    },
   })
   if (!order) return { ok: false, error: 'Order not found.' }
   if (UNCANCELLABLE.has(order.status)) {
     return {
       ok: false,
       error: 'This order is already in production or complete and can’t be self-cancelled — contact support.',
+    }
+  }
+  if (PARTNER_COMMITTED_AGGREGATES.has(order.aggregateApprovalStatus)) {
+    return {
+      ok: false,
+      error: 'A partner has already accepted this order and begun production — contact support to cancel.',
     }
   }
 
