@@ -475,7 +475,7 @@ export function GuidedBuilder({
           {cur === 3 && (
             <section>
               <PackagingPicker draftId={draftId} systems={packagingSystems} />
-              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} nextLabel={nextLabel} />
+              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} />
               <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>

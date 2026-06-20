@@ -41,6 +41,7 @@ import {
   Menu,
   ArrowLeft,
   Search,
+  Save,
 } from 'lucide-react'
 import {
   DEFAULT_FRAME_LAYOUT,
@@ -140,7 +141,7 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 let _id = 0
 const newFrameId = (k: string) => `f_${k}_${Date.now()}_${_id++}`
 
-export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nextLabel = 'Next step →' }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; nextLabel?: string }) {
+export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →' }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
@@ -447,11 +448,12 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
   // ---------------------------------------------------------------------------
   const shell = (
     <div className="flex h-full min-h-0 w-full flex-col bg-zinc-100 font-sans text-ink-900">
-      {/* ---- Top bar ---- */}
+      {/* ---- Top bar — matches the standard builder steps: logo · ☰ menu ·
+           Saved/History · (studio-only) 3D⇄Die-line switch · Next. ---- */}
       <header className="flex h-[56px] shrink-0 items-center justify-between gap-3 border-b border-ink-200 bg-white px-3">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
-          {/* Studio menu (to the right of the logo). */}
+          {/* Hamburger menu — holds Save draft + Back. */}
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
               <Menu className="h-4 w-4" />
@@ -464,8 +466,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
                     <span className="font-semibold text-ink-700">Packaging Studio</span><br />
                     {activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}
                   </div>
+                  {onSaveDraft && (
+                    <button type="button" onClick={() => { setMenuOpen(false); onSaveDraft() }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
+                      <Save className="h-3.5 w-3.5" /> Save draft
+                    </button>
+                  )}
                   {onBack && (
-                    <button type="button" onClick={() => { setMenuOpen(false); onBack() }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
+                    <button type="button" onClick={() => { setMenuOpen(false); onBack() }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
                       <ArrowLeft className="h-3.5 w-3.5" /> Back to recipe step
                     </button>
                   )}
@@ -479,17 +486,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
             savedAt={lastSavedAt}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
-          <button type="button" onClick={undo} disabled={past.length === 0} title="Undo" aria-label="Undo" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:hover:bg-white">
-            <Undo2 className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={redo} disabled={future.length === 0} title="Redo" aria-label="Redo" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-40 disabled:hover:bg-white">
-            <Redo2 className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* View toggle — 3D package ⇄ inline die-line editor */}
-          <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
+          {/* The ONLY studio-specific header control: 3D (default) ⇄ Die-line (Fabric.js canvas). */}
+          <div className="ml-1 inline-flex rounded-full border border-ink-200 bg-white p-0.5">
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
               <BoxIcon className="h-3.5 w-3.5" /> 3D
             </button>
@@ -497,26 +495,11 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
               <PencilRuler className="h-3.5 w-3.5" /> Die-line
             </button>
           </div>
+        </div>
 
-          {resolvedDielineId && (
-            <>
-              <span className="ml-1 hidden items-center gap-1 text-[11.5px] text-ink-500 sm:flex">
-                {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>)}
-              </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${issues.length === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}
-                title={issues.map((i) => i.message).join('\n')}
-              >
-                {issues.length === 0 ? 'Preflight clear' : `${issues.length} to fix`}
-              </span>
-              <button type="button" onClick={onConfirm} disabled={confirmed || issues.length > 0} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
-                <CircleCheck className="h-4 w-4" /> {confirmed ? 'Confirmed' : 'Confirm die-line'}
-              </button>
-            </>
-          )}
-
+        <div className="flex items-center gap-2">
           {onNext && (
-            <button type="button" className="ml-0.5 inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => onNext()}>{nextLabel}</button>
+            <button type="button" className="inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-black" onClick={() => onNext()}>{nextLabel}</button>
           )}
         </div>
       </header>
@@ -560,7 +543,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
           )}
           {tool === 'frames' && (
             resolvedDielineId ? (
-              <FramesDrawer layout={layout} selected={selectedFrame} issues={issues} onAdd={addFrame} onRemove={removeFrame} onPatch={patchFrame} onSelect={setSelectedFrameId} />
+              <FramesDrawer layout={layout} selected={selectedFrame} issues={issues} confirmed={confirmed} onConfirm={onConfirm} onAdd={addFrame} onRemove={removeFrame} onPatch={patchFrame} onSelect={setSelectedFrameId} />
             ) : (
               <NoDielineDrawer />
             )
@@ -639,6 +622,9 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, nex
               {/* bottom zoom toolbar */}
               {resolvedDielineId && !loadingDieline && (
                 <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-1 shadow-sm">
+                  <IconBtn icon={Undo2} onClick={undo} disabled={past.length === 0} title="Undo" />
+                  <IconBtn icon={Redo2} onClick={redo} disabled={future.length === 0} title="Redo" />
+                  <span className="mx-0.5 h-4 w-px bg-ink-200" />
                   <IconBtn icon={ZoomOut} onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} />
                   <span className="w-12 text-center text-[11.5px] tabular-nums text-ink-600">{Math.round(zoom * 100)}%</span>
                   <IconBtn icon={ZoomIn} onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))} />
@@ -970,10 +956,12 @@ function NoDielineDrawer() {
   )
 }
 
-function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSelect }: {
+function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, onRemove, onPatch, onSelect }: {
   layout: FrameLayout
   selected: Frame | null
   issues: LayoutIssue[]
+  confirmed: boolean
+  onConfirm: () => void
   onAdd: (k: FrameKind) => void
   onRemove: (id: string) => void
   onPatch: (id: string, p: Partial<Frame>) => void
@@ -983,7 +971,7 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
     <div>
       <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." />
 
-      {/* Preflight — must clear before the die-line can be confirmed. */}
+      {/* Preflight + Confirm — die-line workflow lives here (out of the top bar). */}
       <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/60'}`}>
         <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Preflight</p>
         {issues.length === 0 ? (
@@ -995,6 +983,14 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
             ))}
           </ul>
         )}
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={confirmed || issues.length > 0}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-pink-600 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50"
+        >
+          <CircleCheck className="h-3.5 w-3.5" /> {confirmed ? 'Die-line confirmed' : 'Confirm die-line'}
+        </button>
       </div>
 
       {/* selected frame editor */}
@@ -1114,8 +1110,8 @@ function RailButton({ icon: Icon, label, active, onClick }: { icon: React.Compon
   )
 }
 
-function IconBtn({ icon: Icon, onClick }: { icon: React.ComponentType<{ className?: string }>; onClick: () => void }) {
-  return <button onClick={onClick} className="rounded-full p-1.5 text-ink-600 hover:bg-ink-100"><Icon className="h-4 w-4" /></button>
+function IconBtn({ icon: Icon, onClick, disabled, title }: { icon: React.ComponentType<{ className?: string }>; onClick: () => void; disabled?: boolean; title?: string }) {
+  return <button onClick={onClick} disabled={disabled} title={title} className="rounded-full p-1.5 text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-40 disabled:hover:bg-transparent"><Icon className="h-4 w-4" /></button>
 }
 
 function Toggle({ label, color, on, onChange }: { label: string; color: string; on: boolean; onChange: (v: boolean) => void }) {
