@@ -448,16 +448,21 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // ---------------------------------------------------------------------------
   const shell = (
     <div className="flex h-full min-h-0 w-full flex-col bg-zinc-100 font-sans text-ink-900">
-      {/* ---- Top bar — matches the standard builder steps: logo · ☰ menu ·
-           Saved/History · (studio-only) 3D⇄Die-line switch · Next. ---- */}
-      <header className="flex h-[56px] shrink-0 items-center justify-between gap-3 border-b border-ink-200 bg-white px-3">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">iL</span>
-          <span className="shrink-0 whitespace-nowrap text-[14px] font-semibold tracking-[-0.01em] text-ink-900">Packaging Studio</span>
-          {/* Hamburger menu — holds Save draft + Back. */}
+      {/* ---- Top bar — pixel-matches the standard AppHeader topbar (same brand
+           mark, py-3 pl-7 pr-6, gap-5, bell-driven height) so nothing shifts
+           when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
+      <header className="flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
+        {/* Brand mark — identical to AppHeaderBrandMark (pink 26px square + iLaunchify wordmark). */}
+        <span className="flex flex-shrink-0 items-center gap-[7px]">
+          <span aria-hidden="true" className="h-[26px] w-[26px] rounded-md bg-pink-500" />
+          <span className="font-display text-[23px] font-extrabold tracking-[-0.04em] text-ink-900">iLaunchify</span>
+        </span>
+
+        {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History. */}
+        <span className="inline-flex items-center gap-2">
           <div className="relative">
-            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:bg-ink-50">
-              <Menu className="h-4 w-4" />
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-[9px] border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50">
+              <Menu className="h-[18px] w-[18px]" />
             </button>
             {menuOpen && (
               <>
@@ -481,16 +486,15 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               </>
             )}
           </div>
-          <div className="mx-0.5 h-6 w-px bg-ink-200" />
           <SavedIndicator
             status={saveStatus === 'saving' ? 'saving' : 'saved'}
             savedAt={lastSavedAt}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
-        </div>
+        </span>
 
-        <div className="flex items-center gap-2.5">
-          {/* Studio-specific: 3D (default) ⇄ Die-line (Fabric.js canvas), right-aligned. */}
+        {/* Right cluster — ml-auto gap-2, matches AppHeader: [3D⇄Die-line] · Next · bell · account. */}
+        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
           <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
             <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
               <BoxIcon className="h-3.5 w-3.5" /> 3D
@@ -505,8 +509,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
           )}
 
-          {/* App-topbar right cluster (notification bell + account) — same as every other step. */}
-          {headerRight && <div className="ml-0.5 flex items-center gap-2">{headerRight}</div>}
+          {/* Bell + account — the real PartnerTopbarRight, same as every other step. */}
+          {headerRight}
         </div>
       </header>
 
