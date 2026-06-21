@@ -77,6 +77,8 @@ export const AUDIT_ENTITY_TYPES = [
   'AcademyCategory',
   'AcademyCourse',
   'AcademyLesson',
+  // W2-SUP — internal support ticketing (SUPPORT_TICKETING_PLAN.md)
+  'Ticket',
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -211,6 +213,16 @@ export const AUDIT_ACTIONS = [
   'PARTNER_DIELINE_DELETED',
   // C9 Phase 2 — partner prepress output spec (one per PartnerService)
   'PARTNER_PRINT_SPEC_UPDATED',
+  // W2-SUP — internal support ticketing (SUPPORT_TICKETING_PLAN.md)
+  'TICKET_CREATED',
+  'TICKET_REPLIED',
+  'TICKET_INTERNAL_NOTE',
+  'TICKET_STATUS_CHANGED',
+  'TICKET_RESOLVED',
+  'TICKET_REOPENED',
+  'TICKET_ASSIGNED',
+  'TICKET_LINK_ENTITY',
+  'TICKET_SLA_BREACHED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

@@ -97,6 +97,13 @@ interface TemplateData {
   CREATOR_ORDER_CANCELLED: { orderId: string; refundCents?: number }
   CREATOR_ORDER_DISPUTE_RESOLVED: { orderId: string; decision: 'RESOLVED' | 'REJECTED' }
   PARTNER_CANCELLATION_REVIEWED: { orderId: string; decision: 'APPROVED' | 'DENIED' }
+  // W2-SUP — support ticketing. `href` is recipient-correct (admin → /support,
+  // requester → /help); the service computes it so the host resolves per audience.
+  SUPPORT_TICKET_CREATED: { ticketId: string; subject: string; categorySlug?: string; href: string }
+  SUPPORT_TICKET_REPLIED: { ticketId: string; subject: string; href: string }
+  SUPPORT_TICKET_RESOLVED: { ticketId: string; subject: string; href: string }
+  SUPPORT_TICKET_REOPENED: { ticketId: string; subject: string; href: string }
+  SUPPORT_SLA_BREACHED: { ticketId: string; subject: string; href: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -355,6 +362,46 @@ export function renderTemplate<E extends NotificationEvent>(
             ? `Your cancellation request for order #${d.orderId.slice(-8)} was approved.`
             : `Your cancellation request for order #${d.orderId.slice(-8)} was denied — please fulfill the order.`,
         link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'SUPPORT_TICKET_CREATED': {
+      const d = data as TemplateData['SUPPORT_TICKET_CREATED']
+      return {
+        title: `New support ticket: ${d.subject}`,
+        body: `A new support ticket was filed${d.categorySlug ? ` under "${d.categorySlug}"` : ''}. Triage and respond.`,
+        link: d.href,
+      }
+    }
+    case 'SUPPORT_TICKET_REPLIED': {
+      const d = data as TemplateData['SUPPORT_TICKET_REPLIED']
+      return {
+        title: `New reply on “${d.subject}”`,
+        body: 'There is a new reply on your support ticket.',
+        link: d.href,
+      }
+    }
+    case 'SUPPORT_TICKET_RESOLVED': {
+      const d = data as TemplateData['SUPPORT_TICKET_RESOLVED']
+      return {
+        title: `Your ticket “${d.subject}” was resolved`,
+        body: 'We marked your support ticket resolved. If it still needs attention, reply to reopen it.',
+        link: d.href,
+      }
+    }
+    case 'SUPPORT_TICKET_REOPENED': {
+      const d = data as TemplateData['SUPPORT_TICKET_REOPENED']
+      return {
+        title: `Ticket reopened: “${d.subject}”`,
+        body: 'A support ticket you own was reopened and needs another look.',
+        link: d.href,
+      }
+    }
+    case 'SUPPORT_SLA_BREACHED': {
+      const d = data as TemplateData['SUPPORT_SLA_BREACHED']
+      return {
+        title: `SLA breached: “${d.subject}”`,
+        body: 'This support ticket passed its response SLA window without a first reply.',
+        link: d.href,
       }
     }
     default:

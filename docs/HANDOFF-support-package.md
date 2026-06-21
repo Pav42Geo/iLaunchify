@@ -1,0 +1,101 @@
+# Handoff — `@ilaunchify/support` package (W2-SUP2)
+
+The shared support-ticket store. Schema (W2-SUP1) was already done — `Ticket`,
+`TicketCategory`, `TicketReply`, `TicketEvent` models, all enums, the
+`seed-ticket-categories.ts` (10 starter categories, wired into `seed.ts`), and
+the `20260601090000_add_ticketing_system_2026_06_01` migration. This slice adds
+the FSM + service layer every app surface will consume. **No UI yet** — that's
+W2-SUP3 (admin inbox) and W2-SUP4 (creator/partner `/help`).
+
+## What shipped (sandbox-verified)
+
+New package `packages/support/`:
+
+- **`ticket-fsm.ts`** — pure FSM. `TICKET_TRANSITIONS` table, `canTransitionTicket`,
+  `assertTicketTransition` (+ `TicketTransitionError`), `eventKindForTransition`
+  (labels RESOLVED / REOPENED edges), `isTerminalStatus`, `OPEN_STATUSES`. Plus
+  SLA math: `SLA_DEFAULTS` (§4.1 table), `effectiveSlaWindow` (per-leg category
+  override), `isResponseSlaBreached` (deterministic — caller passes `now`).
+- **`entity-allowlist.ts`** — `LINKABLE_ENTITY_TYPES` (Order, OrderDispatch,
+  OrderItem, Brand, CreatorProfile, Partner) + `assertLinkableEntityType`. An
+  open `entityType` is a data-leak vector; the service allow-lists it.
+- **`service.ts`** — the scope-aware store. `createTicket`, `listTickets(filters,
+  scope)`, `getTicket(id, scope)`, `replyToTicket`, `transitionTicket`,
+  `assignTicket`, `linkEntity`, `recordTicketEvent`. Every mutation writes a
+  `TicketEvent` row **and** an `AuditLog` row, and fires a best-effort
+  notification. **Scope is enforced here, not in the app layer:** a CREATOR /
+  PARTNER viewer only ever sees their own tickets and never internal notes;
+  ADMIN sees all.
+- **`notify.ts`** — thin best-effort notification wrapper (the one cast point).
+- **`ticket-fsm.test.ts`** — vitest, 17 assertions (transitions, reopen edges,
+  illegal-jump rejection, SLA windows + breach). Also node-verified against the
+  compiled module in the sandbox (17/17 pass).
+
+Touched packages:
+
+- **`packages/audit/src/types.ts`** — `'Ticket'` entity type + 9 `TICKET_*`
+  actions.
+- **`packages/notifications`** — schema enum + templates (see migration below).
+- **root `tsconfig.json`** — `@ilaunchify/support` path alias.
+
+Typecheck: `packages/support`, `packages/audit`, `packages/notifications` all
+clean in the sandbox (only `vitest` module-not-found until `pnpm install`).
+
+## Mac steps
+
+### 1. `pnpm install`
+Registers the new `packages/support` workspace package, links its deps, and
+installs its `vitest` devDep. Until you run it, `tsc` reports `vitest`
+module-not-found in `ticket-fsm.test.ts` (harmless) and apps can't yet resolve
+`@ilaunchify/support`.
+
+### 2. `pnpm db:push` (one push — additive)
+Adds the **5 `SUPPORT_*` `NotificationEvent` enum values**:
+`SUPPORT_TICKET_CREATED`, `SUPPORT_TICKET_REPLIED`, `SUPPORT_TICKET_RESOLVED`,
+`SUPPORT_TICKET_REOPENED`, `SUPPORT_SLA_BREACHED`. The `Ticket*` models and the
+`AuditLog` rows need **no** migration (models already exist; AuditLog
+entityType/action are free-form columns). Decline any reset prompt.
+
+```bash
+pnpm install
+pnpm db:push            # additive — 5 NotificationEvent values
+pnpm db:generate
+rm -rf apps/*/.next     # transpilePackages stale-client gotcha
+pnpm --filter @ilaunchify/support test   # 17 assertions
+```
+
+### 3. Post-`db generate` cleanup (one cast to drop)
+Once the generated client knows the enum values, remove the single cast in
+`packages/support/src/notify.ts` (search **`SUPPORT-ENUM-CAST`**):
+`event: args.event as unknown as NotificationEvent` → `event: args.event`, and
+change `SupportEvent` to be assignable directly. Then `pnpm typecheck`.
+
+Until then it's safe to ship: `dispatchNotification` is best-effort (never
+throws; a write with an unknown enum is swallowed).
+
+## Design notes for the UI slices
+
+- **Notification links are recipient-correct.** The service passes an `href` in
+  each payload: admins → `/support/[id]`, requesters → `/help/[id]`. The
+  dispatcher resolves the host from the recipient's audience, so the path must
+  match where that audience reads tickets. Keep `/admin/support` and the app
+  `/help` routes at those paths (W2-SUP3 / W2-SUP4).
+- **First-response SLA** is stamped by `replyToTicket` on the first non-internal
+  ADMIN reply (`firstResponseAt`). The breach cron (W2-SUP5) only needs to scan
+  open tickets with `firstResponseAt IS NULL` and set `slaBreachedAt`.
+- **Reopen** (`transitionTicket` into IN_PROGRESS from RESOLVED/CLOSED) clears
+  `resolvedAt` / `closedAt` / `slaBreachedAt` so the ticket re-enters the open
+  population cleanly.
+- **Inbox sort** in `listTickets`: status asc, priority desc, createdAt desc;
+  `take` capped at 100. `slaBreachedOnly` filter backs the "SLA breached" KPI.
+
+## Remaining build order (unchanged from the plan)
+
+- **W2-SUP3** — `/admin/support` inbox (v2 surface: cream hero, KPI strip,
+  chips, sortable table, RowActionsMenu) + `/admin/support/[ticketId]` detail
+  (reply thread, internal notes, FSM chips, assign) + category CRUD + flip the
+  sidebar `hiddenUntilBuilt` flag.
+- **W2-SUP4** — creator + partner `/help` (list + new + detail) + deep links
+  from order detail / account / application status.
+- **W2-SUP5** — SLA-breach cron (new `/api/cron/sla-breach`, hourly or 10-min) +
+  wire the 5 notification events through their dispatch sites.

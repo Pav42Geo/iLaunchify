@@ -3191,6 +3191,12 @@ enum NotificationEvent {
   CERT_EXPIRING_SOON
   CERT_EXPIRED
   ADMIN_CERT_EXPIRED_ON_PUBLISHED
+  // W2-SUP — internal support ticketing (SUPPORT_TICKETING_PLAN.md §4.3)
+  SUPPORT_TICKET_CREATED // → category assignee, else all admins
+  SUPPORT_TICKET_REPLIED // → the other side of the thread
+  SUPPORT_TICKET_RESOLVED // → requester
+  SUPPORT_TICKET_REOPENED // → assignee (or category default)
+  SUPPORT_SLA_BREACHED // → assignee (or category default)
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
