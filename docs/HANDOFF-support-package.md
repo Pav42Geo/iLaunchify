@@ -135,8 +135,11 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
 - ✅ **Optional extra** — admin category CRUD at `/support-tickets/categories`
   (list + create/edit form + active toggle; audited; 'Manage categories' link from
   the inbox). Commit 7ad8aed.
-- **Nice-to-have (not built)** — deep links to `/help/new?category=…&orderId=…`
-  from order detail / application status (creator/partner `NewTicketForm` would read
-  the query params to prefill).
+- ✅ **Optional extra** — deep-link prefill: `/help/new?category=…` (+ creator
+  `&orderId=…`) prefills the form (params validated server-side); creator order
+  detail has a 'Report an issue with this order' link. Commit 292bb51.
+
+**Nothing outstanding** — the entire W2 support-ticketing epic (plan + both optional
+extras) is built and typecheck-clean. Only the standard Mac steps above remain.
 
 **The W2 support-ticketing plan is complete.**
