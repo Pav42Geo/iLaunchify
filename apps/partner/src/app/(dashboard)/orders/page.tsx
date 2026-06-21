@@ -293,6 +293,18 @@ function PartnerOrderCard({ d }: { d: DispatchRow }) {
           <div className={cn('mt-1 text-[11.5px] tabular-nums', pending ? 'font-medium text-pink-700' : 'text-ink-500')}>
             {dateLabel}
           </div>
+
+          <div className="mt-3">
+            <div className="mb-1 flex items-center gap-1 text-[10.5px] uppercase tracking-[0.05em] text-ink-500">
+              {(['Accept', 'Production', 'Shipping', 'Delivered'] as const).map((lbl, i) => (
+                <span key={lbl} className={i + 1 <= dispatchPhase(d.status) ? 'text-ink-700' : ''}>
+                  {lbl}
+                  {i < 3 && <span className="mx-1 text-ink-300">·</span>}
+                </span>
+              ))}
+            </div>
+            <PhaseBar phase={dispatchPhase(d.status)} />
+          </div>
         </div>
       </div>
 
@@ -309,6 +321,34 @@ function PartnerOrderCard({ d }: { d: DispatchRow }) {
         </span>
       </footer>
     </article>
+  )
+}
+
+// Dispatch lifecycle → 4 phases, mirroring the creator card's phase bar.
+function dispatchPhase(status: string): number {
+  if (status === 'DELIVERED') return 4
+  if (['READY', 'SHIPPED', 'IN_TRANSIT'].includes(status)) return 3
+  if (['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK'].includes(status)) return 2
+  return 1 // PENDING_ACCEPT (+ anything earlier)
+}
+
+function PhaseBar({ phase }: { phase: number }) {
+  return (
+    <div className="flex h-1.5 overflow-hidden rounded-full" role="progressbar">
+      {[1, 2, 3, 4].map((n) => {
+        const filled = n <= phase
+        const isLast = n === phase
+        return (
+          <div
+            key={n}
+            className="flex-1"
+            style={{
+              background: filled ? (isLast && phase < 4 ? '#BA7517' : '#0F6E56') : '#F1EFE8',
+            }}
+          />
+        )
+      })}
+    </div>
   )
 }
 
