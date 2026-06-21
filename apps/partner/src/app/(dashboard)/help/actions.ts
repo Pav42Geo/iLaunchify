@@ -66,7 +66,8 @@ export async function uploadTicketAttachments(
 }
 
 // Validate the partner owns the entity they're attaching. Partners attach an
-// OrderDispatch (their work unit); an unowned id is silently dropped.
+// OrderDispatch (their work unit) or a ProductTemplate (their own product); an
+// unowned id is silently dropped.
 async function resolveOwnedEntity(
   userId: string,
   entityType: string | undefined,
@@ -76,6 +77,13 @@ async function resolveOwnedEntity(
   if (entityType === 'OrderDispatch') {
     const owned = await prisma.orderDispatch.findFirst({
       where: { id: entityId, partnerService: { partner: { userId } } },
+      select: { id: true },
+    })
+    return owned ? { entityType, entityId } : null
+  }
+  if (entityType === 'ProductTemplate') {
+    const owned = await prisma.productTemplate.findFirst({
+      where: { id: entityId, manufacturerService: { partner: { userId } } },
       select: { id: true },
     })
     return owned ? { entityType, entityId } : null

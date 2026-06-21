@@ -10,6 +10,7 @@ export const LINKABLE_ENTITY_TYPES = [
   'OrderDispatch',
   'OrderItem',
   'Product', // creator's own product (context-aware /help attachment)
+  'ProductTemplate', // partner's own product (context-aware /help attachment)
   'Brand',
   'CreatorProfile',
   'Partner',

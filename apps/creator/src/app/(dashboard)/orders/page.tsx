@@ -35,6 +35,7 @@ import {
   Lock,
   Shuffle,
   ArrowRight,
+  LifeBuoy,
 } from 'lucide-react'
 import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
 
@@ -282,6 +283,10 @@ function OrderCard({ order: o }: { order: OrderRow }) {
       <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
         <ActionLink href={`/orders/${o.id}#thread`} icon={MessageCircle}>
           Ask partner
+        </ActionLink>
+        <Sep />
+        <ActionLink href={`/help/new?category=order-issue&orderId=${o.id}`} icon={LifeBuoy}>
+          Get order support
         </ActionLink>
         <Sep />
         <ActionLink

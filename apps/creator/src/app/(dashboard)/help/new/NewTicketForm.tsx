@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Search, ShoppingBag, Package, Check } from 'lucide-react'
 import { createTicketAction } from '../actions'
 
 type AttachKind = 'order' | 'product'
 type EntityType = 'Order' | 'Product'
+type AttachType = 'none' | AttachKind
 
 const KIND_TO_TYPE: Record<AttachKind, EntityType> = { order: 'Order', product: 'Product' }
 
@@ -46,26 +48,41 @@ export function NewTicketForm({
   )
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
-  // The selected attachment id, scoped to the current category's attach kind.
+  // The attachment is independent of the issue category — you can attach an order
+  // or product to any ticket type, or nothing.
+  const [attachType, setAttachType] = useState<AttachType>(
+    initialEntityType === 'Order' ? 'order' : initialEntityType === 'Product' ? 'product' : 'none',
+  )
   const [entityId, setEntityId] = useState(initialEntityId ?? '')
   const [pending, start] = useTransition()
 
   const selected = categories.find((c) => c.slug === categorySlug)
-  const attachKind = attachBySlug[categorySlug] ?? null
   const template = TEMPLATE_BY_SLUG[categorySlug] ?? null
 
   function onCategoryChange(next: string) {
     setCategorySlug(next)
-    // Reset the attachment unless the new category keeps the same kind AND the
-    // current selection still belongs to it.
-    const nextKind = attachBySlug[next] ?? null
-    if (nextKind !== attachKind) setEntityId('')
+    // If nothing's attached yet, gently suggest the kind the category implies.
+    if (attachType === 'none') {
+      const hint = attachBySlug[next]
+      if (hint) setAttachType(hint)
+    }
+  }
+
+  function chooseAttach(next: AttachType) {
+    setAttachType(next)
+    setEntityId('')
   }
 
   function submit() {
-    if (subject.trim().length < 4) return toast.error('Add a short subject (4+ characters).')
-    if (body.trim().length < 10) return toast.error('Describe the issue (10+ characters).')
-    const entityType = attachKind && entityId ? KIND_TO_TYPE[attachKind] : undefined
+    if (subject.trim().length < 4) {
+      toast.error('Add a short subject (4+ characters).')
+      return
+    }
+    if (body.trim().length < 10) {
+      toast.error('Describe the issue (10+ characters).')
+      return
+    }
+    const entityType = attachType !== 'none' && entityId ? KIND_TO_TYPE[attachType] : undefined
     start(async () => {
       const res = await createTicketAction({
         categorySlug,
@@ -78,16 +95,46 @@ export function NewTicketForm({
     })
   }
 
-  const bodyPlaceholder =
-    attachKind === 'order'
-      ? 'What happened with the order, what you expected, and any relevant dates. Markdown supported.'
-      : attachKind === 'product'
-        ? 'Which step or screen, what you expected, and how to reproduce it. Markdown supported.'
-        : 'What happened, what you expected, and any steps to reproduce. Markdown is supported.'
-
   return (
-    <div className="space-y-4 rounded-2xl border border-ink-200 bg-white p-5">
-      <Field label="What's it about?">
+    <div className="space-y-5 rounded-2xl border border-ink-200 bg-white p-5">
+      {/* What's this about — order / product, browseable, independent of category */}
+      <div>
+        <span className="mb-1.5 block text-[12.5px] font-semibold text-ink-700">
+          What&apos;s this about? <span className="font-normal text-ink-400">(optional)</span>
+        </span>
+        <div className="inline-flex rounded-lg border border-ink-200 p-0.5">
+          <SegBtn active={attachType === 'none'} onClick={() => chooseAttach('none')}>
+            Nothing specific
+          </SegBtn>
+          <SegBtn active={attachType === 'order'} onClick={() => chooseAttach('order')} icon={ShoppingBag}>
+            An order
+          </SegBtn>
+          <SegBtn active={attachType === 'product'} onClick={() => chooseAttach('product')} icon={Package}>
+            A product
+          </SegBtn>
+        </div>
+
+        {attachType === 'order' && (
+          <EntityBrowser
+            items={orders}
+            value={entityId}
+            onChange={setEntityId}
+            emptyLabel="You don't have any orders yet."
+            searchPlaceholder="Search your orders…"
+          />
+        )}
+        {attachType === 'product' && (
+          <EntityBrowser
+            items={products}
+            value={entityId}
+            onChange={setEntityId}
+            emptyLabel="You don't have any products yet."
+            searchPlaceholder="Search your products…"
+          />
+        )}
+      </div>
+
+      <Field label="Issue type">
         <select
           value={categorySlug}
           onChange={(e) => onCategoryChange(e.target.value)}
@@ -101,17 +148,6 @@ export function NewTicketForm({
         </select>
         {selected?.description && <p className="mt-1 text-[12px] text-ink-500">{selected.description}</p>}
       </Field>
-
-      {attachKind === 'order' && orders.length > 0 && (
-        <Field label="Related order (optional)">
-          <EntitySelect value={entityId} onChange={setEntityId} items={orders} noneLabel="Not about a specific order" />
-        </Field>
-      )}
-      {attachKind === 'product' && products.length > 0 && (
-        <Field label="Related product (optional)">
-          <EntitySelect value={entityId} onChange={setEntityId} items={products} noneLabel="Not about a specific product" />
-        </Field>
-      )}
 
       <Field label="Subject">
         <input
@@ -142,7 +178,7 @@ export function NewTicketForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
-          placeholder={bodyPlaceholder}
+          placeholder="What happened, what you expected, and any steps to reproduce. Markdown is supported."
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         />
       </div>
@@ -161,30 +197,95 @@ export function NewTicketForm({
   )
 }
 
-function EntitySelect({
+// Searchable, scrollable picker over recent orders/products. Shows a filter only
+// when the list is long enough to need one.
+function EntityBrowser({
+  items,
   value,
   onChange,
-  items,
-  noneLabel,
+  emptyLabel,
+  searchPlaceholder,
 }: {
+  items: { id: string; label: string }[]
   value: string
   onChange: (v: string) => void
-  items: { id: string; label: string }[]
-  noneLabel: string
+  emptyLabel: string
+  searchPlaceholder: string
+}) {
+  const [q, setQ] = useState('')
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return items
+    return items.filter((it) => it.label.toLowerCase().includes(needle))
+  }, [items, q])
+
+  if (items.length === 0) {
+    return <p className="mt-2 rounded-lg border border-dashed border-ink-200 px-3 py-2.5 text-[12.5px] text-ink-500">{emptyLabel}</p>
+  }
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-ink-200">
+      {items.length > 6 && (
+        <div className="flex items-center gap-2 border-b border-ink-200 px-3 py-2">
+          <Search className="h-3.5 w-3.5 flex-none text-ink-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="w-full bg-transparent text-[13px] outline-none placeholder:text-ink-400"
+          />
+        </div>
+      )}
+      <ul className="max-h-52 overflow-y-auto">
+        {filtered.length === 0 && (
+          <li className="px-3 py-2.5 text-[12.5px] text-ink-400">No matches.</li>
+        )}
+        {filtered.map((it) => {
+          const active = it.id === value
+          return (
+            <li key={it.id}>
+              <button
+                type="button"
+                onClick={() => onChange(active ? '' : it.id)}
+                className={
+                  'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors ' +
+                  (active ? 'bg-pink-50 text-pink-800' : 'text-ink-700 hover:bg-ink-50')
+                }
+              >
+                <span className="truncate">{it.label}</span>
+                {active && <Check className="h-3.5 w-3.5 flex-none text-pink-600" />}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function SegBtn({
+  active,
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  icon?: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors ' +
+        (active ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900')
+      }
     >
-      <option value="">{noneLabel}</option>
-      {items.map((it) => (
-        <option key={it.id} value={it.id}>
-          {it.label}
-        </option>
-      ))}
-    </select>
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {children}
+    </button>
   )
 }
 

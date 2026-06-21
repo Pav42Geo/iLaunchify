@@ -11,21 +11,28 @@ import { NewTicketForm } from './NewTicketForm'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'New ticket — Help' }
 
-// Order / dispatch categories invite a dispatch attachment; others none.
-const ATTACH_BY_SLUG: Record<string, 'dispatch'> = {
+// Order / dispatch categories invite a dispatch attachment; product / approval
+// categories invite a product. The picker is still fully browseable regardless.
+const ATTACH_BY_SLUG: Record<string, 'dispatch' | 'product'> = {
   'order-issue': 'dispatch',
   'dispatch-deadline': 'dispatch',
+  'product-approval': 'product',
+  'compliance-question': 'product',
 }
 
 interface PageProps {
-  searchParams: Promise<{ category?: string; dispatchId?: string }>
+  searchParams: Promise<{ category?: string; dispatchId?: string; productId?: string }>
 }
 
 export default async function NewTicketPage({ searchParams }: PageProps) {
   const user = await requireUser()
-  const { category: categoryParam, dispatchId: dispatchIdParam } = await searchParams
+  const {
+    category: categoryParam,
+    dispatchId: dispatchIdParam,
+    productId: productIdParam,
+  } = await searchParams
 
-  const [categories, dispatches] = await Promise.all([
+  const [categories, dispatches, products] = await Promise.all([
     prisma.ticketCategory.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
@@ -37,13 +44,28 @@ export default async function NewTicketPage({ searchParams }: PageProps) {
       take: 20,
       select: { id: true, type: true, orderId: true },
     }),
+    prisma.productTemplate.findMany({
+      where: { manufacturerService: { partner: { userId: user.id } } },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+      select: { id: true, name: true },
+    }),
   ])
 
   const initialCategorySlug = categories.some((c) => c.slug === categoryParam)
     ? categoryParam
     : undefined
-  const initialDispatchId =
-    dispatchIdParam && dispatches.some((d) => d.id === dispatchIdParam) ? dispatchIdParam : undefined
+
+  // Deep-link prefill — only honor params that are real + belong to this partner.
+  let initialEntityType: 'OrderDispatch' | 'ProductTemplate' | undefined
+  let initialEntityId: string | undefined
+  if (dispatchIdParam && dispatches.some((d) => d.id === dispatchIdParam)) {
+    initialEntityType = 'OrderDispatch'
+    initialEntityId = dispatchIdParam
+  } else if (productIdParam && products.some((p) => p.id === productIdParam)) {
+    initialEntityType = 'ProductTemplate'
+    initialEntityId = productIdParam
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -63,8 +85,10 @@ export default async function NewTicketPage({ searchParams }: PageProps) {
           id: d.id,
           label: `Dispatch #${d.id.slice(-8)} · ${d.type.toLowerCase()} · order #${d.orderId.slice(-8)}`,
         }))}
+        products={products.map((p) => ({ id: p.id, label: p.name }))}
         initialCategorySlug={initialCategorySlug}
-        initialDispatchId={initialDispatchId}
+        initialEntityType={initialEntityType}
+        initialEntityId={initialEntityId}
       />
     </div>
   )

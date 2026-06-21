@@ -778,7 +778,7 @@ function ActionsCard({
             className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-ink-700 hover:bg-ink-50 hover:text-ink-900"
           >
             <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            Report an issue with this order
+            Get order support
           </Link>
         </li>
         <li>

@@ -31,6 +31,7 @@ import {
   Power,
   ExternalLink,
   PencilLine,
+  LifeBuoy,
 } from 'lucide-react'
 import {
   RowActionsMenu,
@@ -169,6 +170,9 @@ export function ProductRowActions({
       )}
 
       <RowActionSeparator />
+      <RowActionItem href={`/help/new?productId=${id}`} icon={LifeBuoy}>
+        Get product support
+      </RowActionItem>
       <RowActionItem onSelect={() => copy(id, 'product ID')} icon={Copy}>
         Copy product ID
       </RowActionItem>

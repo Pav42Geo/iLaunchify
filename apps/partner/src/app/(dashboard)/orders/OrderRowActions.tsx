@@ -3,7 +3,7 @@
 // Per-row 3-dot menu for the partner /orders table.
 // Platform-standard RowActionsMenu primitive (@ilaunchify/ui).
 
-import { Eye, Copy } from 'lucide-react'
+import { Eye, Copy, LifeBuoy } from 'lucide-react'
 import {
   RowActionsMenu,
   RowActionItem,
@@ -32,6 +32,9 @@ export function OrderRowActions({ dispatchId, orderId }: Props) {
         Open dispatch
       </RowActionItem>
       <RowActionSeparator />
+      <RowActionItem href={`/help/new?category=order-issue&dispatchId=${dispatchId}`} icon={LifeBuoy}>
+        Get order support
+      </RowActionItem>
       <RowActionItem onSelect={() => copy(orderId, 'order ID')} icon={Copy}>
         Copy order ID
       </RowActionItem>
