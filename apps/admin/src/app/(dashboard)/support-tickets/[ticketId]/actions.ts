@@ -6,11 +6,12 @@
 // auth + path revalidation only.
 
 import { requireRole } from '@ilaunchify/auth'
-import type { TicketStatus } from '@ilaunchify/db'
+import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
 import {
   replyToTicket,
   transitionTicket,
   assignTicket,
+  setTicketPriority,
   TicketTransitionError,
   TicketNotFoundError,
 } from '@ilaunchify/support'
@@ -80,6 +81,25 @@ export async function assignTicketAction(input: {
     await assignTicket({
       ticketId: input.ticketId,
       toUserId: input.toUserId,
+      actorUserId: admin.id,
+    })
+    revalidate(input.ticketId)
+    return { ok: true }
+  } catch (err) {
+    if (err instanceof TicketNotFoundError) return { ok: false, error: 'Ticket not found.' }
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+export async function setPriorityAction(input: {
+  ticketId: string
+  priority: TicketPriority
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  try {
+    await setTicketPriority({
+      ticketId: input.ticketId,
+      priority: input.priority,
       actorUserId: admin.id,
     })
     revalidate(input.ticketId)

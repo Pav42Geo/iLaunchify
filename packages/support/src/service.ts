@@ -532,6 +532,40 @@ export async function transitionTicket(args: {
 }
 
 // ---------------------------------------------------------------------------
+// setTicketPriority — admin re-prioritization (inline + detail)
+// ---------------------------------------------------------------------------
+
+export async function setTicketPriority(args: {
+  ticketId: string
+  priority: TicketPriority
+  actorUserId: string
+}): Promise<Ticket> {
+  const current = await prisma.ticket.findUnique({
+    where: { id: args.ticketId },
+    select: { id: true, priority: true },
+  })
+  if (!current) throw new TicketNotFoundError(args.ticketId)
+  if (current.priority === args.priority) {
+    return prisma.ticket.findUniqueOrThrow({ where: { id: args.ticketId } })
+  }
+
+  const ticket = await prisma.ticket.update({
+    where: { id: args.ticketId },
+    data: { priority: args.priority },
+  })
+  await recordTicketEvent({
+    ticketId: args.ticketId,
+    kind: 'PRIORITY_CHANGED',
+    actorUserId: args.actorUserId,
+    actorRole: 'ADMIN',
+    auditAction: 'TICKET_PRIORITY_CHANGED',
+    fromValue: current.priority,
+    toValue: args.priority,
+  })
+  return ticket
+}
+
+// ---------------------------------------------------------------------------
 // assignTicket
 // ---------------------------------------------------------------------------
 

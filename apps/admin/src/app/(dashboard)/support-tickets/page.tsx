@@ -27,6 +27,7 @@ import { requireRole } from '@ilaunchify/auth'
 import { listTickets, OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
 import { TicketRowActions } from './TicketRowActions'
+import { InlineStatus, InlinePriority, InlineAssignee } from './InlineTicketControls'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Support tickets — Admin' }
@@ -102,6 +103,7 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
     resolved30Count,
     statusCounts,
     categories,
+    adminUsers,
     myOpenCount,
     unassignedOpenCount,
     list,
@@ -118,6 +120,11 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
       select: { id: true, slug: true, name: true },
+    }),
+    prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
     }),
     prisma.ticket.count({ where: { assigneeUserId: admin.id, status: { in: openStatuses } } }),
     prisma.ticket.count({ where: { assigneeUserId: null, status: { in: openStatuses } } }),
@@ -138,6 +145,7 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
 
   const statusCountMap = new Map(statusCounts.map((c) => [c.status as TicketStatus, c._count._all]))
   const rows = sort === 'oldest' ? [...list.rows].reverse() : list.rows
+  const admins = adminUsers.map((a) => ({ id: a.id, label: a.name ?? a.email }))
 
   return (
     <div className="space-y-6">
@@ -184,7 +192,7 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
       {rows.length === 0 ? (
         <EmptyState filtered={!!(status || priority || categoryParam)} />
       ) : (
-        <TicketsTable rows={rows} sort={sort} active={status} priorityActive={priority} category={categoryParam || null} />
+        <TicketsTable rows={rows} sort={sort} active={status} priorityActive={priority} category={categoryParam || null} admins={admins} />
       )}
     </div>
   )
@@ -485,12 +493,14 @@ type TicketRow = Awaited<ReturnType<typeof listTickets>>['rows'][number]
 
 function TicketsTable({
   rows,
+  admins,
 }: {
   rows: TicketRow[]
   sort: 'newest' | 'oldest'
   active: TicketStatus | null
   priorityActive: TicketPriority | null
   category: string | null
+  admins: { id: string; label: string }[]
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -502,6 +512,7 @@ function TicketsTable({
             <Th>Category</Th>
             <Th>Priority</Th>
             <Th>Status</Th>
+            <Th>Assignee</Th>
             <Th className="text-right">Replies</Th>
             <Th>Updated</Th>
             <Th className="w-[36px]" />
@@ -509,8 +520,6 @@ function TicketsTable({
         </thead>
         <tbody className="divide-y divide-ink-100">
           {rows.map((t) => {
-            const tone = STATUS_TONE[t.status]
-            const prio = PRIORITY_TONE[t.priority]
             const breached = !!t.slaBreachedAt && (OPEN_STATUSES as readonly string[]).includes(t.status)
             return (
               <tr key={t.id} className="group hover:bg-ink-50/40">
@@ -546,15 +555,13 @@ function TicketsTable({
                 </td>
                 <td className="px-4 py-3 align-top text-[11.5px] text-ink-600">{t.category?.name ?? '—'}</td>
                 <td className="px-4 py-3 align-top">
-                  <span className={cn('inline-flex rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', prio.bg)}>
-                    {prio.label}
-                  </span>
+                  <InlinePriority ticketId={t.id} priority={t.priority} />
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider', tone.bg)}>
-                    <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
-                    {tone.label}
-                  </span>
+                  <InlineStatus ticketId={t.id} status={t.status} />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <InlineAssignee ticketId={t.id} assigneeUserId={t.assigneeUserId} admins={admins} />
                 </td>
                 <td className="px-4 py-3 text-right align-top tabular-nums">
                   <span className={t._count.replies > 0 ? 'inline-flex items-center gap-1 font-semibold text-ink-900' : 'text-ink-400'}>

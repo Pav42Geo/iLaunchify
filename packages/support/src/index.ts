@@ -8,6 +8,7 @@ export {
   replyToTicket,
   transitionTicket,
   assignTicket,
+  setTicketPriority,
   linkEntity,
   recordTicketEvent,
   // reads (scope-aware)
