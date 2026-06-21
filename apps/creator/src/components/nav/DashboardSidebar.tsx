@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Home, Store, Package, ShoppingBag, Repeat, Settings } from 'lucide-react'
+import { Home, Store, Package, ShoppingBag, Repeat, Settings, LifeBuoy } from 'lucide-react'
 import { LaunchChecklistTrigger } from '@/components/checklist/LaunchChecklistTrigger'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -25,6 +25,7 @@ const NAV: Array<{
   // (#554) creator tier upgrade flow likely sits next to this entry.
   { href: '/subscriptions',                label: 'Subscriptions', icon: Repeat },
   { href: '/settings',                     label: 'Settings',    icon: Settings },
+  { href: '/help',                         label: 'Help',        icon: LifeBuoy },
 ]
 
 export function DashboardSidebar() {
