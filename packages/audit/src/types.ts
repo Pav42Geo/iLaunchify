@@ -79,6 +79,7 @@ export const AUDIT_ENTITY_TYPES = [
   'AcademyLesson',
   // W2-SUP — internal support ticketing (SUPPORT_TICKETING_PLAN.md)
   'Ticket',
+  'SupportSettings', // admin-tunable tier policy (W2-SUP3.5)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -223,6 +224,7 @@ export const AUDIT_ACTIONS = [
   'TICKET_ASSIGNED',
   'TICKET_LINK_ENTITY',
   'TICKET_SLA_BREACHED',
+  'SUPPORT_SETTINGS_UPDATED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

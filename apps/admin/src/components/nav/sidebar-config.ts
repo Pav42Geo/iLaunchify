@@ -242,6 +242,7 @@ const PRIMARY: SidebarRegion = {
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains' },
+        { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy' },
         {
           kind: 'group',
           label: 'Order Settings',

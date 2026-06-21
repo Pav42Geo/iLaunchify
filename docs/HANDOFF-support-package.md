@@ -113,9 +113,9 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
   (the SLA-breach cron W2-SUP5 reads this directly — no re-derivation).
 - **Tier badge** surfaced info-only on the admin inbox + detail for both creator
   (MAKER/BUILDER/AGENCY) and partner (VERIFIED/TRUSTED/PREMIER) requesters.
-- **Still TODO:** an admin *editing surface* for `SupportSettings` (the row is
-  tunable via DB now; a Settings page is a fast-follow — mirror
-  `/order-settings`). The defaults are sensible, so this isn't blocking.
+- **Admin editing surface:** `/settings/support-policy` (Settings → Support Policy)
+  — two binding toggles + a per-creator-tier table (SLA preset dropdown + min-priority).
+  `saveSupportSettings` upserts the singleton, audited (`SupportSettings` entity).
 
 ## Remaining build order (unchanged from the plan)
 
