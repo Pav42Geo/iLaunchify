@@ -8,7 +8,6 @@
 import { AppHeaderIconButton, AppHeaderUserMenu } from '@ilaunchify/ui'
 import {
   Heart,
-  Bell,
   LayoutDashboard,
   Layers,
   Package,
@@ -20,12 +19,14 @@ import {
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { BrandSwitcher, type BrandOption } from './BrandSwitcher'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 interface Props {
   email: string
   name: string | null
   brands: BrandOption[]
   activeBrandId: string
+  /** @deprecated — the live NotificationBell polls its own unread count. */
   hasUnreadNotifications?: boolean
   tier?: 'maker' | 'builder' | 'agency' | null
 }
@@ -35,7 +36,6 @@ export function TopbarRight({
   name,
   brands,
   activeBrandId,
-  hasUnreadNotifications = false,
   tier = null,
 }: Props) {
   const activeBrand = brands.find((b) => b.id === activeBrandId) ?? brands[0]
@@ -44,12 +44,7 @@ export function TopbarRight({
       <AppHeaderIconButton aria-label="Favorites">
         <Heart strokeWidth={2} className="h-5 w-5" />
       </AppHeaderIconButton>
-      <AppHeaderIconButton
-        aria-label="Notifications"
-        hasDot={hasUnreadNotifications}
-      >
-        <Bell strokeWidth={2} className="h-5 w-5" />
-      </AppHeaderIconButton>
+      <NotificationBell />
       {brands.length > 1 && <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />}
       <AppHeaderUserMenu
         user={{

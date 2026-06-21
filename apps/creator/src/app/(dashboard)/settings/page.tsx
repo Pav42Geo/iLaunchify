@@ -79,6 +79,22 @@ export default async function SettingsPage() {
           {dbUser?.stripeAccountStatus === 'ACTIVE' ? 'Open Stripe dashboard' : 'Connect payouts →'}
         </Link>
       </section>
+
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[17px] font-semibold tracking-tight text-ink-900">
+          Notifications
+        </h2>
+        <p className="mt-1 text-[13px] text-ink-600">
+          Choose which order, partner, and support updates you receive — in-app and by email — and
+          set quiet hours.
+        </p>
+        <Link
+          href="/settings/notifications"
+          className="mt-3 inline-block text-[13px] font-semibold text-pink-700 hover:text-pink-800"
+        >
+          Manage notifications →
+        </Link>
+      </section>
     </div>
   )
 }
