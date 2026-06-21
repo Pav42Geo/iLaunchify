@@ -68,7 +68,6 @@ import {
   Layout,
   PackageOpen,
   FileText,
-  Ticket,
   Store,
   Mail,
   TrendingUp,
@@ -326,17 +325,12 @@ const APPLICATIONS: SidebarRegion = {
 
 const HELP: SidebarRegion = {
   id: 'help',
-  // No label — renders as a bare group after the APPLICATIONS divider.
+  // No label — renders as a bare item after the APPLICATIONS divider.
   label: '',
   items: [
-    {
-      kind: 'group',
-      label: 'Help & Support',
-      icon: LifeBuoy,
-      children: [
-        { kind: 'item', label: 'My tickets', icon: Ticket, href: '/my-tickets', hiddenUntilBuilt: true },
-      ],
-    },
+    // Single link to the support inbox (the empty /my-tickets sub-page was
+    // removed 2026-06-20 — admins handle help via /support-tickets).
+    { kind: 'item', label: 'Help Center', icon: LifeBuoy, href: '/support-tickets' },
   ],
 }
 
