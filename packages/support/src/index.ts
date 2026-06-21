@@ -13,6 +13,9 @@ export {
   // reads (scope-aware)
   listTickets,
   getTicket,
+  // cron
+  runSlaBreachScan,
+  type SlaBreach,
   // scope + errors
   TicketNotFoundError,
   type ViewerScope,

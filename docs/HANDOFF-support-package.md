@@ -72,9 +72,11 @@ pnpm --filter @ilaunchify/support test   # 17 assertions
 Once the generated client knows the new enum values + columns:
 - `packages/support/src/notify.ts` (search **`SUPPORT-ENUM-CAST`**):
   `event: args.event as unknown as NotificationEvent` → `event: args.event`.
-- `packages/support/src/service.ts` (search **`SUPPORT-SLA-CAST`**): drop the
-  `createData as unknown as Prisma.TicketCreateInput` cast — the generated client
-  will know `slaResponseMinutes` / `slaResolveMinutes`.
+- `packages/support/src/service.ts` (search **`SUPPORT-SLA-CAST`** — two sites):
+  drop the `createData as unknown as Prisma.TicketCreateInput` cast in
+  `createTicket` AND the cast-guarded `prisma.ticket.findMany` in
+  `runSlaBreachScan` — the generated client will know `slaResponseMinutes` /
+  `slaResolveMinutes`.
 
 Then `pnpm typecheck`.
 
@@ -122,12 +124,16 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
 - ✅ **W2-SUP3** — `/support-tickets` inbox + `[ticketId]` detail (commit 73d14a6).
 - ✅ **W2-SUP3.5** — tier-aware intake + admin Support Policy page (9b70543, 356c08d).
 - ✅ **W2-SUP4** — creator `/help` (8a2a0b2) + partner `/help` (d55df61).
-- **W2-SUP5** (remaining) — SLA-breach cron (new `/api/cron/sla-breach`, ~10-min;
-  scan open tickets where `slaBreachedAt IS NULL`, compare now vs.
-  `createdAt + Ticket.slaResponseMinutes` (falls back to the priority default when
-  null), set `slaBreachedAt`, log `TicketEvent SLA_BREACHED`, fire
-  `SUPPORT_SLA_BREACHED`). The 5 `SUPPORT_*` notification events already fire from
-  the service on create/reply/resolve/reopen — SUP5 only adds the breach one + the
-  cron. Add the route to `apps/admin/vercel.json`.
-- **Nice-to-have** — admin category CRUD (`/admin/support/categories`); deep links
-  to `/help/new?category=…&orderId=…` from order detail / application status.
+- ✅ **W2-SUP5** — SLA-breach cron. `runSlaBreachScan(now)` (`@ilaunchify/support`):
+  scans open tickets where `slaBreachedAt IS NULL` + `firstResponseAt IS NULL`,
+  computes the effective window via `resolveResponseMinutes` (ticket → category →
+  priority default), and for each elapsed one stamps `slaBreachedAt`, logs a
+  `SLA_BREACHED` event, and fires `SUPPORT_SLA_BREACHED` to the owner. Route
+  `/api/cron/sla-breach` (CRON_SECRET-gated) + `*/10 * * * *` in
+  `apps/admin/vercel.json`. Idempotent; node-verified. **All five `SUPPORT_*`
+  events now fire.**
+- **Nice-to-have (not built)** — admin category CRUD (`/admin/support/categories`);
+  deep links to `/help/new?category=…&orderId=…` from order detail / application
+  status.
+
+**The W2 support-ticketing plan is complete.**

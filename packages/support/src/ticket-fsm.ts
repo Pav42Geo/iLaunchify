@@ -115,6 +115,19 @@ export function effectiveSlaWindow(
 }
 
 /**
+ * Effective first-response SLA window (minutes) for a ticket, in precedence
+ * order: the value stamped on the ticket at intake (tier-aware) → the category
+ * override → the priority default. Pure; used by the breach cron.
+ */
+export function resolveResponseMinutes(
+  priority: TicketPriority,
+  ticketOverrideMinutes?: number | null,
+  categoryOverrideMinutes?: number | null,
+): number {
+  return ticketOverrideMinutes ?? categoryOverrideMinutes ?? SLA_DEFAULTS[priority].responseMinutes
+}
+
+/**
  * Has the first-response SLA elapsed? Pure — caller supplies `now` so cron and
  * tests are deterministic. Once firstResponseAt is set, the response SLA can no
  * longer breach (we met it). Only OPEN tickets are evaluated.

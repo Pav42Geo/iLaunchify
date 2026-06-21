@@ -7,6 +7,7 @@ import {
   isTerminalStatus,
   effectiveSlaWindow,
   isResponseSlaBreached,
+  resolveResponseMinutes,
   SLA_DEFAULTS,
 } from './ticket-fsm'
 
@@ -92,6 +93,13 @@ describe('SLA windows', () => {
         now,
       }),
     ).toBe(false)
+  })
+
+  it('resolveResponseMinutes follows ticket → category → priority precedence', () => {
+    expect(resolveResponseMinutes('HIGH', 30, 90)).toBe(30) // ticket override wins
+    expect(resolveResponseMinutes('HIGH', null, 90)).toBe(90) // category override
+    expect(resolveResponseMinutes('HIGH', null, null)).toBe(SLA_DEFAULTS.HIGH.responseMinutes)
+    expect(resolveResponseMinutes('URGENT', undefined, undefined)).toBe(60)
   })
 
   it('does not breach a closed ticket', () => {

@@ -20,7 +20,13 @@ import type {
   TicketEventKind,
 } from '@ilaunchify/db'
 import { logAudit } from '@ilaunchify/audit'
-import { assertTicketTransition, eventKindForTransition, isTerminalStatus } from './ticket-fsm'
+import {
+  assertTicketTransition,
+  eventKindForTransition,
+  isTerminalStatus,
+  resolveResponseMinutes,
+  OPEN_STATUSES,
+} from './ticket-fsm'
 import { assertLinkableEntityType } from './entity-allowlist'
 import { resolveCreatorIntake, type CreatorTier } from './intake-policy'
 import { notifySupport } from './notify'
@@ -567,4 +573,97 @@ export async function linkEntity(args: {
   })
 
   return ticket
+}
+
+// ---------------------------------------------------------------------------
+// runSlaBreachScan — cron runner (W2-SUP5)
+// ---------------------------------------------------------------------------
+
+export interface SlaBreach {
+  ticketId: string
+  subject: string
+  /** Whom we notified: the assignee, the category default, or null (→ all admins). */
+  notifiedUserId: string | null
+}
+
+/**
+ * Flag open tickets whose first-response SLA has elapsed. Pure-ish: pass `now`
+ * for deterministic tests. Idempotent — only un-flagged (`slaBreachedAt IS NULL`)
+ * tickets that haven't had a first reply are considered, and each is stamped
+ * once. For every breach: set `slaBreachedAt`, log a `SLA_BREACHED` TicketEvent
+ * + AuditLog, and fire `SUPPORT_SLA_BREACHED` to the owner (assignee → category
+ * default → all admins). Returns what it touched for the cron route to report.
+ */
+export async function runSlaBreachScan(now: Date = new Date()): Promise<{
+  scanned: number
+  breached: SlaBreach[]
+}> {
+  // SUPPORT-SLA-CAST — slaResponseMinutes is pending the migration; cast-guard
+  // the read. Drop after `db generate` (use prisma.ticket directly).
+  const candidates = await (
+    prisma as unknown as {
+      ticket: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            id: string
+            subject: string
+            priority: TicketPriority
+            createdAt: Date
+            slaResponseMinutes: number | null
+            assigneeUserId: string | null
+            category: { slaResponseMinutes: number | null; defaultAssigneeUserId: string | null }
+          }>
+        >
+      }
+    }
+  ).ticket.findMany({
+    where: {
+      status: { in: OPEN_STATUSES as readonly TicketStatus[] },
+      slaBreachedAt: null,
+      firstResponseAt: null,
+    },
+    select: {
+      id: true,
+      subject: true,
+      priority: true,
+      createdAt: true,
+      slaResponseMinutes: true,
+      assigneeUserId: true,
+      category: { select: { slaResponseMinutes: true, defaultAssigneeUserId: true } },
+    },
+  })
+
+  const breached: SlaBreach[] = []
+
+  for (const t of candidates) {
+    const minutes = resolveResponseMinutes(
+      t.priority,
+      t.slaResponseMinutes,
+      t.category.slaResponseMinutes,
+    )
+    const deadlineMs = t.createdAt.getTime() + minutes * 60_000
+    if (now.getTime() <= deadlineMs) continue
+
+    await prisma.ticket.update({ where: { id: t.id }, data: { slaBreachedAt: now } })
+    await recordTicketEvent({
+      ticketId: t.id,
+      kind: 'SLA_BREACHED',
+      actorUserId: null,
+      actorRole: 'SYSTEM',
+      auditAction: 'TICKET_SLA_BREACHED',
+      payload: { responseMinutes: minutes },
+    })
+
+    const recipient = t.assigneeUserId ?? t.category.defaultAssigneeUserId ?? null
+    const data = { ticketId: t.id, subject: t.subject, href: adminTicketHref(t.id) }
+    if (recipient) {
+      await notifySupport({ userId: recipient, event: 'SUPPORT_SLA_BREACHED', data, audience: 'admin' })
+    } else {
+      await notifyAllAdmins('SUPPORT_SLA_BREACHED', data)
+    }
+
+    breached.push({ ticketId: t.id, subject: t.subject, notifiedUserId: recipient })
+  }
+
+  return { scanned: candidates.length, breached }
 }
