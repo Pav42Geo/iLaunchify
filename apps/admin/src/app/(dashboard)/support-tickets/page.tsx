@@ -445,8 +445,13 @@ function TicketsTable({
                     <UserIcon className="h-3 w-3 text-ink-400" />
                     {t.requester?.name ?? t.requester?.email ?? '—'}
                   </p>
-                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-400">
-                    {t.requesterRole.toLowerCase()}
+                  <p className="mt-0.5 flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-ink-400">
+                      {t.requesterRole.toLowerCase()}
+                    </span>
+                    <TierBadge
+                      tier={t.requester?.creatorProfile?.subscriptionTier ?? t.requester?.partner?.tier ?? null}
+                    />
                   </p>
                 </td>
                 <td className="px-4 py-3 align-top text-[11.5px] text-ink-600">{t.category?.name ?? '—'}</td>
@@ -497,6 +502,31 @@ function TicketsTable({
 
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
   return <th className={'px-4 py-2.5 text-left font-semibold ' + (className ?? '')}>{children}</th>
+}
+
+// Info-only tier badge. Creator tiers (MAKER/BUILDER/AGENCY) are spec-bound to
+// support priority; partner tiers (VERIFIED/TRUSTED/PREMIER) are surfaced for
+// context only — never auto-prioritized (partner-tier meaning undecided).
+export function TierBadge({ tier }: { tier: string | null }) {
+  if (!tier) return null
+  const TONE: Record<string, string> = {
+    MAKER: 'border-ink-200 bg-ink-50 text-ink-600',
+    BUILDER: 'border-blue-200 bg-blue-50 text-blue-700',
+    AGENCY: 'border-pink-200 bg-pink-50 text-pink-700',
+    VERIFIED: 'border-ink-200 bg-ink-50 text-ink-600',
+    TRUSTED: 'border-blue-200 bg-blue-50 text-blue-700',
+    PREMIER: 'border-violet-200 bg-violet-50 text-violet-700',
+  }
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider',
+        TONE[tier] ?? 'border-ink-200 bg-ink-50 text-ink-600',
+      )}
+    >
+      {tier.toLowerCase()}
+    </span>
+  )
 }
 
 function EmptyState({ filtered }: { filtered: boolean }) {

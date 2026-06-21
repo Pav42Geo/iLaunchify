@@ -20,6 +20,7 @@ import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
 import { getTicket, TICKET_TRANSITIONS, TicketNotFoundError, OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
 import { TicketControls } from './TicketControls'
+import { TierBadge } from '../page'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Ticket — Admin' }
@@ -111,6 +112,11 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
             {ticket.requester?.name ?? ticket.requester?.email ?? '—'}
             <span className="ml-1 text-[10px] uppercase tracking-wider text-ink-400">
               {ticket.requesterRole.toLowerCase()}
+            </span>
+            <span className="ml-1 align-middle">
+              <TierBadge
+                tier={ticket.requester?.creatorProfile?.subscriptionTier ?? ticket.requester?.partner?.tier ?? null}
+              />
             </span>
           </Meta>
           <Meta icon={Tag} label="Category">{ticket.category?.name ?? '—'}</Meta>

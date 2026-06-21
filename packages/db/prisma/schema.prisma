@@ -5344,6 +5344,12 @@ model Ticket {
   resolvedAt      DateTime?
   closedAt        DateTime?
   slaBreachedAt   DateTime? // cron sets when SLA window elapses
+  // W2-SUP3.5 — effective SLA windows resolved AT CREATION from tier policy →
+  // category override → priority default. The breach cron reads these directly
+  // (no re-derivation), so a later tier/category change doesn't retro-move a
+  // ticket's clock. Null = fall back to the priority default at read time.
+  slaResponseMinutes Int? // minutes from createdAt to first admin reply
+  slaResolveMinutes  Int? // minutes from createdAt to RESOLVED
   // Free-form admin scratchpad — visible only to admin
   internalNotes   String?
   createdAt       DateTime            @default(now())
@@ -5408,6 +5414,28 @@ model TicketEvent {
   actor       User?           @relation("TicketEventActor", fields: [actorUserId], references: [id])
 
   @@index([ticketId, createdAt])
+}
+
+// W2-SUP3.5 — admin-tunable support-tier policy (Pavel 2026-06-20).
+// Singleton (id = "default"). Maps CREATOR subscription tier → response-SLA
+// target + minimum-priority floor applied at ticket intake. Seeded from
+// PLATFORM_SPEC §Tier 1 (Maker 48h / Builder 24h / Agency 4h). PARTNER tickets
+// are deliberately NOT bound here — partner-tier meaning is undecided, so they
+// stay info-only (their tier is surfaced as a badge, never auto-prioritized).
+model SupportSettings {
+  id                     String         @id @default("default")
+  // Master switches — admin can disable either binding independently.
+  slaTargetsEnabled      Boolean        @default(true)
+  priorityFloorEnabled   Boolean        @default(true)
+  // Creator tier → first-response SLA target (minutes).
+  makerResponseMinutes   Int            @default(2880) // 48h
+  builderResponseMinutes Int            @default(1440) // 24h
+  agencyResponseMinutes  Int            @default(240) // 4h
+  // Creator tier → minimum priority floor (intake never lands BELOW this).
+  makerMinPriority       TicketPriority @default(LOW)
+  builderMinPriority     TicketPriority @default(MEDIUM)
+  agencyMinPriority      TicketPriority @default(HIGH)
+  updatedAt              DateTime       @updatedAt
 }
 
 // ===========================================================================

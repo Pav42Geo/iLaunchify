@@ -9,7 +9,7 @@
 // sees admin-internal notes. Admin sees everything. Scope is enforced HERE,
 // not in the app layer, so it can't be forgotten on a new surface.
 
-import { prisma, Prisma } from '@ilaunchify/db'
+import { prisma, Prisma, getSupportSettings } from '@ilaunchify/db'
 import type {
   Ticket,
   TicketReply,
@@ -22,6 +22,7 @@ import type {
 import { logAudit } from '@ilaunchify/audit'
 import { assertTicketTransition, eventKindForTransition, isTerminalStatus } from './ticket-fsm'
 import { assertLinkableEntityType } from './entity-allowlist'
+import { resolveCreatorIntake, type CreatorTier } from './intake-policy'
 import { notifySupport } from './notify'
 
 // ---------------------------------------------------------------------------
@@ -121,22 +122,59 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
     )
   }
 
-  const priority = input.priority ?? category.defaultPriority
+  const basePriority = input.priority ?? category.defaultPriority
   const assigneeUserId = category.defaultAssigneeUserId ?? null
 
+  // Tier-aware intake (W2-SUP3.5). CREATORS get a tier-driven priority floor +
+  // first-response SLA target from the admin-tuned SupportSettings. PARTNERS are
+  // intentionally untouched (tier meaning undecided → info-only); they keep the
+  // category override / priority default.
+  let priority = basePriority
+  let slaResponseMinutes: number | null = category.slaResponseMinutes ?? null
+  const slaResolveMinutes: number | null = category.slaResolveMinutes ?? null
+  let appliedTier: CreatorTier | null = null
+
+  if (input.requesterRole === 'CREATOR') {
+    const profile = await prisma.creatorProfile
+      .findFirst({
+        where: { userId: input.requesterUserId },
+        select: { subscriptionTier: true },
+      })
+      .catch(() => null)
+    if (profile) {
+      appliedTier = profile.subscriptionTier as CreatorTier
+      const settings = await getSupportSettings()
+      const intake = resolveCreatorIntake({
+        tier: appliedTier,
+        categoryPriority: basePriority,
+        settings,
+      })
+      priority = intake.priority
+      // Tier SLA target wins over the category override when enabled.
+      if (intake.slaResponseMinutes !== null) slaResponseMinutes = intake.slaResponseMinutes
+    }
+  }
+
+  // SUPPORT-SLA-CAST — slaResponseMinutes/slaResolveMinutes are pending the
+  // db push; the generated client doesn't know them yet. Intermediate const +
+  // single cast avoids the object-literal excess-property check. Drop the cast
+  // after `db generate`.
+  const createData = {
+    requesterUserId: input.requesterUserId,
+    requesterRole: input.requesterRole,
+    categoryId: category.id,
+    assigneeUserId,
+    subject: input.subject.slice(0, 180),
+    body: input.body,
+    priority,
+    status: 'NEW' as TicketStatus,
+    entityType: input.entityType ?? null,
+    entityId: input.entityId ?? null,
+    slaResponseMinutes,
+    slaResolveMinutes,
+  }
   const ticket = await prisma.ticket.create({
-    data: {
-      requesterUserId: input.requesterUserId,
-      requesterRole: input.requesterRole,
-      categoryId: category.id,
-      assigneeUserId,
-      subject: input.subject.slice(0, 180),
-      body: input.body,
-      priority,
-      status: 'NEW',
-      entityType: input.entityType ?? null,
-      entityId: input.entityId ?? null,
-    },
+    data: createData as unknown as Prisma.TicketCreateInput,
   })
 
   await recordTicketEvent({
@@ -145,7 +183,11 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
     actorUserId: input.requesterUserId,
     actorRole: input.requesterRole,
     auditAction: 'TICKET_CREATED',
-    payload: { categorySlug: category.slug, priority },
+    payload: {
+      categorySlug: category.slug,
+      priority,
+      ...(appliedTier ? { tier: appliedTier, slaResponseMinutes } : {}),
+    },
   })
 
   // Notify the owner: explicit category assignee, else every admin.
@@ -229,7 +271,17 @@ export async function listTickets(filters: ListTicketFilters, scope: ViewerScope
       skip: filters.skip ?? 0,
       include: {
         category: { select: { id: true, slug: true, name: true } },
-        requester: { select: { id: true, name: true, email: true } },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            // Info-only tier surfacing (W2-SUP3.5): creator subscription tier +
+            // partner tier. Partners are badge-only; never auto-prioritized.
+            creatorProfile: { select: { subscriptionTier: true } },
+            partner: { select: { tier: true } },
+          },
+        },
         assignee: { select: { id: true, name: true, email: true } },
         _count: { select: { replies: true } },
       },
@@ -249,7 +301,16 @@ export async function getTicket(ticketId: string, scope: ViewerScope) {
     where: { id: ticketId },
     include: {
       category: true,
-      requester: { select: { id: true, name: true, email: true, role: true } },
+      requester: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          creatorProfile: { select: { subscriptionTier: true } },
+          partner: { select: { tier: true } },
+        },
+      },
       assignee: { select: { id: true, name: true, email: true } },
       replies: {
         orderBy: { createdAt: 'asc' },

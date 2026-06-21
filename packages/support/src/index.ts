@@ -44,3 +44,10 @@ export {
 } from './entity-allowlist'
 
 export { notifySupport, type SupportEvent } from './notify'
+
+export {
+  resolveCreatorIntake,
+  maxPriority,
+  type CreatorTier,
+  type IntakeResolution,
+} from './intake-policy'

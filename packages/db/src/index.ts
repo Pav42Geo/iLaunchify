@@ -37,6 +37,12 @@ export {
   type SampleSettingsValues,
 } from './sample-settings'
 export {
+  getSupportSettings,
+  SUPPORT_SETTINGS_DEFAULTS,
+  type SupportSettingsValues,
+  type SupportPriority,
+} from './support-settings'
+export {
   getOrderSettings,
   resolveOrderSettings,
   applyOrderOverrides,

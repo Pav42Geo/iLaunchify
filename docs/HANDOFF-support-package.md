@@ -50,11 +50,15 @@ module-not-found in `ticket-fsm.test.ts` (harmless) and apps can't yet resolve
 `@ilaunchify/support`.
 
 ### 2. `pnpm db:push` (one push — additive)
-Adds the **5 `SUPPORT_*` `NotificationEvent` enum values**:
-`SUPPORT_TICKET_CREATED`, `SUPPORT_TICKET_REPLIED`, `SUPPORT_TICKET_RESOLVED`,
-`SUPPORT_TICKET_REOPENED`, `SUPPORT_SLA_BREACHED`. The `Ticket*` models and the
-`AuditLog` rows need **no** migration (models already exist; AuditLog
-entityType/action are free-form columns). Decline any reset prompt.
+Adds, in one push (all additive — decline any reset prompt):
+- The **5 `SUPPORT_*` `NotificationEvent` enum values**: `SUPPORT_TICKET_CREATED`,
+  `SUPPORT_TICKET_REPLIED`, `SUPPORT_TICKET_RESOLVED`, `SUPPORT_TICKET_REOPENED`,
+  `SUPPORT_SLA_BREACHED`.
+- **W2-SUP3.5 tier-policy:** the `SupportSettings` singleton model + two new
+  nullable `Ticket` columns `slaResponseMinutes` / `slaResolveMinutes`.
+
+The `Ticket*` models and the `AuditLog` rows need no migration (models already
+exist; AuditLog entityType/action are free-form columns).
 
 ```bash
 pnpm install
@@ -64,11 +68,15 @@ rm -rf apps/*/.next     # transpilePackages stale-client gotcha
 pnpm --filter @ilaunchify/support test   # 17 assertions
 ```
 
-### 3. Post-`db generate` cleanup (one cast to drop)
-Once the generated client knows the enum values, remove the single cast in
-`packages/support/src/notify.ts` (search **`SUPPORT-ENUM-CAST`**):
-`event: args.event as unknown as NotificationEvent` → `event: args.event`, and
-change `SupportEvent` to be assignable directly. Then `pnpm typecheck`.
+### 3. Post-`db generate` cleanup (two casts to drop)
+Once the generated client knows the new enum values + columns:
+- `packages/support/src/notify.ts` (search **`SUPPORT-ENUM-CAST`**):
+  `event: args.event as unknown as NotificationEvent` → `event: args.event`.
+- `packages/support/src/service.ts` (search **`SUPPORT-SLA-CAST`**): drop the
+  `createData as unknown as Prisma.TicketCreateInput` cast — the generated client
+  will know `slaResponseMinutes` / `slaResolveMinutes`.
+
+Then `pnpm typecheck`.
 
 Until then it's safe to ship: `dispatchNotification` is best-effort (never
 throws; a write with an unknown enum is swallowed).
@@ -88,6 +96,26 @@ throws; a write with an unknown enum is swallowed).
   population cleanly.
 - **Inbox sort** in `listTickets`: status asc, priority desc, createdAt desc;
   `take` capped at 100. `slaBreachedOnly` filter backs the "SLA breached" KPI.
+
+## Tier-aware intake (W2-SUP3.5 — Pavel 2026-06-20)
+
+Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
+**creators are bound** (PLATFORM_SPEC §Tier 1) but **partners stay info-only**
+(partner-tier meaning undecided → badge only, never auto-prioritized).
+
+- `SupportSettings` singleton (admin-tunable) + `getSupportSettings()` in
+  `@ilaunchify/db`. Seeded defaults: Maker 48h/LOW · Builder 24h/MEDIUM ·
+  Agency 4h/HIGH. Two master switches (`priorityFloorEnabled`,
+  `slaTargetsEnabled`) toggle each binding independently.
+- Pure `resolveCreatorIntake()` (`packages/support/src/intake-policy.ts`,
+  7 assertions) → priority floor + first-response SLA target. `createTicket`
+  applies it **only for CREATOR** requesters, stamping `Ticket.slaResponseMinutes`
+  (the SLA-breach cron W2-SUP5 reads this directly — no re-derivation).
+- **Tier badge** surfaced info-only on the admin inbox + detail for both creator
+  (MAKER/BUILDER/AGENCY) and partner (VERIFIED/TRUSTED/PREMIER) requesters.
+- **Still TODO:** an admin *editing surface* for `SupportSettings` (the row is
+  tunable via DB now; a Settings page is a fast-follow — mirror
+  `/order-settings`). The defaults are sensible, so this isn't blocking.
 
 ## Remaining build order (unchanged from the plan)
 
