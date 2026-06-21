@@ -6,25 +6,45 @@ import { createTicketAction } from '../actions'
 
 export function NewTicketForm({
   categories,
+  attachBySlug,
+  dispatches,
   initialCategorySlug,
+  initialDispatchId,
 }: {
   categories: { slug: string; name: string; description: string | null }[]
+  attachBySlug: Record<string, 'dispatch'>
+  dispatches: { id: string; label: string }[]
   initialCategorySlug?: string
+  initialDispatchId?: string
 }) {
   const [categorySlug, setCategorySlug] = useState(
     initialCategorySlug ?? categories[0]?.slug ?? 'other',
   )
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [dispatchId, setDispatchId] = useState(initialDispatchId ?? '')
   const [pending, start] = useTransition()
 
   const selected = categories.find((c) => c.slug === categorySlug)
+  const showDispatch = (attachBySlug[categorySlug] ?? null) === 'dispatch'
+
+  function onCategoryChange(next: string) {
+    setCategorySlug(next)
+    if ((attachBySlug[next] ?? null) !== 'dispatch') setDispatchId('')
+  }
 
   function submit() {
     if (subject.trim().length < 4) return toast.error('Add a short subject (4+ characters).')
     if (body.trim().length < 10) return toast.error('Describe the issue (10+ characters).')
+    const useDispatch = showDispatch && dispatchId
     start(async () => {
-      const res = await createTicketAction({ categorySlug, subject: subject.trim(), body: body.trim() })
+      const res = await createTicketAction({
+        categorySlug,
+        subject: subject.trim(),
+        body: body.trim(),
+        entityType: useDispatch ? 'OrderDispatch' : undefined,
+        entityId: useDispatch ? dispatchId : undefined,
+      })
       if (res && !res.ok) toast.error(res.error)
     })
   }
@@ -34,7 +54,7 @@ export function NewTicketForm({
       <Field label="What's it about?">
         <select
           value={categorySlug}
-          onChange={(e) => setCategorySlug(e.target.value)}
+          onChange={(e) => onCategoryChange(e.target.value)}
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         >
           {categories.map((c) => (
@@ -45,6 +65,23 @@ export function NewTicketForm({
         </select>
         {selected?.description && <p className="mt-1 text-[12px] text-ink-500">{selected.description}</p>}
       </Field>
+
+      {showDispatch && dispatches.length > 0 && (
+        <Field label="Related dispatch (optional)">
+          <select
+            value={dispatchId}
+            onChange={(e) => setDispatchId(e.target.value)}
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <option value="">Not about a specific dispatch</option>
+            {dispatches.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       <Field label="Subject">
         <input
@@ -61,7 +98,11 @@ export function NewTicketForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
-          placeholder="What happened, what you expected, and any relevant order or dispatch IDs. Markdown is supported."
+          placeholder={
+            showDispatch
+              ? 'What happened with the dispatch, the deadline in question, and what you need. Markdown supported.'
+              : 'What happened, what you expected, and any relevant order or dispatch IDs. Markdown is supported.'
+          }
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         />
       </Field>

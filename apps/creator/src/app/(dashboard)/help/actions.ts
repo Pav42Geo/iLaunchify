@@ -13,11 +13,39 @@ import { redirect } from 'next/navigation'
 
 type Result = { ok: true } | { ok: false; error: string }
 
+// Validate that the creator owns the entity they're attaching. Returns the
+// link only when ownership checks out; an unowned/garbage id is silently
+// dropped so the ticket still files. Only 'Order' and 'Product' are attachable
+// by creators today.
+async function resolveOwnedEntity(
+  userId: string,
+  entityType: string | undefined,
+  entityId: string | undefined,
+): Promise<{ entityType: string; entityId: string } | null> {
+  if (!entityType || !entityId) return null
+  if (entityType === 'Order') {
+    const owned = await prisma.order.findFirst({
+      where: { id: entityId, creatorUserId: userId },
+      select: { id: true },
+    })
+    return owned ? { entityType, entityId } : null
+  }
+  if (entityType === 'Product') {
+    const owned = await prisma.product.findFirst({
+      where: { id: entityId, brand: { creatorProfile: { userId } } },
+      select: { id: true },
+    })
+    return owned ? { entityType, entityId } : null
+  }
+  return null
+}
+
 export async function createTicketAction(input: {
   categorySlug: string
   subject: string
   body: string
-  orderId?: string
+  entityType?: string
+  entityId?: string
 }): Promise<Result & { ticketId?: string }> {
   const user = await requireUser()
   const subject = input.subject.trim()
@@ -25,17 +53,7 @@ export async function createTicketAction(input: {
   if (subject.length < 4) return { ok: false, error: 'Please add a short subject (4+ characters).' }
   if (body.length < 10) return { ok: false, error: 'Please describe the issue (10+ characters).' }
 
-  // Only link an order the creator actually owns — the orderId arrives from the
-  // form and must not be trusted. An unowned/garbage id is silently dropped so
-  // the ticket still files, just without the link.
-  const linkedOrderId =
-    input.orderId &&
-    (await prisma.order.findFirst({
-      where: { id: input.orderId, creatorUserId: user.id },
-      select: { id: true },
-    }))
-      ? input.orderId
-      : undefined
+  const link = await resolveOwnedEntity(user.id, input.entityType, input.entityId)
 
   let ticketId: string
   try {
@@ -45,7 +63,7 @@ export async function createTicketAction(input: {
       categorySlug: input.categorySlug || 'other',
       subject,
       body,
-      ...(linkedOrderId ? { entityType: 'Order', entityId: linkedOrderId } : {}),
+      ...(link ? { entityType: link.entityType, entityId: link.entityId } : {}),
     })
     ticketId = ticket.id
   } catch (err) {

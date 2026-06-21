@@ -25,6 +25,8 @@ function entityHref(entityType: string, entityId: string): string {
   switch (entityType) {
     case 'Order':
       return `/orders/${entityId}`
+    case 'Product':
+      return `/products/${entityId}`
     case 'Partner':
       return `/partners/${entityId}`
     default:
