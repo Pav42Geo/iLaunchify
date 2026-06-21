@@ -19,6 +19,7 @@ import {
   MessageSquare,
   ArrowDownUp,
   Tag,
+  LineChart,
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
@@ -195,12 +196,20 @@ function Header({
               the thread, reply, and move it through triage.
             </p>
           </div>
-          <Link
-            href="/support-tickets/categories"
-            className="inline-flex flex-none items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:border-ink-400 hover:text-ink-900"
-          >
-            <Tag className="h-3.5 w-3.5" /> Manage categories
-          </Link>
+          <div className="flex flex-none items-center gap-2">
+            <Link
+              href="/support-tickets/analytics"
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:border-ink-400 hover:text-ink-900"
+            >
+              <LineChart className="h-3.5 w-3.5" /> Analytics
+            </Link>
+            <Link
+              href="/support-tickets/categories"
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:border-ink-400 hover:text-ink-900"
+            >
+              <Tag className="h-3.5 w-3.5" /> Manage categories
+            </Link>
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-5">
