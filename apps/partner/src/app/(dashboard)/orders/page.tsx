@@ -17,9 +17,14 @@ import {
   ArrowUpDown,
   Eye,
   LifeBuoy,
+  ClipboardList,
+  Coffee,
+  Leaf,
+  Package,
   type LucideIcon,
 } from 'lucide-react'
 import { OrderRowActions } from './OrderRowActions'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
@@ -84,7 +89,17 @@ export default async function OrdersPage({
       services: {
         include: {
           dispatches: {
-            include: { order: { include: { brand: true } } },
+            include: {
+              order: {
+                include: {
+                  brand: true,
+                  items: {
+                    take: 1,
+                    include: { product: { select: { name: true, primaryImageAssetId: true } } },
+                  },
+                },
+              },
+            },
             orderBy: { createdAt: 'desc' },
             take: 50,
           },
@@ -107,6 +122,11 @@ export default async function OrdersPage({
     if (sort === 'amount') return (a.costCents - b.costCents) * flip
     return (a.createdAt.getTime() - b.createdAt.getTime()) * flip
   })
+
+  // Resolve the order's product image (primaryImageAssetId) → displayable URL.
+  const imgMap = await resolveCertBadgeUrls(
+    visible.map((d) => d.order.items[0]?.product.primaryImageAssetId ?? null),
+  )
 
   return (
     <div className="space-y-6">
@@ -168,7 +188,7 @@ export default async function OrdersPage({
           </p>
         </section>
       ) : view === 'cards' ? (
-        <OrderCards rows={visible} tabLabel={TAB_LABEL[tab]} />
+        <OrderCards rows={visible} tabLabel={TAB_LABEL[tab]} imgMap={imgMap} />
       ) : (
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <div className="overflow-x-auto">
@@ -239,10 +259,23 @@ type DispatchRow = {
   costCents: number
   createdAt: Date
   acceptDeadlineAt: Date
-  order: { id: string; brand: { name: string } }
+  manifestVersion: number
+  order: {
+    id: string
+    brand: { name: string }
+    items: { product: { name: string; primaryImageAssetId: string | null } }[]
+  }
 }
 
-function OrderCards({ rows, tabLabel }: { rows: DispatchRow[]; tabLabel: string }) {
+function OrderCards({
+  rows,
+  tabLabel,
+  imgMap,
+}: {
+  rows: DispatchRow[]
+  tabLabel: string
+  imgMap: Map<string, string>
+}) {
   if (rows.length === 0) {
     return (
       <section className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center text-[12px] text-ink-500">
@@ -253,18 +286,21 @@ function OrderCards({ rows, tabLabel }: { rows: DispatchRow[]; tabLabel: string 
   return (
     <div className="space-y-4">
       {rows.map((d) => (
-        <PartnerOrderCard key={d.id} d={d} />
+        <PartnerOrderCard key={d.id} d={d} imgMap={imgMap} />
       ))}
     </div>
   )
 }
 
 // Rich dispatch card mirroring the creator OrderCard chrome: cream header band
-// (status + order ref + date + amount), a body with thumbnail + meta, and a
-// footer action rail with the contextual "Get order support" entry point.
-function PartnerOrderCard({ d }: { d: DispatchRow }) {
+// (status + order ref + Manifest link + amount), a body with product thumbnail +
+// meta + phase bar, and a footer action rail with the "Get order support" entry.
+function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, string> }) {
   const pill = STATUS_PILL[d.status] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const pending = d.status === 'PENDING_ACCEPT'
+  const product = d.order.items[0]?.product
+  const title = product?.name ?? d.order.brand.name
+  const imageUrl = product?.primaryImageAssetId ? imgMap.get(product.primaryImageAssetId) : undefined
   const dateLabel = pending
     ? `Accept by ${new Date(d.acceptDeadlineAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
     : `Placed ${new Date(d.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
@@ -278,17 +314,23 @@ function PartnerOrderCard({ d }: { d: DispatchRow }) {
         <span>
           <span className="text-ink-500">Order</span> <span className="font-mono text-[11.5px]">#{d.order.id.slice(-8)}</span>
         </span>
+        <Link
+          href={`/orders/${d.id}#manifest`}
+          className="inline-flex items-center gap-1 font-medium text-pink-700 hover:underline"
+        >
+          <ClipboardList className="h-3.5 w-3.5" /> Manifest v{d.manifestVersion}
+        </Link>
         <span className="ml-auto font-display text-[15px] font-bold tabular-nums text-ink-900">
           ${(d.costCents / 100).toFixed(2)}
         </span>
       </header>
 
       <div className="flex items-start gap-4 px-4 pb-3 pt-4">
-        <CardThumb name={d.order.brand.name} />
+        <CardThumb name={title} imageUrl={imageUrl} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-medium leading-tight text-ink-900">{d.order.brand.name}</div>
+          <div className="truncate text-[15px] font-medium leading-tight text-ink-900">{title}</div>
           <div className="mt-0.5 text-[12.5px] text-ink-500">
-            {d.type} · {d.serviceType}
+            {d.order.brand.name} · {d.type} · {d.serviceType}
           </div>
           <div className={cn('mt-1 text-[11.5px] tabular-nums', pending ? 'font-medium text-pink-700' : 'text-ink-500')}>
             {dateLabel}
@@ -352,17 +394,42 @@ function PhaseBar({ phase }: { phase: number }) {
   )
 }
 
-function CardThumb({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
+// Real product image when available; otherwise a deterministic gradient + icon
+// (matching the creator card's image-less thumbnail style).
+function CardThumb({ name, imageUrl }: { name: string; imageUrl?: string }) {
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt=""
+        className="h-12 w-12 flex-none rounded-xl object-cover ring-1 ring-ink-100"
+      />
+    )
+  }
+  const gradients = [
+    'linear-gradient(135deg,#F4C0D1 0%,#D4537E 100%)',
+    'linear-gradient(135deg,#9FE1CB 0%,#0F6E56 100%)',
+    'linear-gradient(135deg,#FAC775 0%,#BA7517 100%)',
+    'linear-gradient(135deg,#CECBF6 0%,#534AB7 100%)',
+  ]
+  const icons = [Coffee, Leaf, Package, Truck]
+  const h = simpleHash(name)
+  const Icon = icons[h % icons.length]!
   return (
-    <span className="inline-flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-ink-100 text-[13px] font-semibold text-ink-600">
-      {initials || '—'}
-    </span>
+    <div
+      className="flex h-12 w-12 flex-none items-center justify-center rounded-xl"
+      style={{ background: gradients[h % gradients.length] }}
+    >
+      <Icon className="h-5 w-5 text-white" aria-hidden="true" />
+    </div>
   )
+}
+
+function simpleHash(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
 }
 
 function ActionLink({ href, icon: Icon, children }: { href: string; icon: LucideIcon; children: React.ReactNode }) {

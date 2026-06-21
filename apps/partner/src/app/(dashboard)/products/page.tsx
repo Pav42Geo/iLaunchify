@@ -23,6 +23,9 @@ import {
   Eye,
   Pencil,
   LifeBuoy,
+  Coffee,
+  Leaf,
+  Truck,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
@@ -253,7 +256,7 @@ export default async function ProductsListPage({
       {templates.length === 0 ? (
         <EmptyState />
       ) : view === 'cards' ? (
-        <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} />
+        <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} heroUrls={heroUrls} />
       ) : (
         <SelectionProvider allIds={visible.map((r) => r.id)} rows={visible.map((r) => ({ id: r.id, name: r.name, status: r.status }))}>
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -482,7 +485,15 @@ function EmptyState() {
 // Card view (?view=cards)
 // -----------------------------------------------------------------------------
 
-function ProductCards({ rows, tabLabel }: { rows: Row[]; tabLabel: string }) {
+function ProductCards({
+  rows,
+  tabLabel,
+  heroUrls,
+}: {
+  rows: Row[]
+  tabLabel: string
+  heroUrls: Map<string, string>
+}) {
   if (rows.length === 0) {
     return (
       <section className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center text-[12px] text-ink-500">
@@ -493,7 +504,7 @@ function ProductCards({ rows, tabLabel }: { rows: Row[]; tabLabel: string }) {
   return (
     <div className="space-y-4">
       {rows.map((r) => (
-        <PartnerProductCard key={r.id} r={r} />
+        <PartnerProductCard key={r.id} r={r} heroUrls={heroUrls} />
       ))}
     </div>
   )
@@ -504,9 +515,10 @@ const AUTHORING_STATUSES = new Set<ProductTemplateStatus>(['DRAFT', 'NEEDS_CHANG
 // Rich product card mirroring the creator card chrome: cream header band
 // (status + price), a body with thumbnail + meta, and a footer action rail with
 // a status-aware primary action and the contextual "Get product support" entry.
-function PartnerProductCard({ r }: { r: Row }) {
+function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, string> }) {
   const pill = STATUS_PILL[r.status] ?? { label: r.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const authoring = AUTHORING_STATUSES.has(r.status)
+  const imageUrl = r.imageAssetId ? heroUrls.get(r.imageAssetId) : undefined
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-ink-200 bg-white">
@@ -524,7 +536,7 @@ function PartnerProductCard({ r }: { r: Row }) {
       </header>
 
       <div className="flex items-start gap-4 px-4 pb-3 pt-4">
-        <CardThumb name={r.name} />
+        <CardThumb name={r.name} imageUrl={imageUrl} />
         <div className="min-w-0 flex-1">
           <Link
             href={`/products/${r.id}/preview`}
@@ -569,17 +581,42 @@ function PartnerProductCard({ r }: { r: Row }) {
   )
 }
 
-function CardThumb({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
+// Real product image when available; otherwise a deterministic gradient + icon
+// (matching the creator card's image-less thumbnail style).
+function CardThumb({ name, imageUrl }: { name: string; imageUrl?: string }) {
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt=""
+        className="h-12 w-12 flex-none rounded-xl object-cover ring-1 ring-ink-100"
+      />
+    )
+  }
+  const gradients = [
+    'linear-gradient(135deg,#F4C0D1 0%,#D4537E 100%)',
+    'linear-gradient(135deg,#9FE1CB 0%,#0F6E56 100%)',
+    'linear-gradient(135deg,#FAC775 0%,#BA7517 100%)',
+    'linear-gradient(135deg,#CECBF6 0%,#534AB7 100%)',
+  ]
+  const icons = [Coffee, Leaf, Package, Truck]
+  const h = simpleHash(name)
+  const Icon = icons[h % icons.length]!
   return (
-    <span className="inline-flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-ink-100 text-[13px] font-semibold text-ink-600">
-      {initials || '—'}
-    </span>
+    <div
+      className="flex h-12 w-12 flex-none items-center justify-center rounded-xl"
+      style={{ background: gradients[h % gradients.length] }}
+    >
+      <Icon className="h-5 w-5 text-white" aria-hidden="true" />
+    </div>
   )
+}
+
+function simpleHash(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
 }
 
 function ProductActionLink({ href, icon: Icon, children }: { href: string; icon: LucideIcon; children: React.ReactNode }) {
