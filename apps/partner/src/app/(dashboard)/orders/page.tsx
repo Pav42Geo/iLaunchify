@@ -21,6 +21,7 @@ import {
   Coffee,
   Leaf,
   Package,
+  ArrowDownToLine,
   type LucideIcon,
 } from 'lucide-react'
 import { OrderRowActions } from './OrderRowActions'
@@ -319,6 +320,12 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
           className="inline-flex items-center gap-1 font-medium text-pink-700 hover:underline"
         >
           <ClipboardList className="h-3.5 w-3.5" /> Manifest v{d.manifestVersion}
+        </Link>
+        <Link
+          href="/payments"
+          className="inline-flex items-center gap-1 font-medium text-pink-700 hover:underline"
+        >
+          <ArrowDownToLine className="h-3.5 w-3.5" /> Payout
         </Link>
         <span className="ml-auto font-display text-[15px] font-bold tabular-nums text-ink-900">
           ${(d.costCents / 100).toFixed(2)}
