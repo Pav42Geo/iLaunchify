@@ -118,9 +118,12 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
   }
 
   const category = await prisma.ticketCategory.findFirst({
+    // Admin-supplied categoryId may target any row; a requester-supplied slug
+    // must resolve to an ACTIVE category (the /help forms only show active ones,
+    // but this action is independently callable).
     where: input.categoryId
       ? { id: input.categoryId }
-      : { slug: input.categorySlug ?? 'other' },
+      : { slug: input.categorySlug ?? 'other', isActive: true },
   })
   if (!category) {
     throw new Error(
@@ -171,7 +174,7 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
     categoryId: category.id,
     assigneeUserId,
     subject: input.subject.slice(0, 180),
-    body: input.body,
+    body: input.body.slice(0, 10000), // hard cap — body is otherwise unbounded
     priority,
     status: 'NEW' as TicketStatus,
     entityType: input.entityType ?? null,
@@ -376,6 +379,15 @@ export async function replyToTicket(input: ReplyInput): Promise<TicketReply> {
   })
   if (!ticket) throw new TicketNotFoundError(input.ticketId)
 
+  // Tenant isolation (threat #1): a non-admin author may only reply to their OWN
+  // ticket. The /help reply actions pass the signed-in user's id as authorUserId,
+  // but this action is independently callable, so enforce ownership here rather
+  // than trusting the caller. Throw NotFound (not Forbidden) so we don't leak that
+  // the ticket exists.
+  if (input.authorRole !== 'ADMIN' && ticket.requesterUserId !== input.authorUserId) {
+    throw new TicketNotFoundError(input.ticketId)
+  }
+
   // Only admins may post internal notes; coerce away an accidental flag.
   const isInternalNote = input.authorRole === 'ADMIN' ? !!input.isInternalNote : false
 
@@ -435,6 +447,25 @@ export async function replyToTicket(input: ReplyInput): Promise<TicketReply> {
         href: adminTicketHref(ticket.id),
       })
     }
+  }
+
+  // A requester replying to a RESOLVED ticket reopens it (FSM RESOLVED→IN_PROGRESS).
+  // Without this the reply lands but the ticket stays out of the open population,
+  // so the SLA scan + "open" inbox filters would ignore the re-engaged thread.
+  if (!isInternalNote && input.authorRole !== 'ADMIN' && ticket.status === 'RESOLVED') {
+    await prisma.ticket.update({
+      where: { id: input.ticketId },
+      data: { status: 'IN_PROGRESS', resolvedAt: null, slaBreachedAt: null },
+    })
+    await recordTicketEvent({
+      ticketId: input.ticketId,
+      kind: 'REOPENED',
+      actorUserId: input.authorUserId,
+      actorRole: input.authorRole,
+      auditAction: 'TICKET_REOPENED',
+      fromValue: 'RESOLVED',
+      toValue: 'IN_PROGRESS',
+    })
   }
 
   return reply

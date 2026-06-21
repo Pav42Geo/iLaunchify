@@ -6,6 +6,7 @@
 // only ever see/reply to their own tickets (enforced in the service).
 
 import { requireUser } from '@ilaunchify/auth'
+import { prisma } from '@ilaunchify/db'
 import { createTicket, replyToTicket, TicketNotFoundError } from '@ilaunchify/support'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -24,6 +25,18 @@ export async function createTicketAction(input: {
   if (subject.length < 4) return { ok: false, error: 'Please add a short subject (4+ characters).' }
   if (body.length < 10) return { ok: false, error: 'Please describe the issue (10+ characters).' }
 
+  // Only link an order the creator actually owns — the orderId arrives from the
+  // form and must not be trusted. An unowned/garbage id is silently dropped so
+  // the ticket still files, just without the link.
+  const linkedOrderId =
+    input.orderId &&
+    (await prisma.order.findFirst({
+      where: { id: input.orderId, creatorUserId: user.id },
+      select: { id: true },
+    }))
+      ? input.orderId
+      : undefined
+
   let ticketId: string
   try {
     const ticket = await createTicket({
@@ -32,7 +45,7 @@ export async function createTicketAction(input: {
       categorySlug: input.categorySlug || 'other',
       subject,
       body,
-      ...(input.orderId ? { entityType: 'Order', entityId: input.orderId } : {}),
+      ...(linkedOrderId ? { entityType: 'Order', entityId: linkedOrderId } : {}),
     })
     ticketId = ticket.id
   } catch (err) {
