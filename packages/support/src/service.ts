@@ -242,7 +242,10 @@ export interface ListTicketFilters {
   status?: TicketStatus[]
   priority?: TicketPriority[]
   categoryId?: string
+  /** Restrict to tickets assigned to this admin ("my queue"). */
   assigneeUserId?: string
+  /** Restrict to tickets with no assignee yet (needs a triage owner). */
+  unassignedOnly?: boolean
   /** Substring match on subject (case-insensitive). */
   search?: string
   /** Only tickets whose SLA has been flagged breached by the cron. */
@@ -262,7 +265,8 @@ export async function listTickets(filters: ListTicketFilters, scope: ViewerScope
   if (filters.status?.length) where.status = { in: filters.status }
   if (filters.priority?.length) where.priority = { in: filters.priority }
   if (filters.categoryId) where.categoryId = filters.categoryId
-  if (filters.assigneeUserId) where.assigneeUserId = filters.assigneeUserId
+  if (filters.unassignedOnly) where.assigneeUserId = null
+  else if (filters.assigneeUserId) where.assigneeUserId = filters.assigneeUserId
   if (filters.slaBreachedOnly) where.slaBreachedAt = { not: null }
   if (filters.search) {
     where.subject = { contains: filters.search, mode: 'insensitive' }

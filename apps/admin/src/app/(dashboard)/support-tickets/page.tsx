@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
+import { requireRole } from '@ilaunchify/auth'
 import { listTickets, OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
 import { TicketRowActions } from './TicketRowActions'
@@ -57,13 +58,27 @@ const PRIORITY_TONE: Record<TicketPriority, { bg: string; label: string }> = {
   LOW: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Low' },
 }
 
+type Assignment = 'me' | 'unassigned'
+
 interface PageProps {
-  searchParams: Promise<{ status?: string; priority?: string; category?: string; sort?: string }>
+  searchParams: Promise<{
+    status?: string
+    priority?: string
+    category?: string
+    sort?: string
+    assignment?: string
+  }>
 }
 
 export default async function AdminSupportTicketsPage({ searchParams }: PageProps) {
-  const { status: statusParam, priority: priorityParam, category: categoryParam, sort: sortParam } =
-    await searchParams
+  const admin = await requireRole('ADMIN')
+  const {
+    status: statusParam,
+    priority: priorityParam,
+    category: categoryParam,
+    sort: sortParam,
+    assignment: assignmentParam,
+  } = await searchParams
 
   const status =
     statusParam && (STATUS_LIST as string[]).includes(statusParam)
@@ -74,6 +89,8 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
       ? (priorityParam as TicketPriority)
       : null
   const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
+  const assignment: Assignment | null =
+    assignmentParam === 'me' ? 'me' : assignmentParam === 'unassigned' ? 'unassigned' : null
 
   const openStatuses = OPEN_STATUSES as unknown as TicketStatus[]
 
@@ -85,6 +102,8 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
     resolved30Count,
     statusCounts,
     categories,
+    myOpenCount,
+    unassignedOpenCount,
     list,
   ] = await Promise.all([
     prisma.ticket.count(),
@@ -100,11 +119,15 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
       orderBy: { sortOrder: 'asc' },
       select: { id: true, slug: true, name: true },
     }),
+    prisma.ticket.count({ where: { assigneeUserId: admin.id, status: { in: openStatuses } } }),
+    prisma.ticket.count({ where: { assigneeUserId: null, status: { in: openStatuses } } }),
     listTickets(
       {
         status: status ? [status] : undefined,
         priority: priority ? [priority] : undefined,
         categoryId: categoryParam || undefined,
+        assigneeUserId: assignment === 'me' ? admin.id : undefined,
+        unassignedOnly: assignment === 'unassigned',
         take: 100,
         // listTickets default sort is status/priority/createdAt; for the
         // "oldest first" toggle we re-sort the returned rows below.
@@ -150,9 +173,12 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
         priority={priority}
         category={categoryParam || null}
         sort={sort}
+        assignment={assignment}
         totalCount={totalCount}
         statusCountMap={statusCountMap}
         categories={categories}
+        myOpenCount={myOpenCount}
+        unassignedOpenCount={unassignedOpenCount}
       />
 
       {rows.length === 0 ? (
@@ -268,12 +294,14 @@ function buildHref(params: {
   priority?: TicketPriority | null
   category?: string | null
   sort?: 'newest' | 'oldest'
+  assignment?: Assignment | null
 }): string {
   const p = new URLSearchParams()
   if (params.status) p.set('status', params.status)
   if (params.priority) p.set('priority', params.priority)
   if (params.category) p.set('category', params.category)
   if (params.sort && params.sort !== 'newest') p.set('sort', params.sort)
+  if (params.assignment) p.set('assignment', params.assignment)
   const q = p.toString()
   return q ? `/support-tickets?${q}` : '/support-tickets'
 }
@@ -283,17 +311,23 @@ function FilterChips({
   priority,
   category,
   sort,
+  assignment,
   totalCount,
   statusCountMap,
   categories,
+  myOpenCount,
+  unassignedOpenCount,
 }: {
   active: TicketStatus | null
   priority: TicketPriority | null
   category: string | null
   sort: 'newest' | 'oldest'
+  assignment: Assignment | null
   totalCount: number
   statusCountMap: Map<TicketStatus, number>
   categories: { id: string; slug: string; name: string }[]
+  myOpenCount: number
+  unassignedOpenCount: number
 }) {
   const statusChips: Array<{ value: TicketStatus | null; label: string; count: number }> = [
     { value: null, label: 'All', count: totalCount },
@@ -304,8 +338,44 @@ function FilterChips({
     })),
   ]
 
+  const assignmentChips: Array<{ value: Assignment | null; label: string; count: number | null }> = [
+    { value: null, label: 'All tickets', count: null },
+    { value: 'me', label: 'Assigned to me', count: myOpenCount },
+    { value: 'unassigned', label: 'Unassigned', count: unassignedOpenCount },
+  ]
+
   return (
     <div className="space-y-2.5">
+      {/* assignment (my queue / unassigned) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">
+          Queue
+        </span>
+        {assignmentChips.map((a) => {
+          const isActive = assignment === a.value
+          return (
+            <Link
+              key={a.label}
+              href={buildHref({ status: active, priority, category, sort, assignment: a.value })}
+              aria-current={isActive ? 'page' : undefined}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+                isActive
+                  ? 'border-pink-500 bg-pink-50 text-pink-700'
+                  : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:text-ink-900',
+              )}
+            >
+              {a.label}
+              {a.count !== null && (
+                <span className="inline-flex h-4 min-w-[18px] items-center justify-center rounded-full bg-ink-100 px-1 text-[10.5px] font-semibold tabular-nums text-ink-700">
+                  {a.count}
+                </span>
+              )}
+            </Link>
+          )
+        })}
+      </div>
+
       {/* status */}
       <div className="flex flex-wrap items-center gap-2">
         <nav aria-label="Filter by status" className="flex flex-1 flex-wrap gap-2">
@@ -314,7 +384,7 @@ function FilterChips({
             return (
               <Link
                 key={f.label}
-                href={buildHref({ status: f.value, priority, category, sort })}
+                href={buildHref({ status: f.value, priority, category, sort, assignment })}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
@@ -338,7 +408,7 @@ function FilterChips({
           })}
         </nav>
         <Link
-          href={buildHref({ status: active, priority, category, sort: sort === 'newest' ? 'oldest' : 'newest' })}
+          href={buildHref({ status: active, priority, category, sort: sort === 'newest' ? 'oldest' : 'newest', assignment })}
           className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-ink-400 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
         >
           <ArrowDownUp className="h-3.5 w-3.5" />
@@ -352,7 +422,7 @@ function FilterChips({
           Priority
         </span>
         <Link
-          href={buildHref({ status: active, priority: null, category, sort })}
+          href={buildHref({ status: active, priority: null, category, sort, assignment })}
           className={cn(
             'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
             !priority ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
@@ -365,7 +435,7 @@ function FilterChips({
           return (
             <Link
               key={p}
-              href={buildHref({ status: active, priority: p, category, sort })}
+              href={buildHref({ status: active, priority: p, category, sort, assignment })}
               className={cn(
                 'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
                 isActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
@@ -379,7 +449,7 @@ function FilterChips({
           Category
         </span>
         <Link
-          href={buildHref({ status: active, priority, category: null, sort })}
+          href={buildHref({ status: active, priority, category: null, sort, assignment })}
           className={cn(
             'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
             !category ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
@@ -392,7 +462,7 @@ function FilterChips({
           return (
             <Link
               key={c.id}
-              href={buildHref({ status: active, priority, category: c.id, sort })}
+              href={buildHref({ status: active, priority, category: c.id, sort, assignment })}
               className={cn(
                 'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
                 isActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
