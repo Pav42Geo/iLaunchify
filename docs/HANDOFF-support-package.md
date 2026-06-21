@@ -44,10 +44,10 @@ clean in the sandbox (only `vitest` module-not-found until `pnpm install`).
 ## Mac steps
 
 ### 1. `pnpm install`
-Registers the new `packages/support` workspace package, links its deps, and
-installs its `vitest` devDep. Until you run it, `tsc` reports `vitest`
-module-not-found in `ticket-fsm.test.ts` (harmless) and apps can't yet resolve
-`@ilaunchify/support`.
+Registers the new `packages/support` workspace package, links its deps (it is now
+a dependency of **apps/admin, apps/creator, and apps/partner**), and installs its
+`vitest` devDep. Until you run it, `tsc` reports `vitest` module-not-found in the
+`*.test.ts` files (harmless) and the apps can't yet resolve `@ilaunchify/support`.
 
 ### 2. `pnpm db:push` (one push — additive)
 Adds, in one push (all additive — decline any reset prompt):
@@ -117,13 +117,17 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
   — two binding toggles + a per-creator-tier table (SLA preset dropdown + min-priority).
   `saveSupportSettings` upserts the singleton, audited (`SupportSettings` entity).
 
-## Remaining build order (unchanged from the plan)
+## Remaining build order
 
-- **W2-SUP3** — `/admin/support` inbox (v2 surface: cream hero, KPI strip,
-  chips, sortable table, RowActionsMenu) + `/admin/support/[ticketId]` detail
-  (reply thread, internal notes, FSM chips, assign) + category CRUD + flip the
-  sidebar `hiddenUntilBuilt` flag.
-- **W2-SUP4** — creator + partner `/help` (list + new + detail) + deep links
-  from order detail / account / application status.
-- **W2-SUP5** — SLA-breach cron (new `/api/cron/sla-breach`, hourly or 10-min) +
-  wire the 5 notification events through their dispatch sites.
+- ✅ **W2-SUP3** — `/support-tickets` inbox + `[ticketId]` detail (commit 73d14a6).
+- ✅ **W2-SUP3.5** — tier-aware intake + admin Support Policy page (9b70543, 356c08d).
+- ✅ **W2-SUP4** — creator `/help` (8a2a0b2) + partner `/help` (d55df61).
+- **W2-SUP5** (remaining) — SLA-breach cron (new `/api/cron/sla-breach`, ~10-min;
+  scan open tickets where `slaBreachedAt IS NULL`, compare now vs.
+  `createdAt + Ticket.slaResponseMinutes` (falls back to the priority default when
+  null), set `slaBreachedAt`, log `TicketEvent SLA_BREACHED`, fire
+  `SUPPORT_SLA_BREACHED`). The 5 `SUPPORT_*` notification events already fire from
+  the service on create/reply/resolve/reopen — SUP5 only adds the breach one + the
+  cron. Add the route to `apps/admin/vercel.json`.
+- **Nice-to-have** — admin category CRUD (`/admin/support/categories`); deep links
+  to `/help/new?category=…&orderId=…` from order detail / application status.
