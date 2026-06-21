@@ -56,6 +56,8 @@ Adds, in one push (all additive — decline any reset prompt):
   `SUPPORT_SLA_BREACHED`.
 - **W2-SUP3.5 tier-policy:** the `SupportSettings` singleton model + two new
   nullable `Ticket` columns `slaResponseMinutes` / `slaResolveMinutes`.
+- **Saved replies:** the `SupportCannedReply` model + `TicketCategory.cannedReplies`
+  back-relation.
 
 The `Ticket*` models and the `AuditLog` rows need no migration (models already
 exist; AuditLog entityType/action are free-form columns).
@@ -81,6 +83,9 @@ Once the generated client knows the new enum values + columns:
   `evt()` cast helper once the generated `NotificationEvent` enum knows
   `CREATOR_ORDER_CANCELLED` / `CREATOR_ORDER_DISPUTE_RESOLVED` / `SUPPORT_TICKET_*`
   (creator notification-preferences list, added with the notification center).
+- `packages/db/src/canned-replies.ts` + `apps/admin/.../saved-replies/actions.ts`
+  (search **`SUPPORT-CANNED-CAST`**): drop the `prisma as unknown as {…}` casts —
+  the generated client will know `SupportCannedReply`.
 
 Then `pnpm typecheck`.
 
