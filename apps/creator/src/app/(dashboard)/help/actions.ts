@@ -7,11 +7,64 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
-import { createTicket, replyToTicket, TicketNotFoundError } from '@ilaunchify/support'
+import {
+  createTicket,
+  replyToTicket,
+  getTicket,
+  TicketNotFoundError,
+  type AttachmentMeta,
+} from '@ilaunchify/support'
+import { uploadFile, ticketAttachmentKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 type Result = { ok: true } | { ok: false; error: string }
+
+const UPLOAD_MAX_BYTES = 15 * 1024 * 1024
+const ALLOWED_MIME = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'text/plain',
+])
+
+// Upload reply attachments for a ticket the creator owns. Ownership is verified
+// via getTicket (throws if not theirs) before anything is written to R2.
+export async function uploadTicketAttachments(
+  formData: FormData,
+): Promise<{ ok: true; attachments: AttachmentMeta[] } | { ok: false; error: string }> {
+  const user = await requireUser()
+  const ticketId = formData.get('ticketId')
+  if (typeof ticketId !== 'string' || !ticketId) return { ok: false, error: 'Missing ticket.' }
+  try {
+    await getTicket(ticketId, { role: 'CREATOR', userId: user.id })
+  } catch {
+    return { ok: false, error: 'Ticket not found.' }
+  }
+
+  const files = formData.getAll('files').filter((f): f is File => f instanceof File)
+  if (files.length === 0) return { ok: true, attachments: [] }
+  if (files.length > 5) return { ok: false, error: 'Up to 5 files per reply.' }
+
+  const attachments: AttachmentMeta[] = []
+  for (const file of files) {
+    if (file.size > UPLOAD_MAX_BYTES) return { ok: false, error: `"${file.name}" is too large (max 15 MB).` }
+    if (file.type && !ALLOWED_MIME.has(file.type)) {
+      return { ok: false, error: `"${file.name}": unsupported type.` }
+    }
+    const key = ticketAttachmentKey({ ticketId, filename: file.name })
+    await uploadFile({
+      key,
+      body: Buffer.from(await file.arrayBuffer()),
+      contentType: file.type || 'application/octet-stream',
+      contentDisposition: `attachment; filename="${file.name.replace(/"/g, '')}"`,
+    })
+    attachments.push({ key, name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size })
+  }
+  return { ok: true, attachments }
+}
 
 // Validate that the creator owns the entity they're attaching. Returns the
 // link only when ownership checks out; an unowned/garbage id is silently
@@ -74,17 +127,23 @@ export async function createTicketAction(input: {
   redirect(`/help/${ticketId}`)
 }
 
-export async function replyTicketAction(input: { ticketId: string; body: string }): Promise<Result> {
+export async function replyTicketAction(input: {
+  ticketId: string
+  body: string
+  attachments?: AttachmentMeta[]
+}): Promise<Result> {
   const user = await requireUser()
   const body = input.body.trim()
-  if (!body) return { ok: false, error: 'Reply cannot be empty.' }
+  const attachments = input.attachments ?? []
+  if (!body && attachments.length === 0) return { ok: false, error: 'Add a message or an attachment.' }
 
   try {
     await replyToTicket({
       ticketId: input.ticketId,
       authorUserId: user.id,
       authorRole: 'CREATOR',
-      body,
+      body: body || '(see attachment)',
+      attachments,
     })
     revalidatePath(`/help/${input.ticketId}`)
     return { ok: true }

@@ -50,6 +50,12 @@ export {
 export { notifySupport, type SupportEvent } from './notify'
 
 export {
+  parseAttachments,
+  attachmentKeyAllowed,
+  type AttachmentMeta,
+} from './attachments'
+
+export {
   resolveCreatorIntake,
   maxPriority,
   type CreatorTier,

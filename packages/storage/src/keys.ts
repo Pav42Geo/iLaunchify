@@ -23,6 +23,15 @@ function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100)
 }
 
+// Support ticket reply attachments. Path convention:
+//   tickets/{ticketId}/attachments/{cuid}-{filename}
+// Ticket-scoped namespacing lets us delete-all-by-ticket on teardown.
+export function ticketAttachmentKey(params: { ticketId: string; filename: string }): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `tickets/${params.ticketId}/attachments/${id}-${safe}`
+}
+
 export function partnerFileKey(params: {
   partnerId: string
   section: 'business' | 'facility' | 'documents' | 'public_profile'

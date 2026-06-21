@@ -14,10 +14,18 @@ import {
   Flame,
   StickyNote,
   ShieldCheck,
+  Paperclip,
+  Download,
 } from 'lucide-react'
 import { prisma, getCannedReplies } from '@ilaunchify/db'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
-import { getTicket, TICKET_TRANSITIONS, TicketNotFoundError, OPEN_STATUSES } from '@ilaunchify/support'
+import {
+  getTicket,
+  TICKET_TRANSITIONS,
+  TicketNotFoundError,
+  OPEN_STATUSES,
+  parseAttachments,
+} from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
 import { TicketControls } from './TicketControls'
 import { TierBadge } from '../page'
@@ -163,6 +171,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
                 )}
               </div>
               <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-800">{r.body}</p>
+              <AttachmentList ticketId={ticket.id} attachments={r.attachments} />
             </article>
           ))}
 
@@ -232,6 +241,35 @@ function Author({ name, role, when }: { name: string; role: string; when: Date }
       <span className="text-[11px] text-ink-400">· {formatDate(when)}</span>
     </div>
   )
+}
+
+function AttachmentList({ ticketId, attachments }: { ticketId: string; attachments: unknown }) {
+  const items = parseAttachments(attachments)
+  if (items.length === 0) return null
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {items.map((a) => (
+        <a
+          key={a.key}
+          href={`/api/ticket-attachment?ticketId=${ticketId}&key=${encodeURIComponent(a.key)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-700 hover:border-ink-300 hover:bg-ink-50"
+        >
+          <Paperclip className="h-3.5 w-3.5 text-ink-400" />
+          <span className="max-w-[180px] truncate font-medium">{a.name}</span>
+          <span className="text-[10.5px] text-ink-400">{fmtBytes(a.size)}</span>
+          <Download className="h-3.5 w-3.5 text-pink-600" />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / 1048576).toFixed(1)} MB`
 }
 
 function humanKind(kind: string): string {

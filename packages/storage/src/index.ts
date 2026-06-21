@@ -26,4 +26,5 @@ export {
   packagingAssetKey,
   certPdfKey,
   certificateThumbnailKey,
+  ticketAttachmentKey,
 } from './keys'

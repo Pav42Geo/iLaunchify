@@ -148,7 +148,25 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
   `&orderId=…`) prefills the form (params validated server-side); creator order
   detail has a 'Report an issue with this order' link. Commit 292bb51.
 
-**Nothing outstanding** — the entire W2 support-ticketing epic (plan + both optional
-extras) is built and typecheck-clean. Only the standard Mac steps above remain.
+- ✅ **Optional extra** — saved / macro replies: `SupportCannedReply` model +
+  admin CRUD at `/support-tickets/saved-replies` + "Insert saved reply…" in the
+  composer (commit ac93ed1). **SUPPORT-CANNED-CAST** cleanup after `db push`.
+- ✅ **Optional extra** — reply attachments (end-to-end, all three apps). Files
+  upload to R2 via `@ilaunchify/storage` (`ticketAttachmentKey`), are stored on the
+  existing `TicketReply.attachments` Json column (**no migration**), and download
+  through an **access-checked** signed-URL route (`/api/ticket-attachment` in each
+  app — `getTicket` scope-check + `attachmentKeyAllowed`, so a crafted key can't
+  pull an arbitrary object). 15 MB/file, ≤5 files, MIME allow-list (PDF + common
+  images + text). Admin attaches in the detail composer; creator/partner attach in
+  their `/help` reply form; all three threads render download cards. Shared
+  `parseAttachments` / `AttachmentMeta` in `@ilaunchify/support`. **No casts, no
+  migration** — fully typecheck-clean today (admin/creator/partner 0 errors).
+  - *Deferred:* attaching files on the **initial** ticket submit (opening message
+    is `Ticket.body`, not a reply, and has no Json attachments column) — would need
+    `Ticket.attachments` or an auto-first-reply. Replies cover the conversation case.
+
+**Nothing outstanding** — the entire W2 support-ticketing epic (plan + all optional
+extras incl. saved replies + reply attachments) is built and typecheck-clean. Only
+the standard Mac steps above remain.
 
 **The W2 support-ticketing plan is complete.**
