@@ -132,8 +132,11 @@ Pavel's decision: **tier sets an SLA target + a priority floor, admin-tunable**;
   `/api/cron/sla-breach` (CRON_SECRET-gated) + `*/10 * * * *` in
   `apps/admin/vercel.json`. Idempotent; node-verified. **All five `SUPPORT_*`
   events now fire.**
-- **Nice-to-have (not built)** — admin category CRUD (`/admin/support/categories`);
-  deep links to `/help/new?category=…&orderId=…` from order detail / application
-  status.
+- ✅ **Optional extra** — admin category CRUD at `/support-tickets/categories`
+  (list + create/edit form + active toggle; audited; 'Manage categories' link from
+  the inbox). Commit 7ad8aed.
+- **Nice-to-have (not built)** — deep links to `/help/new?category=…&orderId=…`
+  from order detail / application status (creator/partner `NewTicketForm` would read
+  the query params to prefill).
 
 **The W2 support-ticketing plan is complete.**

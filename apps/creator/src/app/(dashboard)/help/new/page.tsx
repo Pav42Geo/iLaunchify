@@ -11,8 +11,13 @@ import { NewTicketForm } from './NewTicketForm'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'New ticket — Help' }
 
-export default async function NewTicketPage() {
+interface PageProps {
+  searchParams: Promise<{ category?: string; orderId?: string }>
+}
+
+export default async function NewTicketPage({ searchParams }: PageProps) {
   const user = await requireUser()
+  const { category: categoryParam, orderId: orderIdParam } = await searchParams
 
   const [categories, orders] = await Promise.all([
     prisma.ticketCategory.findMany({
@@ -27,6 +32,12 @@ export default async function NewTicketPage() {
       select: { id: true, createdAt: true, brand: { select: { name: true } } },
     }),
   ])
+
+  // Deep-link prefill — only honor params that are real + belong to this creator.
+  const initialCategorySlug = categories.some((c) => c.slug === categoryParam)
+    ? categoryParam
+    : undefined
+  const initialOrderId = orders.some((o) => o.id === orderIdParam) ? orderIdParam : undefined
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -45,6 +56,8 @@ export default async function NewTicketPage() {
           id: o.id,
           label: `#${o.id.slice(-8)}${o.brand?.name ? ` · ${o.brand.name}` : ''}`,
         }))}
+        initialCategorySlug={initialCategorySlug}
+        initialOrderId={initialOrderId}
       />
     </div>
   )

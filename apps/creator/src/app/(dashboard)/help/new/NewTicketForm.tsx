@@ -7,14 +7,20 @@ import { createTicketAction } from '../actions'
 export function NewTicketForm({
   categories,
   orders,
+  initialCategorySlug,
+  initialOrderId,
 }: {
   categories: { slug: string; name: string; description: string | null }[]
   orders: { id: string; label: string }[]
+  initialCategorySlug?: string
+  initialOrderId?: string
 }) {
-  const [categorySlug, setCategorySlug] = useState(categories[0]?.slug ?? 'other')
+  const [categorySlug, setCategorySlug] = useState(
+    initialCategorySlug ?? categories[0]?.slug ?? 'other',
+  )
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
-  const [orderId, setOrderId] = useState('')
+  const [orderId, setOrderId] = useState(initialOrderId ?? '')
   const [pending, start] = useTransition()
 
   const selected = categories.find((c) => c.slug === categorySlug)

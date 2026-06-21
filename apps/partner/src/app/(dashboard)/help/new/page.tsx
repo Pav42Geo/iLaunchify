@@ -9,14 +9,23 @@ import { NewTicketForm } from './NewTicketForm'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'New ticket — Help' }
 
-export default async function NewTicketPage() {
+interface PageProps {
+  searchParams: Promise<{ category?: string }>
+}
+
+export default async function NewTicketPage({ searchParams }: PageProps) {
   await requireUser()
+  const { category: categoryParam } = await searchParams
 
   const categories = await prisma.ticketCategory.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: 'asc' },
     select: { slug: true, name: true, description: true },
   })
+
+  const initialCategorySlug = categories.some((c) => c.slug === categoryParam)
+    ? categoryParam
+    : undefined
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -29,7 +38,7 @@ export default async function NewTicketPage() {
           Tell us what&apos;s going on. The more detail you give, the faster we can help.
         </p>
       </div>
-      <NewTicketForm categories={categories} />
+      <NewTicketForm categories={categories} initialCategorySlug={initialCategorySlug} />
     </div>
   )
 }

@@ -6,10 +6,14 @@ import { createTicketAction } from '../actions'
 
 export function NewTicketForm({
   categories,
+  initialCategorySlug,
 }: {
   categories: { slug: string; name: string; description: string | null }[]
+  initialCategorySlug?: string
 }) {
-  const [categorySlug, setCategorySlug] = useState(categories[0]?.slug ?? 'other')
+  const [categorySlug, setCategorySlug] = useState(
+    initialCategorySlug ?? categories[0]?.slug ?? 'other',
+  )
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [pending, start] = useTransition()
