@@ -1,0 +1,240 @@
+// =============================================================================
+// Admin Support Ticket — detail (W2-SUP3 · SUPPORT_TICKETING_PLAN.md §3.2)
+// =============================================================================
+
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import {
+  ArrowLeft,
+  User as UserIcon,
+  Building2,
+  Tag,
+  Link2,
+  Clock,
+  Flame,
+  StickyNote,
+  ShieldCheck,
+} from 'lucide-react'
+import { prisma } from '@ilaunchify/db'
+import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
+import { getTicket, TICKET_TRANSITIONS, TicketNotFoundError, OPEN_STATUSES } from '@ilaunchify/support'
+import { cn } from '@ilaunchify/ui'
+import { TicketControls } from './TicketControls'
+
+export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Ticket — Admin' }
+
+const STATUS_TONE: Record<TicketStatus, { bg: string; dot: string; label: string }> = {
+  NEW: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'New' },
+  TRIAGED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Triaged' },
+  IN_PROGRESS: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In progress' },
+  WAITING_ON_REQUESTER: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Waiting on requester' },
+  RESOLVED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Resolved' },
+  CLOSED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Closed' },
+}
+
+const PRIORITY_TONE: Record<TicketPriority, { bg: string; label: string }> = {
+  URGENT: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Urgent' },
+  HIGH: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'High' },
+  MEDIUM: { bg: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Medium' },
+  LOW: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Low' },
+}
+
+interface PageProps {
+  params: Promise<{ ticketId: string }>
+}
+
+export default async function AdminTicketDetailPage({ params }: PageProps) {
+  const { ticketId } = await params
+
+  let ticket
+  try {
+    ticket = await getTicket(ticketId, { role: 'ADMIN' })
+  } catch (err) {
+    if (err instanceof TicketNotFoundError) notFound()
+    throw err
+  }
+  // Admin scope always returns the full row; narrow the union for TS.
+  if (!('replies' in ticket)) notFound()
+
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN' },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' },
+  })
+
+  const status = ticket.status as TicketStatus
+  const tone = STATUS_TONE[status]
+  const prio = PRIORITY_TONE[ticket.priority as TicketPriority]
+  const nextStatuses = [...TICKET_TRANSITIONS[status]] as TicketStatus[]
+  const breached = !!ticket.slaBreachedAt && (OPEN_STATUSES as readonly string[]).includes(status)
+
+  return (
+    <div className="space-y-5">
+      <Link
+        href="/support-tickets"
+        className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-500 hover:text-ink-800"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> All tickets
+      </Link>
+
+      {/* Header */}
+      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="bg-[#F3EFE8] px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-mono text-[10.5px] uppercase tracking-wider text-ink-500">
+                #{ticket.id.slice(-8)}
+              </p>
+              <h1 className="mt-0.5 font-display text-xl font-semibold tracking-tight text-ink-900">
+                {ticket.subject}
+              </h1>
+            </div>
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', tone.bg)}>
+                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
+                {tone.label}
+              </span>
+              <span className={cn('inline-flex rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', prio.bg)}>
+                {prio.label}
+              </span>
+              {breached && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider text-rose-700">
+                  <Flame className="h-3 w-3" /> SLA breached
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 border-t border-ink-100 px-5 py-3.5 text-[12px] sm:grid-cols-4">
+          <Meta icon={UserIcon} label="Requester">
+            {ticket.requester?.name ?? ticket.requester?.email ?? '—'}
+            <span className="ml-1 text-[10px] uppercase tracking-wider text-ink-400">
+              {ticket.requesterRole.toLowerCase()}
+            </span>
+          </Meta>
+          <Meta icon={Tag} label="Category">{ticket.category?.name ?? '—'}</Meta>
+          <Meta icon={ShieldCheck} label="Assignee">
+            {ticket.assignee?.name ?? ticket.assignee?.email ?? <span className="text-ink-400">Unassigned</span>}
+          </Meta>
+          <Meta icon={Clock} label="Opened">{formatDate(ticket.createdAt)}</Meta>
+          {ticket.entityType && ticket.entityId && (
+            <Meta icon={Link2} label="Linked to">
+              <span className="font-medium">{ticket.entityType}</span>{' '}
+              <span className="font-mono text-[10.5px] text-ink-500">#{ticket.entityId.slice(-8)}</span>
+            </Meta>
+          )}
+        </dl>
+      </header>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+        {/* Thread */}
+        <div className="space-y-4">
+          {/* Opening message */}
+          <article className="rounded-2xl border border-ink-200 bg-white p-4">
+            <Author name={ticket.requester?.name ?? ticket.requester?.email ?? 'Requester'} role={ticket.requesterRole} when={ticket.createdAt} />
+            <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-800">{ticket.body}</p>
+          </article>
+
+          {ticket.replies.map((r) => (
+            <article
+              key={r.id}
+              className={cn(
+                'rounded-2xl border p-4',
+                r.isInternalNote ? 'border-amber-200 bg-amber-50/50' : 'border-ink-200 bg-white',
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <Author name={r.author?.name ?? 'Admin'} role={r.authorRole} when={r.createdAt} />
+                {r.isInternalNote && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-[2px] text-[9.5px] font-semibold uppercase tracking-wider text-amber-800">
+                    <StickyNote className="h-2.5 w-2.5" /> Internal note
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-800">{r.body}</p>
+            </article>
+          ))}
+
+          {/* Activity log */}
+          {ticket.events.length > 0 && (
+            <details className="rounded-2xl border border-ink-200 bg-white p-4">
+              <summary className="cursor-pointer text-[12.5px] font-semibold text-ink-700">
+                Activity ({ticket.events.length})
+              </summary>
+              <ol className="mt-3 space-y-2">
+                {ticket.events.map((e) => (
+                  <li key={e.id} className="flex items-start gap-2 text-[11.5px] text-ink-600">
+                    <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink-300" />
+                    <span>
+                      <span className="font-medium text-ink-800">{humanKind(e.kind)}</span>
+                      {e.actor?.name ? ` · ${e.actor.name}` : ' · system'}
+                      <span className="ml-1 text-ink-400">{formatDate(e.createdAt)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
+        </div>
+
+        {/* Controls */}
+        <aside>
+          <TicketControls
+            ticketId={ticket.id}
+            currentStatus={status}
+            nextStatuses={nextStatuses}
+            assigneeUserId={ticket.assigneeUserId}
+            admins={admins}
+          />
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function Meta({ icon: Icon, label, children }: { icon: typeof UserIcon; label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-400">
+        <Icon className="h-3 w-3" /> {label}
+      </dt>
+      <dd className="mt-0.5 text-ink-800">{children}</dd>
+    </div>
+  )
+}
+
+function Author({ name, role, when }: { name: string; role: string; when: Date }) {
+  const isAdmin = role === 'ADMIN'
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className={cn(
+          'inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold',
+          isAdmin ? 'bg-pink-100 text-pink-700' : 'bg-ink-100 text-ink-600',
+        )}
+      >
+        {isAdmin ? <ShieldCheck className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
+      </span>
+      <span className="text-[12.5px] font-semibold text-ink-900">{name}</span>
+      <span className="text-[10px] uppercase tracking-wider text-ink-400">{role.toLowerCase()}</span>
+      <span className="text-[11px] text-ink-400">· {formatDate(when)}</span>
+    </div>
+  )
+}
+
+function humanKind(kind: string): string {
+  return kind
+    .toLowerCase()
+    .split('_')
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ')
+}
+
+function formatDate(d: Date): string {
+  const diff = (Date.now() - d.getTime()) / 1000
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)}d ago`
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}

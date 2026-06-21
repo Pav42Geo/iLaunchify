@@ -48,8 +48,9 @@ export class TicketNotFoundError extends Error {
 
 // Recipient-correct deep links. The notification dispatcher resolves the host
 // from the recipient's audience, so the PATH must match where that audience
-// reads tickets: admins in /admin/support, requesters in their app's /help.
-const adminTicketHref = (id: string) => `/support/${id}`
+// reads tickets: admins at /support-tickets (the locked sidebar href),
+// requesters in their app's /help.
+const adminTicketHref = (id: string) => `/support-tickets/${id}`
 const requesterTicketHref = (id: string) => `/help/${id}`
 
 // ---------------------------------------------------------------------------

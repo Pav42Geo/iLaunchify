@@ -145,7 +145,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Accessory verification', icon: Gift, href: '/accessories' },
         { kind: 'item', label: 'Packaging review', icon: PackageOpen, href: '/asset-management/packaging-review' },
         { kind: 'item', label: 'Phrase submissions', icon: MessageSquare, href: '/phrase-submissions', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: false },
       ],
     },
     {
