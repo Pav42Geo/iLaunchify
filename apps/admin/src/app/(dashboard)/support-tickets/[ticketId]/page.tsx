@@ -15,7 +15,7 @@ import {
   StickyNote,
   ShieldCheck,
 } from 'lucide-react'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCannedReplies } from '@ilaunchify/db'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
 import { getTicket, TICKET_TRANSITIONS, TicketNotFoundError, OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
@@ -58,11 +58,15 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
   // Admin scope always returns the full row; narrow the union for TS.
   if (!('replies' in ticket)) notFound()
 
-  const admins = await prisma.user.findMany({
-    where: { role: 'ADMIN' },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: 'asc' },
-  })
+  const [admins, cannedReplies] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    }),
+    // Active canned replies relevant to this ticket (global + its category).
+    getCannedReplies({ activeOnly: true, categoryId: ticket.categoryId }),
+  ])
 
   const status = ticket.status as TicketStatus
   const tone = STATUS_TONE[status]
@@ -192,6 +196,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
             nextStatuses={nextStatuses}
             assigneeUserId={ticket.assigneeUserId}
             admins={admins}
+            cannedReplies={cannedReplies.map((r) => ({ id: r.id, title: r.title, body: r.body }))}
           />
         </aside>
       </div>

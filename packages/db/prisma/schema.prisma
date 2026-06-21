@@ -5383,8 +5383,27 @@ model TicketCategory {
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   tickets               Ticket[]
+  cannedReplies         SupportCannedReply[]
 
   @@index([isActive, sortOrder])
+}
+
+// W2-SUP — admin-curated canned/macro replies agents insert into the reply box.
+// Optional category scope (null = global, shown for every ticket).
+model SupportCannedReply {
+  id          String          @id @default(cuid())
+  title       String          @db.String(120) // short label shown in the picker
+  body        String // markdown inserted into the reply
+  categoryId  String? // optional scope; null = available everywhere
+  isActive    Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  createdById String? // admin who created it (audit also records the actor)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  category    TicketCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([isActive, sortOrder])
+  @@index([categoryId])
 }
 
 model TicketReply {

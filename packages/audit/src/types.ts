@@ -81,6 +81,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Ticket',
   'SupportSettings', // admin-tunable tier policy (W2-SUP3.5)
   'TicketCategory', // admin-managed category taxonomy
+  'SupportCannedReply', // admin-curated canned/macro replies
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

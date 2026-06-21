@@ -42,6 +42,7 @@ export {
   type SupportSettingsValues,
   type SupportPriority,
 } from './support-settings'
+export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 export {
   getOrderSettings,
   resolveOrderSettings,
