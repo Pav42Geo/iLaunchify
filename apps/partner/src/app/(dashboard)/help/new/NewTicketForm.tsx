@@ -4,6 +4,18 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { createTicketAction } from '../actions'
 
+// Optional guided scaffolds — inserted only on click, only when the body is empty.
+const TEMPLATE_BY_SLUG: Record<string, string> = {
+  'order-issue':
+    "What's wrong with the order:\n\nWhat I expected:\n\nWhat I need:\n",
+  'dispatch-deadline':
+    'The deadline issue:\n\nDeadline agreed vs what’s shown:\n\nWhat I need:\n',
+  'payment-payout':
+    'What happened:\n\nPayout / amount in question:\n\nWhat I expected:\n',
+  'partner-verification':
+    'Which onboarding section:\n\nWhat I’m stuck on:\n\nWhat I’ve tried:\n',
+}
+
 export function NewTicketForm({
   categories,
   attachBySlug,
@@ -27,6 +39,7 @@ export function NewTicketForm({
 
   const selected = categories.find((c) => c.slug === categorySlug)
   const showDispatch = (attachBySlug[categorySlug] ?? null) === 'dispatch'
+  const template = TEMPLATE_BY_SLUG[categorySlug] ?? null
 
   function onCategoryChange(next: string) {
     setCategorySlug(next)
@@ -93,7 +106,21 @@ export function NewTicketForm({
         />
       </Field>
 
-      <Field label="Details">
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[12.5px] font-semibold text-ink-700">Details</span>
+          {template && (
+            <button
+              type="button"
+              onClick={() => setBody(template)}
+              disabled={body.trim().length > 0}
+              className="text-[11.5px] font-medium text-pink-700 hover:text-pink-800 disabled:cursor-not-allowed disabled:text-ink-300"
+              title={body.trim().length > 0 ? 'Clear the field first to use the template' : 'Insert a guided format'}
+            >
+              Use a guided template
+            </button>
+          )}
+        </div>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -105,7 +132,7 @@ export function NewTicketForm({
           }
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         />
-      </Field>
+      </div>
 
       <div className="flex justify-end">
         <button

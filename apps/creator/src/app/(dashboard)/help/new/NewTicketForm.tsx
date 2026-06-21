@@ -9,6 +9,21 @@ type EntityType = 'Order' | 'Product'
 
 const KIND_TO_TYPE: Record<AttachKind, EntityType> = { order: 'Order', product: 'Product' }
 
+// Optional guided scaffolds for high-volume categories. Inserted only on click,
+// and only when the body is empty — never auto-applied, never clobbering text.
+const TEMPLATE_BY_SLUG: Record<string, string> = {
+  'order-issue':
+    "What's wrong:\n\nWhat I expected:\n\nWhen I first noticed:\n",
+  'payment-payout':
+    'What happened:\n\nAmount / charge in question:\n\nWhat I expected:\n',
+  'design-studio-bug':
+    'What I was doing:\n\nWhat I expected:\n\nWhat happened instead:\n\nSteps to reproduce:\n1. \n2. \n\nBrowser / device:\n',
+  'product-approval':
+    "The decision I'm asking about:\n\nWhat I'd like to happen:\n",
+  'compliance-question':
+    'My question:\n\nRelevant claim / ingredient:\n',
+}
+
 export function NewTicketForm({
   categories,
   attachBySlug,
@@ -37,6 +52,7 @@ export function NewTicketForm({
 
   const selected = categories.find((c) => c.slug === categorySlug)
   const attachKind = attachBySlug[categorySlug] ?? null
+  const template = TEMPLATE_BY_SLUG[categorySlug] ?? null
 
   function onCategoryChange(next: string) {
     setCategorySlug(next)
@@ -107,7 +123,21 @@ export function NewTicketForm({
         />
       </Field>
 
-      <Field label="Details">
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-[12.5px] font-semibold text-ink-700">Details</span>
+          {template && (
+            <button
+              type="button"
+              onClick={() => setBody(template)}
+              disabled={body.trim().length > 0}
+              className="text-[11.5px] font-medium text-pink-700 hover:text-pink-800 disabled:cursor-not-allowed disabled:text-ink-300"
+              title={body.trim().length > 0 ? 'Clear the field first to use the template' : 'Insert a guided format'}
+            >
+              Use a guided template
+            </button>
+          )}
+        </div>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -115,7 +145,7 @@ export function NewTicketForm({
           placeholder={bodyPlaceholder}
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
         />
-      </Field>
+      </div>
 
       <div className="flex justify-end">
         <button
