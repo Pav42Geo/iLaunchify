@@ -77,6 +77,10 @@ Once the generated client knows the new enum values + columns:
   `createTicket` AND the cast-guarded `prisma.ticket.findMany` in
   `runSlaBreachScan` — the generated client will know `slaResponseMinutes` /
   `slaResolveMinutes`.
+- `apps/creator/src/app/(dashboard)/settings/notifications/page.tsx`: drop the
+  `evt()` cast helper once the generated `NotificationEvent` enum knows
+  `CREATOR_ORDER_CANCELLED` / `CREATOR_ORDER_DISPUTE_RESOLVED` / `SUPPORT_TICKET_*`
+  (creator notification-preferences list, added with the notification center).
 
 Then `pnpm typecheck`.
 
