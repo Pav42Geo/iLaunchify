@@ -61,7 +61,7 @@ function buildHref(p: { tab?: Tab; sort?: SortKey; dir?: 'asc' | 'desc'; view?: 
   if (p.tab && p.tab !== 'all') q.set('tab', p.tab)
   if (p.sort && p.sort !== 'date') q.set('sort', p.sort)
   if (p.dir && p.dir !== 'desc') q.set('dir', p.dir)
-  if (p.view === 'cards') q.set('view', p.view)
+  if (p.view === 'table') q.set('view', p.view)
   const s = q.toString()
   return s ? `/orders?${s}` : '/orders'
 }
@@ -75,7 +75,7 @@ export default async function OrdersPage({
   const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
   const sort: SortKey = sp.sort === 'amount' ? 'amount' : 'date'
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
-  const view: ViewMode = sp.view === 'cards' ? 'cards' : 'table' // Partner default: table
+  const view: ViewMode = sp.view === 'table' ? 'table' : 'cards' // Partner default: cards (mirror creator)
 
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
@@ -152,7 +152,7 @@ export default async function OrdersPage({
             )
           })}
         </div>
-        <ViewToggle value={view} defaultMode="table" />
+        <ViewToggle value={view} defaultMode="cards" />
       </div>
 
       {/* Table / cards */}
@@ -251,7 +251,7 @@ function OrderCards({ rows, tabLabel }: { rows: DispatchRow[]; tabLabel: string 
     )
   }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
       {rows.map((d) => (
         <PartnerOrderCard key={d.id} d={d} />
       ))}

@@ -82,7 +82,7 @@ function buildHref(params: { tab?: Tab; sort?: SortKey; dir?: 'asc' | 'desc'; vi
   if (params.tab && params.tab !== 'all') q.set('tab', params.tab)
   if (params.sort && params.sort !== 'updated') q.set('sort', params.sort)
   if (params.dir && params.dir !== 'desc') q.set('dir', params.dir)
-  if (params.view === 'cards') q.set('view', params.view)
+  if (params.view === 'table') q.set('view', params.view)
   const s = q.toString()
   return s ? `/products?${s}` : '/products'
 }
@@ -112,7 +112,7 @@ export default async function ProductsListPage({
   const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
   const sort: SortKey = sp.sort === 'name' || sp.sort === 'price' ? sp.sort : 'updated'
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
-  const view: ViewMode = sp.view === 'cards' ? 'cards' : 'table' // Partner default: table
+  const view: ViewMode = sp.view === 'table' ? 'table' : 'cards' // Partner default: cards (mirror creator)
 
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
@@ -246,7 +246,7 @@ export default async function ProductsListPage({
             )
           })}
         </div>
-        <ViewToggle value={view} defaultMode="table" />
+        <ViewToggle value={view} defaultMode="cards" />
       </div>
 
       {/* Table / cards */}
@@ -491,7 +491,7 @@ function ProductCards({ rows, tabLabel }: { rows: Row[]; tabLabel: string }) {
     )
   }
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
       {rows.map((r) => (
         <PartnerProductCard key={r.id} r={r} />
       ))}
