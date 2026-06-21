@@ -15,6 +15,8 @@ import {
   Truck,
   CircleCheck,
   ArrowUpDown,
+  Eye,
+  LifeBuoy,
   type LucideIcon,
 } from 'lucide-react'
 import { OrderRowActions } from './OrderRowActions'
@@ -250,38 +252,93 @@ function OrderCards({ rows, tabLabel }: { rows: DispatchRow[]; tabLabel: string 
   }
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {rows.map((d) => {
-        const pill = STATUS_PILL[d.status] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
-        return (
-          <div key={d.id} className="flex flex-col rounded-2xl border border-ink-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-2">
-              <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
-                {pill.label}
-              </span>
-              <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
-            </div>
-
-            <p className="mt-2.5 font-display text-[15px] font-semibold leading-snug text-ink-900">
-              {d.order.brand.name}
-            </p>
-            <p className="mt-0.5 font-mono text-[11.5px] text-ink-500">#{d.order.id.slice(-8)}</p>
-            <p className="mt-0.5 text-[12px] text-ink-600">{d.type} · {d.serviceType}</p>
-
-            <div className="mt-auto flex items-center justify-between border-t border-ink-50 pt-3">
-              <span className="font-display text-[16px] font-bold tabular-nums text-ink-900">
-                ${(d.costCents / 100).toFixed(2)}
-              </span>
-              <span className="text-[11px] tabular-nums text-ink-500">
-                {d.status === 'PENDING_ACCEPT'
-                  ? `by ${new Date(d.acceptDeadlineAt).toLocaleDateString()}`
-                  : new Date(d.createdAt).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        )
-      })}
+      {rows.map((d) => (
+        <PartnerOrderCard key={d.id} d={d} />
+      ))}
     </div>
   )
+}
+
+// Rich dispatch card mirroring the creator OrderCard chrome: cream header band
+// (status + order ref + date + amount), a body with thumbnail + meta, and a
+// footer action rail with the contextual "Get order support" entry point.
+function PartnerOrderCard({ d }: { d: DispatchRow }) {
+  const pill = STATUS_PILL[d.status] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
+  const pending = d.status === 'PENDING_ACCEPT'
+  const dateLabel = pending
+    ? `Accept by ${new Date(d.acceptDeadlineAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    : `Placed ${new Date(d.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+
+  return (
+    <article className="flex flex-col overflow-hidden rounded-xl border border-ink-200 bg-white">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+        <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
+          {pill.label}
+        </span>
+        <span>
+          <span className="text-ink-500">Order</span> <span className="font-mono text-[11.5px]">#{d.order.id.slice(-8)}</span>
+        </span>
+        <span className="ml-auto font-display text-[15px] font-bold tabular-nums text-ink-900">
+          ${(d.costCents / 100).toFixed(2)}
+        </span>
+      </header>
+
+      <div className="flex items-start gap-4 px-4 pb-3 pt-4">
+        <CardThumb name={d.order.brand.name} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-medium leading-tight text-ink-900">{d.order.brand.name}</div>
+          <div className="mt-0.5 text-[12.5px] text-ink-500">
+            {d.type} · {d.serviceType}
+          </div>
+          <div className={cn('mt-1 text-[11.5px] tabular-nums', pending ? 'font-medium text-pink-700' : 'text-ink-500')}>
+            {dateLabel}
+          </div>
+        </div>
+      </div>
+
+      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
+        <ActionLink href={`/orders/${d.id}`} icon={Eye}>
+          Open dispatch
+        </ActionLink>
+        <Sep />
+        <ActionLink href={`/help/new?category=order-issue&dispatchId=${d.id}`} icon={LifeBuoy}>
+          Get order support
+        </ActionLink>
+        <span className="ml-auto">
+          <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
+        </span>
+      </footer>
+    </article>
+  )
+}
+
+function CardThumb({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+  return (
+    <span className="inline-flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-ink-100 text-[13px] font-semibold text-ink-600">
+      {initials || '—'}
+    </span>
+  )
+}
+
+function ActionLink({ href, icon: Icon, children }: { href: string; icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 font-medium text-ink-600 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {children}
+    </Link>
+  )
+}
+
+function Sep() {
+  return <span className="text-ink-300">·</span>
 }
 
 // -----------------------------------------------------------------------------
