@@ -24,6 +24,7 @@
     "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/payments": "workspace:*",
     "@ilaunchify/storage": "workspace:*",
+    "@ilaunchify/support": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "@ilaunchify/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.2",
