@@ -1,9 +1,12 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
-import { Search, ShoppingBag, Package, Check } from 'lucide-react'
-import { createTicketAction } from '../actions'
+import { Search, ShoppingBag, Package, Check, AlertCircle, ArrowRight } from 'lucide-react'
+import { createTicketAction, getEntityOpenTickets } from '../actions'
+
+type OpenTicket = { id: string; subject: string; status: string }
 
 type AttachKind = 'order' | 'product'
 type EntityType = 'Order' | 'Product'
@@ -54,7 +57,28 @@ export function NewTicketForm({
     initialEntityType === 'Order' ? 'order' : initialEntityType === 'Product' ? 'product' : 'none',
   )
   const [entityId, setEntityId] = useState(initialEntityId ?? '')
+  const [openTickets, setOpenTickets] = useState<OpenTicket[]>([])
   const [pending, start] = useTransition()
+
+  // Deflection: when an order/product is attached, surface existing open tickets
+  // on it so the creator reuses the thread instead of opening a duplicate.
+  useEffect(() => {
+    if (attachType === 'none' || !entityId) {
+      setOpenTickets([])
+      return
+    }
+    let cancelled = false
+    getEntityOpenTickets({ entityType: KIND_TO_TYPE[attachType], entityId })
+      .then((rows) => {
+        if (!cancelled) setOpenTickets(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setOpenTickets([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [attachType, entityId])
 
   const selected = categories.find((c) => c.slug === categorySlug)
   const template = TEMPLATE_BY_SLUG[categorySlug] ?? null
@@ -132,6 +156,8 @@ export function NewTicketForm({
             searchPlaceholder="Search your products…"
           />
         )}
+
+        <DeflectionPanel tickets={openTickets} />
       </div>
 
       <Field label="Issue type">
@@ -258,6 +284,36 @@ function EntityBrowser({
             </li>
           )
         })}
+      </ul>
+    </div>
+  )
+}
+
+// Deflection panel — shows existing open tickets on the attached entity so the
+// creator can jump to the live thread instead of filing a duplicate.
+function DeflectionPanel({ tickets }: { tickets: OpenTicket[] }) {
+  if (tickets.length === 0) return null
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-900">
+        <AlertCircle className="h-3.5 w-3.5" />
+        You already have {tickets.length === 1 ? 'an open ticket' : `${tickets.length} open tickets`} on this
+      </p>
+      <p className="mt-0.5 text-[11.5px] text-amber-800">
+        Adding to the existing thread is usually faster than opening a new one.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {tickets.map((t) => (
+          <li key={t.id}>
+            <Link
+              href={`/help/${t.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+            >
+              <span className="max-w-[280px] truncate">{t.subject}</span>
+              <ArrowRight className="h-3.5 w-3.5 flex-none" />
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   )

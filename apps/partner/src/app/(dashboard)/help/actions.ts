@@ -6,10 +6,12 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import type { TicketStatus } from '@ilaunchify/db'
 import {
   createTicket,
   replyToTicket,
   getTicket,
+  OPEN_STATUSES,
   TicketNotFoundError,
   type AttachmentMeta,
 } from '@ilaunchify/support'
@@ -89,6 +91,32 @@ async function resolveOwnedEntity(
     return owned ? { entityType, entityId } : null
   }
   return null
+}
+
+export type EntityOpenTicket = { id: string; subject: string; status: TicketStatus; createdAt: Date }
+
+// Deflection: surface the partner's OPEN tickets already linked to the attached
+// dispatch/product so they reuse the thread instead of opening a duplicate.
+// Ownership-scoped via resolveOwnedEntity.
+export async function getEntityOpenTickets(input: {
+  entityType: string
+  entityId: string
+}): Promise<EntityOpenTicket[]> {
+  const user = await requireUser()
+  const link = await resolveOwnedEntity(user.id, input.entityType, input.entityId)
+  if (!link) return []
+  const open = [...OPEN_STATUSES] as TicketStatus[]
+  return prisma.ticket.findMany({
+    where: {
+      requesterUserId: user.id,
+      entityType: link.entityType,
+      entityId: link.entityId,
+      status: { in: open },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+    select: { id: true, subject: true, status: true, createdAt: true },
+  })
 }
 
 export async function createTicketAction(input: {
