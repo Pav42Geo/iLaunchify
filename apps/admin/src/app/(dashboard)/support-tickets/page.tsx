@@ -18,6 +18,7 @@ import {
   Calendar,
   MessageSquare,
   ArrowDownUp,
+  Tag,
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
@@ -182,15 +183,25 @@ function Header({
   return (
     <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <div className="bg-[#F3EFE8] px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">Operate</p>
-        <h1 className="mt-0.5 flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
-          <LifeBuoy className="h-5 w-5 text-pink-600" aria-hidden="true" />
-          Support tickets
-        </h1>
-        <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
-          Every creator + partner support request, in one system of record. Click a row to read the
-          thread, reply, and move it through triage.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">Operate</p>
+            <h1 className="mt-0.5 flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
+              <LifeBuoy className="h-5 w-5 text-pink-600" aria-hidden="true" />
+              Support tickets
+            </h1>
+            <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
+              Every creator + partner support request, in one system of record. Click a row to read
+              the thread, reply, and move it through triage.
+            </p>
+          </div>
+          <Link
+            href="/support-tickets/categories"
+            className="inline-flex flex-none items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:border-ink-400 hover:text-ink-900"
+          >
+            <Tag className="h-3.5 w-3.5" /> Manage categories
+          </Link>
+        </div>
       </div>
       <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-5">
         <Kpi icon={Inbox} label="Total" value={totalCount} tone="ink" />

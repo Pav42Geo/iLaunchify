@@ -80,6 +80,7 @@ export const AUDIT_ENTITY_TYPES = [
   // W2-SUP — internal support ticketing (SUPPORT_TICKETING_PLAN.md)
   'Ticket',
   'SupportSettings', // admin-tunable tier policy (W2-SUP3.5)
+  'TicketCategory', // admin-managed category taxonomy
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
