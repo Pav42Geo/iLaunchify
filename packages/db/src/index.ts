@@ -59,6 +59,12 @@ export {
   type AdminInviteStatus,
 } from './admin-invites'
 export {
+  getIntegrationMetaMap,
+  markIntegrationRotated,
+  setIntegrationCadence,
+  type IntegrationMetaRow,
+} from './integration-meta'
+export {
   getOrderSettings,
   resolveOrderSettings,
   applyOrderOverrides,

@@ -309,6 +309,37 @@ export function resolveIntegrationStatuses(): IntegrationStatus[] {
   })
 }
 
+// ── Rotation status (pure) ───────────────────────────────────────────────────
+
+export type RotationState = 'unknown' | 'ok' | 'due-soon' | 'overdue'
+
+export interface RotationStatus {
+  cadenceDays: number | null
+  lastRotatedAt: Date | null
+  dueAt: Date | null
+  daysUntilDue: number | null
+  state: RotationState
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Compute rotation status from the registry cadence + the stored meta. Pure. */
+export function computeRotationStatus(
+  def: IntegrationDef,
+  meta: { lastRotatedAt: Date | null; rotateEveryDays: number | null } | undefined,
+  now: Date = new Date(),
+): RotationStatus {
+  const cadenceDays = meta?.rotateEveryDays ?? def.rotationDays ?? null
+  const lastRotatedAt = meta?.lastRotatedAt ?? null
+  if (!lastRotatedAt || !cadenceDays) {
+    return { cadenceDays, lastRotatedAt, dueAt: null, daysUntilDue: null, state: 'unknown' }
+  }
+  const dueAt = new Date(lastRotatedAt.getTime() + cadenceDays * DAY_MS)
+  const daysUntilDue = Math.round((dueAt.getTime() - now.getTime()) / DAY_MS)
+  const state: RotationState = daysUntilDue < 0 ? 'overdue' : daysUntilDue <= 14 ? 'due-soon' : 'ok'
+  return { cadenceDays, lastRotatedAt, dueAt, daysUntilDue, state }
+}
+
 export const CATEGORY_ORDER: IntegrationCategory[] = [
   'Payments',
   'Authentication',

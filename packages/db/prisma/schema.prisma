@@ -90,6 +90,21 @@ enum AdminInviteStatus {
   EXPIRED
 }
 
+// Integrations control center (docs/INTEGRATIONS.md) — rotation tracking only.
+// NO SECRET VALUES are ever stored here; the registry catalog lives in code and
+// secret values live in the host env. This row just records WHEN an admin last
+// rotated a key + an optional cadence override, so the UI can flag "due/overdue".
+// `key` matches the integration key in apps/admin .../integration-registry.ts.
+model IntegrationMeta {
+  id              String    @id @default(uuid())
+  key             String    @unique
+  lastRotatedAt   DateTime?
+  rotateEveryDays Int? // override the registry's suggested cadence
+  notes           String?
+  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+}
+
 // Support RBAC (docs/ADMIN_RBAC.md P3) — agent-proposed refund/goodwill credit
 // that a Lead/Billing admin approves before any money moves. Plain FK columns
 // (orderId/ticketId/userIds) keep it additive — no back-relations on Order/etc.

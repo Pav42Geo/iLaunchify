@@ -5,15 +5,33 @@
 // Rotate keys in the vendor dashboard, then update your host's env vars.
 
 import { requireCapability } from '@ilaunchify/auth'
+import { getIntegrationMetaMap } from '@ilaunchify/db'
 import { ExternalLink, ShieldCheck, KeyRound, RotateCw } from 'lucide-react'
 import {
   resolveIntegrationStatuses,
+  computeRotationStatus,
   CATEGORY_ORDER,
   type IntegrationStatus,
   type EnvVarKind,
+  type RotationStatus,
 } from './integration-registry'
 import { CopyEnvButton } from './CopyEnvButton'
 import { TestConnectionButton } from './TestConnectionButton'
+import { RotationControl } from './RotationControl'
+
+function RotationBadge({ r }: { r: RotationStatus }) {
+  if (r.state === 'unknown') {
+    return <span className="text-[11px] text-ink-400">Rotation not recorded</span>
+  }
+  const tone = {
+    ok: 'text-emerald-700',
+    'due-soon': 'text-amber-700',
+    overdue: 'text-rose-700',
+  }[r.state]
+  const d = r.daysUntilDue ?? 0
+  const label = r.state === 'overdue' ? `Overdue by ${Math.abs(d)}d` : r.state === 'due-soon' ? `Due in ${d}d` : `Healthy — due in ${d}d`
+  return <span className={`text-[11px] font-medium ${tone}`}>{label}</span>
+}
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Integrations & API keys — Admin' }
@@ -41,6 +59,8 @@ function StatePill({ state }: { state: IntegrationStatus['state'] }) {
 export default async function IntegrationsPage() {
   await requireCapability('platform:admin')
   const statuses = resolveIntegrationStatuses()
+  const metaMap = await getIntegrationMetaMap()
+  const now = new Date()
 
   const live = statuses.filter((s) => s.def.lifecycle === 'live')
   const configured = live.filter((s) => s.state === 'configured').length
@@ -169,6 +189,19 @@ export default async function IntegrationsPage() {
                     <TestConnectionButton integrationKey={s.def.key} />
                   </div>
                 )}
+
+                {s.def.lifecycle === 'live' && s.vars.some((v) => v.kind === 'secret') && (() => {
+                  const rot = computeRotationStatus(s.def, metaMap[s.def.key], now)
+                  return (
+                    <div className="mt-2.5 space-y-1.5 border-t border-ink-100 pt-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Rotation</span>
+                        <RotationBadge r={rot} />
+                      </div>
+                      <RotationControl integrationKey={s.def.key} cadenceDays={rot.cadenceDays} />
+                    </div>
+                  )
+                })()}
               </div>
             ))}
           </div>

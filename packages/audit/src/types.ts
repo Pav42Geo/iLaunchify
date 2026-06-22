@@ -18,6 +18,7 @@ export const AUDIT_ENTITY_TYPES = [
   'User',
   'AdminRole', // RBAC role→capability matrix edits (docs/ADMIN_RBAC.md P5)
   'AdminInvite', // admin team invites (docs/ADMIN_RBAC.md)
+  'IntegrationMeta', // integration key rotation tracking (docs/INTEGRATIONS.md)
   'Session', // Tier 1 Security & Access — admin session revocation (2026-06-05)
   'Lead',
   'SampleSettings', // Sample-policy admin settings (2026-06-11)

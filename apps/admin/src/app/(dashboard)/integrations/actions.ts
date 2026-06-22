@@ -7,11 +7,51 @@
 // logs, or echoes the secret value. platform:admin only. No money, no writes.
 
 import { requireCapability } from '@ilaunchify/auth'
+import { markIntegrationRotated, setIntegrationCadence } from '@ilaunchify/db'
+import { logAuditAs } from '@ilaunchify/audit'
+import { revalidatePath } from 'next/cache'
+import { INTEGRATIONS } from './integration-registry'
 
 export interface TestResult {
   ok: boolean
   message: string
   latencyMs?: number
+}
+
+type ActionResult = { ok: true } | { ok: false; error: string }
+
+function isKnownKey(key: string): boolean {
+  return INTEGRATIONS.some((i) => i.key === key)
+}
+
+/** Record that the admin just rotated this integration's key (stamps now). */
+export async function recordRotation(input: { key: string }): Promise<ActionResult> {
+  const actor = await requireCapability('platform:admin')
+  if (!isKnownKey(input.key)) return { ok: false, error: 'Unknown integration.' }
+  await markIntegrationRotated(input.key)
+  await logAuditAs(actor, {
+    entityType: 'IntegrationMeta',
+    entityId: input.key,
+    action: 'INTEGRATION_KEY_ROTATED',
+  })
+  revalidatePath('/integrations')
+  return { ok: true }
+}
+
+/** Override the suggested rotation cadence (days). 0 / null clears the override. */
+export async function setRotationCadence(input: { key: string; days: number | null }): Promise<ActionResult> {
+  const actor = await requireCapability('platform:admin')
+  if (!isKnownKey(input.key)) return { ok: false, error: 'Unknown integration.' }
+  const days = input.days && input.days > 0 ? Math.round(input.days) : null
+  await setIntegrationCadence(input.key, days)
+  await logAuditAs(actor, {
+    entityType: 'IntegrationMeta',
+    entityId: input.key,
+    action: 'INTEGRATION_CADENCE_SET',
+    toValue: days != null ? `${days}d` : 'cleared',
+  })
+  revalidatePath('/integrations')
+  return { ok: true }
 }
 
 const TIMEOUT_MS = 8000

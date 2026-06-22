@@ -69,9 +69,28 @@ Add a probe by adding the integration's `key` to `PROBES` in `actions.ts` and se
 `testable: true` in the registry. (R2/Google/DB/cron have no cheap read-only HTTP probe;
 their configured-status is shown by the env checklist.)
 
+## Rotation tracking (built)
+
+Each live integration with a secret env var shows a **Rotation** block: a status
+badge (Healthy / Due in Nd / Overdue by Nd / Not recorded), a **Mark rotated** button
+(stamps `lastRotatedAt = now`), and an **every N days** cadence override input.
+
+- Additive `IntegrationMeta` model — `{ key @unique, lastRotatedAt, rotateEveryDays?,
+  notes? }`. **NO secret values, ever** — just rotation bookkeeping keyed by the
+  registry `key`. Cast-guarded until the Mac db push.
+- db helpers (`packages/db/src/integration-meta.ts`): `getIntegrationMetaMap`,
+  `markIntegrationRotated`, `setIntegrationCadence`.
+- Actions (`actions.ts`, platform:admin, audited `INTEGRATION_KEY_ROTATED` /
+  `INTEGRATION_CADENCE_SET`): `recordRotation`, `setRotationCadence`.
+- Pure status math: `computeRotationStatus(def, meta, now)` — due/overdue from
+  `lastRotatedAt + (override ?? registry cadence)`; due-soon = ≤14 days.
+
+**Mac:** one additive `pnpm db:push` adds `IntegrationMeta`; then `db:generate` and
+drop the `ADMIN-RBAC-CAST` marker in `integration-meta.ts`.
+
 ## Possible follow-ups
 
-- **Rotation tracking**: a tiny additive `IntegrationMeta` table (code, lastRotatedAt,
-  rotateEveryDays, notes) to turn the static cadence hint into real "due" reminders.
 - An R2 probe (S3 HeadBucket via the AWS SDK) if you want storage-creds verification.
+- A scheduled "rotation due" digest (reuse the scheduled-tasks system) so overdue
+  keys nudge you without opening the page.
 - Link out to an adopted secrets manager once chosen.
