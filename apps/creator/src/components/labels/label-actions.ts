@@ -356,6 +356,15 @@ export async function getVarietyPreviewColumns(productId: string): Promise<Varie
 
 export type StudioNutritionResult =
   | { ok: true; domain: 'FOOD'; panel: PanelData }
+  | { ok: true; domain: 'SUPPLEMENT'; panel: PanelData; otherIngredients: string[] }
+  | {
+      ok: true
+      domain: 'PET'
+      gaRows: { label: string; value: string }[]
+      ingredients: string
+      adequacyStatement?: string
+      feedingDirections?: string
+    }
   | { ok: true; domain: 'OTHER' }
   | { ok: false; error: string }
 
@@ -395,7 +404,28 @@ export async function resolveStudioNutrition(
         productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null } | null> }
       }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true } })
     : null
-  if ((tmpl?.labelingType ?? 'FOOD') !== 'FOOD') return { ok: true, domain: 'OTHER' }
+  if ((tmpl?.labelingType ?? 'FOOD') !== 'FOOD') {
+    // Phase 2b Step E — non-FOOD domains compute their REAL panel via the same
+    // engine path as the label download (computeProductLabel: supplement →
+    // toSupplementPanelData, pet → buildPetLabel). Cosmetic (INCI text, no facts
+    // panel) + any other domain fall through to OTHER → sample renderer.
+    const computed = await computeProductLabel(productId)
+    const d = computed.ok ? computed.data[0] : undefined
+    if (d?.domain === 'DIETARY_SUPPLEMENT') {
+      return { ok: true, domain: 'SUPPLEMENT', panel: d.panel, otherIngredients: d.otherIngredients }
+    }
+    if (d?.domain === 'PET_PRODUCT') {
+      return {
+        ok: true,
+        domain: 'PET',
+        gaRows: d.gaRows,
+        ingredients: d.ingredients,
+        adequacyStatement: d.adequacyStatement,
+        feedingDirections: d.feedingDirections,
+      }
+    }
+    return { ok: true, domain: 'OTHER' }
+  }
   if (!product.recipe || product.recipe.ingredients.length === 0) {
     return { ok: false, error: 'No recipe yet — add ingredients to compute nutrition.' }
   }

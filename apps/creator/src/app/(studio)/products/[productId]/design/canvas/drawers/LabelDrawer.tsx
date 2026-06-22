@@ -36,6 +36,8 @@ import {
   type LabelSectionRole,
   type NutritionPanelData,
   type AggregateNutritionData,
+  type SupplementPanelData,
+  type AafcoPanelData,
 } from '@ilaunchify/ui'
 import { addManagedNutritionPanel } from '../lib/managedNutritionPanel'
 import { useCanvasRoles } from '../useCanvasRoles'
@@ -75,6 +77,8 @@ interface Props {
   nutritionPanelData?: NutritionPanelData | null
   /** Phase 2b — REAL multi-column aggregate (variety box). null → sample. */
   aggregateNutritionData?: AggregateNutritionData | null
+  /** Phase 2b — REAL non-FOOD panels (supplement / pet). null → sample. */
+  nonFoodPanelData?: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
   /** The active flavor whose nutrition this is (null = base), for the binding. */
   activeFlavorPresetId?: string | null
   /** Recipe hash stamped on the panel for the staleness gate. */
@@ -92,6 +96,7 @@ export function LabelDrawer({
   productCtx,
   nutritionPanelData,
   aggregateNutritionData,
+  nonFoodPanelData,
   activeFlavorPresetId = null,
   recipeHash = null,
 }: Props) {
@@ -184,7 +189,8 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addSupplementFactsPanel(canvas, SAMPLE_SUPPLEMENT_DATA, {
+      // Phase 2b Step E — REAL supplement data when available; else sample.
+      await addSupplementFactsPanel(canvas, nonFoodPanelData?.supplement ?? SAMPLE_SUPPLEMENT_DATA, {
         ink,
         bg,
         border,
@@ -200,7 +206,8 @@ export function LabelDrawer({
     if (!canvas) return
     setAdding(true)
     try {
-      await addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, {
+      // Phase 2b Step E — REAL pet GA/ingredients when available; else sample.
+      await addAafcoPanel(canvas, nonFoodPanelData?.aafco ?? SAMPLE_AAFCO_DATA, {
         ink,
         bg,
         border,
@@ -264,7 +271,7 @@ export function LabelDrawer({
         { ink, bg, border, sections, format, centerX, centerY },
       )
     } else if (panelType === 'aafco-panel') {
-      void addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, {
+      void addAafcoPanel(canvas, nonFoodPanelData?.aafco ?? SAMPLE_AAFCO_DATA, {
         ink,
         bg,
         border,

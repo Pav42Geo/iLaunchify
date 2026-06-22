@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   panelDataToNutritionPanelData,
   varietyColumnsToAggregateNutritionData,
+  panelDataToSupplementPanelData,
+  petLabelToAafcoPanelData,
 } from './nutritionPanelAdapter'
 import type { PanelData } from '@ilaunchify/types'
 
@@ -81,5 +83,58 @@ describe('varietyColumnsToAggregateNutritionData', () => {
 
   it('shares the FDA footnote from the first column', () => {
     expect(out.footnote).toBe('* The % Daily Value (DV)…')
+  })
+})
+
+describe('panelDataToSupplementPanelData', () => {
+  const suppPanel: PanelData = {
+    ...PANEL,
+    servingSize: '2 capsules',
+    servingsPerContainer: 30,
+    rows: [
+      { id: 'vitd', label: 'Vitamin D', amount: 25, unit: 'mcg', percentDailyValue: 125, indent: 0 },
+      { id: 'blend', label: 'Adaptogen Blend', amount: 300, unit: 'mg', percentDailyValue: null, indent: 0 },
+      { id: 'ashwa', label: 'Ashwagandha', amount: 200, unit: 'mg', indent: 1 },
+    ],
+  }
+  const out = panelDataToSupplementPanelData(suppPanel, ['Hypromellose', '  microcrystalline cellulose '])
+
+  it('maps every nutrient to a row with formatted value (no calories lift)', () => {
+    expect(out.servingSize).toBe('2 capsules')
+    expect(out.servingsPerContainer).toBe(30)
+    expect(out.rows).toHaveLength(3)
+    expect(out.rows[0]).toMatchObject({ label: 'Vitamin D', value: '25mcg', dvPercent: 125 })
+  })
+
+  it('keeps null %DV (botanicals/blends render "†") and sub-row indent', () => {
+    expect(out.rows[1]!.dvPercent).toBeNull()
+    expect(out.rows[2]!.indent).toBe(1)
+  })
+
+  it('formats trimmed other-ingredients into the below-box line', () => {
+    expect(out.otherIngredients).toBe('Other ingredients: Hypromellose, microcrystalline cellulose.')
+  })
+})
+
+describe('petLabelToAafcoPanelData', () => {
+  const out = petLabelToAafcoPanelData({
+    gaRows: [
+      { label: 'Crude Protein (min)', value: '26.0%' },
+      { label: 'Moisture (max)', value: '10.0%' },
+    ],
+    ingredients: 'Deboned chicken, brown rice, peas.',
+    adequacyStatement: 'Formulated to meet AAFCO Dog Food Nutrient Profiles for maintenance.',
+    feedingDirections: 'Feed 1 cup per 30 lbs daily.',
+  })
+
+  it('splits the min/max qualifier out of the GA label', () => {
+    expect(out.analysis[0]).toEqual({ label: 'Crude Protein', qualifier: 'min', value: '26.0%' })
+    expect(out.analysis[1]).toEqual({ label: 'Moisture', qualifier: 'max', value: '10.0%' })
+  })
+
+  it('carries ingredients + feeding + adequacy', () => {
+    expect(out.ingredients).toBe('Deboned chicken, brown rice, peas.')
+    expect(out.feedingDirections).toBe('Feed 1 cup per 30 lbs daily.')
+    expect(out.nutritionalAdequacy).toMatch(/AAFCO Dog Food/)
   })
 })

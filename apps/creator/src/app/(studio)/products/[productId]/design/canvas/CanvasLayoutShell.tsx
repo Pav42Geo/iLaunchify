@@ -41,6 +41,8 @@ import {
   addCertBadge,
   type NutritionPanelData,
   type AggregateNutritionData,
+  type SupplementPanelData,
+  type AafcoPanelData,
   SavedIndicator,
   snapshotCanvasAsPng,
   type SnapshotItem,
@@ -238,6 +240,8 @@ interface Props {
   nutritionPanelData: NutritionPanelData | null
   /** Phase 2b — REAL multi-column aggregate (variety box). null → sample. */
   aggregateNutritionData: AggregateNutritionData | null
+  /** Phase 2b — REAL non-FOOD panels (supplement / pet). null → sample. */
+  nonFoodPanelData: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
 }
 
 type ToolKey =
@@ -312,6 +316,7 @@ export function CanvasLayoutShell({
   activeFlavorPresetId,
   nutritionPanelData,
   aggregateNutritionData,
+  nonFoodPanelData,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -963,6 +968,7 @@ export function CanvasLayoutShell({
               setShowFrames={setShowFrames}
               nutritionPanelData={nutritionPanelData}
               aggregateNutritionData={aggregateNutritionData}
+              nonFoodPanelData={nonFoodPanelData}
               activeFlavorPresetId={activeFlavorPresetId}
               recipeHash={recipeHash}
               onClose={closeDrawer}
@@ -1467,6 +1473,7 @@ function ToolDrawer({
   setShowFrames,
   nutritionPanelData,
   aggregateNutritionData,
+  nonFoodPanelData,
   activeFlavorPresetId,
   recipeHash,
   onClose,
@@ -1496,6 +1503,7 @@ function ToolDrawer({
   setShowFrames: (v: boolean) => void
   nutritionPanelData: NutritionPanelData | null
   aggregateNutritionData: AggregateNutritionData | null
+  nonFoodPanelData: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
   activeFlavorPresetId: string | null
   recipeHash: string | null
   onClose: () => void
@@ -1556,6 +1564,7 @@ function ToolDrawer({
             dieCut={dieCut}
             nutritionPanelData={nutritionPanelData}
             aggregateNutritionData={aggregateNutritionData}
+            nonFoodPanelData={nonFoodPanelData}
             activeFlavorPresetId={activeFlavorPresetId}
             recipeHash={recipeHash}
             productCtx={{

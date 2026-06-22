@@ -32,6 +32,8 @@ import { resolveStudioNutrition, getVarietyPreviewColumns } from '@/components/l
 import {
   panelDataToNutritionPanelData,
   varietyColumnsToAggregateNutritionData,
+  panelDataToSupplementPanelData,
+  petLabelToAafcoPanelData,
 } from './lib/nutritionPanelAdapter'
 
 export const dynamic = 'force-dynamic'
@@ -155,6 +157,21 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
     variety.ok && variety.columns.length > 0
       ? varietyColumnsToAggregateNutritionData(variety.columns)
       : null
+
+  // Phase 2b Step E — REAL non-FOOD panels (supplement / pet). Bundled into one
+  // prop; null per slot when the domain doesn't match → sample renderer.
+  const nonFoodPanelData =
+    studioNutrition.ok && studioNutrition.domain === 'SUPPLEMENT'
+      ? {
+          supplement: panelDataToSupplementPanelData(
+            studioNutrition.panel,
+            studioNutrition.otherIngredients,
+          ),
+          aafco: null,
+        }
+      : studioNutrition.ok && studioNutrition.domain === 'PET'
+        ? { supplement: null, aafco: petLabelToAafcoPanelData(studioNutrition) }
+        : null
 
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
@@ -307,6 +324,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       activeFlavorPresetId={activeFlavorPresetId}
       nutritionPanelData={nutritionPanelData}
       aggregateNutritionData={aggregateNutritionData}
+      nonFoodPanelData={nonFoodPanelData}
     />
   )
 }
