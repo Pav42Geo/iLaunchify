@@ -18,14 +18,30 @@ The duplication is the *presentation + chrome*.
 
 ## Done already (committed, safe)
 
-New shared module — single source of truth for the presentation constants that
-were **byte-identical** in both files:
+1. **Shared presentation constants** — `frame-presentation.ts` (`SCOPE_COLOR`,
+   `KIND_LABEL`, `PALETTE`); were byte-identical in both files.
 
-`apps/partner/src/app/(dashboard)/packaging/dielines/frame-presentation.ts`
-exports `SCOPE_COLOR`, `KIND_LABEL`, `PALETTE`.
+2. **Shared `<DielineFrameEditor>` is BUILT** —
+   `apps/partner/src/app/(dashboard)/packaging/dielines/DielineFrameEditor.tsx`.
+   It contains the whole editor (tool rail · Die-line/Surfaces/Guides/Frames/Layers
+   drawers · canvas with draggable frames + guides · zoom toolbar · debounced
+   autosave · live preflight) and all the canvas/drawer/small sub-components.
+   `DielineStudioShell` was rewritten to render it (576 → ~140 lines) — proof the
+   API works against a real consumer. Partner app typechecks clean.
 
-`DielineStudioShell` now imports them; its local copies are deleted. Partner app
-typechecks clean.
+   Its props:
+   ```ts
+   interface DielineFrameEditorProps {
+     initialLayout: FrameLayout; initialTrim: NormBox; initialSafe: NormBox
+     backdrop: { fileUrl: string | null; isPdf: boolean }
+     meta?: { format?; widthMm?; heightMm?; bleedMm? }
+     onPersist: (geom: { layout; trim; safe }) => Promise<{ ok: boolean; error?: string }>  // editor debounces ~700ms, then calls this
+     topBarLeft?: React.ReactNode
+     topBarRight?: (ctx: { issues: LayoutIssue[]; saveStatus }) => React.ReactNode
+   }
+   ```
+   The editor owns tool/selection/zoom/drag + the autosave timer + `issues`
+   (it computes `validateFrameLayout` internally and hands it to `topBarRight`).
 
 ## Step 1 — trivial, do this first (≈5 min)
 
@@ -40,49 +56,31 @@ import { SCOPE_COLOR, KIND_LABEL, PALETTE } from '../../(dashboard)/packaging/di
 Everything else in the file is unchanged. `pnpm --filter @ilaunchify/partner type-check`.
 That removes the last byte-for-byte duplication between the two studios.
 
-## Step 2 — bigger win, optional: extract `<DielineFrameEditor>`
+## Step 2 — YOUR remaining work: swap `PackagingStudioStep` onto `<DielineFrameEditor>`
 
-The genuinely duplicated UI is the editor surface both shells wrap:
+The component exists and is proven (DielineStudioShell uses it). Now retire the
+inline editor in `PackagingStudioStep` and render the shared one instead:
 
-- left **tool rail** (Die-line · Surfaces · Guides · Frames · Layers)
-- **Frames drawer** (add-from-`PALETTE`, per-frame scope chip + `KIND_LABEL`)
-- **Layers drawer**
-- **canvas**: uploaded/blank backdrop + draggable `NormBox` frames coloured by
-  `SCOPE_COLOR[FRAME_SCOPE[kind]]`, select/drag/resize/delete
-- bottom **zoom toolbar** (zoom in/out/fit)
-- **preflight** list from `validateFrameLayout(layout, { safeArea })`
+1. Delete the inline rail/drawers/canvas/zoom/drag/autosave block in
+   `PackagingStudioStep.tsx` (the part that mirrors what's now in
+   `DielineFrameEditor.tsx`) — keep your unique surrounding chrome (library tabs,
+   upload modal, mockups, 3D toggle, History/Undo/Redo, co-review submit).
+2. Render `<DielineFrameEditor .../>` in the canvas slot, wiring:
+   - `initialLayout/initialTrim/initialSafe` from the loaded `PackagingSystem`
+     (`customDielineLayout` for the type-less custom case, or the resolved
+     die-line's frames otherwise).
+   - `backdrop` = `{ fileUrl: firstUploadedDielineUrl, isPdf }`.
+   - `onPersist` = your existing `customDielineLayout` / `saveDielineFrames`
+     autosave (return `{ ok, error }`).
+   - `topBarRight` = your existing Saved indicator / preflight / submit cluster
+     (it receives `{ issues, saveStatus }`).
+3. Keep the constants import from `frame-presentation` (Step 1) — the editor
+   already uses it, so once you delegate you can drop your local copies entirely.
 
-Propose a presentational component (no data fetching, fully controlled):
-
-```ts
-// apps/partner/src/app/(dashboard)/packaging/dielines/DielineFrameEditor.tsx  ('use client')
-export interface DielineFrameEditorProps {
-  layout: FrameLayout
-  onLayoutChange: (next: FrameLayout) => void   // caller debounces + persists
-  backdropUrl: string | null                    // uploaded die-line image, or null = blank board
-  issues: LayoutIssue[]                          // caller computes via validateFrameLayout
-  safeAreaPct?: number
-  readOnly?: boolean
-  // optional chrome slots so each shell keeps its own surrounding UI:
-  headerSlot?: React.ReactNode                   // confirm button / submit / save indicator
-  footerNote?: React.ReactNode
-}
-```
-
-Each shell keeps what's *unique* and delegates the editor:
-
-- **DielineStudioShell**: owns the confirm flow → passes `onLayoutChange` =
-  debounced `saveDielineFrames`, geometry → `saveDielineGeometry`, `headerSlot` =
-  the "Confirm die-line" button (`confirmDieline`).
-- **PackagingStudioStep**: owns library tabs / upload modal / mockups / 3D / the
-  co-review submit → passes `onLayoutChange` = its `customDielineLayout` autosave,
-  `backdropUrl` = first uploaded die-line, `headerSlot` = its Saved indicator.
-
-Net: ~300–400 lines of canvas/drawer/rail logic collapse to one component; the
-two shells shrink to data-wiring + their unique surrounding chrome. Build the
-component, point `DielineStudioShell` at it first (it's cold — I can do that half
-on request), then swap `PackagingStudioStep`'s inline editor for it in the same
-pass so nothing renders twice.
+This collapses the duplicated ~430 lines in your file to a single
+`<DielineFrameEditor>` render. Because it's your hot file, you're the single
+writer for this swap — I've left it to you rather than risk clobbering your
+in-flight work.
 
 ## Guardrails
 
