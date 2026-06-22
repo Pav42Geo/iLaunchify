@@ -44,6 +44,11 @@ export {
 } from './support-settings'
 export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 export {
+  getRoleCapabilityMatrix,
+  getRoleCapabilities,
+  setRoleCapability,
+} from './role-capabilities'
+export {
   getOrderSettings,
   resolveOrderSettings,
   applyOrderOverrides,

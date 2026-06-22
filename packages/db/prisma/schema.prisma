@@ -45,6 +45,20 @@ enum AdminRole {
   SUPER_ADMIN
 }
 
+// Admin RBAC (docs/ADMIN_RBAC.md P5) — super-admin-editable role→capability
+// matrix. A row = "this AdminRole holds this capability". SUPER_ADMIN is NOT
+// stored (computed as all-capabilities, non-editable). Non-super roles start
+// EMPTY — the super admin grants capabilities explicitly in Roles & Permissions.
+model RoleCapability {
+  id         String    @id @default(uuid())
+  role       AdminRole
+  capability String
+  createdAt  DateTime  @default(now())
+
+  @@unique([role, capability])
+  @@index([role])
+}
+
 // Support RBAC (docs/ADMIN_RBAC.md P3) — agent-proposed refund/goodwill credit
 // that a Lead/Billing admin approves before any money moves. Plain FK columns
 // (orderId/ticketId/userIds) keep it additive — no back-relations on Order/etc.

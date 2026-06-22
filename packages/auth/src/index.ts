@@ -11,6 +11,7 @@ export {
   hasCapability,
   requireCapability,
   getViewerCapabilities,
+  capabilitiesForRole,
   ADMIN_ROLES,
   ADMIN_ROLE_LABEL,
   type AdminRole,

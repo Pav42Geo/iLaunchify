@@ -8,8 +8,8 @@
 // All transitions audited. The SupportRefundRequest model is new, so prisma
 // access is cast-guarded (ADMIN-RBAC-CAST) until Mac runs `prisma generate`.
 
-import { requireCapability, hasCapability, type AdminRole } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { requireCapability, type AdminRole } from '@ilaunchify/auth'
+import { prisma, getRoleCapabilityMatrix } from '@ilaunchify/db'
 import { executeOrderRefund } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification, type DispatchInput } from '@ilaunchify/notifications'
@@ -78,7 +78,11 @@ export async function proposeRefund(input: {
         findMany: (a: unknown) => Promise<{ id: string; adminRole: AdminRole | null }[]>
       }
     ).findMany({ where: { role: 'ADMIN' }, select: { id: true, adminRole: true } })
-    const approvers = admins.filter((a) => hasCapability(a.adminRole, 'refunds:approve'))
+    // Live DB matrix: super/null hold everything; others by their granted caps.
+    const matrix = await getRoleCapabilityMatrix()
+    const canApprove = (role: AdminRole | null) =>
+      role == null || role === 'SUPER_ADMIN' || (matrix[role] ?? []).includes('refunds:approve')
+    const approvers = admins.filter((a) => canApprove(a.adminRole))
     await Promise.all(
       approvers.map((a) =>
         dispatchNotification({
