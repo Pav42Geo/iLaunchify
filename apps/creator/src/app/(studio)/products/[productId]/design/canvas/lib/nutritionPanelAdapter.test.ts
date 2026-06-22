@@ -90,10 +90,10 @@ describe('panelDataToSupplementPanelData', () => {
   const suppPanel: PanelData = {
     ...PANEL,
     servingSize: '2 capsules',
-    servingsPerContainer: 30,
+    servingsPerContainer: '30',
     rows: [
       { id: 'vitd', label: 'Vitamin D', amount: 25, unit: 'mcg', percentDailyValue: 125, indent: 0 },
-      { id: 'blend', label: 'Adaptogen Blend', amount: 300, unit: 'mg', percentDailyValue: null, indent: 0 },
+      { id: 'blend', label: 'Adaptogen Blend', amount: 300, unit: 'mg', indent: 0 },
       { id: 'ashwa', label: 'Ashwagandha', amount: 200, unit: 'mg', indent: 1 },
     ],
   }
