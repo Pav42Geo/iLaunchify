@@ -21,12 +21,16 @@ export async function resolveOrderDispute({
   decision,
   resolution,
   refundCents,
+  strikePartner,
 }: {
   disputeId: string
   decision: 'RESOLVED' | 'REJECTED'
   resolution?: string
   /** Refund to issue when RESOLVED in the creator's favor (admin-set, 0 = none). */
   refundCents?: number
+  /** When RESOLVED in the creator's favor, record a reliability strike against the
+      at-fault manufacturer (admin opt-in — fault in a dispute is case-specific). */
+  strikePartner?: boolean
 }): Promise<Result> {
   const admin = await requireRole('ADMIN')
 
@@ -120,6 +124,40 @@ export async function resolveOrderDispute({
         action: 'REFUND_FAILED',
         payload: { refundCents: capped, error: (err as Error).message, source: 'dispute' },
       }).catch(() => {})
+    }
+  }
+
+  // Reliability strike against the at-fault manufacturer — admin opt-in, RESOLVED
+  // only. Supplementary + best-effort + cast-guarded (PartnerStrike), recorded
+  // AFTER the resolution commits so a strike-write failure never blocks resolving.
+  if (decision === 'RESOLVED' && strikePartner) {
+    const manu = await prisma.orderDispatch.findFirst({
+      where: { orderId: dispute.orderId, type: 'PRODUCT' },
+      select: { id: true, partnerService: { select: { partnerId: true } } },
+    })
+    const partnerId = manu?.partnerService.partnerId
+    if (partnerId) {
+      const recorded = await (
+        prisma as unknown as { partnerStrike: { create: (a: unknown) => Promise<unknown> } }
+      ).partnerStrike
+        .create({
+          data: {
+            partnerId,
+            orderId: dispute.orderId,
+            dispatchId: manu?.id ?? null,
+            reason: 'Upheld quality dispute',
+            status: 'ACTIVE',
+            notes: `Dispute ${dispute.id} resolved in creator's favor`,
+          },
+        })
+        .then(() => true)
+        .catch(() => false)
+      await logAuditAs(admin, {
+        entityType: 'OrderDispute',
+        entityId: dispute.id,
+        action: 'ORDER_DISPUTE_PARTNER_STRIKE',
+        payload: { orderId: dispute.orderId, partnerId, recorded },
+      })
     }
   }
 

@@ -15,13 +15,21 @@ export function ResolveDisputeControls({
   // Refund (dollars) issued when resolving in the creator's favor — pre-filled to the
   // full order total, editable, 0 = no refund. Gated by STRIPE_REFUNDS_ENABLED.
   const [refundDollars, setRefundDollars] = useState((orderTotalCents / 100).toFixed(2))
+  // Opt-in: strike the at-fault manufacturer when upholding the dispute.
+  const [strikePartner, setStrikePartner] = useState(false)
   const [pending, start] = useTransition()
 
   function act(decision: 'RESOLVED' | 'REJECTED') {
     const refundCents =
       decision === 'RESOLVED' ? Math.max(0, Math.round(parseFloat(refundDollars || '0') * 100)) : undefined
     start(async () => {
-      const res = await resolveOrderDispute({ disputeId, decision, resolution, refundCents })
+      const res = await resolveOrderDispute({
+        disputeId,
+        decision,
+        resolution,
+        refundCents,
+        strikePartner: decision === 'RESOLVED' ? strikePartner : undefined,
+      })
       if (!res.ok) {
         toast.error(res.error)
         return
@@ -59,6 +67,15 @@ export function ResolveDisputeControls({
           />
         </span>
         <span className="text-[11px] text-ink-400">of ${(orderTotalCents / 100).toFixed(2)} total · 0 = none</span>
+      </label>
+      <label className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-600">
+        <input
+          type="checkbox"
+          checked={strikePartner}
+          onChange={(e) => setStrikePartner(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus-visible:ring-2 focus-visible:ring-pink-500"
+        />
+        Strike the manufacturer (at fault) when resolving
       </label>
       <div className="mt-2 flex gap-2">
         <button
