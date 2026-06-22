@@ -2,6 +2,7 @@
 // directly so the actor-role + payload conventions stay consistent.
 
 import { prisma } from '@ilaunchify/db'
+import type { AdminRole } from '@ilaunchify/db'
 import type { AuditEntryInput } from './types'
 
 /**
@@ -13,14 +14,13 @@ import type { AuditEntryInput } from './types'
  */
 export async function logAudit(input: AuditEntryInput): Promise<void> {
   try {
-    // ADMIN-RBAC-CAST: `actorAdminRole` is unknown to the generated client until
-    // Mac runs `prisma generate`. Drop the cast then (add actorAdminRole to the
-    // typed create data).
-    await (prisma.auditLog as unknown as { create: (a: unknown) => Promise<unknown> }).create({
+    await prisma.auditLog.create({
       data: {
         actorId: input.actorId,
         actorRole: input.actorRole,
-        actorAdminRole: input.actorAdminRole ?? null,
+        // AuditEntryInput types this loosely as string (no cross-package enum
+        // dep); values always come from the AdminRole set, so narrow here.
+        actorAdminRole: (input.actorAdminRole ?? null) as AdminRole | null,
         entityType: input.entityType,
         entityId: input.entityId,
         action: input.action,

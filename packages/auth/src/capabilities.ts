@@ -27,14 +27,12 @@ export {
   type Capability,
 } from './capability-rules'
 
-// ADMIN-RBAC-CAST: drop once `prisma generate` knows `adminRole`.
 async function loadAdminRole(userId: string): Promise<AdminRole | null> {
-  const row = await (
-    prisma as unknown as {
-      user: { findUnique: (a: unknown) => Promise<{ adminRole: AdminRole | null } | null> }
-    }
-  ).user.findUnique({ where: { id: userId }, select: { adminRole: true } })
-  return row?.adminRole ?? null
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { adminRole: true },
+  })
+  return (row?.adminRole as AdminRole | null) ?? null
 }
 
 /** Live capabilities for a role, from the DB matrix. Super → all; null → none. */

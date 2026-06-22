@@ -35,20 +35,14 @@ export async function setAdminRole(input: { userId: string; role: AdminRole }): 
     return { ok: false, error: 'Ask another super admin to change your own role.' }
   }
 
-  // ADMIN-RBAC-CAST: generated client doesn't know `adminRole` until Mac generate.
-  const userModel = prisma.user as unknown as {
-    findUnique: (a: unknown) => Promise<{ id: string; role: string; adminRole: AdminRole | null } | null>
-    update: (a: unknown) => Promise<unknown>
-  }
-
-  const target = await userModel.findUnique({
+  const target = await prisma.user.findUnique({
     where: { id: input.userId },
     select: { id: true, role: true, adminRole: true },
   })
   if (!target || target.role !== 'ADMIN') return { ok: false, error: 'Not an admin user.' }
   if (target.adminRole === input.role) return { ok: true }
 
-  await userModel.update({ where: { id: input.userId }, data: { adminRole: input.role } })
+  await prisma.user.update({ where: { id: input.userId }, data: { adminRole: input.role } })
 
   await logAuditAs(actor, {
     entityType: 'User',
@@ -72,18 +66,7 @@ export async function grantAdminAccess(input: { email: string; role: AdminRole }
   const email = input.email.trim().toLowerCase()
   if (!email || !email.includes('@')) return { ok: false, error: 'Enter a valid email address.' }
 
-  // ADMIN-RBAC-CAST: generated client doesn't know `adminRole` until Mac generate.
-  const userModel = prisma.user as unknown as {
-    findFirst: (a: unknown) => Promise<{
-      id: string
-      role: string
-      creatorProfile: { id: string } | null
-      partner: { id: string } | null
-    } | null>
-    update: (a: unknown) => Promise<unknown>
-  }
-
-  const user = await userModel.findFirst({
+  const user = await prisma.user.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
     select: { id: true, role: true, creatorProfile: { select: { id: true } }, partner: { select: { id: true } } },
   })
@@ -94,7 +77,7 @@ export async function grantAdminAccess(input: { email: string; role: AdminRole }
     return { ok: false, error: 'That email belongs to a creator/partner account — use a separate admin account.' }
   }
 
-  await userModel.update({
+  await prisma.user.update({
     where: { id: user.id },
     data: { role: 'ADMIN', adminRole: input.role },
   })

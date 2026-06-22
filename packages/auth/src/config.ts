@@ -127,17 +127,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, user, token }) {
       const userId = user?.id ?? (token?.sub as string | undefined)
       if (!userId || !session.user) return session
-      // ADMIN-RBAC-CAST: select adminRole via cast until `prisma generate`
-      // teaches the committed client about the column.
-      const dbUser = await (
-        prisma.user as unknown as {
-          findUnique: (a: unknown) => Promise<{
-            id: string
-            role: 'ADMIN' | 'CREATOR' | 'PARTNER'
-            adminRole: 'SUPPORT_AGENT' | 'SUPPORT_LEAD' | 'BILLING_ADMIN' | 'SUPER_ADMIN' | null
-          } | null>
-        }
-      ).findUnique({
+      const dbUser = await prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, role: true, adminRole: true },
       })

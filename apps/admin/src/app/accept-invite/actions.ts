@@ -11,6 +11,7 @@ import {
   prisma,
   getAdminInviteByTokenHash,
   markAdminInviteAccepted,
+  type AdminRole,
 } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 
@@ -72,12 +73,10 @@ export async function acceptAdminInvite(input: { token: string }): Promise<Resul
   // From here `invite` is guaranteed non-null + PENDING (the decision checked).
   if (!invite) return { ok: false, error: 'This invite link is invalid.' }
 
-  // ADMIN-RBAC-CAST: adminRole write until the generated client knows it.
-  await (
-    prisma.user as unknown as { update: (a: unknown) => Promise<unknown> }
-  ).update({
+  await prisma.user.update({
     where: { id: user.id },
-    data: { role: 'ADMIN', adminRole: invite.adminRole },
+    // invite.adminRole is stored loosely as string; values match AdminRole.
+    data: { role: 'ADMIN', adminRole: invite.adminRole as AdminRole },
   })
   await markAdminInviteAccepted(invite.id, user.id)
 

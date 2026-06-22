@@ -1,7 +1,6 @@
 // Admin team invites (docs/ADMIN_RBAC.md). CRUD over the AdminInvite model.
 // Token HASHING happens in the caller (the server action) — this layer only
-// stores/reads the hash. Cast-guarded: the generated client doesn't know
-// AdminInvite until the Mac `prisma generate`, so reads fail safe (empty).
+// stores/reads the hash. Reads fail safe (empty list) on error.
 
 import { prisma } from './index'
 
@@ -20,19 +19,6 @@ export type AdminInviteRow = {
   acceptedAt: Date | null
   revokedAt: Date | null
   createdAt: Date
-}
-
-function model() {
-  // ADMIN-RBAC-CAST: drop once the generated client knows AdminInvite.
-  return prisma as unknown as {
-    adminInvite: {
-      create: (a: unknown) => Promise<{ id: string }>
-      findUnique: (a: unknown) => Promise<AdminInviteRow | null>
-      findMany: (a?: unknown) => Promise<AdminInviteRow[]>
-      update: (a: unknown) => Promise<unknown>
-      updateMany: (a: unknown) => Promise<{ count: number }>
-    }
-  }
 }
 
 const LIST_SELECT = {
@@ -65,7 +51,7 @@ export async function createAdminInvite(input: {
   invitedById: string
   expiresAt: Date
 }): Promise<string> {
-  const row = await model().adminInvite.create({
+  const row = await prisma.adminInvite.create({
     data: {
       email: input.email,
       adminRole: input.adminRole,
@@ -79,7 +65,7 @@ export async function createAdminInvite(input: {
 
 /** Lookup by token hash (acceptance). Returns null if unknown. */
 export async function getAdminInviteByTokenHash(tokenHash: string): Promise<AdminInviteRow | null> {
-  const r = (await model().adminInvite.findUnique({
+  const r = (await prisma.adminInvite.findUnique({
     where: { tokenHash },
     select: LIST_SELECT,
   })) as RawRow | null
@@ -89,8 +75,8 @@ export async function getAdminInviteByTokenHash(tokenHash: string): Promise<Admi
 /** Pending (non-accepted/revoked) invites, newest first. Empty on missing model. */
 export async function listAdminInvites(): Promise<AdminInviteRow[]> {
   try {
-    const rows = (await model()
-      .adminInvite.findMany({
+    const rows = (await prisma.adminInvite
+      .findMany({
         where: { status: 'PENDING' },
         orderBy: { createdAt: 'desc' },
         select: LIST_SELECT,
@@ -103,14 +89,14 @@ export async function listAdminInvites(): Promise<AdminInviteRow[]> {
 }
 
 export async function markAdminInviteAccepted(id: string, acceptedById: string): Promise<void> {
-  await model().adminInvite.update({
+  await prisma.adminInvite.update({
     where: { id },
     data: { status: 'ACCEPTED', acceptedById, acceptedAt: new Date() },
   })
 }
 
 export async function revokeAdminInvite(id: string): Promise<void> {
-  await model().adminInvite.updateMany({
+  await prisma.adminInvite.updateMany({
     where: { id, status: 'PENDING' },
     data: { status: 'REVOKED', revokedAt: new Date() },
   })

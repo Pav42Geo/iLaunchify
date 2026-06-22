@@ -30,12 +30,7 @@ function isAdminRole(v: string): v is AdminRole {
 export default async function AdminsPage() {
   const actor = await requireCapability('users:admin')
 
-  // ADMIN-RBAC-CAST: generated client doesn't know `adminRole` until Mac generate.
-  const admins = (await (
-    prisma.user as unknown as {
-      findMany: (a: unknown) => Promise<AdminRow[]>
-    }
-  ).findMany({
+  const admins = (await prisma.user.findMany({
     where: { role: 'ADMIN' },
     orderBy: { email: 'asc' },
     select: { id: true, name: true, email: true, adminRole: true },
