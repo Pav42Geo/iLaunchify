@@ -2867,6 +2867,10 @@ model ProductTemplate {
   // own DV table), INFANT_0_12 (infants 0–12 mo, infant RDIs + suppressed fat/chol
   // %DV). Same recipe → engine recomputes %DV against the age-group DV table.
   intendedAgeGroup           NutritionAudience             @default(GENERAL)
+  // D5 (ROUTING_BINDING_MODEL.md §6/§9) — multi-flavor lead time. Manufacturer
+  // declares whether the line runs flavors sequentially. Default false = parallel
+  // (variety-pack lead time = single-flavor band time, the common case).
+  flavorsRunSequentially     Boolean                       @default(false)
   // Non-food formulation payload (Phase 1, docs/PRODUCT_DOMAINS_ARCHITECTURE.md).
   // Supplements/cosmetics/pet don't fit the food TemplateIngredientSlot model, so
   // their formulation is stored here keyed by domain, e.g.

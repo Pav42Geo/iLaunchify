@@ -1,6 +1,6 @@
 # Routing Binding Model — owner-pinned manufacturing vs routed commodity legs
 
-**Status:** PARTIALLY LOCKED. D1 locked (cancel+refund); D2–D5 open. Amends
+**Status:** FULLY LOCKED (Pavel 2026-06-22). D1–D5 all decided (see §6). Amends
 `PRODUCTION_ORCHESTRATION.md` §2 + §5. Priority build = delay-accept (§7); Recovery Mode
 (§10) deferred to a dedicated discussion.
 **Raised by:** Pavel 2026-06-14 — "the manufacturer has a specific product and specific
@@ -137,8 +137,11 @@ mis-routing it.
 - **D1 — owner unavailable → cancel + refund. ✅ LOCKED (2026-06-14).** No alternate
   manufacturer in V1 (recovery deferred, §10); delay-accept (§7) + penalties (§8) cover the
   recoverable cases.
-- **D2 — null `manufacturerServiceId`:** category-match fallback (nothing breaks today) vs
-  treat null-owner as un-routable → ON_HOLD? *(open, low stakes)*
+- **D2 — null `manufacturerServiceId`: ✅ LOCKED A (Pavel 2026-06-22).** Category-match +
+  scoring fallback for null-owner products only; owned products always pin to the owner.
+  **Already implemented** in `findRouting` (owner-pinned branch + `else` legacy fallback).
+  Follow-up: a backfill report of PUBLISHED products with no owner so the fallback can later
+  be deleted. Brief: `docs/ROUTING_D2_D4_D5_DECISION_BRIEF.md`.
 - **D3 — owner as default downstream provider + tighter print match:** *(LARGELY DONE
   2026-06-14.)* KEY REFRAMING from the investigation: the print/decoration provider is NOT
   re-derived at routing time — it is **already SELECTED at configuration time** and stored on
@@ -149,10 +152,15 @@ mis-routing it.
   present (health-checked: active + payouts + not excluded), and only falls back to the
   legacy die-cut match (now owner-preferred) for unconfigured products. Still open: apply the
   same owner-preference to co-pack / warehouse legs once those legs are actually routed.
-- **D4 — generic-BOM products:** confirm "shop the manufacturer" is V2-only (platform-owned
-  commodity SKUs), out of V1. *(open — recommended yes)*
-- **D5 — multi-flavor lead time (§9):** does each flavor add a production run (sequential)
-  or run in parallel? *(open — recommended: manufacturer declares; default parallel)*
+- **D4 — generic-BOM products: ✅ LOCKED A (Pavel 2026-06-22).** "Shop the manufacturer" is
+  V2-only (platform-owned commodity SKUs); out of V1. `findRouting` is the two-case model
+  (owner-pinned manufacturing + bound commodity legs) with **no** generic-BOM mode — matches
+  the lock. The "don't touch `findRouting` until D1–D4 are locked" hold is now lifted.
+- **D5 — multi-flavor lead time (§9): ✅ LOCKED A (Pavel 2026-06-22).** The manufacturer
+  declares whether flavors run sequentially; default **parallel** → quote = the single-flavor
+  band time (`max(flavorBandDays)`); sequential → `sum(flavorBandDays)`. Engine helper
+  `resolveMultiFlavorLeadDays` + `ProductTemplate.flavorsRunSequentially` land the mechanism;
+  the creator-quote display wire is a follow-on in the variety-pack quote path.
 
 ---
 

@@ -26,6 +26,8 @@ export type {
 } from './dispatch-planner'
 export type { RoutingResult, RoutingFailure } from './routing'
 export { previewManufacturerMatches } from './routing'
+// D5 — multi-flavor lead time (sequential vs parallel).
+export { resolveMultiFlavorLeadDays } from './multi-flavor-lead'
 export type { RoutingPreviewResult, RoutingPreviewCandidate } from './routing'
 export {
   scorePartnerMatch,

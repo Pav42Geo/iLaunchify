@@ -30,6 +30,7 @@ run regardless of which earlier pushes you already did. This session it adds (cu
   `NotificationEvent.CREATOR_PAYMENT_FAILED` / `CREATOR_SUBSCRIPTION_DOWNGRADED`.
   Also set `CRON_SECRET` for the new creator `/api/cron/tier-dunning` (daily 8am,
   `apps/creator/vercel.json`).
+- `ProductTemplate.flavorsRunSequentially` (D5 multi-flavor lead time, default false).
 - `model SupportRefundRequest` + `enum RefundRequestStatus`
 - Support ticketing models/enums + `NotificationEvent` values (`SUPPORT_*`,
   `SUPPORT_REFUND_REQUESTED`) — if not already applied
