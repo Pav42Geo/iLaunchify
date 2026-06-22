@@ -260,6 +260,38 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
     backfill confirmed, else it locks out un-backfilled admins). Invite/credential
     flow still open (human sets the password).
 
+## P5 — editable permission matrix (SHIPPED 2026-06-21, Pavel pivot)
+
+Pavel changed the model: the super admin should configure all permissions, and
+roles should **not be scaffolded by default**. So the role→capability matrix
+moved from the `ROLE_CAPABILITIES` code constant to a **DB-backed, editable**
+matrix.
+
+- **Schema:** `RoleCapability { role AdminRole, capability String, @@unique }`.
+  A row = "this role holds this capability". SUPER_ADMIN is NOT stored (computed
+  as all). Non-super roles **start empty**.
+- **Resolution (`@ilaunchify/auth`):** `capabilitiesForRole(role)` →
+  null/SUPER_ADMIN = ALL (hard-wired, never editable away); any other role = its
+  DB rows (empty by default). `requireCapability` + `getViewerCapabilities` read
+  live from DB (`getRoleCapabilityMatrix` in `@ilaunchify/db`). The code
+  `ROLE_CAPABILITIES` is now **PRESET TEMPLATES only** (kept for reference + the
+  matrix unit test), not the live source.
+- **UI:** `/roles` (Roles & Permissions, `users:admin`-gated) — a role ×
+  capability checkbox grid; `setRoleCapabilityAction` grants/revokes one cell,
+  audited (`AdminRole` entity, `ROLE_CAPABILITY_GRANTED/REVOKED`). Super-admin
+  column shown always-on + disabled. Sidebar-linked under Users & Roles.
+- **Decisions (Pavel 2026-06-21):** start empty (super grants everything);
+  per-role grain only (no per-person overrides).
+
+**IMPORTANT for the Mac run:** after `db push` + generate, the matrix is EMPTY,
+so a freshly-assigned `SUPPORT_AGENT`/`LEAD`/`BILLING_ADMIN` has **zero**
+capabilities until the super admin grants them in `/roles`. Existing admins are
+backfilled to `SUPER_ADMIN` (= all), so nobody is locked out. The earlier
+code-preset bundles are no longer auto-applied — replicate them in `/roles` if
+you want those starting points (they're documented in `ROLE_CAPABILITIES`).
+The additive `db push` now also creates the `RoleCapability` model; drop the
+`ADMIN-RBAC-CAST` in `packages/db/src/role-capabilities.ts` after generate.
+
 ## Extensibility (deferred, no-regret hooks)
 
 - Per-person capability overrides (`adminCapabilityOverrides String[]`) — land
