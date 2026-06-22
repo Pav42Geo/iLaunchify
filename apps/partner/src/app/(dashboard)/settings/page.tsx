@@ -1,23 +1,47 @@
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { prisma } from '@ilaunchify/db'
+import {
+  ArrowRight,
+  Wallet,
+  CreditCard,
+  Bell,
+  ShieldCheck,
+} from 'lucide-react'
+import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 
+type PillTone = 'good' | 'warn' | 'neutral' | 'brand'
+
+const PILL_TONE: Record<PillTone, string> = {
+  good: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  warn: 'border-amber-200 bg-amber-50 text-amber-800',
+  neutral: 'border-ink-200 bg-ink-100 text-ink-700',
+  brand: 'border-pink-200 bg-pink-50 text-pink-700',
+}
+
 export default async function SettingsPage() {
   const user = await requireUser()
-  const partner = await prisma.partner.findUnique({ where: { userId: user.id } })
+  const [partner, dbUser, billing] = await Promise.all([
+    prisma.partner.findUnique({ where: { userId: user.id }, select: { companyName: true } }),
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { email: true, stripeAccountId: true, stripeAccountStatus: true },
+    }),
+    getBillingProfile(user.id),
+  ])
   if (!partner) return null
-  // stripeAccountId lives on User, not the session — query it (same pattern as /payments).
-  const userRecord = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { stripeAccountId: true },
-  })
+
+  const payoutActive = dbUser?.stripeAccountStatus === 'ACTIVE'
+  const payoutConnected = Boolean(dbUser?.stripeAccountId)
+  const billingSet = Boolean(billing.billingContactName || billing.billingAddress || billing.taxId)
+
+  const companyName = partner.companyName || 'Your company'
+  const initial = companyName.trim().charAt(0).toUpperCase() || 'P'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Hero + account summary */}
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
           Manufacturing · Settings
@@ -26,75 +50,160 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Your account details, payout connection, and notification preferences.
+          Your account, payout connection, billing details, and notification preferences in one place.
         </p>
+
+        <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-ink-200 bg-white/70 px-4 py-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ink-900 text-[15px] font-bold text-white">
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-[14px] font-semibold text-ink-900">{companyName}</div>
+            <div className="truncate text-[12px] text-ink-500">{dbUser?.email}</div>
+          </div>
+          <span
+            className={`ml-auto inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${
+              payoutActive ? PILL_TONE.good : PILL_TONE.neutral
+            }`}
+          >
+            {payoutActive ? 'Payouts active' : payoutConnected ? 'Payouts pending' : 'Payouts off'}
+          </span>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-base">Account</CardTitle>
-          <CardDescription>Identity and payout connection for this partner.</CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y divide-ink-100 text-[13px]">
-          <Row label="Email" value={user.email} />
-          <Row label="Company" value={partner.companyName} />
-          <Row
-            label="Stripe Connect"
-            value={
-              userRecord?.stripeAccountId ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
-                    Connected
+      {/* Account */}
+      <Section title="Account">
+        <div className="rounded-2xl border border-ink-200 bg-white p-5 sm:col-span-2">
+          <h3 className="font-display text-[16px] font-semibold tracking-tight text-ink-900">
+            Identity
+          </h3>
+          <div className="mt-3 divide-y divide-ink-100 text-[13px]">
+            <Row label="Email" value={dbUser?.email} />
+            <Row label="Company" value={partner.companyName} />
+            <Row
+              label="Stripe Connect"
+              value={
+                payoutConnected ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider ${
+                        payoutActive ? PILL_TONE.good : PILL_TONE.neutral
+                      }`}
+                    >
+                      {payoutActive ? 'Connected' : 'Pending'}
+                    </span>
+                    <span className="font-mono text-[12px] text-ink-500">{dbUser?.stripeAccountId}</span>
                   </span>
-                  <span className="font-mono text-[12px] text-ink-500">{userRecord.stripeAccountId}</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-100 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-700">
-                  Not connected
-                </span>
-              )
-            }
-          />
-        </CardContent>
-      </Card>
+                ) : (
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider ${PILL_TONE.neutral}`}
+                  >
+                    Not connected
+                  </span>
+                )
+              }
+            />
+          </div>
+        </div>
+      </Section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-base">Billing</CardTitle>
-          <CardDescription>
-            Contact and tax details for your invoices. Card and bank numbers are never
-            stored here — payouts are managed securely in Stripe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/settings/billing"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-          >
-            Manage billing details
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </CardContent>
-      </Card>
+      {/* Payments & plans */}
+      <Section title="Payments & plans">
+        <SettingCard
+          icon={<Wallet className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Payouts"
+          href="/payments"
+          cta="View earnings & payouts"
+          description="Your earnings, payout history, and Stripe Connect status. Bank details live securely in Stripe — never stored here."
+          pill={
+            payoutActive
+              ? { label: 'Connected', tone: 'good' }
+              : payoutConnected
+                ? { label: 'Pending', tone: 'warn' }
+                : { label: 'Not connected', tone: 'neutral' }
+          }
+        />
+        <SettingCard
+          icon={<CreditCard className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Billing"
+          href="/settings/billing"
+          cta="Manage billing details"
+          description="Contact and tax details that appear on your invoices. Card and bank numbers are never stored here."
+          pill={billingSet ? { label: 'Set up', tone: 'good' } : { label: 'Not set', tone: 'neutral' }}
+        />
+      </Section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-display text-base">Notifications</CardTitle>
-          <CardDescription>
-            Email when a new dispatch arrives. Tune per-event and per-channel preferences.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/settings/notifications"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-          >
-            Manage notification preferences
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </CardContent>
-      </Card>
+      {/* Preferences */}
+      <Section title="Preferences">
+        <SettingCard
+          icon={<Bell className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Notifications"
+          href="/settings/notifications"
+          cta="Manage notifications"
+          description="Email when a new dispatch arrives. Tune per-event and per-channel preferences and set quiet hours."
+        />
+        <SettingCard
+          icon={<ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Certifications"
+          href="/certifications"
+          cta="Manage certifications"
+          description="Keep your facility and product certifications current — they gate marketplace eligibility and partner trust."
+        />
+      </Section>
     </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-500">{title}</h2>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
+  )
+}
+
+function SettingCard({
+  icon,
+  title,
+  description,
+  href,
+  cta,
+  pill,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  href: string
+  cta: string
+  pill?: { label: string; tone: PillTone }
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-colors hover:border-ink-300 hover:bg-ink-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 text-white">
+          {icon}
+        </span>
+        <h3 className="font-display text-[16px] font-semibold tracking-tight text-ink-900">
+          {title}
+        </h3>
+        {pill && (
+          <span
+            className={`ml-auto inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider ${PILL_TONE[pill.tone]}`}
+          >
+            {pill.label}
+          </span>
+        )}
+      </div>
+      <p className="mt-3 text-[13px] leading-relaxed text-ink-600">{description}</p>
+      <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-pink-700 group-hover:text-pink-800">
+        {cta}
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </span>
+    </Link>
   )
 }
 
