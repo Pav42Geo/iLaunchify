@@ -1,4 +1,4 @@
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { getDomainSettings, DOMAIN_KEYS, type DomainKey } from '@ilaunchify/db'
 import { DomainTogglesClient, type DomainRow } from './DomainTogglesClient'
 
@@ -17,7 +17,7 @@ const DOMAIN_META: Record<DomainKey, { label: string; artifact: string; flowLive
 }
 
 export default async function ProductDomainsPage() {
-  await requireRole('ADMIN')
+  await requireCapability('platform:admin')
   const settings = await getDomainSettings()
   const rows: DomainRow[] = DOMAIN_KEYS.map((k) => ({
     key: k,

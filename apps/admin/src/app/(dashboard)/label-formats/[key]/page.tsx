@@ -8,7 +8,7 @@
 // are seed-curated presets.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -57,7 +57,7 @@ interface PageProps {
 }
 
 export default async function LabelFormatDetailPage({ params }: PageProps) {
-  await requireRole(['ADMIN'])
+  await requireCapability('platform:admin')
 
   const { key } = await params
   const decoded = decodeURIComponent(key)

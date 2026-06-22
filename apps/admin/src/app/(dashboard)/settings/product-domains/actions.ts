@@ -5,7 +5,7 @@
 // + audited. Cast-guarded until the migration lands DomainSetting on the client.
 
 import { prisma, getDomainSettings, DOMAIN_KEYS, type DomainKey } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -14,7 +14,7 @@ type Result = { ok: true } | { ok: false; error: string }
 export { getDomainSettings }
 
 export async function setDomainEnabled(domain: string, enabled: boolean): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('platform:admin')
   if (!(DOMAIN_KEYS as string[]).includes(domain)) return { ok: false, error: 'Unknown domain.' }
   try {
     await (prisma as unknown as {

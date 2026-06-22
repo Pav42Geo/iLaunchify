@@ -7,7 +7,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import type { LabelFormat, LabelingType } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -19,7 +19,7 @@ export async function updateLabelFormatPreference(input: {
   preferenceScore: number
   notes: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('platform:admin')
 
   const score = Math.round(Number(input.preferenceScore))
   if (!Number.isFinite(score) || score < 0 || score > 100) {

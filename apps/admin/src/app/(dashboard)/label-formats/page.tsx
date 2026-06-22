@@ -18,7 +18,7 @@
 //   ?page=1
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import Link from 'next/link'
 import {
@@ -139,7 +139,7 @@ interface PageProps {
 }
 
 export default async function LabelFormatsPage({ searchParams }: PageProps) {
-  await requireRole(['ADMIN'])
+  await requireCapability('platform:admin')
 
   const sp = await searchParams
   const labelingType = isLabelingType(sp.labelingType) ? sp.labelingType : undefined

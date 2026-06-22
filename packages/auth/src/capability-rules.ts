@@ -29,6 +29,7 @@ export type Capability =
   | 'compliance:admin'
   | 'users:admin'
   | 'security:admin'
+  | 'platform:admin'
   | 'audit:read'
 
 export const ADMIN_ROLES: AdminRole[] = [
@@ -53,7 +54,7 @@ export const ALL_CAPABILITIES: Capability[] = [
   'reviews:write', 'catalog:write', 'assets:write', 'academy:write',
   'billing:read', 'billing:write', 'tiers:write',
   'compliance:read', 'compliance:admin',
-  'users:admin', 'security:admin', 'audit:read',
+  'users:admin', 'security:admin', 'platform:admin', 'audit:read',
 ]
 
 const AGENT: Capability[] = [

@@ -5,7 +5,7 @@
 // touched (they keep working until creator disconnects).
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -15,7 +15,7 @@ export async function toggleChannel({
   channelId,
   enabled,
 }: { channelId: string; enabled: boolean }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('platform:admin')
 
   const channel = await prisma.channel.findUnique({ where: { id: channelId } })
   if (!channel) return { ok: false, error: 'Channel not found' }

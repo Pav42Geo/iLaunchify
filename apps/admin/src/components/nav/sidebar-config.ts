@@ -217,7 +217,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
-        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats' },
+        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
@@ -246,7 +246,7 @@ const PRIMARY: SidebarRegion = {
       icon: ShieldCheck,
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers', capability: 'tiers:write' },
-        { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains' },
+        { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains', capability: 'platform:admin' },
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
         {
           kind: 'group',
@@ -316,7 +316,7 @@ const APPLICATIONS: SidebarRegion = {
       label: 'Integrations & API',
       icon: Plug,
       children: [
-        { kind: 'item', label: 'Channels', icon: Plug, href: '/channels' },
+        { kind: 'item', label: 'Channels', icon: Plug, href: '/channels', capability: 'platform:admin' },
         { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Marketing', icon: Megaphone, href: '/integrations/marketing', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Analytics', icon: TrendingUp, href: '/integrations/analytics', hiddenUntilBuilt: true },

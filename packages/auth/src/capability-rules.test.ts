@@ -57,12 +57,14 @@ describe('admin RBAC capability matrix', () => {
     expect(hasCapability('BILLING_ADMIN', 'security:admin')).toBe(false)
   })
 
-  it('users:admin + security:admin are SUPER_ADMIN-only', () => {
+  it('users:admin + security:admin + platform:admin are SUPER_ADMIN-only', () => {
     for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
       expect(hasCapability(role, 'users:admin')).toBe(false)
       expect(hasCapability(role, 'security:admin')).toBe(false)
+      expect(hasCapability(role, 'platform:admin')).toBe(false)
     }
     expect(hasCapability('SUPER_ADMIN', 'users:admin')).toBe(true)
+    expect(hasCapability('SUPER_ADMIN', 'platform:admin')).toBe(true)
   })
 
   it('every non-super role bundle references only known capabilities', () => {

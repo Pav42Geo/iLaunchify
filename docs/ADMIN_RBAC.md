@@ -203,13 +203,13 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
     security (`security:admin`), support-policy (`tickets:admin`). Admin app
     typechecks 0 errors. **This is the live fence** (once roles are assigned;
     null adminRole still → SUPER_ADMIN until P4 flips the default).
-  - **Deferred to P1.5:** `/settings/product-domains` + other platform-config
-    (markets/regions/label-formats/channels) still on `requireRole('ADMIN')` —
-    they want a `platform:admin` cap (not yet added; avoids scope creep). The
-    operational review queues + read-only list pages also stay on the coarse
-    ADMIN gate for now (Lead+Super own them per the matrix, but the page guards
-    aren't migrated yet). None of these are money/security, so the high-risk
-    fence is complete.
+  - **P1.5 (shipped 2026-06-21):** added a super-only `platform:admin` capability
+    and gated the platform-config pages + actions with it: product-domains,
+    label-formats (Facts Labels), channels (page loaders + actions + sidebar).
+    markets/regions stay layout-gated only (read-mostly, no write actions yet).
+    The operational review queues + read-only list pages still ride the coarse
+    ADMIN gate (Lead+Super own them per the matrix; guards not migrated yet) —
+    none are money/security so the high-risk fence remains complete.
 - **P2 — support-agent surfaces:** confirm tickets + read-only orders/creators/
   partners work end-to-end for `SUPPORT_AGENT`; tighten any write actions.
 - **P3 — refund propose→approve:** ✅ shipped 2026-06-21. Additive
