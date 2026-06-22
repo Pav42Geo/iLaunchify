@@ -42,6 +42,8 @@ export interface IntegrationDef {
   rotationDays?: number
   /** 'live' = wired into the app today; 'planned' = anticipated slot. */
   lifecycle: 'live' | 'planned'
+  /** True when `testIntegration(key)` has a read-only probe for it. */
+  testable?: boolean
 }
 
 // ── Catalog ──────────────────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     dashboardUrl: 'https://dashboard.stripe.com/apikeys',
     rotationDays: 180,
     lifecycle: 'live',
+    testable: true,
     envVars: [
       { name: 'STRIPE_SECRET_KEY', kind: 'secret', required: true },
       { name: 'STRIPE_WEBHOOK_SECRET', kind: 'secret', required: true, note: 'Signs incoming webhooks' },
@@ -104,6 +107,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     dashboardUrl: 'https://resend.com/api-keys',
     rotationDays: 180,
     lifecycle: 'live',
+    testable: true,
     envVars: [
       { name: 'AUTH_RESEND_KEY', kind: 'secret', required: false },
       { name: 'AUTH_EMAIL_FROM', kind: 'config', required: false, note: 'Verified sender address' },
@@ -138,6 +142,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     docsUrl: 'https://fdc.nal.usda.gov/api-guide.html',
     dashboardUrl: 'https://fdc.nal.usda.gov/api-key-signup.html',
     lifecycle: 'live',
+    testable: true,
     envVars: [{ name: 'USDA_FDC_API_KEY', kind: 'secret', required: false }],
   },
   // AI
@@ -151,6 +156,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     dashboardUrl: 'https://console.anthropic.com/settings/keys',
     rotationDays: 180,
     lifecycle: 'live',
+    testable: true,
     envVars: [{ name: 'ANTHROPIC_API_KEY', kind: 'secret', required: false }],
   },
   // Monitoring
@@ -174,6 +180,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     description: 'FDA rule-pack + label validation service (bearer-token authenticated both ways).',
     rotationDays: 180,
     lifecycle: 'live',
+    testable: true,
     envVars: [
       { name: 'COMPLIANCE_SERVICE_URL', kind: 'config', required: false },
       { name: 'COMPLIANCE_SERVICE_TOKEN', kind: 'secret', required: false },

@@ -49,10 +49,29 @@ Anthropic · Sentry · Compliance service · CockroachDB · Cron secret.
 Mux (Academy video) · Pacdora (3D packaging) · Sales tax (Stripe Tax/TaxJar) ·
 Shipping (Shippo/EasyPost) · GTIN/UPC (GS1).
 
+## Test connection (built)
+
+Integrations with `testable: true` show a **Test connection** button. It calls the
+`testIntegration(key)` server action (`actions.ts`, `platform:admin`), which makes a
+READ-ONLY call to the vendor with the already-configured key and returns only
+`{ ok, message, latencyMs }` — it never returns or logs the secret. 8s timeout;
+401/403 → "Key rejected". Read-only probes today:
+
+| Integration | Probe |
+|---|---|
+| Stripe | `GET /v1/balance` (validates the secret, no money) |
+| Resend | `GET /domains` |
+| USDA FDC | `GET /fdc/v1/foods/search?pageSize=1` |
+| Anthropic | `GET /v1/models` |
+| Compliance service | `GET {COMPLIANCE_SERVICE_URL}/health` (bearer) |
+
+Add a probe by adding the integration's `key` to `PROBES` in `actions.ts` and setting
+`testable: true` in the registry. (R2/Google/DB/cron have no cheap read-only HTTP probe;
+their configured-status is shown by the env checklist.)
+
 ## Possible follow-ups
 
-- **Test-connection** buttons (server actions that ping each vendor with the
-  already-configured key and report ok/fail — still never exposing the value).
 - **Rotation tracking**: a tiny additive `IntegrationMeta` table (code, lastRotatedAt,
   rotateEveryDays, notes) to turn the static cadence hint into real "due" reminders.
+- An R2 probe (S3 HeadBucket via the AWS SDK) if you want storage-creds verification.
 - Link out to an adopted secrets manager once chosen.

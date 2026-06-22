@@ -13,6 +13,7 @@ import {
   type EnvVarKind,
 } from './integration-registry'
 import { CopyEnvButton } from './CopyEnvButton'
+import { TestConnectionButton } from './TestConnectionButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Integrations & API keys — Admin' }
@@ -162,6 +163,12 @@ export default async function IntegrationsPage() {
                     </span>
                   )}
                 </div>
+
+                {s.def.testable && s.def.lifecycle === 'live' && (
+                  <div className="mt-2.5">
+                    <TestConnectionButton integrationKey={s.def.key} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
