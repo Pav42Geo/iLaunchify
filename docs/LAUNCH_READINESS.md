@@ -116,6 +116,44 @@ What's missing splits into two buckets: a short list of V1-blocking gaps that pr
 > CLI test**, **#4 production deployment**, and enabling `STRIPE_REFUNDS_ENABLED` after a
 > test-mode pass.
 
+> **Status update — 2026-06-22 (verified against current code).** Additional items
+> shipped or resolved since the 2026-06-20 pass:
+> - **Support ticketing — now SHIPPED** (the 2026-06-20 banner flagged it genuinely open).
+>   `@ilaunchify/support` package (FSM + SLA + scope guard) + admin inbox / detail /
+>   categories / saved-replies / analytics + creator `/help` + partner support buttons +
+>   SLA-breach cron + contextual attach + deflection panels. Real feature, not a stub.
+> - **#13 transactional email templates — RESOLVED.** One branded, client-robust HTML+text
+>   shell (`packages/notifications/email-html.ts`, design-system pink + black-pill CTA,
+>   hidden preheader, plaintext alternative) now renders **every** event, with a per-event
+>   CTA label (`ctaLabelForEvent`). Replaces the bare inline block in the dispatcher.
+> - **#9 partner-requested cancellation — now COMPLETE.** The reviewed B.4 path is surfaced
+>   in the partner dispatch UI (PRODUCING / QUALITY_CHECK `RequestCancellationPanel`) and
+>   filing now notifies admins (`ORDER_NEEDS_ATTENTION`). Admin review (approve/deny →
+>   cancel + strike + gated refund + notify both) was already built.
+> - **Admin RBAC (P0–P5) — SHIPPED.** AdminRole sub-roles + DB-backed capability matrix +
+>   per-role presets + grant/invite-admin (link+email) + accept-on-signup + least-privilege
+>   default. `requireCapability` gates every admin surface. Backfill script
+>   `scripts/make-super-admin.mjs`. Docs `ADMIN_RBAC.md`.
+> - **Developer & API control center (`/developer`) — SHIPPED.** Env-backed integration
+>   status (never stores secrets) + per-vendor test-connection + "Test all connections" +
+>   rotation tracking + weekly rotation-due digest cron. Docs `INTEGRATIONS.md`.
+> - **Audit accountability — SHIPPED.** Every admin action stamps `actorAdminRole`; the
+>   `/audit` log shows a sub-role chip per row and a sub-role filter.
+> - **Payments verification scaffolding — SHIPPED (gate not yet run).** Money-path suites
+>   green (136 assertions via `scripts/run-vitest-suites.mjs`); `scripts/stripe-preflight.mjs`
+>   (refuses a live key) + `docs/STRIPE_TESTMODE_VERIFICATION.md` ready for the test-mode pass.
+> - **This session's additive schema landed on Pavel's DB** (RBAC + IntegrationMeta + support
+>   models) via `db push`; `make-super-admin --all` run; workspace `type-check` green.
+>
+> Still genuinely open after 2026-06-22 (unchanged or partial): **#3 Stripe CLI test**,
+> **#4 production deploy**, **#6 legal surfaces live for counsel sign-off**, **#8 quality
+> dispute** (creator filing + admin resolve-on-order-detail done; dedicated `/admin/disputes`
+> queue + partner-response UI + strike-execution wiring remain), **#10 tier-promotion cron**
+> (defer V1.1), **#11 guided onboarding** (Express works; guided defer V1.1), **#12 first-sample
+> discount auto-apply** (sample schema/engine/credit-at-checkout done; the auto-discount
+> remains), subscription **dunning** (place works; payment-failed→grace→downgrade unbuilt),
+> and routing decisions **D2 / D4 / D5** (open).
+
 Each line: **what's missing · which surface · why it blocks V1.**
 
 1. **9+ pending Prisma migrations on Pavel's local machine.** Tasks #168-173, #471, #536, #542, #552-553, #578, #584. Schema is written and committed; Pavel hasn't run `prisma migrate dev` for: G6.a/b ProductionSubscription, G8 OrderItem.designVersionId, H1 multi-partner approval (already marked done #478 but listed pending too — [VERIFY]), R14.b CreatorProfile.subscriptionTier, R15.a/b PartnerTier + SubscriptionPlan, product-plan additions 2026-06-01 (labelingType + ProductTemplatePricingTier + Niche + coPackerServiceId), Slice 1 marketplace taxonomy. **Until these run + `prisma generate` + Next is restarted, every feature touching those columns will SQL-error in dev. Order #1 priority for Pavel personally.**
