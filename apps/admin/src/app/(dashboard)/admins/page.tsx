@@ -9,10 +9,12 @@ import {
   ADMIN_ROLE_LABEL,
   type AdminRole,
 } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, listAdminInvites } from '@ilaunchify/db'
 import { Shield } from 'lucide-react'
 import { AdminRoleSelect } from './AdminRoleSelect'
 import { AddAdminForm } from './AddAdminForm'
+import { InviteAdminForm } from './InviteAdminForm'
+import { PendingInvitesTable } from './PendingInvitesTable'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Admins — Admin' }
@@ -20,6 +22,10 @@ export const metadata = { title: 'Admins — Admin' }
 type AdminRow = { id: string; name: string | null; email: string; adminRole: AdminRole | null }
 
 const ROLE_OPTIONS = ADMIN_ROLES.map((r) => ({ value: r, label: ADMIN_ROLE_LABEL[r] }))
+
+function isAdminRole(v: string): v is AdminRole {
+  return (ADMIN_ROLES as string[]).includes(v)
+}
 
 export default async function AdminsPage() {
   const actor = await requireCapability('users:admin')
@@ -34,6 +40,14 @@ export default async function AdminsPage() {
     orderBy: { email: 'asc' },
     select: { id: true, name: true, email: true, adminRole: true },
   })) as AdminRow[]
+
+  const invites = (await listAdminInvites()).map((i) => ({
+    id: i.id,
+    email: i.email,
+    roleLabel: isAdminRole(i.adminRole) ? ADMIN_ROLE_LABEL[i.adminRole] : i.adminRole,
+    invitedBy: i.invitedByName ?? i.invitedByEmail,
+    expiresLabel: i.expiresAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+  }))
 
   return (
     <div className="space-y-6">
@@ -51,7 +65,12 @@ export default async function AdminsPage() {
         </p>
       </div>
 
-      <AddAdminForm roles={ROLE_OPTIONS} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AddAdminForm roles={ROLE_OPTIONS} />
+        <InviteAdminForm roles={ROLE_OPTIONS} />
+      </div>
+
+      <PendingInvitesTable invites={invites} />
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <header className="border-b border-ink-100 bg-cream px-4 py-2.5">

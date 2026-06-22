@@ -4,12 +4,27 @@
 // admin's RBAC role. Every change is audited. You cannot change your OWN role
 // (prevents self-lockout — ask another super admin).
 
+import { randomBytes, createHash } from 'node:crypto'
 import { requireCapability, ADMIN_ROLES, type AdminRole } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, createAdminInvite as createAdminInviteRow, revokeAdminInvite as revokeAdminInviteRow } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
+
+const INVITE_TTL_DAYS = 7
+
+function adminBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_ADMIN_URL ??
+    process.env.ADMIN_URL ??
+    'http://localhost:3003'
+  ).replace(/\/$/, '')
+}
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
 
 export async function setAdminRole(input: { userId: string; role: AdminRole }): Promise<Result> {
   const actor = await requireCapability('users:admin')
@@ -91,6 +106,62 @@ export async function grantAdminAccess(input: { email: string; role: AdminRole }
     payload: { email },
   })
 
+  revalidatePath('/admins')
+  return { ok: true }
+}
+
+// Invite a NEW person to the admin team. We never create the account — we mint a
+// signed invite link; the invitee signs up through the normal auth providers and
+// accepts the invite, which assigns the role. Returns the link to share.
+export async function createAdminInvite(input: {
+  email: string
+  role: AdminRole
+}): Promise<{ ok: true; link: string; email: string } | { ok: false; error: string }> {
+  const actor = await requireCapability('users:admin')
+  if (!ADMIN_ROLES.includes(input.role)) return { ok: false, error: 'Unknown role.' }
+  const email = input.email.trim().toLowerCase()
+  if (!email || !email.includes('@')) return { ok: false, error: 'Enter a valid email address.' }
+
+  // If they already have an account that is an admin, no invite needed.
+  const existing = await (
+    prisma.user as unknown as {
+      findFirst: (a: unknown) => Promise<{ role: string } | null>
+    }
+  ).findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { role: true } })
+  if (existing?.role === 'ADMIN') {
+    return { ok: false, error: 'That email is already an admin. Change their role on this page instead.' }
+  }
+
+  const token = randomBytes(32).toString('base64url')
+  const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000)
+  const inviteId = await createAdminInviteRow({
+    email,
+    adminRole: input.role,
+    tokenHash: hashToken(token),
+    invitedById: actor.id,
+    expiresAt,
+  })
+
+  await logAuditAs(actor, {
+    entityType: 'AdminInvite',
+    entityId: inviteId,
+    action: 'ADMIN_INVITE_CREATED',
+    toValue: input.role,
+    payload: { email },
+  })
+
+  revalidatePath('/admins')
+  return { ok: true, link: `${adminBaseUrl()}/accept-invite?token=${token}`, email }
+}
+
+export async function revokeAdminInvite(input: { inviteId: string }): Promise<Result> {
+  const actor = await requireCapability('users:admin')
+  await revokeAdminInviteRow(input.inviteId)
+  await logAuditAs(actor, {
+    entityType: 'AdminInvite',
+    entityId: input.inviteId,
+    action: 'ADMIN_INVITE_REVOKED',
+  })
   revalidatePath('/admins')
   return { ok: true }
 }

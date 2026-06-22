@@ -59,6 +59,37 @@ model RoleCapability {
   @@index([role])
 }
 
+// Admin team invites (docs/ADMIN_RBAC.md) — a super admin invites a NEW person
+// by email + role. We store only the SHA-256 hash of the invite token; the raw
+// token lives only in the invite link. The invitee signs up through the normal
+// auth providers (we never create accounts or set passwords); on first sign-in
+// they accept the invite, which sets User.role=ADMIN + adminRole.
+model AdminInvite {
+  id           String            @id @default(uuid())
+  email        String
+  adminRole    AdminRole
+  tokenHash    String            @unique
+  status       AdminInviteStatus @default(PENDING)
+  invitedById  String
+  invitedBy    User              @relation("AdminInvitesSentBy", fields: [invitedById], references: [id])
+  acceptedById String?
+  acceptedBy   User?             @relation("AdminInvitesAcceptedBy", fields: [acceptedById], references: [id])
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime          @default(now())
+
+  @@index([email])
+  @@index([status])
+}
+
+enum AdminInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 // Support RBAC (docs/ADMIN_RBAC.md P3) — agent-proposed refund/goodwill credit
 // that a Lead/Billing admin approves before any money moves. Plain FK columns
 // (orderId/ticketId/userIds) keep it additive — no back-relations on Order/etc.
@@ -566,6 +597,10 @@ model User {
   assignedTickets              Ticket[]                     @relation("AssigneeTickets")
   ticketReplies                TicketReply[]                @relation("TicketReplyAuthor")
   ticketEvents                 TicketEvent[]                @relation("TicketEventActor")
+  // Admin team invites (docs/ADMIN_RBAC.md) — invite a NEW person to the admin
+  // team; they sign up themselves (we never create accounts / set passwords).
+  adminInvitesSent             AdminInvite[]                @relation("AdminInvitesSentBy")
+  adminInvitesAccepted         AdminInvite[]                @relation("AdminInvitesAcceptedBy")
 }
 
 // Auth.js v5 — Account (OAuth providers)
