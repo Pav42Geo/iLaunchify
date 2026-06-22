@@ -16,6 +16,7 @@ function model() {
     roleCapability: {
       findMany: (a?: unknown) => Promise<RoleCapRow[]>
       create: (a: unknown) => Promise<unknown>
+      createMany: (a: unknown) => Promise<unknown>
       deleteMany: (a: unknown) => Promise<unknown>
     }
   }
@@ -54,5 +55,22 @@ export async function setRoleCapability(
       .catch(() => undefined)
   } else {
     await model().roleCapability.deleteMany({ where: { role, capability } })
+  }
+}
+
+/**
+ * Replace a role's entire capability set with `capabilities` (used by "apply
+ * preset"). Clears existing rows for the role, then inserts the new set.
+ */
+export async function setRoleCapabilities(role: string, capabilities: string[]): Promise<void> {
+  const unique = Array.from(new Set(capabilities))
+  await model().roleCapability.deleteMany({ where: { role } })
+  if (unique.length > 0) {
+    await model()
+      .roleCapability.createMany({
+        data: unique.map((capability) => ({ role, capability })),
+        skipDuplicates: true,
+      })
+      .catch(() => undefined)
   }
 }

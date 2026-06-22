@@ -6,6 +6,7 @@ import {
   requireCapability,
   ALL_CAPABILITIES,
   ADMIN_ROLE_LABEL,
+  resolveCapabilities,
   type AdminRole,
 } from '@ilaunchify/auth'
 import { getRoleCapabilityMatrix } from '@ilaunchify/db'
@@ -20,6 +21,11 @@ export default async function RolesPage() {
   await requireCapability('users:admin')
   const matrix = await getRoleCapabilityMatrix()
 
+  // Suggested capability bundle per role — surfaced as one-click presets and
+  // as a hint on cells the role doesn't yet hold.
+  const presets: Record<string, string[]> = {}
+  for (const r of EDITABLE_ROLES) presets[r] = resolveCapabilities(r)
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
@@ -30,8 +36,10 @@ export default async function RolesPage() {
           Roles &amp; Permissions
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Grant each role exactly the capabilities it needs. Roles start with nothing —
-          turn on only what you intend. Changes take effect immediately and are audited.
+          Grant each role exactly the capabilities it needs. Roles start with nothing — use
+          <span className="font-medium text-ink-800"> Apply preset</span> to load a role&apos;s
+          suggested bundle, then fine-tune. Suggested-but-not-granted capabilities show a hollow
+          dot. Changes take effect immediately and are audited.
           <span className="font-medium text-ink-800"> Super admin always holds every
           capability</span> and can&apos;t be edited here.
         </p>
@@ -41,6 +49,7 @@ export default async function RolesPage() {
         capabilities={[...ALL_CAPABILITIES]}
         roles={EDITABLE_ROLES.map((r) => ({ value: r, label: ADMIN_ROLE_LABEL[r] }))}
         initial={matrix}
+        presets={presets}
       />
     </div>
   )

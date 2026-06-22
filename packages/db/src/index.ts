@@ -47,6 +47,7 @@ export {
   getRoleCapabilityMatrix,
   getRoleCapabilities,
   setRoleCapability,
+  setRoleCapabilities,
 } from './role-capabilities'
 export {
   getOrderSettings,
