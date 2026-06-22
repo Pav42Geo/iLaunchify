@@ -1,3 +1,7 @@
+// NOTE: byte-identical copy of the canonical @ilaunchify/orders sample-quote
+// engine (now tested there). Dedup to a re-export like apps/creator once
+// @ilaunchify/orders is added to apps/marketing's deps (needs an install).
+//
 // Sample quote engine — pure, no DB, node-testable. Computes the price of a
 // pre-production sample order from a partner's ProductSampleOption + the
 // creator's selection (which flavors / how many, or the all-flavors sampler

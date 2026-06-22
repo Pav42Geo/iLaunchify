@@ -57,7 +57,11 @@ The **execution glue** is Prisma/Stripe-bound and can't run as a pure unit test:
 ## Low-priority follow-ups (non-blocking)
 
 - `transfer-planner.ts` re-implements the fee formula inline instead of calling `computeApplicationFee`; both are tested and identical, but consolidating would remove the duplication (deferred to avoid an orders→payments dependency).
-- `sample-credit.ts` is now covered (`sample-credit.test.ts`, 14 assertions: mint caps + expiry, usability, FIFO apply). `sample-quote.ts` (marketing/lib) remains untested — lowest stakes (a pre-checkout quote, not a settlement path).
+- `sample-credit.ts` (14 assertions) and `sample-quote.ts` (13 assertions) are now both
+  covered in `@ilaunchify/orders`. The whole order/payments money surface is unit-tested.
+  Dedup: the canonical `sample-quote` lives in `@ilaunchify/orders`; `apps/creator`'s copy
+  was collapsed to a re-export. `apps/marketing` still holds a byte-identical copy (needs
+  `@ilaunchify/orders` added to its deps to dedup — a Mac install) — noted in that file.
 
 ## Bottom line
 
