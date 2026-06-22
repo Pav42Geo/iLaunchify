@@ -40,7 +40,18 @@ rm -rf apps/*/.next     # transpilePackages bundles the old client into .next
 ## 3. Backfill — keep existing admins at full access
 
 The `null adminRole → least-privilege` flip means a legacy admin with a null role
-would otherwise lose access. Run once:
+would otherwise lose access (this is why the Developer & API link and other
+capability-gated items disappear). Run the idempotent backfill script once:
+
+```bash
+node scripts/make-super-admin.mjs --all          # every null-role admin → SUPER_ADMIN
+# or target one account:
+node scripts/make-super-admin.mjs georgiev.pavel@gmail.com
+# inspect first without changing anything:
+node scripts/make-super-admin.mjs --list
+```
+
+Equivalent raw SQL if you'd rather run it directly:
 
 ```sql
 UPDATE "User" SET "adminRole" = 'SUPER_ADMIN' WHERE "role" = 'ADMIN' AND "adminRole" IS NULL;
