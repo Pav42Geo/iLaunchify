@@ -19,6 +19,8 @@ interface TemplateData {
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
   DISPATCH_ACCEPT_REMINDER: { dispatchId: string; hoursRemaining: number }
   PARTNER_ORDER_DISPUTED: { orderId: string }
+  CREATOR_PAYMENT_FAILED: { graceUntil: string /* ISO */ }
+  CREATOR_SUBSCRIPTION_DOWNGRADED: Record<string, never>
   PARTNER_APPLIED: { companyName: string; partnerEmail: string; partnerId: string }
   PARTNER_SUBMITTED: { companyName: string; partnerId: string }
   ORDER_NEEDS_ATTENTION: { orderId: string; status: string }
@@ -184,6 +186,21 @@ export function renderTemplate<E extends NotificationEvent>(
         title: 'Dispatch acceptance deadline approaching',
         body: `You have ${d.hoursRemaining} hour${d.hoursRemaining === 1 ? '' : 's'} left to accept dispatch ${d.dispatchId.slice(-8)}.`,
         link: `/orders/${d.dispatchId}`,
+      }
+    }
+    case 'CREATOR_PAYMENT_FAILED': {
+      const d = data as TemplateData['CREATOR_PAYMENT_FAILED']
+      return {
+        title: 'Your subscription payment failed',
+        body: `We couldn't charge your card. Update your payment method by ${fmtDate(d.graceUntil)} to keep your plan — after that your account moves to the free Maker plan.`,
+        link: '/settings/plan',
+      }
+    }
+    case 'CREATOR_SUBSCRIPTION_DOWNGRADED': {
+      return {
+        title: 'Your plan was downgraded to Maker',
+        body: "We couldn't collect your subscription payment within the grace period, so your account is now on the free Maker plan. Re-subscribe anytime to restore your features.",
+        link: '/settings/plan',
       }
     }
     case 'PARTNER_ORDER_DISPUTED': {

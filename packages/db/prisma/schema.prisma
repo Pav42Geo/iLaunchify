@@ -698,6 +698,11 @@ model CreatorProfile {
   stripeTierSubscriptionId String?          @unique
   tierCurrentPeriodEnd     DateTime?
   tierCancelAtPeriodEnd    Boolean          @default(false)
+  // V1 dunning (payment-failed → grace → downgrade). Set on the tier
+  // subscription's invoice.payment_failed; cleared on recovery; the grace-expiry
+  // cron downgrades to MAKER if still unpaid past tierGraceUntil.
+  tierPaymentFailedAt      DateTime?
+  tierGraceUntil           DateTime?
   // Fee overrides
   feeRateOverrideBp        Int?
   feeRateOverrideReason    String?
@@ -3293,6 +3298,8 @@ enum NotificationEvent {
   CREATOR_DISPATCH_WITHDRAWN // partner withdrew after acceptance
   CREATOR_ORDER_FULLY_ACCEPTED // all partners signed off → production starting
   CREATOR_ORDER_CANCELLED_BY_MANUFACTURER // manufacturer reject = order killed
+  CREATOR_PAYMENT_FAILED // tier subscription payment failed → grace period started
+  CREATOR_SUBSCRIPTION_DOWNGRADED // grace expired unpaid → downgraded to Maker
   // Admin-facing
   PARTNER_APPLIED // new lead arrived
   PARTNER_SUBMITTED // partner finished onboarding, ready for review

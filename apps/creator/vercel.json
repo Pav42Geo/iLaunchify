@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/tier-dunning", "schedule": "0 8 * * *" }
+  ]
+}

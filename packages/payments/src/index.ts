@@ -52,3 +52,5 @@ export type {
   CancelTierSubscriptionInput,
   CancelTierSubscriptionResult,
 } from './tier-subscriptions'
+// V1 dunning — grace-expiry tier downgrade (run by the creator cron).
+export { processTierDunning, type TierDunningResult } from './tier-dunning'

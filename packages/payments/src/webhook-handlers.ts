@@ -22,12 +22,18 @@
 //       the /settings/plan UI reflects pending cancellations
 
 import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { createDispatches, mintSampleCredit } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { appLogger } from '@ilaunchify/logger'
 import type Stripe from 'stripe'
 import { stripe } from './client'
 import { cancelProductionSubscription } from './subscriptions'
+
+// V1 dunning grace window: how long a creator keeps their paid tier after the
+// first failed recurring charge before the grace-expiry cron downgrades them.
+const TIER_DUNNING_GRACE_DAYS = 7
 
 // Structured logger for the webhook hot path — every line carries app=payments.
 const log = appLogger('payments')
@@ -97,6 +103,12 @@ async function dispatchStripeEvent(event: Stripe.Event): Promise<{ handled: bool
 
     case 'invoice.payment_succeeded':
       await onInvoicePaid(event.data.object as Stripe.Invoice)
+      return { handled: true }
+
+    // V1 dunning — a recurring tier-subscription charge failed. Start the grace
+    // period; the grace-expiry cron downgrades to Maker if it stays unpaid.
+    case 'invoice.payment_failed':
+      await onTierInvoiceFailed(event.data.object as Stripe.Invoice)
       return { handled: true }
 
     // V1.5-T4 — tier subscription onboarding. The Customer pays via
@@ -323,6 +335,78 @@ async function onTransferEvent(_event: Stripe.Event) {
 // G6.d — ProductionSubscription recurring cycle handler
 // =============================================================================
 //
+// V1 dunning — a tier subscription's recurring charge failed. Start the grace
+// period (idempotent: don't reset the clock on Stripe's retries). The cron
+// (apps/creator /api/cron/tier-dunning) downgrades to MAKER once grace expires.
+// Cast-guarded — tierPaymentFailedAt/tierGraceUntil land after the migration.
+async function onTierInvoiceFailed(invoice: Stripe.Invoice) {
+  const stripeSubscriptionId =
+    typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
+  if (!stripeSubscriptionId) return
+
+  const profileModel = (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          id: string
+          userId: string
+          subscriptionTier: string
+          tierGraceUntil: Date | null
+        } | null>
+        update: (a: unknown) => Promise<unknown>
+      }
+    }
+  ).creatorProfile
+
+  const profile = await profileModel
+    .findUnique({
+      where: { stripeTierSubscriptionId: stripeSubscriptionId },
+      select: { id: true, userId: true, subscriptionTier: true, tierGraceUntil: true },
+    })
+    .catch(() => null)
+  if (!profile) return // not a tier subscription (likely a ProductionSubscription invoice)
+  if (profile.subscriptionTier === 'MAKER') return // nothing to dun on the free tier
+  if (profile.tierGraceUntil) return // already in grace — keep the original deadline
+
+  const now = new Date()
+  const graceUntil = new Date(now.getTime() + TIER_DUNNING_GRACE_DAYS * 24 * 60 * 60 * 1000)
+  await profileModel.update({
+    where: { id: profile.id },
+    data: { tierPaymentFailedAt: now, tierGraceUntil: graceUntil },
+  })
+
+  await dispatchNotification({
+    userId: profile.userId,
+    event: 'CREATOR_PAYMENT_FAILED' as unknown as NotificationEvent,
+    data: { graceUntil: graceUntil.toISOString() },
+    audience: 'creator',
+  }).catch(() => {})
+}
+
+// Recovery: a previously-failed tier subscription paid — clear the grace state.
+async function clearTierDunningIfRecovered(stripeSubscriptionId: string) {
+  const profileModel = (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{ id: string; tierGraceUntil: Date | null } | null>
+        update: (a: unknown) => Promise<unknown>
+      }
+    }
+  ).creatorProfile
+  const profile = await profileModel
+    .findUnique({
+      where: { stripeTierSubscriptionId },
+      select: { id: true, tierGraceUntil: true },
+    })
+    .catch(() => null)
+  if (profile?.tierGraceUntil) {
+    await profileModel.update({
+      where: { id: profile.id },
+      data: { tierPaymentFailedAt: null, tierGraceUntil: null },
+    })
+  }
+}
+
 // Stripe fires `invoice.payment_succeeded` for every recurring invoice the
 // customer pays. For our subscriptions:
 //   1. Lookup the ProductionSubscription by stripeSubscriptionId.
@@ -347,6 +431,10 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       ? invoice.subscription
       : invoice.subscription?.id
   if (!stripeSubscriptionId) return // one-off invoice, not a subscription
+
+  // Dunning recovery: if this paid invoice belongs to a tier subscription that
+  // was in a grace period, the creator's card now works — clear the grace state.
+  await clearTierDunningIfRecovered(stripeSubscriptionId)
 
   // V1 only handles cycle 2+ here. The first invoice has
   // billing_reason='subscription_create' — the day-1 Order already

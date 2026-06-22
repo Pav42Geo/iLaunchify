@@ -152,8 +152,32 @@ export default async function PlanPage({ searchParams }: PageProps) {
   const pendingCancel = profile?.tierCancelAtPeriodEnd ?? false
   const periodEnd = profile?.tierCurrentPeriodEnd ?? null
 
+  // V1 dunning grace state (cast-guarded — fields land after the migration).
+  const dunning = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{ tierGraceUntil: Date | null } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({ where: { userId: user.id }, select: { tierGraceUntil: true } })
+    .catch(() => null)
+  const graceUntil = dunning?.tierGraceUntil ?? null
+
   return (
     <div className="space-y-6">
+      {graceUntil && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <p className="text-[12.5px] leading-relaxed text-rose-900">
+            <span className="font-semibold">Your last subscription payment failed.</span>{' '}
+            Update your card by{' '}
+            <span className="font-semibold">{graceUntil.toLocaleDateString()}</span> or your account
+            will move to the free Maker plan. Use <span className="font-medium">Manage billing</span>{' '}
+            below to update your payment method.
+          </p>
+        </div>
+      )}
+
       <header className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
