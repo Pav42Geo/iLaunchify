@@ -345,3 +345,96 @@ export async function getVarietyPreviewColumns(productId: string): Promise<Varie
 
   return { ok: true, columns }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2b — resolve the REAL Nutrition Facts PanelData for the Studio canvas:
+// the product's base recipe (flavorPresetId null) or a specific flavor (base +
+// that flavor's overlay). Same buildFoodLabel path as the variety preview / the
+// label download, so the canvas panel == what prints. FOOD only for now; other
+// domains return { domain: 'OTHER' } and keep their own panel renderers.
+// ---------------------------------------------------------------------------
+
+export type StudioNutritionResult =
+  | { ok: true; domain: 'FOOD'; panel: PanelData }
+  | { ok: true; domain: 'OTHER' }
+  | { ok: false; error: string }
+
+export async function resolveStudioNutrition(
+  productId: string,
+  flavorPresetId?: string | null,
+): Promise<StudioNutritionResult> {
+  const user = await requireUser()
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    select: {
+      name: true,
+      productTemplateId: true,
+      recipe: {
+        select: {
+          servingSizeG: true,
+          servingsPerContainer: true,
+          servingSizeDesc: true,
+          ingredients: {
+            orderBy: { position: 'asc' },
+            select: {
+              weightG: true,
+              ingredient: { select: { name: true, internalName: true, labelDeclarationName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } },
+            },
+          },
+        },
+      },
+      productTemplate: {
+        select: { flavorPresets: { where: { status: 'ACTIVE' }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, extras: true } } },
+      },
+    },
+  })
+  if (!product) return { ok: false, error: 'Product not found.' }
+
+  const tmpl = product.productTemplateId
+    ? await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ labelingType: string | null } | null> }
+      }).productTemplate.findUnique({ where: { id: product.productTemplateId }, select: { labelingType: true } })
+    : null
+  if ((tmpl?.labelingType ?? 'FOOD') !== 'FOOD') return { ok: true, domain: 'OTHER' }
+  if (!product.recipe || product.recipe.ingredients.length === 0) {
+    return { ok: false, error: 'No recipe yet — add ingredients to compute nutrition.' }
+  }
+
+  const r = product.recipe
+  const geo = { servingSizeG: Number(r.servingSizeG) || 1, servingsPerPackage: Number(r.servingsPerContainer) || 1, servingSizeDesc: r.servingSizeDesc ?? undefined }
+  const baseLines: Line[] = r.ingredients.map((ri, i) => ({
+    row: { id: `b${i}`, name: ri.ingredient.internalName ?? ri.ingredient.name, per100g: (ri.ingredient.nutritionPer100g ?? {}) as Record<string, number>, quantity: Number(ri.weightG) || 0, unit: 'g', category: 'base', selected: true },
+    declarationName: (ri.ingredient.labelDeclarationName ?? ri.ingredient.internalName ?? ri.ingredient.name) ?? '',
+    allergens: ri.ingredient.allergenFlags ?? [],
+  }))
+
+  let overlay: Line[] = []
+  let flavorName = ''
+  if (flavorPresetId) {
+    type Extra = { ingredientId: string; name?: string; qty: number; unit: string }
+    const fp = product.productTemplate?.flavorPresets?.find((f) => f.id === flavorPresetId)
+    if (!fp) return { ok: false, error: 'Flavor not found.' }
+    flavorName = fp.name
+    const extras = (Array.isArray(fp.extras) ? (fp.extras as Extra[]) : []).filter((e) => e && e.ingredientId && Number(e.qty) > 0)
+    if (extras.length) {
+      const ids = [...new Set(extras.map((e) => e.ingredientId))]
+      const ingRows = await prisma.ingredient.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true, internalName: true, labelDeclarationName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
+      })
+      const ingById = new Map(ingRows.map((x) => [x.id, x]))
+      overlay = extras.map((e, i) => {
+        const ing = ingById.get(e.ingredientId)
+        const grams = toGrams(Number(e.qty) || 0, e.unit || 'g', { densityGPerMl: ing?.densityGPerML ?? undefined })
+        return {
+          row: { id: `f${i}`, name: ing?.internalName ?? ing?.name ?? e.name ?? 'Ingredient', per100g: (ing?.nutritionPer100g ?? {}) as Record<string, number>, quantity: grams, unit: 'g', category: 'base', selected: true },
+          declarationName: (ing?.labelDeclarationName ?? ing?.internalName ?? ing?.name ?? e.name) ?? '',
+          allergens: ing?.allergenFlags ?? [],
+        }
+      })
+    }
+  }
+
+  const lbl = buildFoodLabel(baseLines, overlay, geo, flavorPresetId ? '' : product.name, flavorName || undefined) as Extract<ProductLabel, { domain: 'FOOD' }>
+  return { ok: true, domain: 'FOOD', panel: lbl.panel }
+}
