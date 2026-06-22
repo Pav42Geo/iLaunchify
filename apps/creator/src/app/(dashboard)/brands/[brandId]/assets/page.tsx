@@ -13,13 +13,14 @@
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { prisma, listBrandTemplates } from '@ilaunchify/db'
+import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { ArrowLeft } from 'lucide-react'
 import { LogosSection } from './LogosSection'
 import { ColorsSection } from './ColorsSection'
 import { FontsSection } from './FontsSection'
 import { TaglineSection } from './TaglineSection'
+import { TemplatesSection } from './TemplatesSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,13 @@ export default async function BrandAssetsPage({ params }: PageProps) {
     orderBy: [{ family: 'asc' }, { weight: 'asc' }],
   })
 
+  // Brand templates + the per-tier cap (docs/BRAND_KIT_PROPOSAL.md).
+  const [templates, tier] = await Promise.all([
+    listBrandTemplates(brand.id),
+    getCreatorTier(user.id),
+  ])
+  const templateCap = brandLimits(tier).templatesPerKit
+
   return (
     <div className="space-y-6">
       <header>
@@ -113,6 +121,18 @@ export default async function BrandAssetsPage({ params }: PageProps) {
         />
 
         <TaglineSection brandId={brand.id} initial={brand.tagline} />
+
+        <TemplatesSection
+          brandId={brand.id}
+          used={templates.length}
+          cap={templateCap}
+          templates={templates.map((t) => ({
+            id: t.id,
+            name: t.name,
+            thumbnailUrl: t.thumbnailUrl,
+            createdAt: t.createdAt.toISOString(),
+          }))}
+        />
       </div>
     </div>
   )
