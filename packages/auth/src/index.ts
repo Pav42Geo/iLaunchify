@@ -2,6 +2,17 @@
 export { auth, handlers, signIn, signOut } from './config'
 export { requireRole, requireUser, requireSession } from './guards'
 export type { Session, User, Role } from './types'
+
+// Admin RBAC — capability layer (docs/ADMIN_RBAC.md).
+export {
+  ROLE_CAPABILITIES,
+  ALL_CAPABILITIES,
+  resolveCapabilities,
+  hasCapability,
+  requireCapability,
+  type AdminRole,
+  type Capability,
+} from './capabilities'
 export { createUserWithRole } from './signup'
 export type { SignupInput, SignupResult, SignupError } from './signup'
 // Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — DB-backed rate limiting.

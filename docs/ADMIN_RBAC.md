@@ -164,10 +164,35 @@ export async function getAdminCapabilities(user): Capability[]
 Unit-test the matrix (every role → expected caps; `SUPER_ADMIN` ⊇ all; agent
 excludes billing/users/security) the same way the FSM/tier tables are tested.
 
+## P0 — SHIPPED (2026-06-21, sandbox-verified)
+
+Substrate only, zero behavior change. What landed:
+- Schema: `AdminRole` enum + nullable `User.adminRole` (additive).
+- `packages/auth/src/capability-rules.ts` — PURE matrix (zero imports):
+  `Capability` union, `ALL_CAPABILITIES`, `ROLE_CAPABILITIES`,
+  `resolveCapabilities`, `hasCapability`. 7-case vitest (`capability-rules.test.ts`),
+  also node-verified (9/9).
+- `packages/auth/src/capabilities.ts` — `requireCapability(cap)` server guard
+  (re-exports the rules). Cast-guarded prisma read (**ADMIN-RBAC-CAST**).
+- Exported from `@ilaunchify/auth`.
+- `null` adminRole → SUPER_ADMIN, so existing admins are unaffected before the
+  backfill even runs.
+
+### Mac steps
+```bash
+pnpm db:push           # additive: AdminRole enum + User.adminRole (decline reset)
+pnpm db:generate
+rm -rf apps/*/.next     # transpilePackages stale-client gotcha
+# backfill existing admins to SUPER_ADMIN (explicit, belt-and-suspenders):
+#   UPDATE "User" SET "adminRole" = 'SUPER_ADMIN' WHERE "role" = 'ADMIN' AND "adminRole" IS NULL;
+pnpm --filter @ilaunchify/auth test   # capability matrix
+```
+Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
+`prisma.user.findUnique({ where:{id}, select:{ adminRole:true } })`).
+
 ## Rollout (phased; each phase ships green + audited)
 
-- **P0 — substrate (no behavior change):** schema + backfill SUPER_ADMIN +
-  `packages/auth` capability layer + matrix tests. Everyone still superadmin.
+- **P0 — substrate (no behavior change):** ✅ shipped (above).
 - **P1 — lock the sensitive set:** `requireCapability` on Settings/* (fees,
   tiers, order settings, routing, shipping), Users & Roles/admins,
   Compliance & Data Rights, partner approval, refund/payout actions, security.

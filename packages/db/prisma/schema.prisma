@@ -34,6 +34,17 @@ enum UserRole {
   PARTNER
 }
 
+// Admin sub-role (RBAC) — only meaningful when UserRole = ADMIN; null elsewhere.
+// Roles are presets; the capability bundles live in @ilaunchify/auth
+// (ROLE_CAPABILITIES). See docs/ADMIN_RBAC.md. Existing admins are backfilled to
+// SUPER_ADMIN so behavior is unchanged on rollout.
+enum AdminRole {
+  SUPPORT_AGENT
+  SUPPORT_LEAD
+  BILLING_ADMIN
+  SUPER_ADMIN
+}
+
 enum StripeAccountStatus {
   NONE
   PENDING
@@ -459,6 +470,9 @@ model User {
   name                         String?
   image                        String?
   role                         UserRole
+  // Admin RBAC sub-role (docs/ADMIN_RBAC.md). Null = treated as SUPER_ADMIN for
+  // P0 (zero behavior change); existing admins backfilled to SUPER_ADMIN.
+  adminRole                    AdminRole?
   // Stripe Connect (used for partner payouts — partners only)
   stripeAccountId              String?                      @unique
   stripeAccountStatus          StripeAccountStatus          @default(NONE)
