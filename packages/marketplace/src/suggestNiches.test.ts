@@ -14,7 +14,9 @@
 // For now `pnpm tsc --noEmit -p packages/marketplace` ensures the scenarios
 // compile against the shipping types.
 
-import type { NicheRuleCondition, NicheSuggestion } from './types'
+import type { NicheRuleCondition } from './types'
+// Test the REAL evaluator (shared with suggestNiches.ts) — no mirrored copy.
+import { evaluateRules, type NicheFacts } from './niche-rule-eval'
 
 // ---- Scenario types ----------------------------------------------------------
 
@@ -39,60 +41,21 @@ interface MockRule {
   conditions: NicheRuleCondition[]
 }
 
-// Pure evaluator — mirrors the prisma-bound version in suggestNiches.ts.
-// Kept here so unit tests don't have to mock Prisma.
-function evaluateOne(c: NicheRuleCondition, f: MockProductFacts): boolean {
-  if (c.values.length === 0) return false
-  const certSet = new Set(f.certSlugs)
-  const tagSet = new Set(f.lifestyleTagSlugs)
-  switch (c.kind) {
-    case 'LABELING_TYPE':
-      return c.values.includes(f.labelingType)
-    case 'CATEGORY':
-      return f.categorySlug != null && c.values.includes(f.categorySlug)
-    case 'SUBCATEGORY':
-      return f.subcategorySlug != null && c.values.includes(f.subcategorySlug)
-    case 'CERT_ATTACHED':
-      return c.values.some((v) => certSet.has(v))
-    case 'LIFESTYLE_TAG':
-      return c.values.some((v) => tagSet.has(v))
+// Adapt the array-based mock facts to the evaluator's Set-based fact shape.
+function toFacts(f: MockProductFacts): NicheFacts {
+  return {
+    labelingType: f.labelingType,
+    categorySlug: f.categorySlug,
+    subcategorySlug: f.subcategorySlug,
+    certSlugs: new Set(f.certSlugs),
+    lifestyleTagSlugs: new Set(f.lifestyleTagSlugs),
   }
 }
 
-export function evaluateRulesForTest(
-  rules: MockRule[],
-  facts: MockProductFacts,
-): NicheSuggestion[] {
-  const perNiche = new Map<string, NicheSuggestion>()
-  for (const r of rules) {
-    if (!r.isActive) continue
-    if (r.conditions.length === 0) continue
-    if (!r.conditions.every((c) => evaluateOne(c, facts))) continue
-    const candidate: NicheSuggestion = {
-      nicheId: r.nicheId,
-      nicheSlug: r.nicheSlug,
-      nicheName: r.nicheName,
-      weight: r.weight,
-      ruleId: r.id,
-      ruleSlug: r.slug,
-      ruleDescription: r.description,
-      isLocked: r.isLocked,
-    }
-    const existing = perNiche.get(r.nicheId)
-    if (!existing) {
-      perNiche.set(r.nicheId, candidate)
-      continue
-    }
-    const winner = candidate.weight > existing.weight ? candidate : existing
-    perNiche.set(r.nicheId, {
-      ...winner,
-      isLocked: existing.isLocked || candidate.isLocked,
-    })
-  }
-  return Array.from(perNiche.values()).sort((a, b) => {
-    if (b.weight !== a.weight) return b.weight - a.weight
-    return a.nicheName.localeCompare(b.nicheName)
-  })
+// Run the shared evaluator and return just the suggestions (scenarios assert on
+// those; rawHits are covered implicitly).
+function suggest(rules: MockRule[], facts: MockProductFacts) {
+  return evaluateRules(rules, toFacts(facts)).suggestions
 }
 
 // ---- Shared seed-mirror rule deck --------------------------------------------
@@ -152,7 +115,7 @@ export const scenarioPetLocked = () => {
     certSlugs: [],
     lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(RULES, facts)
+  const out = suggest(RULES, facts)
   if (out.length !== 1) throw new Error(`Pet: expected 1 suggestion, got ${out.length}`)
   const s = out[0]!
   if (s.nicheSlug !== 'pet-wellness') throw new Error(`Pet: wrong niche ${s.nicheSlug}`)
@@ -169,7 +132,7 @@ export const scenarioBeautyNonLocked = () => {
     certSlugs: [],
     lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(RULES, facts)
+  const out = suggest(RULES, facts)
   const beauty = out.find((s) => s.nicheSlug === 'beauty')
   if (!beauty) throw new Error('Beauty: expected a beauty suggestion')
   if (beauty.isLocked) throw new Error('Beauty: must not be locked')
@@ -187,7 +150,7 @@ export const scenarioEnergyPreworkout = () => {
     certSlugs: [],
     lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(RULES, facts)
+  const out = suggest(RULES, facts)
   if (out.length !== 1) throw new Error(`Energy: expected 1 hit, got ${out.length}`)
   if (out[0]!.nicheSlug !== 'energy-performance') {
     throw new Error(`Energy: wrong niche ${out[0]!.nicheSlug}`)
@@ -204,7 +167,7 @@ export const scenarioEmptyProduct = () => {
     certSlugs: [],
     lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(RULES, facts)
+  const out = suggest(RULES, facts)
   if (out.length !== 0) throw new Error(`Empty: expected 0 suggestions, got ${out.length}`)
   return true
 }
@@ -234,7 +197,7 @@ export const scenarioDedupLockedWins = () => {
     categorySlug: null, subcategorySlug: null,
     certSlugs: [], lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(synthetic, facts)
+  const out = suggest(synthetic, facts)
   if (out.length !== 1) throw new Error(`Dedup: expected 1 suggestion, got ${out.length}`)
   if (out[0]!.weight !== 90) throw new Error(`Dedup: expected weight 90, got ${out[0]!.weight}`)
   if (!out[0]!.isLocked) throw new Error('Dedup: locked must be preserved')
@@ -250,7 +213,7 @@ export const scenarioBabyKidsCategoryLock = () => {
     certSlugs: [],
     lifestyleTagSlugs: [],
   }
-  const out = evaluateRulesForTest(RULES, facts)
+  const out = suggest(RULES, facts)
   const fam = out.find((s) => s.nicheSlug === 'family-kids')
   if (!fam) throw new Error('Family: missing suggestion')
   if (!fam.isLocked) throw new Error('Family: expected locked')

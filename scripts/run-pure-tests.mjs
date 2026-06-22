@@ -1,67 +1,72 @@
 #!/usr/bin/env node
 /**
  * Run the pure, dependency-free logic suites that ship as `runAll()` aggregators
- * (the @ilaunchify/auth convention — no vitest import, so they type-check under
+ * (the project convention — no vitest import, so they type-check under
  * `tsc --noEmit` but were never EXECUTED). This runner transpiles each suite +
- * its pure sibling to a temp dir with the repo's local tsc and runs `runAll()`,
- * so the assertions actually fire. Zero install required:
+ * its pure sibling(s) to a temp dir with the repo's local tsc and runs
+ * `runAll()`, so the assertions actually fire. Zero install required:
  *
  *   node scripts/run-pure-tests.mjs
  *
- * Add a suite by listing its [pureModule, testModule, label] below.
+ * A suite qualifies if, after type-only imports are erased, the test file and
+ * its `deps` require nothing outside the listed files (DB-bound engines don't
+ * qualify — extract their pure core first). Add one by appending to SUITES.
  */
 
 import { execSync } from 'node:child_process'
 import { mkdtempSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, basename } from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const SRC = 'packages/auth/src'
 const TSC = 'node_modules/.bin/tsc'
 
-// [pure source module, test module, human label]
+// { base dir, pure dep modules, the *.test.ts, human label }
 const SUITES = [
-  ['capability-rules.ts', 'capability-rules.test.ts', 'RBAC capability matrix'],
-  ['admin-invite.ts', 'admin-invite.test.ts', 'Admin-invite acceptance'],
-  ['ownership-rules.ts', 'ownership.test.ts', 'Ownership guards'],
+  { base: 'packages/auth/src', deps: ['capability-rules.ts'], test: 'capability-rules.test.ts', label: 'RBAC capability matrix' },
+  { base: 'packages/auth/src', deps: ['admin-invite.ts'], test: 'admin-invite.test.ts', label: 'Admin-invite acceptance' },
+  { base: 'packages/auth/src', deps: ['ownership-rules.ts'], test: 'ownership.test.ts', label: 'Ownership guards' },
+  { base: 'apps/admin/src/lib', deps: ['partner-fsm.ts'], test: 'partner-fsm.test.ts', label: 'Partner status FSM' },
+  { base: 'packages/marketplace/src', deps: ['niche-rule-eval.ts'], test: 'suggestNiches.test.ts', label: 'Niche suggestion engine' },
 ]
 
-const out = mkdtempSync(join(tmpdir(), 'pure-tests-'))
-const files = [...new Set(SUITES.flatMap(([pure, test]) => [pure, test]))]
-  .map((f) => `${SRC}/${f}`)
-  .join(' ')
-
-// tsc emits JS even when it reports type errors (we don't pass --noEmitOnError),
-// so a non-zero exit here is fine — the .js we need is still written.
-try {
-  execSync(`${TSC} ${files} --outDir ${out} --module commonjs --target es2020 --skipLibCheck --esModuleInterop`, {
-    stdio: 'pipe',
-  })
-} catch {
-  /* type errors under the bare (non-project) config are expected; JS is emitted */
-}
+const root = mkdtempSync(join(tmpdir(), 'pure-tests-'))
 
 console.log('\nPure logic suites\n' + '─'.repeat(48))
 let failed = 0
-for (const [, test, label] of SUITES) {
-  const jsPath = join(out, test.replace(/\.ts$/, '.js'))
+
+SUITES.forEach((s, i) => {
+  const outDir = join(root, String(i))
+  const files = [...s.deps, s.test].map((f) => `${s.base}/${f}`).join(' ')
+  // tsc emits JS even when it reports type errors (no --noEmitOnError), so a
+  // non-zero exit is fine — the .js we need is still written.
+  try {
+    execSync(
+      `${TSC} ${files} --outDir ${outDir} --module commonjs --target es2020 --skipLibCheck --esModuleInterop`,
+      { stdio: 'pipe' },
+    )
+  } catch {
+    /* type errors under the bare (non-project) config are expected */
+  }
+
+  const jsPath = join(outDir, basename(s.test).replace(/\.ts$/, '.js'))
   if (!existsSync(jsPath)) {
     failed++
-    console.log(`✗ ${label} — transpile produced no output`)
-    continue
+    console.log(`✗ ${s.label} — transpile produced no output`)
+    return
   }
   try {
     const mod = require(jsPath)
     if (typeof mod.runAll !== 'function') throw new Error('no runAll() export')
     mod.runAll()
-    console.log(`✓ ${label}`)
+    console.log(`✓ ${s.label}`)
   } catch (err) {
     failed++
-    console.log(`✗ ${label} — ${err.message}`)
+    console.log(`✗ ${s.label} — ${err.message}`)
   }
-}
+})
+
 console.log('─'.repeat(48))
 if (failed === 0) {
   console.log('✓ ALL PURE SUITES PASSED\n')

@@ -7,9 +7,9 @@ Companion to `docs/ADMIN_RBAC.md`. Two layers of verification:
    capability-gated surfaces. Re-run any time you add a gate or change a preset.
    Last run: **all passed** (Agent 1/30, Lead 13/30, Billing 6/30, Super 30/30).
 1b. **Unit suites:** `node scripts/run-pure-tests.mjs` — actually executes the
-   `runAll()` aggregators that ship as type-check-only files (the capability
-   matrix, admin-invite acceptance, and ownership guards). Zero install. Last
-   run: all three suites passed.
+   `runAll()` aggregators that ship as type-check-only files: the RBAC capability
+   matrix, admin-invite acceptance, ownership guards, partner-status FSM, and the
+   niche suggestion engine. Zero install. Last run: all five suites passed.
 2. **Manual (live):** the click-through below, run against the app on your Mac.
 
 ---
