@@ -112,3 +112,11 @@ export {
   type BillingProfileValues,
   type BillingAddress,
 } from './billing-profile'
+export {
+  listPaymentMethodRefs,
+  upsertPaymentMethodRef,
+  setDefaultPaymentMethodRef,
+  deletePaymentMethodRef,
+  ownsPaymentMethodRef,
+  type PaymentMethodRefValues,
+} from './payment-methods'

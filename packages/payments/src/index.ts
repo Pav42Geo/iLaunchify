@@ -54,3 +54,12 @@ export type {
 } from './tier-subscriptions'
 // V1 dunning — grace-expiry tier downgrade (run by the creator cron).
 export { processTierDunning, type TierDunningResult } from './tier-dunning'
+// Billing slice 2 — payment-method management via Stripe-hosted Checkout (setup).
+export {
+  isStripeConfigured,
+  createSetupCheckoutSession,
+  syncPaymentMethodFromCheckout,
+  setDefaultPaymentMethod,
+  removePaymentMethod,
+  type CreateSetupCheckoutInput,
+} from './payment-methods'

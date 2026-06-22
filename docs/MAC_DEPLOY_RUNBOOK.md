@@ -34,6 +34,12 @@ run regardless of which earlier pushes you already did. This session it adds (cu
 - `model BillingProfile` (Billing & Accounting slice 1 — invoice/tax contact
   details; plain data, NO card/bank/SSN) + `User.billingProfile` back-relation.
   Powers creator + partner `/settings/billing`. See docs/BILLING_AND_ACCOUNTING.md.
+- `model PaymentMethodRef` (Billing slice 2 — display-only Stripe card mirror:
+  brand/last4/exp + `pm_` id, NO PAN) + `User.paymentMethods` back-relation.
+  The card is added on Stripe-hosted Checkout (setup mode) at creator
+  `/settings/billing`. Needs `STRIPE_SECRET_KEY` set (test key locally) for the
+  "Add payment method" button to work; the surface degrades gracefully if unset.
+  No `NEXT_PUBLIC_*` Stripe key needed — Checkout is fully hosted.
 - `model SupportRefundRequest` + `enum RefundRequestStatus`
 - Support ticketing models/enums + `NotificationEvent` values (`SUPPORT_*`,
   `SUPPORT_REFUND_REQUESTED`) — if not already applied

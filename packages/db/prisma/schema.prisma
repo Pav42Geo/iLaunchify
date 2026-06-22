@@ -620,6 +620,10 @@ model User {
   // details. Plain business data only; no card/bank/SSN ever lives here (Stripe
   // holds all payment instruments + TINs).
   billingProfile               BillingProfile?
+  // Display-only mirror of the Stripe PaymentMethods on this user's Customer.
+  // Holds brand + last4 + expiry only — NEVER a full card number (Stripe-hosted
+  // Checkout in setup mode collects the card; the PAN never reaches us).
+  paymentMethods               PaymentMethodRef[]
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -2664,6 +2668,28 @@ model BillingProfile {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// Display-only mirror of a Stripe PaymentMethod attached to the user's Customer
+// (docs/BILLING_AND_ACCOUNTING.md slice 2). The actual card is collected on
+// Stripe-hosted Checkout (setup mode) and lives in Stripe — we only persist the
+// non-secret display crumbs (brand + last4 + expiry) plus the opaque pm_ id.
+// NEVER store a full card number, CVC, or any sensitive authentication data here.
+
+model PaymentMethodRef {
+  id                    String   @id @default(uuid())
+  userId                String
+  stripePaymentMethodId String   @unique
+  brand                 String? // e.g. "visa", "mastercard"
+  last4                 String? // last 4 digits — safe to display, not a PAN
+  expMonth              Int?
+  expYear               Int?
+  isDefault             Boolean  @default(false)
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // =============================================================================
