@@ -130,3 +130,22 @@ export async function testIntegration(key: string): Promise<TestResult> {
   if (!fn) return { ok: false, message: 'No test available for this integration.' }
   return fn()
 }
+
+export interface BatchTestResult {
+  key: string
+  name: string
+  result: TestResult
+}
+
+/**
+ * Run every available read-only probe in parallel (launch-readiness check).
+ * Same security contract as testIntegration: returns statuses only, never any
+ * secret. Each probe has its own 8s timeout, so the batch can't hang.
+ */
+export async function testAllIntegrations(): Promise<BatchTestResult[]> {
+  await requireCapability('platform:admin')
+  const testable = INTEGRATIONS.filter((i) => i.testable && PROBES[i.key])
+  return Promise.all(
+    testable.map(async (i) => ({ key: i.key, name: i.name, result: await PROBES[i.key]!() })),
+  )
+}

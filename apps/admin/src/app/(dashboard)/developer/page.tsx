@@ -17,6 +17,7 @@ import {
 } from './integration-registry'
 import { CopyEnvButton } from './CopyEnvButton'
 import { TestConnectionButton } from './TestConnectionButton'
+import { TestAllButton } from './TestAllButton'
 import { RotationControl } from './RotationControl'
 
 function RotationBadge({ r }: { r: RotationStatus }) {
@@ -113,6 +114,17 @@ export default async function IntegrationsPage() {
             <div className="text-[11.5px] text-ink-500">{k.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Launch-readiness: probe every testable integration at once */}
+      <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
+        <div className="mb-2 flex items-center gap-2">
+          <RotateCw className="h-3.5 w-3.5 text-ink-400" />
+          <p className="text-[12.5px] text-ink-600">
+            Verify everything&apos;s wired before a launch — runs each read-only probe in parallel.
+          </p>
+        </div>
+        <TestAllButton />
       </div>
 
       {/* Per-category integration cards */}
