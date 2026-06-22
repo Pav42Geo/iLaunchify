@@ -76,6 +76,35 @@ export function nextTier(current: TierKey): TierKey | null {
 }
 
 /**
+ * Brand Kit per-tier limits (docs/BRAND_KIT_PROPOSAL.md, locked Pavel 2026-06-22).
+ *
+ * Only TWO things are gated by tier — the number of brand kits and the number of
+ * saved brand templates per kit. Everything else inside a kit (colors, fonts, logo
+ * variants) is EQUAL across tiers per Pavel's decision. `Infinity` = unlimited;
+ * call sites should treat any finite count `>= limit` as "at cap".
+ *
+ *   kits      → already locked in PLATFORM_SPEC §Tier 1 (1 / 3 / Unlimited)
+ *   templates → 3 / 15 / Unlimited
+ */
+export interface BrandLimits {
+  /** Max brand kits (Brand rows) this creator may own. */
+  kits: number
+  /** Max BrandTemplate rows per brand kit. */
+  templatesPerKit: number
+}
+
+export const BRAND_LIMITS: Record<TierKey, BrandLimits> = {
+  maker: { kits: 1, templatesPerKit: 3 },
+  builder: { kits: 3, templatesPerKit: 15 },
+  agency: { kits: Infinity, templatesPerKit: Infinity },
+}
+
+/** Brand Kit limits for a tier. See {@link BRAND_LIMITS}. */
+export function brandLimits(tier: TierKey): BrandLimits {
+  return BRAND_LIMITS[tier]
+}
+
+/**
  * Load the subscription tier for a given creator user. Returns 'maker'
  * for users who haven't completed creator-profile onboarding (admin
  * impersonators, mid-signup users), keeping the gates honest without

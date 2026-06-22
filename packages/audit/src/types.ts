@@ -88,6 +88,8 @@ export const AUDIT_ENTITY_TYPES = [
   'BillingProfile', // invoice/tax contact details (docs/BILLING_AND_ACCOUNTING.md)
   'PaymentMethod', // Stripe payment-method mirror (docs/BILLING_AND_ACCOUNTING.md slice 2)
   'TaxDocument', // 1099 pointer + Express-dashboard access (docs/BILLING_AND_ACCOUNTING.md)
+  'Brand', // brand kit edits (docs/BRAND_KIT_PROPOSAL.md)
+  'BrandTemplate', // reusable brand design templates (docs/BRAND_KIT_PROPOSAL.md)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

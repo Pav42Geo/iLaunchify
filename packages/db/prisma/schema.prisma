@@ -1151,6 +1151,8 @@ model Brand {
   // Relations
   creatorProfile          CreatorProfile             @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
   socialAccounts          SocialAccount[]
+  // Brand Kit templates — reusable packaging/label starting points (docs/BRAND_KIT_PROPOSAL.md).
+  brandTemplates          BrandTemplate[]
   products                Product[]
   templates               Template[]
   designs                 Design[]
@@ -2648,6 +2650,26 @@ model Dispute {
   charge              Charge            @relation(fields: [chargeId], references: [id])
   clawbacks           PartnerClawback[]
   createdAt           DateTime          @default(now())
+}
+
+// Brand Kit template (docs/BRAND_KIT_PROPOSAL.md, locked Pavel 2026-06-22).
+// A reusable packaging/label DESIGN tied to a brand — a starting point a creator
+// can spin a new product's label from. Distinct from EditSnapshot (version history):
+// a template is an intentional, named, reusable layout. Per-tier COUNT is gated by
+// brandLimits(tier) in @ilaunchify/auth (Maker 3 / Builder 15 / Agency unlimited).
+
+model BrandTemplate {
+  id              String   @id @default(uuid())
+  brandId         String
+  name            String
+  thumbnailUrl    String? // preview (reuses the Studio snapshot thumbnail capture)
+  canvasJson      String // Fabric.js layout JSON — bare String (CockroachDB: no @db.Text)
+  packagingTypeId String? // which container this layout targets (optional)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
 }
 
 // =============================================================================

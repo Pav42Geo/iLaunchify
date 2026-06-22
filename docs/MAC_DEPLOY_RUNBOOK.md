@@ -39,6 +39,9 @@ run regardless of which earlier pushes you already did. This session it adds (cu
   NO TIN or form content). Powers partner `/settings/tax-documents` (annual earnings
   + Express-dashboard deep-link). Forms are issued via Stripe Connect Tax Forms;
   enable that in the Stripe Dashboard when going live to populate real documents.
+- `model BrandTemplate` + `Brand.brandTemplates` (Brand Kit — reusable label/
+  packaging design templates; per-tier count gated by `brandLimits()`). Bare
+  `canvasJson String` (no @db.Text). See docs/BRAND_KIT_PROPOSAL.md.
 - `model PaymentMethodRef` (Billing slice 2 — display-only Stripe card mirror:
   brand/last4/exp + `pm_` id, NO PAN) + `User.paymentMethods` back-relation.
   The card is added on Stripe-hosted Checkout (setup mode) at creator

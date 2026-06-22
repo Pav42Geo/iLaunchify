@@ -126,3 +126,10 @@ export {
   type TaxDocumentValues,
   type AnnualEarnings,
 } from './tax-documents'
+export {
+  listBrandTemplates,
+  countBrandTemplates,
+  createBrandTemplate,
+  deleteBrandTemplate,
+  type BrandTemplateValues,
+} from './brand-templates'

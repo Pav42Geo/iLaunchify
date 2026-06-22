@@ -54,8 +54,10 @@ export {
   hasTier,
   nextTier,
   normalizeTier,
+  brandLimits,
+  BRAND_LIMITS,
 } from './tiers'
-export type { TierKey } from './tiers'
+export type { TierKey, BrandLimits } from './tiers'
 
 // V1.5-T2 — single write path for CreatorProfile.subscriptionTier
 // (admin Tier Management + Stripe-webhook tier-flip handlers).

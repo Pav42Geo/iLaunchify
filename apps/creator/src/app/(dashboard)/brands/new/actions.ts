@@ -17,7 +17,7 @@
 //   5. /dashboard + /brands paths revalidated
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 
@@ -46,6 +46,25 @@ export async function createBrand(formData: FormData): Promise<CreateBrandResult
     select: { id: true, onboardingProgress: true },
   })
   if (!profile) return { ok: false, error: 'Your creator profile is missing.' }
+
+  // -------- Tier gate: brand-kit count (docs/BRAND_KIT_PROPOSAL.md) --------
+  // Maker 1 / Builder 3 / Agency unlimited. Counts the creator's existing kits and
+  // blocks creation past the cap with an upgrade-flavored message.
+  const tier = await getCreatorTier(user.id)
+  const kitCap = brandLimits(tier).kits
+  if (Number.isFinite(kitCap)) {
+    const existingKits = await prisma.brand.count({ where: { creatorProfileId: profile.id } })
+    if (existingKits >= kitCap) {
+      return {
+        ok: false,
+        error:
+          kitCap === 1
+            ? 'Your plan includes 1 brand kit. Upgrade to Builder for 3, or Agency for unlimited.'
+            : `Your plan includes ${kitCap} brand kits. Upgrade to Agency for unlimited.`,
+        field: 'general',
+      }
+    }
+  }
 
   // -------- Validate inputs --------
   const name = String(formData.get('name') ?? '').trim()
