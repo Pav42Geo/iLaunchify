@@ -43,6 +43,8 @@ import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { ComplianceCard } from './ComplianceCard'
 import { PackagingPicker } from './PackagingPicker'
 import { PackagingStudioStep } from './PackagingStudioStep'
+import { PerFlavorLabelsCard } from './PerFlavorLabelsCard'
+import { packUiKindForProfile } from './structuralPackType'
 
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -517,6 +519,9 @@ export function GuidedBuilder({
             <section>
               <PackagingPicker draftId={draftId} systems={packagingSystems} />
               <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} headerRight={topbarRight} />
+              {profile && packUiKindForProfile(profile) === 'pack' && (
+                <PerFlavorLabelsCard draftId={draftId} />
+              )}
               <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>
