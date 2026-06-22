@@ -12,6 +12,7 @@ import {
 import { prisma } from '@ilaunchify/db'
 import { Shield } from 'lucide-react'
 import { AdminRoleSelect } from './AdminRoleSelect'
+import { AddAdminForm } from './AddAdminForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Admins — Admin' }
@@ -49,6 +50,8 @@ export default async function AdminsPage() {
           admin team. Changes are audited. You can&apos;t change your own role.
         </p>
       </div>
+
+      <AddAdminForm roles={ROLE_OPTIONS} />
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
