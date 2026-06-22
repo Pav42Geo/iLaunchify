@@ -43,6 +43,7 @@ import {
   Building2,
   Crown,
   Plug,
+  KeyRound,
   History,
   Globe,
   Shield,
@@ -317,6 +318,7 @@ const APPLICATIONS: SidebarRegion = {
       label: 'Integrations & API',
       icon: Plug,
       children: [
+        { kind: 'item', label: 'API Keys & Status', icon: KeyRound, href: '/integrations', capability: 'platform:admin' },
         { kind: 'item', label: 'Channels', icon: Plug, href: '/channels', capability: 'platform:admin' },
         { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Marketing', icon: Megaphone, href: '/integrations/marketing', hiddenUntilBuilt: true },
