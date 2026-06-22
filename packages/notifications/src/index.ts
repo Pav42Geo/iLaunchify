@@ -24,5 +24,12 @@ export {
 } from './preferences'
 export { renderTemplate } from './templates'
 export type { NotificationTemplate } from './templates'
+// Branded transactional-email shell (reusable for one-off sends too).
+export {
+  renderEmailHtml,
+  renderEmailText,
+  ctaLabelForEvent,
+  type EmailContent,
+} from './email-html'
 // One-off transactional email to an arbitrary address (e.g. admin invites).
 export { sendTransactionalEmail, type SendEmailResult } from './email'

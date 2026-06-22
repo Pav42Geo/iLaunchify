@@ -5,6 +5,7 @@ import { prisma } from '@ilaunchify/db'
 import { Resend } from 'resend'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { renderTemplate, absoluteLink } from './templates'
+import { renderEmailHtml, renderEmailText, ctaLabelForEvent } from './email-html'
 import { isEnabled, isInQuietHours } from './preferences'
 
 export interface DispatchInput {
@@ -104,23 +105,20 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
 
           try {
             const linkAbsolute = template.link ? absoluteLink(template.link, audience) : null
-            const html = `
-              <div style="font-family:-apple-system,sans-serif;color:#18181b;max-width:560px;margin:0 auto;padding:24px">
-                <h1 style="font-size:18px;font-weight:600;margin:0 0 12px">${escape(template.title)}</h1>
-                ${template.body ? `<p style="font-size:14px;line-height:1.5;color:#52525b;margin:0 0 16px">${escape(template.body)}</p>` : ''}
-                ${linkAbsolute ? `<a href="${linkAbsolute}" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-size:14px;font-weight:500">View in iLaunchify</a>` : ''}
-                <hr style="border:none;border-top:1px solid #e4e4e7;margin:24px 0" />
-                <p style="font-size:12px;color:#a1a1aa;margin:0">
-                  You received this because notifications are enabled for ${input.event}.
-                  Manage preferences in settings.
-                </p>
-              </div>
-            `
+            const content = {
+              title: template.title,
+              body: template.body || undefined,
+              preheader: template.body || template.title,
+              cta: linkAbsolute
+                ? { label: ctaLabelForEvent(input.event), url: linkAbsolute }
+                : undefined,
+            }
             await resend.emails.send({
               from,
               to: user.email,
               subject: template.title,
-              html,
+              html: renderEmailHtml(content),
+              text: renderEmailText(content),
             })
             await prisma.notification.update({
               where: { id: row.id },
@@ -145,12 +143,4 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     // eslint-disable-next-line no-console
     console.error('[notifications] dispatcher failed', err)
   }
-}
-
-function escape(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
