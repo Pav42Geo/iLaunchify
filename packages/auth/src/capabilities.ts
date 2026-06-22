@@ -4,8 +4,13 @@
 
 import { redirect } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from './guards'
-import { hasCapability, type AdminRole, type Capability } from './capability-rules'
+import { requireRole, requireUser } from './guards'
+import {
+  hasCapability,
+  resolveCapabilities,
+  type AdminRole,
+  type Capability,
+} from './capability-rules'
 
 export {
   ROLE_CAPABILITIES,
@@ -15,6 +20,26 @@ export {
   type AdminRole,
   type Capability,
 } from './capability-rules'
+
+// ADMIN-RBAC-CAST: drop the cast once `prisma generate` knows `adminRole`.
+async function loadAdminRole(userId: string): Promise<AdminRole | null> {
+  const row = await (
+    prisma as unknown as {
+      user: { findUnique: (a: unknown) => Promise<{ adminRole: AdminRole | null } | null> }
+    }
+  ).user.findUnique({ where: { id: userId }, select: { adminRole: true } })
+  return row?.adminRole ?? null
+}
+
+/**
+ * Resolve the signed-in admin's capability list (for sidebar filtering / UI
+ * gating). Call only inside admin surfaces — assumes the layout already ran
+ * requireRole('ADMIN'). Null adminRole → SUPER_ADMIN (P0).
+ */
+export async function getViewerCapabilities(): Promise<Capability[]> {
+  const user = await requireUser()
+  return resolveCapabilities(await loadAdminRole(user.id))
+}
 
 /**
  * Server guard — the real authorization boundary. Confirms the viewer is an
@@ -26,15 +51,8 @@ export {
  */
 export async function requireCapability(cap: Capability) {
   const user = await requireRole('ADMIN')
-  // ADMIN-RBAC-CAST: the generated client doesn't know `adminRole` until Mac
-  // runs `prisma generate` post-`db push`. Drop the cast then (plain
-  // prisma.user.findUnique({ where:{id}, select:{ adminRole:true } })).
-  const row = (await (
-    prisma as unknown as {
-      user: { findUnique: (a: unknown) => Promise<{ adminRole: AdminRole | null } | null> }
-    }
-  ).user.findUnique({ where: { id: user.id }, select: { adminRole: true } })) ?? null
-  if (!hasCapability(row?.adminRole ?? null, cap)) {
+  const role = await loadAdminRole(user.id)
+  if (!hasCapability(role, cap)) {
     redirect('/login?error=forbidden')
   }
   return user

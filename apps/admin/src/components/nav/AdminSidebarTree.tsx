@@ -31,28 +31,37 @@ import {
   SIDEBAR_REGIONS,
   type SidebarItem,
   type SidebarBadges,
+  type SidebarRegion,
 } from './sidebar-config'
 
 const STORAGE_KEY = 'iLaunchify.admin.sidebar.v4.expand'
 
 interface AdminSidebarTreeProps {
   badges: SidebarBadges
+  /** Viewer's admin capabilities (plain string[]). Items tagged with a
+      `capability` the viewer lacks are pruned. Empty/absent = show all. */
+  capabilities?: string[]
 }
 
-export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
+export function AdminSidebarTree({ badges, capabilities }: AdminSidebarTreeProps) {
   const pathname = usePathname()
+  const capSet = capabilities ? new Set(capabilities) : null
+  // Prune capability-gated items the viewer can't access (UX only — pages +
+  // actions enforce requireCapability). Done before ancestor/accordion math so
+  // hidden branches never auto-open or count badges.
+  const regions = capSet ? pruneRegionsByCaps(SIDEBAR_REGIONS, capSet) : SIDEBAR_REGIONS
   const [openSet, setOpenSet] = useState<Set<string>>(new Set())
   const [hydrated, setHydrated] = useState(false)
 
   // Compute which group labels appear on the path from root → active leaf.
   // Returns ['Manage', 'Users & Roles'] for /admin/creators.
-  const activeAncestors = computeActiveAncestors(SIDEBAR_REGIONS, pathname)
+  const activeAncestors = computeActiveAncestors(regions, pathname)
 
   // Pavel 2026-06-01: only one TOP-LEVEL group open at a time (accordion).
   // Compute the set of top-level group labels so we know which ones to
   // close when another top-level opens. Sub-groups (depth ≥1) toggle
   // independently — multiple can stay open.
-  const topLevelLabels = computeTopLevelGroupLabels(SIDEBAR_REGIONS)
+  const topLevelLabels = computeTopLevelGroupLabels(regions)
 
   // First mount: merge localStorage + the active ancestor chain, then
   // collapse all OTHER top-level groups (accordion rule).
@@ -120,7 +129,7 @@ export function AdminSidebarTree({ badges }: AdminSidebarTreeProps) {
       aria-label="Admin navigation"
       className="hidden w-64 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
     >
-      {SIDEBAR_REGIONS.map((region, idx) => (
+      {regions.map((region, idx) => (
         <div
           key={region.id}
           className={cn(idx > 0 && 'mt-5 pt-4')}
@@ -370,6 +379,27 @@ function SidebarLink({
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
+
+// Prune capability-gated items the viewer lacks; drop groups left empty.
+function pruneItemsByCaps(items: SidebarItem[], caps: Set<string>): SidebarItem[] {
+  const out: SidebarItem[] = []
+  for (const item of items) {
+    if (item.kind === 'item') {
+      if (item.capability && !caps.has(item.capability)) continue
+      out.push(item)
+    } else {
+      const children = pruneItemsByCaps(item.children, caps)
+      if (children.length > 0) out.push({ ...item, children })
+    }
+  }
+  return out
+}
+
+function pruneRegionsByCaps(regions: SidebarRegion[], caps: Set<string>): SidebarRegion[] {
+  return regions
+    .map((r) => ({ ...r, items: pruneItemsByCaps(r.items, caps) }))
+    .filter((r) => r.items.length > 0)
+}
 
 function isActive(href: string, pathname: string): boolean {
   const [path] = href.split('?')

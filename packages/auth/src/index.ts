@@ -10,6 +10,7 @@ export {
   resolveCapabilities,
   hasCapability,
   requireCapability,
+  getViewerCapabilities,
   type AdminRole,
   type Capability,
 } from './capabilities'

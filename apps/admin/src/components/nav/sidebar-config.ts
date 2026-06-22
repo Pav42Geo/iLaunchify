@@ -26,6 +26,7 @@
 // =============================================================================
 
 import type { LucideIcon } from 'lucide-react'
+import type { Capability } from '@ilaunchify/auth'
 import {
   Database,
   LayoutDashboard,
@@ -102,6 +103,10 @@ export type SidebarItem =
       badgeKey?: BadgeKey
       /** True when the destination route hasn't shipped yet. Renderer hides. */
       hiddenUntilBuilt?: boolean
+      /** Admin RBAC (docs/ADMIN_RBAC.md) — hide unless the viewer holds this
+          capability. UX only; the page/action requireCapability is the real
+          fence. Untagged items are visible to every admin. */
+      capability?: Capability
     }
   | {
       kind: 'group'
@@ -195,7 +200,7 @@ const PRIMARY: SidebarRegion = {
       label: 'Users & Roles',
       icon: Users,
       children: [
-        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', hiddenUntilBuilt: true, capability: 'users:admin' },
         { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
         { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
       ],
@@ -227,10 +232,10 @@ const PRIMARY: SidebarRegion = {
       label: 'Compliance & Data Rights',
       icon: Shield,
       children: [
-        { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access' },
-        { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents' },
-        { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access', capability: 'compliance:admin' },
+        { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents', capability: 'compliance:admin' },
+        { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true, capability: 'compliance:admin' },
+        { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true, capability: 'compliance:admin' },
       ],
     },
     // ---- Settings — now also holds Languages & Markets + Communications -----
@@ -239,21 +244,21 @@ const PRIMARY: SidebarRegion = {
       label: 'Settings',
       icon: ShieldCheck,
       children: [
-        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers' },
+        { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers', capability: 'tiers:write' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains' },
-        { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy' },
+        { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
         {
           kind: 'group',
           label: 'Order Settings',
           icon: ShoppingBag,
           children: [
-            { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees' },
-            { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing' },
-            { kind: 'item', label: 'Routing preview', icon: Workflow, href: '/routing-preview' },
-            { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping' },
-            { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations' },
-            { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides' },
-            { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings' },
+            { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees', capability: 'billing:write' },
+            { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing', capability: 'billing:write' },
+            { kind: 'item', label: 'Routing preview', icon: Workflow, href: '/routing-preview', capability: 'billing:write' },
+            { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping', capability: 'billing:write' },
+            { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations', capability: 'refunds:approve' },
+            { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides', capability: 'billing:write' },
+            { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings', capability: 'billing:write' },
           ],
         },
         { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
