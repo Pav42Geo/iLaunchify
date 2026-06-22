@@ -65,7 +65,7 @@ when we tune them.
 | Role | Capabilities | Backfill |
 |---|---|---|
 | `SUPPORT_AGENT` | tickets:read/write, orders:read, creators:read, partners:read, refunds:propose, audit:read | — |
-| `SUPPORT_LEAD` | …agent + tickets:admin, refunds:approve, orders:write | — |
+| `SUPPORT_LEAD` | …agent + tickets:admin, refunds:approve, orders:write, **billing:read**, **reviews:write** | — |
 | `BILLING_ADMIN` | billing:read/write, tiers:write, refunds:approve/execute, orders:read, audit:read | — |
 | `SUPER_ADMIN` | `*` (all) | **existing admins backfilled here** |
 
@@ -187,13 +187,16 @@ excludes billing/users/security) the same way the FSM/tier tables are tested.
 - "View as creator/partner" impersonation — explicitly OUT of V1 (audit + abuse
   surface); revisit separately.
 
-## Open questions for Pavel
+## Resolved (Pavel 2026-06-21)
 
-1. Who owns the operational **review queues** (product approvals, cert/ingredient
-   review)? Spec assumes Lead + Super for now; a dedicated `REVIEW_OPS` role is a
-   clean later add.
-2. Should `SUPPORT_LEAD` also get read-only **billing** (to answer payout
-   questions) without write? Easy to add `billing:read` to the Lead bundle.
+1. **Review queues** (product approvals, cert/ingredient/packaging review) →
+   `SUPPORT_LEAD` + `SUPER_ADMIN` own them via `reviews:write`. A dedicated
+   `REVIEW_OPS` role stays a clean later add (pure matrix addition).
+2. **Support Lead gets read-only billing** (`billing:read`) — can answer payout
+   questions, cannot change fees/tiers/settings.
+
+## Still open
+
 3. Invite flow: email invite + set-password, or create-then-share-credentials?
    (Touches the prohibited "create accounts / set passwords" area — the human
-   completes credential setup; we only assign the role.)
+   completes credential setup; we only assign the role.) Doesn't block P0–P2.
