@@ -16,7 +16,7 @@
 // for back-compat with existing PartnerActions calls.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
@@ -41,7 +41,7 @@ export async function promotePartnerStatus({
   toStatus,
   reason,
 }: PromoteInput): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('partners:approve')
 
   const partner = await prisma.partner.findUnique({
     where: { id: partnerId },
@@ -190,7 +190,7 @@ export async function setPartnerTier(input: {
   toTier: 'VERIFIED' | 'TRUSTED' | 'PREMIER'
   reason?: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('partners:approve')
 
   const partner = await prisma.partner.findUnique({
     where: { id: input.partnerId },
@@ -232,7 +232,7 @@ export async function togglePartnerService(input: {
   serviceId: string
   toActive: boolean
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('partners:approve')
 
   const service = await prisma.partnerService.findUnique({
     where: { id: input.serviceId },

@@ -6,7 +6,7 @@
 // is wired, the admin pastes this into an email manually.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
@@ -30,7 +30,7 @@ export async function invitePartner(input: {
   companyName: string
   serviceType: ServiceType
 }): Promise<InvitePartnerResult> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('partners:approve')
   const parsed = InviteSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }

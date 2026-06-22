@@ -10,7 +10,7 @@
 // computeOverallStatus() to show "ready to activate" vs "needs more sections."
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import type {
@@ -39,7 +39,7 @@ export async function setSectionStatus({
   status: VerificationSectionStatus
   adminNotes?: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('partners:approve')
 
   const partner = await prisma.partner.findUnique({
     where: { id: partnerId },

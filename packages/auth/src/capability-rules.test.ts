@@ -46,7 +46,7 @@ export const scenarioSupportAgentFenced = () => {
   const cannot: Parameters<typeof hasCapability>[1][] = [
     'refunds:approve', 'refunds:execute', 'billing:read', 'billing:write',
     'orders:write', 'users:admin', 'security:admin', 'platform:admin',
-    'tickets:admin', 'reviews:write', 'tiers:write',
+    'tickets:admin', 'reviews:write', 'tiers:write', 'partners:approve',
   ]
   for (const c of can) assert(hasCapability('SUPPORT_AGENT', c), `agent should have ${c}`)
   for (const c of cannot) assert(!hasCapability('SUPPORT_AGENT', c), `agent should NOT have ${c}`)
@@ -56,6 +56,7 @@ export const scenarioSupportAgentFenced = () => {
 export const scenarioSupportLeadFenced = () => {
   const can: Parameters<typeof hasCapability>[1][] = [
     'tickets:admin', 'refunds:approve', 'orders:write', 'billing:read', 'reviews:write',
+    'partners:approve',
   ]
   const cannot: Parameters<typeof hasCapability>[1][] = [
     'billing:write', 'refunds:execute', 'tiers:write', 'users:admin',
@@ -71,7 +72,7 @@ export const scenarioBillingAdminFenced = () => {
     'billing:write', 'tiers:write', 'refunds:execute',
   ]
   const cannot: Parameters<typeof hasCapability>[1][] = [
-    'tickets:write', 'users:admin', 'security:admin', 'platform:admin',
+    'tickets:write', 'users:admin', 'security:admin', 'platform:admin', 'partners:approve',
   ]
   for (const c of can) assert(hasCapability('BILLING_ADMIN', c), `billing should have ${c}`)
   for (const c of cannot) assert(!hasCapability('BILLING_ADMIN', c), `billing should NOT have ${c}`)

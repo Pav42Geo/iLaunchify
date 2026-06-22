@@ -73,6 +73,7 @@ export const ROLE_CAPABILITIES: Record<AdminRole, Capability[] | '*'> = {
     'orders:write',
     'billing:read', // read-only — answer payout questions, never change config
     'reviews:write', // owns the operational review queues (with super admin)
+    'partners:approve', // verify / activate / strike partners (Pavel 2026-06-21)
   ],
   BILLING_ADMIN: [
     'billing:read', 'billing:write', 'tiers:write',
