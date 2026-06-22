@@ -51,6 +51,25 @@ export async function listBrandTemplates(brandId: string): Promise<BrandTemplate
   }
 }
 
+/** Read one template's Fabric JSON for loading onto the Studio stage. Owner-guarded
+ *  by brandId; null on pre-migration / not found / wrong owner. */
+export async function getBrandTemplateCanvasJson(
+  brandId: string,
+  templateId: string,
+): Promise<string | null> {
+  const d = delegate()
+  if (!d) return null
+  try {
+    const row = await d
+      .findUnique({ where: { id: templateId }, select: { brandId: true, canvasJson: true } })
+      .catch(() => null)
+    if (!row || row.brandId !== brandId) return null
+    return (row.canvasJson as string | null) ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Count a brand's templates — for the per-tier cap check. 0 on pre-migration. */
 export async function countBrandTemplates(brandId: string): Promise<number> {
   const d = delegate()

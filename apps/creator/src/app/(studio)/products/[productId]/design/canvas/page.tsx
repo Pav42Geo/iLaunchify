@@ -28,6 +28,7 @@ import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
 import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
+import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
 import { resolveStudioNutrition, getVarietyPreviewColumns } from '@/components/labels/label-actions'
 import {
   panelDataToNutritionPanelData,
@@ -183,51 +184,9 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   }
 
   // ---- Resolve brand assets -------------------------------------------------
-  // Batch-fetch logo Assets + active fonts referenced by brandFontIds[].
-  const logoIds = [
-    product.brand.logoAssetId,
-    product.brand.logoIconAssetId,
-    product.brand.logoHorizontalAssetId,
-  ].filter((v): v is string => v !== null)
-
-  const [logoAssets, fontRows] = await Promise.all([
-    logoIds.length
-      ? prisma.asset.findMany({
-          where: { id: { in: logoIds } },
-          select: { id: true, publicUrl: true, mimeType: true },
-        })
-      : Promise.resolve([]),
-    product.brand.brandFontIds.length
-      ? prisma.typographyFont.findMany({
-          where: { id: { in: product.brand.brandFontIds }, status: 'ACTIVE' },
-          select: { id: true, family: true, weight: true, style: true, webfontUrl: true },
-        })
-      : Promise.resolve([]),
-  ])
-
-  const logoByAssetId = new Map(logoAssets.map((a) => [a.id, a]))
-
-  const brandAssets: BrandCanvasAssets = {
-    brandId: product.brand.id,
-    brandName: product.brand.name,
-    colorPrimary: product.brand.colorPrimary,
-    colorSecondary: product.brand.colorSecondary,
-    colorAccent: product.brand.colorAccent,
-    extraSwatches: product.brand.brandSwatches,
-    fonts: fontRows.map((f) => ({
-      id: f.id,
-      family: f.family,
-      weight: f.weight,
-      style: f.style,
-      webfontUrl: f.webfontUrl,
-    })),
-    logos: [
-      mkLogo('PRIMARY', product.brand.logoAssetId, logoByAssetId),
-      mkLogo('ICON', product.brand.logoIconAssetId, logoByAssetId),
-      mkLogo('HORIZONTAL', product.brand.logoHorizontalAssetId, logoByAssetId),
-    ].filter((l): l is NonNullable<typeof l> => l !== null),
-    tagline: product.brand.tagline,
-  }
+  // Shared builder (also used by the in-Studio brand switcher) — colors / fonts /
+  // logos / tagline for the product's brand kit.
+  const brandAssets: BrandCanvasAssets = await buildBrandCanvasAssets(product.brand)
 
   // Hydrate the canvas with any previously-saved Fabric state. Null → fresh
   // empty canvas (first time editing this product).
@@ -492,22 +451,6 @@ function deriveProductCtx(product: {
     bioengineered,
     netQuantity,
     netQuantityKind: kind,
-  }
-}
-
-function mkLogo(
-  variant: 'PRIMARY' | 'ICON' | 'HORIZONTAL',
-  assetId: string | null,
-  byId: Map<string, { id: string; publicUrl: string | null; mimeType: string }>,
-) {
-  if (!assetId) return null
-  const asset = byId.get(assetId)
-  if (!asset) return null
-  return {
-    id: asset.id,
-    variant,
-    publicUrl: asset.publicUrl,
-    mimeType: asset.mimeType,
   }
 }
 

@@ -128,6 +128,7 @@ export {
 } from './tax-documents'
 export {
   listBrandTemplates,
+  getBrandTemplateCanvasJson,
   countBrandTemplates,
   createBrandTemplate,
   deleteBrandTemplate,

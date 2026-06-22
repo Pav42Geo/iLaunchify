@@ -235,6 +235,8 @@ export const AUDIT_ACTIONS = [
   'TICKET_LINK_ENTITY',
   'TICKET_SLA_BREACHED',
   'SUPPORT_SETTINGS_UPDATED',
+  // Brand Kit — reusable Studio templates (docs/BRAND_KIT_PROPOSAL.md)
+  'BRAND_TEMPLATE_CREATED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

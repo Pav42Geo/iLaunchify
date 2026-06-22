@@ -45,6 +45,7 @@ import {
   type AafcoPanelData,
   SavedIndicator,
   snapshotCanvasAsPng,
+  CANVAS_PROPERTIES_TO_INCLUDE,
   type SnapshotItem,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -102,6 +103,8 @@ import { BackgroundDrawer } from './drawers/BackgroundDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
+import { BrandDrawer } from './drawers/BrandDrawer'
+import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { GraphicsDrawer } from './drawers/GraphicsDrawer'
@@ -113,6 +116,7 @@ import { toast } from 'sonner'
 import {
   Inbox,
   Tag,
+  Palette,
   Type as TypeIcon,
   Image as ImageIcon,
   Sparkles,
@@ -247,6 +251,7 @@ interface Props {
 type ToolKey =
   | 'product'
   | 'label'
+  | 'brand'
   | 'text'
   | 'images'
   | 'graphics'
@@ -275,6 +280,7 @@ const TOOLS: Array<{
 }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: true },
+  { key: 'brand', label: 'Brand', icon: Palette, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   { key: 'images', label: 'Images', icon: ImageIcon, v1: true },
   { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: true },
@@ -319,6 +325,9 @@ export function CanvasLayoutShell({
   nonFoodPanelData,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
+  // Brand Kit — the active kit the Studio pulls assets/templates from (and saves
+  // templates to). Defaults to the product's own brand; the Brand drawer switches it.
+  const [activeBrandId, setActiveBrandId] = useState(brandAssets.brandId)
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [showFrames, setShowFrames] = useState(true)
   // Resolve die-line frames for the current context. Empty when no die-line —
@@ -747,6 +756,25 @@ export function CanvasLayoutShell({
     toast.success('Draft saved')
   }, [autosave, productId, grabThumb, loadHistory])
 
+  // "Save as template" (☰ menu) — persist the current design to the ACTIVE brand
+  // kit as a reusable BrandTemplate. The per-tier cap is enforced server-side; we
+  // just surface the result. Fabric v6: toObject(props), not toJSON.
+  const handleSaveAsTemplate = React.useCallback(async () => {
+    if (!canvas) return
+    const name = window.prompt('Name this template')?.trim()
+    if (!name) return
+    const toObj = canvas.toObject as (p?: string[]) => object
+    const canvasJson = JSON.stringify(toObj.call(canvas, Array.from(CANVAS_PROPERTIES_TO_INCLUDE)))
+    const res = await saveAsBrandTemplate({
+      brandId: activeBrandId,
+      name,
+      canvasJson,
+      thumbnailUrl: grabThumb(),
+    })
+    if (res.ok) toast.success(`Saved “${name}” to your brand kit`)
+    else toast.error(res.error)
+  }, [canvas, activeBrandId, grabThumb])
+
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
@@ -882,6 +910,7 @@ export function CanvasLayoutShell({
         lastSavedAt={autosave.lastSavedAt}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
+        onSaveAsTemplate={handleSaveAsTemplate}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -971,6 +1000,8 @@ export function CanvasLayoutShell({
               nonFoodPanelData={nonFoodPanelData}
               activeFlavorPresetId={activeFlavorPresetId}
               recipeHash={recipeHash}
+              activeBrandId={activeBrandId}
+              onActiveBrandChange={setActiveBrandId}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1238,6 +1269,7 @@ function TopBar({
   canDownloadLabels,
   onOpenHistory,
   onSaveDraft,
+  onSaveAsTemplate,
 }: {
   productName: string
   productId: string
@@ -1263,6 +1295,8 @@ function TopBar({
   canDownloadLabels: boolean
   /** Studio ☰ menu "Save draft" — flush autosave + pin a milestone. */
   onSaveDraft: () => void
+  /** Studio ☰ menu "Save as template" — persist to the active brand kit. */
+  onSaveAsTemplate: () => void
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -1276,7 +1310,7 @@ function TopBar({
           </span>
         </Link>
         {/* 3-line menu sits to the right of the logo. */}
-        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} onSaveDraft={onSaveDraft} />
+        <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} onSaveDraft={onSaveDraft} onSaveAsTemplate={onSaveAsTemplate} />
         <div className="mx-1 h-6 w-px bg-ink-200" />
         {/* Autosave status + history, then undo/redo — all icon + tooltip, left-aligned. */}
         <SavedIndicator
@@ -1476,6 +1510,8 @@ function ToolDrawer({
   nonFoodPanelData,
   activeFlavorPresetId,
   recipeHash,
+  activeBrandId,
+  onActiveBrandChange,
   onClose,
 }: {
   tool: ToolKey
@@ -1506,6 +1542,8 @@ function ToolDrawer({
   nonFoodPanelData: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
   activeFlavorPresetId: string | null
   recipeHash: string | null
+  activeBrandId: string
+  onActiveBrandChange: (brandId: string) => void
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1513,6 +1551,7 @@ function ToolDrawer({
   const titles: Record<ToolKey, string> = {
     product: 'Product',
     label: 'Label',
+    brand: 'Brand',
     text: 'Text',
     images: 'Images',
     graphics: 'Graphics',
@@ -1575,6 +1614,14 @@ function ToolDrawer({
             }}
           />
         )}
+        {tool === 'brand' && (
+          <BrandDrawer
+            canvas={canvas}
+            brandAssets={brandAssets}
+            activeBrandId={activeBrandId}
+            onActiveBrandChange={onActiveBrandChange}
+          />
+        )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'images' && (
           <ImagesDrawer
@@ -1598,6 +1645,7 @@ function ToolDrawer({
         )}
         {tool !== 'product' &&
           tool !== 'label' &&
+          tool !== 'brand' &&
           tool !== 'text' &&
           tool !== 'images' &&
           tool !== 'background' &&

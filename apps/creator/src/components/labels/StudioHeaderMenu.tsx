@@ -7,12 +7,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Menu, Download, Eye, MessageSquarePlus, Loader2, Save } from 'lucide-react'
+import { Menu, Download, Eye, MessageSquarePlus, Loader2, Save, LayoutTemplate } from 'lucide-react'
 import { useLabelDownload } from './useLabelDownload'
 
 const FEEDBACK_MAILTO = 'mailto:ilaunchify@gmail.com?subject=Design%20Studio%20feedback'
 
-export function StudioHeaderMenu({ productId, productName, canDownloadLabels, onSaveDraft }: { productId: string; productName: string; canDownloadLabels: boolean; onSaveDraft?: () => void }): JSX.Element {
+export function StudioHeaderMenu({ productId, productName, canDownloadLabels, onSaveDraft, onSaveAsTemplate }: { productId: string; productName: string; canDownloadLabels: boolean; onSaveDraft?: () => void; onSaveAsTemplate?: () => void }): JSX.Element {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const { trigger, busy, holder } = useLabelDownload(productId, productName)
@@ -43,14 +43,18 @@ export function StudioHeaderMenu({ productId, productName, canDownloadLabels, on
       {open && (
         <div role="menu" className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
           {onSaveDraft && (
-            <>
-              <button role="menuitem" type="button" onClick={() => { onSaveDraft(); setOpen(false) }} className={itemClass}>
-                <Save className="h-4 w-4 text-ink-400" />
-                Save draft
-              </button>
-              <div className="my-1 h-px bg-ink-100" />
-            </>
+            <button role="menuitem" type="button" onClick={() => { onSaveDraft(); setOpen(false) }} className={itemClass}>
+              <Save className="h-4 w-4 text-ink-400" />
+              Save draft
+            </button>
           )}
+          {onSaveAsTemplate && (
+            <button role="menuitem" type="button" onClick={() => { onSaveAsTemplate(); setOpen(false) }} className={itemClass}>
+              <LayoutTemplate className="h-4 w-4 text-ink-400" />
+              Save as template
+            </button>
+          )}
+          {(onSaveDraft || onSaveAsTemplate) && <div className="my-1 h-px bg-ink-100" />}
           <Link role="menuitem" href={`/products/${productId}`} onClick={() => setOpen(false)} className={itemClass}>
             <Eye className="h-4 w-4 text-ink-400" />
             Product details
