@@ -124,6 +124,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     dashboardUrl: 'https://dash.cloudflare.com/?to=/:account/r2/api-tokens',
     rotationDays: 180,
     lifecycle: 'live',
+    testable: true,
     envVars: [
       { name: 'R2_ACCOUNT_ID', kind: 'config', required: true },
       { name: 'R2_ACCESS_KEY_ID', kind: 'secret', required: true },

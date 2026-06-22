@@ -19,6 +19,7 @@ export {
   type UploadResult,
 } from './upload'
 export { getSignedReadUrl } from './signed-url'
+export { pingR2, type R2PingResult } from './health'
 export {
   partnerFileKey,
   brandAssetKey,

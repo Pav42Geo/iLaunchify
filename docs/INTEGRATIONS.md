@@ -64,10 +64,11 @@ READ-ONLY call to the vendor with the already-configured key and returns only
 | USDA FDC | `GET /fdc/v1/foods/search?pageSize=1` |
 | Anthropic | `GET /v1/models` |
 | Compliance service | `GET {COMPLIANCE_SERVICE_URL}/health` (bearer) |
+| Cloudflare R2 | `HeadBucket` via `@ilaunchify/storage` `pingR2()` (read-only) |
 
 Add a probe by adding the integration's `key` to `PROBES` in `actions.ts` and setting
-`testable: true` in the registry. (R2/Google/DB/cron have no cheap read-only HTTP probe;
-their configured-status is shown by the env checklist.)
+`testable: true` in the registry. (Google/DB/cron have no cheap read-only probe; their
+configured-status is shown by the env checklist.)
 
 ## Rotation tracking (built)
 
@@ -100,5 +101,4 @@ page so you can see if it's configured).
 
 ## Possible follow-ups
 
-- An R2 probe (S3 HeadBucket via the AWS SDK) if you want storage-creds verification.
 - Link out to an adopted secrets manager once chosen.

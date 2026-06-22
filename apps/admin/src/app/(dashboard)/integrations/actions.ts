@@ -8,6 +8,7 @@
 
 import { requireCapability } from '@ilaunchify/auth'
 import { markIntegrationRotated, setIntegrationCadence } from '@ilaunchify/db'
+import { pingR2 } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { INTEGRATIONS } from './integration-registry'
@@ -111,6 +112,8 @@ const PROBES: Record<string, () => Promise<TestResult>> = {
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     })
   },
+  // Read-only HeadBucket via @ilaunchify/storage (owns the AWS SDK).
+  r2: async () => pingR2(),
   // Internal service health endpoint (bearer-authenticated).
   'compliance-service': async () => {
     const base = need('COMPLIANCE_SERVICE_URL')
