@@ -57,7 +57,7 @@ The **execution glue** is Prisma/Stripe-bound and can't run as a pure unit test:
 ## Low-priority follow-ups (non-blocking)
 
 - `transfer-planner.ts` re-implements the fee formula inline instead of calling `computeApplicationFee`; both are tested and identical, but consolidating would remove the duplication (deferred to avoid an orders→payments dependency).
-- `sample-credit.ts` / `sample-quote.ts` (sample-order economics) are pure but not yet unit-tested — lower stakes than the production-order money path.
+- `sample-credit.ts` is now covered (`sample-credit.test.ts`, 14 assertions: mint caps + expiry, usability, FIFO apply). `sample-quote.ts` (marketing/lib) remains untested — lowest stakes (a pre-checkout quote, not a settlement path).
 
 ## Bottom line
 
