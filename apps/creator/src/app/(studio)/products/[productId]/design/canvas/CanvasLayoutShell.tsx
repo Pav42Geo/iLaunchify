@@ -84,6 +84,7 @@ import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
+import { applyBaseToAllFlavors } from './flavor-actions'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot } from './actions'
@@ -1108,6 +1109,34 @@ export function CanvasLayoutShell({
 // Top bar
 // ============================================================================
 
+/** "Apply base to all flavors" — clones the base art into every flavor's Design
+ *  (with each flavor's name + accent applied). Shown on the Base tab. */
+function ApplyBaseButton({ productId }: { productId: string }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  async function run() {
+    setBusy(true)
+    setMsg(null)
+    const res = await applyBaseToAllFlavors(productId)
+    setBusy(false)
+    setMsg(res.ok ? `Applied to ${res.flavorCount} flavors ✓` : res.error)
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={run}
+        disabled={busy}
+        title="Copy this base design onto every flavor (name + accent applied per flavor)"
+        className="rounded-full border border-ink-300 px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:bg-ink-100 disabled:opacity-40"
+      >
+        {busy ? 'Applying…' : 'Apply to all flavors'}
+      </button>
+      {msg && <span className="text-[10.5px] text-ink-500">{msg}</span>}
+    </div>
+  )
+}
+
 /** One flavor tab in the TopBar switcher. Plain <a> = full reload so the canvas
  *  re-hydrates the target flavor's saved Design (no client re-hydration). */
 function FlavorPill({
@@ -1233,6 +1262,7 @@ function TopBar({
                 swatch={f.swatchHex}
               />
             ))}
+            {!activeFlavorPresetId && <ApplyBaseButton productId={productId} />}
           </div>
         )}
       </div>
