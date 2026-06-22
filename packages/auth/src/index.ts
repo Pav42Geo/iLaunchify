@@ -19,6 +19,13 @@ export {
 } from './capabilities'
 export { createUserWithRole } from './signup'
 export type { SignupInput, SignupResult, SignupError } from './signup'
+// Admin-team invite — pure acceptance decision (docs/ADMIN_RBAC.md).
+export { evaluateInviteAcceptance } from './admin-invite'
+export type {
+  InviteAcceptanceDecision,
+  InviteAcceptanceInput,
+  InviteDenyReason,
+} from './admin-invite'
 // Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — DB-backed rate limiting.
 export { checkRateLimit, requestIp } from './rate-limit'
 export type { RateLimitOptions, RateLimitResult } from './rate-limit'

@@ -6,7 +6,7 @@
 // through the normal auth providers; accepting only assigns them the role.
 
 import { createHash } from 'node:crypto'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, evaluateInviteAcceptance, type InviteDenyReason } from '@ilaunchify/auth'
 import {
   prisma,
   getAdminInviteByTokenHash,
@@ -20,27 +20,30 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
+function denyMessage(reason: InviteDenyReason, invitedEmail: string): string {
+  switch (reason) {
+    case 'not-found':
+      return 'This invite link is invalid.'
+    case 'not-pending':
+      return 'This invite has already been used or revoked.'
+    case 'expired':
+      return 'This invite has expired. Ask for a new one.'
+    case 'email-mismatch':
+      return `This invite was sent to ${invitedEmail}. Sign in with that email to accept.`
+    case 'is-customer-account':
+      return 'This account is a creator/partner account — use a separate account to join the admin team.'
+  }
+}
+
 export async function acceptAdminInvite(input: { token: string }): Promise<Result> {
   const user = await requireUser()
   const token = input.token?.trim()
   if (!token) return { ok: false, error: 'Missing invite token.' }
 
   const invite = await getAdminInviteByTokenHash(hashToken(token))
-  if (!invite) return { ok: false, error: 'This invite link is invalid.' }
-  if (invite.status !== 'PENDING') {
-    return { ok: false, error: 'This invite has already been used or revoked.' }
-  }
-  if (invite.expiresAt.getTime() < Date.now()) {
-    return { ok: false, error: 'This invite has expired. Ask for a new one.' }
-  }
-  if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
-    return {
-      ok: false,
-      error: `This invite was sent to ${invite.email}. Sign in with that email to accept.`,
-    }
-  }
 
-  // Don't convert a real creator/partner account into an admin.
+  // Account type matters for the decision (a creator/partner account can't be
+  // converted), so load it before deciding.
   const account = await (
     prisma.user as unknown as {
       findUnique: (a: unknown) => Promise<{
@@ -53,12 +56,21 @@ export async function acceptAdminInvite(input: { token: string }): Promise<Resul
     where: { id: user.id },
     select: { role: true, creatorProfile: { select: { id: true } }, partner: { select: { id: true } } },
   })
-  if (account && account.role !== 'ADMIN' && (account.creatorProfile || account.partner)) {
-    return {
-      ok: false,
-      error: 'This account is a creator/partner account — use a separate account to join the admin team.',
-    }
+  const userIsCustomerAccount =
+    !!account && account.role !== 'ADMIN' && (!!account.creatorProfile || !!account.partner)
+
+  // All the branching lives in the pure, unit-tested decision (admin-invite.ts).
+  const decision = evaluateInviteAcceptance({
+    invite,
+    now: new Date(),
+    userEmail: user.email,
+    userIsCustomerAccount,
+  })
+  if (!decision.ok) {
+    return { ok: false, error: denyMessage(decision.reason, invite?.email ?? '') }
   }
+  // From here `invite` is guaranteed non-null + PENDING (the decision checked).
+  if (!invite) return { ok: false, error: 'This invite link is invalid.' }
 
   // ADMIN-RBAC-CAST: adminRole write until the generated client knows it.
   await (

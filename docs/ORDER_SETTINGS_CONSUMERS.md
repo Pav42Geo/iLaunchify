@@ -27,15 +27,15 @@ This tracks which settings actually drive behavior vs. which are still policy-on
 | `partnerStrikeOnCancel` | **2026-06-20 — wired, pending migration.** New `PartnerStrike` model; admin `reviewCancellation` records an ACTIVE strike against the at-fault partner (the requester) on APPROVE when the policy is on. Active count shows on the admin partner detail. Migration runs on Mac — see `docs/HANDOFF-partner-strike-migration.md`; cast-guarded until then. |
 | _(disputeWindowDays moved to wired — see below)_ | |
 
-### Partially wired — `cancellationFeeBps` / `refundProcessingFeeBps`
+### Wired — `cancellationFeeBps` / `refundProcessingFeeBps`
 
-**2026-06-20.** Computed but not yet executed. `computeCancellationOutcome(totalCents, policy)`
+**2026-06-20 computed; execution wired 2026-06-21.** `computeCancellationOutcome(totalCents, policy)`
 (pure, `packages/orders/cancellation-refund.ts`, golden-tested) turns the two fee bps
 into `{ cancellationFeeCents, processingFeeCents, refundCents, feesExceededBasis }`
-against the order total. Admin `reviewCancellation` computes it on APPROVE and records
-the breakdown in the audit snapshot, so the exact fee/refund amounts under the live
-policy are captured at decision time. The actual **Stripe refund call** lands with the
-payments refund capability (no `prisma.refund` writer exists yet) — at which point it
-consumes the same engine.
+against the order total. Admin `reviewCancellation` computes it on APPROVE, records the
+breakdown in the audit snapshot, **and now calls the gated `executeOrderRefund` for the
+net `refundCents`** (best-effort; refund failure never blocks the cancel). Execution is
+flag-gated by `STRIPE_REFUNDS_ENABLED` — dry-run records `REFUND_PLANNED` when off,
+`REFUND_ISSUED` when on, `REFUND_FAILED` on error.
 
 When a deferred consumer ships, move its row up and drop the constant.
