@@ -395,7 +395,7 @@ async function clearTierDunningIfRecovered(stripeSubscriptionId: string) {
   ).creatorProfile
   const profile = await profileModel
     .findUnique({
-      where: { stripeTierSubscriptionId },
+      where: { stripeTierSubscriptionId: stripeSubscriptionId },
       select: { id: true, tierGraceUntil: true },
     })
     .catch(() => null)
