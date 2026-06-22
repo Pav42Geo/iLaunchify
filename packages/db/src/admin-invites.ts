@@ -3,6 +3,7 @@
 // stores/reads the hash. Reads fail safe (empty list) on error.
 
 import { prisma } from './index'
+import type { AdminRole } from '@prisma/client'
 
 export type AdminInviteStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
 
@@ -54,7 +55,8 @@ export async function createAdminInvite(input: {
   const row = await prisma.adminInvite.create({
     data: {
       email: input.email,
-      adminRole: input.adminRole,
+      // adminRole is accepted as a loose string; values match the AdminRole enum.
+      adminRole: input.adminRole as AdminRole,
       tokenHash: input.tokenHash,
       invitedById: input.invitedById,
       expiresAt: input.expiresAt,

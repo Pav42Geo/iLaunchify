@@ -6,8 +6,14 @@
 // (= no grants = least privilege).
 
 import { prisma } from './index'
+import type { AdminRole } from '@prisma/client'
 
 type RoleCapRow = { role: string; capability: string }
+
+// The `role` column is the AdminRole enum. This layer accepts plain strings
+// (callers pass capability-rule role keys); valid values always come from the
+// AdminRole set, so cast at the Prisma boundary.
+const asRole = (role: string) => role as AdminRole
 
 /** Full matrix as { role: capability[] }. Roles with no grants are absent. */
 export async function getRoleCapabilityMatrix(): Promise<Record<string, string[]>> {
@@ -38,10 +44,10 @@ export async function setRoleCapability(
   if (enabled) {
     // Idempotent grant — ignore unique-constraint races.
     await prisma.roleCapability
-      .create({ data: { role, capability } })
+      .create({ data: { role: asRole(role), capability } })
       .catch(() => undefined)
   } else {
-    await prisma.roleCapability.deleteMany({ where: { role, capability } })
+    await prisma.roleCapability.deleteMany({ where: { role: asRole(role), capability } })
   }
 }
 
@@ -51,11 +57,11 @@ export async function setRoleCapability(
  */
 export async function setRoleCapabilities(role: string, capabilities: string[]): Promise<void> {
   const unique = Array.from(new Set(capabilities))
-  await prisma.roleCapability.deleteMany({ where: { role } })
+  await prisma.roleCapability.deleteMany({ where: { role: asRole(role) } })
   if (unique.length > 0) {
     await prisma.roleCapability
       .createMany({
-        data: unique.map((capability) => ({ role, capability })),
+        data: unique.map((capability) => ({ role: asRole(role), capability })),
         skipDuplicates: true,
       })
       .catch(() => undefined)

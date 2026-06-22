@@ -2,7 +2,7 @@
 // directly so the actor-role + payload conventions stay consistent.
 
 import { prisma } from '@ilaunchify/db'
-import type { AdminRole } from '@ilaunchify/db'
+import type { AdminRole, Prisma } from '@ilaunchify/db'
 import type { AuditEntryInput } from './types'
 
 /**
@@ -26,7 +26,7 @@ export async function logAudit(input: AuditEntryInput): Promise<void> {
         action: input.action,
         fromValue: input.fromValue ?? null,
         toValue: input.toValue ?? null,
-        payload: input.payload ?? undefined,
+        payload: (input.payload ?? undefined) as Prisma.InputJsonObject | undefined,
       },
     })
   } catch (err) {
