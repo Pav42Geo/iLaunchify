@@ -2472,6 +2472,10 @@ model OrderItemFlavor {
   qty            Int // units of THIS flavor in the pack
   flavorName     String // snapshot of FlavorPreset.name at order time
   soiSnapshot    String? // snapshot of the flavor's Statement of Identity at order time
+  // Per-flavor labels Phase 4 — the flavor's working DesignVersion at order time,
+  // snapshotted so production carries the right per-flavor artwork. Soft FK
+  // (null = no per-flavor design → falls back to the shared/base design).
+  designVersionId String?
   orderItem      OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   flavorPreset   FlavorPreset @relation(fields: [flavorPresetId], references: [id])
   createdAt      DateTime     @default(now())

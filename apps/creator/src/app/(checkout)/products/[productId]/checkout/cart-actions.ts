@@ -171,7 +171,7 @@ export async function placeOrderFromCheckoutDraft(
   // flavors whose per-flavor quantities sum to the order quantity. We snapshot the
   // flavor name + Statement of Identity at order time (the FlavorPreset can change
   // later but the produced labels must reflect what was sold).
-  let flavorRows: Array<{ flavorPresetId: string; qty: number; flavorName: string; soiSnapshot: string | null }> = []
+  let flavorRows: Array<{ flavorPresetId: string; qty: number; flavorName: string; soiSnapshot: string | null; designVersionId: string | null }> = []
   const packRules = product.productTemplateId
     ? await prisma.productTemplate.findUnique({
         where: { id: product.productTemplateId },
@@ -194,11 +194,26 @@ export async function placeOrderFromCheckoutDraft(
       select: { id: true, name: true, statementOfIdentity: true },
     })
     const byId = new Map(presets.map((p) => [p.id, p]))
+    // Per-flavor labels Phase 4 — resolve each flavor's working DesignVersion so
+    // the order can snapshot the right per-flavor artwork (safe read; the write is
+    // best-effort post-commit below). Null = the flavor has no per-flavor design.
+    const flavorDesignVersions = await prisma.designVersion.findMany({
+      where: {
+        version: 1,
+        design: { productId: product.id, flavorPresetId: { in: chosen.map((p) => p.flavorPresetId) } },
+      },
+      select: { id: true, design: { select: { flavorPresetId: true } } },
+    })
+    const dvByFlavor = new Map<string, string>()
+    for (const dv of flavorDesignVersions) {
+      if (dv.design.flavorPresetId) dvByFlavor.set(dv.design.flavorPresetId, dv.id)
+    }
     flavorRows = chosen.map((p) => ({
       flavorPresetId: p.flavorPresetId,
       qty: p.qty,
       flavorName: byId.get(p.flavorPresetId)?.name ?? 'Flavor',
       soiSnapshot: byId.get(p.flavorPresetId)?.statementOfIdentity ?? null,
+      designVersionId: dvByFlavor.get(p.flavorPresetId) ?? null,
     }))
   }
 
@@ -463,6 +478,30 @@ export async function placeOrderFromCheckoutDraft(
       surface: 'checkout-wizard',
     },
   })
+
+  // --- 11.a Per-flavor labels Phase 4 — snapshot each flavor's working design
+  //          onto its OrderItemFlavor so production carries the right per-flavor
+  //          artwork. POST-COMMIT + best-effort: a not-yet-migrated
+  //          `designVersionId` column can never abort the order transaction.
+  if (flavorRows.some((f) => f.designVersionId)) {
+    try {
+      const item = await prisma.orderItem.findFirst({ where: { orderId: order.id }, select: { id: true } })
+      if (item) {
+        const oif = (prisma as unknown as {
+          orderItemFlavor: { updateMany: (a: unknown) => Promise<unknown> }
+        }).orderItemFlavor
+        for (const f of flavorRows) {
+          if (!f.designVersionId) continue
+          await oif.updateMany({
+            where: { orderItemId: item.id, flavorPresetId: f.flavorPresetId },
+            data: { designVersionId: f.designVersionId },
+          })
+        }
+      }
+    } catch {
+      // designVersionId column not migrated yet — the snapshot is best-effort.
+    }
+  }
 
   // --- 11.b G6.b — create the recurring ProductionSubscription if the ----
   //          creator accepted Subscribe & save at Step 3. Fails soft:
