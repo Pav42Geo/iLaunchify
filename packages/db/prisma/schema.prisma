@@ -616,6 +616,10 @@ model User {
   // team; they sign up themselves (we never create accounts / set passwords).
   adminInvitesSent             AdminInvite[]                @relation("AdminInvitesSentBy")
   adminInvitesAccepted         AdminInvite[]                @relation("AdminInvitesAcceptedBy")
+  // Billing & Accounting (docs/BILLING_AND_ACCOUNTING.md) — invoice/tax contact
+  // details. Plain business data only; no card/bank/SSN ever lives here (Stripe
+  // holds all payment instruments + TINs).
+  billingProfile               BillingProfile?
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -2632,6 +2636,34 @@ model Dispute {
   charge              Charge            @relation(fields: [chargeId], references: [id])
   clawbacks           PartnerClawback[]
   createdAt           DateTime          @default(now())
+}
+
+// =============================================================================
+// BILLING PROFILE (docs/BILLING_AND_ACCOUNTING.md slice 1)
+// =============================================================================
+// Invoice/tax contact details shown on the Canva-style "Billing details" surface
+// for creators AND partners. This is plain business data the user types — it is
+// NOT a payment instrument. Card numbers, bank accounts, CVCs, and tax
+// identification numbers (SSN/EIN) are NEVER stored here or anywhere in our DB;
+// Stripe holds all of those. `taxId` is a display-only string (e.g. a VAT/GST
+// number the user wants printed on invoices), not a government SSN.
+
+model BillingProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  // Appears below the user's name on invoices (business / legal entity name).
+  billingContactName String?
+  // Free-form structured address used for tax calculation. JSON so we don't fight
+  // country-specific address shapes: { line1, line2, city, state, postalCode, country }.
+  billingAddress     Json?
+  // Display-only tax id string (VAT/GST/business reg). NOT an SSN — never persist a
+  // government TIN; Stripe collects those during Connect onboarding.
+  taxId              String?
+  // Extra emails that should receive billing/invoice copies (array of strings).
+  additionalContacts Json?
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 // =============================================================================

@@ -60,6 +60,25 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="font-display text-base">Billing</CardTitle>
+          <CardDescription>
+            Contact and tax details for your invoices. Card and bank numbers are never
+            stored here — payouts are managed securely in Stripe.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/settings/billing"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            Manage billing details
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="font-display text-base">Notifications</CardTitle>
           <CardDescription>
             Email when a new dispatch arrives. Tune per-event and per-channel preferences.

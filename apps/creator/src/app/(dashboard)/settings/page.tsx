@@ -59,6 +59,22 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
         <h2 className="font-display text-[17px] font-semibold tracking-tight text-ink-900">
+          Billing
+        </h2>
+        <p className="mt-1 text-[13px] text-ink-600">
+          Set the contact and tax details that appear on your invoices. Card and bank
+          details are held securely by our payment processor — never stored here.
+        </p>
+        <Link
+          href="/settings/billing"
+          className="mt-3 inline-block text-[13px] font-semibold text-pink-700 hover:text-pink-800"
+        >
+          Manage billing details →
+        </Link>
+      </section>
+
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[17px] font-semibold tracking-tight text-ink-900">
           Payouts (Stripe Connect)
         </h2>
         <p className="mt-1 text-[13px] text-ink-600">

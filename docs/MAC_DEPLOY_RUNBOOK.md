@@ -31,6 +31,9 @@ run regardless of which earlier pushes you already did. This session it adds (cu
   Also set `CRON_SECRET` for the new creator `/api/cron/tier-dunning` (daily 8am,
   `apps/creator/vercel.json`).
 - `ProductTemplate.flavorsRunSequentially` (D5 multi-flavor lead time, default false).
+- `model BillingProfile` (Billing & Accounting slice 1 — invoice/tax contact
+  details; plain data, NO card/bank/SSN) + `User.billingProfile` back-relation.
+  Powers creator + partner `/settings/billing`. See docs/BILLING_AND_ACCOUNTING.md.
 - `model SupportRefundRequest` + `enum RefundRequestStatus`
 - Support ticketing models/enums + `NotificationEvent` values (`SUPPORT_*`,
   `SUPPORT_REFUND_REQUESTED`) — if not already applied

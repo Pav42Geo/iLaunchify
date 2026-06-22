@@ -70,6 +70,7 @@ export * from './components/IngredientsList'
 export * from './components/EarningsCalculator'
 export * from './components/PropertyBar'
 export * from './components/ShippingInfoCard'
+export * from './components/BillingDetailsForm'
 
 // Dashboard widget primitives (shared admin / partner / creator)
 export * from './components/dashboard/Widget'
