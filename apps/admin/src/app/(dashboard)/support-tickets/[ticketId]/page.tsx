@@ -79,13 +79,12 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
     // Active canned replies relevant to this ticket (global + its category).
     getCannedReplies({ activeOnly: true, categoryId: ticket.categoryId }),
     getViewerCapabilities(),
-    // Refund requests on this ticket (P3). ADMIN-RBAC-CAST until generate.
+    // Refund requests on this ticket (P3).
     orderId
-      ? (
-          prisma as unknown as {
-            supportRefundRequest: { findMany: (a: unknown) => Promise<RefundRequestView[]> }
-          }
-        ).supportRefundRequest.findMany({ where: { ticketId }, orderBy: { createdAt: 'desc' } })
+      ? (prisma.supportRefundRequest.findMany({
+          where: { ticketId },
+          orderBy: { createdAt: 'desc' },
+        }) as Promise<RefundRequestView[]>)
       : Promise.resolve([] as RefundRequestView[]),
   ])
 

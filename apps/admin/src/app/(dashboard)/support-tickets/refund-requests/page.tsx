@@ -31,10 +31,7 @@ const PILL: Record<Row['status'], string> = {
 export default async function RefundRequestsPage() {
   await requireCapability('refunds:approve')
 
-  // ADMIN-RBAC-CAST: drop once the generated client knows SupportRefundRequest.
-  const rows = (await (
-    prisma as unknown as { supportRefundRequest: { findMany: (a: unknown) => Promise<Row[]> } }
-  ).supportRefundRequest.findMany({
+  const rows = (await prisma.supportRefundRequest.findMany({
     orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     take: 100,
   })) as Row[]

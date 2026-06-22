@@ -1,8 +1,7 @@
 'use server'
 
 // Admin CRUD for SupportCannedReply (canned / macro replies). Admin-gated +
-// audited (entityType "SupportCannedReply"). Cast-guarded: the model lands on the
-// generated client only after the migration.
+// audited (entityType "SupportCannedReply").
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
@@ -10,21 +9,6 @@ import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 
 type Result = { ok: true } | { ok: false; error: string }
-
-// SUPPORT-CANNED-CAST — drop after db generate knows SupportCannedReply.
-function cannedModel() {
-  return (
-    prisma as unknown as {
-      supportCannedReply: {
-        create: (a: unknown) => Promise<{ id: string }>
-        update: (a: unknown) => Promise<unknown>
-        delete: (a: unknown) => Promise<unknown>
-        findUnique: (a: unknown) => Promise<{ id: string; title: string; isActive: boolean } | null>
-        aggregate: (a: unknown) => Promise<{ _max: { sortOrder: number | null } }>
-      }
-    }
-  ).supportCannedReply
-}
 
 export interface CannedReplyInput {
   title: string
@@ -43,12 +27,12 @@ export async function createCannedReply(input: CannedReplyInput): Promise<Result
 
   let sortOrder = input.sortOrder
   if (sortOrder === undefined || !Number.isFinite(sortOrder)) {
-    const max = await cannedModel().aggregate({ _max: { sortOrder: true } }).catch(() => ({ _max: { sortOrder: null } }))
+    const max = await prisma.supportCannedReply.aggregate({ _max: { sortOrder: true } }).catch(() => ({ _max: { sortOrder: null } }))
     sortOrder = (max._max.sortOrder ?? 0) + 10
   }
 
   try {
-    const created = await cannedModel().create({
+    const created = await prisma.supportCannedReply.create({
       data: {
         title: title.slice(0, 120),
         body: body.slice(0, 10000),
@@ -79,7 +63,7 @@ export async function updateCannedReply(id: string, input: CannedReplyInput): Pr
   if (body.length < 2) return { ok: false, error: 'Reply body is required.' }
 
   try {
-    await cannedModel().update({
+    await prisma.supportCannedReply.update({
       where: { id },
       data: {
         title: title.slice(0, 120),
@@ -106,10 +90,10 @@ export async function updateCannedReply(id: string, input: CannedReplyInput): Pr
 
 export async function toggleCannedReplyActive(id: string): Promise<Result> {
   const admin = await requireRole(['ADMIN'])
-  const existing = await cannedModel().findUnique({ where: { id } }).catch(() => null)
+  const existing = await prisma.supportCannedReply.findUnique({ where: { id } }).catch(() => null)
   if (!existing) return { ok: false, error: 'Reply not found.' }
   try {
-    await cannedModel().update({ where: { id }, data: { isActive: !existing.isActive } })
+    await prisma.supportCannedReply.update({ where: { id }, data: { isActive: !existing.isActive } })
     await logAuditAs(admin, {
       entityType: 'SupportCannedReply',
       entityId: id,
@@ -126,10 +110,10 @@ export async function toggleCannedReplyActive(id: string): Promise<Result> {
 
 export async function deleteCannedReply(id: string): Promise<Result> {
   const admin = await requireRole(['ADMIN'])
-  const existing = await cannedModel().findUnique({ where: { id } }).catch(() => null)
+  const existing = await prisma.supportCannedReply.findUnique({ where: { id } }).catch(() => null)
   if (!existing) return { ok: false, error: 'Reply not found.' }
   try {
-    await cannedModel().delete({ where: { id } })
+    await prisma.supportCannedReply.delete({ where: { id } })
     await logAuditAs(admin, {
       entityType: 'SupportCannedReply',
       entityId: id,

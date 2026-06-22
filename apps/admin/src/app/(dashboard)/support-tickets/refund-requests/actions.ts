@@ -5,38 +5,16 @@
 //   • Leads/Billing (refunds:approve) approve → calls the existing gated
 //     executeOrderRefund (flag STRIPE_REFUNDS_ENABLED; dry-run records intent)
 //     or reject. No parallel money path.
-// All transitions audited. The SupportRefundRequest model is new, so prisma
-// access is cast-guarded (ADMIN-RBAC-CAST) until Mac runs `prisma generate`.
+// All transitions audited.
 
 import { requireCapability, type AdminRole } from '@ilaunchify/auth'
 import { prisma, getRoleCapabilityMatrix } from '@ilaunchify/db'
 import { executeOrderRefund } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
-import { dispatchNotification, type DispatchInput } from '@ilaunchify/notifications'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
-
-type RefundRequestRow = {
-  id: string
-  orderId: string
-  ticketId: string | null
-  requestedById: string
-  amountCents: number
-  reason: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-}
-
-function refundModel() {
-  // ADMIN-RBAC-CAST: drop once the generated client knows SupportRefundRequest.
-  return prisma as unknown as {
-    supportRefundRequest: {
-      create: (a: unknown) => Promise<RefundRequestRow>
-      findUnique: (a: unknown) => Promise<RefundRequestRow | null>
-      update: (a: unknown) => Promise<RefundRequestRow>
-    }
-  }
-}
 
 export async function proposeRefund(input: {
   orderId: string
@@ -53,7 +31,7 @@ export async function proposeRefund(input: {
   if (input.amountCents > 1_000_000) return { ok: false, error: 'Amount looks too large.' }
   if (reason.length < 5) return { ok: false, error: 'Add a short reason (5+ characters).' }
 
-  await refundModel().supportRefundRequest.create({
+  await prisma.supportRefundRequest.create({
     data: {
       orderId: input.orderId,
       ticketId: input.ticketId ?? null,
@@ -73,11 +51,10 @@ export async function proposeRefund(input: {
 
   // Notify refund-approvers (best-effort — never blocks the request).
   try {
-    const admins = await (
-      prisma.user as unknown as {
-        findMany: (a: unknown) => Promise<{ id: string; adminRole: AdminRole | null }[]>
-      }
-    ).findMany({ where: { role: 'ADMIN' }, select: { id: true, adminRole: true } })
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true, adminRole: true },
+    })
     // Live DB matrix: super/null hold everything; others by their granted caps.
     const matrix = await getRoleCapabilityMatrix()
     const canApprove = (role: AdminRole | null) =>
@@ -87,7 +64,7 @@ export async function proposeRefund(input: {
       approvers.map((a) =>
         dispatchNotification({
           userId: a.id,
-          event: 'SUPPORT_REFUND_REQUESTED' as DispatchInput['event'],
+          event: 'SUPPORT_REFUND_REQUESTED',
           data: { orderId: input.orderId, amountCents: input.amountCents, href: '/support-tickets/refund-requests' },
           audience: 'admin',
         }),
@@ -104,7 +81,7 @@ export async function proposeRefund(input: {
 
 export async function approveRefund(input: { id: string }): Promise<Result> {
   const actor = await requireCapability('refunds:approve')
-  const req = await refundModel().supportRefundRequest.findUnique({ where: { id: input.id } })
+  const req = await prisma.supportRefundRequest.findUnique({ where: { id: input.id } })
   if (!req) return { ok: false, error: 'Request not found.' }
   if (req.status !== 'PENDING') return { ok: false, error: 'Already decided.' }
 
@@ -116,7 +93,7 @@ export async function approveRefund(input: { id: string }): Promise<Result> {
   })
   if (!res.ok) return { ok: false, error: res.error }
 
-  await refundModel().supportRefundRequest.update({
+  await prisma.supportRefundRequest.update({
     where: { id: input.id },
     data: { status: 'APPROVED', decidedById: actor.id, decidedAt: new Date() },
   })
@@ -136,11 +113,11 @@ export async function approveRefund(input: { id: string }): Promise<Result> {
 
 export async function rejectRefund(input: { id: string; note?: string }): Promise<Result> {
   const actor = await requireCapability('refunds:approve')
-  const req = await refundModel().supportRefundRequest.findUnique({ where: { id: input.id } })
+  const req = await prisma.supportRefundRequest.findUnique({ where: { id: input.id } })
   if (!req) return { ok: false, error: 'Request not found.' }
   if (req.status !== 'PENDING') return { ok: false, error: 'Already decided.' }
 
-  await refundModel().supportRefundRequest.update({
+  await prisma.supportRefundRequest.update({
     where: { id: input.id },
     data: {
       status: 'REJECTED',

@@ -164,11 +164,9 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
     }
   }
 
-  // SUPPORT-SLA-CAST — slaResponseMinutes/slaResolveMinutes are pending the
-  // db push; the generated client doesn't know them yet. Intermediate const +
-  // single cast avoids the object-literal excess-property check. Drop the cast
-  // after `db generate`.
-  const createData = {
+  // Unchecked variant — we pass scalar FKs (requesterUserId / categoryId /
+  // assigneeUserId) directly rather than `connect`.
+  const createData: Prisma.TicketUncheckedCreateInput = {
     requesterUserId: input.requesterUserId,
     requesterRole: input.requesterRole,
     categoryId: category.id,
@@ -182,9 +180,7 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
     slaResponseMinutes,
     slaResolveMinutes,
   }
-  const ticket = await prisma.ticket.create({
-    data: createData as unknown as Prisma.TicketCreateInput,
-  })
+  const ticket = await prisma.ticket.create({ data: createData })
 
   await recordTicketEvent({
     ticketId: ticket.id,
@@ -667,25 +663,7 @@ export async function runSlaBreachScan(now: Date = new Date()): Promise<{
   scanned: number
   breached: SlaBreach[]
 }> {
-  // SUPPORT-SLA-CAST — slaResponseMinutes is pending the migration; cast-guard
-  // the read. Drop after `db generate` (use prisma.ticket directly).
-  const candidates = await (
-    prisma as unknown as {
-      ticket: {
-        findMany: (a: unknown) => Promise<
-          Array<{
-            id: string
-            subject: string
-            priority: TicketPriority
-            createdAt: Date
-            slaResponseMinutes: number | null
-            assigneeUserId: string | null
-            category: { slaResponseMinutes: number | null; defaultAssigneeUserId: string | null }
-          }>
-        >
-      }
-    }
-  ).ticket.findMany({
+  const candidates = await prisma.ticket.findMany({
     where: {
       status: { in: OPEN_STATUSES as readonly TicketStatus[] },
       slaBreachedAt: null,
