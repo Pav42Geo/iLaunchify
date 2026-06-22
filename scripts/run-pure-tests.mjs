@@ -30,6 +30,7 @@ const SUITES = [
   { base: 'apps/admin/src/lib', deps: ['partner-fsm.ts'], test: 'partner-fsm.test.ts', label: 'Partner status FSM' },
   { base: 'packages/marketplace/src', deps: ['niche-rule-eval.ts'], test: 'suggestNiches.test.ts', label: 'Niche suggestion engine' },
   { base: 'packages/marketplace/src', deps: ['phrase-rule-eval.ts'], test: 'suggestPhrases.test.ts', label: 'Phrase suggestion engine' },
+  { base: 'packages/marketplace/src', deps: ['evaluateRestrictions.ts'], test: 'evaluateRestrictions.test.ts', label: 'Restricted-category gate' },
 ]
 
 const root = mkdtempSync(join(tmpdir(), 'pure-tests-'))

@@ -8,8 +8,9 @@ Companion to `docs/ADMIN_RBAC.md`. Two layers of verification:
    Last run: **all passed** (Agent 1/30, Lead 13/30, Billing 6/30, Super 30/30).
 1b. **Unit suites:** `node scripts/run-pure-tests.mjs` — actually executes the
    `runAll()` aggregators that ship as type-check-only files: the RBAC capability
-   matrix, admin-invite acceptance, ownership guards, partner-status FSM, and the
-   niche + phrase suggestion engines. Zero install. Last run: all six suites passed.
+   matrix, admin-invite acceptance, ownership guards, partner-status FSM, the
+   niche + phrase suggestion engines, and the restricted-category eligibility
+   gate. Zero install. Last run: all seven suites passed.
 2. **Manual (live):** the click-through below, run against the app on your Mac.
 
 ---
