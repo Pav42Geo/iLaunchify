@@ -24,8 +24,9 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createRequire } from 'node:module'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -56,14 +57,29 @@ if (!arg) {
 }
 
 // --- Load the generated Prisma client ----------------------------------------
-let PrismaClient
-try {
-  ;({ PrismaClient } = await import('@prisma/client'))
-} catch {
+// In a pnpm monorepo @prisma/client lives under packages/db, not the repo root,
+// so resolve it relative to that package (with a root fallback).
+function loadPrismaClient() {
+  const bases = [
+    pathToFileURL(join(repoRoot, 'packages/db/package.json')).href,
+    import.meta.url,
+  ]
+  for (const base of bases) {
+    try {
+      return createRequire(base)('@prisma/client')
+    } catch {
+      // try next base
+    }
+  }
+  return null
+}
+
+const prismaModule = loadPrismaClient()
+if (!prismaModule?.PrismaClient) {
   console.error('✗ Could not load @prisma/client. Run `pnpm db:generate` first.')
   process.exit(1)
 }
-const prisma = new PrismaClient({ log: ['error'] })
+const prisma = new prismaModule.PrismaClient({ log: ['error'] })
 
 async function listAdmins() {
   const rows = await prisma.$queryRaw`
