@@ -3170,6 +3170,9 @@ model AuditLog {
   id         String         @id @default(cuid())
   actorId    String? // null when actorRole=SYSTEM
   actorRole  AuditActorRole
+  // Admin RBAC sub-role of the actor when known (docs/ADMIN_RBAC.md P4.1) —
+  // answers "which kind of admin did this". Null for non-admin / unknown.
+  actorAdminRole AdminRole?
   // Entity identification
   entityType String // "Partner" / "OrderDispatch" / "PartnerVerificationSection" etc.
   entityId   String // the affected row's id

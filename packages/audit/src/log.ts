@@ -13,17 +13,20 @@ import type { AuditEntryInput } from './types'
  */
 export async function logAudit(input: AuditEntryInput): Promise<void> {
   try {
-    await prisma.auditLog.create({
+    // ADMIN-RBAC-CAST: `actorAdminRole` is unknown to the generated client until
+    // Mac runs `prisma generate`. Drop the cast then (add actorAdminRole to the
+    // typed create data).
+    await (prisma.auditLog as unknown as { create: (a: unknown) => Promise<unknown> }).create({
       data: {
         actorId: input.actorId,
         actorRole: input.actorRole,
+        actorAdminRole: input.actorAdminRole ?? null,
         entityType: input.entityType,
         entityId: input.entityId,
         action: input.action,
         fromValue: input.fromValue ?? null,
         toValue: input.toValue ?? null,
-        // Prisma JSON field accepts null or undefined to skip; coerce explicitly
-        payload: (input.payload ?? undefined) as never,
+        payload: input.payload ?? undefined,
       },
     })
   } catch (err) {
@@ -40,13 +43,16 @@ export async function logAudit(input: AuditEntryInput): Promise<void> {
  * call requireUser() at the top). Maps user.role -> actorRole automatically.
  */
 export async function logAuditAs(
-  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' },
+  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER'; adminRole?: string | null },
   entry: Omit<AuditEntryInput, 'actorId' | 'actorRole'>,
 ): Promise<void> {
   return logAudit({
     ...entry,
     actorId: user.id,
     actorRole: user.role,
+    // Auto-captures the admin sub-role when the caller passes a requireCapability
+    // result (which carries adminRole). Plain requireUser callers → undefined.
+    actorAdminRole: entry.actorAdminRole ?? user.adminRole ?? null,
   })
 }
 

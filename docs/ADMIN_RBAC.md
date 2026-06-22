@@ -193,6 +193,18 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
 ## Rollout (phased; each phase ships green + audited)
 
 - **P0 — substrate (no behavior change):** ✅ shipped (above).
+- **P2 — review-queue decisions (shipped 2026-06-21, commit 3ccae43):** gated the
+  unambiguous review *decisions* on `reviews:write` (Lead+Super): product
+  approve/reject/request-changes, ingredient verify, cert-type-request
+  approve/reject, cert-instance status, accessory approve/archive/reactivate,
+  packaging-review approve/reject. Queue *reads* stay on the coarse ADMIN gate
+  (anyone sees, only entitled act). **Deferred — need a Pavel call:** (a) partner
+  verification/activation actions still on `requireRole('ADMIN')` — should be
+  `partners:approve`, but that cap is Super-only in the matrix; confirm whether
+  Leads verify partners before gating. (b) catalog/library config actions
+  (createCertificateType, adminSetMarketplaceAttributes/Niches/Phrases/
+  LifestyleTags, ingredient promoteToLibrary) want a `catalog:write` cap, not
+  `reviews:write` — left on ADMIN pending that decision.
 - **P1 — lock the sensitive set:** ✅ shipped 2026-06-21.
   - **P1a (commit d48b953):** capability-gated sidebar — `getViewerCapabilities()`
     in `@ilaunchify/auth`, `capability?` on nav items, `AdminSidebarTree` prunes
@@ -231,12 +243,16 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
   `setAdminRole` (audited `ADMIN_ROLE_CHANGED`, blocks changing your own role).
   `ADMIN_ROLES` + `ADMIN_ROLE_LABEL` added to `@ilaunchify/auth`; sidebar Admins
   unhidden. **Now roles are assignable from the UI — the fence is operable.**
-  - **Deferred to P4.1:** `AuditLog.actorAdminRole` column (capture which admin
-    kind acted — needs threading through the audit writer); middleware
-    path-prefix gate (needs adminRole in the JWT/session); flipping the
-    `null → least-privilege` default (only after Mac backfill confirmed, else it
-    locks out un-backfilled admins). Invite/credential flow still open (human
-    sets the password).
+  - **P4.1 actorAdminRole shipped (2026-06-21):** additive `AuditLog.actorAdminRole`
+    column; `requireCapability` now returns the user augmented with `adminRole`,
+    and `logAuditAs` auto-forwards it as `actorAdminRole` — so every RBAC-gated
+    audited action records *which kind of admin* acted, with no per-action edits
+    (plain `requireUser`/`requireRole` callers stay null). Cast-guarded
+    (ADMIN-RBAC-CAST in audit/log.ts) until generate.
+  - **Still deferred:** middleware path-prefix gate (needs adminRole in the
+    JWT/session); flipping the `null → least-privilege` default (only after Mac
+    backfill confirmed, else it locks out un-backfilled admins). Invite/credential
+    flow still open (human sets the password).
 
 ## Extensibility (deferred, no-regret hooks)
 

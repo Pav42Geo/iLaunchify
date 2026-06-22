@@ -235,6 +235,9 @@ export type AuditActorRole = PrismaActorRole // re-export Prisma enum
 export interface AuditEntryInput {
   actorId: string | null
   actorRole: AuditActorRole
+  /** Admin RBAC sub-role (docs/ADMIN_RBAC.md P4.1). Typed loosely as string to
+      avoid a cross-package enum dependency; values match the AdminRole enum. */
+  actorAdminRole?: string | null
   entityType: AuditEntityType
   entityId: string
   action: AuditAction

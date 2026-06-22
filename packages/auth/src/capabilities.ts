@@ -57,5 +57,6 @@ export async function requireCapability(cap: Capability) {
   if (!hasCapability(role, cap)) {
     redirect('/login?error=forbidden')
   }
-  return user
+  // Carry the admin sub-role so logAuditAs(actor, …) auto-stamps actorAdminRole.
+  return { ...user, adminRole: role }
 }
