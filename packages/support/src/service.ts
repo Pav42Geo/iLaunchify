@@ -665,7 +665,7 @@ export async function runSlaBreachScan(now: Date = new Date()): Promise<{
 }> {
   const candidates = await prisma.ticket.findMany({
     where: {
-      status: { in: OPEN_STATUSES as readonly TicketStatus[] },
+      status: { in: [...OPEN_STATUSES] as TicketStatus[] },
       slaBreachedAt: null,
       firstResponseAt: null,
     },
