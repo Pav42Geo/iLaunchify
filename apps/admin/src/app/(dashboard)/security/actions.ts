@@ -7,14 +7,14 @@
 // their next request. Every revoke writes an AuditLog row.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
 
 export async function revokeSession(sessionId: string): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('security:admin')
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
@@ -37,7 +37,7 @@ export async function revokeSession(sessionId: string): Promise<Result> {
 
 /** Revoke EVERY active session for a user — the account-compromise response. */
 export async function revokeAllSessionsForUser(userId: string): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('security:admin')
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

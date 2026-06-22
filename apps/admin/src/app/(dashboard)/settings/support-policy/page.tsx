@@ -1,4 +1,4 @@
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { getSupportSettings } from '@ilaunchify/db'
 import { SupportPolicyForm } from './SupportPolicyForm'
 
@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Support Policy — Admin' }
 
 export default async function SupportPolicyPage() {
-  await requireRole('ADMIN')
+  await requireCapability('tickets:admin')
   const settings = await getSupportSettings()
 
   return (

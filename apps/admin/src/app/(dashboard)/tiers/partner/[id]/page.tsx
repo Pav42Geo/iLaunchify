@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Lock } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { AccountTierEditor } from '../../AccountTierEditor'
 import { PARTNER_TIER_STYLE, tierPillStyle } from '../../tier-style'
@@ -29,7 +29,7 @@ interface PageProps {
 }
 
 export default async function PartnerTierEditPage({ params }: PageProps) {
-  await requireRole(['ADMIN'])
+  await requireCapability('tiers:write')
   const { id } = await params
 
   const partner = await prisma.partner.findUnique({

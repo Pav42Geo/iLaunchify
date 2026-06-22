@@ -6,7 +6,7 @@
 // migration lands the model on the generated client.
 
 import { prisma, getOrderSettings, type OrderSettingsValues, type OrderSettingsScope } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -25,7 +25,7 @@ function clampInt(v: number | null | undefined, min: number, max: number): numbe
 /** Save a subset of OrderSettings (merge upsert). Only the keys provided are
  *  written, so each page owns its section. Admin-gated + audited. */
 export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, section: string): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('billing:write')
   try {
     const data: Record<string, unknown> = { updatedById: admin.id }
     const set = (k: keyof OrderSettingsValues, min: number, max: number) => {
@@ -114,7 +114,7 @@ export async function listOverrides(): Promise<OverrideRowFull[]> {
 }
 
 export async function saveOverride(input: OverrideInput): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('billing:write')
   try {
     const scopeKey = input.scopeKey.trim()
     if (!scopeKey) return { ok: false, error: 'Enter a scope key (tier slug, market code, or region id).' }
@@ -147,7 +147,7 @@ export async function saveOverride(input: OverrideInput): Promise<Result> {
 }
 
 export async function deleteOverride(scope: OrderSettingsScope, scopeKey: string): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('billing:write')
   try {
     await (prisma as unknown as {
       orderSettingsOverride: { delete: (a: unknown) => Promise<unknown> }

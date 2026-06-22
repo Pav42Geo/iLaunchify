@@ -193,10 +193,23 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
 ## Rollout (phased; each phase ships green + audited)
 
 - **P0 — substrate (no behavior change):** ✅ shipped (above).
-- **P1 — lock the sensitive set:** `requireCapability` on Settings/* (fees,
-  tiers, order settings, routing, shipping), Users & Roles/admins,
-  Compliance & Data Rights, partner approval, refund/payout actions, security.
-  Sidebar filter. This alone delivers the fence.
+- **P1 — lock the sensitive set:** ✅ shipped 2026-06-21.
+  - **P1a (commit d48b953):** capability-gated sidebar — `getViewerCapabilities()`
+    in `@ilaunchify/auth`, `capability?` on nav items, `AdminSidebarTree` prunes
+    items/empty groups by the viewer's caps (UX layer).
+  - **P1b:** `requireCapability` on the page loaders + actions for the money/
+    config/security surfaces — order-settings/* (`billing:write`), tiers/* +
+    tier-writes (`tiers:write`), cancellations review (`refunds:approve`),
+    security (`security:admin`), support-policy (`tickets:admin`). Admin app
+    typechecks 0 errors. **This is the live fence** (once roles are assigned;
+    null adminRole still → SUPER_ADMIN until P4 flips the default).
+  - **Deferred to P1.5:** `/settings/product-domains` + other platform-config
+    (markets/regions/label-formats/channels) still on `requireRole('ADMIN')` —
+    they want a `platform:admin` cap (not yet added; avoids scope creep). The
+    operational review queues + read-only list pages also stay on the coarse
+    ADMIN gate for now (Lead+Super own them per the matrix, but the page guards
+    aren't migrated yet). None of these are money/security, so the high-risk
+    fence is complete.
 - **P2 — support-agent surfaces:** confirm tickets + read-only orders/creators/
   partners work end-to-end for `SUPPORT_AGENT`; tighten any write actions.
 - **P3 — refund propose→approve:** `SupportRefundRequest` + actions + ticket

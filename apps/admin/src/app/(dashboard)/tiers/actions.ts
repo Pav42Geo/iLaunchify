@@ -3,7 +3,7 @@
 // REBUILD R15.d / R15.e — admin Tiers module server actions.
 //
 // Every write here:
-//   1. Guards with requireRole(['ADMIN']).
+//   1. Guards with requireCapability('tiers:write').
 //   2. Calls invalidatePlansCache() on any plan/feature/fee change so the
 //      in-memory cache flips immediately within this process.
 //   3. Records a before/after AuditLog entry via @ilaunchify/audit.
@@ -14,7 +14,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
-import { requireRole, setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { requireCapability, setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { invalidatePlansCache } from '@ilaunchify/plans'
 
@@ -29,7 +29,7 @@ export async function changeCreatorTier(input: {
   newTier: 'MAKER' | 'BUILDER' | 'AGENCY'
   reason: string
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (!input.reason.trim()) {
     return { ok: false, error: 'A reason is required for tier changes.' }
   }
@@ -64,7 +64,7 @@ export async function setCreatorFeeOverride(input: {
   overrideBp: number | null
   reason: string
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (input.overrideBp !== null && (input.overrideBp < 0 || input.overrideBp > 10000)) {
     return { ok: false, error: 'Override must be between 0 and 100%.' }
   }
@@ -119,7 +119,7 @@ export async function bulkChangeCreatorTier(input: {
 }): Promise<
   { ok: true; changedCount: number; skipped: number } | { ok: false; error: string }
 > {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (!input.reason.trim()) {
     return { ok: false, error: 'A reason is required for tier changes.' }
   }
@@ -166,7 +166,7 @@ export async function changePartnerTier(input: {
   newTier: 'VERIFIED' | 'TRUSTED' | 'PREMIER'
   reason: string
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (!input.reason.trim()) {
     return { ok: false, error: 'A reason is required for tier changes.' }
   }
@@ -212,7 +212,7 @@ export async function setPartnerFeeOverride(input: {
   overrideBp: number | null
   reason: string
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (input.overrideBp !== null && (input.overrideBp < 0 || input.overrideBp > 10000)) {
     return { ok: false, error: 'Override must be between 0 and 100%.' }
   }
@@ -264,7 +264,7 @@ export async function bulkChangePartnerTier(input: {
 }): Promise<
   { ok: true; changedCount: number; skipped: number } | { ok: false; error: string }
 > {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (!input.reason.trim()) {
     return { ok: false, error: 'A reason is required for tier changes.' }
   }
@@ -329,7 +329,7 @@ export async function updatePlanPricing(input: {
   annualPriceCents: number
   description: string | null
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (input.monthlyPriceCents < 0 || input.annualPriceCents < 0) {
     return { ok: false, error: 'Prices cannot be negative.' }
   }
@@ -380,7 +380,7 @@ export async function updatePlanFeature(input: {
   stringValue?: string | null
   boolValue?: boolean | null
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   const existing = await prisma.planFeature.findUnique({
     where: { id: input.planFeatureId },
     include: { plan: { select: { code: true } } },
@@ -431,7 +431,7 @@ export async function updateFeeRule(input: {
   maxCents: number | null
   notes: string | null
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  const user = await requireCapability('tiers:write')
   if (
     input.ratePercent != null &&
     (input.ratePercent < 0 || input.ratePercent > 100)

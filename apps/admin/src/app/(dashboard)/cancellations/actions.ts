@@ -2,7 +2,7 @@
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { computeCancellationOutcome, assertOrderTransition } from '@ilaunchify/orders'
 import { executeOrderRefund } from '@ilaunchify/payments'
@@ -34,7 +34,7 @@ export async function reviewCancellation({
   decision: 'APPROVED' | 'DENIED'
   reviewNotes?: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('refunds:approve')
 
   const req = await prisma.cancellationRequest.findUnique({
     where: { id: requestId },

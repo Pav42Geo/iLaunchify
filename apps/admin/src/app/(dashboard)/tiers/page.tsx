@@ -13,7 +13,7 @@
 // See memory: ilaunchify-admin-surface-pattern.md (v2 rules)
 // Reference: apps/admin/src/app/(dashboard)/partners/page.tsx
 //
-// Permission model: requireRole(['ADMIN']) — single role gate; finer
+// Permission model: requireCapability('tiers:write') — single role gate; finer
 // per-action permissions land when V1.5 brings the staff role split.
 
 import Link from 'next/link'
@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import { CreatorsTab } from './CreatorsTab'
 import { PartnersTab } from './PartnersTab'
@@ -68,7 +68,7 @@ interface PageProps {
 }
 
 export default async function TiersPage({ searchParams }: PageProps) {
-  await requireRole(['ADMIN'])
+  await requireCapability('tiers:write')
   const sp = await searchParams
   const activeTab: TabKey = isTabKey(sp.tab) ? sp.tab : 'creators'
 

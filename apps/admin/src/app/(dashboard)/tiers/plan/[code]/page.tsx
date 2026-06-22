@@ -14,7 +14,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { PlanPricingForm } from './PlanPricingForm'
 import { PlanFeaturesEditor } from './PlanFeaturesEditor'
 import { PlanFeeRulesEditor } from './PlanFeeRulesEditor'
@@ -26,7 +26,7 @@ interface PageProps {
 }
 
 export default async function PlanEditorPage({ params }: PageProps) {
-  await requireRole(['ADMIN'])
+  await requireCapability('tiers:write')
   const { code } = await params
 
   const plan = await prisma.subscriptionPlan.findUnique({

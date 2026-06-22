@@ -6,7 +6,7 @@
 // lands SupportSettings on the generated client.
 
 import { prisma, getSupportSettings, type SupportSettingsValues } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -27,7 +27,7 @@ function asPriority(v: unknown): Priority {
 }
 
 export async function saveSupportSettings(input: SupportSettingsValues): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('tickets:admin')
 
   const data = {
     slaTargetsEnabled: !!input.slaTargetsEnabled,

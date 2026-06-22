@@ -22,7 +22,7 @@ import {
   History,
   type LucideIcon,
 } from 'lucide-react'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import { loadSecurityData, type SecurityData } from './security-data'
 import { SessionRowControls } from './SessionRowControls'
@@ -31,7 +31,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Security & Access — Admin' }
 
 export default async function SecurityPage() {
-  await requireRole('ADMIN')
+  await requireCapability('security:admin')
   const data = await loadSecurityData()
 
   return (
