@@ -9,7 +9,7 @@
 // import handleStripeEvent() to dispatch into the right per-event handler.
 
 export { stripe } from './client'
-export { createConnectAccount, createConnectAccountLink } from './connect'
+export { createConnectAccount, createConnectAccountLink, createExpressDashboardLink } from './connect'
 export { createCheckoutSession } from './checkout'
 export { handleStripeEvent } from './webhook-handlers'
 export {

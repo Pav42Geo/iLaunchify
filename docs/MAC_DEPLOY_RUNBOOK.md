@@ -34,6 +34,11 @@ run regardless of which earlier pushes you already did. This session it adds (cu
 - `model BillingProfile` (Billing & Accounting slice 1 — invoice/tax contact
   details; plain data, NO card/bank/SSN) + `User.billingProfile` back-relation.
   Powers creator + partner `/settings/billing`. See docs/BILLING_AND_ACCOUNTING.md.
+- `model TaxDocument` + `enum TaxDocumentType` + `enum TaxDocumentStatus` +
+  `User.taxDocuments` (partner 1099 pointers — year/type/Stripe form id/status,
+  NO TIN or form content). Powers partner `/settings/tax-documents` (annual earnings
+  + Express-dashboard deep-link). Forms are issued via Stripe Connect Tax Forms;
+  enable that in the Stripe Dashboard when going live to populate real documents.
 - `model PaymentMethodRef` (Billing slice 2 — display-only Stripe card mirror:
   brand/last4/exp + `pm_` id, NO PAN) + `User.paymentMethods` back-relation.
   The card is added on Stripe-hosted Checkout (setup mode) at creator

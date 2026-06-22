@@ -5,6 +5,7 @@ import {
   CreditCard,
   Bell,
   ShieldCheck,
+  FileText,
 } from 'lucide-react'
 import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
@@ -130,6 +131,13 @@ export default async function SettingsPage() {
           cta="Manage billing details"
           description="Contact and tax details that appear on your invoices. Card and bank numbers are never stored here."
           pill={billingSet ? { label: 'Set up', tone: 'good' } : { label: 'Not set', tone: 'neutral' }}
+        />
+        <SettingCard
+          icon={<FileText className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Tax documents"
+          href="/settings/tax-documents"
+          cta="View earnings & 1099s"
+          description="Your annual earnings and 1099 tax forms. Forms are issued and filed through Stripe — view them in your Stripe dashboard."
         />
       </Section>
 

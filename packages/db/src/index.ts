@@ -120,3 +120,9 @@ export {
   ownsPaymentMethodRef,
   type PaymentMethodRefValues,
 } from './payment-methods'
+export {
+  listTaxDocuments,
+  getPartnerAnnualEarnings,
+  type TaxDocumentValues,
+  type AnnualEarnings,
+} from './tax-documents'

@@ -61,3 +61,19 @@ export async function createConnectAccountLink(params: {
   })
   return { url: link.url }
 }
+
+/**
+ * Create a single-use login link to the partner's Stripe Express dashboard, where
+ * they manage their bank/payout details, tax info (W-9), and view/download their
+ * 1099 tax forms. Returns null if Stripe isn't configured or the account can't be
+ * linked (e.g. onboarding not finished). Never throws.
+ */
+export async function createExpressDashboardLink(accountId: string): Promise<string | null> {
+  if (!process.env.STRIPE_SECRET_KEY) return null
+  try {
+    const link = await stripe.accounts.createLoginLink(accountId)
+    return link.url ?? null
+  } catch {
+    return null
+  }
+}

@@ -87,6 +87,7 @@ export const AUDIT_ENTITY_TYPES = [
   'SupportCannedReply', // admin-curated canned/macro replies
   'BillingProfile', // invoice/tax contact details (docs/BILLING_AND_ACCOUNTING.md)
   'PaymentMethod', // Stripe payment-method mirror (docs/BILLING_AND_ACCOUNTING.md slice 2)
+  'TaxDocument', // 1099 pointer + Express-dashboard access (docs/BILLING_AND_ACCOUNTING.md)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

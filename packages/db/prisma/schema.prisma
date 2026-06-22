@@ -624,6 +624,10 @@ model User {
   // Holds brand + last4 + expiry only — NEVER a full card number (Stripe-hosted
   // Checkout in setup mode collects the card; the PAN never reaches us).
   paymentMethods               PaymentMethodRef[]
+  // Pointers to 1099 tax forms issued via Stripe Connect Tax Forms (partners).
+  // We store year/type/status + the Stripe form id only — never the TIN or the
+  // form contents (Stripe holds those; the partner views them in Stripe Express).
+  taxDocuments                 TaxDocument[]
 }
 
 // Auth.js v5 — Account (OAuth providers)
@@ -2690,6 +2694,42 @@ model PaymentMethodRef {
   updatedAt             DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Pointer to a 1099 tax form issued through Stripe Connect Tax Forms
+// (docs/BILLING_AND_ACCOUNTING.md slice — partner tax documents). Stripe is the
+// filer of record and holds the form + the partner's TIN; the partner views/
+// downloads the actual form in their Stripe Express dashboard. We persist ONLY a
+// non-sensitive pointer (year, type, Stripe form id, status) so the platform can
+// show a "tax documents" list and track filing status. NEVER store the TIN or
+// any form content here.
+
+enum TaxDocumentType {
+  FORM_1099K // marketplace/third-party network payments (the Etsy-style default)
+  FORM_1099NEC // non-employee compensation
+}
+
+enum TaxDocumentStatus {
+  PENDING // not yet filed/available
+  AVAILABLE // generated, ready for the recipient
+  DELIVERED // delivered to the recipient (e-delivery or mail)
+  CORRECTED // a correction was filed
+  VOID // voided
+}
+
+model TaxDocument {
+  id           String            @id @default(uuid())
+  userId       String
+  taxYear      Int
+  type         TaxDocumentType
+  stripeFormId String?           @unique
+  status       TaxDocumentStatus @default(PENDING)
+  deliveredAt  DateTime?
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([userId, taxYear])
 }
 
 // =============================================================================
