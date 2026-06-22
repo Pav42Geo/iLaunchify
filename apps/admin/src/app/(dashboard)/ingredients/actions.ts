@@ -14,7 +14,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 
 type Result<T = { ok: true }> = T | { ok: false; error: string }
@@ -32,7 +32,8 @@ export async function verifyIngredient(input: {
   ingredientId: string
   reviewNote?: string
 }): Promise<Result> {
-  const user = await requireRole(['ADMIN'])
+  // REVIEW-QUEUE DECISION → reviews:write (Lead + Super). docs/ADMIN_RBAC.md.
+  const user = await requireCapability('reviews:write')
 
   const existing = await prisma.ingredient.findUnique({
     where: { id: input.ingredientId },

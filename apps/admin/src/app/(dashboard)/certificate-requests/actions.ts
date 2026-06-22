@@ -8,7 +8,7 @@
 // records a reason. Both write an AuditLog row.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -36,7 +36,7 @@ export async function approveCertificateTypeRequest(input: {
   /** Optional override; defaults to a slug derived from the request name. */
   slug?: string
 }): Promise<Result<{ certificateTypeId: string }>> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('reviews:write')
 
   const req = await prisma.certificateTypeRequest.findUnique({
     where: { id: input.requestId },
@@ -101,7 +101,7 @@ export async function rejectCertificateTypeRequest(input: {
   requestId: string
   reason: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('reviews:write')
 
   const reason = input.reason.trim()
   if (!reason) return { ok: false, error: 'A rejection reason is required.' }

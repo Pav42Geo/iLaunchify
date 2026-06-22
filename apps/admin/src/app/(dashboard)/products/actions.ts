@@ -14,7 +14,7 @@
 //   PAUSED               -> PUBLISHED       (re-list)
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
 import type { PhraseRequirement } from '@ilaunchify/db'
@@ -37,7 +37,7 @@ type Result =
 // -----------------------------------------------------------------------------
 
 export async function approveProductTemplate(productTemplateId: string): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('reviews:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
@@ -124,7 +124,7 @@ export interface RequestChangesInput {
 }
 
 export async function requestProductChanges(input: RequestChangesInput): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('reviews:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: input.productTemplateId },
@@ -192,11 +192,12 @@ export async function requestProductChanges(input: RequestChangesInput): Promise
 // REJECT — terminal. Partner must clone if they want to retry.
 // -----------------------------------------------------------------------------
 
+// REVIEW-QUEUE DECISION → reviews:write (Lead + Super). See docs/ADMIN_RBAC.md.
 export async function rejectProductTemplate(input: {
   productTemplateId: string
   reason: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('reviews:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: input.productTemplateId },

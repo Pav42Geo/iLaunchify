@@ -11,7 +11,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import type { OfferingStatus } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -23,7 +23,8 @@ async function transition(
   expectFrom: OfferingStatus[],
   action: string,
 ): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Accessory verification queue → reviews:write (Lead + Super). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('reviews:write')
 
   const offering = await prisma.accessoryOffering.findUnique({
     where: { id },

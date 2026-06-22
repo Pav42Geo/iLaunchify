@@ -6,7 +6,7 @@
 // Per docs/MANUFACTURER_PRODUCT_BUILDER.md §7.2 + #129.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { uploadFile, certificateThumbnailKey } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -285,7 +285,8 @@ export async function setCertInstanceStatus(input: {
   to: PartnerCertInstanceStatus
   reason?: string
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Cert-instance review decision → reviews:write (Lead + Super). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('reviews:write')
 
   const inst = await prisma.partnerCertificateInstance.findUnique({
     where: { id: input.instanceId },

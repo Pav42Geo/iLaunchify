@@ -7,7 +7,7 @@
 // ship with a pending migration → cast-guarded.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { getSignedReadUrl } from '@ilaunchify/storage'
@@ -106,7 +106,7 @@ function slugify(s: string): string {
  * via the Product Mockups tool.
  */
 export async function approvePackagingReview(systemId: string, displayName: string, category: string): Promise<Result> {
-  const user = await requireRole('ADMIN')
+  const user = await requireCapability('reviews:write')
   const name = displayName.trim()
   if (name.length < 2) return { ok: false, error: 'Give the catalog entry a name.' }
 
@@ -194,7 +194,7 @@ export async function approvePackagingReview(systemId: string, displayName: stri
 }
 
 export async function rejectPackagingReview(systemId: string, notes: string): Promise<Result> {
-  const user = await requireRole('ADMIN')
+  const user = await requireCapability('reviews:write')
   const sys = await prisma.packagingSystem.findFirst({ where: { id: systemId, reviewStatus: 'SUBMITTED' }, select: { id: true } })
   if (!sys) return { ok: false, error: 'Submission not found or already handled.' }
   await prisma.packagingSystem.update({ where: { id: systemId }, data: { reviewStatus: 'REJECTED', reviewNotes: notes.trim() || null } })
