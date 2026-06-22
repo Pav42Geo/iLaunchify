@@ -149,10 +149,17 @@ What's missing splits into two buckets: a short list of V1-blocking gaps that pr
 > **#4 production deploy**, **#6 legal surfaces live for counsel sign-off**, **#8 quality
 > dispute** (creator filing + admin resolve-on-order-detail done; dedicated `/admin/disputes`
 > queue + partner-response UI + strike-execution wiring remain), **#10 tier-promotion cron**
-> (defer V1.1), **#11 guided onboarding** (Express works; guided defer V1.1), **#12 first-sample
-> discount auto-apply** (sample schema/engine/credit-at-checkout done; the auto-discount
-> remains), subscription **dunning** (place works; payment-failed→grace→downgrade unbuilt),
-> and routing decisions **D2 / D4 / D5** (open).
+> (defer V1.1), **#11 guided onboarding** (Express works; guided defer V1.1), and routing decisions
+> **D2 / D4 / D5** (open).
+>
+> **Resolved-as-superseded (not open):** **#12 first-sample 50% discount** — the
+> sample model was redesigned to the **credit-back** economics (Pavel 2026-06-11:
+> `SampleSettings` + `ProductSampleOption.creditTowardFirstOrder` + `SampleCredit`
+> ledger), which is built end-to-end (createSampleOrder → webhook mint →
+> consume-at-production-checkout). The old "50% off, 3×3" discount was superseded;
+> there is no discount field and nothing to auto-apply. **Subscription dunning** —
+> built this session (payment-failed grace + recovery + grace-expiry downgrade cron +
+> creator banner; needs the Mac db push + `CRON_SECRET`).
 
 Each line: **what's missing · which surface · why it blocks V1.**
 
