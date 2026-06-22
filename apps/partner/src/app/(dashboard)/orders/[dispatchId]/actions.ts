@@ -12,6 +12,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recomputeAggregateApprovalStatus } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 import {
   notifyDispatchAccepted,
@@ -300,7 +301,23 @@ export async function requestCancellation({
     },
   })
 
+  // Tell admins a partner cancellation request is waiting in /cancellations.
+  // Reuses ORDER_NEEDS_ATTENTION (same pattern as the creator cancel path).
+  // Best-effort — the dispatcher never throws.
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+  await Promise.allSettled(
+    admins.map((a) =>
+      dispatchNotification({
+        userId: a.id,
+        event: 'ORDER_NEEDS_ATTENTION',
+        data: { orderId: dispatch.orderId, status: 'CANCELLATION_REQUESTED' },
+        audience: 'admin',
+      }),
+    ),
+  )
+
   revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/orders')
   return { ok: true }
 }
 

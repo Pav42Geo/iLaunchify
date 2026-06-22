@@ -17,6 +17,7 @@ import {
   markDelivered,
   requestDispatchChanges,
   withdrawDispatch,
+  requestCancellation,
   type FlaggedField,
 } from './actions'
 
@@ -96,40 +97,48 @@ export function DispatchActions({ dispatchId, status, type }: Props) {
   //      "Quality check ran for 6h" not just "Production took 5d".
   if (status === 'PRODUCING') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Action</CardTitle>
-          <CardDescription>
-            Either start a quality check or, for low-risk batches, mark ready
-            directly.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Button
-            className="w-full"
-            onClick={wrap(
-              () => enterQualityCheck({ dispatchId }),
-              'Quality check started',
-            )}
-            disabled={busy}
-          >
-            Start quality check
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={wrap(() => markReady({ dispatchId }), 'Marked ready')}
-            disabled={busy}
-          >
-            Skip QC · mark ready to ship
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Action</CardTitle>
+            <CardDescription>
+              Either start a quality check or, for low-risk batches, mark ready
+              directly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={wrap(
+                () => enterQualityCheck({ dispatchId }),
+                'Quality check started',
+              )}
+              disabled={busy}
+            >
+              Start quality check
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={wrap(() => markReady({ dispatchId }), 'Marked ready')}
+              disabled={busy}
+            >
+              Skip QC · mark ready to ship
+            </Button>
+          </CardContent>
+        </Card>
+        <RequestCancellationPanel dispatchId={dispatchId} onChange={() => router.refresh()} />
+      </div>
     )
   }
 
   if (status === 'QUALITY_CHECK') {
-    return <QualityCheckPanel dispatchId={dispatchId} />
+    return (
+      <div className="space-y-3">
+        <QualityCheckPanel dispatchId={dispatchId} />
+        <RequestCancellationPanel dispatchId={dispatchId} onChange={() => router.refresh()} />
+      </div>
+    )
   }
 
   if (status === 'READY') {
@@ -615,6 +624,99 @@ function RequestChangesForm({
         </Button>
       </div>
     </div>
+  )
+}
+
+// =============================================================================
+// Request cancellation — the B.4 reviewed path (admin adjudicates refund + strike)
+// =============================================================================
+
+function RequestCancellationPanel({
+  dispatchId,
+  onChange,
+}: {
+  dispatchId: string
+  onChange: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [reason, setReason] = useState('')
+
+  async function submit() {
+    if (reason.trim().length < 5) {
+      toast.error('Please give a brief reason (5+ characters).')
+      return
+    }
+    if (
+      !confirm(
+        'Request cancellation? An iLaunchify admin will review it. If approved, you forfeit payment for this order and may receive a reliability strike.',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      const r = await requestCancellation({ dispatchId, reason: reason.trim() })
+      if (!r.ok) {
+        toast.error(r.error ?? 'Failed')
+        return
+      }
+      toast.success('Cancellation request sent for admin review.')
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Can&apos;t complete this order?</CardTitle>
+        <CardDescription>
+          Request a cancellation. An admin reviews it — if approved, the order is
+          cancelled and you forfeit payment (a reliability strike may apply).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {!expanded ? (
+          <Button
+            variant="ghost"
+            className="w-full text-rose-700 hover:text-rose-800"
+            onClick={() => setExpanded(true)}
+            disabled={busy}
+          >
+            Request cancellation
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cancelReason">Reason *</Label>
+              <textarea
+                id="cancelReason"
+                rows={2}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={1000}
+                placeholder="Why can't this order be completed? The admin reviewing will see this."
+                className="block w-full rounded-md border border-ink-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setExpanded(false)} disabled={busy}>
+                Back
+              </Button>
+              <Button
+                className="flex-1 bg-rose-600 hover:bg-rose-700"
+                onClick={submit}
+                disabled={busy}
+              >
+                Send request
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
