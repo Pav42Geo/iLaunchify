@@ -35,6 +35,7 @@ import {
   type FabricCanvas,
   type LabelSectionRole,
   type NutritionPanelData,
+  type AggregateNutritionData,
 } from '@ilaunchify/ui'
 import { addManagedNutritionPanel } from '../lib/managedNutritionPanel'
 import { useCanvasRoles } from '../useCanvasRoles'
@@ -72,6 +73,8 @@ interface Props {
   /** Phase 2b — REAL Nutrition Facts data for the active flavor/base (null →
    *  non-FOOD or no recipe → fall back to sample). Drives the panel's content. */
   nutritionPanelData?: NutritionPanelData | null
+  /** Phase 2b — REAL multi-column aggregate (variety box). null → sample. */
+  aggregateNutritionData?: AggregateNutritionData | null
   /** The active flavor whose nutrition this is (null = base), for the binding. */
   activeFlavorPresetId?: string | null
   /** Recipe hash stamped on the panel for the staleness gate. */
@@ -88,6 +91,7 @@ export function LabelDrawer({
   dieCut,
   productCtx,
   nutritionPanelData,
+  aggregateNutritionData,
   activeFlavorPresetId = null,
   recipeHash = null,
 }: Props) {
@@ -150,9 +154,11 @@ export function LabelDrawer({
     setAdding(true)
     try {
       if (aggregate) {
+        // Phase 2b — REAL per-flavor columns when available; else sample sliced
+        // by the flavor-count control.
         await addAggregateNutritionPanel(
           canvas,
-          {
+          aggregateNutritionData ?? {
             flavors: SAMPLE_AGGREGATE_NUTRITION_DATA.flavors.slice(0, flavorCount),
             footnote: SAMPLE_AGGREGATE_NUTRITION_DATA.footnote,
           },
@@ -249,15 +255,14 @@ export function LabelDrawer({
     const centerY = o.top
     canvas.remove(obj)
     if (panelType === 'nutrition-panel') {
-      void addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
-        ink,
-        bg,
-        border,
-        sections,
-        format,
-        centerX,
-        centerY,
-      })
+      // Phase 2b — re-add with REAL data + binding so a format change keeps the
+      // flavor's nutrition (managed panel), preserving its position.
+      void addManagedNutritionPanel(
+        canvas,
+        nutritionPanelData ?? SAMPLE_NUTRITION_DATA,
+        { flavorPresetId: activeFlavorPresetId, recipeHash },
+        { ink, bg, border, sections, format, centerX, centerY },
+      )
     } else if (panelType === 'aafco-panel') {
       void addAafcoPanel(canvas, SAMPLE_AAFCO_DATA, {
         ink,
@@ -271,7 +276,7 @@ export function LabelDrawer({
     } else if (panelType === 'nutrition-aggregate-panel') {
       void addAggregateNutritionPanel(
         canvas,
-        {
+        aggregateNutritionData ?? {
           flavors: SAMPLE_AGGREGATE_NUTRITION_DATA.flavors.slice(0, flavorCount),
           footnote: SAMPLE_AGGREGATE_NUTRITION_DATA.footnote,
         },

@@ -28,8 +28,11 @@ import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
 import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
-import { resolveStudioNutrition } from '@/components/labels/label-actions'
-import { panelDataToNutritionPanelData } from './lib/nutritionPanelAdapter'
+import { resolveStudioNutrition, getVarietyPreviewColumns } from '@/components/labels/label-actions'
+import {
+  panelDataToNutritionPanelData,
+  varietyColumnsToAggregateNutritionData,
+} from './lib/nutritionPanelAdapter'
 
 export const dynamic = 'force-dynamic'
 
@@ -142,6 +145,15 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   const nutritionPanelData =
     studioNutrition.ok && studioNutrition.domain === 'FOOD'
       ? panelDataToNutritionPanelData(studioNutrition.panel)
+      : null
+
+  // Phase 2b — REAL multi-column aggregate panel (variety box, AGGREGATE topology):
+  // every flavor's recomputed nutrition as side-by-side columns. Null when there
+  // are no per-flavor recipes → the Label drawer keeps its sample aggregate.
+  const variety = await getVarietyPreviewColumns(productId)
+  const aggregateNutritionData =
+    variety.ok && variety.columns.length > 0
+      ? varietyColumnsToAggregateNutritionData(variety.columns)
       : null
 
   // ---- Resolve die-cut ------------------------------------------------------
@@ -294,6 +306,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       flavors={flavors}
       activeFlavorPresetId={activeFlavorPresetId}
       nutritionPanelData={nutritionPanelData}
+      aggregateNutritionData={aggregateNutritionData}
     />
   )
 }

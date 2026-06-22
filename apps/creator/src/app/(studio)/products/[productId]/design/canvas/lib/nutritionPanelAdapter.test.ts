@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { panelDataToNutritionPanelData } from './nutritionPanelAdapter'
+import {
+  panelDataToNutritionPanelData,
+  varietyColumnsToAggregateNutritionData,
+} from './nutritionPanelAdapter'
 import type { PanelData } from '@ilaunchify/types'
 
 // Mirrors the real buildRows() output shape (packages/nutrition/panel-adapter.ts):
@@ -57,6 +60,26 @@ describe('panelDataToNutritionPanelData', () => {
   it('carries serving + footnote through', () => {
     expect(out.servingSize).toBe('1 scoop (32g)')
     expect(out.servingsPerContainer).toBe('30')
+    expect(out.footnote).toBe('* The % Daily Value (DV)…')
+  })
+})
+
+describe('varietyColumnsToAggregateNutritionData', () => {
+  const berry: PanelData = { ...PANEL, servingSize: '1 bar (40g)' }
+  const out = varietyColumnsToAggregateNutritionData([
+    { label: 'Strawberry', panel: berry },
+    { label: 'Vanilla', panel: PANEL },
+  ])
+
+  it('makes one column per flavor (name + adapted panel body)', () => {
+    expect(out.flavors).toHaveLength(2)
+    expect(out.flavors[0]!.name).toBe('Strawberry')
+    expect(out.flavors[0]!.servingSize).toBe('1 bar (40g)')
+    expect(out.flavors[0]!.calories).toBe(120)
+    expect(out.flavors[0]!.rows.find((r) => r.label === 'Sodium')!.value).toBe('35mg')
+  })
+
+  it('shares the FDA footnote from the first column', () => {
     expect(out.footnote).toBe('* The % Daily Value (DV)…')
   })
 })

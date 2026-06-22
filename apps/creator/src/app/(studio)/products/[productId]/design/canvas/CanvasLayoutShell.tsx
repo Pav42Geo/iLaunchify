@@ -40,6 +40,7 @@ import {
   reconcileCertBadges,
   addCertBadge,
   type NutritionPanelData,
+  type AggregateNutritionData,
   SavedIndicator,
   snapshotCanvasAsPng,
   type SnapshotItem,
@@ -235,6 +236,8 @@ interface Props {
   /** Phase 2b — REAL Nutrition Facts data for the active flavor/base (null →
    *  non-FOOD or no recipe). Fed to the Label drawer's panel add. */
   nutritionPanelData: NutritionPanelData | null
+  /** Phase 2b — REAL multi-column aggregate (variety box). null → sample. */
+  aggregateNutritionData: AggregateNutritionData | null
 }
 
 type ToolKey =
@@ -308,6 +311,7 @@ export function CanvasLayoutShell({
   flavors,
   activeFlavorPresetId,
   nutritionPanelData,
+  aggregateNutritionData,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -958,6 +962,7 @@ export function CanvasLayoutShell({
               showFrames={showFrames}
               setShowFrames={setShowFrames}
               nutritionPanelData={nutritionPanelData}
+              aggregateNutritionData={aggregateNutritionData}
               activeFlavorPresetId={activeFlavorPresetId}
               recipeHash={recipeHash}
               onClose={closeDrawer}
@@ -1461,6 +1466,7 @@ function ToolDrawer({
   showFrames,
   setShowFrames,
   nutritionPanelData,
+  aggregateNutritionData,
   activeFlavorPresetId,
   recipeHash,
   onClose,
@@ -1489,6 +1495,7 @@ function ToolDrawer({
   showFrames: boolean
   setShowFrames: (v: boolean) => void
   nutritionPanelData: NutritionPanelData | null
+  aggregateNutritionData: AggregateNutritionData | null
   activeFlavorPresetId: string | null
   recipeHash: string | null
   onClose: () => void
@@ -1548,6 +1555,7 @@ function ToolDrawer({
             labelingType={labelingType}
             dieCut={dieCut}
             nutritionPanelData={nutritionPanelData}
+            aggregateNutritionData={aggregateNutritionData}
             activeFlavorPresetId={activeFlavorPresetId}
             recipeHash={recipeHash}
             productCtx={{

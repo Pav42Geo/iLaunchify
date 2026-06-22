@@ -7,7 +7,12 @@
 // SUPPLEMENT_FACTS uses the supplement panel + its own adapter (Step E).
 
 import type { PanelData, NutrientRow } from '@ilaunchify/types'
-import type { NutritionPanelData, NutritionRow } from '@ilaunchify/ui'
+import type {
+  NutritionPanelData,
+  NutritionRow,
+  AggregateNutritionData,
+  NutritionFlavor,
+} from '@ilaunchify/ui'
 
 // The FDA "major" declared nutrients render bold; their sub-items + the bottom
 // vitamins do not (confirmed against SAMPLE_NUTRITION_DATA). Match by stable id.
@@ -51,4 +56,27 @@ export function panelDataToNutritionPanelData(panel: PanelData): NutritionPanelD
     ...(addedRow ? { addedSugarG: toNumber(addedRow.amount) } : {}),
     footnote: panel.requiredFooter,
   }
+}
+
+/**
+ * Per-flavor PanelData columns → AggregateNutritionData (the multi-column variety
+ * panel). Reuses the single-panel adapter per column; the footnote comes from the
+ * first column (all flavors share the FDA footer). Used for AGGREGATE topology.
+ */
+export function varietyColumnsToAggregateNutritionData(
+  columns: Array<{ label: string; panel: PanelData }>,
+): AggregateNutritionData {
+  const flavors: NutritionFlavor[] = columns.map((c) => {
+    const np = panelDataToNutritionPanelData(c.panel)
+    return {
+      name: c.label,
+      servingsPerContainer: np.servingsPerContainer,
+      servingSize: np.servingSize,
+      calories: np.calories,
+      rows: np.rows,
+      ...(np.addedSugarG != null ? { addedSugarG: np.addedSugarG } : {}),
+    }
+  })
+  const footnote = columns[0] ? panelDataToNutritionPanelData(columns[0].panel).footnote : ''
+  return { flavors, footnote }
 }
