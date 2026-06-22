@@ -51,7 +51,6 @@ import {
   MessageSquare,
   LifeBuoy,
   Sparkles,
-  CreditCard,
   Lock,
   Code,
   LineChart,
@@ -80,6 +79,8 @@ import {
   DollarSign,
   Truck,
   RotateCcw,
+  Wallet,
+  Landmark,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -269,7 +270,21 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings', capability: 'billing:write' },
           ],
         },
-        { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
+        // Finance console (docs/BILLING_AND_ACCOUNTING.md §4 + ADMIN_FINANCE_SIDEBAR_PROPOSAL.md).
+        // Nested in Settings per Pavel 2026-06-22. Read-mostly; refunds gated harder.
+        // Each child flips hiddenUntilBuilt → false as its page ships.
+        {
+          kind: 'group',
+          label: 'Finance',
+          icon: DollarSign,
+          children: [
+            { kind: 'item', label: 'Overview', icon: LineChart, href: '/finance', capability: 'billing:read', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Invoices', icon: FileText, href: '/finance/invoices', capability: 'billing:read', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Payouts & transfers', icon: Wallet, href: '/finance/payouts', capability: 'billing:read', hiddenUntilBuilt: false },
+            { kind: 'item', label: 'Refunds', icon: RotateCcw, href: '/finance/refunds', capability: 'refunds:approve', hiddenUntilBuilt: true },
+            { kind: 'item', label: 'Tax forms (1099)', icon: Landmark, href: '/finance/tax-forms', capability: 'billing:read', hiddenUntilBuilt: true },
+          ],
+        },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
         { kind: 'item', label: 'Developer & API', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
         {
