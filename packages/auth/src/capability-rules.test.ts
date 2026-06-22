@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest'
+// Table-driven tests for the admin RBAC capability matrix (docs/ADMIN_RBAC.md).
+//
+// Same convention as ownership.test.ts: throw-based scenarios with a runAll()
+// aggregator, NO hard vitest import, so this type-checks under `tsc --noEmit`
+// today and plugs into a runner later.
+//
+// Why this matters: this matrix is the admin authorization fence. The tables
+// pin exactly what each role can and cannot do so a refactor can't silently
+// widen access (e.g. let a Support agent touch money or the admin team).
+
 import {
   hasCapability,
   resolveCapabilities,
@@ -6,72 +15,99 @@ import {
   ROLE_CAPABILITIES,
 } from './capability-rules'
 
-describe('admin RBAC capability matrix', () => {
-  it('SUPER_ADMIN has every capability', () => {
-    for (const cap of ALL_CAPABILITIES) {
-      expect(hasCapability('SUPER_ADMIN', cap)).toBe(true)
+function assert(cond: boolean, msg: string): void {
+  if (!cond) throw new Error(msg)
+}
+
+export const scenarioSuperAdminHasEverything = () => {
+  for (const cap of ALL_CAPABILITIES) {
+    assert(hasCapability('SUPER_ADMIN', cap), `SUPER_ADMIN missing ${cap}`)
+  }
+  assert(
+    resolveCapabilities('SUPER_ADMIN').length === ALL_CAPABILITIES.length,
+    'SUPER_ADMIN should resolve to all capabilities',
+  )
+  return true
+}
+
+export const scenarioNullIsSuperAdmin = () => {
+  // P0 fail-open: a null/undefined adminRole resolves to SUPER_ADMIN so existing
+  // admins are unaffected until roles are assigned.
+  assert(hasCapability(null, 'users:admin'), 'null should be super (users:admin)')
+  assert(hasCapability(undefined, 'billing:write'), 'undefined should be super (billing:write)')
+  assert(resolveCapabilities(null).length === ALL_CAPABILITIES.length, 'null resolves to all caps')
+  return true
+}
+
+export const scenarioSupportAgentFenced = () => {
+  const can: Parameters<typeof hasCapability>[1][] = [
+    'tickets:write', 'orders:read', 'refunds:propose',
+  ]
+  const cannot: Parameters<typeof hasCapability>[1][] = [
+    'refunds:approve', 'refunds:execute', 'billing:read', 'billing:write',
+    'orders:write', 'users:admin', 'security:admin', 'platform:admin',
+    'tickets:admin', 'reviews:write', 'tiers:write',
+  ]
+  for (const c of can) assert(hasCapability('SUPPORT_AGENT', c), `agent should have ${c}`)
+  for (const c of cannot) assert(!hasCapability('SUPPORT_AGENT', c), `agent should NOT have ${c}`)
+  return true
+}
+
+export const scenarioSupportLeadFenced = () => {
+  const can: Parameters<typeof hasCapability>[1][] = [
+    'tickets:admin', 'refunds:approve', 'orders:write', 'billing:read', 'reviews:write',
+  ]
+  const cannot: Parameters<typeof hasCapability>[1][] = [
+    'billing:write', 'refunds:execute', 'tiers:write', 'users:admin',
+    'security:admin', 'platform:admin',
+  ]
+  for (const c of can) assert(hasCapability('SUPPORT_LEAD', c), `lead should have ${c}`)
+  for (const c of cannot) assert(!hasCapability('SUPPORT_LEAD', c), `lead should NOT have ${c}`)
+  return true
+}
+
+export const scenarioBillingAdminFenced = () => {
+  const can: Parameters<typeof hasCapability>[1][] = [
+    'billing:write', 'tiers:write', 'refunds:execute',
+  ]
+  const cannot: Parameters<typeof hasCapability>[1][] = [
+    'tickets:write', 'users:admin', 'security:admin', 'platform:admin',
+  ]
+  for (const c of can) assert(hasCapability('BILLING_ADMIN', c), `billing should have ${c}`)
+  for (const c of cannot) assert(!hasCapability('BILLING_ADMIN', c), `billing should NOT have ${c}`)
+  return true
+}
+
+export const scenarioSuperOnlyCapabilities = () => {
+  const superOnly: Parameters<typeof hasCapability>[1][] = [
+    'users:admin', 'security:admin', 'platform:admin',
+  ]
+  for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
+    for (const c of superOnly) assert(!hasCapability(role, c), `${role} should NOT have ${c}`)
+  }
+  for (const c of superOnly) assert(hasCapability('SUPER_ADMIN', c), `SUPER_ADMIN missing ${c}`)
+  return true
+}
+
+export const scenarioBundlesReferenceKnownCaps = () => {
+  for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
+    const caps = ROLE_CAPABILITIES[role]
+    if (caps === '*') continue
+    for (const cap of caps) {
+      assert(ALL_CAPABILITIES.includes(cap), `${role} references unknown capability ${cap}`)
     }
-    expect(resolveCapabilities('SUPER_ADMIN')).toHaveLength(ALL_CAPABILITIES.length)
-  })
+  }
+  return true
+}
 
-  it('null/undefined role resolves to SUPER_ADMIN (P0 fail-open)', () => {
-    expect(hasCapability(null, 'users:admin')).toBe(true)
-    expect(hasCapability(undefined, 'billing:write')).toBe(true)
-    expect(resolveCapabilities(null)).toHaveLength(ALL_CAPABILITIES.length)
-  })
-
-  it('SUPPORT_AGENT can work tickets + read context, but no money/admin', () => {
-    expect(hasCapability('SUPPORT_AGENT', 'tickets:write')).toBe(true)
-    expect(hasCapability('SUPPORT_AGENT', 'orders:read')).toBe(true)
-    expect(hasCapability('SUPPORT_AGENT', 'refunds:propose')).toBe(true)
-    expect(hasCapability('SUPPORT_AGENT', 'refunds:approve')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'refunds:execute')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'billing:read')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'billing:write')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'orders:write')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'users:admin')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'security:admin')).toBe(false)
-    expect(hasCapability('SUPPORT_AGENT', 'tickets:admin')).toBe(false)
-  })
-
-  it('SUPPORT_LEAD adds approve + read-only billing + review queues, no config writes', () => {
-    expect(hasCapability('SUPPORT_LEAD', 'tickets:admin')).toBe(true)
-    expect(hasCapability('SUPPORT_LEAD', 'refunds:approve')).toBe(true)
-    expect(hasCapability('SUPPORT_LEAD', 'orders:write')).toBe(true)
-    expect(hasCapability('SUPPORT_LEAD', 'billing:read')).toBe(true)
-    expect(hasCapability('SUPPORT_LEAD', 'reviews:write')).toBe(true)
-    // fenced
-    expect(hasCapability('SUPPORT_LEAD', 'billing:write')).toBe(false)
-    expect(hasCapability('SUPPORT_LEAD', 'refunds:execute')).toBe(false)
-    expect(hasCapability('SUPPORT_LEAD', 'tiers:write')).toBe(false)
-    expect(hasCapability('SUPPORT_LEAD', 'users:admin')).toBe(false)
-    expect(hasCapability('SUPPORT_LEAD', 'security:admin')).toBe(false)
-  })
-
-  it('BILLING_ADMIN owns money, not ticket internals or admin team', () => {
-    expect(hasCapability('BILLING_ADMIN', 'billing:write')).toBe(true)
-    expect(hasCapability('BILLING_ADMIN', 'tiers:write')).toBe(true)
-    expect(hasCapability('BILLING_ADMIN', 'refunds:execute')).toBe(true)
-    expect(hasCapability('BILLING_ADMIN', 'tickets:write')).toBe(false)
-    expect(hasCapability('BILLING_ADMIN', 'users:admin')).toBe(false)
-    expect(hasCapability('BILLING_ADMIN', 'security:admin')).toBe(false)
-  })
-
-  it('users:admin + security:admin + platform:admin are SUPER_ADMIN-only', () => {
-    for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
-      expect(hasCapability(role, 'users:admin')).toBe(false)
-      expect(hasCapability(role, 'security:admin')).toBe(false)
-      expect(hasCapability(role, 'platform:admin')).toBe(false)
-    }
-    expect(hasCapability('SUPER_ADMIN', 'users:admin')).toBe(true)
-    expect(hasCapability('SUPER_ADMIN', 'platform:admin')).toBe(true)
-  })
-
-  it('every non-super role bundle references only known capabilities', () => {
-    for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
-      const caps = ROLE_CAPABILITIES[role]
-      if (caps === '*') continue
-      for (const cap of caps) expect(ALL_CAPABILITIES).toContain(cap)
-    }
-  })
-})
+// All scenarios — run via a manual runner to confirm locally:
+//   import { runAll } from '@ilaunchify/auth/src/capability-rules.test'
+export function runAll(): void {
+  scenarioSuperAdminHasEverything()
+  scenarioNullIsSuperAdmin()
+  scenarioSupportAgentFenced()
+  scenarioSupportLeadFenced()
+  scenarioBillingAdminFenced()
+  scenarioSuperOnlyCapabilities()
+  scenarioBundlesReferenceKnownCaps()
+}
