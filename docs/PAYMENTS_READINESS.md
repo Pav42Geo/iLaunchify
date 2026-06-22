@@ -64,5 +64,9 @@ The **execution glue** is Prisma/Stripe-bound and can't run as a pure unit test:
 The deterministic money math — fee, payout split, refund split, cancellation
 outcome — is reviewed, invariant-checked, and green (109 assertions). The only
 un-unit-tested surface is the Stripe/DB execution layer, which is flag-gated and
-consumes the tested plans. Recommend a Stripe-test-mode pass on the execution
-glue before enabling live charges/refunds.
+consumes the tested plans.
+
+**Go-live gate:** run `docs/STRIPE_TESTMODE_VERIFICATION.md` (8-flow runbook,
+preceded by `node scripts/stripe-preflight.mjs`, which env-checks and refuses a
+live key) against Stripe test mode before enabling live charges/refunds. Keep
+`STRIPE_REFUNDS_ENABLED` off until the refund flow (§4) passes.
