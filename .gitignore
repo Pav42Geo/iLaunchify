@@ -44,6 +44,9 @@ env/
 coverage/
 .nyc_output/
 
+# Local agent settings (machine-local, not shared)
+.claude/settings.local.json
+
 # IDE
 .vscode/*
 !.vscode/settings.json
