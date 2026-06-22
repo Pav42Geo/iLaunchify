@@ -293,7 +293,8 @@ export async function adminSetMarketingDetail(input: {
   longDescription: string | null
   marketingDetail: Record<string, unknown>
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Catalog/marketplace config → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: input.productTemplateId },
@@ -341,7 +342,8 @@ export async function adminSetMarketplaceAttributes(input: {
   ratingAvg?: number | null
   ratingCount?: number
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Catalog/marketplace config → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: input.productTemplateId },
@@ -449,7 +451,8 @@ export async function adminSetProductNiches(
   productTemplateId: string,
   nicheIds: string[],
 ): Promise<Result> {
-  const admin = await requireRole(['ADMIN'])
+  // Catalog taxonomy → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
@@ -569,7 +572,8 @@ export async function adminSetProductPhrases(
   productTemplateId: string,
   mandatoryPhraseIds: string[],
 ): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Catalog taxonomy → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },
@@ -676,7 +680,8 @@ export async function adminSetProductLifestyleTags(
   productTemplateId: string,
   tagIds: string[],
 ): Promise<Result> {
-  const admin = await requireRole(['ADMIN'])
+  // Catalog taxonomy → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   const tpl = await prisma.productTemplate.findUnique({
     where: { id: productTemplateId },

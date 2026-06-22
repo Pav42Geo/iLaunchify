@@ -19,7 +19,7 @@ export type Capability =
   | 'partners:read'
   | 'partners:approve'
   | 'reviews:write'
-  | 'catalog:write'
+  | 'catalog:write' // marketplace taxonomy + library config (super-only for now)
   | 'assets:write'
   | 'academy:write'
   | 'billing:read'

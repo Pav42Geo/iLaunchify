@@ -80,7 +80,7 @@ export const scenarioBillingAdminFenced = () => {
 
 export const scenarioSuperOnlyCapabilities = () => {
   const superOnly: Parameters<typeof hasCapability>[1][] = [
-    'users:admin', 'security:admin', 'platform:admin',
+    'users:admin', 'security:admin', 'platform:admin', 'catalog:write',
   ]
   for (const role of ['SUPPORT_AGENT', 'SUPPORT_LEAD', 'BILLING_ADMIN'] as const) {
     for (const c of superOnly) assert(!hasCapability(role, c), `${role} should NOT have ${c}`)

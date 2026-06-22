@@ -107,7 +107,8 @@ export async function promoteToLibrary(input: {
   complianceNotes?: string
   bioengineeredStatus?: 'NOT_APPLICABLE' | 'BIOENGINEERED' | 'DERIVED_FROM_BIOENGINEERED'
 }): Promise<Result<{ ok: true; newIngredientId: string }>> {
-  const user = await requireRole(['ADMIN'])
+  // Library curation → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const user = await requireCapability('catalog:write')
 
   const source = await prisma.ingredient.findUnique({
     where: { id: input.ingredientId },

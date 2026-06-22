@@ -204,7 +204,13 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
   Leads verify partners before gating. (b) catalog/library config actions
   (createCertificateType, adminSetMarketplaceAttributes/Niches/Phrases/
   LifestyleTags, ingredient promoteToLibrary) want a `catalog:write` cap, not
-  `reviews:write` — left on ADMIN pending that decision.
+  `reviews:write`. **catalog:write shipped 2026-06-21 (super-only):** gated
+  adminSetMarketingDetail / adminSetMarketplaceAttributes / adminSetProductNiches /
+  adminSetProductPhrases / adminSetProductLifestyleTags, ingredient promoteToLibrary,
+  and cert-type create/update/setStatus on `catalog:write` (currently SUPER_ADMIN
+  only via '*'; grant to Lead/Billing later = one-line matrix edit). `setProductPaused`
+  + `postProductNote` left on ADMIN (operational, not catalog config). Partner
+  verification still on `requireRole('ADMIN')` — STILL needs the Lead-vs-Super call.
 - **P1 — lock the sensitive set:** ✅ shipped 2026-06-21.
   - **P1a (commit d48b953):** capability-gated sidebar — `getViewerCapabilities()`
     in `@ilaunchify/auth`, `capability?` on nav items, `AdminSidebarTree` prunes

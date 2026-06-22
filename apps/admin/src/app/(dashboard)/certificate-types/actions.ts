@@ -34,7 +34,8 @@ export async function createCertificateType(input: {
   description: string
   verificationNotes: string
 }): Promise<Result<{ id: string }>> {
-  const admin = await requireRole('ADMIN')
+  // Cert-type catalog config → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
 
   if (!input.name.trim() || !input.description.trim()) {
     return { ok: false, error: 'Name + description are required.' }
@@ -76,7 +77,8 @@ export async function updateCertificateType(input: {
   issuingBodyUrl?: string | null
   applicabilityNotes?: string | null
 }): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Cert-type catalog config → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
   await prisma.certificateType.update({
     where: { id: input.id },
     data: {
@@ -113,7 +115,8 @@ export async function setCertificateTypeStatus(
   id: string,
   status: CertificateTypeStatus,
 ): Promise<Result> {
-  const admin = await requireRole('ADMIN')
+  // Cert-type catalog config → catalog:write (super-only for now). docs/ADMIN_RBAC.md.
+  const admin = await requireCapability('catalog:write')
   const ct = await prisma.certificateType.findUnique({ where: { id } })
   if (!ct) return { ok: false, error: 'Certificate type not found.' }
 
