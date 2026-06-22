@@ -222,8 +222,10 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
   queue at `/support-tickets/refund-requests` (`refunds:approve`, sidebar-linked).
   All transitions audited (`REFUND_REQUESTED/APPROVED/REJECTED` on the Order).
   Cast-guarded (ADMIN-RBAC-CAST) until generate. Admin typechecks 0.
+  **Notify:** `proposeRefund` pings every admin holding `refunds:approve` via a
+  new `SUPPORT_REFUND_REQUESTED` notification (best-effort) → links to the queue.
   **Mac:** the additive `db push` now also creates `SupportRefundRequest` +
-  `RefundRequestStatus`.
+  `RefundRequestStatus` + the `SUPPORT_REFUND_REQUESTED` NotificationEvent value.
 - **P4 — admin team page:** ✅ core shipped 2026-06-21. `/admins` (v2 surface,
   `users:admin`-gated) lists admins + current role chip + per-row role select →
   `setAdminRole` (audited `ADMIN_ROLE_CHANGED`, blocks changing your own role).

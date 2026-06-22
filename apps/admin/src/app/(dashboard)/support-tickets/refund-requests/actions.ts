@@ -8,10 +8,11 @@
 // All transitions audited. The SupportRefundRequest model is new, so prisma
 // access is cast-guarded (ADMIN-RBAC-CAST) until Mac runs `prisma generate`.
 
-import { requireCapability } from '@ilaunchify/auth'
+import { requireCapability, hasCapability, type AdminRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { executeOrderRefund } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchNotification, type DispatchInput } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -69,6 +70,28 @@ export async function proposeRefund(input: {
     toValue: String(input.amountCents),
     payload: { ticketId: input.ticketId ?? null, reason },
   })
+
+  // Notify refund-approvers (best-effort — never blocks the request).
+  try {
+    const admins = await (
+      prisma.user as unknown as {
+        findMany: (a: unknown) => Promise<{ id: string; adminRole: AdminRole | null }[]>
+      }
+    ).findMany({ where: { role: 'ADMIN' }, select: { id: true, adminRole: true } })
+    const approvers = admins.filter((a) => hasCapability(a.adminRole, 'refunds:approve'))
+    await Promise.all(
+      approvers.map((a) =>
+        dispatchNotification({
+          userId: a.id,
+          event: 'SUPPORT_REFUND_REQUESTED' as DispatchInput['event'],
+          data: { orderId: input.orderId, amountCents: input.amountCents, href: '/support-tickets/refund-requests' },
+          audience: 'admin',
+        }),
+      ),
+    )
+  } catch {
+    /* best-effort */
+  }
 
   if (input.ticketId) revalidatePath(`/support-tickets/${input.ticketId}`)
   revalidatePath('/support-tickets/refund-requests')

@@ -3239,6 +3239,7 @@ enum NotificationEvent {
   SUPPORT_TICKET_RESOLVED // → requester
   SUPPORT_TICKET_REOPENED // → assignee (or category default)
   SUPPORT_SLA_BREACHED // → assignee (or category default)
+  SUPPORT_REFUND_REQUESTED // → admins with refunds:approve (RBAC P3)
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

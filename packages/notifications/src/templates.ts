@@ -104,6 +104,7 @@ interface TemplateData {
   SUPPORT_TICKET_RESOLVED: { ticketId: string; subject: string; href: string }
   SUPPORT_TICKET_REOPENED: { ticketId: string; subject: string; href: string }
   SUPPORT_SLA_BREACHED: { ticketId: string; subject: string; href: string }
+  SUPPORT_REFUND_REQUESTED: { orderId: string; amountCents: number; href: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -401,6 +402,14 @@ export function renderTemplate<E extends NotificationEvent>(
       return {
         title: `SLA breached: “${d.subject}”`,
         body: 'This support ticket passed its response SLA window without a first reply.',
+        link: d.href,
+      }
+    }
+    case 'SUPPORT_REFUND_REQUESTED': {
+      const d = data as TemplateData['SUPPORT_REFUND_REQUESTED']
+      return {
+        title: `Refund requested · $${(d.amountCents / 100).toFixed(2)}`,
+        body: `A support agent proposed a refund on order #${d.orderId.slice(-8)} — review to approve or reject.`,
         link: d.href,
       }
     }
