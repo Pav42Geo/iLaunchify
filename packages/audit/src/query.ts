@@ -11,6 +11,9 @@ export interface ListAuditLogsParams {
   entityId?: string
   actorId?: string
   actorRole?: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'SYSTEM'
+  /** Admin RBAC sub-role (docs/ADMIN_RBAC.md). Filters ADMIN-actor rows to a
+      specific sub-role; implies actorRole=ADMIN. */
+  actorAdminRole?: 'SUPPORT_AGENT' | 'SUPPORT_LEAD' | 'BILLING_ADMIN' | 'SUPER_ADMIN'
   action?: string
   since?: Date
   until?: Date
@@ -30,6 +33,7 @@ export async function listAuditLogs(
       ...(params.entityId ? { entityId: params.entityId } : {}),
       ...(params.actorId ? { actorId: params.actorId } : {}),
       ...(params.actorRole ? { actorRole: params.actorRole } : {}),
+      ...(params.actorAdminRole ? { actorAdminRole: params.actorAdminRole } : {}),
       ...(params.action ? { action: params.action } : {}),
       ...(params.since || params.until
         ? {

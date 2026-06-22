@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { listAuditLogs, AUDIT_ENTITY_TYPES } from '@ilaunchify/audit'
-import { ADMIN_ROLE_LABEL, type AdminRole } from '@ilaunchify/auth'
+import { ADMIN_ROLE_LABEL, ADMIN_ROLES, type AdminRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 
@@ -73,10 +73,15 @@ interface AuditPageProps {
     entityId?: string
     actorId?: string
     actorRole?: string
+    actorAdminRole?: string
     action?: string
     since?: string
     until?: string
   }>
+}
+
+function isValidAdminRole(v: string | undefined): v is AdminRole {
+  return !!v && (ADMIN_ROLES as readonly string[]).includes(v)
 }
 
 export default async function AuditPage({ searchParams }: AuditPageProps) {
@@ -86,6 +91,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
     entityId: sp.entityId,
     actorId: sp.actorId,
     actorRole: isValidActorRole(sp.actorRole) ? sp.actorRole : undefined,
+    actorAdminRole: isValidAdminRole(sp.actorAdminRole) ? sp.actorAdminRole : undefined,
     action: sp.action,
     since: sp.since ? new Date(sp.since) : undefined,
     until: sp.until ? new Date(sp.until) : undefined,
@@ -96,6 +102,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
     filters.entityId ||
     filters.actorId ||
     filters.actorRole ||
+    filters.actorAdminRole ||
     filters.action ||
     filters.since ||
     filters.until
@@ -177,6 +184,10 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
         active={filters.actorRole ?? null}
         currentParams={sp}
       />
+
+      {filters.actorRole === 'ADMIN' && (
+        <AdminRoleChips active={filters.actorAdminRole ?? null} currentParams={sp} />
+      )}
 
       <AdvancedFilters filters={filters} hasFilters={Boolean(hasFilters)} />
 
@@ -461,6 +472,58 @@ function RoleChips({
 }
 
 // =============================================================================
+// Admin sub-role chips (only shown when the ADMIN actor filter is active)
+// =============================================================================
+
+function AdminRoleChips({
+  active,
+  currentParams,
+}: {
+  active: AdminRole | null
+  currentParams: Record<string, string | undefined>
+}) {
+  const buildHref = (role: AdminRole | null) => {
+    // Selecting a sub-role implies actorRole=ADMIN; keep it pinned.
+    const next = { ...currentParams, actorRole: 'ADMIN', actorAdminRole: role ?? undefined }
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(next)) {
+      if (v) params.set(k, v)
+    }
+    const q = params.toString()
+    return q ? `/audit?${q}` : '/audit'
+  }
+
+  const roles: Array<{ value: AdminRole | null; label: string }> = [
+    { value: null, label: 'All admin roles' },
+    ...ADMIN_ROLES.map((r) => ({ value: r, label: ADMIN_ROLE_LABEL[r] })),
+  ]
+
+  return (
+    <nav aria-label="Filter by admin sub-role" className="-mt-1 flex flex-wrap gap-2 pl-1">
+      {roles.map((r) => {
+        const isActive = active === r.value
+        return (
+          <Link
+            key={r.label}
+            href={buildHref(r.value)}
+            aria-current={isActive ? 'page' : undefined}
+            className={cn(
+              'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+              isActive
+                ? 'border-ink-900 bg-ink-900 text-white'
+                : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400 hover:text-ink-900',
+            )}
+          >
+            {r.label}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
+// =============================================================================
 // Advanced filters (Entity ID, Action, since/until)
 // =============================================================================
 
@@ -473,6 +536,7 @@ function AdvancedFilters({
     entityId?: string
     actorId?: string
     actorRole?: string
+    actorAdminRole?: string
     action?: string
     since?: Date
     until?: Date
@@ -497,6 +561,9 @@ function AdvancedFilters({
         )}
         {filters.actorRole && (
           <input type="hidden" name="actorRole" value={filters.actorRole} />
+        )}
+        {filters.actorAdminRole && (
+          <input type="hidden" name="actorAdminRole" value={filters.actorAdminRole} />
         )}
         <FieldGroup label="Entity ID">
           <input
