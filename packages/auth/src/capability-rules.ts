@@ -31,6 +31,20 @@ export type Capability =
   | 'security:admin'
   | 'audit:read'
 
+export const ADMIN_ROLES: AdminRole[] = [
+  'SUPPORT_AGENT',
+  'SUPPORT_LEAD',
+  'BILLING_ADMIN',
+  'SUPER_ADMIN',
+]
+
+export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
+  SUPPORT_AGENT: 'Support agent',
+  SUPPORT_LEAD: 'Support lead',
+  BILLING_ADMIN: 'Billing admin',
+  SUPER_ADMIN: 'Super admin',
+}
+
 export const ALL_CAPABILITIES: Capability[] = [
   'tickets:read', 'tickets:write', 'tickets:admin',
   'orders:read', 'orders:write',

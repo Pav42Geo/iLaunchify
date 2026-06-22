@@ -15,6 +15,8 @@ import {
 export {
   ROLE_CAPABILITIES,
   ALL_CAPABILITIES,
+  ADMIN_ROLES,
+  ADMIN_ROLE_LABEL,
   resolveCapabilities,
   hasCapability,
   type AdminRole,

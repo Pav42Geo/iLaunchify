@@ -214,8 +214,17 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
   partners work end-to-end for `SUPPORT_AGENT`; tighten any write actions.
 - **P3 — refund propose→approve:** `SupportRefundRequest` + actions + ticket
   surface + lead queue.
-- **P4 — admin team page:** assign roles + `actorAdminRole` audit + middleware
-  path-prefix gate.
+- **P4 — admin team page:** ✅ core shipped 2026-06-21. `/admins` (v2 surface,
+  `users:admin`-gated) lists admins + current role chip + per-row role select →
+  `setAdminRole` (audited `ADMIN_ROLE_CHANGED`, blocks changing your own role).
+  `ADMIN_ROLES` + `ADMIN_ROLE_LABEL` added to `@ilaunchify/auth`; sidebar Admins
+  unhidden. **Now roles are assignable from the UI — the fence is operable.**
+  - **Deferred to P4.1:** `AuditLog.actorAdminRole` column (capture which admin
+    kind acted — needs threading through the audit writer); middleware
+    path-prefix gate (needs adminRole in the JWT/session); flipping the
+    `null → least-privilege` default (only after Mac backfill confirmed, else it
+    locks out un-backfilled admins). Invite/credential flow still open (human
+    sets the password).
 
 ## Extensibility (deferred, no-regret hooks)
 
