@@ -1,6 +1,7 @@
 // Creator → Settings → Billing (docs/BILLING_AND_ACCOUNTING.md slices 1–2).
 // Canva-style surface: payment method (Stripe-hosted) + invoice/tax contact details.
 
+import Link from 'next/link'
 import { requireUser } from '@ilaunchify/auth'
 import { getBillingProfile, listPaymentMethodRefs } from '@ilaunchify/db'
 import { isStripeConfigured } from '@ilaunchify/payments'
@@ -44,6 +45,12 @@ export default async function CreatorBillingPage({
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
           Manage your payment method and the contact and tax details that appear on your invoices.
         </p>
+        <Link
+          href="/settings/billing/invoices"
+          className="mt-3 inline-block text-[13px] font-semibold text-pink-700 hover:text-pink-800"
+        >
+          View orders &amp; invoices →
+        </Link>
       </div>
 
       {banner && (

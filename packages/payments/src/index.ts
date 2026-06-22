@@ -63,3 +63,5 @@ export {
   removePaymentMethod,
   type CreateSetupCheckoutInput,
 } from './payment-methods'
+// Billing slice 3 — orders & invoices (Stripe-hosted receipt links).
+export { getChargeReceiptUrl } from './invoices'

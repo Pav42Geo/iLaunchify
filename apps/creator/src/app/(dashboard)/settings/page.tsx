@@ -9,6 +9,7 @@ import {
   Bell,
   Store,
   ShieldCheck,
+  ReceiptText,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -131,6 +132,13 @@ export default async function SettingsPage() {
           cta="Manage billing details"
           description="Contact and tax details on your invoices. Card and bank numbers are held securely by our payment processor — never stored here."
           pill={billingSet ? { label: 'Set up', tone: 'good' } : { label: 'Not set', tone: 'neutral' }}
+        />
+        <SettingCard
+          icon={<ReceiptText className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Orders & invoices"
+          href="/settings/billing/invoices"
+          cta="View order history"
+          description="Your production order history, totals, and Stripe-hosted receipts in one billing-history view."
         />
         <SettingCard
           icon={<Wallet className="h-[18px] w-[18px]" aria-hidden="true" />}
