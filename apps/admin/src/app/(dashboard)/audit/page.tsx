@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { listAuditLogs, AUDIT_ENTITY_TYPES } from '@ilaunchify/audit'
+import { ADMIN_ROLE_LABEL, type AdminRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 
@@ -576,6 +577,7 @@ interface AuditLogRow {
   at: Date
   actorId: string | null
   actorRole: string
+  actorAdminRole: string | null
   entityType: string
   entityId: string
   action: string
@@ -642,6 +644,11 @@ function LogsTable({
                           </p>
                           <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-ink-500">
                             {tone.label}
+                            {log.actorRole === 'ADMIN' && log.actorAdminRole && (
+                              <span className="ml-1 inline-flex rounded border border-ink-200 bg-ink-50 px-1 py-[1px] text-[9.5px] font-semibold normal-case tracking-normal text-ink-500">
+                                {ADMIN_ROLE_LABEL[log.actorAdminRole as AdminRole] ?? log.actorAdminRole}
+                              </span>
+                            )}
                           </p>
                         </>
                       ) : (
