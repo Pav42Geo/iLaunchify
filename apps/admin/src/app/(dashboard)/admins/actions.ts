@@ -5,9 +5,10 @@
 // (prevents self-lockout — ask another super admin).
 
 import { randomBytes, createHash } from 'node:crypto'
-import { requireCapability, ADMIN_ROLES, type AdminRole } from '@ilaunchify/auth'
+import { requireCapability, ADMIN_ROLES, ADMIN_ROLE_LABEL, type AdminRole } from '@ilaunchify/auth'
 import { prisma, createAdminInvite as createAdminInviteRow, revokeAdminInvite as revokeAdminInviteRow } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
+import { sendTransactionalEmail } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -116,7 +117,7 @@ export async function grantAdminAccess(input: { email: string; role: AdminRole }
 export async function createAdminInvite(input: {
   email: string
   role: AdminRole
-}): Promise<{ ok: true; link: string; email: string } | { ok: false; error: string }> {
+}): Promise<{ ok: true; link: string; email: string; emailed: boolean } | { ok: false; error: string }> {
   const actor = await requireCapability('users:admin')
   if (!ADMIN_ROLES.includes(input.role)) return { ok: false, error: 'Unknown role.' }
   const email = input.email.trim().toLowerCase()
@@ -142,16 +143,38 @@ export async function createAdminInvite(input: {
     expiresAt,
   })
 
+  const link = `${adminBaseUrl()}/accept-invite?token=${token}`
+  const roleLabel = ADMIN_ROLE_LABEL[input.role]
+
+  const result = await sendTransactionalEmail({
+    to: email,
+    subject: `You've been invited to the iLaunchify admin team`,
+    html: `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
+        <h2 style="font-size:20px;margin:0 0 8px">You're invited to the admin team</h2>
+        <p style="font-size:14px;line-height:1.5;color:#444">
+          You've been invited to join the iLaunchify admin console as
+          <strong>${roleLabel}</strong>. Click below to accept — you'll sign in (or sign up)
+          with this email address and land with that role.
+        </p>
+        <p style="margin:20px 0">
+          <a href="${link}" style="background:#111;color:#fff;text-decoration:none;padding:10px 20px;border-radius:9999px;font-size:14px;font-weight:600;display:inline-block">Accept invite</a>
+        </p>
+        <p style="font-size:12px;color:#888">This invite expires in ${INVITE_TTL_DAYS} days. If you weren't expecting it, you can ignore this email.</p>
+      </div>`,
+    text: `You've been invited to the iLaunchify admin team as ${roleLabel}. Accept: ${link} (expires in ${INVITE_TTL_DAYS} days).`,
+  })
+
   await logAuditAs(actor, {
     entityType: 'AdminInvite',
     entityId: inviteId,
     action: 'ADMIN_INVITE_CREATED',
     toValue: input.role,
-    payload: { email },
+    payload: { email, emailed: result.sent },
   })
 
   revalidatePath('/admins')
-  return { ok: true, link: `${adminBaseUrl()}/accept-invite?token=${token}`, email }
+  return { ok: true, link, email, emailed: result.sent }
 }
 
 export async function revokeAdminInvite(input: { inviteId: string }): Promise<Result> {

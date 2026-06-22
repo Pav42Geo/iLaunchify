@@ -13,6 +13,7 @@ export function InviteAdminForm({ roles }: { roles: RoleOption[] }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState(roles[0]?.value ?? 'SUPPORT_AGENT')
   const [link, setLink] = useState<string | null>(null)
+  const [emailed, setEmailed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [pending, start] = useTransition()
 
@@ -28,8 +29,13 @@ export function InviteAdminForm({ roles }: { roles: RoleOption[] }) {
         return
       }
       setLink(r.link)
+      setEmailed(r.emailed)
       setCopied(false)
-      toast.success('Invite created. Copy the link below and send it to them.')
+      toast.success(
+        r.emailed
+          ? `Invite emailed to ${r.email}.`
+          : 'Invite created. Copy the link below and send it to them.',
+      )
       setEmail('')
       router.refresh()
     })
@@ -91,7 +97,11 @@ export function InviteAdminForm({ roles }: { roles: RoleOption[] }) {
 
       {link && (
         <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-          <p className="text-[11px] font-medium text-emerald-800">Invite link — send this to them</p>
+          <p className="text-[11px] font-medium text-emerald-800">
+            {emailed
+              ? 'Emailed to them — here’s the same link to copy if you want a backup'
+              : 'Invite link — send this to them'}
+          </p>
           <div className="mt-1.5 flex items-center gap-2">
             <input
               readOnly

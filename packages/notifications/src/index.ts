@@ -24,3 +24,5 @@ export {
 } from './preferences'
 export { renderTemplate } from './templates'
 export type { NotificationTemplate } from './templates'
+// One-off transactional email to an arbitrary address (e.g. admin invites).
+export { sendTransactionalEmail, type SendEmailResult } from './email'
