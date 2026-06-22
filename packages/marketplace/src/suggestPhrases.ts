@@ -20,36 +20,15 @@
 
 import { prisma } from '@ilaunchify/db'
 import type {
-  PhraseRuleCondition,
-  PhraseSuggestion,
   SuggestPhrasesInput,
   SuggestPhrasesResult,
   PhraseRecipeContext,
 } from './types'
-
-const CONDITION_KINDS = new Set([
-  'LABELING_TYPE',
-  'PRODUCT_CATEGORY',
-  'MARKETPLACE_CATEGORY',
-  'ALLERGEN_PRESENT',
-  'BIOENGINEERED',
-  'INGREDIENT_MATCH',
-  'PACKING_TYPE',
-  'NUTRIENT_SOURCE',
-  'PRODUCT_FACT',
-])
-
-interface PhraseFacts {
-  labelingType: string
-  productCategory: string | null
-  marketplaceCategorySlug: string | null
-  packingTypes: Set<string>
-  nutrientSource: string
-  allergens: Set<string>
-  bioengineered: boolean
-  ingredientNames: string[]
-  flags: Record<string, boolean>
-}
+import {
+  evaluateRules,
+  type PhraseFacts,
+  type EvaluablePhraseRule,
+} from './phrase-rule-eval'
 
 /**
  * Load the ProductTemplate + the relations the rule kinds read against, then
@@ -127,65 +106,11 @@ async function loadPhraseFacts(
   }
 }
 
-/** Coerce PhraseRule.conditions JSON into typed rows; null = malformed (skip rule). */
-function coerceConditions(raw: unknown): PhraseRuleCondition[] | null {
-  if (!Array.isArray(raw)) return null
-  const out: PhraseRuleCondition[] = []
-  for (const row of raw) {
-    if (!row || typeof row !== 'object') return null
-    const kind = (row as { kind?: unknown }).kind
-    const values = (row as { values?: unknown }).values
-    if (typeof kind !== 'string' || !CONDITION_KINDS.has(kind)) return null
-    if (!Array.isArray(values)) return null
-    const cleanValues = values.filter((v): v is string => typeof v === 'string')
-    out.push({ kind: kind as PhraseRuleCondition['kind'], values: cleanValues })
-  }
-  return out
-}
-
-/** Single-condition evaluator — matches if ANY value hits the product facts. */
-function evaluateCondition(cond: PhraseRuleCondition, facts: PhraseFacts): boolean {
-  switch (cond.kind) {
-    case 'BIOENGINEERED':
-      // values ignored; presence of any bioengineered ingredient is the trigger.
-      return facts.bioengineered
-    case 'LABELING_TYPE':
-      return cond.values.includes(facts.labelingType)
-    case 'PRODUCT_CATEGORY':
-      return facts.productCategory != null && cond.values.includes(facts.productCategory)
-    case 'MARKETPLACE_CATEGORY':
-      return (
-        facts.marketplaceCategorySlug != null &&
-        cond.values.includes(facts.marketplaceCategorySlug)
-      )
-    case 'ALLERGEN_PRESENT':
-      return cond.values.some((v) => facts.allergens.has(v.toLowerCase()))
-    case 'INGREDIENT_MATCH':
-      return cond.values.some((v) => {
-        const needle = v.toLowerCase()
-        return facts.ingredientNames.some((n) => n.includes(needle))
-      })
-    case 'PACKING_TYPE':
-      return cond.values.some((v) => facts.packingTypes.has(v))
-    case 'NUTRIENT_SOURCE':
-      return cond.values.includes(facts.nutrientSource)
-    case 'PRODUCT_FACT':
-      return cond.values.some((v) => facts.flags[v] === true)
-  }
-}
-
 /**
  * Suggest label phrases for a product by evaluating every active PhraseRule.
- *
- * Algorithm mirrors suggestNiches:
- *   1. Load product facts (structured attrs + recipe signals + product flags).
- *   2. Load every active PhraseRule (with its MandatoryPhrase).
- *   3. AND conditions across the array; OR values within each.
- *   4. Build a PhraseSuggestion per matching rule.
- *   5. Dedupe by mandatoryPhraseId — highest weight wins; locked-takes-precedence.
- *   6. Sort: locked first, then weight desc, then title asc.
- *
- * Returns empty `suggestions` if the product doesn't exist or no rule matched.
+ * Matching + dedupe live in ./phrase-rule-eval; this loads the data and hands it
+ * to the evaluator. Returns empty `suggestions` if the product doesn't exist or
+ * no rule matched.
  */
 export async function suggestPhrases(
   input: SuggestPhrasesInput,
@@ -202,53 +127,25 @@ export async function suggestPhrases(
     include: { mandatoryPhrase: true },
   })
 
-  const rawHits: SuggestPhrasesResult['rawHits'] = []
-  const perPhraseBest = new Map<string, PhraseSuggestion>()
+  const evaluable: EvaluablePhraseRule[] = rules.map((rule) => ({
+    id: rule.id,
+    slug: rule.slug,
+    description: rule.description,
+    weight: rule.weight,
+    isLocked: rule.isLocked,
+    isActive: true, // query already filtered isActive (+ phrase active)
+    conditions: rule.conditions,
+    phrase: {
+      id: rule.mandatoryPhrase.id,
+      slug: rule.mandatoryPhrase.slug,
+      title: rule.mandatoryPhrase.title,
+      body: rule.mandatoryPhrase.body,
+      category: rule.mandatoryPhrase.category,
+      requirement: rule.mandatoryPhrase.requirement,
+      cfrCitation: rule.mandatoryPhrase.cfrCitation,
+      appliesWhen: rule.mandatoryPhrase.appliesWhen,
+    },
+  }))
 
-  for (const rule of rules) {
-    const conditions = coerceConditions(rule.conditions)
-    if (!conditions || conditions.length === 0) {
-      rawHits.push({ ruleId: rule.id, phraseId: rule.mandatoryPhraseId, matched: false })
-      continue
-    }
-    const matched = conditions.every((c) => evaluateCondition(c, facts))
-    rawHits.push({ ruleId: rule.id, phraseId: rule.mandatoryPhraseId, matched })
-    if (!matched) continue
-
-    const p = rule.mandatoryPhrase
-    const candidate: PhraseSuggestion = {
-      phraseId: p.id,
-      phraseSlug: p.slug,
-      title: p.title,
-      body: p.body,
-      category: p.category,
-      requirement: p.requirement,
-      cfrCitation: p.cfrCitation,
-      appliesWhen: p.appliesWhen,
-      weight: rule.weight,
-      ruleId: rule.id,
-      ruleSlug: rule.slug,
-      ruleDescription: rule.description,
-      isLocked: rule.isLocked,
-    }
-
-    const existing = perPhraseBest.get(p.id)
-    if (!existing) {
-      perPhraseBest.set(p.id, candidate)
-      continue
-    }
-    const winningByWeight = candidate.weight > existing.weight ? candidate : existing
-    perPhraseBest.set(p.id, {
-      ...winningByWeight,
-      isLocked: existing.isLocked || candidate.isLocked,
-    })
-  }
-
-  const suggestions = Array.from(perPhraseBest.values()).sort((a, b) => {
-    if (a.isLocked !== b.isLocked) return a.isLocked ? -1 : 1
-    if (b.weight !== a.weight) return b.weight - a.weight
-    return a.title.localeCompare(b.title)
-  })
-
-  return { suggestions, rawHits }
+  return evaluateRules(evaluable, facts)
 }
