@@ -18,6 +18,8 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     productsPending,
     ingredientsPending,
     certsPending,
+    disputesPending,
+    cancellationsPending,
   ] = await Promise.all([
     // Leads = Partners in DRAFT or INVITED (Phase-A legacy statuses still in
     // use by leads page). Mirrors the existing /admin/leads query so the
@@ -49,6 +51,19 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     prisma.partnerCertificateInstance.count({
       where: { status: 'PENDING_REVIEW' },
     }).catch(() => 0),
+    // Open quality disputes (creator-opened). OrderDispute is a pending-migration
+    // model → cast-guarded + fail-safe to 0 (matches dispute-actions.ts).
+    (
+      prisma as unknown as {
+        orderDispute: { count: (a: unknown) => Promise<number> }
+      }
+    ).orderDispute
+      .count({ where: { status: { in: ['OPEN', 'UNDER_REVIEW'] } } })
+      .catch(() => 0),
+    // Partner cancellation requests awaiting review.
+    prisma.cancellationRequest
+      .count({ where: { status: 'PENDING_REVIEW' } })
+      .catch(() => 0),
   ])
 
   return {
@@ -57,11 +72,15 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     'products.pending': productsPending,
     'ingredients.pending': ingredientsPending,
     'certs.pending': certsPending,
+    'disputes.pending': disputesPending,
+    'cancellations.pending': cancellationsPending,
     'inbox.total':
       leadsPending +
       partnersPending +
       productsPending +
       ingredientsPending +
-      certsPending,
+      certsPending +
+      disputesPending +
+      cancellationsPending,
   }
 }

@@ -92,6 +92,8 @@ export type BadgeKey =
   | 'products.pending'
   | 'ingredients.pending'
   | 'certs.pending'
+  | 'disputes.pending'
+  | 'cancellations.pending'
   | 'inbox.total'
 
 export type SidebarBadges = Partial<Record<BadgeKey, number>>
@@ -152,8 +154,8 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Packaging review', icon: PackageOpen, href: '/asset-management/packaging-review' },
         { kind: 'item', label: 'Phrase submissions', icon: MessageSquare, href: '/phrase-submissions', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: false },
-        { kind: 'item', label: 'Disputes', icon: Scale, href: '/disputes' },
-        { kind: 'item', label: 'Cancellation requests', icon: RotateCcw, href: '/cancellations', capability: 'refunds:approve' },
+        { kind: 'item', label: 'Disputes', icon: Scale, href: '/disputes', badgeKey: 'disputes.pending' },
+        { kind: 'item', label: 'Cancellation requests', icon: RotateCcw, href: '/cancellations', badgeKey: 'cancellations.pending', capability: 'refunds:approve' },
         { kind: 'item', label: 'Refund requests', icon: RotateCcw, href: '/support-tickets/refund-requests', capability: 'refunds:approve' },
       ],
     },
