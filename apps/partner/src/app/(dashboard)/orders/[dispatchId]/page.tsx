@@ -28,6 +28,7 @@ import {
 import { DispatchActions } from './DispatchActions'
 import { ProductionManifestView } from '@ilaunchify/ui'
 import { ChangeRequestCard } from './ChangeRequestCard'
+import { DisputeResponsePanel } from './DisputeResponsePanel'
 import type { ProductionManifest } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,27 @@ export default async function DispatchDetailPage({
     },
   })
   if (!dispatch) notFound()
+
+  // Open quality dispute on this order (cast-guarded — OrderDispute is a
+  // pending-migration model). Surfaces a respond panel so the partner can add
+  // their side. Fail-safe to null so it never breaks the page.
+  const openDispute = await (
+    prisma as unknown as {
+      orderDispute: {
+        findFirst: (a: unknown) => Promise<{
+          id: string
+          category: string
+          description: string
+          partnerResponse: string | null
+        } | null>
+      }
+    }
+  ).orderDispute
+    .findFirst({
+      where: { orderId: dispatch.order.id, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+      select: { id: true, category: true, description: true, partnerResponse: true },
+    })
+    .catch(() => null)
 
   const item = dispatch.order.items[0]
   const pill = STATUS_PILL[dispatch.status] ?? { label: dispatch.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
@@ -178,6 +200,16 @@ export default async function DispatchDetailPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,340px]">
         <div className="space-y-6">
+          {/* Quality dispute — partner's response panel (B.1) */}
+          {openDispute && (
+            <DisputeResponsePanel
+              disputeId={openDispute.id}
+              category={openDispute.category}
+              description={openDispute.description}
+              existingResponse={openDispute.partnerResponse}
+            />
+          )}
+
           {/* Product + payout */}
           <section className="rounded-2xl border border-ink-200 bg-white p-5">
             <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold text-ink-900">

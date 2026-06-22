@@ -321,6 +321,91 @@ export async function requestCancellation({
   return { ok: true }
 }
 
+// B.1 partner-response step — a partner on the order adds their side of a
+// creator-opened quality dispute (once, while OPEN / UNDER_REVIEW). Moves the
+// dispute to UNDER_REVIEW and notifies admins. OrderDispute is a pending-migration
+// model → cast-guarded.
+export async function respondToOrderDispute({
+  disputeId,
+  response,
+}: {
+  disputeId: string
+  response: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const trimmed = response.trim()
+  if (trimmed.length < 5) return { ok: false, error: 'Please add a brief response (5+ characters).' }
+  if (trimmed.length > 2000) return { ok: false, error: 'Response must be 2000 characters or fewer.' }
+
+  const disputeModel = (
+    prisma as unknown as {
+      orderDispute: {
+        findUnique: (a: unknown) => Promise<{
+          id: string
+          orderId: string
+          status: string
+          partnerResponse: string | null
+        } | null>
+        update: (a: unknown) => Promise<unknown>
+      }
+    }
+  ).orderDispute
+
+  const dispute = await disputeModel.findUnique({
+    where: { id: disputeId },
+    select: { id: true, orderId: true, status: true, partnerResponse: true },
+  })
+  if (!dispute) return { ok: false, error: 'Dispute not found.' }
+  if (dispute.status !== 'OPEN' && dispute.status !== 'UNDER_REVIEW') {
+    return { ok: false, error: 'This dispute is already closed.' }
+  }
+  if (dispute.partnerResponse) {
+    return { ok: false, error: 'You already responded to this dispute.' }
+  }
+
+  // Confirm this partner is actually assigned to the disputed order.
+  const owned = await prisma.orderDispatch.findFirst({
+    where: { orderId: dispute.orderId, partnerService: { partner: { userId: user.id } } },
+    select: { id: true },
+  })
+  if (!owned) return { ok: false, error: 'You are not assigned to this order.' }
+
+  await disputeModel.update({
+    where: { id: dispute.id },
+    data: {
+      partnerResponse: trimmed,
+      partnerRespondedById: user.id,
+      partnerRespondedAt: new Date(),
+      status: 'UNDER_REVIEW',
+    },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'OrderDispute',
+    entityId: dispute.id,
+    action: 'ORDER_DISPUTE_PARTNER_RESPONDED',
+    payload: { orderId: dispute.orderId },
+  })
+
+  // Tell admins the partner has responded (reuse ORDER_NEEDS_ATTENTION — admin link
+  // /orders/[orderId] is correct in the admin app). Best-effort.
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
+  await Promise.allSettled(
+    admins.map((a) =>
+      dispatchNotification({
+        userId: a.id,
+        event: 'ORDER_NEEDS_ATTENTION',
+        data: { orderId: dispute.orderId, status: 'DISPUTE_PARTNER_RESPONDED' },
+        audience: 'admin',
+      }),
+    ),
+  )
+
+  revalidatePath(`/orders/${dispute.orderId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}
+
 export async function failQualityCheck({
   dispatchId,
   notes,

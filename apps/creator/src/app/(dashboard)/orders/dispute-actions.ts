@@ -9,6 +9,7 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertOrderTransition } from '@ilaunchify/orders'
 import { dispatchNotification } from '@ilaunchify/notifications'
@@ -141,7 +142,30 @@ export async function openOrderDispute({
     },
   })
   await notifyAdminsOrderNeedsAttention(order.id, 'DISPUTED')
+  await notifyOrderPartnersDisputed(order.id)
   revalidatePath(`/orders/${order.id}`)
   revalidatePath('/orders')
   return { ok: true }
+}
+
+/** Notify every partner assigned to the order so they can add their side.
+ *  Best-effort. PARTNER_ORDER_DISPUTED is cast until the enum value is generated. */
+async function notifyOrderPartnersDisputed(orderId: string): Promise<void> {
+  const dispatches = await prisma.orderDispatch.findMany({
+    where: { orderId },
+    select: { partnerService: { select: { partner: { select: { userId: true } } } } },
+  })
+  const partnerUserIds = [
+    ...new Set(dispatches.map((d) => d.partnerService.partner.userId)),
+  ]
+  await Promise.allSettled(
+    partnerUserIds.map((userId) =>
+      dispatchNotification({
+        userId,
+        event: 'PARTNER_ORDER_DISPUTED' as unknown as NotificationEvent,
+        data: { orderId },
+        audience: 'partner',
+      }),
+    ),
+  )
 }

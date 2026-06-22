@@ -24,6 +24,8 @@ run regardless of which earlier pushes you already did. This session it adds (cu
 - `model AdminInvite` + `enum AdminInviteStatus` + the two `User` back-relations
 - `model IntegrationMeta` (integration key rotation tracking — no secrets)
 - `AuditLog.actorAdminRole`
+- `OrderDispute.partnerResponse` / `partnerRespondedById` / `partnerRespondedAt`
+  (B.1 dispute partner-response step) + `NotificationEvent.PARTNER_ORDER_DISPUTED`
 - `model SupportRefundRequest` + `enum RefundRequestStatus`
 - Support ticketing models/enums + `NotificationEvent` values (`SUPPORT_*`,
   `SUPPORT_REFUND_REQUESTED`) — if not already applied

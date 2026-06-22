@@ -203,6 +203,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
           description: string
           status: string
           createdAt: Date
+          partnerResponse: string | null
           openedBy: { email: string | null } | null
         } | null>
       }
@@ -216,6 +217,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
         description: true,
         status: true,
         createdAt: true,
+        partnerResponse: true,
         openedBy: { select: { email: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -269,6 +271,16 @@ export default async function AdminOrderDetail({ params }: PageProps) {
             </span>
           </div>
           <p className="mt-1.5 text-[13px] text-ink-800">{openDispute.description}</p>
+          {openDispute.partnerResponse ? (
+            <div className="mt-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-700">
+              <span className="font-semibold text-ink-800">Partner&apos;s response:</span>{' '}
+              {openDispute.partnerResponse}
+            </div>
+          ) : (
+            <p className="mt-2 text-[11.5px] italic text-amber-700">
+              Awaiting the partner&apos;s response — they&apos;ve been notified.
+            </p>
+          )}
           <ResolveDisputeControls disputeId={openDispute.id} orderTotalCents={order.totalCents} />
         </section>
       )}

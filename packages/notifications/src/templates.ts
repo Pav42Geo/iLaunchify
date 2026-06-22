@@ -18,6 +18,7 @@ interface TemplateData {
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
   DISPATCH_ACCEPT_REMINDER: { dispatchId: string; hoursRemaining: number }
+  PARTNER_ORDER_DISPUTED: { orderId: string }
   PARTNER_APPLIED: { companyName: string; partnerEmail: string; partnerId: string }
   PARTNER_SUBMITTED: { companyName: string; partnerId: string }
   ORDER_NEEDS_ATTENTION: { orderId: string; status: string }
@@ -183,6 +184,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: 'Dispatch acceptance deadline approaching',
         body: `You have ${d.hoursRemaining} hour${d.hoursRemaining === 1 ? '' : 's'} left to accept dispatch ${d.dispatchId.slice(-8)}.`,
         link: `/orders/${d.dispatchId}`,
+      }
+    }
+    case 'PARTNER_ORDER_DISPUTED': {
+      const d = data as TemplateData['PARTNER_ORDER_DISPUTED']
+      return {
+        title: `A dispute was opened on order #${d.orderId.slice(-8)}`,
+        body: 'A creator reported an issue with an order you produced. Open the order to add your side so the admin can review it.',
+        link: '/orders',
       }
     }
     case 'PARTNER_APPLIED': {

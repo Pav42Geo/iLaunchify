@@ -2390,6 +2390,13 @@ model OrderDispute {
   resolution   String? // admin's closing note
   reviewedById String? // admin user
   reviewedAt   DateTime?
+  // Partner's side of the story (B.1 partner-response step). A partner on the
+  // order may respond once while the dispute is OPEN / UNDER_REVIEW; the admin
+  // sees it before resolving. `partnerRespondedById` is a plain user id (no FK
+  // relation needed — resolved on read).
+  partnerResponse      String?
+  partnerRespondedById String?
+  partnerRespondedAt   DateTime?
   createdAt    DateTime            @default(now())
   order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   openedBy     User                @relation("DisputeOpener", fields: [openedById], references: [id])
@@ -3278,6 +3285,7 @@ enum NotificationEvent {
   PACKAGING_REJECTED // admin declined a submitted packaging (see notes)
   DISPATCH_RECEIVED // new order dispatch needs partner action
   DISPATCH_ACCEPT_REMINDER // accept window is closing soon (defer to V1.1)
+  PARTNER_ORDER_DISPUTED // a creator opened a quality dispute on the partner's order
   // Phase H4 — creator-facing workflow events
   CREATOR_DISPATCH_ACCEPTED // a partner accepted one of the creator's dispatches
   CREATOR_DISPATCH_CHANGES_REQUESTED // partner filed structured change request
