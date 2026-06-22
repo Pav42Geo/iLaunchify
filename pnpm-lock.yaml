@@ -53,12 +53,18 @@ importers:
       '@ilaunchify/orders':
         specifier: workspace:*
         version: link:../../packages/orders
+      '@ilaunchify/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@ilaunchify/plans':
         specifier: workspace:*
         version: link:../../packages/plans
       '@ilaunchify/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@ilaunchify/support':
+        specifier: workspace:*
+        version: link:../../packages/support
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -97,7 +103,7 @@ importers:
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.31
-        version: 5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -177,6 +183,9 @@ importers:
       '@ilaunchify/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@ilaunchify/support':
+        specifier: workspace:*
+        version: link:../../packages/support
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -221,7 +230,7 @@ importers:
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.31
-        version: 5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -286,6 +295,9 @@ importers:
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
+      '@ilaunchify/nutrition':
+        specifier: workspace:*
+        version: link:../../packages/nutrition
       '@ilaunchify/plans':
         specifier: workspace:*
         version: link:../../packages/plans
@@ -309,7 +321,7 @@ importers:
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.31
-        version: 5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -383,6 +395,9 @@ importers:
       '@ilaunchify/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@ilaunchify/support':
+        specifier: workspace:*
+        version: link:../../packages/support
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -421,7 +436,7 @@ importers:
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.31
-        version: 5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -524,7 +539,7 @@ importers:
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: 5.0.0-beta.31
-        version: 5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       resend:
         specifier: ^4.0.0
         version: 4.8.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -677,6 +692,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/plans:
     dependencies:
@@ -700,6 +718,28 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+
+  packages/support:
+    dependencies:
+      '@ilaunchify/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@ilaunchify/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ilaunchify/notifications':
+        specifier: workspace:*
+        version: link:../notifications
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/types:
     dependencies:
@@ -9816,7 +9856,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@5.0.0-beta.31(next@15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-auth@5.0.0-beta.31(next@15.0.2(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@auth/core': 0.41.2
       next: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

@@ -35,7 +35,7 @@ export async function recordRotation(input: { key: string }): Promise<ActionResu
     entityId: input.key,
     action: 'INTEGRATION_KEY_ROTATED',
   })
-  revalidatePath('/integrations')
+  revalidatePath('/developer')
   return { ok: true }
 }
 
@@ -51,7 +51,7 @@ export async function setRotationCadence(input: { key: string; days: number | nu
     action: 'INTEGRATION_CADENCE_SET',
     toValue: days != null ? `${days}d` : 'cleared',
   })
-  revalidatePath('/integrations')
+  revalidatePath('/developer')
   return { ok: true }
 }
 

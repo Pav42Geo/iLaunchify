@@ -19,7 +19,7 @@ import { sendTransactionalEmail } from '@ilaunchify/notifications'
 import {
   INTEGRATIONS,
   computeRotationStatus,
-} from '../../../(dashboard)/integrations/integration-registry'
+} from '../../../(dashboard)/developer/integration-registry'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         <h2 style="font-size:18px;margin:0 0 8px">API key rotation digest</h2>
         ${overdue.length ? `<p style="color:#b91c1c;font-weight:600">Overdue (${overdue.length})</p><ul>${overdue.map((i) => row(i, 'overdue')).join('')}</ul>` : ''}
         ${dueSoon.length ? `<p style="color:#b45309;font-weight:600">Due soon (${dueSoon.length})</p><ul>${dueSoon.map((i) => row(i, 'soon')).join('')}</ul>` : ''}
-        <p style="font-size:12px;color:#888">Rotate in the vendor dashboard, then mark it rotated in Admin → Integrations → API Keys & Status.</p>
+        <p style="font-size:12px;color:#888">Rotate in the vendor dashboard, then mark it rotated in Admin → Developer &amp; API.</p>
       </div>`
     const text =
       `API key rotation digest\n` +

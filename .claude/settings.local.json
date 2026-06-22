@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(pnpm type-check *)",
+      "Bash(pnpm --filter @ilaunchify/db generate)",
+      "Bash(pnpm --filter @ilaunchify/marketplace type-check)"
+    ]
+  }
+}

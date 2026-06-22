@@ -34,7 +34,7 @@ function RotationBadge({ r }: { r: RotationStatus }) {
 }
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Integrations & API keys — Admin' }
+export const metadata = { title: 'Developer & API keys — Admin' }
 
 const KIND_CHIP: Record<EnvVarKind, string> = {
   secret: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -77,7 +77,7 @@ export default async function IntegrationsPage() {
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
-          Integrations &amp; API
+          Developer &amp; API
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           API keys &amp; integration status

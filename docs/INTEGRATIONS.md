@@ -1,6 +1,6 @@
 # Integrations & API Keys — Admin Control Center
 
-Admin → Integrations & API → **API Keys & Status** (`/integrations`, `platform:admin`).
+Admin → Settings → **Developer & API** (`/developer`, `platform:admin`).
 
 ## Design decision (Pavel, 2026-06-22): env-backed registry, NOT a DB key vault
 
@@ -29,7 +29,7 @@ single place to "manage all the keys." We deliberately chose the **secure** form
 
 ## Code
 
-- `apps/admin/src/app/(dashboard)/integrations/integration-registry.ts` — the catalog
+- `apps/admin/src/app/(dashboard)/developer/integration-registry.ts` — the catalog
   (`INTEGRATIONS[]`: each service's env vars, kind secret/config/public, docs +
   dashboard URLs, rotation cadence, live vs planned) and `resolveIntegrationStatuses()`,
   which reads `process.env` and returns **presence booleans only** (plus a test/live

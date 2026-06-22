@@ -266,7 +266,7 @@ const PRIMARY: SidebarRegion = {
         },
         { kind: 'item', label: 'Billing & Subscription', icon: CreditCard, href: '/billing', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
-        { kind: 'item', label: 'Developer & API', icon: Code, href: '/developer', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Developer & API', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
         {
           kind: 'group',
           label: 'Communications',
@@ -318,7 +318,6 @@ const APPLICATIONS: SidebarRegion = {
       label: 'Integrations & API',
       icon: Plug,
       children: [
-        { kind: 'item', label: 'API Keys & Status', icon: KeyRound, href: '/integrations', capability: 'platform:admin' },
         { kind: 'item', label: 'Channels', icon: Plug, href: '/channels', capability: 'platform:admin' },
         { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
         { kind: 'item', label: 'Marketing', icon: Megaphone, href: '/integrations/marketing', hiddenUntilBuilt: true },

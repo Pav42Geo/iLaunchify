@@ -82,7 +82,7 @@ For each: replace the `prisma as unknown as { … }` access with the now-typed
 
 - **Admin RBAC** — sub-roles, editable capability matrix + presets, grant/invite admins
   (link + email), accept-on-signup, least-privilege default.
-- **Integrations control center** — `/integrations`: status, test-connection, rotation
+- **Developer & API control center** — `/developer`: status, test-connection, rotation
   tracking; weekly rotation-due digest cron (set `OPS_ALERT_EMAIL` to receive it).
 - **Payments** — unchanged at runtime; `STRIPE_REFUNDS_ENABLED` stays off until the
   Stripe test-mode runbook (`STRIPE_TESTMODE_VERIFICATION.md`) passes.
