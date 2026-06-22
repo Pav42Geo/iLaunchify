@@ -209,6 +209,15 @@ export const INTEGRATIONS: IntegrationDef[] = [
     lifecycle: 'live',
     envVars: [{ name: 'CRON_SECRET', kind: 'secret', required: false }],
   },
+  {
+    key: 'ops-alerts',
+    name: 'Ops alert email',
+    vendor: 'Self',
+    category: 'Platform Core',
+    description: 'Recipient for the weekly API-key rotation digest (cron). Needs Resend configured.',
+    lifecycle: 'live',
+    envVars: [{ name: 'OPS_ALERT_EMAIL', kind: 'config', required: false, note: 'Where rotation-due digests are sent' }],
+  },
   // ── Planned / anticipated (slots, not yet wired) ──
   {
     key: 'mux',

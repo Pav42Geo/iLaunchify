@@ -88,9 +88,17 @@ badge (Healthy / Due in Nd / Overdue by Nd / Not recorded), a **Mark rotated** b
 **Mac:** one additive `pnpm db:push` adds `IntegrationMeta`; then `db:generate` and
 drop the `ADMIN-RBAC-CAST` marker in `integration-meta.ts`.
 
+## Rotation-due digest (built)
+
+`POST /api/cron/integration-rotation-digest` (CRON_SECRET-authed, like the other
+crons) scans every live integration with a secret, computes rotation status, and —
+when `OPS_ALERT_EMAIL` is set + Resend is configured — emails a digest of OVERDUE +
+DUE-SOON keys. It returns the summary JSON either way (so the cron log shows it even
+without email), and reads no secret values. Scheduled weekly in `apps/admin/vercel.json`
+(`0 9 * * 1`, Mon 9am). Set `OPS_ALERT_EMAIL` to receive it (shown as a row on the
+page so you can see if it's configured).
+
 ## Possible follow-ups
 
 - An R2 probe (S3 HeadBucket via the AWS SDK) if you want storage-creds verification.
-- A scheduled "rotation due" digest (reuse the scheduled-tasks system) so overdue
-  keys nudge you without opening the page.
 - Link out to an adopted secrets manager once chosen.
