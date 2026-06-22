@@ -34,7 +34,9 @@ import {
   type DieCutSpec,
   type FabricCanvas,
   type LabelSectionRole,
+  type NutritionPanelData,
 } from '@ilaunchify/ui'
+import { addManagedNutritionPanel } from '../lib/managedNutritionPanel'
 import { useCanvasRoles } from '../useCanvasRoles'
 import { InfoTip } from '../InfoTip'
 import type { CertBadge } from '../cert-badge-actions'
@@ -67,6 +69,13 @@ interface Props {
     netQuantity?: string | null
     allergens?: string[]
   }
+  /** Phase 2b — REAL Nutrition Facts data for the active flavor/base (null →
+   *  non-FOOD or no recipe → fall back to sample). Drives the panel's content. */
+  nutritionPanelData?: NutritionPanelData | null
+  /** The active flavor whose nutrition this is (null = base), for the binding. */
+  activeFlavorPresetId?: string | null
+  /** Recipe hash stamped on the panel for the staleness gate. */
+  recipeHash?: string | null
 }
 
 
@@ -78,6 +87,9 @@ export function LabelDrawer({
   labelingType,
   dieCut,
   productCtx,
+  nutritionPanelData,
+  activeFlavorPresetId = null,
+  recipeHash = null,
 }: Props) {
   const canvasRoles = useCanvasRoles(canvas)
 
@@ -147,13 +159,14 @@ export function LabelDrawer({
           { ink, bg, border, sections },
         )
       } else {
-        await addNutritionFactsPanel(canvas, SAMPLE_NUTRITION_DATA, {
-          ink,
-          bg,
-          border,
-          sections,
-          format: selectedFormat ?? undefined,
-        })
+        // Phase 2b — REAL recipe nutrition for the active flavor (or base);
+        // falls back to sample only when there's no FOOD recipe to compute from.
+        await addManagedNutritionPanel(
+          canvas,
+          nutritionPanelData ?? SAMPLE_NUTRITION_DATA,
+          { flavorPresetId: activeFlavorPresetId, recipeHash },
+          { ink, bg, border, sections, format: selectedFormat ?? undefined },
+        )
       }
     } finally {
       setAdding(false)

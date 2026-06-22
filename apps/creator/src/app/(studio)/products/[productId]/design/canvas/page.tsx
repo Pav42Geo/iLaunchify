@@ -28,6 +28,8 @@ import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
 import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
+import { resolveStudioNutrition } from '@/components/labels/label-actions'
+import { panelDataToNutritionPanelData } from './lib/nutritionPanelAdapter'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,6 +134,15 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // Validate the requested flavor against the pool; unknown/absent → base (null).
   const activeFlavorPresetId =
     perFlavor && flavorParam && flavors.some((f) => f.id === flavorParam) ? flavorParam : null
+
+  // Phase 2b — REAL Nutrition Facts data for the active flavor (or base) so the
+  // Label drawer's panel reflects the actual recipe, not sample data. FOOD only;
+  // other domains → null → the drawer falls back to its sample/domain panel.
+  const studioNutrition = await resolveStudioNutrition(productId, activeFlavorPresetId)
+  const nutritionPanelData =
+    studioNutrition.ok && studioNutrition.domain === 'FOOD'
+      ? panelDataToNutritionPanelData(studioNutrition.panel)
+      : null
 
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
@@ -282,6 +293,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       mockups={mockups}
       flavors={flavors}
       activeFlavorPresetId={activeFlavorPresetId}
+      nutritionPanelData={nutritionPanelData}
     />
   )
 }

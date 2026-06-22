@@ -39,6 +39,7 @@ import {
   mmToInchesStr,
   reconcileCertBadges,
   addCertBadge,
+  type NutritionPanelData,
   SavedIndicator,
   snapshotCanvasAsPng,
   type SnapshotItem,
@@ -230,6 +231,9 @@ interface Props {
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   /** The flavor whose Design is loaded (null = the shared base design). */
   activeFlavorPresetId: string | null
+  /** Phase 2b — REAL Nutrition Facts data for the active flavor/base (null →
+   *  non-FOOD or no recipe). Fed to the Label drawer's panel add. */
+  nutritionPanelData: NutritionPanelData | null
 }
 
 type ToolKey =
@@ -302,6 +306,7 @@ export function CanvasLayoutShell({
   mockups,
   flavors,
   activeFlavorPresetId,
+  nutritionPanelData,
 }: Props) {
   const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
@@ -924,6 +929,9 @@ export function CanvasLayoutShell({
               frameCount={emptyFrames.length}
               showFrames={showFrames}
               setShowFrames={setShowFrames}
+              nutritionPanelData={nutritionPanelData}
+              activeFlavorPresetId={activeFlavorPresetId}
+              recipeHash={recipeHash}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1424,6 +1432,9 @@ function ToolDrawer({
   frameCount,
   showFrames,
   setShowFrames,
+  nutritionPanelData,
+  activeFlavorPresetId,
+  recipeHash,
   onClose,
 }: {
   tool: ToolKey
@@ -1449,6 +1460,9 @@ function ToolDrawer({
   frameCount: number
   showFrames: boolean
   setShowFrames: (v: boolean) => void
+  nutritionPanelData: NutritionPanelData | null
+  activeFlavorPresetId: string | null
+  recipeHash: string | null
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1505,6 +1519,9 @@ function ToolDrawer({
             onRequestAddCert={onRequestAddCert}
             labelingType={labelingType}
             dieCut={dieCut}
+            nutritionPanelData={nutritionPanelData}
+            activeFlavorPresetId={activeFlavorPresetId}
+            recipeHash={recipeHash}
             productCtx={{
               productName,
               brandName: brandAssets.brandName,
