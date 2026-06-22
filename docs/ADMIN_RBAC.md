@@ -212,8 +212,18 @@ Post-generate: drop the **ADMIN-RBAC-CAST** in `capabilities.ts` (plain
     fence is complete.
 - **P2 — support-agent surfaces:** confirm tickets + read-only orders/creators/
   partners work end-to-end for `SUPPORT_AGENT`; tighten any write actions.
-- **P3 — refund propose→approve:** `SupportRefundRequest` + actions + ticket
-  surface + lead queue.
+- **P3 — refund propose→approve:** ✅ shipped 2026-06-21. Additive
+  `SupportRefundRequest` model + `RefundRequestStatus` enum (plain FK columns).
+  Actions `proposeRefund` (`refunds:propose`) / `approveRefund` + `rejectRefund`
+  (`refunds:approve`); approve runs the existing gated `executeOrderRefund`
+  (money path FIRST, request stays PENDING if it fails) — no parallel path.
+  Surfaces: inline `RefundPanel` on the ticket detail (propose for agents,
+  approve/reject for leads, shown when the ticket is about an Order) + a lead
+  queue at `/support-tickets/refund-requests` (`refunds:approve`, sidebar-linked).
+  All transitions audited (`REFUND_REQUESTED/APPROVED/REJECTED` on the Order).
+  Cast-guarded (ADMIN-RBAC-CAST) until generate. Admin typechecks 0.
+  **Mac:** the additive `db push` now also creates `SupportRefundRequest` +
+  `RefundRequestStatus`.
 - **P4 — admin team page:** ✅ core shipped 2026-06-21. `/admins` (v2 surface,
   `users:admin`-gated) lists admins + current role chip + per-row role select →
   `setAdminRole` (audited `ADMIN_ROLE_CHANGED`, blocks changing your own role).

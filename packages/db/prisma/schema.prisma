@@ -45,6 +45,34 @@ enum AdminRole {
   SUPER_ADMIN
 }
 
+// Support RBAC (docs/ADMIN_RBAC.md P3) — agent-proposed refund/goodwill credit
+// that a Lead/Billing admin approves before any money moves. Plain FK columns
+// (orderId/ticketId/userIds) keep it additive — no back-relations on Order/etc.
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SupportRefundRequest {
+  id            String              @id @default(uuid())
+  orderId       String
+  ticketId      String?
+  requestedById String
+  amountCents   Int
+  reason        String
+  status        RefundRequestStatus @default(PENDING)
+  decisionNote  String?
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([status, createdAt])
+  @@index([ticketId])
+  @@index([orderId])
+}
+
 enum StripeAccountStatus {
   NONE
   PENDING

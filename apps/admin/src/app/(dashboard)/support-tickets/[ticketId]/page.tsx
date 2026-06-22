@@ -26,8 +26,10 @@ import {
   OPEN_STATUSES,
   parseAttachments,
 } from '@ilaunchify/support'
+import { getViewerCapabilities } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import { TicketControls } from './TicketControls'
+import { RefundPanel, type RefundRequestView } from './RefundPanel'
 import { TierBadge } from '../page'
 
 export const dynamic = 'force-dynamic'
@@ -66,7 +68,9 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
   // Admin scope always returns the full row; narrow the union for TS.
   if (!('replies' in ticket)) notFound()
 
-  const [admins, cannedReplies] = await Promise.all([
+  const orderId = ticket.entityType === 'Order' ? ticket.entityId : null
+
+  const [admins, cannedReplies, caps, refundRequests] = await Promise.all([
     prisma.user.findMany({
       where: { role: 'ADMIN' },
       select: { id: true, name: true, email: true },
@@ -74,6 +78,15 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
     }),
     // Active canned replies relevant to this ticket (global + its category).
     getCannedReplies({ activeOnly: true, categoryId: ticket.categoryId }),
+    getViewerCapabilities(),
+    // Refund requests on this ticket (P3). ADMIN-RBAC-CAST until generate.
+    orderId
+      ? (
+          prisma as unknown as {
+            supportRefundRequest: { findMany: (a: unknown) => Promise<RefundRequestView[]> }
+          }
+        ).supportRefundRequest.findMany({ where: { ticketId }, orderBy: { createdAt: 'desc' } })
+      : Promise.resolve([] as RefundRequestView[]),
   ])
 
   const status = ticket.status as TicketStatus
@@ -174,6 +187,17 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
               <AttachmentList ticketId={ticket.id} attachments={r.attachments} />
             </article>
           ))}
+
+          {/* Refund requests (P3) — only when this ticket is about an order */}
+          {orderId && (caps.includes('refunds:propose') || caps.includes('refunds:approve') || refundRequests.length > 0) && (
+            <RefundPanel
+              orderId={orderId}
+              ticketId={ticketId}
+              requests={refundRequests}
+              canPropose={caps.includes('refunds:propose')}
+              canApprove={caps.includes('refunds:approve')}
+            />
+          )}
 
           {/* Activity log */}
           {ticket.events.length > 0 && (
