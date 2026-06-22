@@ -86,6 +86,7 @@ import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
 import { applyBaseToAllFlavors } from './flavor-actions'
+import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot } from './actions'
@@ -417,8 +418,35 @@ export function CanvasLayoutShell({
         if (k) kinds.add(k)
       }
       setFilledFrameKinds(kinds)
+
+      // Phase 2b — auto-bind the nutrition panel to the active flavor's REAL
+      // recipe. After hydration (incl. apply-base-to-all clones + pre-2b sample
+      // panels), if the panel isn't already bound to (activeFlavorPresetId,
+      // recipeHash), regenerate it with the active context's computed nutrition.
+      // One-time per flavor design — the binding persists via autosave, so
+      // steady-state loads are no-ops. This is the "magic": switch to a flavor
+      // and its label shows that flavor's nutrition, not the base's.
+      if (nutritionPanelData) {
+        const panel = findNutritionPanel(c)
+        if (panel) {
+          const p = panel as unknown as {
+            customData?: { panelSource?: string; flavorPresetId?: string | null }
+            recipeHash?: string | null
+          }
+          const bound =
+            p.customData?.panelSource === 'recipe' &&
+            (p.customData?.flavorPresetId ?? null) === activeFlavorPresetId &&
+            (p.recipeHash ?? null) === recipeHash
+          if (!bound) {
+            void regenerateNutritionPanel(c, nutritionPanelData, {
+              flavorPresetId: activeFlavorPresetId,
+              recipeHash,
+            })
+          }
+        }
+      }
     },
-    [certBadges, dieCut],
+    [certBadges, dieCut, nutritionPanelData, activeFlavorPresetId, recipeHash],
   )
 
   const [complianceOpen, setComplianceOpen] = useState(false)
