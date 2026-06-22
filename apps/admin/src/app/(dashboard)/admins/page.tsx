@@ -71,8 +71,9 @@ export default async function AdminsPage() {
             </thead>
             <tbody>
               {admins.map((a) => {
-                const effective: AdminRole = a.adminRole ?? 'SUPER_ADMIN'
-                const capCount = resolveCapabilities(a.adminRole).length
+                // null adminRole = least privilege (no access) post-backfill flip.
+                const unassigned = a.adminRole === null
+                const capCount = unassigned ? 0 : resolveCapabilities(a.adminRole).length
                 return (
                   <tr key={a.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
                     <td className="px-4 py-3">
@@ -87,18 +88,27 @@ export default async function AdminsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2.5 py-[3px] text-[11px] font-medium text-ink-700">
-                        {ADMIN_ROLE_LABEL[effective]}
-                        {a.adminRole === null && <span className="ml-1 text-ink-400">(default)</span>}
-                      </span>
+                      {unassigned ? (
+                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-[11px] font-medium text-amber-700">
+                          Unassigned
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2.5 py-[3px] text-[11px] font-medium text-ink-700">
+                          {ADMIN_ROLE_LABEL[a.adminRole as AdminRole]}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[12px] tabular-nums text-ink-500">
-                      {effective === 'SUPER_ADMIN' ? 'Full access' : `${capCount} capabilities`}
+                      {unassigned
+                        ? 'No access'
+                        : a.adminRole === 'SUPER_ADMIN'
+                          ? 'Full access'
+                          : `${capCount} capabilities`}
                     </td>
                     <td className="px-4 py-3">
                       <AdminRoleSelect
                         userId={a.id}
-                        current={effective}
+                        current={a.adminRole ?? 'SUPPORT_AGENT'}
                         isSelf={a.id === actor.id}
                         roles={ROLE_OPTIONS}
                       />

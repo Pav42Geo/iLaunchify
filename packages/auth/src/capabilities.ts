@@ -2,10 +2,14 @@
 // matrix is now DB-backed and super-admin-editable (RoleCapability table); the
 // pure matrix in capability-rules.ts is kept only as named PRESET templates +
 // the type source. Resolution rules:
-//   • adminRole null  → SUPER_ADMIN (P0 fail-open for un-backfilled admins)
 //   • SUPER_ADMIN     → ALL capabilities (hard-wired, never editable away)
 //   • any other role  → exactly the capabilities granted to it in the DB
 //     (starts EMPTY — the super admin grants them in Roles & Permissions)
+//   • adminRole null  → NO capabilities (least privilege). P4.1 flip 2026-06-21:
+//     the P0 fail-open (null → SUPER_ADMIN) was retired once the Mac backfill
+//     set every legacy admin to SUPER_ADMIN explicitly. A null role now means a
+//     freshly-created admin not yet assigned a role — they get nothing until a
+//     super admin assigns one. REQUIRES the backfill to have run.
 
 import { redirect } from 'next/navigation'
 import { prisma, getRoleCapabilityMatrix } from '@ilaunchify/db'
@@ -33,9 +37,10 @@ async function loadAdminRole(userId: string): Promise<AdminRole | null> {
   return row?.adminRole ?? null
 }
 
-/** Live capabilities for a role, from the DB matrix. Super/null → all. */
+/** Live capabilities for a role, from the DB matrix. Super → all; null → none. */
 export async function capabilitiesForRole(role: AdminRole | null): Promise<Capability[]> {
-  if (role == null || role === 'SUPER_ADMIN') return [...ALL_CAPABILITIES]
+  if (role === 'SUPER_ADMIN') return [...ALL_CAPABILITIES]
+  if (role == null) return [] // least privilege — un-roled admin gets nothing
   const matrix = await getRoleCapabilityMatrix()
   return (matrix[role] ?? []) as Capability[]
 }

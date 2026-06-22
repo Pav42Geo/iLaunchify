@@ -25,6 +25,8 @@ const AGENT = [
   'refunds:propose', 'audit:read',
 ]
 const PRESETS = {
+  // null adminRole resolves to NO capabilities (least-privilege flip 2026-06-21).
+  UNASSIGNED: [],
   SUPPORT_AGENT: AGENT,
   SUPPORT_LEAD: [
     ...AGENT,
@@ -80,6 +82,7 @@ const SURFACES = {
 // Derived independently from the role DESIGN, not from the presets, so a
 // mismatch surfaces a real intent bug.
 const EXPECTED_ALLOW = {
+  UNASSIGNED: new Set([]), // least privilege — nothing
   SUPPORT_AGENT: new Set([
     'refund-requests: propose',
   ]),

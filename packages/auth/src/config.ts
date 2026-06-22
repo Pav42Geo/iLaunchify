@@ -22,6 +22,10 @@ declare module 'next-auth' {
       name?: string | null
       image?: string | null
       role: 'ADMIN' | 'CREATOR' | 'PARTNER'
+      // Admin RBAC sub-role (docs/ADMIN_RBAC.md). Null for non-admins or an
+      // admin not yet assigned a role. Authorization still resolves live via
+      // requireCapability — this is for UI display only.
+      adminRole?: 'SUPPORT_AGENT' | 'SUPPORT_LEAD' | 'BILLING_ADMIN' | 'SUPER_ADMIN' | null
     }
   }
 }
@@ -123,13 +127,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, user, token }) {
       const userId = user?.id ?? (token?.sub as string | undefined)
       if (!userId || !session.user) return session
-      const dbUser = await prisma.user.findUnique({
+      // ADMIN-RBAC-CAST: select adminRole via cast until `prisma generate`
+      // teaches the committed client about the column.
+      const dbUser = await (
+        prisma.user as unknown as {
+          findUnique: (a: unknown) => Promise<{
+            id: string
+            role: 'ADMIN' | 'CREATOR' | 'PARTNER'
+            adminRole: 'SUPPORT_AGENT' | 'SUPPORT_LEAD' | 'BILLING_ADMIN' | 'SUPER_ADMIN' | null
+          } | null>
+        }
+      ).findUnique({
         where: { id: userId },
-        select: { id: true, role: true },
+        select: { id: true, role: true, adminRole: true },
       })
       if (dbUser) {
         session.user.id = dbUser.id
         session.user.role = dbUser.role
+        session.user.adminRole = dbUser.adminRole ?? null
       }
       return session
     },
