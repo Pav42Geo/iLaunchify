@@ -168,6 +168,12 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const sx = Number((active as { scaleX?: number }).scaleX) || 1
   const sy = Number((active as { scaleY?: number }).scaleY) || 1
   const stretched = Math.abs(sx - sy) > 0.01 * Math.max(sx, sy, 1)
+  // Subtle visual hint: when the object is rotated, tilt the rotate icon a little
+  // (capped) + ring it, so it's obvious you can double-click to straighten.
+  const rawAngle = ((Number((active as { angle?: number }).angle) || 0) % 360 + 360) % 360
+  const signedAngle = rawAngle > 180 ? rawAngle - 360 : rawAngle
+  const isRotated = Math.abs(signedAngle) > 0.5
+  const iconTilt = Math.max(-22, Math.min(22, signedAngle))
   const resetProportions = () => {
     if (!canvas) return
     const g = Math.sqrt(sx * sy) || 1 // preserve area, restore square scaling
@@ -245,9 +251,15 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
               onPointerMove={onRotateMove}
               onPointerUp={onRotateUp}
               onDoubleClick={resetRotation}
-              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-full bg-pink-600 text-white shadow-md transition-colors hover:bg-pink-500 active:cursor-grabbing"
+              className={
+                'flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-full bg-pink-600 text-white shadow-md transition-colors hover:bg-pink-500 active:cursor-grabbing ' +
+                (isRotated ? 'ring-2 ring-pink-300' : '')
+              }
             >
-              <RotateCw className="h-4 w-4" />
+              <RotateCw
+                className="h-4 w-4 transition-transform duration-150"
+                style={isRotated ? { transform: `rotate(${iconTilt}deg)` } : undefined}
+              />
             </button>
             <button
               type="button"
