@@ -195,6 +195,46 @@ Studio renders the normalized twin · PRESS uses the immutable original
   (overlay + measurement audit + coverage); the last unbuilt pipeline piece.
 - **P5:** Three.js 3D fold preview (primitives now, Pacdora-gated parametric later).
 
+## 11a. Frame content fidelity (Pavel 2026-06-23)
+
+Frames today are content-AGNOSTIC typed slots; content resolves per-product at
+composition. But a partner may pin DIE-LINE-INTRINSIC content on a frame — specific
+mandatory phrases, a "Keep Frozen" mark, recycling symbols — that is NOT derived
+from any product. Requirement: whatever the partner places + saves on the die-line
+(including that pinned content) must RENDER on the canvas everywhere — admin
+Curator, creator Studio, mockups — not just as an empty slot rectangle.
+
+→ Extend the frame model so a frame can carry optional pinned content
+(`pinnedContent`: { kind, ref/value }) alongside the scope it resolves from. The
+renderer draws pinned content immediately (die-line-intrinsic), and still resolves
+product-scoped slots (Nutrition Facts, etc.) when a product context exists. On a
+bare die-line (admin authoring, no product) the pinned content + symbol/phrase
+frames must still be visible. Provenance per frame: `placedBy: PARTNER | ADMIN`.
+
+## 11b. Admin design authoring on die-lines + AI generation (Pavel 2026-06-23)
+
+The admin pulls a die-line — even one already assigned to a specific package or a
+SET of die-lines — and authors a design/template on its shape:
+- **Manually** in the Design Studio (admin mode), OR
+- **Via an AI tool** that GENERATES a design from an uploaded image or from another
+  uploaded design (the deferred "AI Template Generator", DESIGN_TEMPLATE_LIBRARY §9a).
+
+Saved designs **appear immediately everywhere** — the template library + creator
+Studio (the existing Regular/Premium save→propagate path).
+
+BUILT (commit after f277662): once a die-line is mapped to a canonical shape
+(P2a), the Curator shows **"Design in Studio"** → opens `/studio?adminMode=1&
+dieCut={canonicalShapeId}`, i.e. the admin Design Studio on that exact shape. Save
+there flows through the existing template library (Regular = all creators, Premium
+= Agency). The `canonicalShapeId` mapping is the bridge that makes a partner
+die-line designable as a reusable template.
+
+STILL TODO: (1) AI Template Generator — image/design upload → generated layout
+(DESIGN_TEMPLATE_LIBRARY §9a, deferred); (2) frame content fidelity (§11a) so
+partner-pinned phrases/symbols render on the authored design; (3) authoring on a
+SPECIFIC partner die-line shape (not only the canonical), when the admin wants the
+exact partner geometry rather than the house-standard.
+
 ## 11. Why this is novel
 
 No existing platform does: shape-clustering + canonical propagation (normalize a

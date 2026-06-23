@@ -10,7 +10,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles } from 'lucide-react'
+import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles, Palette } from 'lucide-react'
 import {
   dielineSvgFromSpec,
   DielineFrameEditor,
@@ -374,9 +374,29 @@ function CanonicalShapePicker({
           </button>
         )}
       </div>
+
+      {/* Design authoring: once a die-line is mapped to a canonical shape, the
+          admin can open the Design Studio on that shape to author a template
+          (manually or — later — via AI) that propagates to creators everywhere. */}
+      <div className="mt-4 border-t border-ink-100 pt-3">
+        {shapeId ? (
+          <a
+            href={`${CREATOR_URL}/studio?adminMode=1&dieCut=${shapeId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-1.5 text-[12.5px] font-semibold text-white hover:bg-ink-800"
+          >
+            <Palette className="h-4 w-4" /> Design in Studio
+          </a>
+        ) : (
+          <p className="text-[12px] text-ink-400">Map this die-line to a shape to design a template on it in the Studio.</p>
+        )}
+      </div>
     </div>
   )
 }
+
+const CREATOR_URL = process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'
 
 function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
