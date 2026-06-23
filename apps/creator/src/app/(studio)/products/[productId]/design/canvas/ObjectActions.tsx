@@ -125,6 +125,16 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
     canvas?.fire('object:modified', { target: active })
     force()
   }
+  // Double-click the rotate handle → snap the object back to straight (0°).
+  const resetRotation = () => {
+    if (!canvas) return
+    rotateRef.current = null
+    ;(active as unknown as { rotate: (a: number) => void }).rotate(0)
+    active.setCoords?.()
+    canvas.fire('object:modified', { target: active })
+    canvas.requestRenderAll()
+    force()
+  }
 
   // --- Move handle: drag to reposition (handy for tiny / locked-axis art) ---
   const onMoveDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -230,10 +240,11 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
             <button
               type="button"
               aria-label="Rotate"
-              title="Drag to rotate · hold Shift to snap"
+              title="Drag to rotate · Shift to snap · double-click to straighten"
               onPointerDown={onRotateDown}
               onPointerMove={onRotateMove}
               onPointerUp={onRotateUp}
+              onDoubleClick={resetRotation}
               className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-full bg-pink-600 text-white shadow-md transition-colors hover:bg-pink-500 active:cursor-grabbing"
             >
               <RotateCw className="h-4 w-4" />
