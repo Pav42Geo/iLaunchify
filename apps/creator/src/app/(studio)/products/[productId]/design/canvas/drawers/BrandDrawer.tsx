@@ -9,7 +9,7 @@
 // Ownership is enforced server-side. No "exit to profile" link.
 
 import * as React from 'react'
-import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown, Plus } from 'lucide-react'
+import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown, Plus, Wand2 } from 'lucide-react'
 import { addImageFromUrl, loadFont, type BrandCanvasAssets, type FabricCanvas } from '@ilaunchify/ui'
 import type { BrandTemplateValues } from '@ilaunchify/db'
 import {
@@ -158,6 +158,46 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
     }
   }
 
+  // One-click: swap fonts + recolor EDITABLE text to the active kit. Locked /
+  // regulated objects (Nutrition Facts panel, barcodes — all images, not text) are
+  // never touched. Fully undoable via the canvas history.
+  async function applyBrand() {
+    if (!canvas) return
+    const fontFamily = assets.fonts[0]?.family ?? null
+    const color = assets.colorPrimary ?? swatches[0] ?? null
+    if (!fontFamily && !color) {
+      flash('Add a brand font or color to this kit first.')
+      return
+    }
+    const ok = window.confirm(
+      `Apply ${assets.brandName} to this design? This swaps fonts and recolors your editable text. Regulated panels (Nutrition Facts, barcodes) stay unchanged — and you can undo.`,
+    )
+    if (!ok) return
+    if (fontFamily) await loadFont(fontFamily)
+    const c = canvas as unknown as {
+      getObjects?: () => Array<Record<string, unknown>>
+      requestRenderAll: () => void
+    }
+    const objs = c.getObjects?.() ?? []
+    let touched = 0
+    for (const o of objs) {
+      const type = o.type as string | undefined
+      const isText = type === 'textbox' || type === 'i-text' || type === 'text'
+      const locked = o.selectable === false || o.evented === false
+      const set = o.set as ((p: Record<string, unknown>) => void) | undefined
+      if (!isText || locked || !set) continue
+      if (fontFamily) set({ fontFamily })
+      if (color) set({ fill: color })
+      touched++
+    }
+    c.requestRenderAll()
+    flash(
+      touched > 0
+        ? `Applied ${assets.brandName} to ${touched} text element${touched === 1 ? '' : 's'}.`
+        : 'No editable text to brand on this design.',
+    )
+  }
+
   async function loadTemplate(t: BrandTemplateValues) {
     if (!canvas) return
     const ok = window.confirm(
@@ -281,6 +321,16 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
 
       {mode === 'apply' ? (
         <div className="space-y-6">
+          {/* One-click apply brand to the whole design */}
+          <button
+            type="button"
+            onClick={applyBrand}
+            disabled={!canvas}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink-900 px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 disabled:opacity-50"
+          >
+            <Wand2 className="h-4 w-4" /> Apply brand to design
+          </button>
+
           {/* Logos */}
           <section>
             <div className={labelClass + ' mb-2 flex items-center gap-1.5'}>
