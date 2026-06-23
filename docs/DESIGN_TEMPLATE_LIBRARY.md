@@ -231,6 +231,34 @@ Layout:
 - **Empty state:** "No *[style]* templates for this *[die-line]* yet — start blank or request one."
 - **Favorites + Recently used** rows at the top.
 
+### 7.1 Recolor model — layered, role-based (Pavel 2026-06-23)
+
+Manual per-object recoloring is the wrong default. Best practice (Canva, Adobe Express) is a
+**layered** model that leads with one automatic action and lets users refine by group. All five
+layers run on the same engine — `recolorCanvasJson` + the authored `colorRoles` map.
+
+1. **One-click palette apply — the 80% path.** Template authored with a few color *roles*
+   (primary / secondary / accent / background / neutral). User picks a palette (brand palette /
+   curated / generated harmony) → engine maps palette → roles → the whole template recolors
+   coherently in one tap. This is the default, biggest action.
+2. **Shuffle.** A palette maps onto roles several valid ways. A *Shuffle* button re-permutes the
+   role→color assignment so users find a great combo by tapping, not thinking. Highest-delight,
+   near-free (same engine, new permutation).
+3. **Recolor by group (refinement).** A row of swatches below Apply, each = a **color group**
+   (all objects sharing a source color/role). Tap a swatch → picker → recolors that group
+   everywhere. Groups are **auto-detected** from `colorRoles` (untagged templates fall back to
+   dominant-color clustering via `collectCanvasColors`) — never manual multi-select.
+4. **Lock a swatch.** Pin a group (e.g. logo color) so Apply + Shuffle skip it
+   (`recolorCanvasJson` already supports `skipLocked`).
+5. **Two-level reset.** Reset one group, or Reset all → back to authored colors. The original
+   color map is held in state, so reset is lossless.
+
+Guardrails: **live preview on hover** before commit; optional **contrast warning** when a recolor
+pushes text below legibility against its new background.
+
+Lives in two places: a *preview* recolor in the template library before apply, and a persistent
+**Recolor panel** on the canvas after apply for continued tweaking.
+
 ## 8. Admin authoring — inside the Design Studio (Pavel 2026-06-23)
 
 Admins build templates the way a designer would, not by pasting JSON:
@@ -257,11 +285,27 @@ This is the largest build phase; it reuses the creator canvas wholesale and adds
 2. **Schema + seed** — `TemplateStyle` (+ seed all 5 domains, OTC inactive) · `BrandTemplate`
    die-line/domain/match fields · `TemplateStyleAssignment` · enums. Additive; Mac push.
 3. **Matching engine** — pure `matchTemplatesToProduct` + aspect-bucket derivation + golden tests.
-4. **Creator Canva-style library** — surface tabs · style/color/search filters · palette recolor ·
-   apply · favorites/recent · empty states.
+4. **Creator Canva-style library + recolor** — surface tabs · style/color/search filters · the
+   §7.1 layered recolor (apply / shuffle / by-group / lock / reset) · apply · favorites/recent ·
+   empty states.
 5. **Admin in-Studio authoring** — die-line picker → canvas substrate → save-with-metadata.
 6. **Seed initial library + analytics** — ~5–10 real templates per (domain × top die-line × style)
    · usage tracking (which styles/templates get applied) to guide design investment.
+7. **AI Template Generator** (§9a) — deferred; generates role-tagged, die-line-bound templates.
+
+## 9a. AI Template Generator (future phase)
+
+Deferred — added after the curated library + recolor ship. Generates **net-new** templates
+(layout + art) for a given `(domain × die-line × style)` from a prompt and/or the creator's brand
+(logo, palette, fonts, product name). Two non-negotiables so it fits the system above:
+
+- **Output is real canvas JSON bound to a die-line**, honouring trim/safe/bleed — same substrate
+  as admin authoring (§8), not a flat image.
+- **It emits `colorRoles`** on every generated design, so the §7.1 recolor model (apply / shuffle /
+  by-group / lock / reset) works on AI templates for free.
+
+Likely a generate → review → save flow; admin-curated AI templates can enter the premium library,
+creator-generated ones become the creator's own templates. Out of scope for the current build.
 
 ## 10. Open decisions (not blocking this doc)
 
