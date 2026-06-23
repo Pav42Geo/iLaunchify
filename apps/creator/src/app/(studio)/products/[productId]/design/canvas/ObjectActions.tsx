@@ -77,6 +77,11 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
     canvas.on('mouse:up', endInteract)
     // Reposition on viewport zoom + the inner-div scroll (canvas pan).
     canvas.on('after:render', refresh)
+    // The overlay is positioned in PAGE coords, so it must also reposition when the
+    // canvas is scrolled (mouse-wheel pan) or the window resizes — those don't fire
+    // a Fabric event. Capture-phase catches scrolls in any nested container.
+    window.addEventListener('scroll', refresh, true)
+    window.addEventListener('resize', refresh)
     return () => {
       canvas.off('object:modified', refresh)
       canvas.off('object:moving', startInteract)
@@ -84,6 +89,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
       canvas.off('object:rotating', startInteract)
       canvas.off('mouse:up', endInteract)
       canvas.off('after:render', refresh)
+      window.removeEventListener('scroll', refresh, true)
+      window.removeEventListener('resize', refresh)
     }
   }, [canvas])
 
@@ -106,13 +113,19 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const bottom = { left: sr.left + sr.width / 2, top: sr.top + sr.height + 14 }
   // Hidden while locked — a locked object can't be moved or rotated.
   const showHandles = !locked
-  // Mid-edge resize bars — not on text boxes (they keep native width handles there).
+  // Mid-edge STRETCH bars — offered only where a non-uniform stretch is sensible:
+  // vectors / shapes / photos. NOT text (don't distort glyphs) and NOT codes
+  // (QR / barcode must keep their aspect to stay scannable). Those keep corner-only
+  // proportional resize.
   const edges = {
     right: { x: sr.left + sr.width, y: sr.top + sr.height / 2 },
     bottom: { x: sr.left + sr.width / 2, y: sr.top + sr.height },
   }
-  const isTextbox = (active as { type?: string }).type === 'textbox'
-  const showEdges = showHandles && !isTextbox
+  const objType = (active as { type?: string }).type
+  const isText = objType === 'i-text' || objType === 'text' || objType === 'textbox'
+  const objCustom = (active as { customType?: string }).customType
+  const isCode = objCustom === 'qr-code' || objCustom === 'barcode' || objCustom === 'internal-sku'
+  const showEdges = showHandles && !isText && !isCode
 
   // --- Rotate handle: drag around the object center to spin it -------------
   const onRotateDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -215,9 +228,12 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
       setPositionByOrigin: (p: unknown, ox: string, oy: string) => void
       setCoords?: () => void
     }
+    // Single-axis CENTERED stretch — drag stretches the object on that one axis
+    // (both borders move, object stays centered). Only offered for non-text objects
+    // (vectors/shapes/images can stretch; text can't — see showEdges). ×2 = centered.
     if (m.axis === 'x') {
-      const delta = (e.clientX - m.px) / m.zoom // px the dragged edge moved (object space)
-      o.set({ scaleX: Math.max(0.05, m.sx + (2 * delta) / m.bw) }) // ×2 → both sides move (centered)
+      const delta = (e.clientX - m.px) / m.zoom
+      o.set({ scaleX: Math.max(0.05, m.sx + (2 * delta) / m.bw) })
     } else {
       const delta = (e.clientY - m.py) / m.zoom
       o.set({ scaleY: Math.max(0.05, m.sy + (2 * delta) / m.bh) })
@@ -356,8 +372,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           >
             <button
               type="button"
-              aria-label="Resize width"
-              title="Drag to resize width (stays centered)"
+              aria-label="Resize"
+              title="Drag to resize proportionally (stays centered)"
               onPointerDown={onEdgeDown('x')}
               onPointerMove={onEdgeMove}
               onPointerUp={onEdgeUp}
@@ -370,8 +386,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           >
             <button
               type="button"
-              aria-label="Resize height"
-              title="Drag to resize height (stays centered)"
+              aria-label="Resize"
+              title="Drag to resize proportionally (stays centered)"
               onPointerDown={onEdgeDown('y')}
               onPointerMove={onEdgeMove}
               onPointerUp={onEdgeUp}
