@@ -5,14 +5,17 @@
 // the "Save as template" menu action. Every read/write is ownership-scoped: only
 // brands where creatorProfile.userId === session user.
 
-import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, brandLimits, canRecolorTemplate } from '@ilaunchify/auth'
 import {
   prisma,
   listBrandTemplates,
   getBrandTemplateCanvasJson,
   countBrandTemplates,
   createBrandTemplate,
+  listPremiumTemplates,
+  getPremiumTemplate,
   type BrandTemplateValues,
+  type PremiumTemplateValues,
 } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { BrandCanvasAssets } from '@ilaunchify/ui'
@@ -133,4 +136,41 @@ export async function saveAsBrandTemplate(input: {
     payload: { brandId: input.brandId, name },
   })
   return { ok: true, id: created.id }
+}
+
+// ---------------------------------------------------------------------------
+// Premium template library (Phase 3c). Agency-tier creators browse the admin-
+// curated gallery and load a template onto the Studio stage; they then recolor it
+// with the RecolorPanel. Gated by canRecolorTemplate (Agency), same as recolor.
+// ---------------------------------------------------------------------------
+
+/** The premium library, for the Agency gallery. Empty for non-Agency tiers. */
+export async function listStudioPremiumTemplates(): Promise<PremiumTemplateValues[]> {
+  const user = await requireUser()
+  const tier = await getCreatorTier(user.id)
+  if (!canRecolorTemplate(tier)) return []
+  return listPremiumTemplates()
+}
+
+/** The creator's own saved templates for a brand (ownership-checked). */
+export async function listStudioBrandTemplates(brandId: string): Promise<BrandTemplateValues[]> {
+  const user = await requireUser()
+  const brand = await prisma.brand.findFirst({
+    where: { id: brandId, creatorProfile: { userId: user.id } },
+    select: { id: true },
+  })
+  if (!brand) return []
+  return listBrandTemplates(brandId)
+}
+
+/** A premium template's Fabric JSON to load onto the canvas. Agency-gated. */
+export async function getStudioPremiumTemplateJson(
+  templateId: string,
+): Promise<BrandTemplateJsonResult> {
+  const user = await requireUser()
+  const tier = await getCreatorTier(user.id)
+  if (!canRecolorTemplate(tier)) return { ok: false, error: 'Premium templates are an Agency feature.' }
+  const tpl = await getPremiumTemplate(templateId)
+  if (!tpl || !tpl.canvasJson) return { ok: false, error: 'Template not found.' }
+  return { ok: true, canvasJson: tpl.canvasJson }
 }

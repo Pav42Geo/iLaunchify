@@ -101,6 +101,7 @@ import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { BrandDrawer } from './drawers/BrandDrawer'
+import { TemplatesDrawer } from './drawers/TemplatesDrawer'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
@@ -120,6 +121,7 @@ import {
   Barcode,
   Layers,
   Boxes,
+  LayoutTemplate,
   ScrollText,
   ZoomIn,
   ZoomOut,
@@ -244,6 +246,7 @@ interface Props {
 type ToolKey =
   | 'product'
   | 'label'
+  | 'templates'
   | 'brand'
   | 'text'
   | 'elements'
@@ -274,6 +277,7 @@ const TOOLS: Array<{
 }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: true },
+  { key: 'templates', label: 'Templates', icon: LayoutTemplate, v1: true },
   { key: 'brand', label: 'Brand', icon: Palette, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   // Elements (Pavel 2026-06-23) — Canva-style merge of Images / Graphics /
@@ -1613,6 +1617,14 @@ function ToolDrawer({
               netQuantity: productCtx.netQuantity,
               allergens: productCtx.allergens,
             }}
+          />
+        )}
+        {tool === 'templates' && (
+          <TemplatesDrawer
+            canvas={canvas}
+            activeBrandId={activeBrandId}
+            canPremium={canRecolorTemplate(creatorTier)}
+            onSaveAsTemplate={handleSaveAsTemplate}
           />
         )}
         {tool === 'brand' && (
