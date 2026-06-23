@@ -122,12 +122,14 @@ export interface AdvancedBrandFeatures {
   colorHarmony: boolean
   /** Extract a palette from an uploaded image / the brand logo. Agency. */
   paletteExtract: boolean
+  /** Recolor a whole design/template with a saved palette + use the premium template library. Agency. */
+  templateRecolor: boolean
 }
 
 export const ADVANCED_BRAND_FEATURES: Record<TierKey, AdvancedBrandFeatures> = {
-  maker: { customFontUpload: false, colorHarmony: false, paletteExtract: false },
-  builder: { customFontUpload: true, colorHarmony: true, paletteExtract: false },
-  agency: { customFontUpload: true, colorHarmony: true, paletteExtract: true },
+  maker: { customFontUpload: false, colorHarmony: false, paletteExtract: false, templateRecolor: false },
+  builder: { customFontUpload: true, colorHarmony: true, paletteExtract: false, templateRecolor: false },
+  agency: { customFontUpload: true, colorHarmony: true, paletteExtract: true, templateRecolor: true },
 }
 
 export function advancedBrandFeatures(tier: TierKey): AdvancedBrandFeatures {
@@ -147,6 +149,11 @@ export function canUseColorHarmony(tier: TierKey): boolean {
 /** Convenience: may this tier extract a palette from an image / logo? (Agency) */
 export function canExtractPalette(tier: TierKey): boolean {
   return ADVANCED_BRAND_FEATURES[tier].paletteExtract
+}
+
+/** Convenience: may this tier recolor a whole design with a palette + use the premium template library? (Agency) */
+export function canRecolorTemplate(tier: TierKey): boolean {
+  return ADVANCED_BRAND_FEATURES[tier].templateRecolor
 }
 
 /**

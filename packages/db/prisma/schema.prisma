@@ -2673,11 +2673,20 @@ model BrandTemplate {
   thumbnailUrl    String? // preview (reuses the Studio snapshot thumbnail capture)
   canvasJson      String // Fabric.js layout JSON — bare String (CockroachDB: no @db.Text)
   packagingTypeId String? // which container this layout targets (optional)
+  // === Brand template theming (Phase 3 — docs/BRAND_TEMPLATE_THEMING.md) ===
+  // Premium = admin-curated library template (owned by the system templates brand),
+  // browsable + recolorable by Agency creators. `tier` is an optional minimum tier
+  // to use it. `colorRoles` maps each source hex → a palette role (primary/secondary/
+  // accent/neutral) for one-click exact recolor; null = dominant-remap only.
+  isPremium       Boolean  @default(false)
+  tier            String? // optional minimum tier to use it (e.g. 'agency')
+  colorRoles      Json? // { "#A44200": "primary", "#3C1518": "neutral", ... }
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId])
+  @@index([isPremium])
 }
 
 /// Creator-uploaded custom brand font (Brand Kit V2 Slice 2, docs/BRAND_KIT_V2_PROPOSAL.md §3b).

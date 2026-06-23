@@ -179,5 +179,10 @@ export {
   countBrandTemplates,
   createBrandTemplate,
   deleteBrandTemplate,
+  listPremiumTemplates,
+  getPremiumTemplate,
   type BrandTemplateValues,
+  type PremiumTemplateValues,
+  type TemplateColorRole,
+  type TemplateColorRoles,
 } from './brand-templates'

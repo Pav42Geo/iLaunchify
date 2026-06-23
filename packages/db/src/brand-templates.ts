@@ -15,6 +15,20 @@ export interface BrandTemplateValues {
   createdAt: Date
 }
 
+/** A palette role a source color maps to for one-click exact recolor. */
+export type TemplateColorRole = 'primary' | 'secondary' | 'accent' | 'neutral'
+export type TemplateColorRoles = Record<string, TemplateColorRole>
+
+/** A premium (admin-curated) library template, browsable by Agency creators. */
+export interface PremiumTemplateValues {
+  id: string
+  name: string
+  thumbnailUrl: string | null
+  packagingTypeId: string | null
+  tier: string | null
+  createdAt: Date
+}
+
 interface BrandTemplateDelegate {
   findMany: (a: unknown) => Promise<Record<string, unknown>[]>
   count: (a: unknown) => Promise<number>
@@ -81,13 +95,17 @@ export async function countBrandTemplates(brandId: string): Promise<number> {
   }
 }
 
-/** Create a brand template. Caller enforces the per-tier cap first. */
+/** Create a brand template. Caller enforces the per-tier cap first. The premium
+ *  fields (isPremium/tier/colorRoles) are only set by the admin library curator. */
 export async function createBrandTemplate(input: {
   brandId: string
   name: string
   canvasJson: string
   thumbnailUrl?: string | null
   packagingTypeId?: string | null
+  isPremium?: boolean
+  tier?: string | null
+  colorRoles?: TemplateColorRoles | null
 }): Promise<{ id: string } | null> {
   const d = delegate()
   if (!d) return null
@@ -98,10 +116,69 @@ export async function createBrandTemplate(input: {
       canvasJson: input.canvasJson,
       thumbnailUrl: input.thumbnailUrl ?? null,
       packagingTypeId: input.packagingTypeId ?? null,
+      isPremium: input.isPremium ?? false,
+      tier: input.tier ?? null,
+      colorRoles: (input.colorRoles ?? null) as unknown,
     },
     select: { id: true },
   })
   return { id: String(row.id) }
+}
+
+/** List the premium (admin-curated) library templates, newest first. Empty pre-migration. */
+export async function listPremiumTemplates(): Promise<PremiumTemplateValues[]> {
+  const d = delegate()
+  if (!d) return []
+  try {
+    const rows = await d
+      .findMany({
+        where: { isPremium: true },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          thumbnailUrl: true,
+          packagingTypeId: true,
+          tier: true,
+          createdAt: true,
+        },
+      })
+      .catch(() => [])
+    return rows.map((r) => ({
+      id: String(r.id),
+      name: String(r.name),
+      thumbnailUrl: (r.thumbnailUrl as string | null) ?? null,
+      packagingTypeId: (r.packagingTypeId as string | null) ?? null,
+      tier: (r.tier as string | null) ?? null,
+      createdAt: (r.createdAt as Date) ?? new Date(0),
+    }))
+  } catch {
+    return []
+  }
+}
+
+/** Read a premium template's canvas + role map for applying onto the Studio stage.
+ *  Premium templates are global (no brand-owner guard). Null pre-migration/not found. */
+export async function getPremiumTemplate(
+  templateId: string,
+): Promise<{ canvasJson: string; colorRoles: TemplateColorRoles | null } | null> {
+  const d = delegate()
+  if (!d) return null
+  try {
+    const row = await d
+      .findUnique({
+        where: { id: templateId },
+        select: { isPremium: true, canvasJson: true, colorRoles: true },
+      })
+      .catch(() => null)
+    if (!row || row.isPremium !== true) return null
+    return {
+      canvasJson: (row.canvasJson as string | null) ?? '',
+      colorRoles: (row.colorRoles as TemplateColorRoles | null) ?? null,
+    }
+  } catch {
+    return null
+  }
 }
 
 /** Owner-guarded delete: only removes the template if it belongs to `brandId`. */
