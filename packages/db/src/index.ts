@@ -189,3 +189,11 @@ export {
   type TemplateColorRole,
   type TemplateColorRoles,
 } from './brand-templates'
+
+export {
+  listTemplateStyles,
+  listAllTemplateStyles,
+  type TemplateStyleValues,
+  type TemplateStyleFacet,
+  type TemplateStyleDomain,
+} from './template-styles'
