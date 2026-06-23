@@ -80,7 +80,7 @@ import { UpgradeOverlay } from './UpgradeOverlay'
 // re-export here is structurally identical to @ilaunchify/ui's so the
 // UpgradeOverlay (which still imports from ui) continues to type-check.
 import type { FabricObject } from '@ilaunchify/ui'
-import { hasTier, type TierKey } from '@ilaunchify/auth'
+import { hasTier, canRecolorTemplate, type TierKey } from '@ilaunchify/auth'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
 import { ImageToolbar } from './ImageToolbar'
@@ -1612,6 +1612,8 @@ function ToolDrawer({
             brandAssets={brandAssets}
             activeBrandId={activeBrandId}
             onActiveBrandChange={onActiveBrandChange}
+            canRecolor={canRecolorTemplate(creatorTier)}
+            onSaveAsTemplate={handleSaveAsTemplate}
           />
         )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}

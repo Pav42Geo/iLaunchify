@@ -27,6 +27,7 @@ import { InfoTip } from '../InfoTip'
 import { LogosCompact, ColorsCompact, FontsCompact, TaglineCompact, BuildFromWebsite } from '../BrandKitCompactEditor'
 import { TextStylesSection } from '@/app/(dashboard)/brands/[brandId]/assets/TextStylesSection'
 import { PalettesSection } from '@/app/(dashboard)/brands/[brandId]/assets/PalettesSection'
+import { RecolorPanel } from './RecolorPanel'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -34,13 +35,24 @@ interface Props {
   brandAssets: BrandCanvasAssets
   activeBrandId: string
   onActiveBrandChange: (brandId: string) => void
+  /** Agency-tier: enables "Recolor with palette" (Phase 3b). */
+  canRecolor?: boolean
+  /** Persist the current (possibly recolored) design as a reusable template. */
+  onSaveAsTemplate?: () => void
 }
 
 type Mode = 'apply' | 'edit'
 
 const labelClass = 'text-[12px] font-bold uppercase tracking-wider text-ink-700'
 
-export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandChange }: Props) {
+export function BrandDrawer({
+  canvas,
+  brandAssets,
+  activeBrandId,
+  onActiveBrandChange,
+  canRecolor = false,
+  onSaveAsTemplate,
+}: Props) {
   const [mode, setMode] = React.useState<Mode>('apply')
   const [options, setOptions] = React.useState<StudioBrandKitOption[]>([])
   const [assets, setAssets] = React.useState<BrandCanvasAssets>(brandAssets)
@@ -333,6 +345,15 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
           >
             <Wand2 className="h-4 w-4" /> Apply brand to design
           </button>
+
+          {/* Recolor with palette (Agency · Phase 3b) */}
+          {canRecolor && (
+            <RecolorPanel
+              canvas={canvas}
+              palettes={assets.brandPalettes ?? []}
+              onSaveAsTemplate={onSaveAsTemplate ?? (() => undefined)}
+            />
+          )}
 
           {/* Logos */}
           <section>
