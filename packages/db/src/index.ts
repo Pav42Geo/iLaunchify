@@ -197,3 +197,9 @@ export {
   type TemplateStyleFacet,
   type TemplateStyleDomain,
 } from './template-styles'
+
+export {
+  listMatchablePremiumTemplates,
+  listMatchableBrandTemplates,
+  type MatchableTemplateRow,
+} from './template-library'
