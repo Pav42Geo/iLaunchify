@@ -16,6 +16,7 @@ export {
 export {
   loadFont,
   loadCustomFont,
+  loadBrandFont,
   preloadFonts,
   buildBunnyFontUrl,
   isFontLoaded,

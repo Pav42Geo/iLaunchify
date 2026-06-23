@@ -13,9 +13,12 @@ import {
   setBrandColors,
   setBrandFonts,
   setBrandTagline,
+  uploadBrandFont,
+  removeBrandFont,
   type LogoVariant,
 } from '@/app/(dashboard)/brands/[brandId]/assets/actions'
-import type { StudioAssetSummary, StudioFontOption } from './brand-edit-actions'
+import { loadCustomFont } from '@ilaunchify/ui'
+import type { StudioAssetSummary, StudioFontOption, StudioCustomFont } from './brand-edit-actions'
 import { applyBrandKitFromUrl } from './brand-kit-builder'
 
 // ================================================================ Build from website
@@ -373,15 +376,36 @@ export function FontsCompact({
   brandId,
   selected,
   catalog,
+  customFonts = [],
+  canUploadCustomFonts = false,
 }: {
   brandId: string
   selected: string[]
   catalog: StudioFontOption[]
+  customFonts?: StudioCustomFont[]
+  canUploadCustomFonts?: boolean
 }) {
   const [ids, setIds] = React.useState<string[]>(selected)
   const [query, setQuery] = React.useState('')
   const [err, setErr] = React.useState<string | null>(null)
-  const byId = React.useMemo(() => new Map(catalog.map((f) => [f.id, f])), [catalog])
+  // Local custom-font list (the Studio drawer has no easy server refresh — append on
+  // upload, drop on delete). Maps ref → family for chip display + selection.
+  const [customs, setCustoms] = React.useState<StudioCustomFont[]>(customFonts)
+  const [upName, setUpName] = React.useState('')
+  const [upFile, setUpFile] = React.useState<File | null>(null)
+  const [upLicense, setUpLicense] = React.useState(false)
+  const [uploading, setUploading] = React.useState(false)
+
+  const byId = React.useMemo(() => {
+    const m = new Map<string, { family: string }>(catalog.map((f) => [f.id, { family: f.family }]))
+    for (const c of customs) m.set(c.ref, { family: c.family })
+    return m
+  }, [catalog, customs])
+
+  // Register uploaded fonts so chips/previews render in their real face.
+  React.useEffect(() => {
+    for (const c of customs) if (c.webUrl) void loadCustomFont(c.family, c.webUrl)
+  }, [customs])
 
   async function persist(next: string[]) {
     setErr(null)
@@ -398,6 +422,45 @@ export function FontsCompact({
     const next = ids.filter((x) => x !== id)
     setIds(next)
     persist(next)
+  }
+
+  async function onUpload(e: React.FormEvent) {
+    e.preventDefault()
+    if (!upFile) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.set('brandId', brandId)
+      fd.set('family', upName)
+      fd.set('licenseAttested', upLicense ? 'true' : 'false')
+      fd.set('file', upFile)
+      const res = await uploadBrandFont(fd)
+      if (!res.ok) {
+        setErr(res.error)
+        return
+      }
+      // Append locally; webUrl unknown client-side until reopen — name shows immediately.
+      setCustoms((prev) => [
+        { ref: `custom:${res.fontId}`, id: res.fontId, family: res.family, webUrl: null },
+        ...prev,
+      ])
+      setUpName('')
+      setUpFile(null)
+      setUpLicense(false)
+      setErr(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function deleteCustom(c: StudioCustomFont) {
+    const res = await removeBrandFont({ brandId, fontId: c.id })
+    if (!res.ok) {
+      setErr(res.error)
+      return
+    }
+    setCustoms((prev) => prev.filter((x) => x.ref !== c.ref))
+    setIds((prev) => prev.filter((x) => x !== c.ref))
   }
 
   const results = catalog
@@ -419,6 +482,75 @@ export function FontsCompact({
           })}
         </div>
       )}
+
+      {/* Your uploaded fonts + upload (Slice 2b). */}
+      <div className="rounded-md border border-ink-100 bg-ink-50/50 p-2">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+          Your brand fonts
+        </div>
+        {customs.length > 0 && (
+          <div className="mb-1.5 space-y-1">
+            {customs.map((c) => {
+              const isSel = ids.includes(c.ref)
+              return (
+                <div key={c.ref} className="flex items-center justify-between gap-1">
+                  <button
+                    type="button"
+                    onClick={() => (isSel ? remove(c.ref) : add(c.ref))}
+                    className="flex min-w-0 items-center gap-1 text-left"
+                  >
+                    {isSel && <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />}
+                    <span className="truncate text-[12px] text-ink-800" style={{ fontFamily: c.family }}>
+                      {c.family}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteCustom(c)}
+                    aria-label={`Delete ${c.family}`}
+                    className="text-ink-400 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {canUploadCustomFonts ? (
+          <form onSubmit={onUpload} className="space-y-1.5">
+            <input
+              value={upName}
+              onChange={(e) => setUpName(e.target.value)}
+              placeholder="Font name"
+              disabled={uploading}
+              className="w-full rounded border border-ink-200 bg-white px-2 py-1 text-[11.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            />
+            <input
+              type="file"
+              accept=".woff2,.woff,.ttf,.otf"
+              onChange={(e) => setUpFile(e.target.files?.[0] ?? null)}
+              disabled={uploading}
+              className="w-full text-[10.5px] text-ink-600 file:mr-1.5 file:rounded file:border file:border-ink-200 file:bg-white file:px-1.5 file:py-0.5 file:text-[10.5px]"
+            />
+            <label className="flex items-start gap-1 text-[10px] text-ink-500">
+              <input type="checkbox" checked={upLicense} onChange={(e) => setUpLicense(e.target.checked)} disabled={uploading} className="mt-0.5" />
+              <span>I have the right to use &amp; embed this font.</span>
+            </label>
+            <button
+              type="submit"
+              disabled={uploading || !upFile || !upName.trim() || !upLicense}
+              className="inline-flex items-center gap-1 rounded-md bg-ink-900 px-2.5 py-1 text-[11px] font-medium text-white disabled:opacity-40"
+            >
+              <Upload className="h-3 w-3" /> {uploading ? 'Uploading…' : 'Upload a font'}
+            </button>
+          </form>
+        ) : (
+          <p className="text-[10.5px] text-ink-500">
+            Upload your own fonts on <strong>Builder</strong> &amp; <strong>Agency</strong> plans.
+          </p>
+        )}
+      </div>
       {ids.length < 3 ? (
         <>
           <div className="relative">

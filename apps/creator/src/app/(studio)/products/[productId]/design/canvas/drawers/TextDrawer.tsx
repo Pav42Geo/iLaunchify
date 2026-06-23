@@ -15,6 +15,7 @@ import { Plus } from 'lucide-react'
 import {
   addText,
   addTextCombo,
+  loadBrandFont,
   type BrandCanvasAssets,
   type FabricCanvas,
 } from '@ilaunchify/ui'
@@ -28,10 +29,19 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
   const [value, setValue] = React.useState('')
   const [category, setCategory] = React.useState<ChipCategoryKey>('storage')
 
-  const brandHeadingFont = brandAssets.fonts[0]?.family ?? 'Bricolage Grotesque'
-  const brandBodyFont = brandAssets.fonts[1]?.family ?? 'Inter'
+  const headingFontAsset = brandAssets.fonts[0] ?? null
+  const bodyFontAsset = brandAssets.fonts[1] ?? null
+  const brandHeadingFont = headingFontAsset?.family ?? 'Bricolage Grotesque'
+  const brandBodyFont = bodyFontAsset?.family ?? 'Inter'
   const brandFill =
     brandAssets.colorPrimary ?? brandAssets.extraSwatches[0] ?? '#0F1116'
+
+  // Ensure brand fonts (incl. uploaded custom fonts via @font-face) are loaded
+  // before they're applied, so the canvas renders the real face. (Slice 2b)
+  React.useEffect(() => {
+    if (headingFontAsset) void loadBrandFont(headingFontAsset.family, headingFontAsset.webfontUrl)
+    if (bodyFontAsset) void loadBrandFont(bodyFontAsset.family, bodyFontAsset.webfontUrl)
+  }, [headingFontAsset, bodyFontAsset])
 
   function handleAdd() {
     if (!canvas || !value.trim()) return

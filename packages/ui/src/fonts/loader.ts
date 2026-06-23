@@ -163,6 +163,18 @@ export async function loadCustomFont(family: string, src: string): Promise<boole
   }
 }
 
+/**
+ * Load a brand font regardless of source: a catalog/self-hosted family loads via
+ * Bunny (loadFont); an uploaded custom font (webfontUrl present) loads via
+ * @font-face (loadCustomFont). One call site for everywhere brand fonts apply.
+ */
+export async function loadBrandFont(
+  family: string,
+  webfontUrl?: string | null,
+): Promise<boolean> {
+  return webfontUrl ? loadCustomFont(family, webfontUrl) : loadFont(family)
+}
+
 /* ============ internal ============ */
 
 function injectCustomFontFace(family: string, src: string): void {

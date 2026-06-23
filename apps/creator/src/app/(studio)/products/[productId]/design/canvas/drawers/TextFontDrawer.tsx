@@ -20,6 +20,7 @@ import * as React from 'react'
 import { Check, Pin, Search, Sparkles, X } from 'lucide-react'
 import {
   loadFont,
+  loadBrandFont,
   isFontLoaded,
   FONT_CATALOG,
   FONT_CATEGORIES,
@@ -76,11 +77,22 @@ export function TextFontDrawer({
   const currentFamily = text.fontFamily ?? 'Inter'
 
   const brandFontFamilies = brandAssets.fonts.map((f) => f.family)
+  // Map a brand family → its uploaded custom @font-face URL (null for catalog fonts).
+  const brandFontUrlByFamily = React.useMemo(
+    () => new Map(brandAssets.fonts.map((f) => [f.family, f.webfontUrl])),
+    [brandAssets.fonts],
+  )
+
+  // Preload brand fonts (incl. uploaded custom ones) so their rows preview in-face.
+  React.useEffect(() => {
+    for (const f of brandAssets.fonts) void loadBrandFont(f.family, f.webfontUrl)
+  }, [brandAssets.fonts])
 
   async function applyFont(family: string) {
     if (!canvas) return
-    const entry = findFontInCatalog(family)
-    await loadFont(family, entry?.weights)
+    const customUrl = brandFontUrlByFamily.get(family)
+    if (customUrl) await loadBrandFont(family, customUrl)
+    else await loadFont(family, findFontInCatalog(family)?.weights)
     text.set({ fontFamily: family })
     canvas.fire('object:modified', { target: active })
     canvas.requestRenderAll()

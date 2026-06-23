@@ -10,7 +10,7 @@
 
 import * as React from 'react'
 import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown, Plus, Wand2 } from 'lucide-react'
-import { addImageFromUrl, loadFont, type BrandCanvasAssets, type FabricCanvas } from '@ilaunchify/ui'
+import { addImageFromUrl, loadBrandFont, type BrandCanvasAssets, type FabricCanvas } from '@ilaunchify/ui'
 import type { BrandTemplateValues } from '@ilaunchify/db'
 import {
   listStudioBrandKits,
@@ -119,7 +119,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
     canvas.requestRenderAll()
   }
 
-  async function applyFont(family: string) {
+  async function applyFont(family: string, webfontUrl?: string | null) {
     if (!canvas) return
     const obj = canvas.getActiveObject() as { set?: (p: Record<string, unknown>) => void; type?: string } | null
     const isText = obj?.type === 'textbox' || obj?.type === 'i-text' || obj?.type === 'text'
@@ -127,7 +127,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
       flash('Select a text object, then tap a font.')
       return
     }
-    await loadFont(family)
+    await loadBrandFont(family, webfontUrl)
     obj.set({ fontFamily: family })
     canvas.requestRenderAll()
   }
@@ -163,7 +163,8 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
   // never touched. Fully undoable via the canvas history.
   async function applyBrand() {
     if (!canvas) return
-    const fontFamily = assets.fonts[0]?.family ?? null
+    const headingFont = assets.fonts[0] ?? null
+    const fontFamily = headingFont?.family ?? null
     const color = assets.colorPrimary ?? swatches[0] ?? null
     if (!fontFamily && !color) {
       flash('Add a brand font or color to this kit first.')
@@ -173,7 +174,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
       `Apply ${assets.brandName} to this design? This swaps fonts and recolors your editable text. Regulated panels (Nutrition Facts, barcodes) stay unchanged — and you can undo.`,
     )
     if (!ok) return
-    if (fontFamily) await loadFont(fontFamily)
+    if (fontFamily) await loadBrandFont(fontFamily, headingFont?.webfontUrl)
     const c = canvas as unknown as {
       getObjects?: () => Array<Record<string, unknown>>
       requestRenderAll: () => void
@@ -410,7 +411,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
                   <button
                     key={f.id}
                     type="button"
-                    onClick={() => applyFont(f.family)}
+                    onClick={() => applyFont(f.family, f.webfontUrl)}
                     disabled={!canvas}
                     className="flex w-full items-center justify-between rounded-md border border-ink-200 bg-white px-3 py-2 text-left transition-colors hover:border-pink-300 hover:bg-pink-50 disabled:opacity-50"
                   >
@@ -525,7 +526,13 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
         count={data.selectedFontIds.length}
         info="Pick up to 3 brand fonts. They pin to the top of the canvas text font list."
       >
-        <FontsCompact brandId={brandId} selected={data.selectedFontIds} catalog={data.fontCatalog} />
+        <FontsCompact
+          brandId={brandId}
+          selected={data.selectedFontIds}
+          catalog={data.fontCatalog}
+          customFonts={data.customFonts}
+          canUploadCustomFonts={data.canUploadCustomFonts}
+        />
       </KitGroup>
       <KitGroup
         title="Tagline"
