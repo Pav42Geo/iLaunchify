@@ -102,6 +102,7 @@ import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { BrandDrawer } from './drawers/BrandDrawer'
 import { TemplatesDrawer } from './drawers/TemplatesDrawer'
+import { TemplateAuthorSaveDialog } from '../../../../template-author/TemplateAuthorSaveDialog'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
@@ -241,6 +242,13 @@ interface Props {
   aggregateNutritionData: AggregateNutritionData | null
   /** Phase 2b — REAL non-FOOD panels (supplement / pet). null → sample. */
   nonFoodPanelData: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
+  /**
+   * Admin Design Studio — template-author mode (docs/DESIGN_TEMPLATE_LIBRARY.md §8).
+   * When set, the Studio is mounted (admin-gated, product-less) to author a LIBRARY
+   * template on a die-line: "Save as template" routes to the admin library save dialog
+   * instead of the creator's brand kit, and product-only rail tools are hidden.
+   */
+  templateAuthor?: { domain: string; container: string | null; aspectBucket: string | null } | null
 }
 
 type ToolKey =
@@ -319,8 +327,10 @@ export function CanvasLayoutShell({
   nutritionPanelData,
   aggregateNutritionData,
   nonFoodPanelData,
+  templateAuthor = null,
 }: Props) {
-  const [activeTool, setActiveTool] = useState<ToolKey | null>('product')
+  const [activeTool, setActiveTool] = useState<ToolKey | null>(templateAuthor ? 'templates' : 'product')
+  const [templateAuthorSaveOpen, setTemplateAuthorSaveOpen] = useState(false)
   // Brand Kit — the active kit the Studio pulls assets/templates from (and saves
   // templates to). Defaults to the product's own brand; the Brand drawer switches it.
   const [activeBrandId, setActiveBrandId] = useState(brandAssets.brandId)
@@ -780,6 +790,10 @@ export function CanvasLayoutShell({
     else toast.error(res.error)
   }, [canvas, activeBrandId, grabThumb])
 
+  // In admin template-author mode, "Save as template" opens the library save dialog
+  // instead of saving to the creator's brand kit.
+  const onSaveTemplateClick = templateAuthor ? () => setTemplateAuthorSaveOpen(true) : handleSaveAsTemplate
+
   const { panMode, togglePan } = usePanMode(canvas)
   useCanvasShortcuts(canvas)
   useLabelMinSize(canvas) // DS-58d — clamp scale handles to FDA min type sizes
@@ -915,7 +929,7 @@ export function CanvasLayoutShell({
         lastSavedAt={autosave.lastSavedAt}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
-        onSaveAsTemplate={handleSaveAsTemplate}
+        onSaveAsTemplate={onSaveTemplateClick}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -1008,7 +1022,7 @@ export function CanvasLayoutShell({
               activeBrandId={activeBrandId}
               onActiveBrandChange={setActiveBrandId}
               creatorTier={creatorTier}
-              onSaveAsTemplate={handleSaveAsTemplate}
+              onSaveAsTemplate={onSaveTemplateClick}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1177,6 +1191,18 @@ export function CanvasLayoutShell({
           void snapshotDesign(productId, 'MILESTONE', 'Exported', grabThumb()).then(() => loadHistory())
         }}
       />
+
+      {/* Admin Design Studio — template-author save dialog (§8). */}
+      {templateAuthor && (
+        <TemplateAuthorSaveDialog
+          open={templateAuthorSaveOpen}
+          canvas={canvas}
+          domain={templateAuthor.domain}
+          container={templateAuthor.container}
+          aspectBucket={templateAuthor.aspectBucket}
+          onClose={() => setTemplateAuthorSaveOpen(false)}
+        />
+      )}
 
       {/* DS-73d — Maker-tier upgrade overlay. Slides down from under the
           top header when a Maker creator clicks Export. */}
