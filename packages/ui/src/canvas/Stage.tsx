@@ -114,6 +114,9 @@ export function Stage({
       selection: true,
       stopContextMenu: true,
       fireRightClick: true,
+      // Corner scaling is ALWAYS proportional — no Shift-to-distort (Pavel 2026-06-23).
+      uniformScaling: true,
+      uniScaleKey: null,
     })
 
     // Hover affordance — outline the object under the cursor (unless it's the
@@ -163,11 +166,21 @@ export function Stage({
       try {
         o.set(SELECTION_CHROME)
         o.set('centeredRotation', true)
-        // Hide Fabric's top rotation handle — it lands under the floating
-        // toolbar and is unreachable. Rotation is handled by the Canva-style
-        // rotate control below the object (ObjectActions). Scaling handles stay.
+        o.set('lockScalingFlip', true) // never mirror-flip on over-drag
+        // Control visibility, Canva-style:
+        //   - Hide the top rotation handle (mtr) — it lands under the floating
+        //     toolbar; rotation is handled by the rotate control below the object.
+        //   - Corners (tl/tr/bl/br) stay → ALWAYS proportional resize.
+        //   - Side handles distort the object, so they're hidden — EXCEPT on a
+        //     text box, where left/right adjust the wrap-width "guide" without
+        //     scaling the type (native Textbox behavior).
+        const isTextbox = (o as { type?: string }).type === 'textbox'
         const withControls = o as unknown as { setControlsVisibility?: (v: Record<string, boolean>) => void }
-        withControls.setControlsVisibility?.({ mtr: false })
+        withControls.setControlsVisibility?.(
+          isTextbox
+            ? { mtr: false, mt: false, mb: false }
+            : { mtr: false, ml: false, mr: false, mt: false, mb: false },
+        )
       } catch {
         /* odd/disposed object — ignore */
       }
