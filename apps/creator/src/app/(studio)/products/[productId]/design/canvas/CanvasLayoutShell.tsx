@@ -930,6 +930,7 @@ export function CanvasLayoutShell({
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
         onSaveAsTemplate={onSaveTemplateClick}
+        templateAuthorMode={!!templateAuthor}
         complianceOpen={complianceOpen}
         onToggleCompliance={() => setComplianceOpen((v) => !v)}
         mockupOpen={mockupOpen}
@@ -1304,6 +1305,7 @@ function TopBar({
   onOpenHistory,
   onSaveDraft,
   onSaveAsTemplate,
+  templateAuthorMode,
 }: {
   productName: string
   productId: string
@@ -1331,6 +1333,8 @@ function TopBar({
   onSaveDraft: () => void
   /** Studio ☰ menu "Save as template" — persist to the active brand kit. */
   onSaveAsTemplate: () => void
+  /** Admin template-author mode — shows an "Admin Mode" badge by the wordmark. */
+  templateAuthorMode: boolean
 }) {
   return (
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
@@ -1343,6 +1347,11 @@ function TopBar({
             iLaunchify
           </span>
         </Link>
+        {templateAuthorMode && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-pink-700">
+            Admin Mode
+          </span>
+        )}
         {/* 3-line menu sits to the right of the logo. */}
         <StudioHeaderMenu productId={productId} productName={productName} canDownloadLabels={canDownloadLabels} onSaveDraft={onSaveDraft} onSaveAsTemplate={onSaveAsTemplate} />
         <div className="mx-1 h-6 w-px bg-ink-200" />
