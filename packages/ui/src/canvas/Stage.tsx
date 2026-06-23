@@ -14,6 +14,37 @@ import { useEffect, useRef } from 'react'
 import * as fabric from 'fabric'
 import type { DieCutSpec } from './types'
 
+// ---------------------------------------------------------------------------
+// Selection chrome — Canva-style (Pavel 2026-06-23). Solid brand-pink border
+// (no dashes) + filled WHITE circular handles ringed in pink, with a little
+// padding so the box sits just off the artwork. Applied once to the Fabric
+// object prototype so every object on every canvas inherits it.
+// ---------------------------------------------------------------------------
+const SELECTION_PINK = '#FF2E63'
+const SELECTION_CHROME = {
+  cornerStyle: 'circle' as const,
+  transparentCorners: false,
+  cornerColor: '#FFFFFF',
+  cornerStrokeColor: SELECTION_PINK,
+  cornerSize: 11,
+  touchCornerSize: 20,
+  borderColor: SELECTION_PINK,
+  borderScaleFactor: 1.5,
+  borderDashArray: null as number[] | null,
+  padding: 4,
+  borderOpacityWhenMoving: 1,
+}
+let selectionChromeApplied = false
+function applySelectionChrome(): void {
+  if (selectionChromeApplied) return
+  selectionChromeApplied = true
+  const f = fabric as unknown as Record<string, { prototype: Record<string, unknown> } | undefined>
+  for (const klass of ['FabricObject', 'Object', 'ActiveSelection']) {
+    const proto = f[klass]?.prototype
+    if (proto) Object.assign(proto, SELECTION_CHROME)
+  }
+}
+
 interface StageProps {
   dieCut: DieCutSpec
   /** Pixels per millimeter. Lets parent control zoom. Default 3.0 = roughly 76 DPI. */
@@ -73,6 +104,8 @@ export function Stage({
   useEffect(() => {
     if (!canvasElRef.current) return
 
+    applySelectionChrome()
+
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: pixelWidth,
       height: pixelHeight,
@@ -81,6 +114,45 @@ export function Stage({
       selection: true,
       stopContextMenu: true,
       fireRightClick: true,
+    })
+
+    // Hover affordance — outline the object under the cursor (unless it's the
+    // active selection) so it's obvious what you're about to grab, Canva-style.
+    let hovered: fabric.FabricObject | null = null
+    const clearHover = () => {
+      if (hovered) {
+        hovered = null
+        canvas.requestRenderAll()
+      }
+    }
+    canvas.on('mouse:over', (e) => {
+      const t = (e as { target?: fabric.FabricObject }).target
+      if (!t || t.selectable === false) {
+        clearHover()
+        return
+      }
+      if (t !== hovered) {
+        hovered = t
+        canvas.requestRenderAll()
+      }
+    })
+    canvas.on('mouse:out', clearHover)
+    canvas.on('mouse:down', clearHover)
+    canvas.on('after:render', () => {
+      if (!hovered || hovered === canvas.getActiveObject()) return
+      try {
+        const r = hovered.getBoundingRect()
+        const ctx = canvas.getContext()
+        ctx.save()
+        ctx.strokeStyle = SELECTION_PINK
+        ctx.globalAlpha = 0.85
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([])
+        ctx.strokeRect(r.left + 0.5, r.top + 0.5, Math.max(0, r.width - 1), Math.max(0, r.height - 1))
+        ctx.restore()
+      } catch {
+        /* getBoundingRect on a disposed/odd object — ignore */
+      }
     })
     // DS-73.1 — apply the initial view zoom so the canvas mounts at
     // the right scale when the parent state is non-1 (e.g. an
