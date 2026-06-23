@@ -18,7 +18,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  X,
   Lock,
 } from 'lucide-react'
 import {
@@ -181,22 +180,6 @@ export function TextFormatToolbar({
         >
           <AlignRight className="h-3.5 w-3.5" />
         </ToggleButton>
-
-        <div className="mx-0.5 h-5 w-px bg-ink-200" />
-
-        {/* Close */}
-        <button
-          type="button"
-          aria-label="Deselect"
-          onClick={() => {
-            if (!canvas) return
-            canvas.discardActiveObject()
-            canvas.requestRenderAll()
-          }}
-          className="rounded p-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-100"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   )

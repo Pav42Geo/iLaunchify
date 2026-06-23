@@ -17,7 +17,7 @@
 
 import * as React from 'react'
 import {
-  X,
+  Check,
   FlipHorizontal2,
   FlipVertical2,
   RotateCw,
@@ -176,22 +176,6 @@ export function CodeToolbar({ canvas, active, brandAssets }: Props) {
         >
           <FlipVertical2 className="h-3.5 w-3.5" />
         </button>
-
-        <div className="mx-0.5 h-5 w-px bg-ink-200" />
-
-        {/* Close */}
-        <button
-          type="button"
-          aria-label="Deselect"
-          onClick={() => {
-            if (!canvas) return
-            canvas.discardActiveObject()
-            canvas.requestRenderAll()
-          }}
-          className="rounded p-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-100"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
   )
@@ -280,7 +264,7 @@ function QrStyleChip({
         <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-700">Style</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-52 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30 space-y-3">
+        <div className="absolute left-0 top-full mt-1.5 w-60 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30 space-y-3">
           <div>
             <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Corners</div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -289,6 +273,7 @@ function QrStyleChip({
                   key={s.value}
                   label={s.label}
                   active={corner === s.value}
+                  preview={<CornerPreview style={s.value} active={corner === s.value} />}
                   onClick={() => onChange({ ...data, cornerStyle: s.value as QrCornerStyle })}
                 />
               ))}
@@ -302,6 +287,7 @@ function QrStyleChip({
                   key={s.value}
                   label={s.label}
                   active={dot === s.value}
+                  preview={<DotPreview style={s.value} active={dot === s.value} />}
                   onClick={() => onChange({ ...data, dotStyle: s.value as QrDotStyle })}
                 />
               ))}
@@ -343,10 +329,12 @@ function QrStyleChip({
 function StyleOption({
   label,
   active,
+  preview,
   onClick,
 }: {
   label: string
   active: boolean
+  preview: React.ReactNode
   onClick: () => void
 }) {
   return (
@@ -354,13 +342,111 @@ function StyleOption({
       type="button"
       onClick={onClick}
       title={label}
+      aria-pressed={active}
       className={
-        'h-12 rounded-md border text-[9.5px] font-semibold flex items-end justify-center pb-1 transition-all ' +
-        (active ? 'border-pink-500 ring-2 ring-pink-500/20 text-pink-700' : 'border-ink-200 text-ink-600 hover:border-ink-400')
+        'relative flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-md border bg-white transition-all ' +
+        (active
+          ? 'border-pink-500 ring-2 ring-pink-500/20'
+          : 'border-ink-200 hover:border-ink-400')
       }
     >
-      {label}
+      {active && (
+        <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-pink-600 text-white shadow-sm">
+          <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+        </span>
+      )}
+      <span className={active ? 'text-pink-600' : 'text-ink-700'}>{preview}</span>
+      <span className={'text-[8.5px] font-semibold ' + (active ? 'text-pink-700' : 'text-ink-500')}>
+        {label}
+      </span>
     </button>
+  )
+}
+
+// SVG path for a rounded rect with only the top-left + bottom-right corners rounded
+// (the "classy"/"leaf" QR shape) — mirrors leafPath() in the styled-QR renderer.
+function leafD(x: number, y: number, s: number, r: number): string {
+  return `M${x + r},${y} H${x + s} V${y + s - r} A${r},${r} 0 0 1 ${x + s - r},${y + s} H${x} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`
+}
+
+/** Mini preview of a QR finder (corner) style. Inherits color via currentColor. */
+function CornerPreview({ style }: { style: QrCornerStyle; active?: boolean }) {
+  const f = 'currentColor'
+  const hole = '#ffffff'
+  let body: React.ReactNode
+  if (style === 'leaf') {
+    body = (
+      <>
+        <path d={leafD(3, 3, 18, 6)} fill={f} />
+        <path d={leafD(6, 6, 12, 4)} fill={hole} />
+        <path d={leafD(9, 9, 6, 2.2)} fill={f} />
+      </>
+    )
+  } else if (style === 'dot') {
+    body = (
+      <>
+        <circle cx={12} cy={12} r={9} fill={f} />
+        <circle cx={12} cy={12} r={6} fill={hole} />
+        <circle cx={12} cy={12} r={3} fill={f} />
+      </>
+    )
+  } else {
+    const rx = style === 'square' ? 0 : style === 'rounded' ? 3 : style === 'rounded-dot' ? 4 : 5
+    const innerEllipse = style === 'extra-rounded' || style === 'rounded-dot'
+    body = (
+      <>
+        <rect x={3} y={3} width={18} height={18} rx={rx} fill={f} />
+        <rect x={6} y={6} width={12} height={12} rx={Math.max(0, rx - 1.5)} fill={hole} />
+        {innerEllipse ? (
+          <circle cx={12} cy={12} r={3} fill={f} />
+        ) : (
+          <rect x={9} y={9} width={6} height={6} rx={Math.max(0, rx - 2)} fill={f} />
+        )}
+      </>
+    )
+  }
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" aria-hidden="true">
+      {body}
+    </svg>
+  )
+}
+
+/** Mini preview of a QR dot (module) style, drawn as a 5-cell checkerboard motif. */
+function DotPreview({ style }: { style: QrDotStyle; active?: boolean }) {
+  const f = 'currentColor'
+  const cell = 6
+  const cells: React.ReactNode[] = []
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      if ((i + j) % 2 !== 0) continue // X / checker motif
+      const x = 2 + j * 7
+      const y = 2 + i * 7
+      const key = `${i}-${j}`
+      if (style === 'dots') {
+        cells.push(<circle key={key} cx={x + cell / 2} cy={y + cell / 2} r={cell / 2} fill={f} />)
+      } else if (style === 'diamond') {
+        cells.push(
+          <path
+            key={key}
+            d={`M${x + cell / 2},${y} L${x + cell},${y + cell / 2} L${x + cell / 2},${y + cell} L${x},${y + cell / 2} Z`}
+            fill={f}
+          />,
+        )
+      } else if (style === 'classy') {
+        cells.push(<path key={key} d={leafD(x, y, cell, 2.6)} fill={f} />)
+      } else if (style === 'classy-rounded') {
+        cells.push(<path key={key} d={leafD(x, y, cell, 4)} fill={f} />)
+      } else {
+        const rx = style === 'rounded' ? 1.8 : style === 'extra-rounded' ? 3 : 0
+        cells.push(<rect key={key} x={x} y={y} width={cell} height={cell} rx={rx} fill={f} />)
+      }
+    }
+  }
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" aria-hidden="true">
+      {cells}
+    </svg>
   )
 }
 

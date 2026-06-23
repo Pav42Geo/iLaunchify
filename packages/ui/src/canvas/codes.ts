@@ -20,20 +20,38 @@ import type { CanvasCustomType } from './objects'
  */
 // QR styling (DS-54b) — module + finder-pattern shapes, rendered from the raw QR
 // matrix so we need no extra dependency. Defaults reproduce the plain square QR.
-export type QrDotStyle = 'square' | 'dots' | 'rounded' | 'classy'
-export type QrCornerStyle = 'square' | 'rounded' | 'extra-rounded' | 'dot'
+export type QrDotStyle =
+  | 'square'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'dots'
+  | 'classy'
+  | 'classy-rounded'
+  | 'diamond'
+export type QrCornerStyle =
+  | 'square'
+  | 'rounded'
+  | 'extra-rounded'
+  | 'dot'
+  | 'rounded-dot'
+  | 'leaf'
 
 export const QR_DOT_STYLES: { value: QrDotStyle; label: string }[] = [
   { value: 'square', label: 'Square' },
   { value: 'rounded', label: 'Rounded' },
+  { value: 'extra-rounded', label: 'Pill' },
   { value: 'dots', label: 'Dots' },
   { value: 'classy', label: 'Classy' },
+  { value: 'classy-rounded', label: 'Classy+' },
+  { value: 'diamond', label: 'Diamond' },
 ]
 export const QR_CORNER_STYLES: { value: QrCornerStyle; label: string }[] = [
   { value: 'square', label: 'Square' },
   { value: 'rounded', label: 'Rounded' },
   { value: 'extra-rounded', label: 'Extra' },
   { value: 'dot', label: 'Dot' },
+  { value: 'rounded-dot', label: 'Eye' },
+  { value: 'leaf', label: 'Leaf' },
 ]
 
 export type CodeCustomData =
@@ -117,19 +135,54 @@ function roundRectPath(
   ctx.closePath()
 }
 
+/** Rounded rectangle with only the TL + BR corners rounded — the classic "classy"
+ *  QR module / "leaf" eye shape. */
+function leafPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rad = Math.max(0, Math.min(r, w / 2, h / 2))
+  ctx.beginPath()
+  ctx.moveTo(x + rad, y)
+  ctx.lineTo(x + w, y)
+  ctx.lineTo(x + w, y + h - rad)
+  ctx.arcTo(x + w, y + h, x + w - rad, y + h, rad)
+  ctx.lineTo(x, y + h)
+  ctx.lineTo(x, y + rad)
+  ctx.arcTo(x, y, x + rad, y, rad)
+  ctx.closePath()
+}
+
+type FillShape = 'rect' | 'round' | 'ellipse' | 'diamond' | 'leaf'
+
 function fillShape(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  shape: 'rect' | 'round' | 'ellipse',
+  shape: FillShape,
   radius = 0,
 ): void {
   if (shape === 'ellipse') {
     ctx.beginPath()
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
     ctx.closePath()
+    ctx.fill()
+  } else if (shape === 'diamond') {
+    ctx.beginPath()
+    ctx.moveTo(x + w / 2, y)
+    ctx.lineTo(x + w, y + h / 2)
+    ctx.lineTo(x + w / 2, y + h)
+    ctx.lineTo(x, y + h / 2)
+    ctx.closePath()
+    ctx.fill()
+  } else if (shape === 'leaf') {
+    leafPath(ctx, x, y, w, h, radius)
     ctx.fill()
   } else if (shape === 'round') {
     roundRectPath(ctx, x, y, w, h, radius)
@@ -150,19 +203,22 @@ function drawFinder(
 ): void {
   const outer = 7 * cell
   // outer shape + radii per style
-  const map: Record<QrCornerStyle, { shape: 'rect' | 'round' | 'ellipse'; rOuter: number; inner: 'rect' | 'round' | 'ellipse' }> = {
+  const map: Record<QrCornerStyle, { shape: FillShape; rOuter: number; inner: FillShape }> = {
     square: { shape: 'rect', rOuter: 0, inner: 'rect' },
     rounded: { shape: 'round', rOuter: 1.6 * cell, inner: 'round' },
     'extra-rounded': { shape: 'round', rOuter: 2.6 * cell, inner: 'ellipse' },
     dot: { shape: 'ellipse', rOuter: 0, inner: 'ellipse' },
+    'rounded-dot': { shape: 'round', rOuter: 2 * cell, inner: 'ellipse' },
+    leaf: { shape: 'leaf', rOuter: 3 * cell, inner: 'leaf' },
   }
   const m = map[style]
+  const roundedish = (s: FillShape): boolean => s === 'round' || s === 'leaf'
   ctx.fillStyle = dark
   fillShape(ctx, ox, oy, outer, outer, m.shape, m.rOuter)
   ctx.fillStyle = light
   fillShape(ctx, ox + cell, oy + cell, 5 * cell, 5 * cell, m.shape, Math.max(0, m.rOuter - cell))
   ctx.fillStyle = dark
-  fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, m.inner === 'round' ? cell : 0)
+  fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, roundedish(m.inner) ? cell : 0)
 }
 
 function loadIcon(url: string): Promise<HTMLImageElement | null> {
@@ -238,8 +294,11 @@ export async function generateStyledQrCodeDataUrl(
         const y = (margin + r) * cell + inset
         const w = cell - inset * 2
         if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
-        else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.35)
-        else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
+        else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.3)
+        else if (dotStyle === 'extra-rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
+        else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.45)
+        else if (dotStyle === 'classy-rounded') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.7)
+        else if (dotStyle === 'diamond') fillShape(ctx, x, y, w, w, 'diamond')
         else ctx.fillRect(x, y, w, w)
       }
     }

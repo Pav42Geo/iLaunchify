@@ -8,7 +8,7 @@
 // you reorder, hide, and delete.
 
 import * as React from 'react'
-import { X, FlipHorizontal2, FlipVertical2 } from 'lucide-react'
+import { FlipHorizontal2, FlipVertical2 } from 'lucide-react'
 import type { FabricCanvas, FabricObject } from '@ilaunchify/ui'
 
 interface Props {
@@ -88,22 +88,6 @@ export function ImageToolbar({ canvas, active }: Props) {
           }
         >
           <FlipVertical2 className="h-3.5 w-3.5" />
-        </button>
-
-        <div className="mx-0.5 h-5 w-px bg-ink-200" />
-
-        {/* Close */}
-        <button
-          type="button"
-          aria-label="Deselect"
-          onClick={() => {
-            if (!canvas) return
-            canvas.discardActiveObject()
-            canvas.requestRenderAll()
-          }}
-          className="rounded p-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-100"
-        >
-          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

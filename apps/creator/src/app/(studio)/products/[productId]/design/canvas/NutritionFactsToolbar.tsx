@@ -8,7 +8,7 @@
 // color (text + rules), outer border toggle, deselect.
 
 import * as React from 'react'
-import { X, Square, Lock, Eye } from 'lucide-react'
+import { Square, Lock, Eye } from 'lucide-react'
 import {
   updateNutritionPanel,
   readNutritionPanelProps,
@@ -156,22 +156,6 @@ export function NutritionFactsToolbar({ canvas, active, brandAssets }: Props) {
         >
           <Square strokeWidth={2} className="h-3.5 w-3.5" />
           <span className="text-[11px] font-semibold">Border</span>
-        </button>
-
-        <div className="mx-0.5 h-5 w-px bg-ink-200" />
-
-        {/* Close */}
-        <button
-          type="button"
-          aria-label="Deselect"
-          onClick={() => {
-            if (!canvas) return
-            canvas.discardActiveObject()
-            canvas.requestRenderAll()
-          }}
-          className="rounded p-1.5 text-ink-500 hover:text-ink-900 hover:bg-ink-100"
-        >
-          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
