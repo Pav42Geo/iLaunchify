@@ -249,7 +249,7 @@ const COLOR_TOKENS = ['primary', 'secondary', 'accent']
 export async function saveBrandTextStyle(input: {
   brandId: string
   role: BrandTextRole
-  fontKey?: string
+  fontKey?: string | null
   fontSize?: number | null
   fontWeight?: string | null
   textCase?: string | null
@@ -259,13 +259,15 @@ export async function saveBrandTextStyle(input: {
   if (error) return { ok: false, error }
   if (!TEXT_ROLES.includes(input.role)) return { ok: false, error: 'Unknown text style.' }
 
-  // Validate the font ref if provided.
-  if (input.fontKey !== undefined) {
-    if (isCustomFontRef(input.fontKey)) {
-      const id = customFontId(input.fontKey)
+  // Validate the font ref if a non-empty one is provided. A null/empty fontKey means
+  // "leave the font unchanged" (the styling fields can still be edited on their own).
+  const fontKey = input.fontKey || undefined
+  if (fontKey !== undefined) {
+    if (isCustomFontRef(fontKey)) {
+      const id = customFontId(fontKey)
       const owned = id ? await getBrandFontsByIds(input.brandId, [id]) : []
       if (owned.length === 0) return { ok: false, error: 'That custom font is not on this brand.' }
-    } else if (!isKnownFontFamily(input.fontKey)) {
+    } else if (!isKnownFontFamily(fontKey)) {
       return { ok: false, error: 'That font is not available.' }
     }
   }
@@ -287,7 +289,7 @@ export async function saveBrandTextStyle(input: {
     input.fontSize == null ? input.fontSize : Math.min(400, Math.max(6, Math.round(input.fontSize)))
 
   const ok = await setBrandTextStyleSpec(input.brandId, input.role, {
-    ...(input.fontKey !== undefined ? { fontKey: input.fontKey } : {}),
+    ...(fontKey !== undefined ? { fontKey } : {}),
     ...(input.fontSize !== undefined ? { fontSize } : {}),
     ...(input.fontWeight !== undefined ? { fontWeight: input.fontWeight } : {}),
     ...(input.textCase !== undefined ? { textCase: input.textCase } : {}),
