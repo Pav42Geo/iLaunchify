@@ -20,6 +20,25 @@ const nextConfig = {
   // and fails the route (→ 404). Require these from node_modules at runtime instead of
   // bundling them. (Next 15: serverExternalPackages is the stable top-level key.)
   serverExternalPackages: ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
+  // Belt-and-suspenders: force EVERY @aws-sdk/* and @smithy/* import (incl. transitive
+  // ones serverExternalPackages misses, like @smithy/node-http-handler) to be a runtime
+  // require on the server build instead of a bundled vendor chunk.
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      const prev = config.externals
+      const list = Array.isArray(prev) ? prev : prev ? [prev] : []
+      config.externals = [
+        ({ request }, cb) => {
+          if (request && (request.startsWith('@aws-sdk/') || request.startsWith('@smithy/'))) {
+            return cb(null, 'commonjs ' + request)
+          }
+          return cb()
+        },
+        ...list,
+      ]
+    }
+    return config
+  },
   // docs/SECURITY_ARCHITECTURE.md Tier 0.2 — CSP is report-only until tightened.
   async headers() {
     return securityHeaders()
