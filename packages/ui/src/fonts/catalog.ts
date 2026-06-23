@@ -929,3 +929,47 @@ export const SELF_HOSTED_FAMILIES = new Set<string>([
   'Bricolage Grotesque',
   'Fraunces',
 ])
+
+// ---------------------------------------------------------------------------
+// Brand-kit font list (Brand Kit V2, Slice 1 — Pavel 2026-06-22)
+//
+// The brand kit stores fonts by FONT_CATALOG **family** (the same key the canvas
+// applies and `loadFont(family)` resolves), NOT by TypographyFont id. This makes
+// the kit picker draw from the full catalog the Studio already has, and guarantees
+// an applied brand font matches a real text-tool font. `webfontUrl` is null —
+// brand fonts load on demand via loadFont(); nothing consumes the URL.
+// ---------------------------------------------------------------------------
+
+export interface BrandFontOption {
+  /** === family (the canonical key stored in Brand.brandFontIds). */
+  id: string
+  family: string
+  weight: string
+  style: string
+  webfontUrl: string | null
+}
+
+/**
+ * The full list a creator picks brand fonts from: every catalog family plus the
+ * self-hosted brand families, de-duped and sorted by popularity then name.
+ */
+export function brandFontCatalog(): BrandFontOption[] {
+  const seen = new Set<string>()
+  const out: BrandFontOption[] = []
+  const push = (family: string) => {
+    if (seen.has(family)) return
+    seen.add(family)
+    out.push({ id: family, family, weight: 'Regular', style: 'Normal', webfontUrl: null })
+  }
+  const sorted = [...FONT_CATALOG].sort(
+    (a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || a.family.localeCompare(b.family),
+  )
+  for (const f of sorted) push(f.family)
+  for (const fam of SELF_HOSTED_FAMILIES) push(fam) // ensure brand defaults are pickable
+  return out
+}
+
+/** Is this a font family a creator may save to their brand kit? */
+export function isKnownFontFamily(family: string): boolean {
+  return FONT_CATALOG.some((f) => f.family === family) || SELF_HOSTED_FAMILIES.has(family)
+}

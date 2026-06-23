@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma, listBrandTemplates } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { brandFontCatalog } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
 import { LogosSection } from './LogosSection'
@@ -67,12 +68,9 @@ export default async function BrandAssetsPage({ params }: PageProps) {
   )
   const logoById = new Map(logoAssets.map((a) => [a.id, a]))
 
-  // Load the curated font catalog. Creators pick from this in FontsSection.
-  const fontCatalog = await prisma.typographyFont.findMany({
-    where: { status: 'ACTIVE' },
-    select: { id: true, family: true, weight: true, style: true, webfontUrl: true },
-    orderBy: [{ family: 'asc' }, { weight: 'asc' }],
-  })
+  // Brand Kit V2 Slice 1: pick from the full 113-font FONT_CATALOG (same list the
+  // Studio Text tool uses), keyed by family — not the small TypographyFont seed.
+  const fontCatalog = brandFontCatalog()
 
   // Brand templates + the per-tier cap (docs/BRAND_KIT_PROPOSAL.md).
   const [templates, tier] = await Promise.all([

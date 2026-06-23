@@ -6,7 +6,7 @@
 // Three asset categories, one server action group:
 //   - Logos     (uploadLogoVariant / removeLogoVariant)
 //   - Colors    (setBrandColors — primary/secondary/accent + brandSwatches[])
-//   - Fonts     (setBrandFonts — array of TypographyFont IDs)
+//   - Fonts     (setBrandFonts — array of FONT_CATALOG family keys, Brand Kit V2)
 //   - Tagline   (setBrandTagline — single string)
 //
 // Ownership check via creatorProfile.userId === user.id (wrapped here so V1.5+
@@ -15,6 +15,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { isKnownFontFamily } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 import { uploadFile } from '@ilaunchify/storage'
 import { brandAssetKey } from '@ilaunchify/storage'
@@ -185,18 +186,11 @@ export async function setBrandFonts(input: {
   const { error } = await authorizeBrandAccess(input.brandId)
   if (error) return { ok: false, error }
 
-  const fontIds = input.brandFontIds.slice(0, MAX_FONTS)
-
-  // Verify each font ID is a real, ACTIVE TypographyFont row.
-  if (fontIds.length > 0) {
-    const fonts = await prisma.typographyFont.findMany({
-      where: { id: { in: fontIds }, status: 'ACTIVE' },
-      select: { id: true },
-    })
-    if (fonts.length !== fontIds.length) {
-      return { ok: false, error: 'One or more selected fonts are not available.' }
-    }
-  }
+  // Brand Kit V2 Slice 1: brand fonts are FONT_CATALOG **family** keys (the key the
+  // canvas applies + loadFont() resolves), not TypographyFont ids. Keep only known
+  // catalog families — this also self-heals any legacy TypographyFont-id values by
+  // dropping them on the next save. (Pavel 2026-06-22)
+  const fontIds = input.brandFontIds.filter(isKnownFontFamily).slice(0, MAX_FONTS)
 
   await prisma.brand.update({
     where: { id: input.brandId },

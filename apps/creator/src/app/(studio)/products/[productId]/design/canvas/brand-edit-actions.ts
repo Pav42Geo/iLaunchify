@@ -10,6 +10,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
+import { brandFontCatalog } from '@ilaunchify/ui'
 
 export interface StudioAssetSummary {
   id: string
@@ -93,11 +94,10 @@ export async function loadStudioBrandKitEditor(
   )
   const byId = new Map(resolved.map((a) => [a.id, a]))
 
-  const fontCatalog = await prisma.typographyFont.findMany({
-    where: { status: 'ACTIVE' },
-    select: { id: true, family: true, weight: true, style: true, webfontUrl: true },
-    orderBy: [{ family: 'asc' }, { weight: 'asc' }],
-  })
+  // Brand Kit V2 Slice 1: the kit font picker now draws from the SAME 113-font
+  // FONT_CATALOG the Studio Text tool uses (keyed by family), not the small
+  // TypographyFont seed. brandFontIds therefore store family keys. (Pavel 2026-06-22)
+  const fontCatalog = brandFontCatalog()
 
   return {
     ok: true as const,

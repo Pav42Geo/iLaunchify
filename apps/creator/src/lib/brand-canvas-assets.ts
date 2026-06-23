@@ -6,6 +6,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
+import { isKnownFontFamily } from '@ilaunchify/ui'
 import type { BrandCanvasAssets, BrandLogoAsset } from '@ilaunchify/ui'
 
 const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
@@ -54,20 +55,29 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     (v): v is string => v !== null,
   )
 
-  const [logoAssets, fontRows] = await Promise.all([
+  // Brand fonts are now FONT_CATALOG family keys (Brand Kit V2 Slice 1). Legacy
+  // brands may still hold TypographyFont ids — resolve those to their family so
+  // existing kits keep their fonts. (Pavel 2026-06-22)
+  const legacyFontIds = brand.brandFontIds.filter((v) => !isKnownFontFamily(v))
+
+  const [logoAssets, legacyFontRows] = await Promise.all([
     logoIds.length
       ? prisma.asset.findMany({
           where: { id: { in: logoIds } },
           select: { id: true, publicUrl: true, storageKey: true, mimeType: true },
         })
       : Promise.resolve([]),
-    brand.brandFontIds.length
-      ? prisma.typographyFont.findMany({
-          where: { id: { in: brand.brandFontIds }, status: 'ACTIVE' },
-          select: { id: true, family: true, weight: true, style: true, webfontUrl: true },
-        })
-      : Promise.resolve([]),
+    legacyFontIds.length
+      ? prisma.typographyFont
+          .findMany({ where: { id: { in: legacyFontIds } }, select: { id: true, family: true } })
+          .catch(() => [] as { id: string; family: string }[])
+      : Promise.resolve([] as { id: string; family: string }[]),
   ])
+  const legacyFamilyById = new Map(legacyFontRows.map((r) => [r.id, r.family]))
+  // Preserve the saved order (fonts[0] = heading, fonts[1] = body downstream).
+  const fontFamilies = brand.brandFontIds
+    .map((v) => (isKnownFontFamily(v) ? v : legacyFamilyById.get(v) ?? null))
+    .filter((v): v is string => v !== null)
 
   // Resolve a displayable URL per logo (publicUrl, else a signed read URL).
   const resolvedLogos = await Promise.all(
@@ -82,12 +92,13 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     colorSecondary: brand.colorSecondary,
     colorAccent: brand.colorAccent,
     extraSwatches: brand.brandSwatches,
-    fonts: fontRows.map((f) => ({
-      id: f.id,
-      family: f.family,
-      weight: f.weight,
-      style: f.style,
-      webfontUrl: f.webfontUrl,
+    // id === family; webfontUrl null — fonts load on demand via loadFont(family).
+    fonts: fontFamilies.map((family) => ({
+      id: family,
+      family,
+      weight: 'Regular',
+      style: 'Normal',
+      webfontUrl: null,
     })),
     logos: [
       mkLogo('PRIMARY', brand.logoAssetId, logoByAssetId),
