@@ -3,7 +3,6 @@
 // cross-app). Mounts the SAME creator Studio with neutral, product-less props on a
 // chosen die-line + domain; "Save as template" writes to the system templates library.
 
-import { redirect } from 'next/navigation'
 import { prisma, getOrCreateSystemTemplatesBrand, listActiveDieCuts } from '@ilaunchify/db'
 import type { LabelingType } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
@@ -24,6 +23,18 @@ const CATEGORY_TO_CONTAINER: Record<string, string> = {
   CUSTOM: 'OTHER',
 }
 
+// Fallback surface so Admin Mode always opens, even with no seeded die-cuts.
+const BLANK_DIECUT = {
+  id: 'blank',
+  name: 'Blank surface',
+  category: 'CUSTOM',
+  widthMm: 100,
+  heightMm: 100,
+  bleedMm: 3,
+  safeAreaMm: 3,
+  outlineSvg: '',
+}
+
 function aspectBucket(w: number, h: number): string | null {
   if (!w || !h) return null
   const r = w / h
@@ -42,9 +53,10 @@ export default async function TemplateAuthorPage({
   await requireCapability('catalog:write')
   const sp = await searchParams
 
+  // Admin Mode opens regardless — if no die-cuts are seeded, fall back to a blank
+  // generic surface so the admin can still design. Targeting falls back accordingly.
   const dieCuts = await listActiveDieCuts()
-  if (dieCuts.length === 0) redirect('/?error=no-diecuts')
-  const chosen = dieCuts.find((d) => d.id === sp.dieCut) ?? dieCuts[0]!
+  const chosen = dieCuts.find((d) => d.id === sp.dieCut) ?? dieCuts[0] ?? BLANK_DIECUT
   const domain = (sp.domain && VALID_DOMAINS.includes(sp.domain) ? sp.domain : 'FOOD') as LabelingType
 
   // System templates brand → neutral brand assets for the canvas.
@@ -67,7 +79,14 @@ export default async function TemplateAuthorPage({
         },
       })
     : null
-  if (!brand) redirect('/?error=templates-unavailable')
+  if (!brand) {
+    return (
+      <Notice
+        title="Templates library unavailable"
+        body="The system templates brand could not be created. Run the database seed and try again."
+      />
+    )
+  }
 
   const brandAssets: BrandCanvasAssets = await buildBrandCanvasAssets(brand)
 
@@ -109,5 +128,18 @@ export default async function TemplateAuthorPage({
         aspectBucket: aspectBucket(chosen.widthMm, chosen.heightMm),
       }}
     />
+  )
+}
+
+/** Full-page notice — shown instead of a confusing redirect when a precondition
+ *  (active die-cuts / system templates brand) isn't met yet. */
+function Notice({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center p-8">
+      <div className="max-w-md rounded-2xl border border-ink-200 bg-white p-6 text-center">
+        <h1 className="text-lg font-semibold text-ink-900">{title}</h1>
+        <p className="mt-2 text-sm text-ink-600">{body}</p>
+      </div>
+    </div>
   )
 }
