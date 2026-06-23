@@ -27,6 +27,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
+    "@types/three": "^0.184.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "fabric": "^6.5.1",
@@ -35,7 +36,8 @@
     "lucide-react": "^0.453.0",
     "qrcode": "^1.5.4",
     "recharts": "^2.13.0",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "three": "^0.184.0"
   },
   "peerDependencies": {
     "next": "^15.0.0",

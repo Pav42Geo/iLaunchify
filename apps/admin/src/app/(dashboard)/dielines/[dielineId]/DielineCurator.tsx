@@ -15,6 +15,9 @@ import {
   dielineSvgFromSpec,
   DielineFrameEditor,
   DEFAULT_FRAME_LAYOUT,
+  SUBSTRATE_SWATCHES,
+  substrateById,
+  defaultSubstrateId,
   type DielineFold,
   type DielineSurface,
   type FrameLayout,
@@ -88,6 +91,11 @@ export function DielineCurator({
   // viewport with a 2D ⇄ 3D toggle. 3D pane drops in once three.js is installed.
   const [expanded, setExpanded] = useState(false)
   const [expandView, setExpandView] = useState<'2d' | '3d'>('3d')
+  // Substrate / material — preview surface (kraft, white board, film…), defaulted
+  // from the mapped canonical shape's category. Becomes the 3D mesh base colour.
+  const currentShapeCategory = shapeOptions.find((o) => o.id === currentShapeId)?.category ?? null
+  const [substrate, setSubstrate] = useState<string>(() => defaultSubstrateId(currentShapeCategory))
+  const surfaceBg = substrateById(substrate).background
 
   const canSave = status === 'PARTNER_CONFIRMED' || status === 'ACTIVE'
   const valid =
@@ -251,7 +259,10 @@ export function DielineCurator({
             </div>
           }
         >
-          <div className="relative flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-ink-100 bg-[repeating-conic-gradient(#f4f4f5_0%_25%,#fff_0%_50%)] bg-[length:16px_16px] p-4">
+          <div
+            className="relative flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-ink-100 p-4"
+            style={{ background: surfaceBg }}
+          >
             {overlay && original && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={original.url} alt="" className="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)] object-contain" />
@@ -266,6 +277,25 @@ export function DielineCurator({
             ) : (
               <p className="text-[12.5px] text-ink-400">Enter valid trim dimensions to preview.</p>
             )}
+          </div>
+
+          {/* Material / substrate swatches — switch the preview surface (and the
+              future 3D mesh base) to the right paper / film / foil. */}
+          <div className="mt-2.5">
+            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Material</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {SUBSTRATE_SWATCHES.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSubstrate(s.id)}
+                  title={s.label}
+                  aria-label={s.label}
+                  className={`h-6 w-6 rounded-full border transition-shadow ${substrate === s.id ? 'border-pink-500 ring-2 ring-pink-200' : 'border-ink-300 hover:border-ink-400'}`}
+                  style={{ background: s.chip }}
+                />
+              ))}
+              <span className="ml-1 text-[11px] text-ink-500">{substrateById(substrate).label}</span>
+            </div>
           </div>
           {overlay && (
             <label className="mt-2 flex items-center gap-2 text-[11px] text-ink-500">
@@ -426,6 +456,7 @@ export function DielineCurator({
           originalUrl={original?.url ?? null}
           view={expandView}
           setView={setExpandView}
+          surfaceBg={surfaceBg}
           onClose={() => setExpanded(false)}
         />
       )}
@@ -438,12 +469,14 @@ function PreviewDockModal({
   originalUrl,
   view,
   setView,
+  surfaceBg,
   onClose,
 }: {
   svg: string
   originalUrl: string | null
   view: '2d' | '3d'
   setView: (v: '2d' | '3d') => void
+  surfaceBg: string
   onClose: () => void
 }) {
   return (
@@ -472,7 +505,7 @@ function PreviewDockModal({
           </button>
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center overflow-auto bg-[radial-gradient(circle,#e4e4e7_1px,transparent_1px)] bg-[length:18px_18px] p-8">
+        <div className="relative flex flex-1 items-center justify-center overflow-auto p-8" style={{ background: surfaceBg }}>
           {view === '2d' ? (
             <div className="max-h-full max-w-[640px] [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
