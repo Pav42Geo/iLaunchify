@@ -205,9 +205,9 @@ export async function seedTemplateStyles(prisma: PrismaClient) {
   if (!styleDelegate) {
     throw new Error(
       'TemplateStyle model not found on the Prisma client. Run the schema push + client ' +
-        'regen FIRST, then re-run this seed:\n' +
-        '  pnpm --filter @ilaunchify/db db:push\n' +
-        '  pnpm --filter @ilaunchify/db db:generate\n' +
+        'regen FIRST (from the repo root), then re-run this seed:\n' +
+        '  pnpm db:push\n' +
+        '  pnpm db:generate\n' +
         '  pnpm --filter @ilaunchify/db seed:template-styles',
     )
   }
