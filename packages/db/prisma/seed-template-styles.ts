@@ -198,10 +198,19 @@ const TAXONOMY: Record<Domain, Record<Facet, [string, string][]>> = {
 export async function seedTemplateStyles(prisma: PrismaClient) {
   const facets: Facet[] = ['AESTHETIC', 'POSITIONING', 'AUDIENCE', 'TREND']
   const styleDelegate = (prisma as unknown as {
-    templateStyle: {
+    templateStyle?: {
       upsert: (a: unknown) => Promise<unknown>
     }
   }).templateStyle
+  if (!styleDelegate) {
+    throw new Error(
+      'TemplateStyle model not found on the Prisma client. Run the schema push + client ' +
+        'regen FIRST, then re-run this seed:\n' +
+        '  pnpm --filter @ilaunchify/db db:push\n' +
+        '  pnpm --filter @ilaunchify/db db:generate\n' +
+        '  pnpm --filter @ilaunchify/db seed:template-styles',
+    )
+  }
   let total = 0
   for (const domain of Object.keys(TAXONOMY) as Domain[]) {
     const active = domain !== 'OTC'
