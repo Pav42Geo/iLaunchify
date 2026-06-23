@@ -123,7 +123,7 @@ export function CodeToolbar({ canvas, active, brandAssets }: Props) {
   }
 
   return (
-    <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20">
+    <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20" style={{ zoom: 1.2 }}>
       <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 shadow-lg max-w-[680px]">
         {/* Kind-specific fields */}
         {data?.kind === 'qr' && (

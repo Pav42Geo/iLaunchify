@@ -87,7 +87,7 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   return (
     <div
       className={`pointer-events-none fixed z-30 transition-opacity ${visibility}`}
-      style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -100%)' }}
+      style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -100%)', zoom: 1.2 }}
     >
       <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-md border border-ink-200 bg-white px-1 py-0.5 shadow-md">
         <IconBtn
