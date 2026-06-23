@@ -20,6 +20,7 @@ import {
   getStudioBrandTemplateJson,
   getStudioPremiumTemplateJson,
   getStudioRegularLibraryTemplateJson,
+  recordTemplateApplied,
 } from '../brand-actions'
 
 interface Props {
@@ -140,8 +141,10 @@ export function TemplatesDrawer({
       : regularIds.has(t.id)
         ? await getStudioRegularLibraryTemplateJson(t.id)
         : await getStudioBrandTemplateJson(activeBrandId, t.id)
-    if (res.ok) loadJson(res.canvasJson)
-    else flash(res.error)
+    if (res.ok) {
+      loadJson(res.canvasJson)
+      void recordTemplateApplied(t.id, { isPremium: t.isPremium, style: t.primaryStyleLabel, domain })
+    } else flash(res.error)
   }
 
   return (

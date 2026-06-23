@@ -86,6 +86,57 @@ export async function listMatchableBrandTemplates(
   return rows.map(toRow)
 }
 
+/** Template usage analytics (§9.6) — aggregated from TEMPLATE_APPLIED audit rows. */
+export interface TemplateUsageStats {
+  total: number
+  topTemplates: Array<{ id: string; name: string; count: number }>
+  topStyles: Array<{ label: string; count: number }>
+}
+
+export async function getTemplateUsageStats(limit = 8): Promise<TemplateUsageStats> {
+  const auditDelegate = (prisma as unknown as {
+    auditLog?: { findMany: (a: unknown) => Promise<Array<{ entityId: string; payload: unknown }>> }
+  }).auditLog
+  if (!auditDelegate) return { total: 0, topTemplates: [], topStyles: [] }
+
+  const rows = await auditDelegate
+    .findMany({
+      where: { action: 'TEMPLATE_APPLIED' },
+      select: { entityId: true, payload: true },
+      orderBy: { at: 'desc' },
+      take: 5000,
+    })
+    .catch(() => [] as Array<{ entityId: string; payload: unknown }>)
+
+  const byTemplate = new Map<string, number>()
+  const byStyle = new Map<string, number>()
+  for (const r of rows) {
+    byTemplate.set(r.entityId, (byTemplate.get(r.entityId) ?? 0) + 1)
+    const style = (r.payload as { style?: string | null } | null)?.style
+    if (style) byStyle.set(style, (byStyle.get(style) ?? 0) + 1)
+  }
+
+  // Resolve template names for the top templates.
+  const topIds = [...byTemplate.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit)
+  const d = delegate()
+  const nameById = new Map<string, string>()
+  if (d && topIds.length > 0) {
+    const tpls = await d
+      .findMany({ where: { id: { in: topIds.map(([id]) => id) } }, select: { id: true, name: true } })
+      .catch(() => [] as Record<string, unknown>[])
+    for (const t of tpls) nameById.set(String(t.id), String(t.name))
+  }
+
+  return {
+    total: rows.length,
+    topTemplates: topIds.map(([id, count]) => ({ id, name: nameById.get(id) ?? '(deleted)', count })),
+    topStyles: [...byStyle.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([label, count]) => ({ label, count })),
+  }
+}
+
 /** A die-cut the admin can design a template on (maps to @ilaunchify/ui DieCutSpec). */
 export interface AdminDieCutOption {
   id: string

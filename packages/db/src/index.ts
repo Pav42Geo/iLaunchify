@@ -212,6 +212,8 @@ export {
   listMatchableBrandTemplates,
   listMatchableRegularLibraryTemplates,
   listActiveDieCuts,
+  getTemplateUsageStats,
   type MatchableTemplateRow,
   type AdminDieCutOption,
+  type TemplateUsageStats,
 } from './template-library'

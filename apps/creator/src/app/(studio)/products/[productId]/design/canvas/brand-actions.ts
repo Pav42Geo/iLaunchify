@@ -169,6 +169,30 @@ export async function listStudioBrandTemplates(brandId: string): Promise<BrandTe
   return listBrandTemplates(brandId)
 }
 
+/** Fire-and-forget usage tracking (§9.6 analytics): record that a creator applied a
+ *  library template, so admins can see which styles/templates land. Never throws to the
+ *  caller — wrapped in try/catch and called with `void`. */
+export async function recordTemplateApplied(
+  templateId: string,
+  meta: { isPremium?: boolean; style?: string | null; domain?: string | null } = {},
+): Promise<void> {
+  try {
+    const user = await requireUser()
+    await logAuditAs(user, {
+      entityType: 'BrandTemplate',
+      entityId: templateId,
+      action: 'TEMPLATE_APPLIED',
+      payload: {
+        isPremium: meta.isPremium ?? false,
+        style: meta.style ?? null,
+        domain: meta.domain ?? null,
+      },
+    })
+  } catch {
+    /* analytics is best-effort — never block the design action */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Template library — die-line-aware browse (docs/DESIGN_TEMPLATE_LIBRARY.md §6/§7).
 // Returns the product's surface as a matchable component + the candidate templates
