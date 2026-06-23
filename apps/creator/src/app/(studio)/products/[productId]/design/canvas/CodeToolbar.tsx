@@ -20,6 +20,7 @@ import {
   Check,
   FlipHorizontal2,
   FlipVertical2,
+  Plus,
   RotateCw,
   Shapes,
 } from 'lucide-react'
@@ -31,6 +32,10 @@ import {
   hexToCmyk,
   cmykToHex,
   normalizeHex,
+  hexToHsv,
+  hsvToHex,
+  TRANSPARENT_FILL,
+  isTransparentFill,
   type BarcodeFormat,
   type CodeCustomData,
   type FabricCanvas,
@@ -38,12 +43,9 @@ import {
   type BrandCanvasAssets,
   type QrDotStyle,
   type QrCornerStyle,
+  type QrGradient,
+  type Hsv,
 } from '@ilaunchify/ui'
-
-const STAPLE_SWATCHES = [
-  '#000000', '#FFFFFF', '#FF2E63', '#B5FF3D', '#0F1116',
-  '#1E90FF', '#10B981', '#F59E0B', '#7C3AED', '#EF4444',
-]
 
 // Session-level "recently used" color store, shared across every ColorChip (FG/BG
 // of any code). In-memory ring buffer (most-recent first, de-duped); resets on
@@ -98,7 +100,6 @@ export function CodeToolbar({ canvas, active, brandAssets }: Props) {
     set: (k: string | object, v?: unknown) => void
   }
 
-  const opacity = Math.round((obj.opacity ?? 1) * 100)
   const flipX = !!obj.flipX
   const flipY = !!obj.flipY
 
@@ -145,28 +146,6 @@ export function CodeToolbar({ canvas, active, brandAssets }: Props) {
             Editable fields unavailable for this code
           </span>
         )}
-
-        <div className="mx-0.5 h-5 w-px bg-ink-200" />
-
-        {/* Shared: opacity */}
-        <div className="flex items-center gap-1.5 px-1.5">
-          <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
-            Op
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={opacity}
-            onChange={(e) => commit({ opacity: Number(e.target.value) / 100 })}
-            className="w-16 accent-pink-500"
-            aria-label="Opacity"
-          />
-          <span className="text-[11px] font-mono tabular-nums text-ink-700 min-w-[28px] text-right">
-            {opacity}%
-          </span>
-        </div>
 
         <div className="mx-0.5 h-5 w-px bg-ink-200" />
 
@@ -239,12 +218,17 @@ function QrFields({
         value={data.dark}
         onChange={(c) => onChange({ ...data, dark: c })}
         brandSwatches={brandSwatches}
+        allowTransparent
+        allowGradient
+        gradient={data.gradient ?? null}
+        onGradientChange={(g) => onChange({ ...data, gradient: g })}
       />
       <ColorChip
         label="BG"
         value={data.light}
         onChange={(c) => onChange({ ...data, light: c })}
         brandSwatches={brandSwatches}
+        allowTransparent
       />
       <QrStyleChip data={data} onChange={onChange} brandLogoUrl={brandLogoUrl} />
     </>
@@ -671,19 +655,255 @@ function SwatchGroup({
   )
 }
 
+const CHECKER_BG =
+  'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 10px 10px'
+
+function gradientCss(g: QrGradient): string {
+  return `linear-gradient(${g.angle ?? 45}deg, ${g.from}, ${g.to})`
+}
+
+// Saturation/Value square + hue slider — a full visual color picker.
+function SVColorField({
+  value,
+  onChange,
+  onCommit,
+}: {
+  value: string
+  onChange: (hex: string) => void
+  onCommit: (hex: string) => void
+}) {
+  const [hsv, setHsv] = React.useState<Hsv>(() => hexToHsv(value))
+  const lastHex = React.useRef(value)
+  React.useEffect(() => {
+    if ((normalizeHex(value) ?? '') !== (normalizeHex(lastHex.current) ?? '')) {
+      setHsv(hexToHsv(value))
+      lastHex.current = value
+    }
+  }, [value])
+
+  const emit = (next: Hsv, commit: boolean) => {
+    setHsv(next)
+    const hex = hsvToHex(next)
+    lastHex.current = hex
+    if (commit) onCommit(hex)
+    else onChange(hex)
+  }
+
+  const areaRef = React.useRef<HTMLDivElement>(null)
+  const hueRef = React.useRef<HTMLDivElement>(null)
+
+  const onSV = (clientX: number, clientY: number, commit: boolean) => {
+    const el = areaRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const s = Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * 100
+    const v = (1 - Math.max(0, Math.min(1, (clientY - r.top) / r.height))) * 100
+    emit({ h: hsv.h, s: Math.round(s), v: Math.round(v) }, commit)
+  }
+  const onHue = (clientX: number, commit: boolean) => {
+    const el = hueRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const h = Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * 360
+    emit({ ...hsv, h: Math.round(h) }, commit)
+  }
+
+  const hueColor = `hsl(${hsv.h} 100% 50%)`
+  return (
+    <div className="space-y-2">
+      <div
+        ref={areaRef}
+        className="relative h-28 w-full cursor-crosshair rounded-md border border-ink-200"
+        style={{
+          backgroundColor: hueColor,
+          backgroundImage:
+            'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)',
+        }}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          onSV(e.clientX, e.clientY, false)
+        }}
+        onPointerMove={(e) => {
+          if (e.buttons === 1) onSV(e.clientX, e.clientY, false)
+        }}
+        onPointerUp={(e) => onSV(e.clientX, e.clientY, true)}
+      >
+        <span
+          className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+          style={{ left: `${hsv.s}%`, top: `${100 - hsv.v}%`, backgroundColor: hsvToHex(hsv) }}
+        />
+      </div>
+      <div
+        ref={hueRef}
+        className="relative h-3 w-full cursor-pointer rounded-full"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)',
+        }}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          onHue(e.clientX, false)
+        }}
+        onPointerMove={(e) => {
+          if (e.buttons === 1) onHue(e.clientX, false)
+        }}
+        onPointerUp={(e) => onHue(e.clientX, true)}
+      >
+        <span
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+          style={{ left: `${(hsv.h / 360) * 100}%`, backgroundColor: hueColor }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// A single gradient stop (From / To): native picker + hex + brand swatches.
+function GradientStop({
+  label,
+  value,
+  brandSwatches,
+  onChange,
+}: {
+  label: string
+  value: string
+  brandSwatches: string[]
+  onChange: (c: string) => void
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">{label}</div>
+      <div className="flex items-center gap-1.5">
+        <label className="relative h-7 w-7 flex-shrink-0 cursor-pointer overflow-hidden rounded border border-ink-200">
+          <input
+            type="color"
+            value={normalizeHex(value) ?? '#000000'}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+          <span className="absolute inset-0" style={{ backgroundColor: value }} />
+        </label>
+        <input
+          type="text"
+          defaultValue={value}
+          key={value}
+          onBlur={(e) => {
+            const n = normalizeHex(e.target.value)
+            if (n) onChange(n)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+          }}
+          spellCheck={false}
+          className="h-7 w-full min-w-0 rounded border border-ink-200 px-1.5 text-[11px] font-mono tabular-nums focus:border-pink-500 focus:outline-none"
+        />
+      </div>
+      {brandSwatches.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {brandSwatches.slice(0, 6).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange(c)}
+              title={c}
+              className="h-4 w-4 rounded border border-ink-200"
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Two-color gradient builder with a live preview + angle.
+function GradientPanel({
+  value,
+  active,
+  brandSwatches,
+  onChange,
+  onRemove,
+}: {
+  value: QrGradient
+  active: boolean
+  brandSwatches: string[]
+  onChange: (g: QrGradient) => void
+  onRemove: () => void
+}) {
+  const [g, setG] = React.useState<QrGradient>(value)
+  React.useEffect(() => {
+    setG(value)
+  }, [value.from, value.to, value.angle])
+  const update = (patch: Partial<QrGradient>) => {
+    const next = { ...g, ...patch }
+    setG(next)
+    if (active) onChange(next)
+  }
+  return (
+    <div className="mt-2.5 space-y-2.5">
+      <div
+        className="h-9 w-full rounded-md border border-ink-200"
+        style={{ backgroundImage: gradientCss(g) }}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <GradientStop label="From" value={g.from} brandSwatches={brandSwatches} onChange={(c) => update({ from: c })} />
+        <GradientStop label="To" value={g.to} brandSwatches={brandSwatches} onChange={(c) => update({ to: c })} />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">Angle</span>
+        <input
+          type="range"
+          min={0}
+          max={360}
+          value={g.angle ?? 45}
+          onChange={(e) => update({ angle: Number(e.target.value) })}
+          className="flex-1 accent-pink-500"
+          aria-label="Gradient angle"
+        />
+        <span className="w-9 text-right text-[11px] tabular-nums text-ink-600">{g.angle ?? 45}°</span>
+      </div>
+      {active ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-full rounded-md border border-ink-300 px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
+        >
+          Remove gradient
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onChange(g)}
+          className="w-full rounded-md bg-ink-900 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-700"
+        >
+          Use gradient
+        </button>
+      )}
+    </div>
+  )
+}
+
 function ColorChip({
   label,
   value,
   onChange,
   brandSwatches,
+  allowTransparent = false,
+  allowGradient = false,
+  gradient = null,
+  onGradientChange,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   brandSwatches: string[]
+  allowTransparent?: boolean
+  allowGradient?: boolean
+  gradient?: QrGradient | null
+  onGradientChange?: (g: QrGradient | null) => void
 }) {
   const [open, setOpen] = React.useState(false)
-  const [tab, setTab] = React.useState<'swatches' | 'cmyk'>('swatches')
+  const [tab, setTab] = React.useState<'picker' | 'gradient' | 'cmyk'>('picker')
   const ref = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -696,17 +916,31 @@ function ColorChip({
   }, [open])
 
   const recent = useRecentColors()
-  const cmyk = hexToCmyk(value)
-  const setCmyk = (patch: Partial<typeof cmyk>) => onChange(cmykToHex({ ...cmyk, ...patch }))
+  const transparent = allowTransparent && isTransparentFill(value)
+  const gradientOn = allowGradient && !!gradient
+  const solid = transparent ? '#000000' : normalizeHex(value) ?? '#000000'
+  const cmyk = hexToCmyk(solid)
+  const brand = Array.from(new Set(brandSwatches.map((h) => normalizeHex(h) ?? h)))
 
-  // Apply a deliberate color pick + remember it under "Recently used".
-  const apply = (hex: string) => {
+  // Picking a solid color clears any gradient + transparent state.
+  const setSolid = (hex: string, record: boolean) => {
     const n = normalizeHex(hex) ?? hex
-    recordRecentColor(n)
+    if (record) recordRecentColor(n)
+    if (gradientOn) onGradientChange?.(null)
     onChange(n)
   }
+  const setCmyk = (patch: Partial<typeof cmyk>) => setSolid(cmykToHex({ ...cmyk, ...patch }), false)
+  const gradientSeed: QrGradient = gradient ?? { from: solid, to: '#7C3AED', angle: 45 }
 
-  const brand = Array.from(new Set(brandSwatches.map((h) => normalizeHex(h) ?? h)))
+  const previewStyle: React.CSSProperties = gradientOn
+    ? { backgroundImage: gradientCss(gradient as QrGradient) }
+    : transparent
+      ? { background: CHECKER_BG }
+      : { backgroundColor: value }
+
+  const tabs: Array<'picker' | 'gradient' | 'cmyk'> = allowGradient
+    ? ['picker', 'gradient', 'cmyk']
+    : ['picker', 'cmyk']
 
   return (
     <div ref={ref} className="relative">
@@ -717,41 +951,14 @@ function ColorChip({
         aria-label={label}
         title={label}
       >
-        <span className="block w-4 h-4 rounded border border-ink-200" style={{ backgroundColor: value }} />
+        <span className="block w-4 h-4 rounded border border-ink-200" style={previewStyle} />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-700">{label}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-56 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30">
-          {/* Header: native picker (eyedropper) + hex */}
-          <div className="flex items-center gap-2">
-            <label className="relative w-7 h-7 rounded border border-ink-200 overflow-hidden cursor-pointer flex-shrink-0">
-              <input
-                type="color"
-                value={normalizeHex(value) ?? '#000000'}
-                onChange={(e) => apply(e.target.value.toUpperCase())}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <span className="absolute inset-0" style={{ backgroundColor: value }} />
-            </label>
-            <input
-              type="text"
-              defaultValue={value}
-              key={value}
-              onBlur={(e) => {
-                const n = normalizeHex(e.target.value)
-                if (n) apply(n)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-              }}
-              spellCheck={false}
-              className="flex-1 h-7 px-2 text-[12px] font-mono tabular-nums border border-ink-200 rounded focus:outline-none focus:border-pink-500"
-            />
-          </div>
-
+        <div className="absolute left-0 top-full mt-1.5 w-60 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30">
           {/* Tabs */}
-          <div className="mt-2.5 flex gap-1 border-b border-ink-200">
-            {(['swatches', 'cmyk'] as const).map((t) => (
+          <div className="flex gap-1 border-b border-ink-200">
+            {tabs.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -763,22 +970,85 @@ function ColorChip({
                     : 'text-ink-500 hover:text-ink-700')
                 }
               >
-                {t === 'swatches' ? 'Swatches' : 'CMYK'}
+                {t === 'picker' ? 'Picker' : t === 'gradient' ? 'Gradient' : 'CMYK'}
               </button>
             ))}
           </div>
 
-          {tab === 'swatches' ? (
+          {tab === 'picker' && (
             <div className="mt-2.5 space-y-2.5">
+              <SVColorField
+                value={solid}
+                onChange={(h) => setSolid(h, false)}
+                onCommit={(h) => setSolid(h, true)}
+              />
+              {/* hex + transparent + native "+" picker */}
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  defaultValue={transparent ? '' : value}
+                  key={value}
+                  placeholder={transparent ? 'Transparent' : undefined}
+                  onBlur={(e) => {
+                    const n = normalizeHex(e.target.value)
+                    if (n) setSolid(n, true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                  }}
+                  spellCheck={false}
+                  className="h-7 flex-1 min-w-0 rounded border border-ink-200 px-2 text-[12px] font-mono tabular-nums focus:border-pink-500 focus:outline-none"
+                />
+                {allowTransparent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onGradientChange?.(null)
+                      onChange(TRANSPARENT_FILL)
+                    }}
+                    title="Transparent"
+                    className={
+                      'flex h-7 items-center gap-1 rounded border px-1.5 text-[10px] font-semibold ' +
+                      (transparent ? 'border-pink-500 ring-2 ring-pink-500/25 text-pink-700' : 'border-ink-200 text-ink-600 hover:border-ink-400')
+                    }
+                  >
+                    <span className="h-3.5 w-3.5 rounded-sm border border-ink-200" style={{ background: CHECKER_BG }} />
+                    None
+                  </button>
+                )}
+                <label
+                  className="relative flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded border border-ink-200 text-ink-600 hover:border-ink-400"
+                  title="Pick a color"
+                >
+                  <input
+                    type="color"
+                    value={solid}
+                    onChange={(e) => setSolid(e.target.value.toUpperCase(), true)}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                  <Plus className="h-3.5 w-3.5" />
+                </label>
+              </div>
               {recent.length > 0 && (
-                <SwatchGroup label="Recently used" colors={recent} value={value} onPick={apply} />
+                <SwatchGroup label="Recently used" colors={recent} value={value} onPick={(h) => setSolid(h, true)} />
               )}
               {brand.length > 0 && (
-                <SwatchGroup label="Brand colors" colors={brand} value={value} onPick={apply} />
+                <SwatchGroup label="Brand colors" colors={brand} value={value} onPick={(h) => setSolid(h, true)} />
               )}
-              <SwatchGroup label="Default" colors={STAPLE_SWATCHES} value={value} onPick={apply} />
             </div>
-          ) : (
+          )}
+
+          {tab === 'gradient' && (
+            <GradientPanel
+              value={gradientSeed}
+              active={gradientOn}
+              brandSwatches={brand}
+              onChange={(ng) => onGradientChange?.(ng)}
+              onRemove={() => onGradientChange?.(null)}
+            />
+          )}
+
+          {tab === 'cmyk' && (
             <div className="mt-2.5 space-y-2">
               {([
                 ['C', cmyk.c, (n: number) => setCmyk({ c: n })],

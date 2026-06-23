@@ -54,6 +54,17 @@ export const QR_CORNER_STYLES: { value: QrCornerStyle; label: string }[] = [
   { value: 'leaf', label: 'Leaf' },
 ]
 
+/** Sentinel stored in a code's `dark`/`light` to mean "no fill" (transparent). */
+export const TRANSPARENT_FILL = 'transparent'
+export const isTransparentFill = (c?: string | null): boolean => c === TRANSPARENT_FILL
+
+/** Two-color linear gradient for the QR foreground (modules + finders). */
+export interface QrGradient {
+  from: string
+  to: string
+  angle?: number // degrees, default 45
+}
+
 export type CodeCustomData =
   | {
       kind: 'qr'
@@ -63,6 +74,7 @@ export type CodeCustomData =
       dotStyle?: QrDotStyle
       cornerStyle?: QrCornerStyle
       iconUrl?: string | null
+      gradient?: QrGradient | null
     }
   | { kind: 'barcode'; text: string; format: BarcodeFormat }
   | { kind: 'internal-sku'; sku: string }
@@ -100,14 +112,17 @@ export async function generateQrCodeDataUrl(
   opts: { size?: number; dark?: string; light?: string } = {},
 ): Promise<string> {
   const size = opts.size ?? 512
+  // The qrcode lib accepts 8-digit alpha hex; map our transparent sentinel to it.
+  const toColor = (c: string | undefined, fallback: string) =>
+    isTransparentFill(c) ? '#00000000' : c ?? fallback
   return QRCode.toDataURL(text, {
     type: 'image/png',
     width: size,
     margin: 1,
     errorCorrectionLevel: 'H',
     color: {
-      dark: opts.dark ?? '#000000',
-      light: opts.light ?? '#FFFFFF',
+      dark: toColor(opts.dark, '#000000'),
+      light: toColor(opts.light, '#FFFFFF'),
     },
   })
 }
@@ -198,8 +213,9 @@ function drawFinder(
   oy: number,
   cell: number,
   style: QrCornerStyle,
-  dark: string,
+  dark: string | CanvasGradient,
   light: string,
+  darkT: boolean,
 ): void {
   const outer = 7 * cell
   // outer shape + radii per style
@@ -213,12 +229,28 @@ function drawFinder(
   }
   const m = map[style]
   const roundedish = (s: FillShape): boolean => s === 'round' || s === 'leaf'
-  ctx.fillStyle = dark
-  fillShape(ctx, ox, oy, outer, outer, m.shape, m.rOuter)
-  ctx.fillStyle = light
-  fillShape(ctx, ox + cell, oy + cell, 5 * cell, 5 * cell, m.shape, Math.max(0, m.rOuter - cell))
-  ctx.fillStyle = dark
-  fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, roundedish(m.inner) ? cell : 0)
+  const lightT = isTransparentFill(light)
+  // Outer (dark)
+  if (!darkT) {
+    ctx.fillStyle = dark
+    fillShape(ctx, ox, oy, outer, outer, m.shape, m.rOuter)
+  }
+  // Middle gap (light) — when transparent, erase to punch a true hole.
+  if (lightT) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.fillStyle = '#000'
+    fillShape(ctx, ox + cell, oy + cell, 5 * cell, 5 * cell, m.shape, Math.max(0, m.rOuter - cell))
+    ctx.restore()
+  } else {
+    ctx.fillStyle = light
+    fillShape(ctx, ox + cell, oy + cell, 5 * cell, 5 * cell, m.shape, Math.max(0, m.rOuter - cell))
+  }
+  // Inner (dark)
+  if (!darkT) {
+    ctx.fillStyle = dark
+    fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, roundedish(m.inner) ? cell : 0)
+  }
 }
 
 function loadIcon(url: string): Promise<HTMLImageElement | null> {
@@ -247,10 +279,12 @@ export async function generateStyledQrCodeDataUrl(
     dotStyle?: QrDotStyle
     cornerStyle?: QrCornerStyle
     iconUrl?: string | null
+    gradient?: QrGradient | null
   } = {},
 ): Promise<string> {
   const dark = opts.dark ?? '#000000'
   const light = opts.light ?? '#FFFFFF'
+  const gradient = opts.gradient ?? null
   const dotStyle = opts.dotStyle ?? 'square'
   const cornerStyle = opts.cornerStyle ?? 'square'
   if (typeof document === 'undefined') {
@@ -280,31 +314,53 @@ export async function generateStyledQrCodeDataUrl(
 
   const icon = opts.iconUrl ? await loadIcon(opts.iconUrl) : null
 
+  // Foreground fill: a 2-color linear gradient when set, else the solid `dark`.
+  const buildGradient = (g: QrGradient): CanvasGradient => {
+    const ang = ((g.angle ?? 45) * Math.PI) / 180
+    const cx = px / 2
+    const cy = px / 2
+    const dx = (Math.cos(ang) * px) / 2
+    const dy = (Math.sin(ang) * px) / 2
+    const grad = ctx.createLinearGradient(cx - dx, cy - dy, cx + dx, cy + dy)
+    grad.addColorStop(0, g.from)
+    grad.addColorStop(1, g.to)
+    return grad
+  }
+  const darkFill: string | CanvasGradient = gradient ? buildGradient(gradient) : dark
+  const darkT = !gradient && isTransparentFill(dark)
+  const lightT = isTransparentFill(light)
+
   const paint = (withIcon: boolean): void => {
     ctx.clearRect(0, 0, px, px)
-    ctx.fillStyle = light
-    ctx.fillRect(0, 0, px, px)
+    // Background (light). Transparent → leave the canvas clear.
+    if (!lightT) {
+      ctx.fillStyle = light
+      ctx.fillRect(0, 0, px, px)
+    }
 
-    ctx.fillStyle = dark
-    const inset = dotStyle === 'square' ? 0 : cell * 0.07
-    for (let r = 0; r < count; r++) {
-      for (let c = 0; c < count; c++) {
-        if (!get(r, c) || inFinder(r, c)) continue
-        const x = (margin + c) * cell + inset
-        const y = (margin + r) * cell + inset
-        const w = cell - inset * 2
-        if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
-        else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.3)
-        else if (dotStyle === 'extra-rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
-        else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.45)
-        else if (dotStyle === 'classy-rounded') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.7)
-        else if (dotStyle === 'diamond') fillShape(ctx, x, y, w, w, 'diamond')
-        else ctx.fillRect(x, y, w, w)
+    // Modules (dark). Transparent FG → skip drawing them.
+    if (!darkT) {
+      ctx.fillStyle = darkFill
+      const inset = dotStyle === 'square' ? 0 : cell * 0.07
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (!get(r, c) || inFinder(r, c)) continue
+          const x = (margin + c) * cell + inset
+          const y = (margin + r) * cell + inset
+          const w = cell - inset * 2
+          if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
+          else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.3)
+          else if (dotStyle === 'extra-rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
+          else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.45)
+          else if (dotStyle === 'classy-rounded') fillShape(ctx, x, y, w, w, 'leaf', cell * 0.7)
+          else if (dotStyle === 'diamond') fillShape(ctx, x, y, w, w, 'diamond')
+          else ctx.fillRect(x, y, w, w)
+        }
       }
     }
-    drawFinder(ctx, margin * cell, margin * cell, cell, cornerStyle, dark, light)
-    drawFinder(ctx, (margin + count - 7) * cell, margin * cell, cell, cornerStyle, dark, light)
-    drawFinder(ctx, margin * cell, (margin + count - 7) * cell, cell, cornerStyle, dark, light)
+    drawFinder(ctx, margin * cell, margin * cell, cell, cornerStyle, darkFill, light, darkT)
+    drawFinder(ctx, (margin + count - 7) * cell, margin * cell, cell, cornerStyle, darkFill, light, darkT)
+    drawFinder(ctx, margin * cell, (margin + count - 7) * cell, cell, cornerStyle, darkFill, light, darkT)
 
     if (withIcon && icon) {
       const s = px * 0.22
@@ -481,13 +537,19 @@ export async function regenerateCodeImage(
   if (data.kind === 'qr') {
     if (!data.text.trim()) return false
     dataUrl =
-      data.dotStyle || data.cornerStyle || data.iconUrl
+      data.dotStyle ||
+      data.cornerStyle ||
+      data.iconUrl ||
+      data.gradient ||
+      isTransparentFill(data.dark) ||
+      isTransparentFill(data.light)
         ? await generateStyledQrCodeDataUrl(data.text, {
             dark: data.dark,
             light: data.light,
             dotStyle: data.dotStyle,
             cornerStyle: data.cornerStyle,
             iconUrl: data.iconUrl,
+            gradient: data.gradient,
           })
         : await generateQrCodeDataUrl(data.text, { dark: data.dark, light: data.light })
   } else if (data.kind === 'barcode') {
