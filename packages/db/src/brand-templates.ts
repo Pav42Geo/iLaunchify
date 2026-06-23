@@ -98,6 +98,16 @@ export async function countBrandTemplates(brandId: string): Promise<number> {
 
 /** Create a brand template. Caller enforces the per-tier cap first. The premium
  *  fields (isPremium/tier/colorRoles) are only set by the admin library curator. */
+/** Die-line + domain targeting for a template (Design Template Library §5). */
+export interface TemplateTargeting {
+  domain?: string | null // LabelingType value
+  matchMode?: 'SHAPE_FAMILY' | 'EXACT' | null
+  targetContainerCategory?: string | null
+  targetTopology?: string | null
+  aspectBucket?: string | null
+  targetSurface?: string | null
+}
+
 export async function createBrandTemplate(input: {
   brandId: string
   name: string
@@ -107,7 +117,7 @@ export async function createBrandTemplate(input: {
   isPremium?: boolean
   tier?: string | null
   colorRoles?: TemplateColorRoles | null
-}): Promise<{ id: string } | null> {
+} & TemplateTargeting): Promise<{ id: string } | null> {
   const d = delegate()
   if (!d) return null
   const row = await d.create({
@@ -120,6 +130,14 @@ export async function createBrandTemplate(input: {
       isPremium: input.isPremium ?? false,
       tier: input.tier ?? null,
       colorRoles: (input.colorRoles ?? null) as unknown,
+      ...(input.domain !== undefined ? { domain: input.domain } : {}),
+      ...(input.matchMode ? { matchMode: input.matchMode } : {}),
+      ...(input.targetContainerCategory !== undefined
+        ? { targetContainerCategory: input.targetContainerCategory }
+        : {}),
+      ...(input.targetTopology !== undefined ? { targetTopology: input.targetTopology } : {}),
+      ...(input.aspectBucket !== undefined ? { aspectBucket: input.aspectBucket } : {}),
+      ...(input.targetSurface !== undefined ? { targetSurface: input.targetSurface } : {}),
     },
     select: { id: true },
   })
@@ -192,6 +210,24 @@ const SYSTEM_TEMPLATES_EMAIL = 'system+templates@ilaunchify.internal'
 const SYSTEM_TEMPLATES_PROFILE_HANDLE = 'ilaunchify-system-templates'
 const SYSTEM_TEMPLATES_BRAND_HANDLE = 'ilaunchify-templates'
 
+/** Read-only: the system templates brand id, or null if it doesn't exist yet. Used to
+ *  surface admin-authored REGULAR library templates to all creator tiers without
+ *  lazily creating the brand on a read path. */
+export async function getSystemTemplatesBrandId(): Promise<string | null> {
+  try {
+    const p = prisma as unknown as {
+      brand: { findUnique: (a: unknown) => Promise<{ id: string } | null> }
+    }
+    const existing = await p.brand.findUnique({
+      where: { handle: SYSTEM_TEMPLATES_BRAND_HANDLE },
+      select: { id: true },
+    })
+    return existing?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Get (or lazily create) the system brand that owns all premium templates. */
 export async function getOrCreateSystemTemplatesBrand(): Promise<string | null> {
   try {
@@ -232,10 +268,14 @@ export async function getOrCreateSystemTemplatesBrand(): Promise<string | null> 
   }
 }
 
-/** Admin: edit a premium template's name / min-tier / role tags. */
+/** Admin: edit a premium template's name / min-tier / role tags / die-line targeting. */
 export async function updatePremiumTemplate(
   id: string,
-  patch: { name?: string; tier?: string | null; colorRoles?: TemplateColorRoles | null },
+  patch: {
+    name?: string
+    tier?: string | null
+    colorRoles?: TemplateColorRoles | null
+  } & TemplateTargeting,
 ): Promise<boolean> {
   const d = delegate()
   if (!d) return false
@@ -245,8 +285,114 @@ export async function updatePremiumTemplate(
   if (patch.name !== undefined) data.name = patch.name
   if (patch.tier !== undefined) data.tier = patch.tier
   if (patch.colorRoles !== undefined) data.colorRoles = patch.colorRoles as unknown
+  if (patch.domain !== undefined) data.domain = patch.domain
+  if (patch.matchMode !== undefined && patch.matchMode !== null) data.matchMode = patch.matchMode
+  if (patch.targetContainerCategory !== undefined) data.targetContainerCategory = patch.targetContainerCategory
+  if (patch.targetTopology !== undefined) data.targetTopology = patch.targetTopology
+  if (patch.aspectBucket !== undefined) data.aspectBucket = patch.aspectBucket
+  if (patch.targetSurface !== undefined) data.targetSurface = patch.targetSurface
   await d.update({ where: { id }, data })
   return true
+}
+
+interface TemplateStyleAssignmentDelegate {
+  deleteMany: (a: unknown) => Promise<unknown>
+  createMany: (a: unknown) => Promise<unknown>
+  findMany: (a: unknown) => Promise<Record<string, unknown>[]>
+}
+
+function styleAssignmentDelegate(): TemplateStyleAssignmentDelegate | null {
+  return (
+    (prisma as unknown as { templateStyleAssignment?: TemplateStyleAssignmentDelegate })
+      .templateStyleAssignment ?? null
+  )
+}
+
+/**
+ * Replace a template's style assignments: one primary (drives grid grouping) + any
+ * number of secondary tag styles. Idempotent (clears then writes). No-op pre-migration.
+ */
+export async function setTemplateStyleAssignments(
+  templateId: string,
+  primaryStyleId: string | null,
+  tagStyleIds: string[] = [],
+): Promise<boolean> {
+  const d = styleAssignmentDelegate()
+  if (!d) return false
+  const rows: { templateId: string; styleId: string; isPrimary: boolean }[] = []
+  if (primaryStyleId) rows.push({ templateId, styleId: primaryStyleId, isPrimary: true })
+  for (const sid of tagStyleIds) {
+    if (sid && sid !== primaryStyleId) rows.push({ templateId, styleId: sid, isPrimary: false })
+  }
+  try {
+    await d.deleteMany({ where: { templateId } })
+    if (rows.length > 0) await d.createMany({ data: rows, skipDuplicates: true })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** A premium template's full metadata, for the admin edit form. Null pre-migration/not found. */
+export interface PremiumTemplateMeta {
+  id: string
+  name: string
+  tier: string | null
+  thumbnailUrl: string | null
+  domain: string | null
+  matchMode: string | null
+  targetContainerCategory: string | null
+  targetTopology: string | null
+  aspectBucket: string | null
+  targetSurface: string | null
+  primaryStyleId: string | null
+  tagStyleIds: string[]
+}
+
+export async function getPremiumTemplateMeta(id: string): Promise<PremiumTemplateMeta | null> {
+  const d = delegate()
+  if (!d) return null
+  try {
+    const row = await d
+      .findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          tier: true,
+          thumbnailUrl: true,
+          isPremium: true,
+          domain: true,
+          matchMode: true,
+          targetContainerCategory: true,
+          targetTopology: true,
+          aspectBucket: true,
+          targetSurface: true,
+          styleAssignments: { select: { styleId: true, isPrimary: true } },
+        },
+      })
+      .catch(() => null)
+    if (!row || row.isPremium !== true) return null
+    const assignments = (row.styleAssignments as Array<Record<string, unknown>> | undefined) ?? []
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      tier: (row.tier as string | null) ?? null,
+      thumbnailUrl: (row.thumbnailUrl as string | null) ?? null,
+      domain: (row.domain as string | null) ?? null,
+      matchMode: (row.matchMode as string | null) ?? null,
+      targetContainerCategory: (row.targetContainerCategory as string | null) ?? null,
+      targetTopology: (row.targetTopology as string | null) ?? null,
+      aspectBucket: (row.aspectBucket as string | null) ?? null,
+      targetSurface: (row.targetSurface as string | null) ?? null,
+      primaryStyleId: (assignments.find((a) => a.isPrimary)?.styleId as string | undefined) ?? null,
+      tagStyleIds: assignments
+        .filter((a) => !a.isPrimary)
+        .map((a) => a.styleId as string),
+    }
+  } catch {
+    return null
+  }
 }
 
 /** Admin: delete a premium template (guarded to isPremium rows only). */

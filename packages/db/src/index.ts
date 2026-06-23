@@ -182,12 +182,17 @@ export {
   listPremiumTemplates,
   getPremiumTemplate,
   getOrCreateSystemTemplatesBrand,
+  getSystemTemplatesBrandId,
   updatePremiumTemplate,
   deletePremiumTemplate,
+  setTemplateStyleAssignments,
+  getPremiumTemplateMeta,
   type BrandTemplateValues,
   type PremiumTemplateValues,
+  type PremiumTemplateMeta,
   type TemplateColorRole,
   type TemplateColorRoles,
+  type TemplateTargeting,
 } from './brand-templates'
 
 export {
@@ -201,5 +206,6 @@ export {
 export {
   listMatchablePremiumTemplates,
   listMatchableBrandTemplates,
+  listMatchableRegularLibraryTemplates,
   type MatchableTemplateRow,
 } from './template-library'

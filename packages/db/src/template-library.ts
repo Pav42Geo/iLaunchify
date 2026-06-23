@@ -5,6 +5,7 @@
  * Cast-guarded: compiles + degrades gracefully before the schema is pushed.
  */
 import { prisma } from './index'
+import { getSystemTemplatesBrandId } from './brand-templates'
 
 /** Structurally compatible with @ilaunchify/ui `MatchableTemplate` (no cross-package import). */
 export interface MatchableTemplateRow {
@@ -80,6 +81,28 @@ export async function listMatchableBrandTemplates(
       where: { brandId, isPremium: false, domain },
       include: { styleAssignments: { where: { isPrimary: true }, include: { style: true } } },
       orderBy: { updatedAt: 'desc' },
+    })
+    .catch(() => [] as Record<string, unknown>[])
+  return rows.map(toRow)
+}
+
+/**
+ * Admin-authored REGULAR library templates for a domain (system templates brand,
+ * isPremium=false). Available to ALL creator tiers — only the premium library is
+ * Agency-gated. Empty if the system brand doesn't exist yet.
+ */
+export async function listMatchableRegularLibraryTemplates(
+  domain: string,
+): Promise<MatchableTemplateRow[]> {
+  const d = delegate()
+  if (!d) return []
+  const systemBrandId = await getSystemTemplatesBrandId()
+  if (!systemBrandId) return []
+  const rows = await d
+    .findMany({
+      where: { brandId: systemBrandId, isPremium: false, domain },
+      include: { styleAssignments: { where: { isPrimary: true }, include: { style: true } } },
+      orderBy: { createdAt: 'desc' },
     })
     .catch(() => [] as Record<string, unknown>[])
   return rows.map(toRow)
