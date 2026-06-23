@@ -103,7 +103,13 @@ export function CodeToolbar({ canvas, active, brandAssets }: Props) {
       <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 shadow-lg max-w-[680px]">
         {/* Kind-specific fields */}
         {data?.kind === 'qr' && (
-          <QrFields data={data} onChange={regen} busy={regenerating} brandSwatches={brandSwatches} />
+          <QrFields
+            data={data}
+            onChange={regen}
+            busy={regenerating}
+            brandSwatches={brandSwatches}
+            brandLogoUrl={brandAssets?.logos.find((l) => l.publicUrl)?.publicUrl ?? null}
+          />
         )}
         {data?.kind === 'barcode' && (
           <BarcodeFields data={data} onChange={regen} busy={regenerating} />
@@ -200,11 +206,13 @@ function QrFields({
   onChange,
   busy,
   brandSwatches,
+  brandLogoUrl,
 }: {
   data: Extract<CodeCustomData, { kind: 'qr' }>
   onChange: (d: CodeCustomData) => void
   busy: boolean
   brandSwatches: string[]
+  brandLogoUrl: string | null
 }) {
   const [text, setText] = React.useState(data.text)
   React.useEffect(() => setText(data.text), [data.text])
@@ -231,7 +239,7 @@ function QrFields({
         onChange={(c) => onChange({ ...data, light: c })}
         brandSwatches={brandSwatches}
       />
-      <QrStyleChip data={data} onChange={onChange} />
+      <QrStyleChip data={data} onChange={onChange} brandLogoUrl={brandLogoUrl} />
     </>
   )
 }
@@ -239,9 +247,11 @@ function QrFields({
 function QrStyleChip({
   data,
   onChange,
+  brandLogoUrl,
 }: {
   data: Extract<CodeCustomData, { kind: 'qr' }>
   onChange: (d: CodeCustomData) => void
+  brandLogoUrl: string | null
 }) {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
@@ -296,6 +306,33 @@ function QrStyleChip({
                 />
               ))}
             </div>
+          </div>
+          {/* Centre icon — embed the brand logo (DS-54b). */}
+          <div className="flex items-center justify-between border-t border-ink-100 pt-2.5">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-ink-800">Center logo</div>
+              <div className="truncate text-[10px] text-ink-400">
+                {brandLogoUrl ? 'Your brand logo, scan-safe' : 'Add a logo in your Brand kit first'}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!data.iconUrl}
+              disabled={!brandLogoUrl}
+              onClick={() => onChange({ ...data, iconUrl: data.iconUrl ? null : brandLogoUrl })}
+              className={
+                'relative h-5 w-9 flex-shrink-0 rounded-full transition-colors disabled:opacity-40 ' +
+                (data.iconUrl ? 'bg-pink-600' : 'bg-ink-300')
+              }
+            >
+              <span
+                className={
+                  'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ' +
+                  (data.iconUrl ? 'left-0.5 translate-x-4' : 'left-0.5')
+                }
+              />
+            </button>
           </div>
         </div>
       )}

@@ -44,6 +44,7 @@ export type CodeCustomData =
       light: string
       dotStyle?: QrDotStyle
       cornerStyle?: QrCornerStyle
+      iconUrl?: string | null
     }
   | { kind: 'barcode'; text: string; format: BarcodeFormat }
   | { kind: 'internal-sku'; sku: string }
@@ -164,9 +165,22 @@ function drawFinder(
   fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, m.inner === 'round' ? cell : 0)
 }
 
+function loadIcon(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
+
 /**
- * Styled QR PNG data URL — corner (finder) + dot (module) shapes. Falls back to
- * the plain generator on the server (no canvas).
+ * Styled QR PNG data URL — corner (finder) + dot (module) shapes + an optional
+ * centre icon (e.g. the brand logo). Falls back to the plain generator on the
+ * server (no canvas). Error-correction stays H (~30%) so a ~22% centre icon
+ * remains scannable. If the icon taints the canvas (cross-origin without CORS),
+ * we re-render without it rather than throwing.
  */
 export async function generateStyledQrCodeDataUrl(
   text: string,
@@ -176,6 +190,7 @@ export async function generateStyledQrCodeDataUrl(
     light?: string
     dotStyle?: QrDotStyle
     cornerStyle?: QrCornerStyle
+    iconUrl?: string | null
   } = {},
 ): Promise<string> {
   const dark = opts.dark ?? '#000000'
@@ -202,34 +217,60 @@ export async function generateStyledQrCodeDataUrl(
   const ctx = cv.getContext('2d')
   if (!ctx) return generateQrCodeDataUrl(text, { dark, light, size: opts.size })
 
-  ctx.fillStyle = light
-  ctx.fillRect(0, 0, px, px)
-
   const get = (r: number, c: number): boolean =>
     r >= 0 && c >= 0 && r < count && c < count ? !!matrix.data[r * count + c] : false
   const inFinder = (r: number, c: number): boolean =>
     (r < 7 && c < 7) || (r < 7 && c >= count - 7) || (r >= count - 7 && c < 7)
 
-  ctx.fillStyle = dark
-  const inset = dotStyle === 'square' ? 0 : cell * 0.07
-  for (let r = 0; r < count; r++) {
-    for (let c = 0; c < count; c++) {
-      if (!get(r, c) || inFinder(r, c)) continue
-      const x = (margin + c) * cell + inset
-      const y = (margin + r) * cell + inset
-      const w = cell - inset * 2
-      if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
-      else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.35)
-      else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
-      else ctx.fillRect(x, y, w, w)
+  const icon = opts.iconUrl ? await loadIcon(opts.iconUrl) : null
+
+  const paint = (withIcon: boolean): void => {
+    ctx.clearRect(0, 0, px, px)
+    ctx.fillStyle = light
+    ctx.fillRect(0, 0, px, px)
+
+    ctx.fillStyle = dark
+    const inset = dotStyle === 'square' ? 0 : cell * 0.07
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (!get(r, c) || inFinder(r, c)) continue
+        const x = (margin + c) * cell + inset
+        const y = (margin + r) * cell + inset
+        const w = cell - inset * 2
+        if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
+        else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.35)
+        else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
+        else ctx.fillRect(x, y, w, w)
+      }
+    }
+    drawFinder(ctx, margin * cell, margin * cell, cell, cornerStyle, dark, light)
+    drawFinder(ctx, (margin + count - 7) * cell, margin * cell, cell, cornerStyle, dark, light)
+    drawFinder(ctx, margin * cell, (margin + count - 7) * cell, cell, cornerStyle, dark, light)
+
+    if (withIcon && icon) {
+      const s = px * 0.22
+      const ix = (px - s) / 2
+      const iy = (px - s) / 2
+      const pad = px * 0.03
+      ctx.fillStyle = light
+      roundRectPath(ctx, ix - pad, iy - pad, s + pad * 2, s + pad * 2, px * 0.04)
+      ctx.fill()
+      try {
+        ctx.drawImage(icon, ix, iy, s, s)
+      } catch {
+        /* drawing failed — leave the white backing only */
+      }
     }
   }
 
-  drawFinder(ctx, margin * cell, margin * cell, cell, cornerStyle, dark, light)
-  drawFinder(ctx, (margin + count - 7) * cell, margin * cell, cell, cornerStyle, dark, light)
-  drawFinder(ctx, margin * cell, (margin + count - 7) * cell, cell, cornerStyle, dark, light)
-
-  return cv.toDataURL('image/png')
+  paint(true)
+  try {
+    return cv.toDataURL('image/png')
+  } catch {
+    // Tainted canvas (cross-origin icon without CORS) — re-render icon-less.
+    paint(false)
+    return cv.toDataURL('image/png')
+  }
 }
 
 /**
@@ -381,12 +422,13 @@ export async function regenerateCodeImage(
   if (data.kind === 'qr') {
     if (!data.text.trim()) return false
     dataUrl =
-      data.dotStyle || data.cornerStyle
+      data.dotStyle || data.cornerStyle || data.iconUrl
         ? await generateStyledQrCodeDataUrl(data.text, {
             dark: data.dark,
             light: data.light,
             dotStyle: data.dotStyle,
             cornerStyle: data.cornerStyle,
+            iconUrl: data.iconUrl,
           })
         : await generateQrCodeDataUrl(data.text, { dark: data.dark, light: data.light })
   } else if (data.kind === 'barcode') {
