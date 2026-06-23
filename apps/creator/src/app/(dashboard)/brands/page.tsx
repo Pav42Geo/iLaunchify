@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Plus, ArrowRight, Lock, Palette } from 'lucide-react'
 import { requireUser, getCreatorTier, brandLimits, nextTier } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { resolveAssetReadUrl } from '@/lib/asset-url'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Brand kits — iLaunchify' }
@@ -49,10 +50,13 @@ export default async function BrandsHubPage() {
   const logoAssets = logoIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: logoIds } },
-        select: { id: true, publicUrl: true },
+        select: { id: true, publicUrl: true, storageKey: true },
       })
     : []
-  const logoUrl = new Map(logoAssets.map((a) => [a.id, a.publicUrl]))
+  const logoUrlEntries = await Promise.all(
+    logoAssets.map(async (a) => [a.id, await resolveAssetReadUrl(a)] as const),
+  )
+  const logoUrl = new Map(logoUrlEntries)
 
   const used = brands.length
   const atCap = Number.isFinite(cap) && used >= cap

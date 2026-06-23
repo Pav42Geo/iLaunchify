@@ -16,6 +16,7 @@ import { notFound } from 'next/navigation'
 import { prisma, listBrandTemplates } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { ArrowLeft } from 'lucide-react'
+import { resolveAssetReadUrl } from '@/lib/asset-url'
 import { LogosSection } from './LogosSection'
 import { ColorsSection } from './ColorsSection'
 import { FontsSection } from './FontsSection'
@@ -54,12 +55,16 @@ export default async function BrandAssetsPage({ params }: PageProps) {
   const logoIds = [brand.logoAssetId, brand.logoIconAssetId, brand.logoHorizontalAssetId].filter(
     (v): v is string => v !== null,
   )
-  const logoAssets = logoIds.length
+  const logoAssetsRaw = logoIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: logoIds } },
         select: { id: true, publicUrl: true, storageKey: true, mimeType: true },
       })
     : []
+  // Resolve a displayable URL (publicUrl, else signed) so uploaded logos show.
+  const logoAssets = await Promise.all(
+    logoAssetsRaw.map(async (a) => ({ ...a, publicUrl: await resolveAssetReadUrl(a) })),
+  )
   const logoById = new Map(logoAssets.map((a) => [a.id, a]))
 
   // Load the curated font catalog. Creators pick from this in FontsSection.
