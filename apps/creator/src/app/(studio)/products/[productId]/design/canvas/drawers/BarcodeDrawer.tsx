@@ -24,9 +24,20 @@ import {
   type BarcodeFormat,
   type FabricCanvas,
 } from '@ilaunchify/ui'
+import { RetailIdentityCard } from '../RetailIdentityCard'
+import type { BarcodeMode } from './retail-identity-actions'
 
 interface Props {
   canvas: FabricCanvas | null
+  /** Product whose retail identity (GTIN / internal SKU / barcode mode) this
+   *  drawer now owns — merged in from the retired Product-drawer card
+   *  (Pavel 2026-06-23). */
+  productId: string
+  retailIdentity: {
+    gtin: string | null
+    internalSku: string | null
+    barcodeMode: BarcodeMode
+  }
 }
 
 type ModeKey = 'retail' | 'internal'
@@ -40,11 +51,21 @@ const FORMAT_DEFAULTS: Record<BarcodeFormat, string> = {
   ITF14: '00012345678905',
 }
 
-export function BarcodeDrawer({ canvas }: Props) {
+export function BarcodeDrawer({ canvas, productId, retailIdentity }: Props) {
   const [mode, setMode] = React.useState<ModeKey>('retail')
 
   return (
     <div className="space-y-5">
+      {/* Retail identity — product-level GTIN / internal SKU / barcode mode.
+          Merged here from the retired Product-drawer card (Pavel 2026-06-23):
+          identity now lives with the barcode tool that prints it. */}
+      <RetailIdentityCard productId={productId} initial={retailIdentity} />
+
+      {/* Add a scannable barcode image onto the canvas. */}
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 pt-1">
+        Add to canvas
+      </div>
+
       {/* Mode toggle */}
       <section>
         <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">

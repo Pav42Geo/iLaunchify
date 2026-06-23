@@ -50,7 +50,6 @@ import {
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
-import { RetailIdentityCard } from './RetailIdentityCard'
 import type { BarcodeMode } from './retail-identity-actions'
 import type { DielineFramesData } from '@/lib/dieline-frames'
 import type { LabelingType } from '@ilaunchify/db'
@@ -1587,7 +1586,6 @@ function ToolDrawer({
             setGuides={setGuides}
             brandAssets={brandAssets}
             productId={productId}
-            retailIdentity={retailIdentity}
             frameCount={frameCount}
             showFrames={showFrames}
             setShowFrames={setShowFrames}
@@ -1634,7 +1632,13 @@ function ToolDrawer({
           <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
         )}
         {tool === 'qrcode' && <QrCodeDrawer canvas={canvas} />}
-        {tool === 'barcode' && <BarcodeDrawer canvas={canvas} />}
+        {tool === 'barcode' && (
+          <BarcodeDrawer
+            canvas={canvas}
+            productId={productId}
+            retailIdentity={retailIdentity}
+          />
+        )}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool === 'finishes' && <FinishesDrawer />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
@@ -1668,7 +1672,6 @@ function ProductDrawer({
   setGuides,
   brandAssets,
   productId,
-  retailIdentity,
   frameCount,
   showFrames,
   setShowFrames,
@@ -1678,7 +1681,6 @@ function ProductDrawer({
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
   productId: string
-  retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
   frameCount: number
   showFrames: boolean
   setShowFrames: (v: boolean) => void
@@ -1765,16 +1767,6 @@ function ProductDrawer({
           {brandAssets.extraSwatches.length === 0 ? '' : 'es'} ·{' '}
           {brandAssets.logos.length} logo variant{brandAssets.logos.length === 1 ? '' : 's'}
         </p>
-      </section>
-
-      {/* Retail identity — GTIN / internal SKU / barcode mode. Relocated here
-          from the retired product hub (2026-06-18); drives the Dieline barcode
-          frame + retail readiness. */}
-      <section>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
-          Retail identity
-        </div>
-        <RetailIdentityCard productId={productId} initial={retailIdentity} />
       </section>
     </div>
   )
