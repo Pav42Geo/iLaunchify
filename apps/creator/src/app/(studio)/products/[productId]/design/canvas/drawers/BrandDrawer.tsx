@@ -36,7 +36,7 @@ interface Props {
 
 type Mode = 'apply' | 'edit'
 
-const labelClass = 'text-[10px] font-semibold uppercase tracking-wider text-ink-500'
+const labelClass = 'text-[12px] font-bold uppercase tracking-wider text-ink-700'
 
 export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandChange }: Props) {
   const [mode, setMode] = React.useState<Mode>('apply')
@@ -565,7 +565,7 @@ function KitGroup({
     <details open={defaultOpen} className="group rounded-lg border border-ink-200 bg-white">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
         <span className="text-ink-500">{icon}</span>
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-700">{title}</span>
+        <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{title}</span>
         {count !== undefined && count > 0 && (
           <span className="rounded-full bg-ink-100 px-1.5 py-px text-[10px] font-semibold text-ink-500">{count}</span>
         )}
