@@ -162,6 +162,12 @@ export function Stage({
       if (!o) return
       try {
         o.set(SELECTION_CHROME)
+        o.set('centeredRotation', true)
+        // Hide Fabric's top rotation handle — it lands under the floating
+        // toolbar and is unreachable. Rotation is handled by the Canva-style
+        // rotate control below the object (ObjectActions). Scaling handles stay.
+        const withControls = o as unknown as { setControlsVisibility?: (v: Record<string, boolean>) => void }
+        withControls.setControlsVisibility?.({ mtr: false })
       } catch {
         /* odd/disposed object — ignore */
       }

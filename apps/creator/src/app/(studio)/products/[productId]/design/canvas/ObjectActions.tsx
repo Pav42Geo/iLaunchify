@@ -22,6 +22,8 @@ import {
   CopyPlus,
   Trash2,
   MoreHorizontal,
+  RotateCw,
+  Move,
 } from 'lucide-react'
 import {
   duplicateObject,
@@ -45,6 +47,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   // Re-render tick driven by canvas events so position + lock-state stay live.
   const [, force] = React.useReducer((n: number) => n + 1, 0)
   const [interacting, setInteracting] = React.useState(false)
+  const rotateRef = React.useRef<{ cx: number; cy: number; startPointer: number; startAngle: number } | null>(null)
+  const moveRef = React.useRef<{ px: number; py: number; left: number; top: number; zoom: number } | null>(null)
 
   React.useEffect(() => {
     if (!canvas) return
@@ -84,44 +88,142 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   // visually hide so the chrome doesn't lag behind the gesture.
   const visibility = interacting ? 'opacity-0 pointer-events-none' : 'opacity-100'
 
+  const bottom = computeBottomPosition(active, canvasContainer)
+  // Hidden while locked — a locked object can't be moved or rotated.
+  const showHandles = !!bottom && !locked
+
+  // --- Rotate handle: drag around the object center to spin it -------------
+  const onRotateDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!canvas || locked) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const c = objectScreenCenter(active, canvasContainer)
+    if (!c) return
+    rotateRef.current = {
+      cx: c.cx,
+      cy: c.cy,
+      startPointer: Math.atan2(e.clientY - c.cy, e.clientX - c.cx),
+      startAngle: Number(active.angle) || 0,
+    }
+  }
+  const onRotateMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const r = rotateRef.current
+    if (!r || e.buttons !== 1) return
+    const cur = Math.atan2(e.clientY - r.cy, e.clientX - r.cx)
+    let deg = r.startAngle + ((cur - r.startPointer) * 180) / Math.PI
+    if (e.shiftKey) deg = Math.round(deg / 15) * 15 // hold Shift to snap to 15°
+    deg = ((deg % 360) + 360) % 360
+    // rotate() honors centeredRotation (spins around the object center).
+    ;(active as unknown as { rotate: (a: number) => void }).rotate(deg)
+    active.setCoords?.()
+    canvas?.requestRenderAll()
+  }
+  const onRotateUp = () => {
+    if (!rotateRef.current) return
+    rotateRef.current = null
+    canvas?.fire('object:modified', { target: active })
+    force()
+  }
+
+  // --- Move handle: drag to reposition (handy for tiny / locked-axis art) ---
+  const onMoveDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!canvas || locked) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    moveRef.current = {
+      px: e.clientX,
+      py: e.clientY,
+      left: Number(active.left) || 0,
+      top: Number(active.top) || 0,
+      zoom: canvas.getZoom?.() || 1,
+    }
+  }
+  const onMoveMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const m = moveRef.current
+    if (!m || e.buttons !== 1) return
+    active.set({ left: m.left + (e.clientX - m.px) / m.zoom, top: m.top + (e.clientY - m.py) / m.zoom })
+    active.setCoords?.()
+    canvas?.requestRenderAll()
+  }
+  const onMoveUp = () => {
+    if (!moveRef.current) return
+    moveRef.current = null
+    canvas?.fire('object:modified', { target: active })
+    force()
+  }
+
   return (
-    <div
-      className={`pointer-events-none fixed z-30 transition-opacity ${visibility}`}
-      style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -100%)' }}
-    >
-      <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-md border border-ink-200 bg-white px-1 py-0.5 shadow-md" style={{ zoom: 1.2 }}>
-        <IconBtn
-          ariaLabel={locked ? 'Unlock' : 'Lock'}
-          onClick={() => canvas && toggleLock(canvas, active)}
-          tone={locked ? 'active' : 'default'}
-        >
-          {locked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-        </IconBtn>
-        <IconBtn
-          ariaLabel="Duplicate"
-          onClick={() => canvas && void duplicateObject(canvas, active)}
-        >
-          <CopyPlus className="h-3.5 w-3.5" />
-        </IconBtn>
-        <IconBtn
-          ariaLabel="Delete"
-          onClick={() => canvas && removeObject(canvas, active)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </IconBtn>
-        <div className="mx-0.5 h-4 w-px bg-ink-200" />
-        <IconBtn
-          ariaLabel="More actions"
-          onClick={(e) => {
-            // Anchor the menu to the More button position.
-            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
-            onShowMore(rect.left, rect.bottom + 4)
-          }}
-        >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </IconBtn>
+    <>
+      <div
+        className={`pointer-events-none fixed z-30 transition-opacity ${visibility}`}
+        style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -100%)' }}
+      >
+        <div className="pointer-events-auto inline-flex items-center gap-0.5 rounded-md border border-ink-200 bg-white px-1 py-0.5 shadow-md" style={{ zoom: 1.2 }}>
+          <IconBtn
+            ariaLabel={locked ? 'Unlock' : 'Lock'}
+            onClick={() => canvas && toggleLock(canvas, active)}
+            tone={locked ? 'active' : 'default'}
+          >
+            {locked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          </IconBtn>
+          <IconBtn
+            ariaLabel="Duplicate"
+            onClick={() => canvas && void duplicateObject(canvas, active)}
+          >
+            <CopyPlus className="h-3.5 w-3.5" />
+          </IconBtn>
+          <IconBtn
+            ariaLabel="Delete"
+            onClick={() => canvas && removeObject(canvas, active)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconBtn>
+          <div className="mx-0.5 h-4 w-px bg-ink-200" />
+          <IconBtn
+            ariaLabel="More actions"
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+              onShowMore(rect.left, rect.bottom + 4)
+            }}
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </IconBtn>
+        </div>
       </div>
-    </div>
+
+      {/* Canva-style rotate + move handles, anchored below the object. */}
+      {showHandles && bottom && (
+        <div
+          className="pointer-events-none fixed z-30"
+          style={{ left: bottom.left, top: bottom.top, transform: 'translate(-50%, 0)' }}
+        >
+          <div className="pointer-events-auto inline-flex items-center gap-2" style={{ zoom: 1.2 }}>
+            <button
+              type="button"
+              aria-label="Rotate"
+              title="Drag to rotate · hold Shift to snap"
+              onPointerDown={onRotateDown}
+              onPointerMove={onRotateMove}
+              onPointerUp={onRotateUp}
+              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-full bg-pink-600 text-white shadow-md transition-colors hover:bg-pink-500 active:cursor-grabbing"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Move"
+              title="Drag to move"
+              onPointerDown={onMoveDown}
+              onPointerMove={onMoveMove}
+              onPointerUp={onMoveUp}
+              className="flex h-8 w-8 cursor-move touch-none items-center justify-center rounded-full border border-ink-200 bg-white text-ink-700 shadow-md transition-colors hover:bg-ink-50"
+            >
+              <Move className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -145,6 +247,36 @@ function computeChromePosition(
   return {
     left: containerRect.left + rect.left + rect.width / 2,
     top: containerRect.top + rect.top - 10,
+  }
+}
+
+/** Bottom-center of the object's bounding rect, in viewport coords, with a gap —
+ *  anchor for the rotate + move handles. */
+function computeBottomPosition(
+  obj: FabricObject,
+  container: HTMLElement | null,
+): { left: number; top: number } | null {
+  if (!container) return null
+  const rect = obj.getBoundingRect()
+  const c = container.getBoundingClientRect()
+  return {
+    left: c.left + rect.left + rect.width / 2,
+    top: c.top + rect.top + rect.height + 14,
+  }
+}
+
+/** Center of the object's bounding rect, in viewport coords (the rotation pivot
+ *  for centered rotation). */
+function objectScreenCenter(
+  obj: FabricObject,
+  container: HTMLElement | null,
+): { cx: number; cy: number } | null {
+  if (!container) return null
+  const rect = obj.getBoundingRect()
+  const c = container.getBoundingClientRect()
+  return {
+    cx: c.left + rect.left + rect.width / 2,
+    cy: c.top + rect.top + rect.height / 2,
   }
 }
 
