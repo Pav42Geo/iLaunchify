@@ -317,7 +317,7 @@ const APPLICATIONS: SidebarRegion = {
           icon: Brush,
           // Opens the real creator Design Studio in admin template-author mode (cross-app).
           // Live — product-less Studio mount smoke-tested (Pavel 2026-06-23).
-          href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`,
+          href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/studio?adminMode=1`,
           capability: 'catalog:write',
         },
         // Studio-feeding building blocks (Pavel 2026-06-23 unification) — the catalogs

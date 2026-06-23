@@ -73,7 +73,7 @@ const TABS: TabDef[] = [
     label: 'Design Studio',
     // Opens the real creator Design Studio in admin template-author mode (Admin Mode
     // shipped 2026-06-23). Falls back to a blank surface if no die-cuts are seeded.
-    href: `${CREATOR_BASE}/template-author`,
+    href: `${CREATOR_BASE}/studio?adminMode=1`,
     external: true,
     isActive: () => false,
     Icon: Palette,
