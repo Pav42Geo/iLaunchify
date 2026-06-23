@@ -9,6 +9,7 @@ import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Plus, X } from 'lucide-react'
 import { setBrandColors } from './actions'
+import { InfoTip } from '@/app/(studio)/products/[productId]/design/canvas/InfoTip'
 
 interface Props {
   brandId: string
@@ -87,12 +88,9 @@ export function ColorsSection({ brandId, initial }: Props) {
   return (
     <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h2 className="text-base font-semibold text-ink-900">Colors</h2>
-          <p className="mt-0.5 text-sm text-ink-500">
-            Three named swatches + up to two extras. These pin to the top of every color picker
-            in the Design Studio canvas.
-          </p>
+          <InfoTip text="Three named swatches + up to two extras. These pin to the top of every color picker in the Design Studio canvas." />
         </div>
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>
@@ -105,12 +103,12 @@ export function ColorsSection({ brandId, initial }: Props) {
 
       {(extras.length > 0 || extras.length < MAX_EXTRA) && (
         <div className="mt-5 border-t border-ink-100 pt-4">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
-            Extra swatches
-          </Label>
-          <p className="mt-0.5 text-xs text-ink-500">
-            Optional. Use for secondary brand colors that aren&apos;t primary / accent.
-          </p>
+          <div className="flex items-center gap-1">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+              Extra swatches
+            </Label>
+            <InfoTip text="Optional. Use for secondary brand colors that aren't primary / accent." />
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {extras.map((c, i) => (
               <div key={i} className="flex items-center gap-1">

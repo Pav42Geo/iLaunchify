@@ -7,7 +7,8 @@
 // Ownership-guarded: only the signed-in creator's own brands.
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 
 export interface StudioAssetSummary {
   id: string
@@ -84,7 +85,7 @@ export async function loadStudioBrandKitEditor(
   })
 
   return {
-    ok: true,
+    ok: true as const,
     name: brand.name,
     tagline: brand.tagline,
     logos: {
@@ -101,4 +102,56 @@ export async function loadStudioBrandKitEditor(
     selectedFontIds: brand.brandFontIds,
     fontCatalog,
   }
+}
+
+// Quick-create a new brand kit from inside the Studio (name only — handle is derived).
+// Tier-gated by the brand-kit cap so the creator never leaves to manage kits.
+export async function quickCreateBrandKit(
+  rawName: string,
+): Promise<{ ok: true; brandId: string; name: string } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  })
+  if (!profile) return { ok: false, error: 'Your creator profile is missing.' }
+
+  const name = rawName.trim()
+  if (name.length < 2 || name.length > 120) {
+    return { ok: false, error: 'Brand name must be 2–120 characters.' }
+  }
+
+  // Tier cap (Maker 1 / Builder 3 / Agency unlimited).
+  const tier = await getCreatorTier(user.id)
+  const cap = brandLimits(tier).kits
+  if (Number.isFinite(cap)) {
+    const count = await prisma.brand.count({ where: { creatorProfileId: profile.id } })
+    if (count >= cap) {
+      return {
+        ok: false,
+        error:
+          cap === 1
+            ? 'Your plan includes 1 brand kit. Upgrade to Builder for 3, or Agency for unlimited.'
+            : `Your plan includes ${cap} brand kits. Upgrade to Agency for unlimited.`,
+      }
+    }
+  }
+
+  // Derive a unique URL handle from the name.
+  const base =
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 38) || 'brand'
+  let handle = base
+  let i = 1
+  // eslint-disable-next-line no-await-in-loop
+  while (await prisma.brand.findUnique({ where: { handle }, select: { id: true } })) {
+    handle = `${base}-${i++}`.slice(0, 40)
+  }
+
+  const brand = await prisma.brand.create({
+    data: { creatorProfileId: profile.id, name, handle, isActive: true },
+    select: { id: true },
+  })
+  await logAuditAs(user, { entityType: 'Brand', entityId: brand.id, action: 'BRAND_CREATED' })
+  return { ok: true, brandId: brand.id, name }
 }

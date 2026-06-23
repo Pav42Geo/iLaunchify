@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { setBrandTagline } from './actions'
+import { InfoTip } from '@/app/(studio)/products/[productId]/design/canvas/InfoTip'
 
 interface Props {
   brandId: string
@@ -36,12 +37,9 @@ export function TaglineSection({ brandId, initial }: Props) {
   return (
     <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-3 flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h2 className="text-base font-semibold text-ink-900">Tagline</h2>
-          <p className="mt-0.5 text-sm text-ink-500">
-            Short brand line. Can be dropped onto the label as a pre-filled text element from
-            the Design Studio canvas.
-          </p>
+          <InfoTip text="Short brand line. Can be dropped onto the label as a pre-filled text element from the Design Studio canvas." />
         </div>
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>

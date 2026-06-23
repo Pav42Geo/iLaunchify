@@ -9,7 +9,7 @@
 // Ownership is enforced server-side. No "exit to profile" link.
 
 import * as React from 'react'
-import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown } from 'lucide-react'
+import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown, Plus } from 'lucide-react'
 import { addImageFromUrl, loadFont, type BrandCanvasAssets, type FabricCanvas } from '@ilaunchify/ui'
 import type { BrandTemplateValues } from '@ilaunchify/db'
 import {
@@ -18,7 +18,11 @@ import {
   getStudioBrandTemplateJson,
   type StudioBrandKitOption,
 } from '../brand-actions'
-import { loadStudioBrandKitEditor, type LoadBrandKitEditorResult } from '../brand-edit-actions'
+import {
+  loadStudioBrandKitEditor,
+  quickCreateBrandKit,
+  type LoadBrandKitEditorResult,
+} from '../brand-edit-actions'
 import { LogosSection } from '@/app/(dashboard)/brands/[brandId]/assets/LogosSection'
 import { ColorsSection } from '@/app/(dashboard)/brands/[brandId]/assets/ColorsSection'
 import { FontsSection } from '@/app/(dashboard)/brands/[brandId]/assets/FontsSection'
@@ -46,6 +50,10 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
   const [busyLogoId, setBusyLogoId] = React.useState<string | null>(null)
   // Bumped when leaving Edit mode so Apply re-reads the (possibly edited) kit.
   const [applyReload, setApplyReload] = React.useState(0)
+  // Inline "new brand kit" creation (no leaving the Studio).
+  const [creating, setCreating] = React.useState(false)
+  const [newName, setNewName] = React.useState('')
+  const [createBusy, setCreateBusy] = React.useState(false)
 
   // The creator's kits, for the switcher dropdown.
   React.useEffect(() => {
@@ -126,6 +134,32 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
     canvas.requestRenderAll()
   }
 
+  async function createKit() {
+    const name = newName.trim()
+    if (name.length < 2) {
+      flash('Give your brand kit a name (2+ characters).')
+      return
+    }
+    setCreateBusy(true)
+    try {
+      const res = await quickCreateBrandKit(name)
+      if (!res.ok) {
+        flash(res.error)
+        return
+      }
+      // Refresh the switcher list, make the new kit active, and jump to Edit so the
+      // creator can fill it in — all without leaving the Studio.
+      const fresh = await listStudioBrandKits()
+      setOptions(fresh)
+      setCreating(false)
+      setNewName('')
+      onActiveBrandChange(res.brandId)
+      setMode('edit')
+    } finally {
+      setCreateBusy(false)
+    }
+  }
+
   async function loadTemplate(t: BrandTemplateValues) {
     if (!canvas) return
     const ok = window.confirm(
@@ -151,21 +185,72 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
 
   return (
     <div className="space-y-5">
-      {/* Active kit switcher */}
+      {/* Active kit switcher + inline "new kit" */}
       <section>
-        <div className={labelClass + ' mb-1.5'}>Active brand kit</div>
-        <select
-          value={activeBrandId}
-          onChange={(e) => onActiveBrandChange(e.target.value)}
-          className="w-full rounded-md border border-ink-300 bg-white px-2.5 py-2 text-[13px] font-medium text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-        >
-          {options.length === 0 && <option value={activeBrandId}>{assets.brandName}</option>}
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
+        <div className={labelClass + ' mb-1.5 flex items-center justify-between'}>
+          <span>Active brand kit</span>
+          {!creating && (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1 normal-case tracking-normal text-[11px] font-semibold text-pink-700 hover:text-pink-600"
+            >
+              <Plus className="h-3 w-3" /> New kit
+            </button>
+          )}
+        </div>
+        {creating ? (
+          <div className="space-y-2 rounded-md border border-pink-200 bg-pink-50/40 p-2.5">
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createKit()
+                if (e.key === 'Escape') {
+                  setCreating(false)
+                  setNewName('')
+                }
+              }}
+              placeholder="New brand kit name"
+              maxLength={120}
+              className="w-full rounded-md border border-ink-300 bg-white px-2.5 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={createKit}
+                disabled={createBusy || newName.trim().length < 2}
+                className="flex-1 rounded-md bg-ink-900 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
+              >
+                {createBusy ? 'Creating…' : 'Create kit'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreating(false)
+                  setNewName('')
+                }}
+                className="rounded-md border border-ink-300 px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <select
+            value={activeBrandId}
+            onChange={(e) => onActiveBrandChange(e.target.value)}
+            className="w-full rounded-md border border-ink-300 bg-white px-2.5 py-2 text-[13px] font-medium text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            {options.length === 0 && <option value={activeBrandId}>{assets.brandName}</option>}
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        )}
       </section>
 
       {/* Mode toggle — Apply (use on canvas) / Edit (manage the kit), all in-Studio */}

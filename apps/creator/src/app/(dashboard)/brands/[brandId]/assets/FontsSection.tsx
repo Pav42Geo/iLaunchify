@@ -8,6 +8,7 @@ import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Search, Check } from 'lucide-react'
 import { setBrandFonts } from './actions'
+import { InfoTip } from '@/app/(studio)/products/[productId]/design/canvas/InfoTip'
 
 interface FontOption {
   id: string
@@ -64,13 +65,9 @@ export function FontsSection({ brandId, selectedFontIds, catalog }: Props) {
   return (
     <section className="rounded-lg border border-ink-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h2 className="text-base font-semibold text-ink-900">Fonts</h2>
-          <p className="mt-0.5 text-sm text-ink-500">
-            Pick 1–3 from the curated catalog. Typically a heading font + a body font + an
-            optional accent. These pin to the top of the font dropdown in the Design Studio
-            canvas text tools.
-          </p>
+          <InfoTip text="Pick 1–3 from the curated catalog — typically a heading font, a body font, and an optional accent. These pin to the top of the font dropdown in the Design Studio canvas text tools." />
         </div>
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>

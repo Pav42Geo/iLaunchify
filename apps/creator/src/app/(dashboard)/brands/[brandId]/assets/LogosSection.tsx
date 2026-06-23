@@ -10,6 +10,7 @@ import { Button, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Upload, Trash2 } from 'lucide-react'
 import { uploadLogoVariant, removeLogoVariant, type LogoVariant } from './actions'
+import { InfoTip } from '@/app/(studio)/products/[productId]/design/canvas/InfoTip'
 
 interface AssetSummary {
   id: string
@@ -40,12 +41,9 @@ export function LogosSection({ brandId, primary, icon, horizontal }: Props) {
 
   return (
     <section className="rounded-lg border border-ink-200 bg-white p-6">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-1.5">
         <h2 className="text-base font-semibold text-ink-900">Logos</h2>
-        <p className="mt-0.5 text-sm text-ink-500">
-          Upload up to three logo variants. They appear under <strong>My Brand</strong> in the
-          Design Studio Images drawer.
-        </p>
+        <InfoTip text="Upload up to three logo variants. They appear under My Brand in the Design Studio Images drawer." />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -126,10 +124,12 @@ function LogoSlot({
         )}
       </div>
       <div className="flex-1 space-y-1.5 p-3">
-        <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
-          {variant.label}
-        </Label>
-        <p className="text-xs text-ink-500">{variant.description}</p>
+        <div className="flex items-center gap-1">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+            {variant.label}
+          </Label>
+          <InfoTip text={variant.description} />
+        </div>
       </div>
       <div className="flex gap-1.5 border-t border-ink-200 p-2">
         <Button
