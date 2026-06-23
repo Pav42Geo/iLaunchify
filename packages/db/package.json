@@ -18,6 +18,7 @@
     "seed:domain-ingredients": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-ingredients.ts",
     "seed:domain-settings": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-settings.ts",
     "seed:template-styles": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-template-styles.ts",
+    "seed:template-library": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-template-library.ts",
     "seed:dsld-mirror": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-dsld-mirror.ts",
     "seed:variety-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-variety-demo.ts",
     "seed:packing-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-packing-types.ts",

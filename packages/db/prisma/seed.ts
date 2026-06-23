@@ -27,6 +27,7 @@ import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
 import { seedTemplateStyles } from './seed-template-styles'
+import { seedTemplateLibrary } from './seed-template-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
 import { seedPackagingTypes } from './seed-packaging-types'
@@ -660,6 +661,8 @@ async function main() {
 
   // --- Design Template Library style taxonomy (docs/DESIGN_TEMPLATE_LIBRARY.md §4) ---
   await seedTemplateStyles(prisma)
+  // Starter templates so the creator library isn't empty (§9.6). After styles + die-cuts.
+  await seedTemplateLibrary(prisma)
 
   // --- Channels registry (V1 shell; real OAuth lands in V1.1+) ---
   // Per Pavel decision 2026-05-19: 6 channels managed via admin on/off toggle.
