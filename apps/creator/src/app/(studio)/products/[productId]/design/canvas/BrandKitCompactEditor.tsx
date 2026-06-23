@@ -6,7 +6,7 @@
 // edits persist identically. Colors use a real picker ("+" → native color input + hex).
 
 import * as React from 'react'
-import { Upload, X, Plus, Search, Check, Trash2 } from 'lucide-react'
+import { Upload, X, Plus, Search, Check, Trash2, Globe, Sparkles } from 'lucide-react'
 import {
   uploadLogoVariant,
   removeLogoVariant,
@@ -16,6 +16,91 @@ import {
   type LogoVariant,
 } from '@/app/(dashboard)/brands/[brandId]/assets/actions'
 import type { StudioAssetSummary, StudioFontOption } from './brand-edit-actions'
+import { applyBrandKitFromUrl } from './brand-kit-builder'
+
+// ================================================================ Build from website
+export function BuildFromWebsite({ brandId, onDone }: { brandId: string; onDone: () => void }) {
+  const [open, setOpen] = React.useState(false)
+  const [url, setUrl] = React.useState('')
+  const [busy, setBusy] = React.useState(false)
+  const [msg, setMsg] = React.useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  async function run() {
+    if (url.trim().length < 4) return
+    setBusy(true)
+    setMsg(null)
+    const res = await applyBrandKitFromUrl(brandId, url)
+    setBusy(false)
+    if (res.ok) {
+      const bits = [
+        res.colorsApplied > 0 ? `${res.colorsApplied} color${res.colorsApplied === 1 ? '' : 's'}` : null,
+        res.logoApplied ? 'logo' : null,
+      ].filter(Boolean)
+      setMsg({ kind: 'ok', text: `Imported ${bits.join(' + ')} from ${res.sourceUrl}.` })
+      setUrl('')
+      setOpen(false)
+      onDone()
+    } else {
+      setMsg({ kind: 'err', text: res.error })
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-pink-200 bg-pink-50/40 p-2.5">
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-2 text-left text-[12.5px] font-semibold text-pink-800"
+        >
+          <Sparkles className="h-4 w-4" /> Build from website
+          <span className="ml-auto rounded-full bg-pink-100 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-pink-700">beta</span>
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-pink-700">
+            <Globe className="h-3.5 w-3.5" /> Pull logo + colors from a site
+          </div>
+          <div className="relative">
+            <input
+              autoFocus
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') run()
+                if (e.key === 'Escape') setOpen(false)
+              }}
+              placeholder="yourbrand.com"
+              spellCheck={false}
+              className="w-full rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={run}
+              disabled={busy || url.trim().length < 4}
+              className="flex-1 rounded-md bg-ink-900 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
+            >
+              {busy ? 'Importing…' : 'Import'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md border border-ink-300 px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
+            >
+              Cancel
+            </button>
+          </div>
+          <p className="text-[10px] text-ink-400">Best-effort: pulls the site icon + theme colors. Review and tweak below.</p>
+        </div>
+      )}
+      {msg && (
+        <p className={`mt-2 text-[10.5px] ${msg.kind === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</p>
+      )}
+    </div>
+  )
+}
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 

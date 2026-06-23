@@ -24,7 +24,7 @@ import {
   type LoadBrandKitEditorResult,
 } from '../brand-edit-actions'
 import { InfoTip } from '../InfoTip'
-import { LogosCompact, ColorsCompact, FontsCompact, TaglineCompact } from '../BrandKitCompactEditor'
+import { LogosCompact, ColorsCompact, FontsCompact, TaglineCompact, BuildFromWebsite } from '../BrandKitCompactEditor'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -500,6 +500,7 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
 
   return (
     <div className="space-y-2.5">
+      <BuildFromWebsite brandId={brandId} onDone={reload} />
       <KitGroup
         title="Logos"
         icon={<ImagePlus className="h-3.5 w-3.5" />}
