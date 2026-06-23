@@ -47,6 +47,7 @@ export default async function DielineCuratorPage({
       safeAreaBox: true,
       foldLines: true,
       surfaces: true,
+      frames: true,
       normalizedSvgKey: true,
       parseAccuracyScore: true,
       partnerConfirmedAt: true,
@@ -71,17 +72,29 @@ export default async function DielineCuratorPage({
     }
   }
 
-  // Seed the editor from the confirmed spec. Derive the safe inset from the
-  // stored safe box vs trim box when present, else default 3mm.
+  // Spec mode seeds from the mm dims (physical geometry). Safe inset defaults to
+  // 3mm — it only feeds the generated normalized SVG (no dedicated mm column).
   const width = num(dl.widthMm) || 100
   const height = num(dl.heightMm) || 100
   const bleed = num(dl.bleedMm, 3)
-  const trim = (dl.trimBox as Box | null) ?? null
-  const safe = (dl.safeAreaBox as Box | null) ?? null
-  const safeInset =
-    trim && safe && Number.isFinite(safe.x) && Number.isFinite(trim.x)
-      ? Math.max(0, Math.round((safe.x - trim.x) * 100) / 100)
-      : 3
+  const safeInset = 3
+
+  // Frames mode seeds from the NormBox (0..1) guide columns owned by the editor.
+  const normBox = (v: unknown, fb: Box): Box => {
+    const b = v as Partial<Box> | null
+    return b && [b.x, b.y, b.w, b.h].every((n) => typeof n === 'number')
+      ? { x: b.x as number, y: b.y as number, w: b.w as number, h: b.h as number }
+      : fb
+  }
+  const initialTrim = normBox(dl.trimBox, { x: 0, y: 0, w: 1, h: 1 })
+  const initialSafe = normBox(dl.safeAreaBox, { x: 0.05, y: 0.05, w: 0.9, h: 0.9 })
+
+  // Backdrop for frame placement: prefer the normalized SVG (uniform), else the
+  // original file. Original links are signed, short-lived.
+  let normalizedUrl: string | null = null
+  if (dl.normalizedSvgKey) {
+    normalizedUrl = await getSignedReadUrl(dl.normalizedSvgKey).catch(() => null)
+  }
 
   const curatedBefore = dl.normalizedSvgKey != null && dl.adminVerifiedAt != null
 
@@ -125,6 +138,11 @@ export default async function DielineCuratorPage({
         foldLines={(dl.foldLines as DielineCuratorFold[] | null) ?? null}
         surfaces={(dl.surfaces as DielineCuratorSurface[] | null) ?? null}
         original={original}
+        frames={(dl.frames as unknown) ?? null}
+        initialTrim={initialTrim}
+        initialSafe={initialSafe}
+        normalizedUrl={normalizedUrl}
+        format={dl.originalFileFormat}
       />
     </div>
   )

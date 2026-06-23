@@ -10,9 +10,17 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, FileWarning, ShieldCheck } from 'lucide-react'
-import { dielineSvgFromSpec, type DielineFold, type DielineSurface } from '@ilaunchify/ui'
-import { curateDieline } from '../actions'
+import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check } from 'lucide-react'
+import {
+  dielineSvgFromSpec,
+  DielineFrameEditor,
+  DEFAULT_FRAME_LAYOUT,
+  type DielineFold,
+  type DielineSurface,
+  type FrameLayout,
+  type NormBox,
+} from '@ilaunchify/ui'
+import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry } from '../actions'
 
 interface Spec {
   widthMm: number
@@ -28,12 +36,32 @@ interface Props {
   foldLines: Array<{ x1: number; y1: number; x2: number; y2: number; type?: string }> | null
   surfaces: Array<{ name: string; trimBox?: { x: number; y: number; w: number; h: number } | null }> | null
   original: { url: string; contentType: string; filename: string } | null
+  /** Frames mode: saved FrameLayout (0..1 slots) or null for the default. */
+  frames: unknown | null
+  initialTrim: NormBox
+  initialSafe: NormBox
+  /** Signed URL of the normalized SVG (preferred frame backdrop) or null. */
+  normalizedUrl: string | null
+  format: string | null
 }
 
-export function DielineCurator({ dielineId, status, initial, foldLines, surfaces, original }: Props) {
+export function DielineCurator({
+  dielineId,
+  status,
+  initial,
+  foldLines,
+  surfaces,
+  original,
+  frames,
+  initialTrim,
+  initialSafe,
+  normalizedUrl,
+  format,
+}: Props) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [spec, setSpec] = useState<Spec>(initial)
+  const [mode, setMode] = useState<'spec' | 'frames'>('spec')
 
   const canSave = status === 'PARTNER_CONFIRMED' || status === 'ACTIVE'
   const valid =
@@ -79,8 +107,66 @@ export function DielineCurator({ dielineId, status, initial, foldLines, surfaces
     })
   }
 
+  const backdropUrl = normalizedUrl ?? original?.url ?? null
+  const backdropIsPdf = !normalizedUrl && (original?.contentType?.toLowerCase().includes('pdf') ?? false)
+
+  // --- Frames mode: full interactive slot placement on the normalized die-line ---
+  if (mode === 'frames') {
+    return (
+      <div className="space-y-4">
+        <ModeToggle mode={mode} setMode={setMode} />
+        <div className="h-[calc(100vh-300px)] min-h-[560px] overflow-hidden rounded-2xl border border-ink-200 bg-white">
+          <DielineFrameEditor
+            initialLayout={structuredClone((frames as FrameLayout | null) ?? DEFAULT_FRAME_LAYOUT)}
+            initialTrim={initialTrim}
+            initialSafe={initialSafe}
+            backdrop={{ fileUrl: backdropUrl, isPdf: backdropIsPdf }}
+            meta={{ format, widthMm: spec.widthMm, heightMm: spec.heightMm, bleedMm: spec.bleedMm }}
+            onPersist={async ({ layout, trim, safe }) => {
+              const [a, b] = await Promise.all([
+                saveAdminDielineFrames(dielineId, layout),
+                saveAdminDielineGeometry(dielineId, { trimBox: trim, safeAreaBox: safe }),
+              ])
+              return { ok: a.ok && b.ok, error: !a.ok ? a.error : !b.ok ? b.error : undefined }
+            }}
+            topBarLeft={
+              <>
+                <button
+                  onClick={() => setMode('spec')}
+                  className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink-600 hover:text-ink-900"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Spec
+                </button>
+                <span className="h-5 w-px bg-ink-200" />
+                <span className="font-display text-[15px] font-bold tracking-tight">Frame placement</span>
+              </>
+            }
+            topBarRight={({ issues, saveStatus }) => (
+              <>
+                <span className="flex items-center gap-1 text-[11.5px] text-ink-500">
+                  {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>)}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                    issues.length === 0
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-800'
+                  }`}
+                  title={issues.map((i) => i.message).join('\n')}
+                >
+                  {issues.length === 0 ? 'Preflight clear' : `${issues.length} to fix`}
+                </span>
+              </>
+            )}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
+      <ModeToggle mode={mode} setMode={setMode} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Partner original" subtitle="Reference only — never modified">
           <OriginalPreview original={original} />
@@ -154,6 +240,26 @@ export function DielineCurator({ dielineId, status, initial, foldLines, surfaces
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ModeToggle({ mode, setMode }: { mode: 'spec' | 'frames'; setMode: (m: 'spec' | 'frames') => void }) {
+  const base = 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors'
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-1">
+      <button
+        onClick={() => setMode('spec')}
+        className={`${base} ${mode === 'spec' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'}`}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" /> Spec
+      </button>
+      <button
+        onClick={() => setMode('frames')}
+        className={`${base} ${mode === 'frames' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'}`}
+      >
+        <LayoutGrid className="h-3.5 w-3.5" /> Frames
+      </button>
     </div>
   )
 }

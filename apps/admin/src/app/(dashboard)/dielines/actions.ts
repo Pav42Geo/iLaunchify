@@ -7,7 +7,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, dielineNormalizedKey } from '@ilaunchify/storage'
-import { dielineSvgFromSpec, type DielineFold, type DielineSurface } from '@ilaunchify/ui'
+import { dielineSvgFromSpec, type DielineFold, type DielineSurface, type FrameLayout, type NormBox } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -51,10 +51,6 @@ export interface CurateDielineInput {
   bleedMm: number
   /** Safe-area inset from trim, mm. */
   safeAreaMm: number
-}
-
-function box(x: number, y: number, w: number, h: number) {
-  return { x, y, w, h }
 }
 
 export async function curateDieline(input: CurateDielineInput): Promise<Result> {
@@ -118,18 +114,15 @@ export async function curateDieline(input: CurateDielineInput): Promise<Result> 
     return { ok: false, error: 'Could not store the normalized die-line. Check storage configuration and try again.' }
   }
 
-  // Standardized geometry, stored self-consistently with the generated SVG.
-  const trimBox = box(bleed, bleed, width, height)
-  const safeAreaBox = box(bleed + safeInset, bleed + safeInset, width - 2 * safeInset, height - 2 * safeInset)
-
+  // NOTE: trimBox / safeAreaBox columns hold NormBox (0..1) guides owned by the
+  // frame editor — we do NOT overwrite them here. Physical geometry is the mm
+  // dims (widthMm/heightMm/bleedMm); the safe inset feeds only the generated SVG.
   await prisma.packagingDieline.update({
     where: { id: dl.id },
     data: {
       widthMm: width,
       heightMm: height,
       bleedMm: bleed,
-      trimBox,
-      safeAreaBox,
       normalizedSvgKey,
       status: 'ACTIVE',
       adminVerifiedAt: new Date(),
@@ -145,6 +138,44 @@ export async function curateDieline(input: CurateDielineInput): Promise<Result> 
   })
   revalidatePath('/dielines')
   revalidatePath(`/dielines/${dl.id}`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Interactive frame placement (Curator "Frames" mode). The admin drags frame
+// slots + trim/safe guides on the normalized die-line; these autosave (debounced)
+// exactly like the partner studio. trimBox / safeAreaBox here are NormBox (0..1),
+// distinct from the mm dims set in spec mode.
+// -----------------------------------------------------------------------------
+
+export interface DielineNormGeometry {
+  trimBox: NormBox
+  safeAreaBox: NormBox
+}
+
+export async function saveAdminDielineFrames(dielineId: string, layout: FrameLayout): Promise<Result> {
+  await requireRole('ADMIN')
+  const dl = await prisma.packagingDieline.findUnique({ where: { id: dielineId }, select: { id: true } })
+  if (!dl) return { ok: false, error: 'Die-line not found.' }
+  await prisma.packagingDieline.update({
+    where: { id: dielineId },
+    // frames + framesUpdatedAt — cast to match the generated client shape.
+    data: { frames: layout as never, framesUpdatedAt: new Date() } as never,
+  })
+  return { ok: true }
+}
+
+export async function saveAdminDielineGeometry(dielineId: string, geom: DielineNormGeometry): Promise<Result> {
+  await requireRole('ADMIN')
+  const dl = await prisma.packagingDieline.findUnique({ where: { id: dielineId }, select: { id: true } })
+  if (!dl) return { ok: false, error: 'Die-line not found.' }
+  await prisma.packagingDieline.update({
+    where: { id: dielineId },
+    data: {
+      trimBox: geom.trimBox as never,
+      safeAreaBox: geom.safeAreaBox as never,
+    },
+  })
   return { ok: true }
 }
 

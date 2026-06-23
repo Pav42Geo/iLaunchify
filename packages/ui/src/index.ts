@@ -119,6 +119,16 @@ export {
   type DielineFold,
   type DielineSurface,
 } from './canvas/dielineSvg'
+// C9.g — shared interactive die-line frame editor (partner studio + admin curator)
+export {
+  DielineFrameEditor,
+  type DielineFrameEditorProps,
+  type DielineBackdrop,
+  type DielineEditorMeta,
+  type DielineSaveStatus,
+  type PersistResult,
+} from './canvas/DielineFrameEditor'
+export { SCOPE_COLOR, KIND_LABEL, PALETTE } from './canvas/frame-presentation'
 // C9 — prepress pre-flight engine (partner-spec-driven export validation)
 export {
   runPreflight,
