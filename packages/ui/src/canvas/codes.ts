@@ -18,8 +18,33 @@ import type { CanvasCustomType } from './objects'
  * re-encode in place. Round-trips through save/load via
  * CANVAS_PROPERTIES_TO_INCLUDE (DS-53a/54).
  */
+// QR styling (DS-54b) — module + finder-pattern shapes, rendered from the raw QR
+// matrix so we need no extra dependency. Defaults reproduce the plain square QR.
+export type QrDotStyle = 'square' | 'dots' | 'rounded' | 'classy'
+export type QrCornerStyle = 'square' | 'rounded' | 'extra-rounded' | 'dot'
+
+export const QR_DOT_STYLES: { value: QrDotStyle; label: string }[] = [
+  { value: 'square', label: 'Square' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'dots', label: 'Dots' },
+  { value: 'classy', label: 'Classy' },
+]
+export const QR_CORNER_STYLES: { value: QrCornerStyle; label: string }[] = [
+  { value: 'square', label: 'Square' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'extra-rounded', label: 'Extra' },
+  { value: 'dot', label: 'Dot' },
+]
+
 export type CodeCustomData =
-  | { kind: 'qr'; text: string; dark: string; light: string }
+  | {
+      kind: 'qr'
+      text: string
+      dark: string
+      light: string
+      dotStyle?: QrDotStyle
+      cornerStyle?: QrCornerStyle
+    }
   | { kind: 'barcode'; text: string; format: BarcodeFormat }
   | { kind: 'internal-sku'; sku: string }
 
@@ -66,6 +91,145 @@ export async function generateQrCodeDataUrl(
       light: opts.light ?? '#FFFFFF',
     },
   })
+}
+
+// ----------------------------------------------------------------------------
+// Styled QR (DS-54b) — render the QR matrix ourselves so module + finder shapes
+// are customizable without an extra dependency. Still error-correction H.
+// ----------------------------------------------------------------------------
+
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rad = Math.max(0, Math.min(r, w / 2, h / 2))
+  ctx.beginPath()
+  ctx.moveTo(x + rad, y)
+  ctx.arcTo(x + w, y, x + w, y + h, rad)
+  ctx.arcTo(x + w, y + h, x, y + h, rad)
+  ctx.arcTo(x, y + h, x, y, rad)
+  ctx.arcTo(x, y, x + w, y, rad)
+  ctx.closePath()
+}
+
+function fillShape(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  shape: 'rect' | 'round' | 'ellipse',
+  radius = 0,
+): void {
+  if (shape === 'ellipse') {
+    ctx.beginPath()
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.fill()
+  } else if (shape === 'round') {
+    roundRectPath(ctx, x, y, w, h, radius)
+    ctx.fill()
+  } else {
+    ctx.fillRect(x, y, w, h)
+  }
+}
+
+function drawFinder(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  cell: number,
+  style: QrCornerStyle,
+  dark: string,
+  light: string,
+): void {
+  const outer = 7 * cell
+  // outer shape + radii per style
+  const map: Record<QrCornerStyle, { shape: 'rect' | 'round' | 'ellipse'; rOuter: number; inner: 'rect' | 'round' | 'ellipse' }> = {
+    square: { shape: 'rect', rOuter: 0, inner: 'rect' },
+    rounded: { shape: 'round', rOuter: 1.6 * cell, inner: 'round' },
+    'extra-rounded': { shape: 'round', rOuter: 2.6 * cell, inner: 'ellipse' },
+    dot: { shape: 'ellipse', rOuter: 0, inner: 'ellipse' },
+  }
+  const m = map[style]
+  ctx.fillStyle = dark
+  fillShape(ctx, ox, oy, outer, outer, m.shape, m.rOuter)
+  ctx.fillStyle = light
+  fillShape(ctx, ox + cell, oy + cell, 5 * cell, 5 * cell, m.shape, Math.max(0, m.rOuter - cell))
+  ctx.fillStyle = dark
+  fillShape(ctx, ox + 2 * cell, oy + 2 * cell, 3 * cell, 3 * cell, m.inner, m.inner === 'round' ? cell : 0)
+}
+
+/**
+ * Styled QR PNG data URL — corner (finder) + dot (module) shapes. Falls back to
+ * the plain generator on the server (no canvas).
+ */
+export async function generateStyledQrCodeDataUrl(
+  text: string,
+  opts: {
+    size?: number
+    dark?: string
+    light?: string
+    dotStyle?: QrDotStyle
+    cornerStyle?: QrCornerStyle
+  } = {},
+): Promise<string> {
+  const dark = opts.dark ?? '#000000'
+  const light = opts.light ?? '#FFFFFF'
+  const dotStyle = opts.dotStyle ?? 'square'
+  const cornerStyle = opts.cornerStyle ?? 'square'
+  if (typeof document === 'undefined') {
+    return generateQrCodeDataUrl(text, { dark, light, size: opts.size })
+  }
+  let matrix: { size: number; data: Uint8Array | number[] }
+  try {
+    matrix = (QRCode.create(text, { errorCorrectionLevel: 'H' }) as { modules: { size: number; data: Uint8Array } }).modules
+  } catch {
+    return generateQrCodeDataUrl(text, { dark, light, size: opts.size })
+  }
+  const count = matrix.size
+  const margin = 2
+  const total = count + margin * 2
+  const px = opts.size ?? 512
+  const cell = px / total
+  const cv = document.createElement('canvas')
+  cv.width = px
+  cv.height = px
+  const ctx = cv.getContext('2d')
+  if (!ctx) return generateQrCodeDataUrl(text, { dark, light, size: opts.size })
+
+  ctx.fillStyle = light
+  ctx.fillRect(0, 0, px, px)
+
+  const get = (r: number, c: number): boolean =>
+    r >= 0 && c >= 0 && r < count && c < count ? !!matrix.data[r * count + c] : false
+  const inFinder = (r: number, c: number): boolean =>
+    (r < 7 && c < 7) || (r < 7 && c >= count - 7) || (r >= count - 7 && c < 7)
+
+  ctx.fillStyle = dark
+  const inset = dotStyle === 'square' ? 0 : cell * 0.07
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (!get(r, c) || inFinder(r, c)) continue
+      const x = (margin + c) * cell + inset
+      const y = (margin + r) * cell + inset
+      const w = cell - inset * 2
+      if (dotStyle === 'dots') fillShape(ctx, x, y, w, w, 'ellipse')
+      else if (dotStyle === 'rounded') fillShape(ctx, x, y, w, w, 'round', cell * 0.35)
+      else if (dotStyle === 'classy') fillShape(ctx, x, y, w, w, 'round', cell * 0.5)
+      else ctx.fillRect(x, y, w, w)
+    }
+  }
+
+  drawFinder(ctx, margin * cell, margin * cell, cell, cornerStyle, dark, light)
+  drawFinder(ctx, (margin + count - 7) * cell, margin * cell, cell, cornerStyle, dark, light)
+  drawFinder(ctx, margin * cell, (margin + count - 7) * cell, cell, cornerStyle, dark, light)
+
+  return cv.toDataURL('image/png')
 }
 
 /**
@@ -216,10 +380,15 @@ export async function regenerateCodeImage(
   let dataUrl: string | null = null
   if (data.kind === 'qr') {
     if (!data.text.trim()) return false
-    dataUrl = await generateQrCodeDataUrl(data.text, {
-      dark: data.dark,
-      light: data.light,
-    })
+    dataUrl =
+      data.dotStyle || data.cornerStyle
+        ? await generateStyledQrCodeDataUrl(data.text, {
+            dark: data.dark,
+            light: data.light,
+            dotStyle: data.dotStyle,
+            cornerStyle: data.cornerStyle,
+          })
+        : await generateQrCodeDataUrl(data.text, { dark: data.dark, light: data.light })
   } else if (data.kind === 'barcode') {
     if (!data.text.trim()) return false
     dataUrl = generateBarcodeDataUrl(data.text, data.format)

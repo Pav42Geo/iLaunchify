@@ -21,10 +21,13 @@ import {
   FlipHorizontal2,
   FlipVertical2,
   RotateCw,
+  Shapes,
 } from 'lucide-react'
 import {
   regenerateCodeImage,
   BARCODE_FORMATS,
+  QR_DOT_STYLES,
+  QR_CORNER_STYLES,
   hexToCmyk,
   cmykToHex,
   normalizeHex,
@@ -33,6 +36,8 @@ import {
   type FabricCanvas,
   type FabricObject,
   type BrandCanvasAssets,
+  type QrDotStyle,
+  type QrCornerStyle,
 } from '@ilaunchify/ui'
 
 const STAPLE_SWATCHES = [
@@ -226,7 +231,99 @@ function QrFields({
         onChange={(c) => onChange({ ...data, light: c })}
         brandSwatches={brandSwatches}
       />
+      <QrStyleChip data={data} onChange={onChange} />
     </>
+  )
+}
+
+function QrStyleChip({
+  data,
+  onChange,
+}: {
+  data: Extract<CodeCustomData, { kind: 'qr' }>
+  onChange: (d: CodeCustomData) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (!open) return
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const dot = data.dotStyle ?? 'square'
+  const corner = data.cornerStyle ?? 'square'
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="h-7 px-1.5 rounded border border-ink-200 hover:border-ink-400 flex items-center gap-1"
+        aria-label="QR style"
+        title="QR style"
+      >
+        <Shapes className="h-3.5 w-3.5 text-ink-700" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-700">Style</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 w-52 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30 space-y-3">
+          <div>
+            <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Corners</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {QR_CORNER_STYLES.map((s) => (
+                <StyleOption
+                  key={s.value}
+                  label={s.label}
+                  active={corner === s.value}
+                  onClick={() => onChange({ ...data, cornerStyle: s.value as QrCornerStyle })}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Dots</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {QR_DOT_STYLES.map((s) => (
+                <StyleOption
+                  key={s.value}
+                  label={s.label}
+                  active={dot === s.value}
+                  onClick={() => onChange({ ...data, dotStyle: s.value as QrDotStyle })}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StyleOption({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={
+        'h-12 rounded-md border text-[9.5px] font-semibold flex items-end justify-center pb-1 transition-all ' +
+        (active ? 'border-pink-500 ring-2 ring-pink-500/20 text-pink-700' : 'border-ink-200 text-ink-600 hover:border-ink-400')
+      }
+    >
+      {label}
+    </button>
   )
 }
 

@@ -165,6 +165,7 @@ export {
 } from './canvas/certBadges'
 export {
   generateQrCodeDataUrl,
+  generateStyledQrCodeDataUrl,
   generateBarcodeDataUrl,
   generateInternalSkuBarcodeDataUrl,
   addQrCode,
@@ -172,8 +173,12 @@ export {
   addInternalSkuBarcode,
   regenerateCodeImage,
   BARCODE_FORMATS,
+  QR_DOT_STYLES,
+  QR_CORNER_STYLES,
   type BarcodeFormat,
   type CodeCustomData,
+  type QrDotStyle,
+  type QrCornerStyle,
 } from './canvas/codes'
 export {
   addNutritionFactsPanel,
