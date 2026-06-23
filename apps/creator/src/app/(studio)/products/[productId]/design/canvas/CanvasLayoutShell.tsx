@@ -1047,7 +1047,7 @@ export function CanvasLayoutShell({
             />
           )}
           {showCodeToolbar && selected && (
-            <CodeToolbar canvas={canvas} active={selected} />
+            <CodeToolbar canvas={canvas} active={selected} brandAssets={brandAssets} />
           )}
           {showImageToolbar && selected && (
             <ImageToolbar canvas={canvas} active={selected} />

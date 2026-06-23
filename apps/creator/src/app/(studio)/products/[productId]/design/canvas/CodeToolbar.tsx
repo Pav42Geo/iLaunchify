@@ -25,18 +25,40 @@ import {
 import {
   regenerateCodeImage,
   BARCODE_FORMATS,
+  hexToCmyk,
+  cmykToHex,
+  normalizeHex,
   type BarcodeFormat,
   type CodeCustomData,
   type FabricCanvas,
   type FabricObject,
+  type BrandCanvasAssets,
 } from '@ilaunchify/ui'
+
+const STAPLE_SWATCHES = [
+  '#000000', '#FFFFFF', '#FF2E63', '#B5FF3D', '#0F1116',
+  '#1E90FF', '#10B981', '#F59E0B', '#7C3AED', '#EF4444',
+]
 
 interface Props {
   canvas: FabricCanvas | null
   active: FabricObject
+  brandAssets?: BrandCanvasAssets
 }
 
-export function CodeToolbar({ canvas, active }: Props) {
+export function CodeToolbar({ canvas, active, brandAssets }: Props) {
+  const brandSwatches = brandAssets
+    ? Array.from(
+        new Set(
+          [
+            brandAssets.colorPrimary,
+            brandAssets.colorSecondary,
+            brandAssets.colorAccent,
+            ...brandAssets.extraSwatches,
+          ].filter((c): c is string => Boolean(c)),
+        ),
+      )
+    : []
   // Pull the typed payload off the object. If somehow missing (legacy
   // pre-DS-54 objects), the toolbar still renders the shared opacity /
   // flip controls but the kind-specific fields stay empty.
@@ -76,7 +98,7 @@ export function CodeToolbar({ canvas, active }: Props) {
       <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 shadow-lg max-w-[680px]">
         {/* Kind-specific fields */}
         {data?.kind === 'qr' && (
-          <QrFields data={data} onChange={regen} busy={regenerating} />
+          <QrFields data={data} onChange={regen} busy={regenerating} brandSwatches={brandSwatches} />
         )}
         {data?.kind === 'barcode' && (
           <BarcodeFields data={data} onChange={regen} busy={regenerating} />
@@ -172,10 +194,12 @@ function QrFields({
   data,
   onChange,
   busy,
+  brandSwatches,
 }: {
   data: Extract<CodeCustomData, { kind: 'qr' }>
   onChange: (d: CodeCustomData) => void
   busy: boolean
+  brandSwatches: string[]
 }) {
   const [text, setText] = React.useState(data.text)
   React.useEffect(() => setText(data.text), [data.text])
@@ -194,11 +218,13 @@ function QrFields({
         label="FG"
         value={data.dark}
         onChange={(c) => onChange({ ...data, dark: c })}
+        brandSwatches={brandSwatches}
       />
       <ColorChip
         label="BG"
         value={data.light}
         onChange={(c) => onChange({ ...data, light: c })}
+        brandSwatches={brandSwatches}
       />
     </>
   )
@@ -365,12 +391,15 @@ function ColorChip({
   label,
   value,
   onChange,
+  brandSwatches,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  brandSwatches: string[]
 }) {
   const [open, setOpen] = React.useState(false)
+  const [tab, setTab] = React.useState<'swatches' | 'cmyk'>('swatches')
   const ref = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -382,6 +411,11 @@ function ColorChip({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
+  const cmyk = hexToCmyk(value)
+  const setCmyk = (patch: Partial<typeof cmyk>) => onChange(cmykToHex({ ...cmyk, ...patch }))
+
+  const swatches = Array.from(new Set([...brandSwatches, ...STAPLE_SWATCHES]))
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -391,40 +425,103 @@ function ColorChip({
         aria-label={label}
         title={label}
       >
-        <span
-          className="block w-4 h-4 rounded border border-ink-200"
-          style={{ backgroundColor: value }}
-        />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-700">
-          {label}
-        </span>
+        <span className="block w-4 h-4 rounded border border-ink-200" style={{ backgroundColor: value }} />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-700">{label}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-44 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30">
+        <div className="absolute left-0 top-full mt-1.5 w-56 bg-white border border-ink-200 rounded-lg shadow-xl p-3 z-30">
+          {/* Header: native picker (eyedropper) + hex */}
           <div className="flex items-center gap-2">
             <label className="relative w-7 h-7 rounded border border-ink-200 overflow-hidden cursor-pointer flex-shrink-0">
               <input
                 type="color"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
+                value={normalizeHex(value) ?? '#000000'}
+                onChange={(e) => onChange(e.target.value.toUpperCase())}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <span
-                className="absolute inset-0"
-                style={{ backgroundColor: value }}
-              />
+              <span className="absolute inset-0" style={{ backgroundColor: value }} />
             </label>
             <input
               type="text"
-              value={value}
-              onChange={(e) => {
-                const v = e.target.value
-                if (/^#[0-9A-Fa-f]{0,6}$/.test(v) && v.length === 7) onChange(v)
+              defaultValue={value}
+              key={value}
+              onBlur={(e) => {
+                const n = normalizeHex(e.target.value)
+                if (n) onChange(n)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
               }}
               spellCheck={false}
               className="flex-1 h-7 px-2 text-[12px] font-mono tabular-nums border border-ink-200 rounded focus:outline-none focus:border-pink-500"
             />
           </div>
+
+          {/* Tabs */}
+          <div className="mt-2.5 flex gap-1 border-b border-ink-200">
+            {(['swatches', 'cmyk'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={
+                  'px-2 pb-1.5 text-[11.5px] font-semibold transition-colors ' +
+                  (tab === t
+                    ? 'text-ink-900 border-b-2 border-pink-500'
+                    : 'text-ink-500 hover:text-ink-700')
+                }
+              >
+                {t === 'swatches' ? 'Swatches' : 'CMYK'}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'swatches' ? (
+            <div className="mt-2.5 grid grid-cols-6 gap-1.5">
+              {swatches.map((hex) => {
+                const active = (normalizeHex(value) ?? '') === (normalizeHex(hex) ?? hex)
+                return (
+                  <button
+                    key={hex}
+                    type="button"
+                    onClick={() => onChange(normalizeHex(hex) ?? hex)}
+                    title={hex}
+                    className={
+                      'aspect-square rounded border transition-all ' +
+                      (active ? 'border-pink-500 ring-2 ring-pink-500/25' : 'border-ink-200 hover:border-ink-400')
+                    }
+                    style={{ backgroundColor: hex }}
+                  >
+                    <span className="sr-only">{hex}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="mt-2.5 space-y-2">
+              {([
+                ['C', cmyk.c, (n: number) => setCmyk({ c: n })],
+                ['M', cmyk.m, (n: number) => setCmyk({ m: n })],
+                ['Y', cmyk.y, (n: number) => setCmyk({ y: n })],
+                ['K', cmyk.k, (n: number) => setCmyk({ k: n })],
+              ] as const).map(([ch, val, set]) => (
+                <div key={ch} className="flex items-center gap-2">
+                  <span className="w-3 text-[11px] font-bold text-ink-700">{ch}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={val}
+                    onChange={(e) => set(Number(e.target.value))}
+                    className="flex-1 accent-pink-500"
+                    aria-label={`${ch} value`}
+                  />
+                  <span className="w-9 text-right text-[11px] tabular-nums text-ink-600">{val}%</span>
+                </div>
+              ))}
+              <p className="text-[10px] text-ink-400">CMYK is a screen reference — the printer’s RIP is authoritative.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

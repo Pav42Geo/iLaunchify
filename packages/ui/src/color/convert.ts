@@ -114,6 +114,21 @@ export function rgbToCmyk({ r, g, b }: Rgb): Cmyk {
 
 export const hexToCmyk = (hex: string): Cmyk => rgbToCmyk(hexToRgb(hex))
 
+/** CMYK (0–100 each) → RGB. Inverse of {@link rgbToCmyk}; REFERENCE conversion. */
+export function cmykToRgb({ c, m, y, k }: Cmyk): Rgb {
+  const cn = clamp(c, 0, 100) / 100
+  const mn = clamp(m, 0, 100) / 100
+  const yn = clamp(y, 0, 100) / 100
+  const kn = clamp(k, 0, 100) / 100
+  return {
+    r: Math.round(255 * (1 - cn) * (1 - kn)),
+    g: Math.round(255 * (1 - mn) * (1 - kn)),
+    b: Math.round(255 * (1 - yn) * (1 - kn)),
+  }
+}
+
+export const cmykToHex = (cmyk: Cmyk): string => rgbToHex(cmykToRgb(cmyk))
+
 /** WCAG relative luminance (0–1). */
 export function relativeLuminance({ r, g, b }: Rgb): number {
   const lin = (v: number) => {
