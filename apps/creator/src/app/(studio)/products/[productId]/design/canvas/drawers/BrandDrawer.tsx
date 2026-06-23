@@ -25,6 +25,8 @@ import {
 } from '../brand-edit-actions'
 import { InfoTip } from '../InfoTip'
 import { LogosCompact, ColorsCompact, FontsCompact, TaglineCompact, BuildFromWebsite } from '../BrandKitCompactEditor'
+import { TextStylesSection } from '@/app/(dashboard)/brands/[brandId]/assets/TextStylesSection'
+import { PalettesSection } from '@/app/(dashboard)/brands/[brandId]/assets/PalettesSection'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -536,6 +538,20 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
       >
         <TaglineCompact brandId={brandId} initial={data.tagline} />
       </KitGroup>
+
+      {/* Slice 4 + 5 — text styles + color palettes, reusing the dashboard editors
+          so branding stays fully inline in the Studio (Pavel 2026-06-23). */}
+      <TextStylesSection
+        brandId={brandId}
+        fonts={data.fontOptions}
+        colors={{
+          primary: data.colors.colorPrimary,
+          secondary: data.colors.colorSecondary,
+          accent: data.colors.colorAccent,
+        }}
+        initial={data.textStyles}
+      />
+      <PalettesSection brandId={brandId} initial={data.palettes} />
     </div>
   )
 }

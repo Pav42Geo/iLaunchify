@@ -9,6 +9,8 @@
 import {
   prisma,
   listBrandFonts,
+  listBrandTextStyles,
+  listBrandPalettes,
   setBrandTextStyle,
   addBrandAsset,
   removeBrandAsset,
@@ -62,6 +64,34 @@ export type LoadBrandKitEditorResult =
       fontCatalog: StudioFontOption[]
       customFonts: StudioCustomFont[]
       canUploadCustomFonts: boolean
+      // Slice 4 — text styles (shape matches TextStylesSection's RoleStyleState).
+      textStyles: {
+        role: 'HEADING' | 'SUBHEADING' | 'BODY'
+        fontKey: string | null
+        fontSize: number | null
+        fontWeight: string | null
+        textCase: string | null
+        colorRef: string | null
+      }[]
+      // Slice 4 — font options for the text-style font picker.
+      fontOptions: { value: string; label: string }[]
+      // Slice 5 — color palettes (shape matches PalettesSection's PaletteState).
+      palettes: {
+        id: string
+        name: string
+        swatches: {
+          id: string
+          kind: 'SOLID' | 'GRADIENT'
+          hex: string | null
+          name: string | null
+          cmykC: number | null
+          cmykM: number | null
+          cmykY: number | null
+          cmykK: number | null
+          pantone: string | null
+          gradient: { angle: number; stops: { color: string; pos: number }[] } | null
+        }[]
+      }[]
     }
   | { ok: false; error: string }
 
@@ -148,6 +178,43 @@ export async function loadStudioBrandKitEditor(
   }))
   const tier = await getCreatorTier(user.id)
 
+  // Slice 4 — text styles + the font option list (catalog families + custom refs).
+  const ROLES = new Set(['HEADING', 'SUBHEADING', 'BODY'])
+  const textStyleRows = await listBrandTextStyles(brandId)
+  const textStyles = textStyleRows
+    .filter((r) => ROLES.has(r.role))
+    .map((r) => ({
+      role: r.role as 'HEADING' | 'SUBHEADING' | 'BODY',
+      fontKey: r.fontKey || null,
+      fontSize: r.fontSize,
+      fontWeight: r.fontWeight,
+      textCase: r.textCase,
+      colorRef: r.colorRef,
+    }))
+  const fontOptions = [
+    ...fontCatalog.map((f) => ({ value: f.family, label: f.family })),
+    ...customFonts.map((f) => ({ value: f.ref, label: `${f.family} (custom)` })),
+  ]
+
+  // Slice 5 — color palettes.
+  const paletteRows = await listBrandPalettes(brandId)
+  const palettes = paletteRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    swatches: p.swatches.map((s) => ({
+      id: s.id,
+      kind: s.kind,
+      hex: s.hex,
+      name: s.name,
+      cmykC: s.cmykC,
+      cmykM: s.cmykM,
+      cmykY: s.cmykY,
+      cmykK: s.cmykK,
+      pantone: s.pantone,
+      gradient: s.gradient,
+    })),
+  }))
+
   return {
     ok: true as const,
     name: brand.name,
@@ -167,6 +234,9 @@ export async function loadStudioBrandKitEditor(
     fontCatalog,
     customFonts,
     canUploadCustomFonts: canUploadCustomFonts(tier),
+    textStyles,
+    fontOptions,
+    palettes,
   }
 }
 
