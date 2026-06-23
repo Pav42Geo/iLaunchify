@@ -12,20 +12,27 @@ export interface RecolorOptions {
   skipTypes?: string[]
   /** Object `customType`s to skip (e.g. regulated label sections). */
   skipCustomTypes?: string[]
+  /** Skip locked objects (`selectable === false` or `evented === false`) — the same
+   *  heuristic the Studio's "Apply brand" uses to leave Nutrition Facts / barcodes
+   *  untouched. Default true. */
+  skipLocked?: boolean
 }
 
 interface FabricObj {
   type?: string
   customType?: string
+  selectable?: unknown
+  evented?: unknown
   fill?: unknown
   stroke?: unknown
   objects?: FabricObj[]
   [k: string]: unknown
 }
 
-function shouldSkip(obj: FabricObj, skipTypes: string[], skipCustom: string[]): boolean {
-  if (obj.type && skipTypes.includes(obj.type)) return true
-  if (obj.customType && skipCustom.includes(obj.customType)) return true
+function shouldSkip(obj: FabricObj, opts: Required<RecolorOptions>): boolean {
+  if (obj.type && opts.skipTypes.includes(obj.type)) return true
+  if (obj.customType && opts.skipCustomTypes.includes(obj.customType)) return true
+  if (opts.skipLocked && (obj.selectable === false || obj.evented === false)) return true
   return false
 }
 
@@ -34,11 +41,13 @@ function walk(objects: FabricObj[] | undefined, opts: Required<RecolorOptions>, 
   if (!Array.isArray(objects)) return
   for (const obj of objects) {
     if (!obj || typeof obj !== 'object') continue
-    const skip = shouldSkip(obj, opts.skipTypes, opts.skipCustomTypes)
-    if (!skip) visit(obj)
-    // Recurse into groups even when the group node itself is "skipped" only by type;
-    // but if it's a skipped customType (regulated section), leave its children alone too.
-    if (obj.customType && opts.skipCustomTypes.includes(obj.customType)) continue
+    if (!shouldSkip(obj, opts)) visit(obj)
+    // A skipped customType OR a locked group is a protected subtree — leave its
+    // children alone too (e.g. a locked Nutrition Facts group).
+    const protectedSubtree =
+      (obj.customType && opts.skipCustomTypes.includes(obj.customType)) ||
+      (opts.skipLocked && (obj.selectable === false || obj.evented === false))
+    if (protectedSubtree) continue
     if (Array.isArray(obj.objects)) walk(obj.objects, opts, visit)
   }
 }
@@ -47,6 +56,7 @@ function resolveOpts(opts?: RecolorOptions): Required<RecolorOptions> {
   return {
     skipTypes: opts?.skipTypes ?? ['image'],
     skipCustomTypes: opts?.skipCustomTypes ?? [],
+    skipLocked: opts?.skipLocked ?? true,
   }
 }
 
