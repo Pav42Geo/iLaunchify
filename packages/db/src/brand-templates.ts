@@ -34,6 +34,7 @@ interface BrandTemplateDelegate {
   count: (a: unknown) => Promise<number>
   create: (a: unknown) => Promise<Record<string, unknown>>
   findUnique: (a: unknown) => Promise<Record<string, unknown> | null>
+  update: (a: unknown) => Promise<unknown>
   delete: (a: unknown) => Promise<unknown>
 }
 
@@ -179,6 +180,83 @@ export async function getPremiumTemplate(
   } catch {
     return null
   }
+}
+
+// ---------------------------------------------------------------------------
+// Premium library admin curation (Phase 3c — docs/BRAND_TEMPLATE_THEMING.md).
+// Premium templates are owned by a single system "iLaunchify Templates" brand so
+// they don't pollute a real creator's kit. The chain User → CreatorProfile → Brand
+// is created idempotently on first use.
+// ---------------------------------------------------------------------------
+const SYSTEM_TEMPLATES_EMAIL = 'system+templates@ilaunchify.internal'
+const SYSTEM_TEMPLATES_PROFILE_HANDLE = 'ilaunchify-system-templates'
+const SYSTEM_TEMPLATES_BRAND_HANDLE = 'ilaunchify-templates'
+
+/** Get (or lazily create) the system brand that owns all premium templates. */
+export async function getOrCreateSystemTemplatesBrand(): Promise<string | null> {
+  try {
+    const p = prisma as unknown as {
+      brand: { findUnique: (a: unknown) => Promise<{ id: string } | null>; create: (a: unknown) => Promise<{ id: string }> }
+      user: { upsert: (a: unknown) => Promise<{ id: string }> }
+      creatorProfile: { upsert: (a: unknown) => Promise<{ id: string }> }
+    }
+    const existing = await p.brand.findUnique({
+      where: { handle: SYSTEM_TEMPLATES_BRAND_HANDLE },
+      select: { id: true },
+    })
+    if (existing) return existing.id
+    const user = await p.user.upsert({
+      where: { email: SYSTEM_TEMPLATES_EMAIL },
+      update: {},
+      create: { email: SYSTEM_TEMPLATES_EMAIL, name: 'iLaunchify Templates' },
+    })
+    const profile = await p.creatorProfile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        handle: SYSTEM_TEMPLATES_PROFILE_HANDLE,
+        displayName: 'iLaunchify Templates',
+      },
+    })
+    const brand = await p.brand.create({
+      data: {
+        creatorProfileId: profile.id,
+        name: 'iLaunchify Templates',
+        handle: SYSTEM_TEMPLATES_BRAND_HANDLE,
+      },
+    })
+    return brand.id
+  } catch {
+    return null
+  }
+}
+
+/** Admin: edit a premium template's name / min-tier / role tags. */
+export async function updatePremiumTemplate(
+  id: string,
+  patch: { name?: string; tier?: string | null; colorRoles?: TemplateColorRoles | null },
+): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  const row = await d.findUnique({ where: { id }, select: { isPremium: true } }).catch(() => null)
+  if (!row || row.isPremium !== true) return false
+  const data: Record<string, unknown> = {}
+  if (patch.name !== undefined) data.name = patch.name
+  if (patch.tier !== undefined) data.tier = patch.tier
+  if (patch.colorRoles !== undefined) data.colorRoles = patch.colorRoles as unknown
+  await d.update({ where: { id }, data })
+  return true
+}
+
+/** Admin: delete a premium template (guarded to isPremium rows only). */
+export async function deletePremiumTemplate(id: string): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  const row = await d.findUnique({ where: { id }, select: { isPremium: true } }).catch(() => null)
+  if (!row || row.isPremium !== true) return false
+  await d.delete({ where: { id } })
+  return true
 }
 
 /** Owner-guarded delete: only removes the template if it belongs to `brandId`. */
