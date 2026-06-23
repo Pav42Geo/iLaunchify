@@ -39,6 +39,7 @@ export interface OpsRow {
   packagingTypeName: string
   partnerName: string
   offeringCount: number
+  canonicalShapeName: string | null
 }
 
 type Lens = 'inbox' | 'packaging' | 'partner'
@@ -279,6 +280,7 @@ function RowCard({ r, hideContextName }: { r: OpsRow; hideContextName?: Lens }) 
           {pretty(r.decorationMethod)} · {r.originalFileFormat ?? 'no file'}
           {r.widthMm && r.heightMm ? ` · ${r.widthMm}×${r.heightMm}mm` : ''}
           {r.offeringCount > 0 ? ` · used by ${r.offeringCount} offering${r.offeringCount === 1 ? '' : 's'}` : ''}
+          {r.canonicalShapeName ? ` · ▸ ${r.canonicalShapeName}` : ''}
         </p>
       </div>
       <div className="inline-flex shrink-0 items-center gap-2">

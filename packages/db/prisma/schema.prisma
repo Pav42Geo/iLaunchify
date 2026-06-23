@@ -1729,6 +1729,8 @@ model DieCutTemplate {
   partnerServices  PartnerServiceDieCut[]
   libraryItems     DesignLibraryItem[]
   templateVariants ProductTemplateVariant[]
+  // Partner die-lines normalized against this canonical shape (P2 mapping).
+  mappedDielines   PackagingDieline[]       @relation("DielineCanonicalShape")
   createdAt        DateTime                 @default(now())
 }
 
@@ -4638,6 +4640,14 @@ model PackagingDieline {
   adminVerifiedAt    DateTime?
   adminVerifiedById  String?
 
+  // Canonical shape mapping (docs/DIELINE_MANAGEMENT_UX.md P2). Links a partner
+  // submission to a house-standard DieCutTemplate so the admin normalizes a shape
+  // once + propagates conventions. clusterKey = aspect/size bucket for grouping;
+  // matchConfidence = 0..1 auto-match score (admin can override).
+  canonicalShapeId String?
+  matchConfidence  Decimal? @db.Decimal(3, 2)
+  clusterKey       String?
+
   status             DielineStatus @default(UPLOADED)
   uploadedAt         DateTime      @default(now())
   partnerConfirmedAt DateTime?
@@ -4647,9 +4657,11 @@ model PackagingDieline {
   packagingType  PackagingType              @relation(fields: [packagingTypeId], references: [id])
   partnerFile    PartnerFile?               @relation(fields: [partnerFileId], references: [id])
   offerings      PartnerPackagingOffering[]
+  canonicalShape DieCutTemplate?            @relation("DielineCanonicalShape", fields: [canonicalShapeId], references: [id])
 
   @@index([partnerServiceId, packagingTypeId, decorationMethod])
   @@index([status])
+  @@index([canonicalShapeId])
 }
 
 // Accent decoration layered on a component (foil / emboss / deboss / spot-UV).

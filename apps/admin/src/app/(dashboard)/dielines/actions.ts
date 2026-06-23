@@ -3,11 +3,18 @@
 // Admin die-line review — verify a partner-confirmed die-line into ACTIVE (or
 // send it back). docs/DIELINE_FRAME_EDITOR_SPEC.md §3/Phase D.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, setDielineCanonicalShape } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, dielineNormalizedKey } from '@ilaunchify/storage'
-import { dielineSvgFromSpec, type DielineFold, type DielineSurface, type FrameLayout, type NormBox } from '@ilaunchify/ui'
+import {
+  dielineSvgFromSpec,
+  aspectBucketFor,
+  type DielineFold,
+  type DielineSurface,
+  type FrameLayout,
+  type NormBox,
+} from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -176,6 +183,40 @@ export async function saveAdminDielineGeometry(dielineId: string, geom: DielineN
       safeAreaBox: geom.safeAreaBox as never,
     },
   })
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Canonical shape mapping (P2). Link a partner die-line to a house-standard
+// DieCutTemplate so the admin normalizes a shape once + propagates conventions.
+// clusterKey = aspect bucket from the die-line's dims (for grouping/clustering).
+// -----------------------------------------------------------------------------
+
+export async function mapDielineToShape(dielineId: string, shapeId: string | null): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  const dl = await prisma.packagingDieline.findUnique({
+    where: { id: dielineId },
+    select: { id: true, widthMm: true, heightMm: true },
+  })
+  if (!dl) return { ok: false, error: 'Die-line not found.' }
+
+  const w = Number(dl.widthMm) || 0
+  const h = Number(dl.heightMm) || 0
+  const clusterKey = w > 0 && h > 0 ? aspectBucketFor(w, h) : null
+
+  // A manual admin map is a confirmed match → confidence 1.0; unmap clears it.
+  await setDielineCanonicalShape(dielineId, shapeId, {
+    matchConfidence: shapeId ? 1 : null,
+    clusterKey,
+  })
+  await logAuditAs(admin, {
+    entityType: 'PackagingDieline',
+    entityId: dielineId,
+    action: shapeId ? 'dieline.shape-mapped' : 'dieline.shape-unmapped',
+    toValue: shapeId ?? 'none',
+  })
+  revalidatePath('/dielines')
+  revalidatePath(`/dielines/${dielineId}`)
   return { ok: true }
 }
 

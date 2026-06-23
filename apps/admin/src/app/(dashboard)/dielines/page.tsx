@@ -8,7 +8,7 @@
 // workspace owns the lens/search/sort interactions.
 // =============================================================================
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, listDielineCanonicalLinks } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { DielineOpsWorkspace, type OpsRow } from './DielineOpsWorkspace'
 
@@ -50,6 +50,11 @@ export default async function AdminDielinesPage() {
     rows.map((r) => (r.thumbnailKey ? getSignedReadUrl(r.thumbnailKey).catch(() => null) : Promise.resolve(null))),
   )
 
+  // Canonical-shape mapping (P2). Degrades to all-unmapped until the additive
+  // columns are pushed (helper returns [] on a missing column).
+  const links = await listDielineCanonicalLinks(rows.map((r) => r.id))
+  const shapeByDieline = new Map(links.map((l) => [l.id, l.canonicalShapeName]))
+
   const opsRows: OpsRow[] = rows.map((r, i) => ({
     id: r.id,
     status: r.status,
@@ -66,6 +71,7 @@ export default async function AdminDielinesPage() {
     packagingTypeName: r.packagingType.displayName,
     partnerName: r.partnerService.partner.companyName,
     offeringCount: r._count.offerings,
+    canonicalShapeName: shapeByDieline.get(r.id) ?? null,
   }))
 
   return <DielineOpsWorkspace rows={opsRows} />

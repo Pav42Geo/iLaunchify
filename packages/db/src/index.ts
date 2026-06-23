@@ -217,3 +217,11 @@ export {
   type AdminDieCutOption,
   type TemplateUsageStats,
 } from './template-library'
+
+export {
+  getCanonicalShapeOptions,
+  setDielineCanonicalShape,
+  listDielineCanonicalLinks,
+  type CanonicalShapeOption,
+  type DielineCanonicalLink,
+} from './dieline-canonical'

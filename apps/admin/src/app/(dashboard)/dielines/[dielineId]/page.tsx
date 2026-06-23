@@ -12,8 +12,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCanonicalShapeOptions, listDielineCanonicalLinks } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
+import { aspectBucketFor } from '@ilaunchify/ui'
 import { DielineCurator } from './DielineCurator'
 
 export const dynamic = 'force-dynamic'
@@ -98,6 +99,24 @@ export default async function DielineCuratorPage({
 
   const curatedBefore = dl.normalizedSvgKey != null && dl.adminVerifiedAt != null
 
+  // Canonical shape mapping (P2): options + current mapping + a suggested match
+  // (canonical shapes whose aspect bucket matches this die-line's dims, nearest
+  // area first). Degrades to no suggestion when dims/options are missing.
+  const shapeOptions = await getCanonicalShapeOptions().catch(() => [])
+  const [link] = await listDielineCanonicalLinks([dl.id])
+  const currentShapeId = link?.canonicalShapeId ?? null
+  const bucket = width > 0 && height > 0 ? aspectBucketFor(width, height) : null
+  const suggestedShapeId =
+    bucket && !currentShapeId
+      ? (shapeOptions
+          .filter((o) => o.widthMm > 0 && o.heightMm > 0 && aspectBucketFor(o.widthMm, o.heightMm) === bucket)
+          .sort(
+            (a, b) =>
+              Math.abs(a.widthMm * a.heightMm - width * height) -
+              Math.abs(b.widthMm * b.heightMm - width * height),
+          )[0]?.id ?? null)
+      : null
+
   return (
     <div className="space-y-6">
       <div>
@@ -143,6 +162,9 @@ export default async function DielineCuratorPage({
         initialSafe={initialSafe}
         normalizedUrl={normalizedUrl}
         format={dl.originalFileFormat}
+        shapeOptions={shapeOptions}
+        currentShapeId={currentShapeId}
+        suggestedShapeId={suggestedShapeId}
       />
     </div>
   )

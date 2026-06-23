@@ -10,7 +10,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check } from 'lucide-react'
+import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles } from 'lucide-react'
 import {
   dielineSvgFromSpec,
   DielineFrameEditor,
@@ -20,7 +20,15 @@ import {
   type FrameLayout,
   type NormBox,
 } from '@ilaunchify/ui'
-import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry } from '../actions'
+import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape } from '../actions'
+
+interface ShapeOption {
+  id: string
+  name: string
+  category: string
+  widthMm: number
+  heightMm: number
+}
 
 interface Spec {
   widthMm: number
@@ -43,6 +51,10 @@ interface Props {
   /** Signed URL of the normalized SVG (preferred frame backdrop) or null. */
   normalizedUrl: string | null
   format: string | null
+  /** P2 canonical shape mapping. */
+  shapeOptions: ShapeOption[]
+  currentShapeId: string | null
+  suggestedShapeId: string | null
 }
 
 export function DielineCurator({
@@ -57,6 +69,9 @@ export function DielineCurator({
   initialSafe,
   normalizedUrl,
   format,
+  shapeOptions,
+  currentShapeId,
+  suggestedShapeId,
 }: Props) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -167,6 +182,12 @@ export function DielineCurator({
   return (
     <div className="space-y-5">
       <ModeToggle mode={mode} setMode={setMode} />
+      <CanonicalShapePicker
+        dielineId={dielineId}
+        options={shapeOptions}
+        currentShapeId={currentShapeId}
+        suggestedShapeId={suggestedShapeId}
+      />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Partner original" subtitle="Reference only — never modified">
           <OriginalPreview original={original} />
@@ -260,6 +281,99 @@ function ModeToggle({ mode, setMode }: { mode: 'spec' | 'frames'; setMode: (m: '
       >
         <LayoutGrid className="h-3.5 w-3.5" /> Frames
       </button>
+    </div>
+  )
+}
+
+function CanonicalShapePicker({
+  dielineId,
+  options,
+  currentShapeId,
+  suggestedShapeId,
+}: {
+  dielineId: string
+  options: ShapeOption[]
+  currentShapeId: string | null
+  suggestedShapeId: string | null
+}) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [shapeId, setShapeId] = useState<string | null>(currentShapeId)
+
+  function map(next: string | null) {
+    setShapeId(next)
+    start(async () => {
+      const r = await mapDielineToShape(dielineId, next)
+      if (!r.ok) {
+        toast.error(r.error)
+        setShapeId(currentShapeId)
+        return
+      }
+      toast.success(next ? 'Mapped to canonical shape' : 'Unmapped')
+      router.refresh()
+    })
+  }
+
+  const suggested = suggestedShapeId ? options.find((o) => o.id === suggestedShapeId) : null
+  const grouped = useMemo(() => {
+    const m = new Map<string, ShapeOption[]>()
+    for (const o of options) {
+      const arr = m.get(o.category) ?? []
+      arr.push(o)
+      m.set(o.category, arr)
+    }
+    return [...m.entries()]
+  }, [options])
+
+  return (
+    <div className="rounded-2xl border border-ink-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <Boxes className="h-4 w-4 text-pink-600" />
+        <h2 className="text-[13.5px] font-bold text-ink-900">Canonical shape</h2>
+        {shapeId ? (
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+            Mapped
+          </span>
+        ) : (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+            Unmapped
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[12px] text-ink-500">
+        Map this submission to a house-standard shape so its conventions stay consistent and it clusters with other
+        partners&rsquo; die-lines of the same shape.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <select
+          value={shapeId ?? ''}
+          disabled={pending}
+          onChange={(e) => map(e.target.value || null)}
+          className="min-w-[260px] rounded-lg border border-ink-200 bg-white px-2.5 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50"
+        >
+          <option value="">— Not mapped —</option>
+          {grouped.map(([cat, opts]) => (
+            <optgroup key={cat} label={cat.replace(/_/g, ' ').toLowerCase()}>
+              {opts.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name} ({o.widthMm}×{o.heightMm}mm)
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        {suggested && shapeId !== suggested.id && (
+          <button
+            onClick={() => map(suggested.id)}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-[12px] font-semibold text-pink-700 hover:bg-pink-100 disabled:opacity-50"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Suggested: {suggested.name}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
