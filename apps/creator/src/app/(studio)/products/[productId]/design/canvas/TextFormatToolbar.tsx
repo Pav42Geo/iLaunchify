@@ -100,7 +100,7 @@ export function TextFormatToolbar({
   )
 
   return (
-    <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20" style={{ zoom: 1.2 }}>
+    <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-20" style={{ zoom: 1.1 }}>
       <div className="pointer-events-auto flex items-center gap-1 rounded-lg border border-ink-200 bg-white px-2 py-1.5 shadow-lg">
         {/* Font family — DS-66f Canva-style. The trigger button opens
             the full TextFontDrawer in the left rail; the shell owns the

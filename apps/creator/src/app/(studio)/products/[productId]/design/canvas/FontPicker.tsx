@@ -22,7 +22,7 @@ export function FontPicker({ value, onClick }: Props) {
       type="button"
       onClick={onClick}
       title={value}
-      className="flex items-center gap-1 rounded px-2 py-1 text-[12.5px] hover:bg-ink-100 max-w-[160px]"
+      className="flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-ink-100 max-w-[150px]"
       style={{ fontFamily: `"${value}"` }}
     >
       <span className="truncate">{value}</span>

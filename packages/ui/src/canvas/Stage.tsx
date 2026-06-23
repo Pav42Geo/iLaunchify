@@ -154,6 +154,20 @@ export function Stage({
         /* getBoundingRect on a disposed/odd object — ignore */
       }
     })
+    // Fabric v6 copies class defaults onto each instance at construction, so
+    // setting the prototype isn't enough for objects already built from JSON —
+    // stamp the selection chrome onto every object so SELECTED objects show the
+    // same pink border + white handles, not Fabric's grey defaults.
+    const styleObject = (o: fabric.FabricObject | undefined | null) => {
+      if (!o) return
+      try {
+        o.set(SELECTION_CHROME)
+      } catch {
+        /* odd/disposed object — ignore */
+      }
+    }
+    canvas.on('object:added', (e) => styleObject((e as { target?: fabric.FabricObject }).target))
+
     // DS-73.1 — apply the initial view zoom so the canvas mounts at
     // the right scale when the parent state is non-1 (e.g. an
     // out-of-band navigation that restored a zoom level).
@@ -174,6 +188,7 @@ export function Stage({
         .loadFromJSON(initialDesignJson)
         .then(() => {
           if (cancelled) return
+          canvas.getObjects().forEach(styleObject)
           canvas.renderAll()
           onHydrated?.(canvas)
         })
