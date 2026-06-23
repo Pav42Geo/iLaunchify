@@ -62,7 +62,7 @@ function titleCase(name: string): string {
 /** Closest CSS color keyword to a hex value (squared RGB distance), display-formatted. */
 export function nearestColorName(hex: string): string {
   const { r, g, b } = hexToRgb(hex)
-  let best = CATALOG[0]
+  let best = CATALOG[0] ?? { name: 'color', r: 0, g: 0, b: 0 }
   let bestD = Infinity
   for (const c of CATALOG) {
     const d = (c.r - r) ** 2 + (c.g - g) ** 2 + (c.b - b) ** 2
