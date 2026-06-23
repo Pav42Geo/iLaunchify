@@ -97,8 +97,6 @@ import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
-import { ImagesDrawer } from './drawers/ImagesDrawer'
-import { BackgroundDrawer } from './drawers/BackgroundDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
@@ -106,8 +104,7 @@ import { BrandDrawer } from './drawers/BrandDrawer'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
-import { GraphicsDrawer } from './drawers/GraphicsDrawer'
-import { PatternsDrawer } from './drawers/PatternsDrawer'
+import { ElementsDrawer } from './drawers/ElementsDrawer'
 import { PhrasesDrawer } from './drawers/PhrasesDrawer'
 import { CertConsentModal } from './CertConsentModal'
 import { recordLabelClaimConsent } from './claim-consent-actions'
@@ -117,11 +114,8 @@ import {
   Tag,
   Palette,
   Type as TypeIcon,
-  Image as ImageIcon,
   Sparkles,
-  Brush,
-  ImageDown,
-  Grid3x3,
+  Shapes,
   QrCode,
   Barcode,
   Layers,
@@ -252,6 +246,7 @@ type ToolKey =
   | 'label'
   | 'brand'
   | 'text'
+  | 'elements'
   | 'images'
   | 'graphics'
   | 'clipart'
@@ -281,11 +276,9 @@ const TOOLS: Array<{
   { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'brand', label: 'Brand', icon: Palette, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
-  { key: 'images', label: 'Images', icon: ImageIcon, v1: true },
-  { key: 'graphics', label: 'Graphics', icon: Sparkles, v1: true },
-  { key: 'clipart', label: 'Clipart', icon: Brush, v1: false },
-  { key: 'background', label: 'Background', icon: ImageDown, v1: true },
-  { key: 'pattern', label: 'Pattern', icon: Grid3x3, v1: true },
+  // Elements (Pavel 2026-06-23) — Canva-style merge of Images / Graphics /
+  // Clipart / Background / Patterns into one grouped menu.
+  { key: 'elements', label: 'Elements', icon: Shapes, v1: true },
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
@@ -1552,6 +1545,7 @@ function ToolDrawer({
     label: 'Label',
     brand: 'Brand',
     text: 'Text',
+    elements: 'Elements',
     images: 'Images',
     graphics: 'Graphics',
     clipart: 'Clipart',
@@ -1621,15 +1615,12 @@ function ToolDrawer({
           />
         )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
-        {tool === 'images' && (
-          <ImagesDrawer
+        {tool === 'elements' && (
+          <ElementsDrawer
             canvas={canvas}
             brandAssets={brandAssets}
             productId={productId}
           />
-        )}
-        {tool === 'background' && (
-          <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
         )}
         {tool === 'qrcode' && <QrCodeDrawer canvas={canvas} />}
         {tool === 'barcode' && (
@@ -1642,8 +1633,6 @@ function ToolDrawer({
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool === 'finishes' && <FinishesDrawer />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
-        {tool === 'graphics' && <GraphicsDrawer canvas={canvas} />}
-        {tool === 'pattern' && <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />}
         {tool === 'phrases' && (
           <PhrasesDrawer canvas={canvas} productId={productId} labelingType={labelingType ?? 'FOOD'} />
         )}
@@ -1651,15 +1640,12 @@ function ToolDrawer({
           tool !== 'label' &&
           tool !== 'brand' &&
           tool !== 'text' &&
-          tool !== 'images' &&
-          tool !== 'background' &&
+          tool !== 'elements' &&
           tool !== 'qrcode' &&
           tool !== 'barcode' &&
           tool !== 'layers' &&
           tool !== 'finishes' &&
           tool !== 'components' &&
-          tool !== 'graphics' &&
-          tool !== 'pattern' &&
           tool !== 'phrases' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
