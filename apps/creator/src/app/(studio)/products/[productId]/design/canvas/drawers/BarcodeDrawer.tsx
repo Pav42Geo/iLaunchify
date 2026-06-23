@@ -25,7 +25,7 @@ import {
   type FabricCanvas,
 } from '@ilaunchify/ui'
 import { RetailIdentityCard } from '../RetailIdentityCard'
-import type { BarcodeMode } from './retail-identity-actions'
+import type { BarcodeMode } from '../retail-identity-actions'
 
 interface Props {
   canvas: FabricCanvas | null
