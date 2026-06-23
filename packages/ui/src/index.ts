@@ -175,10 +175,13 @@ export {
   BARCODE_FORMATS,
   QR_DOT_STYLES,
   QR_CORNER_STYLES,
+  TRANSPARENT_FILL,
+  isTransparentFill,
   type BarcodeFormat,
   type CodeCustomData,
   type QrDotStyle,
   type QrCornerStyle,
+  type QrGradient,
 } from './canvas/codes'
 export {
   addNutritionFactsPanel,
