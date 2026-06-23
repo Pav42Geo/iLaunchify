@@ -32,7 +32,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'INVALID_INPUT', message: 'Bad JSON body.' }, { status: 400 })
   }
 
-  const data = body as { name?: string; email?: string; brandName?: string }
+  const data = body as {
+    name?: string
+    email?: string
+    brandName?: string
+    launch?: Record<string, string>
+  }
 
   if (!data.name || !data.email) {
     return NextResponse.json(
@@ -40,6 +45,12 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     )
   }
+
+  // If the visitor arrived from a marketplace product pick, resume the launch
+  // into the Design Studio right after sign-in (the launch route lazily ensures
+  // a brand, so no brand setup is required first). Otherwise land on onboarding.
+  // Same-origin relative path only — safe as an Auth.js callbackUrl.
+  const callbackUrl = buildPostSigninUrl(data.launch)
 
   const result = await createUserWithRole({
     role: 'CREATOR',
@@ -60,7 +71,7 @@ export async function POST(req: NextRequest) {
       await signIn('resend', {
         email: result.email,
         redirect: false,
-        callbackUrl: '/dashboard/creator/onboarding',
+        callbackUrl,
       })
       return NextResponse.json({ ok: true, userId: result.userId, nextStep: 'CHECK_EMAIL' })
     } catch (err) {
@@ -74,6 +85,26 @@ export async function POST(req: NextRequest) {
   }
 
   // Dev fallback
-  const devUrl = `/api/dev/login?email=${encodeURIComponent(result.email)}&callbackUrl=${encodeURIComponent('/dashboard/creator/onboarding')}`
+  const devUrl = `/api/dev/login?email=${encodeURIComponent(result.email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`
   return NextResponse.json({ ok: true, userId: result.userId, nextStep: 'DEV_REDIRECT', devUrl })
+}
+
+/** Whitelisted launch keys carried from the marketplace pick. */
+const LAUNCH_KEYS = ['template', 'flavor', 'size', 'packaging', 'quantity', 'partnerOfferingId'] as const
+
+/**
+ * Where to send the user after their first sign-in. When a marketplace product
+ * pick is present, resume the launch via /api/launch-after-signin (which creates
+ * the product + opens the Studio); otherwise go to onboarding. Returns a
+ * same-origin relative path so it's a valid Auth.js callbackUrl.
+ */
+function buildPostSigninUrl(launch: Record<string, string> | undefined): string {
+  const template = launch?.template
+  if (!template) return '/dashboard/creator/onboarding'
+  const params = new URLSearchParams()
+  for (const key of LAUNCH_KEYS) {
+    const value = launch?.[key]
+    if (value) params.set(key, value)
+  }
+  return `/api/launch-after-signin?${params.toString()}`
 }

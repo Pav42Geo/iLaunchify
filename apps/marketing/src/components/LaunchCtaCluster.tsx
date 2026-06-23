@@ -1,20 +1,23 @@
 'use client'
 
-// REBUILD R5 + R4 — primary CTA cluster on the marketplace product
-// detail page. Calls the launch server action with the current
-// selection; on success hard-navigates to the cross-app Design
-// Studio URL.
+// REBUILD R5 — primary CTA cluster on the marketplace product detail
+// page. Calls the launch server action with the current selection.
 //
-// R4: when the action reports `GUEST`, we open the inline
-// GuestGateModal instead of bouncing to /signup. The modal collects
-// the minimum signup fields and runs the signup → sign-in → create
-// product → canvas chain in one round-trip.
+// Routing (Pavel 2026-06-22):
+//   - ok            → hard-nav to the cross-app Design Studio URL.
+//   - GUEST         → hard-nav to the REAL creator /signup page, with the
+//                     product selection preserved in the query string. The
+//                     inline "quick account" modal is retired: new users must
+//                     finish account setup (payment etc.) before the build
+//                     flow, or they'd design an order they can't complete.
+//   - NOT_CREATOR   → inline notice pointing an admin/partner account to the
+//                     creator login (no signup modal — email already exists).
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
 import { startLaunchFromTemplate } from '@/lib/launch-actions'
-import { GuestGateModal } from './GuestGateModal'
+import { creatorUrl } from '@/lib/app-urls'
 
 interface Props {
   templateSlug: string
@@ -35,7 +38,6 @@ interface Props {
 
 export function LaunchCtaCluster({
   templateSlug,
-  templateName,
   flavorId,
   sizeKey,
   packagingId,
@@ -46,10 +48,11 @@ export function LaunchCtaCluster({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [guestGateOpen, setGuestGateOpen] = useState(false)
+  const [notCreatorRole, setNotCreatorRole] = useState<string | null>(null)
 
   function onLaunchClick() {
     setError(null)
+    setNotCreatorRole(null)
     startTransition(async () => {
       const result = await startLaunchFromTemplate({
         templateSlug,
@@ -67,9 +70,21 @@ export function LaunchCtaCluster({
         return
       }
       if (result.reason === 'GUEST') {
-        // R4: open inline modal instead of bouncing to /signup so
-        // the selection sticks through account creation.
-        setGuestGateOpen(true)
+        // No session → send the visitor to the REAL creator sign-up page
+        // (Pavel 2026-06-22). New users must set up their account (payment
+        // method etc.) before entering the build flow — a quick inline
+        // account would let them design an order they can't actually
+        // complete. The product selection is preserved in `signupUrl`'s
+        // query params (template/flavor/size/packaging/quantity), so once
+        // they finish setup the launch resumes straight into the Studio.
+        window.location.href = result.signupUrl
+        return
+      }
+      if (result.reason === 'NOT_CREATOR') {
+        // Signed in, but on a non-creator account (admin/partner). Launching
+        // needs a creator brand — don't show the guest signup modal (the email
+        // is already registered). Point them to the creator login instead.
+        setNotCreatorRole(result.role)
         return
       }
       if (result.reason === 'NO_BRAND') {
@@ -109,22 +124,21 @@ export function LaunchCtaCluster({
         <p className="text-[12px] font-medium text-pink-700">{error}</p>
       )}
 
-      <GuestGateModal
-        open={guestGateOpen}
-        onClose={() => setGuestGateOpen(false)}
-        templateName={templateName}
-        launch={{
-          templateSlug,
-          flavor: flavorId,
-          size: sizeKey,
-          packaging: packagingId,
-          quantity,
-          ...(decorationMethod
-            ? { decorationMethod: decorationMethod as never }
-            : {}),
-          ...(partnerOfferingId ? { partnerOfferingId } : {}),
-        }}
-      />
+      {notCreatorRole && (
+        <div className="rounded-lg border border-ink-200 bg-ink-50 px-3.5 py-3 text-[12.5px] leading-snug text-ink-700">
+          You&rsquo;re signed in with{' '}
+          {notCreatorRole === 'ADMIN' ? 'an admin' : 'a partner'} account, which
+          can&rsquo;t launch products — only creator accounts have a brand to
+          launch under.{' '}
+          <a
+            href={creatorUrl('/login')}
+            className="font-semibold text-pink-700 underline underline-offset-2 hover:text-pink-800"
+          >
+            Sign in with your creator account
+          </a>{' '}
+          to continue.
+        </div>
+      )}
     </div>
   )
 }

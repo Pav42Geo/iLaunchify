@@ -12,7 +12,7 @@
 // /signup with a return URL preserved (R4 will polish this gate with
 // a modal).
 
-import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { prisma, getOrderSettings, getOrCreateDefaultBrand } from '@ilaunchify/db'
 import type { DecorationMethod } from '@ilaunchify/db'
 import { auth } from '@ilaunchify/auth'
 import { creatorUrl } from './app-urls'
@@ -35,6 +35,7 @@ export interface StartLaunchInput {
 export type StartLaunchResult =
   | { ok: true; url: string }
   | { ok: false; reason: 'GUEST'; signupUrl: string }
+  | { ok: false; reason: 'NOT_CREATOR'; role: string }
   | { ok: false; reason: 'NO_BRAND' }
   | { ok: false; reason: 'TEMPLATE_NOT_FOUND' }
   | { ok: false; reason: 'NO_VARIANT' }
@@ -54,9 +55,9 @@ export async function startLaunchFromTemplate(
     session = null
   }
 
-  // Guest → bounce to signup with a return URL so we land back on the
-  // detail page after sign-in. R4 polishes this with an inline modal.
-  if (!session?.user?.id || session.user.role !== 'CREATOR') {
+  // True guest (no session) → inline signup modal with a return URL so the
+  // selection survives account creation. R4 polishes this with the modal.
+  if (!session?.user?.id) {
     const params = new URLSearchParams({ template: input.templateSlug })
     if (input.flavor) params.set('flavor', input.flavor)
     if (input.size) params.set('size', input.size)
@@ -69,21 +70,29 @@ export async function startLaunchFromTemplate(
     }
   }
 
+  // Signed in, but NOT as a creator (e.g. an ADMIN or PARTNER account). These
+  // accounts have no CreatorProfile/Brand to attach the new Product to, so
+  // launching isn't available. Return a distinct reason so the CTA shows a
+  // clear "use a creator account" message instead of the guest-signup modal —
+  // which would otherwise prompt them to "create a free account" with an email
+  // that's already registered (a dead end). Pavel 2026-06-22.
+  if (session.user.role !== 'CREATOR') {
+    return { ok: false, reason: 'NOT_CREATOR', role: session.user.role }
+  }
+
   const userId = session.user.id
 
-  // Creator must have at least one brand to attach the Product to.
+  // Brand is OPTIONAL for the creator (it only helps them stay on-brand later),
+  // but Product.brandId is required — so attach to their first brand, lazily
+  // creating a quiet default one if they've never set up a brand. Launching
+  // therefore never blocks on brand setup (Pavel 2026-06-22). The only true
+  // failure is a missing CreatorProfile (shouldn't happen for a CREATOR).
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId },
-    include: {
-      brands: {
-        orderBy: { createdAt: 'asc' },
-        take: 1,
-      },
-    },
+    select: { id: true },
   })
   if (!profile) return { ok: false, reason: 'NO_BRAND' }
-  const brand = profile.brands[0]
-  if (!brand) return { ok: false, reason: 'NO_BRAND' }
+  const { brandId } = await getOrCreateDefaultBrand(profile.id)
 
   // Resolve the ProductTemplate. V1 marketing uses sample fixtures that
   // may not have matching DB rows yet — fall back to the first
@@ -135,7 +144,7 @@ export async function startLaunchFromTemplate(
   let collision = 1
   while (
     await prisma.product.findFirst({
-      where: { brandId: brand.id, slug },
+      where: { brandId, slug },
       select: { id: true },
     })
   ) {
@@ -146,7 +155,7 @@ export async function startLaunchFromTemplate(
   try {
     const product = await prisma.product.create({
       data: {
-        brandId: brand.id,
+        brandId,
         productTemplateId: template.id,
         variantId: variant.id,
         marketId: market.id,

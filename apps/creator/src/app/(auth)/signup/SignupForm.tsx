@@ -9,6 +9,23 @@ interface SignupFormProps {
   prefillBrand?: string
 }
 
+/** Marketplace launch-selection keys carried through the signup deep link. */
+const LAUNCH_KEYS = ['template', 'flavor', 'size', 'packaging', 'quantity', 'partnerOfferingId'] as const
+
+/** Read whitelisted launch params from the current URL; null when no product
+ *  was picked (i.e. the visitor came to /signup directly). Client-only. */
+function readLaunchParams(): Record<string, string> | null {
+  if (typeof window === 'undefined') return null
+  const qs = new URLSearchParams(window.location.search)
+  const out: Record<string, string> = {}
+  for (const key of LAUNCH_KEYS) {
+    const value = qs.get(key)
+    if (value) out[key] = value
+  }
+  // Only meaningful when a template was actually chosen.
+  return out.template ? out : null
+}
+
 type SignupResponse =
   | { ok: true; nextStep: 'CHECK_EMAIL'; warning?: string }
   | { ok: true; nextStep: 'DEV_REDIRECT'; devUrl: string }
@@ -29,10 +46,20 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
     }
     setBusy(true)
     try {
+      // Carry any marketplace product pick that brought the visitor here
+      // (?template=…&flavor=…&size=…&packaging=…&quantity=…) so the server can
+      // resume the launch into the Design Studio right after sign-in instead of
+      // dropping the user on a blank dashboard. Whitelisted keys only.
+      const launch = readLaunchParams()
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, brandName: brandName || undefined }),
+        body: JSON.stringify({
+          name,
+          email,
+          brandName: brandName || undefined,
+          ...(launch ? { launch } : {}),
+        }),
       })
       const data = (await res.json()) as SignupResponse
 

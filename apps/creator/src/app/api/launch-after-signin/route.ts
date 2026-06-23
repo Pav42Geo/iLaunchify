@@ -21,7 +21,7 @@
 // redirect chain.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrCreateDefaultBrand } from '@ilaunchify/db'
 import { auth } from '@ilaunchify/auth'
 
 export const dynamic = 'force-dynamic'
@@ -42,16 +42,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard?error=missing-template', req.url))
   }
 
-  // Resolve brand (the guest-gate action just created one for new
-  // signups; existing users use their first brand).
+  // Brand is OPTIONAL for the creator, but Product.brandId is required — so use
+  // their first brand, lazily creating a quiet default if they have none. This
+  // lets a brand-new signup land straight in the Studio with their picked
+  // product instead of being detoured through brand setup (Pavel 2026-06-22).
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId },
-    include: { brands: { orderBy: { createdAt: 'asc' }, take: 1 } },
+    select: { id: true },
   })
-  const brand = profile?.brands[0]
-  if (!brand) {
-    return NextResponse.redirect(new URL('/onboarding/brand', req.url))
+  if (!profile) {
+    return NextResponse.redirect(new URL('/dashboard?error=no-profile', req.url))
   }
+  const { brandId } = await getOrCreateDefaultBrand(profile.id)
 
   // Same template resolution as launch-actions.ts: prefer the exact
   // slug, fall back to the first PUBLISHED template so the demo flow
@@ -100,7 +102,7 @@ export async function GET(req: NextRequest) {
   let collision = 1
   while (
     await prisma.product.findFirst({
-      where: { brandId: brand.id, slug },
+      where: { brandId, slug },
       select: { id: true },
     })
   ) {
@@ -111,7 +113,7 @@ export async function GET(req: NextRequest) {
   try {
     const product = await prisma.product.create({
       data: {
-        brandId: brand.id,
+        brandId,
         productTemplateId: template.id,
         variantId: variant.id,
         marketId: market.id,
