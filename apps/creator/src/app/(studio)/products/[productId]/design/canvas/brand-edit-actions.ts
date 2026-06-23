@@ -10,7 +10,7 @@ import { prisma, listBrandFonts } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
-import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
+import { brandFontCatalog, isKnownFontFamily, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 
 export interface StudioAssetSummary {
   id: string
@@ -160,6 +160,35 @@ export async function loadStudioBrandKitEditor(
     customFonts,
     canUploadCustomFonts: canUploadCustomFonts(tier),
   }
+}
+
+// Add a single font (catalog family or `custom:<id>` ref) to a brand kit's font list
+// from the Studio Text font drawer's 3-dot "Add to Brand Kit" menu (Slice 2c). Append
+// + dedupe, owner-guarded, capped at 3. Idempotent if already present.
+export async function addFontToBrandKit(
+  brandId: string,
+  fontRef: string,
+): Promise<{ ok: true; brandName: string } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (!isKnownFontFamily(fontRef)) return { ok: false, error: 'That font is not available.' }
+
+  const brand = await prisma.brand.findFirst({
+    where: { id: brandId, creatorProfile: { userId: user.id } },
+    select: { id: true, name: true, brandFontIds: true },
+  })
+  if (!brand) return { ok: false, error: 'That brand kit is not on your account.' }
+
+  if (brand.brandFontIds.includes(fontRef)) return { ok: true, brandName: brand.name }
+  if (brand.brandFontIds.length >= 3) {
+    return { ok: false, error: `${brand.name} already has 3 brand fonts. Remove one first.` }
+  }
+
+  await prisma.brand.update({
+    where: { id: brand.id },
+    data: { brandFontIds: [...brand.brandFontIds, fontRef] },
+  })
+  return { ok: true, brandName: brand.name }
 }
 
 // Quick-create a new brand kit from inside the Studio (name only — handle is derived).

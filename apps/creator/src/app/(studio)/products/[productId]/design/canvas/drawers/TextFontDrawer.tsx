@@ -17,7 +17,7 @@
 // drawer doesn't trigger 120 simultaneous network requests.
 
 import * as React from 'react'
-import { Check, Pin, Search, Sparkles, X } from 'lucide-react'
+import { Check, Pin, Plus, Search, Sparkles, X } from 'lucide-react'
 import {
   loadFont,
   loadBrandFont,
@@ -31,14 +31,14 @@ import {
   type FontCategory,
   type FontEntry,
 } from '@ilaunchify/ui'
+import { addFontToBrandKit } from '../brand-edit-actions'
+import { listStudioBrandKits, type StudioBrandKitOption } from '../brand-actions'
 
 interface Props {
   canvas: FabricCanvas | null
   active: FabricObject
   brandAssets: BrandCanvasAssets
   onClose: () => void
-  /** Optional: pin the given family to the active brand. */
-  onPin?: (family: string) => void | Promise<void>
 }
 
 const PREVIEW_TEXT = 'AaBbCc 123'
@@ -63,7 +63,6 @@ export function TextFontDrawer({
   active,
   brandAssets,
   onClose,
-  onPin,
 }: Props) {
   const [query, setQuery] = React.useState('')
   const [category, setCategory] = React.useState<FontCategory | 'all'>('all')
@@ -87,6 +86,32 @@ export function TextFontDrawer({
   React.useEffect(() => {
     for (const f of brandAssets.fonts) void loadBrandFont(f.family, f.webfontUrl)
   }, [brandAssets.fonts])
+
+  // "Add to Brand Kit" (Slice 2c): the 3-dot action on each font row. Adds the font
+  // to the creator's brand — directly when they have one brand, via a brand-picker
+  // popover when they have several.
+  const [brandOpts, setBrandOpts] = React.useState<StudioBrandKitOption[]>([])
+  const [menuFamily, setMenuFamily] = React.useState<string | null>(null)
+  const [notice, setNotice] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    listStudioBrandKits()
+      .then(setBrandOpts)
+      .catch(() => {})
+  }, [])
+
+  async function addToBrand(brandId: string, family: string) {
+    setMenuFamily(null)
+    const res = await addFontToBrandKit(brandId, family)
+    setNotice(res.ok ? `Added “${family}” to ${res.brandName}.` : res.error)
+    window.setTimeout(() => setNotice(null), 2600)
+  }
+  function onAddToBrand(family: string) {
+    if (brandOpts.length <= 1) {
+      void addToBrand(brandOpts[0]?.id ?? brandAssets.brandId, family)
+    } else {
+      setMenuFamily(family)
+    }
+  }
 
   async function applyFont(family: string) {
     if (!canvas) return
@@ -125,7 +150,7 @@ export function TextFontDrawer({
   )
 
   return (
-    <aside className="flex w-[400px] flex-col border-r border-ink-200 bg-white">
+    <aside className="relative flex w-[400px] flex-col border-r border-ink-200 bg-white">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
         <h2 className="text-base font-semibold text-ink-900">Font</h2>
@@ -205,7 +230,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onPin}
+                onPin={onAddToBrand}
               />
             ))}
           </Section>
@@ -219,7 +244,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onPin}
+                onPin={onAddToBrand}
                 pinned
               />
             ))}
@@ -238,7 +263,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onPin}
+                onPin={onAddToBrand}
               />
             ))}
           </Section>
@@ -251,7 +276,7 @@ export function TextFontDrawer({
               family={f.family}
               selected={f.family === currentFamily}
               onPick={applyFont}
-              onPin={onPin}
+              onPin={onAddToBrand}
             />
           ))}
           {filtered.length === 0 && (
@@ -274,6 +299,46 @@ export function TextFontDrawer({
           <span>{FONT_CATALOG.length} fonts · loaded on demand from Bunny</span>
         </div>
       </div>
+
+      {/* Confirmation toast for "Add to Brand Kit". */}
+      {notice && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
+          <div className="pointer-events-auto rounded-md bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-white shadow-lg">
+            {notice}
+          </div>
+        </div>
+      )}
+
+      {/* Multi-brand picker — only when the creator has more than one brand kit. */}
+      {menuFamily && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Cancel"
+            className="absolute inset-0 bg-ink-900/30"
+            onClick={() => setMenuFamily(null)}
+          />
+          <div className="relative z-10 w-full max-w-[280px] rounded-xl border border-ink-200 bg-white p-3 shadow-2xl">
+            <div className="mb-2 text-[12px] font-semibold text-ink-900">
+              Add <span className="text-pink-700">{menuFamily}</span> to…
+            </div>
+            <ul className="max-h-56 space-y-0.5 overflow-y-auto">
+              {brandOpts.map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    onClick={() => void addToBrand(b.id, menuFamily)}
+                    className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-pink-50"
+                  >
+                    <span className="truncate">{b.name}</span>
+                    <Plus className="h-3.5 w-3.5 flex-shrink-0 text-ink-400" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
@@ -359,11 +424,11 @@ function FontRow({
             e.stopPropagation()
             void onPin(family)
           }}
-          aria-label={`Pin ${family} to brand`}
-          title="Pin to brand"
-          className="opacity-0 group-hover:opacity-100 rounded p-1 text-ink-400 hover:text-pink-600 hover:bg-pink-50 transition-opacity"
+          aria-label={`Add ${family} to Brand Kit`}
+          title="Add to Brand Kit"
+          className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-0.5 rounded p-1 text-ink-400 hover:text-pink-600 hover:bg-pink-50 transition-opacity"
         >
-          <Pin className="h-3.5 w-3.5" />
+          <Plus className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
