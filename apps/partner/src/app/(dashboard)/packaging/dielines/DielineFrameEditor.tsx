@@ -28,10 +28,12 @@ import {
   Maximize,
   Trash2,
   Plus,
+  ChevronLeft,
 } from 'lucide-react'
 import {
   FRAME_SCOPE,
   validateFrameLayout,
+  ElementRail,
   type Frame,
   type FrameKind,
   type FrameLayout,
@@ -385,6 +387,7 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
   onPatch: (id: string, p: Partial<Frame>) => void
   onSelect: (id: string) => void
 }) {
+  const [seeAllScope, setSeeAllScope] = useState<FrameScope | null>(null)
   return (
     <div>
       <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." />
@@ -448,21 +451,35 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
         </ul>
       </div>
 
-      {/* palette */}
-      <div className="px-4 py-3">
+      {/* palette — Canva-style slide rails per scope, "See all" drills into the
+          full scope grid (Pavel 2026-06-23). */}
+      <div className="overflow-x-clip px-4 py-3">
         <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Add a frame</p>
-        {PALETTE.map((g) => (
-          <div key={g.scope} className="mb-2">
-            <ScopeChip scope={g.scope} />
-            <div className="mt-1 flex flex-wrap gap-1">
-              {g.kinds.map((k) => (
-                <button key={k} onClick={() => onAdd(k)} className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[11px] hover:border-pink-300 hover:bg-pink-50">
-                  <Plus className="h-3 w-3" /> {KIND_LABEL[k]}
-                </button>
+        {seeAllScope ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setSeeAllScope(null)}
+              className="mb-3 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-600 hover:text-ink-900"
+            >
+              <ChevronLeft className="h-4 w-4" /> All frames
+            </button>
+            <div className="mb-2"><ScopeChip scope={seeAllScope} /></div>
+            <div className="flex flex-wrap gap-1">
+              {(PALETTE.find((g) => g.scope === seeAllScope)?.kinds ?? []).map((k) => (
+                <FrameChip key={k} kind={k} onAdd={onAdd} />
               ))}
             </div>
           </div>
-        ))}
+        ) : (
+          PALETTE.map((g) => (
+            <ElementRail key={g.scope} label={g.scope} onSeeAll={() => setSeeAllScope(g.scope)}>
+              {g.kinds.map((k) => (
+                <FrameChip key={k} kind={k} onAdd={onAdd} rail />
+              ))}
+            </ElementRail>
+          ))
+        )}
       </div>
     </div>
   )
@@ -525,4 +542,19 @@ function Toggle({ label, color, on, onChange }: { label: string; color: string; 
 
 function ScopeChip({ scope }: { scope: FrameScope }) {
   return <span className={`inline-flex items-center rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider ${SCOPE_COLOR[scope].chip}`}>{scope}</span>
+}
+
+function FrameChip({ kind, onAdd, rail }: { kind: FrameKind; onAdd: (k: FrameKind) => void; rail?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onAdd(kind)}
+      className={
+        'inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11px] hover:border-pink-300 hover:bg-pink-50 ' +
+        (rail ? 'shrink-0 snap-start whitespace-nowrap' : '')
+      }
+    >
+      <Plus className="h-3 w-3" /> {KIND_LABEL[kind]}
+    </button>
+  )
 }
