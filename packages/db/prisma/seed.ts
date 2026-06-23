@@ -231,13 +231,19 @@ async function main() {
   })
 
   // --- Admin user (Pavel) ---
+  // adminRole MUST be SUPER_ADMIN: since the P4.1 least-privilege flip a null
+  // adminRole holds ZERO capabilities, which hides every capability-gated surface
+  // (Design Studio Admin Mode, Design Templates, Finance, …) and makes their
+  // page guards redirect to /login?error=forbidden. Seeding it explicitly keeps
+  // a fresh dev DB fully usable. (Prod backfill: scripts/make-super-admin.mjs.)
   await prisma.user.upsert({
     where: { email: 'georgiev.pavel@gmail.com' },
-    update: { role: UserRole.ADMIN },
+    update: { role: UserRole.ADMIN, adminRole: 'SUPER_ADMIN' },
     create: {
       email: 'georgiev.pavel@gmail.com',
       name: 'Pavel',
       role: UserRole.ADMIN,
+      adminRole: 'SUPER_ADMIN',
     },
   })
 
