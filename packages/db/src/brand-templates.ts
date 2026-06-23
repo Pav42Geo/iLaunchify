@@ -244,7 +244,9 @@ export async function getOrCreateSystemTemplatesBrand(): Promise<string | null> 
     const user = await p.user.upsert({
       where: { email: SYSTEM_TEMPLATES_EMAIL },
       update: {},
-      create: { email: SYSTEM_TEMPLATES_EMAIL, name: 'iLaunchify Templates' },
+      // role is required (no default); the system templates owner is a CREATOR
+      // (it owns a CreatorProfile + Brand that back the shared template library).
+      create: { email: SYSTEM_TEMPLATES_EMAIL, name: 'iLaunchify Templates', role: 'CREATOR' },
     })
     const profile = await p.creatorProfile.upsert({
       where: { userId: user.id },
