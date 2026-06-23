@@ -211,6 +211,15 @@ product-scoped slots (Nutrition Facts, etc.) when a product context exists. On a
 bare die-line (admin authoring, no product) the pinned content + symbol/phrase
 frames must still be visible. Provenance per frame: `placedBy: PARTNER | ADMIN`.
 
+BUILT (commit c651d55): `Frame.pinnedContent { text?, symbolSlug? }` + source
+widened to PLATFORM|PARTNER|ADMIN. The shared `DielineFrameEditor` renders pinned
+text/symbol directly in the frame box, and the selected-frame panel has a
+"Pinned text / mark" input — so partner-placed phrases/symbols show on the canvas
+in BOTH the partner studio and the admin Curator. Persists via the existing Json
+`frames` column (no schema change). FOLLOW-UP: render pinned content in the
+creator Fabric Studio (CanvasLayoutShell / DieCutFrame) + a real symbol-library
+picker (PackagingSymbol) instead of free text.
+
 ## 11b. Admin design authoring on die-lines + AI generation (Pavel 2026-06-23)
 
 The admin pulls a die-line — even one already assigned to a specific package or a
