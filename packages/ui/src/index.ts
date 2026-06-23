@@ -47,6 +47,7 @@ export * from './primitives/row-actions-menu'
 // Object-view components
 export * from './components/SectionLabel'
 export * from './components/ElementRail'
+export * from './color'
 export * from './components/StatusPill'
 export * from './components/VerifyCheck'
 export * from './components/HeartFavorite'
