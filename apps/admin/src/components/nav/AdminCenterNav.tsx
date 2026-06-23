@@ -71,14 +71,12 @@ const TABS: TabDef[] = [
   {
     key: 'studio',
     label: 'Design Studio',
-    // Admin-mode flag — Studio surface can read ?adminMode=1 once Admin
-    // Mode ships. Today it's a forward-pointer that lands on the regular
-    // Studio shell.
-    href: `${CREATOR_BASE}/studio?adminMode=1`,
+    // Opens the real creator Design Studio in admin template-author mode (Admin Mode
+    // shipped 2026-06-23). Falls back to a blank surface if no die-cuts are seeded.
+    href: `${CREATOR_BASE}/template-author`,
     external: true,
     isActive: () => false,
     Icon: Palette,
-    comingSoon: true,
   },
 ]
 
