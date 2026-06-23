@@ -91,7 +91,7 @@ export function ComponentsDrawer({ productId }: { productId: string }) {
                   {row.packagingTypeName}
                 </div>
               </div>
-              <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-400">
+              <span className="shrink-0 text-[12px] uppercase tracking-wide text-ink-700">
                 {TIER_LABEL[row.tier] ?? row.tier}
               </span>
             </li>

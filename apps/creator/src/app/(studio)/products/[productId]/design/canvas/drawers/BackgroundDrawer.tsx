@@ -59,7 +59,7 @@ export function BackgroundDrawer({ canvas, brandAssets }: Props) {
       {/* Brand swatches */}
       <section>
         <div className="flex items-baseline justify-between mb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Brand swatches
             <span className="ml-1.5 text-pink-700 normal-case font-normal tracking-normal">
               · {brandAssets.brandName}
@@ -91,7 +91,7 @@ export function BackgroundDrawer({ canvas, brandAssets }: Props) {
 
       {/* Staples */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Label staples
         </div>
         <SwatchGrid swatches={STAPLE_SWATCHES} current={current} onPick={apply} />
@@ -99,7 +99,7 @@ export function BackgroundDrawer({ canvas, brandAssets }: Props) {
 
       {/* Custom hex */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Custom
         </div>
         <div className="flex items-center gap-2">

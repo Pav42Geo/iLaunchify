@@ -227,7 +227,7 @@ export function PhrasePlacementPanel(props: Props) {
       {/* Sub-section 1 — Mandatory phrases */}
       <div className="border-b border-ink-100 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Mandatory
           </h3>
           <span className="text-[10.5px] text-ink-500">
@@ -250,7 +250,7 @@ export function PhrasePlacementPanel(props: Props) {
       {/* Sub-section 2 — Recommended phrases */}
       <div className="border-b border-ink-100 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Recommended
           </h3>
           <span className="text-[10.5px] text-ink-500">

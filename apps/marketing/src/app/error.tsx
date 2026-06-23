@@ -25,7 +25,7 @@ export default function Error({
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+      <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-700">
         Something went wrong
       </p>
       <h1 className="mt-3 max-w-xl font-display text-2xl font-bold text-ink-900">
@@ -57,7 +57,7 @@ export default function Error({
 
       {isDev && (
         <div className="mt-8 w-full max-w-2xl text-left">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+          <p className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Dev error detail
           </p>
           <pre className="overflow-x-auto rounded-xl border border-ink-200 bg-zinc-50 p-4 text-[12px] leading-relaxed text-ink-800">

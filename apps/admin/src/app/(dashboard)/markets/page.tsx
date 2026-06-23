@@ -208,7 +208,7 @@ function Header({
     <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <div className="flex flex-wrap items-end justify-between gap-3 bg-[#F3EFE8] px-5 py-4">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+          <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
             Catalog
           </p>
           <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">

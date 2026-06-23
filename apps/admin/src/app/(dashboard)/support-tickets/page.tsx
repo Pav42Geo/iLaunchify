@@ -221,7 +221,7 @@ function Header({
       <div className="bg-[#F3EFE8] px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">Operate</p>
+            <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">Operate</p>
             <h1 className="mt-0.5 flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
               <LifeBuoy className="h-5 w-5 text-pink-600" aria-hidden="true" />
               Support tickets
@@ -284,7 +284,7 @@ function Kpi({
   }[tone]
   return (
     <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         <Icon className="h-3 w-3" aria-hidden="true" />
         {label}
       </p>
@@ -363,7 +363,7 @@ function FilterChips({
     <div className="space-y-2.5">
       {/* assignment (my queue / unassigned) */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
           Queue
         </span>
         {assignmentChips.map((a) => {
@@ -433,7 +433,7 @@ function FilterChips({
 
       {/* priority + category */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
           Priority
         </span>
         <Link
@@ -460,7 +460,7 @@ function FilterChips({
             </Link>
           )
         })}
-        <span className="ml-2 mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">
+        <span className="ml-2 mr-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
           Category
         </span>
         <Link
@@ -537,7 +537,7 @@ function TicketsTable({
                   >
                     {t.subject}
                   </Link>
-                  <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-400">
+                  <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-wider text-ink-700">
                     #{t.id.slice(-8)}
                     {breached && (
                       <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-[1px] text-[9px] font-semibold tracking-wider text-rose-700">
@@ -552,7 +552,7 @@ function TicketsTable({
                     {t.requester?.name ?? t.requester?.email ?? '—'}
                   </p>
                   <p className="mt-0.5 flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-ink-400">
+                    <span className="text-[12px] uppercase tracking-wider text-ink-700">
                       {t.requesterRole.toLowerCase()}
                     </span>
                     <TierBadge

@@ -215,7 +215,7 @@ export default async function LeadDetail({ params }: PageProps) {
       <header className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Inbox · Lead
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -416,7 +416,7 @@ function SnapshotCard({
           where /partners/apply stuffed everything into leadNotes. */}
       {Object.keys(legacy).length > 0 && (
         <details className="mt-4 rounded-xl border border-ink-100 bg-ink-50/40 p-3">
-          <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-wider text-ink-600">
+          <summary className="cursor-pointer text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Application metadata
           </summary>
           <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -458,7 +458,7 @@ function ServicesCard({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[12.5px] font-semibold text-ink-900">{label}</p>
-                  <p className="text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <p className="text-[12px] uppercase tracking-wider text-ink-700">
                     {s.status} · Disclosure: {s.disclosureLevel.replace(/_/g, ' ').toLowerCase()}
                   </p>
                 </div>
@@ -597,7 +597,7 @@ function Card({
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="mt-0.5 text-[12.5px] text-ink-900">{value}</dd>

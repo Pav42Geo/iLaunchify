@@ -48,7 +48,7 @@ export function PackagingPicker({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+      <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
         Packaging
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

@@ -37,7 +37,7 @@ export default async function AdminDielinesPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">Packaging · Die-lines</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Packaging · Die-lines</p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">Die-line review</h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
           Spot-check partner-confirmed die-lines (geometry + frame placement) and activate them for product packaging.

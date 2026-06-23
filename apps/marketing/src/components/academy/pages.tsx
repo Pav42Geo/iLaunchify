@@ -256,7 +256,7 @@ export async function AcademyLessonPage({ audience, courseSlug, lessonSlug }: { 
 
         {/* Curriculum rail */}
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">{course.title}</p>
+          <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{course.title}</p>
           <LessonList audience={audience} courseSlug={course.slug} lessons={siblings} activeLessonSlug={lesson.slug} />
         </aside>
       </div>

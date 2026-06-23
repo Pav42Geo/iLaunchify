@@ -186,7 +186,7 @@ export function RowActionSeparator() {
 
 export function RowActionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Dropdown.Label className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+    <Dropdown.Label className="px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
       {children}
     </Dropdown.Label>
   )

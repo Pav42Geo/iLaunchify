@@ -171,7 +171,7 @@ export function AppHeaderUserMenu({
             >
               <span className="h-7 w-7 flex-shrink-0 rounded-md bg-gradient-to-br from-pink-400 to-pink-600" />
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+                <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
                   Active brand
                 </div>
                 <div className="truncate text-[13px] font-semibold text-ink-900">

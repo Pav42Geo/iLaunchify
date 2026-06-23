@@ -58,7 +58,7 @@ export default async function PackingTypesPage() {
     <div className="space-y-5">
       {/* Cream hero */}
       <div className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">
           Asset management · Taxonomy
         </p>
         <h1 className="mt-1 flex items-center gap-2 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -75,7 +75,7 @@ export default async function PackingTypesPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[['Total types', total], ['Active', active], ['Base + presets', multi], ['Subscription', subs]].map(([l, v]) => (
           <div key={l as string} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">{l}</p>
+            <p className="text-[12px] font-bold uppercase tracking-wide text-ink-700">{l}</p>
             <p className="mt-1 font-display text-[22px] font-bold text-ink-900">{v}</p>
           </div>
         ))}

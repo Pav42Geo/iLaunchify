@@ -115,7 +115,7 @@ export function PartnerTierPill({ partnerId, currentTier, tierChangedAt }: Props
           <div>
             <label
               htmlFor="tier-reason"
-              className="block text-[10px] font-semibold uppercase tracking-wider text-ink-500"
+              className="block text-[12px] font-bold uppercase tracking-wider text-ink-700"
             >
               Reason (optional, audit-logged)
             </label>

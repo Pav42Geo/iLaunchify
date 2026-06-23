@@ -112,7 +112,7 @@ export function NutritionFactsToolbar({ canvas, active, brandAssets }: Props) {
             NUTRITION_FACTS_MIN_SCALE so the "Nutrition Facts" title
             stays ≥ 13pt per 21 CFR 101.9(d)(1)(i)(B). */}
         <div className="flex items-center gap-1.5 px-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             W
           </span>
           <input
@@ -275,7 +275,7 @@ function ColorTrigger({
               <div className="my-2.5 border-t border-ink-100" />
             </>
           )}
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1.5">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-1.5">
             Staples
           </div>
           <SwatchRow

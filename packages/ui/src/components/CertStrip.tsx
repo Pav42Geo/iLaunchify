@@ -60,7 +60,7 @@ export function CertStrip({
   if (compact) {
     return (
       <section className={cn('', className)}>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+        <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
           {resolvedHeading}
         </div>
         <ul className="flex flex-wrap items-start gap-4">
@@ -82,7 +82,7 @@ export function CertStrip({
       )}
     >
       <div className="max-w-[1100px] mx-auto px-6">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 text-center mb-5">
+        <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 text-center mb-5">
           {resolvedHeading}
         </div>
         <ul className="flex flex-wrap items-center justify-center gap-6 sm:gap-8">

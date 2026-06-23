@@ -135,7 +135,7 @@ export function KpiWidget({
               {iconNode}
             </span>
           )}
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
         </div>

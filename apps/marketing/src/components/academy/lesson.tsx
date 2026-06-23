@@ -20,7 +20,7 @@ export function VideoFrame({ provider, title }: { provider?: string | null; titl
           <PlayCircle className="h-9 w-9" />
         </span>
         <p className="px-6 text-[13px] font-medium text-ink-300">{title}</p>
-        {provider && <p className="text-[11px] uppercase tracking-[0.12em] text-ink-500">{provider} video</p>}
+        {provider && <p className="text-[12px] uppercase tracking-[0.12em] text-ink-700">{provider} video</p>}
       </div>
     </div>
   )
@@ -64,7 +64,7 @@ export function PrevNext({
         <Link href={lessonHref(audience, courseSlug, prev.slug)} className="group flex max-w-[48%] items-center gap-2 rounded-xl border border-ink-200 px-4 py-3 text-left transition-colors hover:border-pink-300 hover:bg-pink-50/30">
           <ChevronLeft className="h-4 w-4 shrink-0 text-ink-400 group-hover:text-pink-600" />
           <span className="min-w-0">
-            <span className="block text-[10.5px] uppercase tracking-[0.1em] text-ink-400">Previous</span>
+            <span className="block text-[12px] uppercase tracking-[0.1em] text-ink-700">Previous</span>
             <span className="block truncate text-[13px] font-medium text-ink-900">{prev.title}</span>
           </span>
         </Link>
@@ -72,7 +72,7 @@ export function PrevNext({
       {next ? (
         <Link href={lessonHref(audience, courseSlug, next.slug)} className="group flex max-w-[48%] items-center gap-2 rounded-xl border border-ink-200 px-4 py-3 text-right transition-colors hover:border-pink-300 hover:bg-pink-50/30">
           <span className="min-w-0">
-            <span className="block text-[10.5px] uppercase tracking-[0.1em] text-ink-400">Next</span>
+            <span className="block text-[12px] uppercase tracking-[0.1em] text-ink-700">Next</span>
             <span className="block truncate text-[13px] font-medium text-ink-900">{next.title}</span>
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-ink-400 group-hover:text-pink-600" />

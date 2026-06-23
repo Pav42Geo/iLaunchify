@@ -134,7 +134,7 @@ export function CategoryFormDialog({
               <div>
                 <label
                   htmlFor="mainCategory"
-                  className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                  className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                 >
                   Main category
                 </label>
@@ -154,7 +154,7 @@ export function CategoryFormDialog({
               <div>
                 <label
                   htmlFor="labelingType"
-                  className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                  className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                 >
                   Product domain
                 </label>
@@ -258,7 +258,7 @@ function Field({
     <div>
       <label
         htmlFor={id}
-        className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+        className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
       >
         {label}
         {required && <span className="ml-1 text-pink-500">*</span>}

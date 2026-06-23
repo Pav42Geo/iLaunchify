@@ -232,7 +232,7 @@ export function CustomizeRail({
               <h4 className="text-[12.5px] font-semibold text-ink-900">
                 Optional add-ons
               </h4>
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+              <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
                 {addOnIds.length} on
               </span>
             </header>

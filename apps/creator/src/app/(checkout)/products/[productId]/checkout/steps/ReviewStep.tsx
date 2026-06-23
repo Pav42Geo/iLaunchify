@@ -307,7 +307,7 @@ function ReportCard({
         ) : (
           <FileWarning className="h-3.5 w-3.5 text-amber-700" />
         )}
-        <h3 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+        <h3 className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
           {title}
         </h3>
       </header>

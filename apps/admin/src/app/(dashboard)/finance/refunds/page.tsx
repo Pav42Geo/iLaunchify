@@ -92,7 +92,7 @@ export default async function FinanceRefundsPage({
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-7 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">Finance</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Refunds
         </h1>
@@ -142,7 +142,7 @@ export default async function FinanceRefundsPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
                   <th className="px-4 py-2.5 font-semibold">
                     <Link href={sortHref('date')} className="hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500">
                       Date {sort === 'date' ? (dir === 'desc' ? '↓' : '↑') : ''}
@@ -209,7 +209,7 @@ function Kpi({ label, value, tone = 'ink' }: { label: string; value: string; ton
   const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-amber-700', red: 'text-red-700' }[tone]
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
-      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">{label}</div>
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{label}</div>
       <div className={`mt-1 font-display text-[20px] font-bold tabular-nums ${toneCls}`}>{value}</div>
     </div>
   )

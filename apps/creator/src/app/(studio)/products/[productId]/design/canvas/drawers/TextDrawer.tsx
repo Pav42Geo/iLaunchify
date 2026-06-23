@@ -68,7 +68,7 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
     <div className="space-y-6">
       {/* New Text Field */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Add custom text
         </div>
         <div className="flex gap-1.5">
@@ -103,7 +103,7 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
 
       {/* Font Combinations */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Font Combinations
           {brandAssets.fonts.length > 0 && (
             <span className="ml-2 inline-block text-pink-700 normal-case font-normal tracking-normal">
@@ -139,7 +139,7 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
 
       {/* Ready-to-Use chip library */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Ready-to-Use
         </div>
         <div className="flex gap-1 overflow-x-auto pb-2 mb-2.5 -mx-4 px-4">

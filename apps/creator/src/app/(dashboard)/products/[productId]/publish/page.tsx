@@ -108,7 +108,7 @@ export default async function PublishStubPage({
         </Card>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-700">
             Available channels
           </h2>
           {channels.map((c) => {

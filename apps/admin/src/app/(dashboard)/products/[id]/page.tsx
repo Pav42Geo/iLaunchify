@@ -856,7 +856,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
 
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Products & Categories · Review
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -997,13 +997,13 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               <Row label="Base price">
                 <span className="tabular-nums">
                   ${(template.priceFloorCents / 100).toFixed(2)}{' '}
-                  <span className="text-[10.5px] uppercase tracking-wider text-ink-500">USD</span>
+                  <span className="text-[12px] uppercase tracking-wider text-ink-700">USD</span>
                 </span>
               </Row>
               <Row label="Unit cost">
                 <span className="tabular-nums">
                   ${(template.unitCostCents / 100).toFixed(2)}{' '}
-                  <span className="text-[10.5px] uppercase tracking-wider text-ink-500">USD</span>
+                  <span className="text-[12px] uppercase tracking-wider text-ink-700">USD</span>
                 </span>
               </Row>
             </dl>
@@ -1024,7 +1024,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             <dl className="divide-y divide-ink-100">
               <Row label="Total recipe weight">
                 <span className="tabular-nums">{totalWeightG.toFixed(1)}g</span>{' '}
-                <span className="text-[10.5px] uppercase tracking-wider text-ink-500">
+                <span className="text-[12px] uppercase tracking-wider text-ink-700">
                   across {template.ingredientSlots.length} slot{template.ingredientSlots.length === 1 ? '' : 's'}
                 </span>
               </Row>
@@ -1057,7 +1057,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 <Row label="Nutrient overrides" multiline>
                   <table className="mt-1 w-full text-[12px]">
                     <thead>
-                      <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                      <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
                         <th className="pr-2 font-semibold">Nutrient</th>
                         <th className="pr-2 font-semibold">Value</th>
                         <th className="font-semibold">Reason</th>
@@ -1188,7 +1188,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                       <div className="font-mono text-[12.5px] font-semibold tabular-nums text-ink-900">
                         ${(p.basePriceCents / 100).toFixed(2)}
                       </div>
-                      <div className="mt-0.5 text-[10.5px] uppercase tracking-wider text-ink-500">
+                      <div className="mt-0.5 text-[12px] uppercase tracking-wider text-ink-700">
                         {p.leadTimeDays}d lead
                       </div>
                     </div>
@@ -1285,7 +1285,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                             ? 'Base'
                             : `${f.priceDeltaCents > 0 ? '+' : ''}$${(f.priceDeltaCents / 100).toFixed(2)}`}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-ink-500">
+                        <div className="text-[12px] uppercase tracking-wider text-ink-700">
                           delta / unit
                         </div>
                       </div>
@@ -1308,13 +1308,13 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               <Row label="Base price (floor)">
                 <span className="tabular-nums">
                   ${(template.priceFloorCents / 100).toFixed(2)}{' '}
-                  <span className="text-[10.5px] uppercase tracking-wider text-ink-500">USD</span>
+                  <span className="text-[12px] uppercase tracking-wider text-ink-700">USD</span>
                 </span>
               </Row>
               <Row label="Unit cost">
                 <span className="tabular-nums">
                   ${(template.unitCostCents / 100).toFixed(2)}{' '}
-                  <span className="text-[10.5px] uppercase tracking-wider text-ink-500">USD</span>
+                  <span className="text-[12px] uppercase tracking-wider text-ink-700">USD</span>
                 </span>
               </Row>
               {partner && (
@@ -1343,7 +1343,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-[12px]">
                   <thead>
-                    <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                    <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
                       <th className="pb-1.5 pr-3 font-semibold">Container</th>
                       <th className="pb-1.5 pr-3 font-semibold">MOQ range</th>
                       <th className="pb-1.5 pr-3 font-semibold text-right">Cost / unit</th>
@@ -1405,7 +1405,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             >
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
                     <th className="pb-1.5 pr-3 font-semibold">Key</th>
                     <th className="pb-1.5 font-semibold">Value</th>
                   </tr>
@@ -1578,7 +1578,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                   <Row label="Max flavors / pack">
                     <span className="tabular-nums">
                       {maxFlavorsPerPack}{' '}
-                      <span className="text-[10.5px] uppercase tracking-wider text-ink-500">
+                      <span className="text-[12px] uppercase tracking-wider text-ink-700">
                         distinct
                       </span>
                     </span>
@@ -1599,7 +1599,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             >
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
                     <th className="pb-1.5 pr-3 font-semibold">Fee</th>
                     <th className="pb-1.5 pr-3 font-semibold">Basis</th>
                     <th className="pb-1.5 pr-3 font-semibold text-right">Amount</th>
@@ -1707,7 +1707,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 Open in partner builder
               </a>
               <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-1.5">
-                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+                <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
                   <Hash className="mr-0.5 inline h-3 w-3" aria-hidden="true" />
                   Product ID
                 </span>
@@ -2111,7 +2111,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">
@@ -2184,7 +2184,7 @@ function PendingEditsDiff({
               key={f.key}
               className="grid grid-cols-[120px,1fr,1fr] items-start gap-3 text-[12.5px]"
             >
-              <div className="pt-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="pt-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
                 {f.label}
               </div>
               <div className="rounded-lg border border-ink-100 bg-white px-2.5 py-1.5 text-ink-600 line-through">
@@ -2261,7 +2261,7 @@ function Row({
         multiline ? '' : 'sm:grid-cols-[160px,1fr] sm:gap-3',
       )}
     >
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </span>
       <span
@@ -2318,7 +2318,7 @@ function MediaAssetRow({
         )}
         aria-hidden="true"
       />
-      <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <span className="shrink-0 text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </span>
       <span className="truncate font-mono text-[11px] text-ink-600" title={assetId}>

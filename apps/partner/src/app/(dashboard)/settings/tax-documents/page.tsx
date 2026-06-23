@@ -55,7 +55,7 @@ export default async function TaxDocumentsPage({
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Settings
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -100,7 +100,7 @@ export default async function TaxDocumentsPage({
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-ink-200 bg-ink-50/40 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
               Gross paid out · {selectedYear}
             </div>
             <div className="mt-1 font-display text-[26px] font-bold text-ink-900">

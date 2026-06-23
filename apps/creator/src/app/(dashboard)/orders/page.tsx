@@ -246,7 +246,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
           </div>
 
           <div className="mt-3">
-            <div className="mb-1 flex items-center gap-1 text-[10.5px] uppercase tracking-[0.05em] text-ink-500">
+            <div className="mb-1 flex items-center gap-1 text-[12px] uppercase tracking-[0.05em] text-ink-700">
               {(['Approvals', 'Production', 'Shipping', 'Delivered'] as const).map(
                 (lbl, i) => (
                   <span key={lbl} className={i + 1 <= phase ? 'text-ink-700' : ''}>
@@ -345,7 +345,7 @@ function OrderTable({ orders }: { orders: OrderRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[13px]">
           <thead>
-            <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+            <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
               <th className="px-5 py-2.5 font-semibold">Order</th>
               <th className="px-3 py-2.5 font-semibold">Product</th>
               <th className="px-3 py-2.5 font-semibold">Status</th>
@@ -434,7 +434,7 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
 
   return (
     <div className="flex w-[180px] flex-shrink-0 flex-col items-end">
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+      <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
         Total
       </div>
       <div className="font-display text-[26px] font-semibold leading-none tracking-[-0.02em] text-ink-900 tabular-nums">
@@ -454,7 +454,7 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
         <dl className="mt-2 w-full rounded-md border border-ink-200 bg-[#FBFAF7] px-3 py-2 text-[11.5px]">
           {partnerBreakdown.length > 0 && (
             <>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-500">
+              <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
                 Production
               </div>
               {partnerBreakdown.map((p, i) => (
@@ -568,7 +568,7 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
   return (
     <div className="flex items-center gap-3 rounded-lg bg-[#FBFAF7] px-3 py-2 text-[12.5px]">
       <Icon className={`h-4 w-4 flex-shrink-0 ${iconCls}`} />
-      <span className="min-w-[6rem] text-[10.5px] font-semibold uppercase tracking-[0.04em] text-ink-500">
+      <span className="min-w-[6rem] text-[12px] font-bold uppercase tracking-[0.04em] text-ink-700">
         {role}
       </span>
       <span className="flex-1 truncate text-ink-900">{partnerName}</span>

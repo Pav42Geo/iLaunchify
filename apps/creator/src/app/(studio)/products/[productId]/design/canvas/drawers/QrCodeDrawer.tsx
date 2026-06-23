@@ -64,7 +64,7 @@ export function QrCodeDrawer({ canvas }: Props) {
   return (
     <div className="space-y-5">
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Content
         </div>
         <input
@@ -81,7 +81,7 @@ export function QrCodeDrawer({ canvas }: Props) {
       </section>
 
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Colors
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -95,7 +95,7 @@ export function QrCodeDrawer({ canvas }: Props) {
       </section>
 
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Preview
         </div>
         <div className="rounded-md border border-ink-200 bg-white p-3 flex items-center justify-center min-h-[180px]">

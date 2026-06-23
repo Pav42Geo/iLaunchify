@@ -220,7 +220,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
                 <div>
                   <label
                     htmlFor={`${titleId}-niche`}
-                    className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                   >
                     Niche
                     <span className="ml-1 text-pink-500">*</span>
@@ -241,7 +241,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
                 <div>
                   <label
                     htmlFor={`${titleId}-slug`}
-                    className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                   >
                     Slug (kebab) — auto-derived if blank
                   </label>
@@ -258,7 +258,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
               <div>
                 <label
                   htmlFor={`${titleId}-desc`}
-                  className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                  className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                 >
                   Description
                   <span className="ml-1 text-pink-500">*</span>
@@ -277,7 +277,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
                 <div className="sm:col-span-2">
                   <label
                     htmlFor={`${titleId}-weight`}
-                    className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                    className="flex items-center justify-between text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                   >
                     Weight (0–100)
                     <span className="font-display text-[13px] font-semibold tabular-nums text-ink-900">
@@ -318,7 +318,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
 
               <div className="rounded-xl border border-ink-200 bg-zinc-50/40">
                 <div className="flex items-center justify-between border-b border-ink-100 px-3 py-2">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
                     Conditions ({conditions.length})
                   </p>
                   <button
@@ -427,7 +427,7 @@ function ConditionRow({
             </option>
           ))}
         </select>
-        <span className="ml-auto text-[10.5px] uppercase tracking-[0.08em] text-ink-400">
+        <span className="ml-auto text-[12px] uppercase tracking-[0.08em] text-ink-700">
           {condition.values.length} selected · OR within
         </span>
         <button
@@ -445,7 +445,7 @@ function ConditionRow({
           <div className="space-y-2">
             {grouped.map(([groupLabel, items]) => (
               <div key={groupLabel}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-ink-400">
+                <p className="text-[12px] uppercase tracking-[0.1em] text-ink-700">
                   {groupLabel}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1.5">

@@ -72,7 +72,7 @@ export function CompatForm({
       <div className="grid gap-5 md:grid-cols-2">
         {/* Container category */}
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+          <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
             Container category
           </span>
           <select
@@ -95,7 +95,7 @@ export function CompatForm({
 
         {/* Decoration method */}
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+          <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
             Decoration method
           </span>
           <select
@@ -120,7 +120,7 @@ export function CompatForm({
 
       {/* Notes */}
       <label className="block">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Notes <span className="font-normal normal-case text-ink-400">(optional)</span>
         </span>
         <textarea

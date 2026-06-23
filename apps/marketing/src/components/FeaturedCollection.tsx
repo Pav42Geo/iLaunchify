@@ -129,7 +129,7 @@ export function FeaturedCollection({
                 </span>
               </div>
               <div className="p-4 flex-1 flex flex-col">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-1">
+                <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-1">
                   {t.niche}
                 </div>
                 <h3 className="font-display text-[16px] font-bold leading-tight tracking-[-0.005em] text-ink-900 mb-2.5 flex-1">

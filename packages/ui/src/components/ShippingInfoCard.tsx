@@ -39,7 +39,7 @@ export function ShippingInfoCard({
       )}
     >
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5">
+        <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
           Shipping
         </div>
         <div className="text-2xl font-bold text-ink-900 leading-none">
@@ -48,7 +48,7 @@ export function ShippingInfoCard({
         <div className="text-[12px] text-ink-500 mt-1">({serviceLabel})</div>
       </div>
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5">
+        <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
           Ship to
         </div>
         <div className="flex items-center gap-2">

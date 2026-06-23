@@ -99,7 +99,7 @@ export function MarketplaceFilters({
   return (
     <aside className="sticky top-[124px] flex max-h-[calc(100vh-140px)] flex-col overflow-y-auto pr-1">
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
+        <span className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700">
           Filter
         </span>
         {anyActive && (

@@ -218,7 +218,7 @@ export function FontsSection({
                     >
                       {f.family}
                     </span>
-                    <span className="text-[10px] uppercase tracking-wider text-ink-400">custom</span>
+                    <span className="text-[12px] uppercase tracking-wider text-ink-700">custom</span>
                   </button>
                   <button
                     type="button"
@@ -326,7 +326,7 @@ export function FontsSection({
                   >
                     {font.family}
                   </div>
-                  <div className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-400">
+                  <div className="mt-0.5 text-[12px] uppercase tracking-wider text-ink-700">
                     {font.weight} · {font.style}
                   </div>
                 </div>

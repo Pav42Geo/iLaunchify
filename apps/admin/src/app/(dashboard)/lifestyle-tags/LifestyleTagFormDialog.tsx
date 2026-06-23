@@ -141,7 +141,7 @@ export function LifestyleTagFormDialog({
               <div>
                 <label
                   htmlFor={`${titleId}-group`}
-                  className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                  className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                 >
                   Group
                 </label>
@@ -173,7 +173,7 @@ export function LifestyleTagFormDialog({
                 <div>
                   <label
                     htmlFor={`${titleId}-accent`}
-                    className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
                   >
                     Accent (hex)
                   </label>
@@ -269,7 +269,7 @@ function Field({
     <div>
       <label
         htmlFor={id}
-        className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500"
+        className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700"
       >
         {label}
         {required && <span className="ml-1 text-pink-500">*</span>}

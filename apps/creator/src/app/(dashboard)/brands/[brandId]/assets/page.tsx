@@ -109,7 +109,7 @@ export default async function BrandAssetsPage({ params }: PageProps) {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </Link>
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-500">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
           Brand Assets
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{brand.name}</h1>

@@ -291,7 +291,7 @@ export function CheckoutWizard({
               <AppHeaderBrandMark />
             </Link>
             <div className="min-w-0 border-l border-ink-200 pl-4">
-              <div className="truncate text-[11px] uppercase tracking-[0.06em] text-ink-500">
+              <div className="truncate text-[12px] uppercase tracking-[0.06em] text-ink-700">
                 {brandName}
               </div>
               <div className="truncate text-[14px] font-semibold text-ink-900">

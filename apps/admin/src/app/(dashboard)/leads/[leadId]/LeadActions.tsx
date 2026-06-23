@@ -192,7 +192,7 @@ export function StatusCard({
             </button>
             {showDisqualifyReason && (
               <div className="mt-1">
-                <label htmlFor="dq-reason" className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+                <label htmlFor="dq-reason" className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
                   Reason (optional)
                 </label>
                 <textarea
@@ -433,7 +433,7 @@ export function NotesThread({
     <div className="space-y-3">
       {/* Add form */}
       <form onSubmit={onSubmit} className="space-y-2 rounded-xl border border-ink-100 bg-ink-50/40 p-3">
-        <label htmlFor="lead-note" className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+        <label htmlFor="lead-note" className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Add note
         </label>
         <textarea

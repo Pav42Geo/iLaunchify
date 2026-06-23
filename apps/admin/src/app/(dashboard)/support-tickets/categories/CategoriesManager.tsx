@@ -107,7 +107,7 @@ export function CategoriesManager({
               <tr key={c.id} className={cn('hover:bg-ink-50/40', !c.isActive && 'opacity-60')}>
                 <td className="px-4 py-3 align-top">
                   <p className="font-semibold text-ink-900">{c.name}</p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-400">{c.slug}</p>
+                  <p className="mt-0.5 font-mono text-[12px] uppercase tracking-wider text-ink-700">{c.slug}</p>
                 </td>
                 <td className="px-4 py-3 align-top">
                   <span className={cn('inline-flex rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', PRIORITY_TONE[c.defaultPriority] ?? PRIORITY_TONE.MEDIUM)}>

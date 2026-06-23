@@ -71,7 +71,7 @@ export default async function SampleCheckoutPage({ params }: { params: Promise<{
       <header className="sticky top-0 z-20 border-b border-ink-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.06em] text-ink-500">Order a sample</div>
+            <div className="text-[12px] uppercase tracking-[0.06em] text-ink-700">Order a sample</div>
             <div className="truncate text-[15px] font-semibold text-ink-900">{product.name}</div>
           </div>
           <Link href={`/products/${product.id}`} className="text-[12.5px] font-medium text-ink-500 hover:text-pink-600">

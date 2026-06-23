@@ -232,7 +232,7 @@ export function ProductionManifestView({
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{title}</h4>
+      <h4 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{title}</h4>
       <div className="space-y-1">{children}</div>
     </div>
   )
@@ -241,7 +241,7 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[130px,1fr] items-baseline gap-2 text-[13px]">
-      <span className="text-[11px] uppercase tracking-wide text-ink-400">{label}</span>
+      <span className="text-[12px] uppercase tracking-wide text-ink-700">{label}</span>
       <span className="text-ink-800">{value}</span>
     </div>
   )

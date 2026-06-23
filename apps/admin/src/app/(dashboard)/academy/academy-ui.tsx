@@ -26,7 +26,7 @@ export function AcademyHero({
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">{groupLabel}</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">{groupLabel}</p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">{title}</h1>
           <p className="mt-1 max-w-2xl text-[13px] text-ink-600">{subtitle}</p>
         </div>
@@ -71,7 +71,7 @@ export function KpiCard({
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <div className="flex-1">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
         <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">{value.toLocaleString()}</p>
         {subline && <p className="mt-1 text-[10.5px] text-ink-500">{subline}</p>}
       </div>
@@ -93,7 +93,7 @@ export function KpiCard({
 export function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">{label}</span>
+      <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{label}</span>
       {children}
     </div>
   )

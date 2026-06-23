@@ -84,7 +84,7 @@ export default async function CancellationsQueuePage({
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           <RotateCcw className="h-3 w-3" /> Inbox · Cancellation requests
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -153,7 +153,7 @@ export default async function CancellationsQueuePage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
                   <th className="px-4 py-2.5 font-semibold">Order</th>
                   <th className="px-4 py-2.5 font-semibold">Reason</th>
                   <th className="px-4 py-2.5 font-semibold">Requested by</th>

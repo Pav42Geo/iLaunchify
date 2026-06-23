@@ -183,7 +183,7 @@ export function DeclaredPanelPanel({
           </div>
 
           <div>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
               Per serving
             </div>
             <div className="space-y-1">
@@ -237,7 +237,7 @@ export function DeclaredPanelPanel({
           </Field>
 
           <div>
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
               Contains (allergens)
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -304,7 +304,7 @@ export function DeclaredPanelPanel({
 
         {/* Right — live preview */}
         <div className="lg:justify-self-end">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Live preview
           </div>
           <NutritionFactsRenderer data={panel} widthPx={300} declaredByManufacturer />
@@ -368,7 +368,7 @@ export function DeclaredPanelPanel({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs uppercase tracking-wider text-ink-500">{label}</Label>
+      <Label className="text-xs uppercase tracking-wider text-ink-700">{label}</Label>
       {children}
     </div>
   )

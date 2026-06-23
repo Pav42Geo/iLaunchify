@@ -106,7 +106,7 @@ export default async function PricingPage({
           <table className="w-full text-[13px]">
             <thead className="bg-cream">
               <tr className="border-b border-ink-200">
-                <th className="text-left px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 w-[34%]">
+                <th className="text-left px-6 py-4 text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 w-[34%]">
                   Feature
                 </th>
                 <th className="text-center px-4 py-4 font-display text-[15px] font-bold text-ink-900">

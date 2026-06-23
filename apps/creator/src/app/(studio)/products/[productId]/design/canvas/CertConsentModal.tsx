@@ -70,7 +70,7 @@ export function CertConsentModal({
 
           {variants.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
                 Variant
               </div>
               <div className="flex flex-wrap gap-1.5">

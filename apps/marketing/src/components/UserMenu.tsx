@@ -142,7 +142,7 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
             >
               <span className="w-7 h-7 rounded-md bg-gradient-to-br from-pink-400 to-pink-600 flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+                <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
                   Active brand
                 </div>
                 <div className="text-[13px] font-semibold text-ink-900 truncate">

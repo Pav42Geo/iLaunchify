@@ -133,7 +133,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-ink-200 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+                <tr className="border-b border-ink-200 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700">
                   <th className="py-1.5 pr-2">INCI name</th>
                   <th className="py-1.5 px-1 text-right">% w/w</th>
                   <th className="py-1.5 px-1 text-center">Color</th>

@@ -233,7 +233,7 @@ function Header({
   return (
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex flex-col gap-2">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Marketplace · Lifestyle Tags
         </p>
         <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -316,7 +316,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900">

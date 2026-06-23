@@ -442,7 +442,7 @@ export function TextFontDrawer({
                 <span>
                   {role === 'HEADING' ? 'Heading' : role === 'SUBHEADING' ? 'Subheading' : 'Body'}
                 </span>
-                <span className="text-[10px] uppercase tracking-wide text-ink-400">text style</span>
+                <span className="text-[12px] uppercase tracking-wide text-ink-700">text style</span>
               </button>
             ))}
           </div>
@@ -624,7 +624,7 @@ function MoodChip({
 function BrandFontsEmpty() {
   return (
     <section className="mx-4 my-3 rounded-md border border-dashed border-ink-300 bg-ink-50/60 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         Brand fonts
       </div>
       <p className="mt-1 text-[11px] text-ink-600 leading-[1.4]">

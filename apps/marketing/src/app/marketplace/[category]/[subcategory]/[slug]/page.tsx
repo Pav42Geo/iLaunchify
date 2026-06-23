@@ -239,7 +239,7 @@ export default async function ProductDetailPage({
           <DetailGallery template={template} certs={certs} images={galleryImages} />
 
           <div className="flex flex-col">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-500 mb-2">
+            <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700 mb-2">
               {template.niche}
             </div>
             <h1 className="font-display text-[28px] lg:text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-ink-900 mb-3">
@@ -558,7 +558,7 @@ function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDeta
 
       <aside>
         <div className="border border-ink-200 rounded-lg p-5 bg-white">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+          <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
             Size chart
           </div>
           <table className="w-full text-[13px]">
@@ -612,7 +612,7 @@ function RecipeNutritionTab({
           )}
         </div>
         <div className="lg:justify-self-end">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+          <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
             {domain.kind === 'COSMETIC' ? 'INCI declaration' : 'Guaranteed Analysis'}
           </div>
           {domain.kind === 'COSMETIC' ? (
@@ -649,7 +649,7 @@ function RecipeNutritionTab({
         <p className="text-[15px] text-ink-700 leading-relaxed mb-6">
           {detail.about}
         </p>
-        <div className="text-[13px] text-ink-500 mb-2 uppercase tracking-[0.06em] font-semibold">
+        <div className="text-[13px] text-ink-700 mb-2 uppercase tracking-[0.06em] font-bold">
           Allergens to be aware of
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -677,7 +677,7 @@ function RecipeNutritionTab({
           )}
           {detail.nutrition && (
             <>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-3">
+              <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
                 Supplement Facts (base recipe)
               </div>
               <NutritionFactsRenderer

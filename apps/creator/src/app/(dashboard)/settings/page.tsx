@@ -67,7 +67,7 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       {/* Hero + account summary */}
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Creator · Settings
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -191,7 +191,7 @@ export default async function SettingsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-500">{title}</h2>
+      <h2 className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">{title}</h2>
       <div className="grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   )

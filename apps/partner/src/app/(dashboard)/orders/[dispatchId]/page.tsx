@@ -129,7 +129,7 @@ export default async function DispatchDetailPage({
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Manufacturing · {isProduct ? 'Production' : 'Label print'} dispatch
             </p>
             <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -439,7 +439,7 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</dt>
+      <dt className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</dt>
       <dd
         className={`mt-1 ${emphasis ? 'font-display text-[18px] font-bold text-ink-900' : 'text-[14px] text-ink-800'} ${
           mono ? 'font-mono text-[13px]' : ''

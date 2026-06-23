@@ -37,7 +37,7 @@ export default async function ChannelsSettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
+        <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Step 3 of 5
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">

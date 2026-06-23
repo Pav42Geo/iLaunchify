@@ -148,11 +148,11 @@ function AddSurfaceForm({
     <div className="rounded-md border border-ink-200 bg-ink-50 p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-500">Name</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-700">Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} disabled={isPending} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-500">Area (sq in)</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-700">Area (sq in)</Label>
           <Input
             type="number"
             min={0}
@@ -163,7 +163,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-500">Bleed (mm)</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-700">Bleed (mm)</Label>
           <Input
             type="number"
             min={0}
@@ -174,7 +174,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-500">DPI</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-700">DPI</Label>
           <Input
             type="number"
             min={0}
@@ -184,7 +184,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-500">Color mode</Label>
+          <Label className="text-xs uppercase tracking-wider text-ink-700">Color mode</Label>
           <select
             value={colorMode}
             onChange={(e) => setColorMode(e.target.value)}

@@ -85,7 +85,7 @@ export function PreferencesForm({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-start" className="text-xs uppercase tracking-wide text-ink-500">
+          <Label htmlFor="quiet-start" className="text-xs uppercase tracking-wide text-ink-700">
             Start (UTC)
           </Label>
           <Input
@@ -97,7 +97,7 @@ export function PreferencesForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-end" className="text-xs uppercase tracking-wide text-ink-500">
+          <Label htmlFor="quiet-end" className="text-xs uppercase tracking-wide text-ink-700">
             End (UTC)
           </Label>
           <Input
@@ -131,7 +131,7 @@ export function PreferencesForm({
       </div>
 
       <div className="pt-4">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-500">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-700">
           Notification types
         </h3>
         <div className="overflow-hidden rounded-md border border-ink-200">

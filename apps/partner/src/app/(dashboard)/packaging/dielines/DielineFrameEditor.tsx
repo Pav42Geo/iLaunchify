@@ -391,7 +391,7 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
 
       {/* Preflight — must clear before the die-line can be confirmed. */}
       <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/60'}`}>
-        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Preflight</p>
+        <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Preflight</p>
         {issues.length === 0 ? (
           <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
         ) : (
@@ -434,7 +434,7 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
 
       {/* placed list */}
       <div className="border-b border-ink-100 px-4 py-2">
-        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">On the die-line ({layout.frames.length})</p>
+        <p className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">On the die-line ({layout.frames.length})</p>
         <ul className="space-y-0.5">
           {layout.frames.map((f) => (
             <li key={f.id}>
@@ -450,7 +450,7 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
 
       {/* palette */}
       <div className="px-4 py-3">
-        <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Add a frame</p>
+        <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Add a frame</p>
         {PALETTE.map((g) => (
           <div key={g.scope} className="mb-2">
             <ScopeChip scope={g.scope} />
@@ -507,7 +507,7 @@ function IconBtn({ icon: Icon, onClick }: { icon: React.ComponentType<{ classNam
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[11px] uppercase tracking-wider text-ink-500">{label}</span>
+      <span className="text-[12px] uppercase tracking-wider text-ink-700">{label}</span>
       <span className="font-medium">{children}</span>
     </div>
   )

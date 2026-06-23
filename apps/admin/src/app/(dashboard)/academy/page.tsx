@@ -73,7 +73,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: stri
   return (
     <div>
       <p className={cn('font-display text-[22px] font-bold leading-none tabular-nums', tone)}>{value.toLocaleString()}</p>
-      <p className="mt-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">{label}</p>
+      <p className="mt-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{label}</p>
     </div>
   )
 }

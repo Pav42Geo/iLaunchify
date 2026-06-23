@@ -104,7 +104,7 @@ export function ColorsSection({ brandId, initial }: Props) {
       {(extras.length > 0 || extras.length < MAX_EXTRA) && (
         <div className="mt-5 border-t border-ink-100 pt-4">
           <div className="flex items-center gap-1">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+            <Label className="text-xs font-bold uppercase tracking-wider text-ink-700">
               Extra swatches
             </Label>
             <InfoTip text="Optional. Use for secondary brand colors that aren't primary / accent." />
@@ -173,7 +173,7 @@ function NamedSwatch({
 }) {
   return (
     <div className="rounded-md border border-ink-200 bg-white p-3">
-      <Label className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+      <Label className="text-xs font-bold uppercase tracking-wider text-ink-700">
         {label}
       </Label>
       <div className="mt-2 flex items-center gap-2">

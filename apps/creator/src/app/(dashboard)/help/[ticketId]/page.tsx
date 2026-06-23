@@ -119,7 +119,7 @@ function Author({
         {admin ? <ShieldCheck className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
       </span>
       <span className="text-[12.5px] font-semibold text-ink-900">{name}</span>
-      {you && <span className="text-[10px] uppercase tracking-wider text-ink-400">you</span>}
+      {you && <span className="text-[12px] uppercase tracking-wider text-ink-700">you</span>}
       <span className="text-[11px] text-ink-400">· {formatDate(when)}</span>
     </div>
   )

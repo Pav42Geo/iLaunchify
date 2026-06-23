@@ -121,7 +121,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
         <div className="border-t border-ink-200 p-5 space-y-5">
           {/* GTIN */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
+            <label className="text-[12px] font-bold uppercase tracking-wider text-ink-700 block mb-1.5">
               GTIN / UPC / EAN
               <span className="ml-2 text-ink-400 normal-case font-normal tracking-normal">
                 · 8, 12, 13, or 14 digits
@@ -170,7 +170,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
 
           {/* Internal SKU */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
+            <label className="text-[12px] font-bold uppercase tracking-wider text-ink-700 block mb-1.5">
               Internal SKU
               <span className="ml-2 text-ink-400 normal-case font-normal tracking-normal">
                 · for warehouse routing + pre-launch
@@ -191,7 +191,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
 
           {/* Barcode mode */}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">
+            <label className="text-[12px] font-bold uppercase tracking-wider text-ink-700 block mb-1.5">
               What prints on packaging
             </label>
             <div className="grid grid-cols-3 gap-1.5">

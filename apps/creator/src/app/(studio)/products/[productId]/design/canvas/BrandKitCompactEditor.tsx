@@ -193,7 +193,7 @@ export function LogosCompact({
                 )}
                 {isBusy && <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-[10px] font-semibold text-ink-600">…</span>}
               </div>
-              <div className="text-center text-[9.5px] font-semibold uppercase tracking-wide text-ink-500">{label}</div>
+              <div className="text-center text-[12px] font-bold uppercase tracking-wide text-ink-700">{label}</div>
             </div>
           )
         })}
@@ -319,7 +319,7 @@ export function ColorsCompact({
         {named.map((n) => (
           <div key={n.key} className="relative space-y-1">
             <Swatch color={n.value} label={n.label} open={openKey === n.key} onToggle={() => setOpenKey(openKey === n.key ? null : n.key)} />
-            <div className="text-center text-[9.5px] font-semibold uppercase tracking-wide text-ink-500">{n.label}</div>
+            <div className="text-center text-[12px] font-bold uppercase tracking-wide text-ink-700">{n.label}</div>
             {openKey === n.key && (
               <ColorPopover
                 value={n.value ?? '#000000'}
@@ -337,7 +337,7 @@ export function ColorsCompact({
       </div>
 
       <div>
-        <div className="mb-1 text-[9.5px] font-semibold uppercase tracking-wide text-ink-400">Extra swatches</div>
+        <div className="mb-1 text-[12px] font-bold uppercase tracking-wide text-ink-700">Extra swatches</div>
         <div className="flex flex-wrap gap-2">
           {extras.map((c, i) => (
             <div key={`${c}-${i}`} className="relative">
@@ -485,7 +485,7 @@ export function FontsCompact({
 
       {/* Your uploaded fonts + upload (Slice 2b). */}
       <div className="rounded-md border border-ink-100 bg-ink-50/50 p-2">
-        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+        <div className="mb-1 text-[12px] font-bold uppercase tracking-wide text-ink-700">
           Your brand fonts
         </div>
         {customs.length > 0 && (
@@ -574,7 +574,7 @@ export function FontsCompact({
                   className="flex w-full items-center justify-between rounded px-2 py-1 text-left hover:bg-pink-50"
                 >
                   <span className="text-[12.5px] text-ink-800" style={{ fontFamily: f.family }}>{f.family}</span>
-                  <span className="text-[9px] uppercase tracking-wide text-ink-400">{f.weight}{f.style !== 'Normal' ? ` · ${f.style}` : ''}</span>
+                  <span className="text-[12px] uppercase tracking-wide text-ink-700">{f.weight}{f.style !== 'Normal' ? ` · ${f.style}` : ''}</span>
                 </button>
               ))
             )}

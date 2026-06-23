@@ -418,7 +418,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
                     <span className="text-[13px] font-medium text-ink-900" style={{ fontFamily: f.family }}>
                       {f.family}
                     </span>
-                    <span className="text-[10px] uppercase tracking-wide text-ink-400">
+                    <span className="text-[12px] uppercase tracking-wide text-ink-700">
                       {f.weight} {f.style !== 'Normal' ? f.style : ''}
                     </span>
                   </button>

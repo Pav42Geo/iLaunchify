@@ -59,7 +59,7 @@ export default async function AcceptInvitePage({
 
   return (
     <Shell>
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+      <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
         iLaunchify · Admin team
       </p>
       <h1 className="mt-1 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-900">

@@ -320,7 +320,7 @@ export default async function PartnerDetail({ params }: PageProps) {
       <header className="overflow-hidden rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Partners · Detail
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -720,7 +720,7 @@ function ServicesCard({
                     <p className="text-[13px] font-semibold text-ink-900">
                       {SERVICE_LABELS[s.type]}
                     </p>
-                    <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-ink-500">
+                    <p className="mt-0.5 text-[12px] uppercase tracking-wider text-ink-700">
                       {s.disclosureLevel.replace(/_/g, ' ').toLowerCase()} disclosure ·
                       added {new Date(s.createdAt).toLocaleDateString()}
                     </p>
@@ -988,7 +988,7 @@ function AuditTimelineCard({
                     <span className="font-mono text-[11px] font-semibold text-ink-700">
                       {log.action}
                     </span>
-                    <span className="text-[10.5px] uppercase tracking-wider text-ink-400">
+                    <span className="text-[12px] uppercase tracking-wider text-ink-700">
                       {log.actorRole}
                     </span>
                     <span className="ml-auto text-[10.5px] tabular-nums text-ink-500">
@@ -1075,7 +1075,7 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-2">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="text-right text-[12.5px] text-ink-900">{children}</dd>
@@ -1086,7 +1086,7 @@ function Row({
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="font-mono tabular-nums text-ink-900">{value}</dd>

@@ -77,7 +77,7 @@ export default async function IntegrationsPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Developer &amp; API
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -130,7 +130,7 @@ export default async function IntegrationsPage() {
       {/* Per-category integration cards */}
       {byCategory.map(({ cat, items }) => (
         <section key={cat} className="space-y-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-500">{cat}</h2>
+          <h2 className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">{cat}</h2>
           <div className="grid gap-3 lg:grid-cols-2">
             {items.map((s) => (
               <div key={s.def.key} className="rounded-2xl border border-ink-200 bg-white p-4">
@@ -207,7 +207,7 @@ export default async function IntegrationsPage() {
                   return (
                     <div className="mt-2.5 space-y-1.5 border-t border-ink-100 pt-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Rotation</span>
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Rotation</span>
                         <RotationBadge r={rot} />
                       </div>
                       <RotationControl integrationKey={s.def.key} cadenceDays={rot.cadenceDays} />

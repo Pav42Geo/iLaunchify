@@ -43,7 +43,7 @@ export function LabelFormatPreferenceEditor({
 
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
-      <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+      <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
         Recommendation preference
       </h2>
       <p className="mt-1 text-[12px] text-ink-500">
@@ -53,7 +53,7 @@ export function LabelFormatPreferenceEditor({
 
       <div className="mt-4 flex items-end gap-4">
         <div>
-          <label className="block text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+          <label className="block text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
             Preference score (0–100)
           </label>
           <input
@@ -68,7 +68,7 @@ export function LabelFormatPreferenceEditor({
       </div>
 
       <div className="mt-4">
-        <label className="block text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+        <label className="block text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
           Notes
         </label>
         <textarea

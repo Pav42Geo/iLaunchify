@@ -100,7 +100,7 @@ export default async function PackagingEditPage({ params }: PageProps) {
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
             </Link>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Manufacturing · Packaging
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">

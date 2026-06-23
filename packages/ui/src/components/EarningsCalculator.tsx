@@ -46,7 +46,7 @@ export function EarningsCalculator({
       )}
     >
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5">
+        <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
           Your earnings
         </div>
         <div className="text-2xl font-bold text-pink-700 tracking-[-0.01em] leading-none">
@@ -59,7 +59,7 @@ export function EarningsCalculator({
       </div>
 
       <div>
-        <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5 block">
+        <label className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5 block">
           Set your price
         </label>
         <div className="relative">

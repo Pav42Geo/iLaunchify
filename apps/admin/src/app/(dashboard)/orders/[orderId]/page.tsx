@@ -290,7 +290,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
         <div className="bg-[#F3EFE8] px-6 py-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+              <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
                 Orders · Detail
               </p>
               <h1 className="mt-0.5 font-display text-[26px] font-semibold leading-tight tracking-tight text-ink-900">
@@ -467,7 +467,7 @@ function ItemsCard({
             </tbody>
             <tfoot className="bg-zinc-50/70">
               <tr>
-                <td className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500" colSpan={3}>
+                <td className="px-3 py-2.5 text-[12px] font-bold uppercase tracking-wider text-ink-700" colSpan={3}>
                   Order total
                 </td>
                 <td className="px-3 py-2.5 text-right text-[13.5px] font-semibold tabular-nums text-ink-900">
@@ -543,7 +543,7 @@ function DispatchesCard({
                   <div className="flex-1 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+                        <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
                           <Hash className="h-3 w-3" aria-hidden="true" />
                           {d.type}
                           <span className="text-ink-300">·</span>
@@ -594,7 +594,7 @@ function DispatchesCard({
                     {/* Production manifest — same view the partner sees, with a
                         downloadable manifest. Collapsed to keep the list scannable. */}
                     <details className="group mt-3">
-                      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-ink-500 [&::-webkit-details-marker]:hidden">
+                      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700 [&::-webkit-details-marker]:hidden">
                         <FileText className="h-3 w-3" aria-hidden="true" />
                         Production manifest
                         <span className="font-normal text-ink-400 group-open:hidden">· show</span>
@@ -631,7 +631,7 @@ function DispatchRow({
 }) {
   return (
     <div className={wide ? 'col-span-2' : undefined}>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd
@@ -718,7 +718,7 @@ function TransfersCard({
                 </span>
               </p>
               <p className="mt-0.5 text-[11px] text-ink-600">{t.destinationUser.email}</p>
-              <p className="mt-1 text-[10.5px] uppercase tracking-wider text-ink-500">
+              <p className="mt-1 text-[12px] uppercase tracking-wider text-ink-700">
                 {t.status}
                 {t.executedAt && ` · ${new Date(t.executedAt).toLocaleDateString()}`}
               </p>
@@ -809,7 +809,7 @@ function ShipToCard({
               .filter(Boolean)
               .join(', ')}
             <br />
-            <span className="text-[11px] uppercase tracking-wider text-ink-500">
+            <span className="text-[12px] uppercase tracking-wider text-ink-700">
               {order.shipToCountry}
             </span>
           </span>
@@ -1053,7 +1053,7 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-2">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="text-right text-[12.5px] text-ink-900">{children}</dd>
@@ -1088,7 +1088,7 @@ function Kpi({
   }[tone]
   return (
     <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         <Icon className="h-3 w-3" aria-hidden="true" />
         {label}
       </p>

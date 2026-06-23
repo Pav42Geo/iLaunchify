@@ -52,7 +52,7 @@ export default async function ApplicationStatusPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8">
-        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
+        <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Application status
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{partner.companyName}</h1>

@@ -38,7 +38,7 @@ export function FlavorSwatch({ options, value, onChange, className }: FlavorSwat
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+      <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
         Flavor{' '}
         <span className="text-ink-700 normal-case font-normal tracking-normal">
           · {selectedName}

@@ -151,7 +151,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
           <div className="flex flex-wrap items-start gap-4">
             <Avatar name={creator.displayName ?? creator.user.name ?? creator.user.email} size="lg" />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+              <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
                 Creator profile
               </p>
               <h1 className="mt-0.5 font-display text-[26px] font-semibold leading-tight tracking-tight text-ink-900">
@@ -280,7 +280,7 @@ function BrandsCard({
                       {b.tagline}
                     </p>
                   )}
-                  <p className="mt-1.5 text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <p className="mt-1.5 text-[12px] uppercase tracking-wider text-ink-700">
                     {b._count.products} prod · {b._count.orders} orders
                     {b.operatingRegion && ` · ${b.operatingRegion.code}`}
                   </p>
@@ -340,7 +340,7 @@ function RecentOrdersCard({
                   <p className="truncate text-[12.5px] font-medium text-ink-900">
                     {o.brand?.name ?? 'Untitled brand'}
                   </p>
-                  <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <p className="mt-0.5 text-[12px] uppercase tracking-wider text-ink-700">
                     {o.status.replace(/_/g, ' ').toLowerCase()}
                     {' · '}
                     {new Date(o.createdAt).toLocaleDateString(undefined, {
@@ -650,7 +650,7 @@ function Stat({
 }) {
   return (
     <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         <Icon className="h-3 w-3" aria-hidden="true" />
         {label}
       </p>
@@ -670,7 +670,7 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-2 py-2">
-      <dt className="text-[11px] uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="text-right font-medium text-ink-900">{children}</dd>

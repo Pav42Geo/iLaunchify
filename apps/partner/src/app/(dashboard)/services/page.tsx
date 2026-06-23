@@ -39,7 +39,7 @@ export default async function ServicesPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Services
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -67,7 +67,7 @@ export default async function ServicesPage() {
               >
                 {s.status}
               </span>
-              <span className="ml-auto text-[10.5px] uppercase tracking-wide text-ink-500">
+              <span className="ml-auto text-[12px] uppercase tracking-wide text-ink-700">
                 {s.disclosureLevel.replace(/_/g, ' ').toLowerCase()} disclosure
               </span>
             </header>

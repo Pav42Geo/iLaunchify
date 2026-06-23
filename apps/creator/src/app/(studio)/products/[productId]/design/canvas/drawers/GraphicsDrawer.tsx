@@ -102,7 +102,7 @@ export function GraphicsDrawer({ canvas }: { canvas: FabricCanvas | null }) {
         <div className="space-y-3">
           {ICON_COLLECTIONS.map((col) => (
             <section key={col.label}>
-              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+              <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
                 {col.label}
               </div>
               <div className="grid grid-cols-5 gap-1.5">

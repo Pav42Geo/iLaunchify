@@ -112,7 +112,7 @@ export default function WidgetPreviewPage() {
   return (
     <div className="space-y-10 px-6 py-10">
       <header>
-        <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+        <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
           packages/ui · dev
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -505,7 +505,7 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="mb-3 font-display text-[15px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <h2 className="mb-3 font-display text-[15px] font-bold uppercase tracking-[0.08em] text-ink-700">
         {title}
       </h2>
       {children}

@@ -127,7 +127,7 @@ export function ActiveFilterChips() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap mb-8">
-      <span className="text-[11px] font-bold uppercase tracking-[0.07em] text-ink-500 mr-1">
+      <span className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mr-1">
         Filters:
       </span>
       {chips.map((c) => (

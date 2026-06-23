@@ -208,7 +208,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-600">
+      <span className="block text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
         {label}
       </span>
       <input

@@ -235,7 +235,7 @@ function Header({
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             Users & Roles · Creators
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -349,7 +349,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900">{value}</p>
@@ -429,7 +429,7 @@ function FilterBar({
 
       {/* Tier chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Tier
         </span>
         <FilterChip href={buildHref({ tier: '' })} active={!tier} label="All" count={null} />

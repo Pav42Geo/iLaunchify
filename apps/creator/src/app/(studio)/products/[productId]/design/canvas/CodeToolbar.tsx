@@ -94,7 +94,7 @@ export function CodeToolbar({ canvas, active }: Props) {
 
         {/* Shared: opacity */}
         <div className="flex items-center gap-1.5 px-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Op
           </span>
           <input

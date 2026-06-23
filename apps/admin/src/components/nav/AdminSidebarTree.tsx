@@ -135,7 +135,7 @@ export function AdminSidebarTree({ badges, capabilities }: AdminSidebarTreeProps
           className={cn(idx > 0 && 'mt-5 pt-4')}
         >
           {region.label && (
-            <div className="mb-2 flex items-center gap-2 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-400">
+            <div className="mb-2 flex items-center gap-2 px-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-ink-700">
               <span className="h-px flex-1 bg-ink-200" />
               <span>{region.label}</span>
               <span className="h-px flex-1 bg-ink-200" />

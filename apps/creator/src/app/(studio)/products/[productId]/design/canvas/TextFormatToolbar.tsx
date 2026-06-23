@@ -334,7 +334,7 @@ function ColorControl({
               <div className="my-2.5 border-t border-ink-100" />
             </>
           )}
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1.5">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-1.5">
             Staples
           </div>
           <SwatchRow

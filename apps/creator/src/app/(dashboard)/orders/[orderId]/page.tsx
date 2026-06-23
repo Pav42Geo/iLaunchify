@@ -253,7 +253,7 @@ export default async function OrderDetailPage({
 
         <div className="grid gap-3 px-5 py-5 sm:grid-cols-[1fr,auto] sm:items-end">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+            <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
               {order.brand.name}
             </p>
             <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
@@ -283,7 +283,7 @@ export default async function OrderDetailPage({
       {/* Two-column body — dispatch timeline left, sticky rail right */}
       <div className="grid gap-6 lg:grid-cols-[1fr,340px]">
         <section className="min-w-0 space-y-3">
-          <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+          <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
             Partner gates
           </h2>
           {order.dispatches.length === 0 ? (
@@ -401,7 +401,7 @@ function ChangesRequestedBanner({
                   key={d.id}
                   className="rounded-md border border-[#FAC775] bg-white/80 p-3"
                 >
-                  <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-600">
+                  <p className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
                     {SERVICE_LABEL[d.type] ?? d.type} ·{' '}
                     <span className="text-ink-800">{d.partnerName}</span>
                   </p>
@@ -517,7 +517,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
 
       <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
             Partner
           </p>
           <p className="mt-0.5 truncate text-[14px] font-semibold text-ink-900">
@@ -559,7 +559,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           )}
         </div>
         <div className="text-right">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
             Cost
           </p>
           <p className="text-[15px] font-semibold tabular-nums text-ink-900">
@@ -742,7 +742,7 @@ function ActionsCard({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
             What you can do
           </p>
           {isDelivered && productId && (
@@ -867,7 +867,7 @@ function TotalsCard({
     >
       <h3
         id="order-totals-heading"
-        className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
+        className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700"
       >
         Order totals
       </h3>

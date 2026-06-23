@@ -135,7 +135,7 @@ function Header({ kpis }: { kpis: CompatKpis }) {
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             Marketplace · Packaging
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -253,7 +253,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">
@@ -288,7 +288,7 @@ function FilterBar({
   return (
     <div className="space-y-3 rounded-2xl border border-ink-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Filters
         </span>
         <div className="flex items-center gap-3 text-[12px] text-ink-600">
@@ -306,7 +306,7 @@ function FilterBar({
 
       {/* Container category chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Category
         </span>
         <FilterChip
@@ -328,7 +328,7 @@ function FilterBar({
 
       {/* Decoration method chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Method
         </span>
         <FilterChip
@@ -350,7 +350,7 @@ function FilterBar({
 
       {/* Status chips */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           Status
         </span>
         <FilterChip

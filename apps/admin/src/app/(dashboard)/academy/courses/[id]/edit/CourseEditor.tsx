@@ -224,7 +224,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">{label}</span>
+      <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">{label}</span>
       {hint && <span className="ml-2 text-[11px] font-normal normal-case text-ink-400">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>

@@ -103,7 +103,7 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
     <div className="space-y-6">
       {/* My Brand */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           My Brand
           <span className="ml-1.5 text-pink-700 normal-case font-normal tracking-normal">
             · {brandAssets.brandName}
@@ -162,7 +162,7 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
       {/* My Library */}
       <section>
         <div className="flex items-baseline justify-between mb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             My Library
           </div>
           <span className="text-[10px] text-ink-500 tabular-nums">

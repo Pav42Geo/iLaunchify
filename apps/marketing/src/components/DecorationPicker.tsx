@@ -51,7 +51,7 @@ export function DecorationPicker({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+      <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
         Decoration method
         <span className="text-ink-400 normal-case font-normal tracking-normal">
           {' '}· how your container is finished

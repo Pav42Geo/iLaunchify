@@ -1694,7 +1694,7 @@ function ProductDrawer({
 
       {/* Templates entry-point — back to the Design Studio gallery. */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Templates
         </div>
         <Link
@@ -1715,7 +1715,7 @@ function ProductDrawer({
 
       {/* Die-cut guides toggles */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Guides
         </div>
         <div className="space-y-1.5">
@@ -1771,7 +1771,7 @@ function ProductDrawer({
           from the retired product hub (2026-06-18); drives the Dieline barcode
           frame + retail readiness. */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Retail identity
         </div>
         <RetailIdentityCard productId={productId} initial={retailIdentity} />
@@ -1810,7 +1810,7 @@ function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
 
   return (
     <section>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
         Product specs
       </div>
 
@@ -1823,7 +1823,7 @@ function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
             <div className="bg-white rounded-sm w-[120px] h-[68px] flex items-center justify-center relative">
               {/* Safe */}
               <div className="absolute inset-1.5 border border-dotted border-blue-500/70 rounded-sm flex items-center justify-center">
-                <span className="text-[8px] uppercase tracking-wider text-ink-400">
+                <span className="text-[8px] uppercase tracking-wider text-ink-700">
                   Safe area
                 </span>
               </div>
@@ -1871,7 +1871,7 @@ function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
 
       {/* Blank downloads */}
       <div className="mt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1.5">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-1.5">
           Download a blank design file
         </div>
         <div className="flex items-center gap-1.5">
@@ -1940,7 +1940,7 @@ function SpecRow({
 function SurfacesSection({ dieCut }: { dieCut: DieCutSpec }) {
   return (
     <section>
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-500 flex items-center justify-between">
+      <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700 flex items-center justify-between">
         <span>Surfaces</span>
         <span className="text-[9px] font-mono text-ink-400">1 of 1</span>
       </div>

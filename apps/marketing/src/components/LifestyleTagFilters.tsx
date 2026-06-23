@@ -59,7 +59,7 @@ export function LifestyleTagFilters({ groups }: { groups: LifestyleTagGroups }) 
 
   return (
     <section className="mb-6 rounded-xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500 mb-2.5">
+      <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-2.5">
         Lifestyle tags
       </div>
       <div className="flex flex-col gap-2.5">

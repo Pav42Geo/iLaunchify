@@ -61,7 +61,7 @@ function Header({ kpis }: { kpis: SecurityData['kpis'] }) {
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             Settings · Security &amp; Access
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -119,7 +119,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
           <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
             {value.toLocaleString()}
           </p>
@@ -153,7 +153,7 @@ function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
       ) : (
         <table className="w-full text-left text-[12.5px]">
           <thead>
-            <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+            <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
               <th className="px-4 py-2 font-semibold">User</th>
               <th className="px-2 py-2 font-semibold">Role</th>
               <th className="px-2 py-2 font-semibold">Expires</th>
@@ -221,7 +221,7 @@ function EventsPanel({ events }: { events: SecurityData['events'] }) {
         <ul className="divide-y divide-ink-50">
           {events.map((e) => (
             <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-2.5">
-              <span className="font-mono text-[10.5px] uppercase tracking-wide text-ink-500">
+              <span className="font-mono text-[12px] uppercase tracking-wide text-ink-700">
                 {e.at.toLocaleDateString()}{' '}
                 {e.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>

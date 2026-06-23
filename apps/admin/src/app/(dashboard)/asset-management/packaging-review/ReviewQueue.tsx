@@ -79,7 +79,7 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
             {/* Partner-uploaded mockups + die-lines (each die-line panel-tagged). */}
             {r.files.length > 0 && (
               <div className="mt-3">
-                <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Uploaded artwork ({r.files.length})</p>
+                <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Uploaded artwork ({r.files.length})</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {r.files.map((f, i) => <FileTile key={i} f={f} />)}
                 </div>

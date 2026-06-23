@@ -271,7 +271,7 @@ export function MarketplacePlacementPanel(props: Props) {
       {/* Sub-section 1 — Niches */}
       <div className="border-b border-ink-100 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Niches
           </h3>
           <span className="text-[10.5px] text-ink-500">
@@ -312,7 +312,7 @@ export function MarketplacePlacementPanel(props: Props) {
       {/* Sub-section 2 — Lifestyle tags */}
       <div className="border-b border-ink-100 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Lifestyle tags
           </h3>
           <span className="text-[10.5px] text-ink-500">
@@ -325,7 +325,7 @@ export function MarketplacePlacementPanel(props: Props) {
             if (tags.length === 0) return null
             return (
               <div key={g}>
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                <div className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
                   {GROUP_LABELS[g]}
                 </div>
                 <div className="flex flex-wrap gap-1.5">

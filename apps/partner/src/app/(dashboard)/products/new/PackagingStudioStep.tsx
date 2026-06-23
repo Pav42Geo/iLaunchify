@@ -915,7 +915,7 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {/* Existing files */}
           <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Uploaded ({files.length})</p>
+            <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Uploaded ({files.length})</p>
             {loading ? (
               <p className="text-[12px] text-ink-400">Loading…</p>
             ) : files.length === 0 ? (
@@ -1064,7 +1064,7 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
 
           {/* Parameters */}
           <div>
-            <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Parameters</p>
+            <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Parameters</p>
             <div className="grid grid-cols-3 gap-2">
               <div><label className={labelCls}>Length (mm)</label><input type="number" min={0} value={lengthMm} onChange={(e) => setLengthMm(e.target.value)} className={numInput} /></div>
               <div><label className={labelCls}>Width (mm)</label><input type="number" min={0} value={widthMm} onChange={(e) => setWidthMm(e.target.value)} className={numInput} /></div>
@@ -1147,7 +1147,7 @@ function FileGroup({ title, hint, accept, addLabel, count, onAdd, children }: { 
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">{title}</p>
+        <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{title}</p>
         <button type="button" onClick={() => ref.current?.click()} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
           <Plus className="h-3 w-3" /> {addLabel}
         </button>
@@ -1388,7 +1388,7 @@ function LibraryDrawer({
           {/* Suggestions dropdown */}
           {searchFocused && suggestions.length > 0 && (
             <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
-              {!dq && <p className="px-2.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">Recent searches</p>}
+              {!dq && <p className="px-2.5 pb-0.5 pt-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">Recent searches</p>}
               {suggestions.map((s) => (
                 <button
                   key={s}
@@ -1454,7 +1454,7 @@ function LibraryDrawer({
             /* In-drawer taxonomy — replaces the grid (not a floating dropdown).
                Every category as a text link; click selects it + collapses. */
             <div>
-              <p className="mb-2 px-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">All categories</p>
+              <p className="mb-2 px-0.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">All categories</p>
               <div className="flex flex-col">
                 <button type="button" onClick={() => { setActiveCat(null); setCatOpen(false) }} className={`rounded-md px-1.5 py-2 text-left text-[13px] transition-colors hover:bg-pink-50 hover:text-pink-700 ${effectiveCat === null ? 'font-semibold text-pink-700' : 'text-ink-700'}`}>All</button>
                 {availableCats.map((cat) => (
@@ -1476,7 +1476,7 @@ function LibraryDrawer({
           ) : (
             shownGroups.map((g) => (
               <div key={g.cat} className="mb-3">
-                <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">{CATEGORY_LABEL[g.cat] ?? g.cat}</p>
+                <p className="mb-1.5 px-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">{CATEGORY_LABEL[g.cat] ?? g.cat}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {g.items.map((c) => (
                     <div key={c.id} className="overflow-hidden rounded-xl border border-ink-200 bg-white transition-colors hover:border-pink-200">
@@ -1521,7 +1521,7 @@ function LibraryDrawer({
 
           {/* Your packaging — attach + pick to design */}
           <div className="px-3 py-3">
-            <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Your packaging</p>
+            <p className="mb-1.5 px-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">Your packaging</p>
             {!hasDraft && <p className="px-1 text-[12px] text-ink-500">Save the draft to attach packaging.</p>}
             {hasDraft && filtered.length === 0 && <p className="px-1 text-[12px] text-ink-500">{q ? 'No matches.' : 'No packaging yet — upload one above.'}</p>}
             <div className="space-y-1.5">
@@ -1591,7 +1591,7 @@ function LibraryDrawer({
 
           {/* Surfaces (3D) */}
           <div className="border-t border-ink-100 px-3 py-3">
-            <p className="mb-1.5 px-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Surfaces (3D)</p>
+            <p className="mb-1.5 px-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">Surfaces (3D)</p>
             <div className="space-y-1">
               {surfaces.map((s) => {
                 const on = s.key === selectedSurfaceKey
@@ -1647,7 +1647,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 
       {/* Preflight + Confirm — die-line workflow lives here (out of the top bar). */}
       <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/60'}`}>
-        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Preflight</p>
+        <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Preflight</p>
         {issues.length === 0 ? (
           <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
         ) : (
@@ -1698,7 +1698,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 
       {/* placed list */}
       <div className="border-b border-ink-100 px-4 py-2">
-        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">On the die-line ({layout.frames.length})</p>
+        <p className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">On the die-line ({layout.frames.length})</p>
         <ul className="space-y-0.5">
           {layout.frames.map((f) => (
             <li key={f.id}>
@@ -1714,7 +1714,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 
       {/* palette */}
       <div className="px-4 py-3">
-        <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Add a frame</p>
+        <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Add a frame</p>
         {PALETTE.map((g) => (
           <div key={g.scope} className="mb-2">
             <ScopeChip scope={g.scope} />

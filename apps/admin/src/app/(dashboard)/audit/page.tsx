@@ -223,7 +223,7 @@ function Header({
   return (
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div>
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Settings · Audit Log
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -330,7 +330,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900 tabular-nums">
@@ -628,7 +628,7 @@ function FieldGroup({
   children: React.ReactNode
 }) {
   return (
-    <label className="flex flex-col gap-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+    <label className="flex flex-col gap-1 text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
       {label}
       {children}
     </label>
@@ -709,7 +709,7 @@ function LogsTable({
                           <p className="truncate font-medium text-ink-900">
                             {actor.name ?? actor.email}
                           </p>
-                          <p className="mt-0.5 text-[10.5px] uppercase tracking-wider text-ink-500">
+                          <p className="mt-0.5 text-[12px] uppercase tracking-wider text-ink-700">
                             {tone.label}
                             {log.actorRole === 'ADMIN' && log.actorAdminRole && (
                               <span className="ml-1 inline-flex rounded border border-ink-200 bg-ink-50 px-1 py-[1px] text-[9.5px] font-semibold normal-case tracking-normal text-ink-500">

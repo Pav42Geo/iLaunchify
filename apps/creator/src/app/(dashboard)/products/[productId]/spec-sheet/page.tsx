@@ -99,7 +99,7 @@ function SpecSheetView({
   return (
     <div className="mt-4 space-y-5">
       <header className="rounded-2xl border border-ink-200 bg-cream px-5 py-4">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Product spec sheet · v{version}
         </p>
         <h1 className="mt-1 font-display text-[22px] font-bold tracking-[-0.02em] text-ink-900">
@@ -186,7 +186,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Line({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[160px,1fr] gap-3 py-2 first:pt-0 last:pb-0">
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </span>
       <span className="text-[12.5px] text-ink-900">{value}</span>

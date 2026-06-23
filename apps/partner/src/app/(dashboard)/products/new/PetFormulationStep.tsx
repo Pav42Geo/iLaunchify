@@ -172,7 +172,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
           </div>
 
           <table className="w-full text-[13px]">
-            <thead><tr className="border-b border-ink-200 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500"><th className="py-1.5 pr-2">Ingredient</th><th className="py-1.5 px-1 text-right">Weight</th><th /></tr></thead>
+            <thead><tr className="border-b border-ink-200 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700"><th className="py-1.5 pr-2">Ingredient</th><th className="py-1.5 px-1 text-right">Weight</th><th /></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.uid} className="border-b border-ink-50">

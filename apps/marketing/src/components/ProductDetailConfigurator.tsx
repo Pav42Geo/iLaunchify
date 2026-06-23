@@ -167,7 +167,7 @@ export function ProductDetailConfigurator({
 
       {sizeOptions.length > 1 && (
         <div className="flex flex-col gap-2">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
             Size{' '}
             <span className="text-ink-700 normal-case font-normal tracking-normal">
               · {sizeKey}
@@ -206,7 +206,7 @@ export function ProductDetailConfigurator({
       {/* Quantity + per-unit price */}
       <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border border-ink-200 bg-white">
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5 block">
+          <label className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5 block">
             Quantity
           </label>
           <input
@@ -225,7 +225,7 @@ export function ProductDetailConfigurator({
           </div>
         </div>
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5">
+          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
             Landed cost
           </div>
           <div className="text-2xl font-bold text-ink-900 leading-none tabular-nums">

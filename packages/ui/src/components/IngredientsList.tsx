@@ -79,7 +79,7 @@ export function IngredientsList({
       <section>
         <header className="flex items-baseline justify-between mb-3">
           <h3 className="text-[15px] font-semibold text-ink-900">Base recipe</h3>
-          <span className="text-[11px] uppercase tracking-[0.06em] text-ink-500 font-semibold">
+          <span className="text-[12px] uppercase tracking-[0.06em] text-ink-700 font-bold">
             {base.length} ingredients
           </span>
         </header>
@@ -129,7 +129,7 @@ export function IngredientsList({
 
                 {isOpen && ing.replacements && (
                   <div className="mt-3 pl-15 pt-3 border-t border-ink-100">
-                    <div className="text-[11px] uppercase tracking-[0.06em] text-ink-500 font-semibold mb-2">
+                    <div className="text-[12px] uppercase tracking-[0.06em] text-ink-700 font-bold mb-2">
                       Choose a replacement
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -186,7 +186,7 @@ export function IngredientsList({
         <section>
           <header className="flex items-baseline justify-between mb-3">
             <h3 className="text-[15px] font-semibold text-ink-900">Optional add-ons</h3>
-            <span className="text-[11px] uppercase tracking-[0.06em] text-ink-500 font-semibold">
+            <span className="text-[12px] uppercase tracking-[0.06em] text-ink-700 font-bold">
               {selectedAddOnIds.length} selected
             </span>
           </header>

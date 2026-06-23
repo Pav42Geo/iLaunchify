@@ -105,7 +105,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
         {/* Sample type */}
         {options.length > 1 && (
           <div className="rounded-2xl border border-ink-200 bg-white p-5">
-            <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">Sample type</h2>
+            <h2 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">Sample type</h2>
             <div className="grid grid-cols-2 gap-2">
               {options.map((o) => {
                 const meta = KIND_META[o.kind]
@@ -127,7 +127,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
 
         {/* What to sample */}
         <div className="rounded-2xl border border-ink-200 bg-white p-5">
-          <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">What to sample</h2>
+          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">What to sample</h2>
           {brandedLocked ? (
             <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
@@ -170,7 +170,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
 
         {/* Ship to */}
         <div className="rounded-2xl border border-ink-200 bg-white p-5">
-          <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">Ship to</h2>
+          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">Ship to</h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><label className={LABEL}>Recipient name</label><input className={INPUT} value={contactName} onChange={(e) => setContactName(e.target.value)} /></div>
             <div className="col-span-2"><label className={LABEL}>Phone <span className="text-ink-400">· optional</span></label><input className={INPUT} value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /></div>
@@ -188,7 +188,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
         {/* Branded review + acknowledgment (kind-aware) */}
         {needsAck && (
           <div className="rounded-2xl border border-ink-200 bg-white p-5">
-            <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">Review &amp; confirm</h2>
+            <h2 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">Review &amp; confirm</h2>
             <p className="text-[12.5px] leading-relaxed text-ink-700">
               This <strong className="font-semibold text-ink-900">branded sample</strong> is produced from your saved packaging artwork for {productName}. It&rsquo;s a pre-production proof to approve the final SKU — not for resale.
             </p>
@@ -203,7 +203,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
       {/* ---- Order summary (sticky) ---- */}
       <aside className="lg:sticky lg:top-[89px] lg:self-start">
         <div className="rounded-2xl border border-ink-200 bg-white p-5">
-          <h3 className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">Order summary</h3>
+          <h3 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">Order summary</h3>
           <dl className="space-y-2 text-sm">
             {quote.lines.map((l, i) => (
               <Row key={i} label={`${l.label}${l.qty > 1 ? ` × ${l.qty}` : ''}`} value={formatCents(l.totalCents)} />

@@ -84,7 +84,7 @@ export default async function CertificationsPage({
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Certifications
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -226,7 +226,7 @@ function Kpi({
           <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
           <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
             {value.toLocaleString()}
           </p>

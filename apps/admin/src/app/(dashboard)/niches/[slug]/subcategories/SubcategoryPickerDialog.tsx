@@ -153,7 +153,7 @@ export function SubcategoryPickerDialog({
                         <p className="font-display text-[13px] font-semibold text-ink-900">
                           {g.name}
                         </p>
-                        <span className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400">
+                        <span className="text-[12px] uppercase tracking-[0.1em] text-ink-700">
                           {g.mainCategory}
                         </span>
                       </div>

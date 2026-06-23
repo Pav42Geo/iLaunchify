@@ -82,7 +82,7 @@ export function KpiCard({ data }: { data: KpiCardData }) {
       </div>
 
       <div className="mt-4">
-        <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
           {data.label}
         </p>
         <p

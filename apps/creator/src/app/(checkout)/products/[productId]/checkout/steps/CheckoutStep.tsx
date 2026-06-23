@@ -161,7 +161,7 @@ export function CheckoutStep({
         <Section title="Review & place order" stepNumber={4}>
           {/* Promo code */}
           <div className="rounded-xl border border-ink-200 bg-white p-4">
-            <label className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+            <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
               Promo code (optional)
             </label>
             <div className="mt-1 flex items-center gap-2">
@@ -781,7 +781,7 @@ function Field({
     <div className="space-y-1">
       <label
         htmlFor={htmlFor}
-        className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
+        className="block text-[12px] font-bold uppercase tracking-widest text-ink-700"
       >
         {label}
       </label>

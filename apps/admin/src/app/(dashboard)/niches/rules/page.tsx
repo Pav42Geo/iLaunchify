@@ -221,7 +221,7 @@ export default async function NicheRulesPage() {
                 </p>
               ) : (
                 <table className="w-full text-left text-[13px]">
-                  <thead className="text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+                  <thead className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
                     <tr>
                       <th scope="col" className="px-4 py-2.5">Slug</th>
                       <th scope="col" className="px-4 py-2.5">Description</th>
@@ -251,7 +251,7 @@ export default async function NicheRulesPage() {
                                   key={`${r.id}-${idx}`}
                                   className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2 py-0.5 text-[10.5px] text-ink-700"
                                 >
-                                  <span className="font-semibold uppercase tracking-[0.05em] text-ink-500">
+                                  <span className="font-bold uppercase tracking-[0.05em] text-ink-700">
                                     {CONDITION_KIND_LABEL[c.kind]}:
                                   </span>
                                   <span className="truncate max-w-[200px]">
@@ -333,7 +333,7 @@ function Header({
   return (
     <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
       <div className="flex flex-col gap-2">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Marketplace · Niches · Auto-suggest rules
         </p>
         <h1 className="font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -388,7 +388,7 @@ function KpiCard({
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none text-ink-900">
@@ -418,7 +418,7 @@ function ConditionMixCard({
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100 text-pink-700">
           <Sparkles className="h-[14px] w-[14px]" />
         </span>
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
           By condition kind
         </p>
       </div>

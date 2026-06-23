@@ -119,7 +119,7 @@ export function AddPrivateIngredientModal({
         <div className="space-y-4 py-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-ink-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-700">
                 Internal name *
               </Label>
               <Input
@@ -133,7 +133,7 @@ export function AddPrivateIngredientModal({
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-ink-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-700">
                 Label declaration name
               </Label>
               <Input
@@ -149,7 +149,7 @@ export function AddPrivateIngredientModal({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-ink-500">
+            <Label className="text-xs uppercase tracking-wider text-ink-700">
               Allergens (Big-9)
             </Label>
             <div className="flex flex-wrap gap-1.5">
@@ -179,7 +179,7 @@ export function AddPrivateIngredientModal({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-ink-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-700">
                 Bioengineered status
               </Label>
               <select
@@ -198,7 +198,7 @@ export function AddPrivateIngredientModal({
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-ink-500">
+              <Label className="text-xs uppercase tracking-wider text-ink-700">
                 Density (g/mL)
               </Label>
               <Input
@@ -215,7 +215,7 @@ export function AddPrivateIngredientModal({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-ink-500">
+            <Label className="text-xs uppercase tracking-wider text-ink-700">
               Compliance notes
             </Label>
             <Input

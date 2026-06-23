@@ -47,7 +47,7 @@ export function BarcodeDrawer({ canvas }: Props) {
     <div className="space-y-5">
       {/* Mode toggle */}
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Mode
         </div>
         <div className="grid grid-cols-2 gap-1.5">
@@ -127,7 +127,7 @@ function RetailUpcSection({ canvas }: { canvas: FabricCanvas | null }) {
     <>
       <section>
         <div className="flex items-baseline justify-between mb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Format
           </div>
           <button
@@ -165,7 +165,7 @@ function RetailUpcSection({ canvas }: { canvas: FabricCanvas | null }) {
       </section>
 
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Data
         </div>
         <input
@@ -233,7 +233,7 @@ function InternalSkuSection({ canvas }: { canvas: FabricCanvas | null }) {
   return (
     <>
       <section>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Internal SKU
         </div>
         <input
@@ -321,7 +321,7 @@ function PreviewBox({
 }) {
   return (
     <section>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
         Preview
       </div>
       <div className="rounded-md border border-ink-200 bg-white p-3 flex items-center justify-center min-h-[120px]">

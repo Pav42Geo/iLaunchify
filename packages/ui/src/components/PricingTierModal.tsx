@@ -115,7 +115,7 @@ export function PricingTierModal({
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-ink-200 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">
+              <tr className="border-b border-ink-200 text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
                 <th className="text-left px-6 py-3">Quantity</th>
                 {perTier ? (
                   TIER_ORDER.map((t) => (

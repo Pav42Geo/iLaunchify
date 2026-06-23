@@ -141,7 +141,7 @@ function ModeTile({
       <Icon className={`h-4 w-4 ${active ? 'text-pink-600' : 'text-ink-500'}`} />
       <span className="text-[13px] font-semibold text-ink-900">{title}</span>
       <span className="text-[11px] leading-snug text-ink-500">{sub}</span>
-      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-400">
+      <span className="mt-0.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {when}
       </span>
     </button>

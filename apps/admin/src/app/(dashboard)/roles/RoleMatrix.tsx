@@ -86,7 +86,7 @@ export function RoleMatrix({
     <div className="overflow-x-auto rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-left text-[13px]">
         <thead>
-          <tr className="border-b border-ink-100 align-bottom text-[10.5px] uppercase tracking-wider text-ink-500">
+          <tr className="border-b border-ink-100 align-bottom text-[12px] uppercase tracking-wider text-ink-700">
             <th className="px-4 py-2.5 font-semibold">Capability</th>
             {roles.map((r) => {
               const count = presetSets[r.value]?.size ?? 0

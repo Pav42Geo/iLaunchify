@@ -380,7 +380,7 @@ export function LabelDrawer({
       {/* C5 — variety-pack columns (FOOD). >1 → aggregate multi-column panel. */}
       {isFood && (
         <section>
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="mb-2 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
             Variety pack
             <InfoTip text="One package, multiple flavors? Pick how many columns. 2–3 renders an FDA aggregate panel (21 CFR 101.9(h)(4)) — nutrient names once, a value column per flavor. Sample flavors until real per-flavor data binds at print." />
           </div>
@@ -420,7 +420,7 @@ export function LabelDrawer({
 
       {/* Required sections — DS-55. */}
       <section>
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Required sections
           <InfoTip text="Tap to drop a pre-tagged text block. The compliance scanner looks for these stamps to confirm each FDA-required section is on your label." />
         </div>
@@ -483,7 +483,7 @@ export function LabelDrawer({
 
       {/* Certifications — earned certs, dropped as print badges (Phase 3). */}
       <section>
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Certifications
           <InfoTip text="Certs your product has earned. Tap to drop the print badge — it lands in the bottom safe area, then you can move it anywhere." />
         </div>
@@ -562,7 +562,7 @@ export function LabelDrawer({
 
       {/* C3.b — per-section visibility toggles, applied when the panel is added. */}
       <section>
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           Panel sections
           <InfoTip text="Applied when you add the panel. Hiding required sections may flag in the compliance scan." />
         </div>

@@ -35,7 +35,7 @@ export default async function EditLessonPage({ params }: PageProps) {
         </Link>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               {AUDIENCE_LABEL[lesson.course.audience]} Academy · Lesson
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">{lesson.title}</h1>

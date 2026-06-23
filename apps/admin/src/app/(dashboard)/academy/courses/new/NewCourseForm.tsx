@@ -27,7 +27,7 @@ export function NewCourseForm() {
   return (
     <div className="max-w-xl space-y-5 rounded-2xl border border-ink-200 bg-white p-6">
       <div>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">Academy</span>
+        <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">Academy</span>
         <div className="mt-2 flex gap-2">
           {(['CREATOR', 'PARTNER'] as AcademyAudience[]).map((a) => (
             <button
@@ -49,7 +49,7 @@ export function NewCourseForm() {
       </div>
 
       <label className="block">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">Title</span>
+        <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">Title</span>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}

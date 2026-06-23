@@ -195,7 +195,7 @@ export function PackBuilder({
         if (picked.length === 0) return null
         return (
           <div className="mt-4 border-t border-ink-100 pt-4">
-            <h4 className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            <h4 className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
               Variety label preview · {picked.length} flavor{picked.length === 1 ? '' : 's'}
             </h4>
             <div className="overflow-x-auto">

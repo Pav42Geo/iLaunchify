@@ -172,7 +172,7 @@ export function ProductCard({
 
       {/* BODY */}
       <div className="p-3 pb-3.5 flex flex-col gap-2">
-        <div className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-500">
+        <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
           {niche}
         </div>
         <h3 className="text-sm font-bold leading-tight tracking-[-0.01em] text-ink-900 min-h-[34px]">
@@ -229,7 +229,7 @@ function Stat({
       >
         {value}
       </div>
-      <div className="text-[9px] font-medium text-ink-500 uppercase tracking-[0.04em]">
+      <div className="text-[12px] font-bold text-ink-700 uppercase tracking-[0.04em]">
         {label}
       </div>
     </div>

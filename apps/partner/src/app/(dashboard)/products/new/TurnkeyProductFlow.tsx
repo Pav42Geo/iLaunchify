@@ -344,7 +344,7 @@ function Step2({
       </p>
 
       <div className="space-y-1">
-        <Label className="text-xs uppercase tracking-wider text-ink-500">Add an ingredient</Label>
+        <Label className="text-xs uppercase tracking-wider text-ink-700">Add an ingredient</Label>
         <IngredientPicker
           onPick={addPicked}
           placeholder="Search e.g. whey protein concentrate…"

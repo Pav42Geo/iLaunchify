@@ -160,7 +160,7 @@ export default async function ProductsListPage({
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Manufacturing · Products
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -263,7 +263,7 @@ export default async function ProductsListPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
                   <th className="pl-5 pr-2 py-2.5 w-8"><SelectAllCheckbox /></th>
                   <SortableTh label="Name" k="name" sort={sort} dir={dir} tab={tab} className="px-3" />
                   <th className="px-3 py-2.5 font-semibold">Status</th>
@@ -414,7 +414,7 @@ function Kpi({
           <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
             {label}
           </p>
           <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">

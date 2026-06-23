@@ -36,7 +36,7 @@ export function ProductSpecGrid({ items, className }: ProductSpecGridProps) {
     >
       {items.map((item) => (
         <div key={item.label} className="py-4 px-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-1.5">
+          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
             {item.label}
           </div>
           <div className="text-[15px] font-semibold text-ink-900">{item.value}</div>

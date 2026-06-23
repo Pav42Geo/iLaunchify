@@ -115,7 +115,7 @@ export function LaunchChecklistDrawer() {
             <h2 id="launch-checklist-title" className="text-lg font-bold text-ink-900">
               Steps to complete
             </h2>
-            <p className="mt-2 text-xs font-medium uppercase tracking-wider text-ink-500">
+            <p className="mt-2 text-xs font-bold uppercase tracking-wider text-ink-700">
               Your progress
             </p>
             <p className="mt-1 text-sm text-ink-700">

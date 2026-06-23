@@ -190,7 +190,7 @@ export default async function SupportAnalyticsPage() {
             <p className="text-[12.5px] text-ink-400">No categories.</p>
           ) : (
             <table className="w-full text-[12.5px]">
-              <thead className="text-[10px] uppercase tracking-wider text-ink-400">
+              <thead className="text-[12px] uppercase tracking-wider text-ink-700">
                 <tr>
                   <th className="pb-1 text-left font-semibold">Category</th>
                   <th className="pb-1 text-right font-semibold">Tickets</th>
@@ -241,7 +241,7 @@ function Kpi({
   }[tone]
   return (
     <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         <Icon className="h-3 w-3" aria-hidden="true" />
         {label}
       </p>

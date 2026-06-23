@@ -38,7 +38,7 @@ export function FinishesDrawer() {
       </div>
 
       <div>
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
           What you'll be able to do
         </div>
         <ul className="space-y-1.5 text-[11.5px] text-ink-700">
@@ -51,7 +51,7 @@ export function FinishesDrawer() {
       </div>
 
       <div className="rounded-md border border-ink-200 bg-ink-50/60 p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Not seeing finishes?
         </div>
         <p className="mt-1 text-[11px] text-ink-600 leading-[1.45]">

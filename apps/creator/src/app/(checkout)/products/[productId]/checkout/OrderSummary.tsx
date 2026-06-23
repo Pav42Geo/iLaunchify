@@ -77,7 +77,7 @@ export function OrderSummary({
           above this summary block in the document outline. */}
       <h3
         id="order-summary-heading"
-        className="mb-3 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
+        className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700"
       >
         Order summary
       </h3>

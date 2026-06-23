@@ -57,7 +57,7 @@ export function LayersDrawer({ canvas }: Props) {
 
   return (
     <div>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
         {rows.length} layer{rows.length === 1 ? '' : 's'} · top of canvas first
       </div>
       <ul className="space-y-1">

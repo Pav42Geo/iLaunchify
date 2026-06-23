@@ -56,7 +56,7 @@ export default async function CreatorSubscriptionsPage() {
   return (
     <div className="space-y-6">
       <header className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Creator · Subscribe &amp; save
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -170,7 +170,7 @@ function SubscriptionCard({ sub }: { sub: SubView }) {
         {/* Body */}
         <div className="grid gap-4 px-5 py-4 sm:grid-cols-[1fr,auto] sm:items-start">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+            <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
               {sub.brandName}
             </p>
             <Link
@@ -232,7 +232,7 @@ function SubscriptionCard({ sub }: { sub: SubView }) {
           {/* Right — money + actions */}
           <div className="flex flex-col items-end gap-2 sm:min-w-[180px]">
             <div className="text-right">
-              <p className="text-[10.5px] uppercase tracking-widest text-ink-500">
+              <p className="text-[12px] uppercase tracking-widest text-ink-700">
                 Per run
               </p>
               <p className="font-display text-xl font-bold tabular-nums text-ink-900">
@@ -265,7 +265,7 @@ function Field({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="mt-0.5 inline-flex items-center gap-1 truncate text-ink-900">

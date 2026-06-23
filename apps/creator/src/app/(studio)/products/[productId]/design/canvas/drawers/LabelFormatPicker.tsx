@@ -71,7 +71,7 @@ export function LabelFormatPicker({
 
   return (
     <section>
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+      <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
         Label format
         {!loading && all.length > 0 && (
           <InfoTip

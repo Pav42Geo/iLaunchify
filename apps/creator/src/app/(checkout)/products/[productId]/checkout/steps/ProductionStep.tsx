@@ -192,7 +192,7 @@ export function ProductionStep({
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-[11px] uppercase tracking-[0.06em] text-ink-500">
+                  <p className="truncate text-[12px] uppercase tracking-[0.06em] text-ink-700">
                     {brandName}
                   </p>
                   <h2 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-900">
@@ -261,7 +261,7 @@ export function ProductionStep({
             <div>
               <label
                 htmlFor="qty-input"
-                className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
+                className="block text-[12px] font-bold uppercase tracking-widest text-ink-700"
               >
                 Quantity (units)
               </label>
@@ -287,7 +287,7 @@ export function ProductionStep({
             </div>
 
             <div className="text-right">
-              <p className="text-[10.5px] uppercase tracking-widest text-ink-500">
+              <p className="text-[12px] uppercase tracking-widest text-ink-700">
                 {isEstimating ? (
                   <span className="inline-flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -451,7 +451,7 @@ function SpecRow({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
         {label}
       </dt>
       <dd className="mt-0.5 flex items-center gap-1.5 truncate text-ink-900">

@@ -50,7 +50,7 @@ export function PatternsDrawer({
 
       {/* Color row */}
       <section>
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Pattern color
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -74,7 +74,7 @@ export function PatternsDrawer({
 
       {/* Pattern grid */}
       <section>
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           Patterns
         </div>
         <div className="grid grid-cols-2 gap-2">

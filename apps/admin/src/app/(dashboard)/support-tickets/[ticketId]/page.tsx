@@ -108,7 +108,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
         <div className="bg-[#F3EFE8] px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="font-mono text-[10.5px] uppercase tracking-wider text-ink-500">
+              <p className="font-mono text-[12px] uppercase tracking-wider text-ink-700">
                 #{ticket.id.slice(-8)}
               </p>
               <h1 className="mt-0.5 font-display text-xl font-semibold tracking-tight text-ink-900">
@@ -134,7 +134,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 border-t border-ink-100 px-5 py-3.5 text-[12px] sm:grid-cols-4">
           <Meta icon={UserIcon} label="Requester">
             {ticket.requester?.name ?? ticket.requester?.email ?? '—'}
-            <span className="ml-1 text-[10px] uppercase tracking-wider text-ink-400">
+            <span className="ml-1 text-[12px] uppercase tracking-wider text-ink-700">
               {ticket.requesterRole.toLowerCase()}
             </span>
             <span className="ml-1 align-middle">
@@ -239,7 +239,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
 function Meta({ icon: Icon, label, children }: { icon: typeof UserIcon; label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.07em] text-ink-400">
+      <dt className="flex items-center gap-1 text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700">
         <Icon className="h-3 w-3" /> {label}
       </dt>
       <dd className="mt-0.5 text-ink-800">{children}</dd>
@@ -260,7 +260,7 @@ function Author({ name, role, when }: { name: string; role: string; when: Date }
         {isAdmin ? <ShieldCheck className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
       </span>
       <span className="text-[12.5px] font-semibold text-ink-900">{name}</span>
-      <span className="text-[10px] uppercase tracking-wider text-ink-400">{role.toLowerCase()}</span>
+      <span className="text-[12px] uppercase tracking-wider text-ink-700">{role.toLowerCase()}</span>
       <span className="text-[11px] text-ink-400">· {formatDate(when)}</span>
     </div>
   )

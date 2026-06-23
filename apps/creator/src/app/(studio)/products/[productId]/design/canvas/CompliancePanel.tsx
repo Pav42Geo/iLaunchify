@@ -339,7 +339,7 @@ function FindingsGroup({
 }) {
   return (
     <section>
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1.5">
+      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-1.5">
         {title}
       </div>
       <ul className="space-y-2">
@@ -465,7 +465,7 @@ function FrameComplianceSection({
   return (
     <section className="rounded-md border border-ink-200 bg-white p-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+        <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           <Target className="h-3 w-3" />
           Die-line frames
         </div>

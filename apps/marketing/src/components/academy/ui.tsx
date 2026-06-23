@@ -117,7 +117,7 @@ export function SectionHead({ eyebrow, title, href, linkLabel }: { eyebrow?: str
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        {eyebrow && <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-500">{eyebrow}</p>}
+        {eyebrow && <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-700">{eyebrow}</p>}
         <h2 className="mt-1 font-display text-[22px] font-bold tracking-[-0.02em] text-ink-900">{title}</h2>
       </div>
       {href && (
@@ -165,7 +165,7 @@ export function CourseCard({ audience, course, lessonCount }: { audience: Academ
         <GraduationCap className="h-10 w-10 text-pink-300" />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        {course.category && <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">{course.category.name}</p>}
+        {course.category && <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{course.category.name}</p>}
         <h3 className="font-display text-[15px] font-bold leading-tight text-ink-900 group-hover:text-pink-700">{course.title}</h3>
         <p className="line-clamp-2 text-[12.5px] leading-relaxed text-ink-500">{course.summary}</p>
         <div className="mt-auto flex items-center gap-3 border-t border-ink-100 pt-2.5 text-[11px] text-ink-500">

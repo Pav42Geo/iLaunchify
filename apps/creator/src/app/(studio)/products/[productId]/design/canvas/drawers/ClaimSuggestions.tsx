@@ -58,7 +58,7 @@ export function ClaimSuggestions({
 
   return (
     <section>
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+      <div className="mb-2 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
         Eligible claims
         <InfoTip
           text="Nutrient-content claims this product qualifies to print, per 21 CFR 101.54/101.60/101.61/101.62, based on the panel values. Eligibility only — some claims carry extra conditions (shown on hover). Real product values bind at print, so the list re-derives then."

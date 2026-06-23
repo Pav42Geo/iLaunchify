@@ -148,7 +148,7 @@ export default async function NicheSubcategoriesPage({ params }: PageProps) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] text-ink-400">
+                    <div className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.08em] text-ink-700">
                       <span>{j.subcategory.category.mainCategory}</span>
                       <ChevronRight className="h-2.5 w-2.5" aria-hidden="true" />
                       <span>{j.subcategory.category.name}</span>
@@ -216,7 +216,7 @@ function Header({
           {iconEmoji ?? '·'}
         </span>
         <div className="flex-1">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             Marketplace · Niches · {nicheName}
           </p>
           <h1 className="mt-0.5 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">

@@ -196,7 +196,7 @@ function Section({
 }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
+      <h4 className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
         {title}
       </h4>
       <div className="space-y-1">{children}</div>

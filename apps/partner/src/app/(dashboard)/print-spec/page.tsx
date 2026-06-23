@@ -81,7 +81,7 @@ export default async function PrintSpecPage({
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Packaging catalog
       </Link>
-      <p className="mt-2 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+      <p className="mt-2 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
         Manufacturing · Prepress
       </p>
       <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -171,7 +171,7 @@ export default async function PrintSpecPage({
 
       {services.length > 1 && (
         <div className="space-y-2">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">Service</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Service</p>
           <div className="flex flex-wrap gap-1.5">
             {services.map((s) => {
               const active = s.id === selectedId

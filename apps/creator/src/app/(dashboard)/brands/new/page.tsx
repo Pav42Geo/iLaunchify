@@ -46,7 +46,7 @@ export default async function NewBrandPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wider text-ink-500">
+        <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Step 4 of 5
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">
@@ -60,7 +60,7 @@ export default async function NewBrandPage() {
 
       {profile.brands.length > 0 && (
         <div className="rounded-md border border-ink-200 bg-ink-50 p-4 text-sm">
-          <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
+          <div className="text-xs font-bold uppercase tracking-wider text-ink-700">
             Existing brands
           </div>
           <ul className="mt-2 space-y-1">

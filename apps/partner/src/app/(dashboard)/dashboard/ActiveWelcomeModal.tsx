@@ -68,7 +68,7 @@ export function ActiveWelcomeModal({ companyName }: { companyName: string }) {
           </p>
 
           <div className="mt-6 w-full space-y-3 rounded-xl border border-ink-200 bg-cream p-4 text-left text-sm">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+            <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
               What happens next
             </div>
             <NextStep>

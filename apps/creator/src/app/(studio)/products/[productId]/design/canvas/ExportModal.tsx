@@ -304,7 +304,7 @@ export function ExportModal({
       >
         <header className="flex items-center justify-between border-b border-ink-200 px-5 py-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
               Export
             </div>
             <h2 className="mt-0.5 text-base font-semibold text-ink-900">
@@ -364,7 +364,7 @@ export function ExportModal({
 
           {/* Format */}
           <section>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
               Format
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -387,7 +387,7 @@ export function ExportModal({
 
           {/* Resolution */}
           <section>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-2">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
               Resolution
             </div>
             <div className="grid grid-cols-3 gap-1.5">
@@ -450,7 +450,7 @@ export function ExportModal({
 
           {/* Output summary */}
           <section className="rounded-md border border-ink-200 bg-ink-50/60 p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
               Output
             </div>
             <p className="mt-1 text-[11.5px] text-ink-700 font-mono tabular-nums">

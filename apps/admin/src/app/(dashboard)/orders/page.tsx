@@ -256,7 +256,7 @@ function Header({
   return (
     <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <div className="bg-[#F3EFE8] px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-ink-500">
+        <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
           Operate
         </p>
         <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
@@ -302,7 +302,7 @@ function Kpi({
   }[tone]
   return (
     <div className="px-5 py-3.5">
-      <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         <Icon className="h-3 w-3" aria-hidden="true" />
         {label}
       </p>
@@ -434,7 +434,7 @@ function TypeChips({
   ]
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="mr-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-400">Type</span>
+      <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">Type</span>
       {items.map((it) => {
         const isActive = active === it.value
         return (

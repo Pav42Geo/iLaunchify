@@ -303,7 +303,7 @@ export default async function ProductPreviewPage({
       <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink-500">
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Manufacturing · Product record
             </p>
             <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
@@ -363,7 +363,7 @@ export default async function ProductPreviewPage({
 
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">From</p>
+            <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">From</p>
             <p className="font-display text-[26px] font-bold tracking-[-0.02em] text-ink-900">
               ${priceFloor.toFixed(2)}
               <span className="text-[14px] font-normal text-ink-500"> /unit</span>
@@ -377,7 +377,7 @@ export default async function ProductPreviewPage({
               { label: 'Margin', value: `${marginPct}%` },
             ].map((s) => (
               <div key={s.label} className="rounded-xl bg-cream px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">{s.label}</p>
+                <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{s.label}</p>
                 <p className="mt-0.5 font-display text-[16px] font-bold tabular-nums text-ink-900">{s.value}</p>
               </div>
             ))}
@@ -398,7 +398,7 @@ export default async function ProductPreviewPage({
               ) : (
                 Object.entries(tagsByGroup).map(([g, names]) => (
                   <div key={g}>
-                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{TAG_GROUP_LABEL[g] ?? g}</p>
+                    <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{TAG_GROUP_LABEL[g] ?? g}</p>
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {names.map((n) => (
                         <span key={n} className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] text-ink-700">{n}</span>
@@ -431,14 +431,14 @@ export default async function ProductPreviewPage({
                     { label: 'Total revenue', value: money(totalRevenue) },
                   ].map((s) => (
                     <div key={s.label} className="rounded-xl bg-cream px-3 py-2.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">{s.label}</p>
+                      <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{s.label}</p>
                       <p className="mt-0.5 font-display text-[16px] font-bold tabular-nums text-ink-900">{s.value}</p>
                     </div>
                   ))}
                 </div>
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="border-b border-ink-100 text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                    <tr className="border-b border-ink-100 text-left text-[12px] uppercase tracking-wider text-ink-700">
                       <th className="py-1.5 font-semibold">Date</th>
                       <th className="py-1.5 font-semibold">Run</th>
                       <th className="py-1.5 text-right font-semibold">Qty</th>
@@ -509,7 +509,7 @@ export default async function ProductPreviewPage({
             <Section icon={CircleDollarSign} title="Volume pricing" desc="Per-unit price and hard floor at each order quantity." meta={`${tpl.pricingTiers.length} tiers`}>
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="border-b border-ink-100 text-left text-[10.5px] uppercase tracking-wider text-ink-500">
+                  <tr className="border-b border-ink-100 text-left text-[12px] uppercase tracking-wider text-ink-700">
                     <th className="py-1.5 font-semibold">Quantity</th>
                     <th className="py-1.5 font-semibold">Per unit</th>
                     <th className="py-1.5 font-semibold">Floor</th>
@@ -541,7 +541,7 @@ export default async function ProductPreviewPage({
               {/* Left: ingredient statement + allergens + recipe breakdown */}
               <div className="space-y-4">
                 <div>
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">Ingredients</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">Ingredients</p>
                   {ingredientStatement ? (
                     <p className="mt-1 text-[13.5px] leading-relaxed text-ink-800">
                       {ingredientStatement}.
@@ -552,7 +552,7 @@ export default async function ProductPreviewPage({
                 </div>
 
                 <div>
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">Contains</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">Contains</p>
                   {allergenOverrides.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {allergenOverrides.map((a) => (
@@ -568,7 +568,7 @@ export default async function ProductPreviewPage({
                 </div>
 
                 <div>
-                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">Recipe breakdown</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">Recipe breakdown</p>
                   {tpl.ingredientSlots.length === 0 ? (
                     <p className="mt-1 text-[13px] italic text-ink-400">No recipe slots yet.</p>
                   ) : (
@@ -609,7 +609,7 @@ export default async function ProductPreviewPage({
 
               {/* Right: the actual Facts panel */}
               <div>
-                <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+                <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
                   {isSupplement ? 'Supplement Facts' : 'Nutrition Facts'}
                 </p>
                 {panel ? (
@@ -775,7 +775,7 @@ export default async function ProductPreviewPage({
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           {/* Creator's view mini */}
           <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">
+            <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">
               <Sparkles className="h-3.5 w-3.5 text-pink-500" aria-hidden="true" /> Creator&apos;s view
             </p>
             <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -799,7 +799,7 @@ export default async function ProductPreviewPage({
           <section className="rounded-2xl border border-ink-200 bg-white p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">Marketplace</p>
+                <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">Marketplace</p>
                 <p className="mt-0.5 text-[13px] font-medium text-ink-800">
                   {status === 'PUBLISHED' ? 'Visible to creators' : status === 'PAUSED' ? 'Hidden (paused)' : pill.label}
                 </p>
@@ -814,7 +814,7 @@ export default async function ProductPreviewPage({
 
           {/* Actions */}
           <section className="rounded-2xl border border-ink-200 bg-white p-4">
-            <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">Actions</h3>
+            <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">Actions</h3>
             <div className="mt-3 space-y-2">
               {authoring ? (
                 <ActionLink href={`/products/${tpl.id}/edit`} icon={Pencil} primary>Edit product</ActionLink>
@@ -880,7 +880,7 @@ function Section({
 function Metric({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' }) {
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</p>
+      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
       <p className={`mt-0.5 font-display text-[20px] font-bold tabular-nums leading-none ${tone === 'good' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-700' : 'text-ink-900'}`}>{value}</p>
       {hint && <p className="mt-1 text-[10px] text-ink-400">{hint}</p>}
     </div>
@@ -890,7 +890,7 @@ function Metric({ label, value, hint, tone }: { label: string; value: string; hi
 function KV({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-[13px]">
-      <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">{label}</span>
+      <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</span>
       <span className="text-right text-ink-800">{value}</span>
     </div>
   )

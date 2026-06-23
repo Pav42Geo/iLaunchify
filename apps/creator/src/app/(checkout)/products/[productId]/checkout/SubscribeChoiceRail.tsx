@@ -527,7 +527,7 @@ function SelectField({
     <div>
       <label
         htmlFor={id}
-        className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-600"
+        className="block text-[12px] font-bold uppercase tracking-widest text-ink-700"
       >
         {label}
       </label>

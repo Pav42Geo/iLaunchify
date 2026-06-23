@@ -117,7 +117,7 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
 
       {/* Live sample render */}
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
           Sample render
         </h2>
         <p className="mt-1 mb-3 text-[12px] text-ink-500">
@@ -128,7 +128,7 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
 
       {/* Dimensional thresholds */}
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
           Dimensional thresholds
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -146,7 +146,7 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
 
       {/* Capabilities */}
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
           Column capabilities
         </h2>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -175,7 +175,7 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+      <dt className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
         {label}
       </dt>
       <dd className="mt-0.5 font-display text-[16px] font-semibold tabular-nums text-ink-900">

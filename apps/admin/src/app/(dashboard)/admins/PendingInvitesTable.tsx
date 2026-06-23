@@ -42,7 +42,7 @@ export function PendingInvitesTable({ invites }: { invites: InviteRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[13px]">
           <thead>
-            <tr className="border-b border-ink-100 text-[10.5px] uppercase tracking-wider text-ink-500">
+            <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
               <th className="px-4 py-2.5 font-semibold">Email</th>
               <th className="px-4 py-2.5 font-semibold">Role</th>
               <th className="px-4 py-2.5 font-semibold">Invited by</th>
