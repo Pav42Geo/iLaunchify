@@ -12,13 +12,24 @@ export default async function LibraryTemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl bg-[#F3EFE8] px-7 py-6">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Design templates</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-600">
-          The curated template library creators browse in the Design Studio. Tag each with a product
-          domain, a style category, and a die-line target so it surfaces only on matching products. Save
-          as <strong>Regular</strong> (all creators) or <strong>Premium</strong> (Agency tier only).
-          Paste a design&apos;s canvas JSON exported from the Studio.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Design templates</h1>
+            <p className="mt-1 max-w-2xl text-sm text-ink-600">
+              The curated template library creators browse in the Design Studio. Tag each with a product
+              domain, a style category, and a die-line target so it surfaces only on matching products. Save
+              as <strong>Regular</strong> (all creators) or <strong>Premium</strong> (Agency tier only).
+            </p>
+          </div>
+          <a
+            href={`${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0 rounded-full bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-700"
+          >
+            Design in Studio →
+          </a>
+        </div>
       </div>
 
       <TemplatesManager
