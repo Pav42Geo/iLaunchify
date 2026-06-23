@@ -50,7 +50,17 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const [interacting, setInteracting] = React.useState(false)
   const rotateRef = React.useRef<{ cx: number; cy: number; startPointer: number; startAngle: number } | null>(null)
   const moveRef = React.useRef<{ px: number; py: number; left: number; top: number; zoom: number } | null>(null)
-  const edgeRef = React.useRef<{ axis: 'x' | 'y'; px: number; py: number; left: number; top: number; zoom: number } | null>(null)
+  const edgeRef = React.useRef<{
+    axis: 'x' | 'y'
+    px: number
+    py: number
+    sx: number
+    sy: number
+    bw: number
+    bh: number
+    center: unknown
+    zoom: number
+  } | null>(null)
 
   React.useEffect(() => {
     if (!canvas) return
@@ -168,28 +178,44 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
     force()
   }
 
-  // --- Edge bars: drag the mid-right / mid-bottom border line to nudge the object
-  // along one axis WITHOUT stretching it (Canva-style). The object only moves. ---
+  // --- Edge bars: drag the mid-right / mid-bottom border line to resize the box on
+  // that ONE axis, CENTERED — both borders move symmetrically so the object stays
+  // pinned in place (Canva-style). Not a position move, not a corner scale. ---
   const onEdgeDown = (axis: 'x' | 'y') => (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!canvas || locked) return
     e.preventDefault()
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
+    const o = active as unknown as { getCenterPoint: () => unknown }
     edgeRef.current = {
       axis,
       px: e.clientX,
       py: e.clientY,
-      left: Number(active.left) || 0,
-      top: Number(active.top) || 0,
+      sx: Number(active.scaleX) || 1,
+      sy: Number(active.scaleY) || 1,
+      bw: Number((active as { width?: number }).width) || 1,
+      bh: Number((active as { height?: number }).height) || 1,
+      center: o.getCenterPoint(),
       zoom: canvas.getZoom?.() || 1,
     }
   }
   const onEdgeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const m = edgeRef.current
     if (!m || e.buttons !== 1) return
-    if (m.axis === 'x') active.set({ left: m.left + (e.clientX - m.px) / m.zoom })
-    else active.set({ top: m.top + (e.clientY - m.py) / m.zoom })
-    active.setCoords?.()
+    const o = active as unknown as {
+      set: (v: object) => void
+      setPositionByOrigin: (p: unknown, ox: string, oy: string) => void
+      setCoords?: () => void
+    }
+    if (m.axis === 'x') {
+      const delta = (e.clientX - m.px) / m.zoom // px the dragged edge moved (object space)
+      o.set({ scaleX: Math.max(0.05, m.sx + (2 * delta) / m.bw) }) // ×2 → both sides move (centered)
+    } else {
+      const delta = (e.clientY - m.py) / m.zoom
+      o.set({ scaleY: Math.max(0.05, m.sy + (2 * delta) / m.bh) })
+    }
+    o.setPositionByOrigin(m.center, 'center', 'center') // keep the object centered in place
+    o.setCoords?.()
     canvas?.requestRenderAll()
   }
   const onEdgeUp = () => {
@@ -322,8 +348,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           >
             <button
               type="button"
-              aria-label="Move left/right"
-              title="Drag to move left / right"
+              aria-label="Resize width"
+              title="Drag to resize width (stays centered)"
               onPointerDown={onEdgeDown('x')}
               onPointerMove={onEdgeMove}
               onPointerUp={onEdgeUp}
@@ -336,8 +362,8 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           >
             <button
               type="button"
-              aria-label="Move up/down"
-              title="Drag to move up / down"
+              aria-label="Resize height"
+              title="Drag to resize height (stays centered)"
               onPointerDown={onEdgeDown('y')}
               onPointerMove={onEdgeMove}
               onPointerUp={onEdgeUp}
