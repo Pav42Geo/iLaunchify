@@ -8,7 +8,7 @@
 // Pantone is a free-text reference code only — no licensed color library ships.
 
 import { useState, useTransition } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2, X, Wand2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   createPalette,
@@ -18,6 +18,7 @@ import {
   updateSwatch,
   removeSwatch,
 } from './actions'
+import { PaletteGenerator } from './PaletteGenerator'
 
 interface GradientState {
   angle: number
@@ -44,6 +45,8 @@ export interface PaletteState {
 interface Props {
   brandId: string
   initial: PaletteState[]
+  /** Builder+ may use color-harmony methods in the generator (Auto is free). */
+  canHarmony?: boolean
 }
 
 function gradientCss(g: GradientState | null): string {
@@ -54,9 +57,10 @@ function gradientCss(g: GradientState | null): string {
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 
-export function PalettesSection({ brandId, initial }: Props) {
+export function PalettesSection({ brandId, initial, canHarmony = false }: Props) {
   const [palettes, setPalettes] = useState<PaletteState[]>(initial)
   const [selected, setSelected] = useState<string | null>(null)
+  const [showGen, setShowGen] = useState(false)
   const [, startTransition] = useTransition()
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
@@ -147,20 +151,40 @@ export function PalettesSection({ brandId, initial }: Props) {
 
   return (
     <section className="rounded-lg border border-ink-200 bg-white p-6">
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-ink-900">Color palettes</h2>
-        <button
-          type="button"
-          onClick={handleNewPalette}
-          className="inline-flex items-center gap-1 rounded-md bg-ink-900 px-2.5 py-1.5 text-[12px] font-semibold text-white hover:bg-black"
-        >
-          <Plus className="h-3.5 w-3.5" /> New palette
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowGen((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:border-pink-400 hover:text-pink-700"
+          >
+            <Wand2 className="h-3.5 w-3.5" /> Generate
+          </button>
+          <button
+            type="button"
+            onClick={handleNewPalette}
+            className="inline-flex items-center gap-1 rounded-md bg-ink-900 px-2.5 py-1.5 text-[12px] font-semibold text-white hover:bg-black"
+          >
+            <Plus className="h-3.5 w-3.5" /> New palette
+          </button>
+        </div>
       </div>
       <p className="mb-4 text-[12.5px] text-ink-500">
         Organize extra brand colors into palettes — solids and gradients, with optional CMYK and
         Pantone reference codes for print. Solid colors also appear in the Design Studio pickers.
       </p>
+
+      {showGen && (
+        <div className="mb-4">
+          <PaletteGenerator
+            brandId={brandId}
+            canHarmony={canHarmony}
+            onSaved={(p) => setPalettes((prev) => [...prev, p])}
+            onClose={() => setShowGen(false)}
+          />
+        </div>
+      )}
 
       {palettes.length === 0 ? (
         <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-[12.5px] text-ink-500">

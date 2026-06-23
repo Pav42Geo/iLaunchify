@@ -91,12 +91,14 @@ export interface BrandLimits {
   kits: number
   /** Max BrandTemplate rows per brand kit. */
   templatesPerKit: number
+  /** Max color palettes per brand kit (Brand Kit V2 Slice 5). */
+  palettesPerKit: number
 }
 
 export const BRAND_LIMITS: Record<TierKey, BrandLimits> = {
-  maker: { kits: 1, templatesPerKit: 3 },
-  builder: { kits: 3, templatesPerKit: 15 },
-  agency: { kits: Infinity, templatesPerKit: Infinity },
+  maker: { kits: 1, templatesPerKit: 3, palettesPerKit: 3 },
+  builder: { kits: 3, templatesPerKit: 15, palettesPerKit: 12 },
+  agency: { kits: Infinity, templatesPerKit: Infinity, palettesPerKit: Infinity },
 }
 
 /** Brand Kit limits for a tier. See {@link BRAND_LIMITS}. */
@@ -116,12 +118,14 @@ export function brandLimits(tier: TierKey): BrandLimits {
 export interface AdvancedBrandFeatures {
   /** Upload + use custom (non-catalog) fonts in the brand kit. */
   customFontUpload: boolean
+  /** Generate palettes with color-harmony methods (not just Auto). Builder+. */
+  colorHarmony: boolean
 }
 
 export const ADVANCED_BRAND_FEATURES: Record<TierKey, AdvancedBrandFeatures> = {
-  maker: { customFontUpload: false },
-  builder: { customFontUpload: true },
-  agency: { customFontUpload: true },
+  maker: { customFontUpload: false, colorHarmony: false },
+  builder: { customFontUpload: true, colorHarmony: true },
+  agency: { customFontUpload: true, colorHarmony: true },
 }
 
 export function advancedBrandFeatures(tier: TierKey): AdvancedBrandFeatures {
@@ -131,6 +135,11 @@ export function advancedBrandFeatures(tier: TierKey): AdvancedBrandFeatures {
 /** Convenience: may this tier upload custom brand fonts? (Builder+) */
 export function canUploadCustomFonts(tier: TierKey): boolean {
   return ADVANCED_BRAND_FEATURES[tier].customFontUpload
+}
+
+/** Convenience: may this tier use color-harmony palette methods? (Builder+) Auto is free. */
+export function canUseColorHarmony(tier: TierKey): boolean {
+  return ADVANCED_BRAND_FEATURES[tier].colorHarmony
 }
 
 /**

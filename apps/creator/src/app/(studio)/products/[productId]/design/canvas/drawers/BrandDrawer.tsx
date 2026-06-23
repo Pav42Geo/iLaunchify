@@ -551,7 +551,7 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
         }}
         initial={data.textStyles}
       />
-      <PalettesSection brandId={brandId} initial={data.palettes} />
+      <PalettesSection brandId={brandId} initial={data.palettes} canHarmony={data.canHarmony} />
     </div>
   )
 }

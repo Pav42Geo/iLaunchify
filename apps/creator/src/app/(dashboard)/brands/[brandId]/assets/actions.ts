@@ -29,8 +29,23 @@ import {
   type BrandTextRole,
   type BrandSwatchInput,
 } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, canUploadCustomFonts } from '@ilaunchify/auth'
-import { isKnownFontFamily, isCustomFontRef, customFontId, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
+import {
+  requireUser,
+  getCreatorTier,
+  canUploadCustomFonts,
+  canUseColorHarmony,
+  brandLimits,
+} from '@ilaunchify/auth'
+import {
+  isKnownFontFamily,
+  isCustomFontRef,
+  customFontId,
+  CUSTOM_FONT_PREFIX,
+  normalizeHex,
+  hexToCmyk,
+  nearestColorName,
+  type HarmonyMethod,
+} from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 
@@ -421,6 +436,97 @@ export async function removeSwatch(input: { brandId: string; swatchId: string })
   if (!ok) return { ok: false, error: 'Could not remove that color.' }
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
+}
+
+/**
+ * Save a generated/picked palette (Brand Palette Generator, Phase 1). The colors are
+ * generated client-side; this persists the final list. Server-enforced gating: any
+ * harmony method other than AUTO requires Builder+ (`canUseColorHarmony`); the palette
+ * count cap is enforced per tier. Each color gets auto CMYK (reference) + nearest name.
+ */
+export interface SavedSwatch {
+  id: string
+  kind: 'SOLID' | 'GRADIENT'
+  hex: string | null
+  name: string | null
+  cmykC: number | null
+  cmykM: number | null
+  cmykY: number | null
+  cmykK: number | null
+  pantone: string | null
+  gradient: { angle: number; stops: { color: string; pos: number }[] } | null
+}
+export interface SavedPalette {
+  id: string
+  name: string
+  swatches: SavedSwatch[]
+}
+
+export async function generateAndSaveBrandPalette(input: {
+  brandId: string
+  method: HarmonyMethod
+  name: string
+  colors: string[] // hex, 2–6
+}): Promise<Result<{ palette: SavedPalette }>> {
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Not authorized.' }
+
+  const tier = await getCreatorTier(user.id)
+  if (input.method !== 'AUTO' && !canUseColorHarmony(tier)) {
+    return {
+      ok: false,
+      error: 'Color-harmony methods are a Builder feature. Upgrade, or use Auto.',
+    }
+  }
+
+  const colors = input.colors
+    .map((c) => normalizeHex(c))
+    .filter((c): c is string => c !== null)
+    .slice(0, 6)
+  if (colors.length < 2) return { ok: false, error: 'A palette needs at least 2 colors.' }
+
+  const cap = brandLimits(tier).palettesPerKit
+  if (Number.isFinite(cap) && (await countBrandPalettes(input.brandId)) >= cap) {
+    return { ok: false, error: `Your plan includes ${cap} palettes per kit. Upgrade for more.` }
+  }
+
+  const name = input.name.trim().slice(0, 40) || 'Generated palette'
+  const paletteId = await createBrandPalette(input.brandId, name)
+  if (!paletteId) {
+    return { ok: false, error: 'Palettes need a database update — run db push, then retry.' }
+  }
+
+  const swatches: SavedSwatch[] = []
+  for (const hex of colors) {
+    const cmyk = hexToCmyk(hex)
+    const swName = nearestColorName(hex)
+    const id = await addBrandSwatch(input.brandId, paletteId, {
+      kind: 'SOLID',
+      hex,
+      name: swName,
+      cmykC: cmyk.c,
+      cmykM: cmyk.m,
+      cmykY: cmyk.y,
+      cmykK: cmyk.k,
+    })
+    if (id) {
+      swatches.push({
+        id,
+        kind: 'SOLID',
+        hex,
+        name: swName,
+        cmykC: cmyk.c,
+        cmykM: cmyk.m,
+        cmykY: cmyk.y,
+        cmykK: cmyk.k,
+        pantone: null,
+        gradient: null,
+      })
+    }
+  }
+
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true, palette: { id: paletteId, name, swatches } }
 }
 
 // ---- Custom fonts (Brand Kit V2 Slice 2) -----------------------------------

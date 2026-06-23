@@ -59,6 +59,7 @@ export {
   advancedBrandFeatures,
   ADVANCED_BRAND_FEATURES,
   canUploadCustomFonts,
+  canUseColorHarmony,
 } from './tiers'
 export type { TierKey, BrandLimits, AdvancedBrandFeatures } from './tiers'
 

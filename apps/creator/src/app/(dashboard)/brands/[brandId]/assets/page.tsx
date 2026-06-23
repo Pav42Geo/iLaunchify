@@ -14,7 +14,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles, listBrandPalettes } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony } from '@ilaunchify/auth'
 import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
@@ -177,7 +177,7 @@ export default async function BrandAssetsPage({ params }: PageProps) {
           }}
         />
 
-        <PalettesSection brandId={brand.id} initial={paletteInitial} />
+        <PalettesSection brandId={brand.id} initial={paletteInitial} canHarmony={canUseColorHarmony(tier)} />
 
         <FontsSection
           brandId={brand.id}
