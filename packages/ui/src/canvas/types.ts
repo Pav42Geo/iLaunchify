@@ -108,8 +108,26 @@ export interface BrandCanvasAssets {
   // Brand Kit V2 Slice 3 — creator-pinned visual assets (photos/graphics/backgrounds)
   // surfaced in the Elements "Photos & uploads" rail. Drop onto canvas like logos.
   brandImages: BrandImageAsset[]
+  // Brand Kit V2 Slice 5 — named color palettes. SOLID swatches are also folded into
+  // extraSwatches so they appear in every existing color/background picker; this carries
+  // the organized structure (incl. gradients) for richer surfacing. Optional.
+  brandPalettes?: BrandCanvasPalette[] | null
   // Tagline — pre-fillable text element
   tagline: string | null
+}
+
+export interface BrandCanvasPalette {
+  id: string
+  name: string
+  swatches: BrandCanvasSwatch[]
+}
+export interface BrandCanvasSwatch {
+  id: string
+  kind: 'SOLID' | 'GRADIENT'
+  hex: string | null
+  name: string | null
+  /** CSS gradient string for GRADIENT swatches (e.g. "linear-gradient(...)"), else null. */
+  gradientCss: string | null
 }
 
 export interface BrandImageAsset {

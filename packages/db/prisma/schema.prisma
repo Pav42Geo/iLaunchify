@@ -1159,6 +1159,8 @@ model Brand {
   brandTextStyles         BrandTextStyle[]
   // Brand Kit V2 Slice 3 — creator-pinned visual assets (photos/graphics/backgrounds).
   brandAssets             BrandAsset[]
+  // Brand Kit V2 Slice 5 — named color palettes (multi-palette + gradients + CMYK/Pantone).
+  brandPalettes           BrandPalette[]
   products                Product[]
   templates               Template[]
   designs                 Design[]
@@ -2712,6 +2714,45 @@ model BrandAsset {
   brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId])
+}
+
+/// Brand Kit V2 Slice 5 — color V2. A named palette (e.g. "Core", "Seasonal") holding
+/// ordered swatches. The legacy flat triad (Brand.colorPrimary/Secondary/Accent +
+/// brandSwatches) stays as the canonical brand colors; palettes ADD organized extras.
+model BrandPalette {
+  id        String        @id @default(uuid())
+  brandId   String
+  name      String
+  sortIndex Int           @default(0)
+  createdAt DateTime      @default(now())
+  brand     Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  swatches  BrandSwatch[]
+
+  @@index([brandId])
+}
+
+/// A single swatch in a BrandPalette — a solid color or a gradient. hex is the
+/// canvas-usable RGB value (and the gradient's preview/fallback). CMYK + Pantone are
+/// PRINT-REFERENCE METADATA only (the canvas renders RGB); Pantone is a free-text
+/// reference code, never a licensed color library. gradient JSON = { angle, stops:
+/// [{ color, pos }] } when kind = GRADIENT.
+model BrandSwatch {
+  id        String       @id @default(uuid())
+  paletteId String
+  kind      String       @default("SOLID") // 'SOLID' | 'GRADIENT'
+  hex       String? // #RRGGBB
+  name      String?
+  cmykC     Int? // 0–100
+  cmykM     Int?
+  cmykY     Int?
+  cmykK     Int?
+  pantone   String? // reference code, e.g. "PANTONE 200 C"
+  gradient  Json? // { angle: number, stops: [{ color: string, pos: number }] }
+  sortIndex Int          @default(0)
+  createdAt DateTime     @default(now())
+  palette   BrandPalette @relation(fields: [paletteId], references: [id], onDelete: Cascade)
+
+  @@index([paletteId])
 }
 
 /// Brand text style → font assignment (Brand Kit V2 Slice 2c / 4 foundation). Each

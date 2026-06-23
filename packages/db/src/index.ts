@@ -74,6 +74,22 @@ export {
   type BrandAssetKind,
   type BrandAssetRow,
 } from './brand-assets'
+// Brand color palettes (Brand Kit V2 Slice 5 — multi-palette + gradients + CMYK/Pantone).
+export {
+  listBrandPalettes,
+  countBrandPalettes,
+  createBrandPalette,
+  renameBrandPalette,
+  deleteBrandPalette,
+  addBrandSwatch,
+  updateBrandSwatch,
+  removeBrandSwatch,
+  type BrandPaletteRow,
+  type BrandSwatchRow,
+  type BrandSwatchInput,
+  type BrandGradient,
+  type BrandGradientStop,
+} from './brand-palettes'
 export {
   getRoleCapabilityMatrix,
   getRoleCapabilities,

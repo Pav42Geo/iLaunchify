@@ -19,7 +19,15 @@ import {
   deleteBrandFont,
   getBrandFontsByIds,
   setBrandTextStyleSpec,
+  createBrandPalette,
+  renameBrandPalette,
+  deleteBrandPalette,
+  countBrandPalettes,
+  addBrandSwatch,
+  updateBrandSwatch,
+  removeBrandSwatch,
   type BrandTextRole,
+  type BrandSwatchInput,
 } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, canUploadCustomFonts } from '@ilaunchify/auth'
 import { isKnownFontFamily, isCustomFontRef, customFontId, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
@@ -298,6 +306,119 @@ export async function saveBrandTextStyle(input: {
   if (!ok) {
     return { ok: false, error: 'Text styles need a database update — run db push, then retry.' }
   }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+// ---- Color palettes (Brand Kit V2 Slice 5) ---------------------------------
+
+const MAX_PALETTES = 12
+const MAX_PANTONE_LEN = 40
+
+function sanitizeSwatch(input: BrandSwatchInput): BrandSwatchInput | { error: string } {
+  const out: BrandSwatchInput = {}
+  if (input.kind !== undefined) {
+    if (input.kind !== 'SOLID' && input.kind !== 'GRADIENT') return { error: 'Invalid swatch type.' }
+    out.kind = input.kind
+  }
+  if (input.hex !== undefined) {
+    if (input.hex !== null && !HEX_REGEX.test(input.hex)) return { error: 'Color must be a #hex value.' }
+    out.hex = input.hex
+  }
+  if (input.name !== undefined) out.name = input.name ? input.name.slice(0, 40) : null
+  for (const k of ['cmykC', 'cmykM', 'cmykY', 'cmykK'] as const) {
+    if (input[k] !== undefined) {
+      const v = input[k]
+      out[k] = v == null ? null : Math.min(100, Math.max(0, Math.round(v)))
+    }
+  }
+  if (input.pantone !== undefined) {
+    out.pantone = input.pantone ? input.pantone.slice(0, MAX_PANTONE_LEN) : null
+  }
+  if (input.gradient !== undefined) {
+    if (input.gradient === null) out.gradient = null
+    else {
+      const stops = (input.gradient.stops ?? []).filter((s) => HEX_REGEX.test(s.color))
+      if (stops.length < 2) return { error: 'A gradient needs at least two valid color stops.' }
+      out.gradient = {
+        angle: Math.min(360, Math.max(0, Math.round(input.gradient.angle ?? 90))),
+        stops: stops.map((s) => ({ color: s.color, pos: Math.min(100, Math.max(0, Math.round(s.pos))) })),
+      }
+    }
+  }
+  return out
+}
+
+export async function createPalette(input: { brandId: string; name: string }): Promise<Result<{ paletteId: string }>> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const name = input.name.trim().slice(0, 40) || 'Palette'
+  if ((await countBrandPalettes(input.brandId)) >= MAX_PALETTES) {
+    return { ok: false, error: `Up to ${MAX_PALETTES} palettes per brand.` }
+  }
+  const id = await createBrandPalette(input.brandId, name)
+  if (!id) return { ok: false, error: 'Palettes need a database update — run db push, then retry.' }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true, paletteId: id }
+}
+
+export async function renamePalette(input: {
+  brandId: string
+  paletteId: string
+  name: string
+}): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const ok = await renameBrandPalette(input.brandId, input.paletteId, input.name.trim().slice(0, 40) || 'Palette')
+  if (!ok) return { ok: false, error: 'Could not rename that palette.' }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+export async function deletePalette(input: { brandId: string; paletteId: string }): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const ok = await deleteBrandPalette(input.brandId, input.paletteId)
+  if (!ok) return { ok: false, error: 'Could not delete that palette.' }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+export async function addSwatch(input: {
+  brandId: string
+  paletteId: string
+  swatch: BrandSwatchInput
+}): Promise<Result<{ swatchId: string }>> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const clean = sanitizeSwatch(input.swatch)
+  if ('error' in clean) return { ok: false, error: clean.error }
+  const id = await addBrandSwatch(input.brandId, input.paletteId, clean)
+  if (!id) return { ok: false, error: 'Could not add that color.' }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true, swatchId: id }
+}
+
+export async function updateSwatch(input: {
+  brandId: string
+  swatchId: string
+  swatch: BrandSwatchInput
+}): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const clean = sanitizeSwatch(input.swatch)
+  if ('error' in clean) return { ok: false, error: clean.error }
+  const ok = await updateBrandSwatch(input.brandId, input.swatchId, clean)
+  if (!ok) return { ok: false, error: 'Could not update that color.' }
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+export async function removeSwatch(input: { brandId: string; swatchId: string }): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  const ok = await removeBrandSwatch(input.brandId, input.swatchId)
+  if (!ok) return { ok: false, error: 'Could not remove that color.' }
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }

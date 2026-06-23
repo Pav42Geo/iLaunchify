@@ -13,7 +13,7 @@
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles } from '@ilaunchify/db'
+import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles, listBrandPalettes } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
@@ -24,6 +24,7 @@ import { FontsSection } from './FontsSection'
 import { TaglineSection } from './TaglineSection'
 import { TemplatesSection } from './TemplatesSection'
 import { TextStylesSection, type RoleStyleState } from './TextStylesSection'
+import { PalettesSection, type PaletteState } from './PalettesSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,6 +120,25 @@ export default async function BrandAssetsPage({ params }: PageProps) {
       colorRef: r.colorRef,
     }))
 
+  // Brand Kit V2 Slice 5 — color palettes.
+  const paletteRows = await listBrandPalettes(brand.id)
+  const paletteInitial: PaletteState[] = paletteRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    swatches: p.swatches.map((s) => ({
+      id: s.id,
+      kind: s.kind,
+      hex: s.hex,
+      name: s.name,
+      cmykC: s.cmykC,
+      cmykM: s.cmykM,
+      cmykY: s.cmykY,
+      cmykK: s.cmykK,
+      pantone: s.pantone,
+      gradient: s.gradient,
+    })),
+  }))
+
   return (
     <div className="space-y-6">
       <header>
@@ -156,6 +176,8 @@ export default async function BrandAssetsPage({ params }: PageProps) {
             brandSwatches: brand.brandSwatches,
           }}
         />
+
+        <PalettesSection brandId={brand.id} initial={paletteInitial} />
 
         <FontsSection
           brandId={brand.id}

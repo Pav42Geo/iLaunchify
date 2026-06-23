@@ -4,7 +4,13 @@
 // brand's assets through the exact same path. Logos use the Asset.publicUrl already
 // stored on the brand's logo assets.
 
-import { prisma, getBrandFontsByIds, listBrandTextStyles, listBrandAssets } from '@ilaunchify/db'
+import {
+  prisma,
+  getBrandFontsByIds,
+  listBrandTextStyles,
+  listBrandAssets,
+  listBrandPalettes,
+} from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { isKnownFontFamily, isCustomFontRef, customFontId } from '@ilaunchify/ui'
 import type {
@@ -12,6 +18,7 @@ import type {
   BrandLogoAsset,
   BrandImageAsset,
   BrandTextStyleSpec,
+  BrandCanvasPalette,
 } from '@ilaunchify/ui'
 
 const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
@@ -194,13 +201,41 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     label: a.label,
   }))
 
+  // Brand Kit V2 Slice 5 — color palettes. SOLID swatch hexes fold into extraSwatches
+  // so they surface in every existing color/background picker; the structured palettes
+  // (with gradient CSS) are carried separately for richer UI later.
+  const paletteRows = await listBrandPalettes(brand.id)
+  const gradientToCss = (g: { angle: number; stops: { color: string; pos: number }[] } | null): string | null => {
+    if (!g || !g.stops?.length) return null
+    const stops = [...g.stops]
+      .sort((a, b) => a.pos - b.pos)
+      .map((s) => `${s.color} ${Math.round(s.pos)}%`)
+      .join(', ')
+    return `linear-gradient(${Math.round(g.angle)}deg, ${stops})`
+  }
+  const brandPalettes: BrandCanvasPalette[] = paletteRows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    swatches: p.swatches.map((s) => ({
+      id: s.id,
+      kind: s.kind,
+      hex: s.hex,
+      name: s.name,
+      gradientCss: s.kind === 'GRADIENT' ? gradientToCss(s.gradient) : null,
+    })),
+  }))
+  const paletteSolidHexes = paletteRows.flatMap((p) =>
+    p.swatches.filter((s) => s.kind === 'SOLID' && s.hex).map((s) => s.hex as string),
+  )
+  const mergedExtraSwatches = Array.from(new Set([...brand.brandSwatches, ...paletteSolidHexes]))
+
   return {
     brandId: brand.id,
     brandName: brand.name,
     colorPrimary: brand.colorPrimary,
     colorSecondary: brand.colorSecondary,
     colorAccent: brand.colorAccent,
-    extraSwatches: brand.brandSwatches,
+    extraSwatches: mergedExtraSwatches,
     // Catalog fonts: webfontUrl null (loaded via loadFont(family)). Custom fonts:
     // webfontUrl is the uploaded file URL → loaded via loadCustomFont(family, url).
     fonts,
@@ -211,6 +246,7 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
       mkLogo('HORIZONTAL', brand.logoHorizontalAssetId, logoByAssetId),
     ].filter((l): l is BrandLogoAsset => l !== null),
     brandImages,
+    brandPalettes,
     tagline: brand.tagline,
   }
 }
