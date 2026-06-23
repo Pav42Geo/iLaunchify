@@ -306,13 +306,19 @@ export function Stage({
         o.set('centeredRotation', true)
         o.set('lockScalingFlip', true) // never mirror-flip on over-drag
         // Control visibility, Canva-style:
-        //   - Hide the top rotation handle (mtr) — rotation is the pill below.
+        //   - Hide the top rotation handle (mtr) — it lands under the floating
+        //     toolbar; rotation is handled by the rotate control below the object.
         //   - Corners (tl/tr/bl/br) stay → ALWAYS proportional resize.
-        //   - All native side handles (ml/mr/mt/mb) are hidden; the mid-edge BARS
-        //     rendered in ObjectActions replace them (stretch for vectors/photos,
-        //     proportional-centered enlarge for text / QR / barcode).
+        //   - Side handles distort the object, so they're hidden — EXCEPT on a
+        //     text box, where left/right adjust the wrap-width "guide" without
+        //     scaling the type (native Textbox behavior).
+        const isTextbox = (o as { type?: string }).type === 'textbox'
         const withControls = o as unknown as { setControlsVisibility?: (v: Record<string, boolean>) => void }
-        withControls.setControlsVisibility?.({ mtr: false, ml: false, mr: false, mt: false, mb: false })
+        withControls.setControlsVisibility?.(
+          isTextbox
+            ? { mtr: false, mt: false, mb: false }
+            : { mtr: false, ml: false, mr: false, mt: false, mb: false },
+        )
       } catch {
         /* odd/disposed object — ignore */
       }

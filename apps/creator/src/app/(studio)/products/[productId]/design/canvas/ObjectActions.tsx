@@ -52,8 +52,6 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const moveRef = React.useRef<{ px: number; py: number; left: number; top: number; zoom: number } | null>(null)
   const edgeRef = React.useRef<{
     axis: 'x' | 'y'
-    dir: number // +1 for right/bottom bars, -1 for left/top
-    uniform: boolean // true → proportional centered enlarge (text/QR); false → 1-axis stretch
     px: number
     py: number
     sx: number
@@ -115,22 +113,19 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const bottom = { left: sr.left + sr.width / 2, top: sr.top + sr.height + 14 }
   // Hidden while locked — a locked object can't be moved or rotated.
   const showHandles = !locked
-  // Mid-edge bars on all four sides. Behavior depends on object type:
-  //   - text / QR / barcode → `uniform`: drag enlarges the object PROPORTIONALLY,
-  //     centered (no distortion — glyphs/codes keep their aspect).
-  //   - everything else (vectors / shapes / photos) → single-axis stretch, centered.
+  // Mid-edge STRETCH bars — offered only where a non-uniform stretch is sensible:
+  // vectors / shapes / photos. NOT text (don't distort glyphs) and NOT codes
+  // (QR / barcode must keep their aspect to stay scannable). Those keep corner-only
+  // proportional resize.
   const edges = {
-    left: { x: sr.left, y: sr.top + sr.height / 2 },
     right: { x: sr.left + sr.width, y: sr.top + sr.height / 2 },
-    top: { x: sr.left + sr.width / 2, y: sr.top },
     bottom: { x: sr.left + sr.width / 2, y: sr.top + sr.height },
   }
   const objType = (active as { type?: string }).type
   const isText = objType === 'i-text' || objType === 'text' || objType === 'textbox'
   const objCustom = (active as { customType?: string }).customType
   const isCode = objCustom === 'qr-code' || objCustom === 'barcode' || objCustom === 'internal-sku'
-  const uniform = isText || isCode
-  const showEdges = showHandles
+  const showEdges = showHandles && !isText && !isCode
 
   // --- Rotate handle: drag around the object center to spin it -------------
   const onRotateDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -204,30 +199,27 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
     force()
   }
 
-  // --- Mid-edge bars: drag a border line to resize the box, CENTERED (both sides
-  // move, object stays pinned). `uniform` objects (text / QR / barcode) enlarge
-  // proportionally without distortion; everything else stretches on that one axis. ---
-  const onEdgeDown =
-    (side: 'l' | 'r' | 't' | 'b', uniform: boolean) => (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (!canvas || locked) return
-      e.preventDefault()
-      e.stopPropagation()
-      e.currentTarget.setPointerCapture(e.pointerId)
-      const o = active as unknown as { getCenterPoint: () => unknown }
-      edgeRef.current = {
-        axis: side === 'l' || side === 'r' ? 'x' : 'y',
-        dir: side === 'r' || side === 'b' ? 1 : -1,
-        uniform,
-        px: e.clientX,
-        py: e.clientY,
-        sx: Number(active.scaleX) || 1,
-        sy: Number(active.scaleY) || 1,
-        bw: Number((active as { width?: number }).width) || 1,
-        bh: Number((active as { height?: number }).height) || 1,
-        center: o.getCenterPoint(),
-        zoom: canvas.getZoom?.() || 1,
-      }
+  // --- Edge bars: drag the mid-right / mid-bottom border line to resize the box on
+  // that ONE axis, CENTERED — both borders move symmetrically so the object stays
+  // pinned in place (Canva-style). Not a position move, not a corner scale. ---
+  const onEdgeDown = (axis: 'x' | 'y') => (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!canvas || locked) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const o = active as unknown as { getCenterPoint: () => unknown }
+    edgeRef.current = {
+      axis,
+      px: e.clientX,
+      py: e.clientY,
+      sx: Number(active.scaleX) || 1,
+      sy: Number(active.scaleY) || 1,
+      bw: Number((active as { width?: number }).width) || 1,
+      bh: Number((active as { height?: number }).height) || 1,
+      center: o.getCenterPoint(),
+      zoom: canvas.getZoom?.() || 1,
     }
+  }
   const onEdgeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const m = edgeRef.current
     if (!m || e.buttons !== 1) return
@@ -236,25 +228,15 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
       setPositionByOrigin: (p: unknown, ox: string, oy: string) => void
       setCoords?: () => void
     }
-    // Outward edge movement in object px (positive = grow). ×2 since both sides move.
+    // Single-axis CENTERED stretch — drag stretches the object on that one axis
+    // (both borders move, object stays centered). Only offered for non-text objects
+    // (vectors/shapes/images can stretch; text can't — see showEdges). ×2 = centered.
     if (m.axis === 'x') {
-      const eff = ((e.clientX - m.px) / m.zoom) * m.dir
-      const startW = m.bw * m.sx
-      if (m.uniform) {
-        const f = startW > 0 ? Math.max(0.05, (startW + 2 * eff) / startW) : 1
-        o.set({ scaleX: m.sx * f, scaleY: m.sy * f })
-      } else {
-        o.set({ scaleX: Math.max(0.05, m.sx + (2 * eff) / m.bw) })
-      }
+      const delta = (e.clientX - m.px) / m.zoom
+      o.set({ scaleX: Math.max(0.05, m.sx + (2 * delta) / m.bw) })
     } else {
-      const eff = ((e.clientY - m.py) / m.zoom) * m.dir
-      const startH = m.bh * m.sy
-      if (m.uniform) {
-        const f = startH > 0 ? Math.max(0.05, (startH + 2 * eff) / startH) : 1
-        o.set({ scaleX: m.sx * f, scaleY: m.sy * f })
-      } else {
-        o.set({ scaleY: Math.max(0.05, m.sy + (2 * eff) / m.bh) })
-      }
+      const delta = (e.clientY - m.py) / m.zoom
+      o.set({ scaleY: Math.max(0.05, m.sy + (2 * delta) / m.bh) })
     }
     o.setPositionByOrigin(m.center, 'center', 'center') // keep the object centered in place
     o.setCoords?.()
@@ -380,32 +362,38 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
         </div>
       )}
 
-      {/* Mid-edge bars on all four sides — drag a border to resize the box, centered.
-          Text/QR/barcode enlarge proportionally; vectors/photos stretch one axis. */}
-      {showEdges && (
+      {/* Mid-edge "move" bars — drag the right/bottom border line to nudge the
+          object along one axis without stretching it (Canva-style). */}
+      {showEdges && edges && (
         <>
-          {([
-            ['l', edges.left, 'h-6 w-2 cursor-ew-resize'],
-            ['r', edges.right, 'h-6 w-2 cursor-ew-resize'],
-            ['t', edges.top, 'h-2 w-6 cursor-ns-resize'],
-            ['b', edges.bottom, 'h-2 w-6 cursor-ns-resize'],
-          ] as const).map(([side, pt, shape]) => (
-            <div
-              key={side}
-              className={`pointer-events-none fixed z-30 ${visibility}`}
-              style={{ left: pt.x, top: pt.y, transform: 'translate(-50%, -50%)' }}
-            >
-              <button
-                type="button"
-                aria-label="Resize"
-                title={uniform ? 'Drag to resize (stays centered)' : 'Drag to stretch (stays centered)'}
-                onPointerDown={onEdgeDown(side, uniform)}
-                onPointerMove={onEdgeMove}
-                onPointerUp={onEdgeUp}
-                className={`pointer-events-auto block touch-none rounded-full border border-pink-500 bg-white shadow-sm ${shape}`}
-              />
-            </div>
-          ))}
+          <div
+            className={`pointer-events-none fixed z-30 ${visibility}`}
+            style={{ left: edges.right.x, top: edges.right.y, transform: 'translate(-50%, -50%)' }}
+          >
+            <button
+              type="button"
+              aria-label="Resize"
+              title="Drag to resize proportionally (stays centered)"
+              onPointerDown={onEdgeDown('x')}
+              onPointerMove={onEdgeMove}
+              onPointerUp={onEdgeUp}
+              className="pointer-events-auto block h-6 w-2 cursor-ew-resize touch-none rounded-full border border-pink-500 bg-white shadow-sm"
+            />
+          </div>
+          <div
+            className={`pointer-events-none fixed z-30 ${visibility}`}
+            style={{ left: edges.bottom.x, top: edges.bottom.y, transform: 'translate(-50%, -50%)' }}
+          >
+            <button
+              type="button"
+              aria-label="Resize"
+              title="Drag to resize proportionally (stays centered)"
+              onPointerDown={onEdgeDown('y')}
+              onPointerMove={onEdgeMove}
+              onPointerUp={onEdgeUp}
+              className="pointer-events-auto block h-2 w-6 cursor-ns-resize touch-none rounded-full border border-pink-500 bg-white shadow-sm"
+            />
+          </div>
         </>
       )}
     </>
