@@ -263,7 +263,11 @@ export async function getOrCreateSystemTemplatesBrand(): Promise<string | null> 
       },
     })
     return brand.id
-  } catch {
+  } catch (e) {
+    // Surface the real cause instead of a silent null → generic "Templates library
+    // unavailable" Notice. Almost always a missing column (additive schema not
+    // pushed): run `pnpm db:push && pnpm db:generate`, then restart the dev server.
+    console.error('[getOrCreateSystemTemplatesBrand] failed — is the additive schema pushed?', e)
     return null
   }
 }
