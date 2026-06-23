@@ -10,7 +10,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles, Palette, Layers } from 'lucide-react'
+import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles, Palette, Layers, Maximize2, X, Box, Square } from 'lucide-react'
 import {
   dielineSvgFromSpec,
   DielineFrameEditor,
@@ -84,6 +84,10 @@ export function DielineCurator({
   const [overlayOpacity, setOverlayOpacity] = useState(0.6)
   const [reviewed, setReviewed] = useState(false)
   const [report, setReport] = useState<AutoParseDetected | null>(null)
+  // Preview dock (Pacdora-style): expand the corner preview into a fullscreen
+  // viewport with a 2D ⇄ 3D toggle. 3D pane drops in once three.js is installed.
+  const [expanded, setExpanded] = useState(false)
+  const [expandView, setExpandView] = useState<'2d' | '3d'>('3d')
 
   const canSave = status === 'PARTNER_CONFIRMED' || status === 'ACTIVE'
   const valid =
@@ -225,16 +229,26 @@ export function DielineCurator({
           title="Normalized preview"
           subtitle={overlay ? 'Overlaid on the original — check the lines line up' : 'Regenerated live from the spec below'}
           action={
-            original ? (
+            <div className="flex items-center gap-1.5">
+              {original && (
+                <button
+                  onClick={() => setOverlay((v) => !v)}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                    overlay ? 'border-pink-300 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50'
+                  }`}
+                >
+                  <Layers className="h-3.5 w-3.5" /> Overlay
+                </button>
+              )}
               <button
-                onClick={() => setOverlay((v) => !v)}
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                  overlay ? 'border-pink-300 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50'
-                }`}
+                onClick={() => { setExpandView('3d'); setExpanded(true) }}
+                title="Open 3D / fullscreen preview"
+                className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-600 hover:bg-ink-50"
               >
-                <Layers className="h-3.5 w-3.5" /> Overlay
+                <Box className="h-3.5 w-3.5" /> 3D
+                <Maximize2 className="h-3 w-3" />
               </button>
-            ) : null
+            </div>
           }
         >
           <div className="relative flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-ink-100 bg-[repeating-conic-gradient(#f4f4f5_0%_25%,#fff_0%_50%)] bg-[length:16px_16px] p-4">
@@ -403,6 +417,84 @@ export function DielineCurator({
             <CheckCircle2 className="h-4 w-4" />
             {pending ? 'Saving…' : 'Save normalized & verify'}
           </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <PreviewDockModal
+          svg={svg}
+          originalUrl={original?.url ?? null}
+          view={expandView}
+          setView={setExpandView}
+          onClose={() => setExpanded(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function PreviewDockModal({
+  svg,
+  originalUrl,
+  view,
+  setView,
+  onClose,
+}: {
+  svg: string
+  originalUrl: string | null
+  view: '2d' | '3d'
+  setView: (v: '2d' | '3d') => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
+      <div
+        className="flex h-full max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-ink-200 px-4 py-3">
+          <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-1">
+            <button
+              onClick={() => setView('3d')}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'}`}
+            >
+              <Box className="h-3.5 w-3.5" /> 3D fold
+            </button>
+            <button
+              onClick={() => setView('2d')}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold ${view === '2d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'}`}
+            >
+              <Square className="h-3.5 w-3.5" /> 2D die-line
+            </button>
+          </div>
+          <button onClick={onClose} className="rounded-full p-1.5 text-ink-500 hover:bg-ink-100" title="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="relative flex flex-1 items-center justify-center overflow-auto bg-[radial-gradient(circle,#e4e4e7_1px,transparent_1px)] bg-[length:18px_18px] p-8">
+          {view === '2d' ? (
+            <div className="max-h-full max-w-[640px] [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+          ) : (
+            // 3D canvas slot — the Three.js viewer mounts here once the dependency
+            // is installed (pnpm add three @types/three). Until then, a 2D thumb +
+            // hint keeps the dock fully usable.
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="w-44 rounded-lg border border-ink-200 bg-white p-3 [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+              <div className="max-w-sm">
+                <p className="text-[13px] font-semibold text-ink-800">3D fold preview</p>
+                <p className="mt-1 text-[12px] text-ink-500">
+                  Renders the normalized die-line wrapped on its 3D structure with an Open ⇄ Close fold slider — a
+                  mis-folded box reveals a parse error at a glance. Enable by adding <code className="rounded bg-ink-100 px-1">three</code> to the workspace.
+                </p>
+                {originalUrl && (
+                  <a href={originalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] font-semibold text-pink-700 hover:underline">
+                    Open the original file ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
