@@ -23,10 +23,8 @@ import {
   quickCreateBrandKit,
   type LoadBrandKitEditorResult,
 } from '../brand-edit-actions'
-import { LogosSection } from '@/app/(dashboard)/brands/[brandId]/assets/LogosSection'
-import { ColorsSection } from '@/app/(dashboard)/brands/[brandId]/assets/ColorsSection'
-import { FontsSection } from '@/app/(dashboard)/brands/[brandId]/assets/FontsSection'
-import { TaglineSection } from '@/app/(dashboard)/brands/[brandId]/assets/TaglineSection'
+import { InfoTip } from '../InfoTip'
+import { LogosCompact, ColorsCompact, FontsCompact, TaglineCompact } from '../BrandKitCompactEditor'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -429,6 +427,10 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
 function BrandKitEditor({ brandId }: { brandId: string }) {
   const [data, setData] = React.useState<LoadBrandKitEditorResult | null>(null)
 
+  const reload = React.useCallback(() => {
+    loadStudioBrandKitEditor(brandId).then(setData)
+  }, [brandId])
+
   React.useEffect(() => {
     let cancelled = false
     setData(null)
@@ -448,22 +450,38 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
 
   return (
     <div className="space-y-2.5">
-      <KitGroup title="Logos" icon={<ImagePlus className="h-3.5 w-3.5" />} count={logoCount} defaultOpen>
-        <LogosSection
-          brandId={brandId}
-          primary={data.logos.primary}
-          icon={data.logos.icon}
-          horizontal={data.logos.horizontal}
-        />
+      <KitGroup
+        title="Logos"
+        icon={<ImagePlus className="h-3.5 w-3.5" />}
+        count={logoCount}
+        info="Upload up to three logo variants. They appear under My Brand in the Images drawer."
+        defaultOpen
+      >
+        <LogosCompact brandId={brandId} initial={data.logos} onChanged={reload} />
       </KitGroup>
-      <KitGroup title="Colors" icon={<Palette className="h-3.5 w-3.5" />} count={colorCount} defaultOpen>
-        <ColorsSection brandId={brandId} initial={data.colors} />
+      <KitGroup
+        title="Colors"
+        icon={<Palette className="h-3.5 w-3.5" />}
+        count={colorCount}
+        info="Your brand colors pin to the top of every color picker on the canvas. Tap + to add one."
+        defaultOpen
+      >
+        <ColorsCompact brandId={brandId} initial={data.colors} />
       </KitGroup>
-      <KitGroup title="Fonts" icon={<TypeIcon className="h-3.5 w-3.5" />} count={data.selectedFontIds.length}>
-        <FontsSection brandId={brandId} selectedFontIds={data.selectedFontIds} catalog={data.fontCatalog} />
+      <KitGroup
+        title="Fonts"
+        icon={<TypeIcon className="h-3.5 w-3.5" />}
+        count={data.selectedFontIds.length}
+        info="Pick up to 3 brand fonts. They pin to the top of the canvas text font list."
+      >
+        <FontsCompact brandId={brandId} selected={data.selectedFontIds} catalog={data.fontCatalog} />
       </KitGroup>
-      <KitGroup title="Tagline" icon={<TypeIcon className="h-3.5 w-3.5" />}>
-        <TaglineSection brandId={brandId} initial={data.tagline} />
+      <KitGroup
+        title="Tagline"
+        icon={<TypeIcon className="h-3.5 w-3.5" />}
+        info="A short brand line you can drop onto the label as pre-filled text."
+      >
+        <TaglineCompact brandId={brandId} initial={data.tagline} />
       </KitGroup>
     </div>
   )
@@ -474,12 +492,14 @@ function KitGroup({
   title,
   icon,
   count,
+  info,
   defaultOpen,
   children,
 }: {
   title: string
   icon: React.ReactNode
   count?: number
+  info?: string
   defaultOpen?: boolean
   children: React.ReactNode
 }) {
@@ -491,6 +511,7 @@ function KitGroup({
         {count !== undefined && count > 0 && (
           <span className="rounded-full bg-ink-100 px-1.5 py-px text-[10px] font-semibold text-ink-500">{count}</span>
         )}
+        {info && <InfoTip text={info} />}
         <ChevronDown className="ml-auto h-4 w-4 text-ink-400 transition-transform group-open:rotate-180" />
       </summary>
       <div className="border-t border-ink-100 px-3 py-3">{children}</div>
