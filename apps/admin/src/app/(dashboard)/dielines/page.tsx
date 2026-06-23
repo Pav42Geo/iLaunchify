@@ -8,8 +8,9 @@
 // workspace owns the lens/search/sort interactions.
 // =============================================================================
 
-import { prisma, listDielineCanonicalLinks } from '@ilaunchify/db'
+import { prisma, listDielineCanonicalLinks, getCanonicalShapeOptions } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
+import { aspectBucketFor } from '@ilaunchify/ui'
 import { DielineOpsWorkspace, type OpsRow } from './DielineOpsWorkspace'
 
 export const dynamic = 'force-dynamic'
@@ -55,6 +56,9 @@ export default async function AdminDielinesPage() {
   const links = await listDielineCanonicalLinks(rows.map((r) => r.id))
   const shapeByDieline = new Map(links.map((l) => [l.id, l.canonicalShapeName]))
 
+  // Canonical shape options (for the By-shape lens batch-map picker).
+  const shapeOptions = await getCanonicalShapeOptions().catch(() => [])
+
   const opsRows: OpsRow[] = rows.map((r, i) => ({
     id: r.id,
     status: r.status,
@@ -72,7 +76,9 @@ export default async function AdminDielinesPage() {
     partnerName: r.partnerService.partner.companyName,
     offeringCount: r._count.offerings,
     canonicalShapeName: shapeByDieline.get(r.id) ?? null,
+    clusterKey:
+      num(r.widthMm) && num(r.heightMm) ? aspectBucketFor(num(r.widthMm) as number, num(r.heightMm) as number) : null,
   }))
 
-  return <DielineOpsWorkspace rows={opsRows} />
+  return <DielineOpsWorkspace rows={opsRows} shapeOptions={shapeOptions} />
 }

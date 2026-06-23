@@ -220,6 +220,30 @@ export async function mapDielineToShape(dielineId: string, shapeId: string | nul
   return { ok: true }
 }
 
+/** Batch map a cluster of submissions to one canonical shape (P3 leverage). */
+export async function mapDielinesToShape(dielineIds: string[], shapeId: string | null): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  if (dielineIds.length === 0) return { ok: true }
+  const dls = await prisma.packagingDieline.findMany({
+    where: { id: { in: dielineIds } },
+    select: { id: true, widthMm: true, heightMm: true },
+  })
+  for (const dl of dls) {
+    const w = Number(dl.widthMm) || 0
+    const h = Number(dl.heightMm) || 0
+    const clusterKey = w > 0 && h > 0 ? aspectBucketFor(w, h) : null
+    await setDielineCanonicalShape(dl.id, shapeId, { matchConfidence: shapeId ? 1 : null, clusterKey })
+    await logAuditAs(admin, {
+      entityType: 'PackagingDieline',
+      entityId: dl.id,
+      action: shapeId ? 'dieline.shape-mapped' : 'dieline.shape-unmapped',
+      toValue: shapeId ?? 'none',
+    })
+  }
+  revalidatePath('/dielines')
+  return { ok: true }
+}
+
 export async function sendBackDieline(dielineId: string): Promise<Result> {
   const admin = await requireRole('ADMIN')
   const dl = await prisma.packagingDieline.findUnique({ where: { id: dielineId }, select: { id: true, status: true } })

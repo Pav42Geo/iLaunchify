@@ -5,8 +5,10 @@
 // sort + attention badges. Every row opens the Curator; PARTNER_CONFIRMED rows
 // also get inline verify / send-back. docs/DIELINE_MANAGEMENT_UX.md §3.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   SquareDashedBottom,
   SlidersHorizontal,
@@ -20,8 +22,19 @@ import {
   CheckCircle2,
   Sparkles,
   Boxes,
+  Shapes,
+  Wand2,
 } from 'lucide-react'
 import { DielineReviewActions } from './DielineReviewActions'
+import { mapDielinesToShape } from './actions'
+
+export interface ShapeOption {
+  id: string
+  name: string
+  category: string
+  widthMm: number
+  heightMm: number
+}
 
 export interface OpsRow {
   id: string
@@ -40,9 +53,10 @@ export interface OpsRow {
   partnerName: string
   offeringCount: number
   canonicalShapeName: string | null
+  clusterKey: string | null
 }
 
-type Lens = 'inbox' | 'packaging' | 'partner'
+type Lens = 'inbox' | 'packaging' | 'partner' | 'shape'
 type StatusFilter = 'all' | 'awaiting' | 'lowconf' | 'active'
 
 const LOW_CONF = 0.7
@@ -60,7 +74,7 @@ function pretty(s: string): string {
   return s.replace(/_/g, ' ').toLowerCase()
 }
 
-export function DielineOpsWorkspace({ rows }: { rows: OpsRow[] }) {
+export function DielineOpsWorkspace({ rows, shapeOptions }: { rows: OpsRow[]; shapeOptions: ShapeOption[] }) {
   const [lens, setLens] = useState<Lens>('inbox')
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -109,7 +123,13 @@ export function DielineOpsWorkspace({ rows }: { rows: OpsRow[] }) {
 
   const groups = useMemo(() => {
     if (lens === 'inbox') return null
-    const key = lens === 'packaging' ? (r: OpsRow) => r.packagingTypeName : (r: OpsRow) => r.partnerName
+    const key =
+      lens === 'packaging'
+        ? (r: OpsRow) => r.packagingTypeName
+        : lens === 'partner'
+          ? (r: OpsRow) => r.partnerName
+          : // shape lens: mapped → canonical name; unmapped → its aspect cluster
+            (r: OpsRow) => r.canonicalShapeName ?? `Unmapped · ${r.clusterKey ?? 'other'}`
     const map = new Map<string, OpsRow[]>()
     for (const r of filtered) {
       const k = key(r)
@@ -122,8 +142,9 @@ export function DielineOpsWorkspace({ rows }: { rows: OpsRow[] }) {
         name,
         items,
         awaiting: items.filter((i) => i.status === 'PARTNER_CONFIRMED').length,
+        unmappedIds: items.filter((i) => !i.canonicalShapeName).map((i) => i.id),
       }))
-      .sort((a, b) => b.awaiting - a.awaiting || b.items.length - a.items.length || a.name.localeCompare(b.name))
+      .sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name))
   }, [filtered, lens])
 
   return (
@@ -152,6 +173,7 @@ export function DielineOpsWorkspace({ rows }: { rows: OpsRow[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white p-1">
           <LensTab icon={Inbox} label="Inbox" active={lens === 'inbox'} onClick={() => setLens('inbox')} />
+          <LensTab icon={Shapes} label="By shape" active={lens === 'shape'} onClick={() => setLens('shape')} />
           <LensTab icon={Layers} label="By packaging" active={lens === 'packaging'} onClick={() => setLens('packaging')} />
           <LensTab icon={Building2} label="By partner" active={lens === 'partner'} onClick={() => setLens('partner')} />
         </div>
@@ -178,7 +200,17 @@ export function DielineOpsWorkspace({ rows }: { rows: OpsRow[] }) {
       ) : (
         <div className="space-y-4">
           {groups!.map((g) => (
-            <GroupSection key={g.name} name={g.name} count={g.items.length} awaiting={g.awaiting}>
+            <GroupSection
+              key={g.name}
+              name={g.name}
+              count={g.items.length}
+              awaiting={g.awaiting}
+              bar={
+                lens === 'shape' && g.unmappedIds.length > 0 ? (
+                  <BatchMapBar unmappedIds={g.unmappedIds} shapeOptions={shapeOptions} />
+                ) : null
+              }
+            >
               {g.items.map((r) => (
                 <RowCard key={r.id} r={r} hideContextName={lens} />
               ))}
@@ -242,7 +274,7 @@ function LensTab({ icon: Icon, label, active, onClick }: { icon: typeof Inbox; l
   )
 }
 
-function GroupSection({ name, count, awaiting, children }: { name: string; count: number; awaiting: number; children: React.ReactNode }) {
+function GroupSection({ name, count, awaiting, children, bar }: { name: string; count: number; awaiting: number; children: React.ReactNode; bar?: React.ReactNode }) {
   const [open, setOpen] = useState(true)
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -261,8 +293,57 @@ function GroupSection({ name, count, awaiting, children }: { name: string; count
           </span>
         )}
       </button>
+      {bar}
       {open && <ul className="divide-y divide-ink-100">{children}</ul>}
     </section>
+  )
+}
+
+function BatchMapBar({ unmappedIds, shapeOptions }: { unmappedIds: string[]; shapeOptions: ShapeOption[] }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [shapeId, setShapeId] = useState('')
+
+  function run() {
+    if (!shapeId) return
+    start(async () => {
+      const r = await mapDielinesToShape(unmappedIds, shapeId)
+      if (!r.ok) {
+        toast.error(r.error)
+        return
+      }
+      toast.success(`Mapped ${unmappedIds.length} die-line${unmappedIds.length === 1 ? '' : 's'}`)
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 bg-pink-50/40 px-4 py-2">
+      <Wand2 className="h-3.5 w-3.5 text-pink-600" />
+      <span className="text-[11.5px] font-medium text-ink-700">
+        {unmappedIds.length} unmapped — map the whole cluster at once:
+      </span>
+      <select
+        value={shapeId}
+        onChange={(e) => setShapeId(e.target.value)}
+        disabled={pending}
+        className="rounded-lg border border-ink-200 bg-white px-2 py-1 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      >
+        <option value="">Choose canonical shape…</option>
+        {shapeOptions.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name} ({o.widthMm}×{o.heightMm}mm)
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={run}
+        disabled={pending || !shapeId}
+        className="inline-flex items-center gap-1 rounded-full bg-ink-900 px-3 py-1 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+      >
+        {pending ? 'Mapping…' : `Map ${unmappedIds.length}`}
+      </button>
+    </div>
   )
 }
 
