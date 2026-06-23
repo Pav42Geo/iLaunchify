@@ -9,7 +9,7 @@
 // Ownership is enforced server-side. No "exit to profile" link.
 
 import * as React from 'react'
-import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus } from 'lucide-react'
+import { Palette, Type as TypeIcon, LayoutTemplate, ImagePlus, ChevronDown } from 'lucide-react'
 import { addImageFromUrl, loadFont, type BrandCanvasAssets, type FabricCanvas } from '@ilaunchify/ui'
 import type { BrandTemplateValues } from '@ilaunchify/db'
 import {
@@ -358,17 +358,57 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
   if (!data) return <p className="text-[12px] text-ink-500">Loading your brand kit…</p>
   if (!data.ok) return <p className="text-[12px] text-red-600">{data.error}</p>
 
+  const logoCount = [data.logos.primary, data.logos.icon, data.logos.horizontal].filter(Boolean).length
+  const colorCount = [data.colors.colorPrimary, data.colors.colorSecondary, data.colors.colorAccent, ...data.colors.brandSwatches].filter(Boolean).length
+
   return (
-    <div className="space-y-7">
-      <LogosSection
-        brandId={brandId}
-        primary={data.logos.primary}
-        icon={data.logos.icon}
-        horizontal={data.logos.horizontal}
-      />
-      <ColorsSection brandId={brandId} initial={data.colors} />
-      <FontsSection brandId={brandId} selectedFontIds={data.selectedFontIds} catalog={data.fontCatalog} />
-      <TaglineSection brandId={brandId} initial={data.tagline} />
+    <div className="space-y-2.5">
+      <KitGroup title="Logos" icon={<ImagePlus className="h-3.5 w-3.5" />} count={logoCount} defaultOpen>
+        <LogosSection
+          brandId={brandId}
+          primary={data.logos.primary}
+          icon={data.logos.icon}
+          horizontal={data.logos.horizontal}
+        />
+      </KitGroup>
+      <KitGroup title="Colors" icon={<Palette className="h-3.5 w-3.5" />} count={colorCount} defaultOpen>
+        <ColorsSection brandId={brandId} initial={data.colors} />
+      </KitGroup>
+      <KitGroup title="Fonts" icon={<TypeIcon className="h-3.5 w-3.5" />} count={data.selectedFontIds.length}>
+        <FontsSection brandId={brandId} selectedFontIds={data.selectedFontIds} catalog={data.fontCatalog} />
+      </KitGroup>
+      <KitGroup title="Tagline" icon={<TypeIcon className="h-3.5 w-3.5" />}>
+        <TaglineSection brandId={brandId} initial={data.tagline} />
+      </KitGroup>
     </div>
+  )
+}
+
+// Canva-style collapsible section card for the in-Studio kit editor.
+function KitGroup({
+  title,
+  icon,
+  count,
+  defaultOpen,
+  children,
+}: {
+  title: string
+  icon: React.ReactNode
+  count?: number
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-lg border border-ink-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+        <span className="text-ink-500">{icon}</span>
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-ink-700">{title}</span>
+        {count !== undefined && count > 0 && (
+          <span className="rounded-full bg-ink-100 px-1.5 py-px text-[10px] font-semibold text-ink-500">{count}</span>
+        )}
+        <ChevronDown className="ml-auto h-4 w-4 text-ink-400 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-ink-100 px-3 py-3">{children}</div>
+    </details>
   )
 }
