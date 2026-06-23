@@ -3,7 +3,7 @@
 // Admin die-line review — verify a partner-confirmed die-line into ACTIVE (or
 // send it back). docs/DIELINE_FRAME_EDITOR_SPEC.md §3/Phase D.
 
-import { prisma, setDielineCanonicalShape } from '@ilaunchify/db'
+import { prisma, setDielineCanonicalShape, propagateDielineFrames } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, dielineNormalizedKey, getSignedReadUrl } from '@ilaunchify/storage'
@@ -321,6 +321,24 @@ export async function autoParseDieline(dielineId: string): Promise<AutoParseResu
       detectedSvg,
     },
   }
+}
+
+/** Propagate this die-line's frames to its shape cluster (P3 propagation). */
+export async function propagateDielineFramesAction(
+  dielineId: string,
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const admin = await requireRole('ADMIN')
+  const count = await propagateDielineFrames(dielineId)
+  if (count > 0) {
+    await logAuditAs(admin, {
+      entityType: 'PackagingDieline',
+      entityId: dielineId,
+      action: 'dieline.frames-propagated',
+      toValue: String(count),
+    })
+    revalidatePath('/dielines')
+  }
+  return { ok: true, count }
 }
 
 export async function sendBackDieline(dielineId: string): Promise<Result> {

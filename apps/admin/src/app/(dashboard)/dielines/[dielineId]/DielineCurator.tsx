@@ -23,7 +23,7 @@ import {
   type FrameLayout,
   type NormBox,
 } from '@ilaunchify/ui'
-import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape, autoParseDieline, type AutoParseDetected } from '../actions'
+import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape, autoParseDieline, propagateDielineFramesAction, type AutoParseDetected } from '../actions'
 
 interface ShapeOption {
   id: string
@@ -141,6 +141,21 @@ export function DielineCurator({
     })
   }
 
+  function propagateFrames() {
+    start(async () => {
+      const r = await propagateDielineFramesAction(dielineId)
+      if (!r.ok) {
+        toast.error(r.error)
+        return
+      }
+      toast.success(
+        r.count > 0
+          ? `Frames applied to ${r.count} die-line${r.count === 1 ? '' : 's'} of this shape`
+          : 'No cluster siblings need frames (map this die-line to a shape first)',
+      )
+    })
+  }
+
   function detect() {
     start(async () => {
       const r = await autoParseDieline(dielineId)
@@ -211,6 +226,14 @@ export function DielineCurator({
                 >
                   {issues.length === 0 ? 'Preflight clear' : `${issues.length} to fix`}
                 </span>
+                <button
+                  onClick={propagateFrames}
+                  disabled={pending}
+                  title="Apply these frames to every die-line mapped to the same canonical shape that has none yet"
+                  className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Propagate to cluster
+                </button>
               </>
             )}
           />

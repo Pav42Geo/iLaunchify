@@ -59,6 +59,38 @@ export async function setDielineCanonicalShape(
   })
 }
 
+/**
+ * Propagate one die-line's frame layout to its CLUSTER — every other die-line
+ * mapped to the same canonical shape that doesn't have frames yet. The "place
+ * mandatory frames once, apply across all partners of that shape" leverage move
+ * (DIELINE_MANAGEMENT_UX P3). Returns how many siblings were updated.
+ */
+export async function propagateDielineFrames(sourceId: string): Promise<number> {
+  const p = prisma as unknown as {
+    packagingDieline?: {
+      findUnique: (a: unknown) => Promise<{ frames: unknown; canonicalShapeId: string | null } | null>
+      findMany: (a: unknown) => Promise<Array<{ id: string }>>
+      update: (a: unknown) => Promise<unknown>
+    }
+  }
+  const d = p.packagingDieline
+  if (!d) return 0
+  try {
+    const src = await d.findUnique({ where: { id: sourceId }, select: { frames: true, canonicalShapeId: true } })
+    if (!src || !src.canonicalShapeId || src.frames == null) return 0
+    const siblings = await d.findMany({
+      where: { canonicalShapeId: src.canonicalShapeId, id: { not: sourceId }, frames: { equals: null } },
+      select: { id: true },
+    })
+    for (const s of siblings) {
+      await d.update({ where: { id: s.id }, data: { frames: src.frames as never, framesUpdatedAt: new Date() } })
+    }
+    return siblings.length
+  } catch {
+    return 0
+  }
+}
+
 export interface DielineCanonicalLink {
   id: string
   canonicalShapeId: string | null

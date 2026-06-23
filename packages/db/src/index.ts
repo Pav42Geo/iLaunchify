@@ -222,6 +222,7 @@ export {
   getCanonicalShapeOptions,
   setDielineCanonicalShape,
   listDielineCanonicalLinks,
+  propagateDielineFrames,
   type CanonicalShapeOption,
   type DielineCanonicalLink,
 } from './dieline-canonical'
