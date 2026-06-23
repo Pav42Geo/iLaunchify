@@ -93,6 +93,7 @@ export function TextFontDrawer({
   // when the creator has more than one kit).
   const [brandOpts, setBrandOpts] = React.useState<StudioBrandKitOption[]>([])
   const [menuFamily, setMenuFamily] = React.useState<string | null>(null)
+  const [menuAnchor, setMenuAnchor] = React.useState<{ top: number; left: number } | null>(null)
   const [pickBrandId, setPickBrandId] = React.useState<string>(brandAssets.brandId)
   const [notice, setNotice] = React.useState<string | null>(null)
   const [favorites, setFavorites] = React.useState<string[]>(() => readFavorites())
@@ -105,8 +106,18 @@ export function TextFontDrawer({
       .catch(() => {})
   }, [brandAssets.brandId])
 
-  function openMenu(family: string) {
+  function openMenu(family: string, rect?: DOMRect) {
     setPickBrandId(brandOpts[0]?.id ?? brandAssets.brandId)
+    // Anchor the menu to the 3-dot button: open just below it, right-aligned to the
+    // dots, clamped to the viewport. Falls back to centered if no rect is given.
+    if (rect && typeof window !== 'undefined') {
+      const MENU_W = 248
+      const left = Math.max(8, Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8))
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 16)
+      setMenuAnchor({ top, left })
+    } else {
+      setMenuAnchor(null)
+    }
     setMenuFamily(family)
   }
   function toggleFavorite(family: string) {
@@ -354,63 +365,74 @@ export function TextFontDrawer({
         </div>
       )}
 
-      {/* Font 3-dot menu: Pin to favorites + Add to Brand → text style. */}
+      {/* Font 3-dot menu: anchored under the dots. Pin to favorites + Add to Brand. */}
       {menuFamily && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
+        <>
           <button
             type="button"
-            aria-label="Cancel"
-            className="absolute inset-0 bg-ink-900/30"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
             onClick={() => setMenuFamily(null)}
           />
-          <div className="relative z-10 w-full max-w-[260px] rounded-xl border border-ink-200 bg-white p-2 shadow-2xl">
-            <div className="px-2 pb-1.5 pt-1 text-[12px] font-semibold text-ink-900" style={{ fontFamily: `"${menuFamily}"` }}>
+          <div
+            className="fixed z-50 w-[248px] overflow-hidden rounded-xl border border-ink-200 bg-white shadow-2xl"
+            style={
+              menuAnchor
+                ? { top: menuAnchor.top, left: menuAnchor.left }
+                : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+            }
+          >
+            <div
+              className="truncate border-b border-ink-100 px-3 py-2 text-[13px] font-semibold text-ink-900"
+              style={{ fontFamily: `"${menuFamily}"` }}
+            >
               {menuFamily}
             </div>
 
-            {/* Pin font — personal favorite, floats to top. */}
+            {/* Pin font — personal favorite, floats to the top of the list. */}
             <button
               type="button"
               onClick={() => {
                 toggleFavorite(menuFamily)
                 setMenuFamily(null)
               }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-ink-50"
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] text-ink-800 hover:bg-ink-50"
             >
               <Star
                 className={
-                  'h-3.5 w-3.5 flex-shrink-0 ' +
+                  'h-4 w-4 flex-shrink-0 ' +
                   (favorites.includes(menuFamily) ? 'fill-amber-400 text-amber-400' : 'text-ink-400')
                 }
               />
-              {favorites.includes(menuFamily) ? 'Unpin from favorites' : 'Pin font (favorite)'}
+              {favorites.includes(menuFamily) ? 'Unpin from favorites' : 'Pin font'}
             </button>
 
-            <div className="my-1 border-t border-ink-100" />
-
-            <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+            {/* Add to brand — clearly separated section with a solid header. */}
+            <div className="border-t border-ink-200 bg-ink-50/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-700">
               Add to brand
             </div>
             {brandOpts.length > 1 && (
-              <select
-                value={pickBrandId}
-                onChange={(e) => setPickBrandId(e.target.value)}
-                className="mx-2.5 mb-1.5 w-[calc(100%-1.25rem)] rounded-md border border-ink-200 bg-white px-2 py-1 text-[12px]"
-              >
-                {brandOpts.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <div className="px-3 pb-1.5 pt-2">
+                <select
+                  value={pickBrandId}
+                  onChange={(e) => setPickBrandId(e.target.value)}
+                  className="w-full rounded-md border border-ink-200 bg-white px-2 py-1.5 text-[12.5px]"
+                >
+                  {brandOpts.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
-            <div className="px-1 pb-1 text-[11px] text-ink-500">Use this font as the brand’s…</div>
+            <div className="px-3 pb-1 pt-1.5 text-[11px] text-ink-500">Use as the brand’s…</div>
             {(['HEADING', 'SUBHEADING', 'BODY'] as const).map((role) => (
               <button
                 key={role}
                 type="button"
                 onClick={() => void addRoleFont(role)}
-                className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-pink-50"
+                className="flex w-full items-center justify-between px-3 py-2.5 text-left text-[13px] font-medium text-ink-800 hover:bg-ink-50"
               >
                 <span>
                   {role === 'HEADING' ? 'Heading' : role === 'SUBHEADING' ? 'Subheading' : 'Body'}
@@ -419,7 +441,7 @@ export function TextFontDrawer({
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
     </aside>
   )
@@ -440,7 +462,7 @@ function FontRow({
   family: string
   selected: boolean
   onPick: (family: string) => void | Promise<void>
-  onPin?: (family: string) => void | Promise<void>
+  onPin?: (family: string, rect?: DOMRect) => void | Promise<void>
   pinned?: boolean
   starred?: boolean
 }) {
@@ -508,13 +530,13 @@ function FontRow({
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            void onPin(family)
+            onPin(family, e.currentTarget.getBoundingClientRect())
           }}
           aria-label={`Font options for ${family}`}
           title="Font options"
-          className="opacity-0 group-hover:opacity-100 inline-flex items-center rounded p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 inline-flex flex-shrink-0 items-center justify-center rounded-md p-1.5 text-ink-500 hover:bg-ink-100 hover:text-ink-800 transition-opacity"
         >
-          <MoreVertical className="h-3.5 w-3.5" />
+          <MoreVertical className="h-5 w-5" />
         </button>
       )}
     </div>
