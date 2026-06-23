@@ -126,7 +126,7 @@ export default async function PricingPage({
                   <tr>
                     <td
                       colSpan={4}
-                      className="px-6 pt-7 pb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-500 bg-ink-50/40"
+                      className="px-6 pt-7 pb-3 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700 bg-ink-50/40"
                     >
                       {section.label}
                     </td>

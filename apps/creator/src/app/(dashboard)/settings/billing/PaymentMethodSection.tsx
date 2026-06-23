@@ -120,7 +120,7 @@ export function PaymentMethodSection({
                 key={c.stripePaymentMethodId}
                 className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <span className="flex h-9 w-12 items-center justify-center rounded-md border border-ink-200 bg-ink-50 text-[11px] font-semibold uppercase tracking-wide text-ink-700">
+                <span className="flex h-9 w-12 items-center justify-center rounded-md border border-ink-200 bg-ink-50 text-[12px] font-bold uppercase tracking-wide text-ink-700">
                   {brandLabel(c.brand).slice(0, 4)}
                 </span>
                 <div className="min-w-0">

@@ -413,7 +413,7 @@ export function TextFontDrawer({
             </button>
 
             {/* Add to brand — clearly separated section with a solid header. */}
-            <div className="border-t border-ink-200 bg-ink-50/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-700">
+            <div className="border-t border-ink-200 bg-ink-50/70 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide text-ink-700">
               Add to brand
             </div>
             {brandOpts.length > 1 && (

@@ -121,7 +121,7 @@ export default async function AccessoriesListPage() {
         <div className="overflow-x-auto rounded-xl border border-ink-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-200 bg-ink-50 text-left text-xs uppercase tracking-wider text-ink-500">
+              <tr className="border-b border-ink-200 bg-ink-50 text-left text-[12px] uppercase tracking-wider text-ink-700">
                 <th className="px-4 py-2.5 font-semibold">Accessory</th>
                 <th className="px-4 py-2.5 font-semibold">Category</th>
                 <th className="px-4 py-2.5 font-semibold">MOQ</th>

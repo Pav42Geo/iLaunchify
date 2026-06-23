@@ -353,7 +353,7 @@ function matchesFilter(r: IngredientResult, filter: FilterKey): boolean {
 
 function GroupHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-ink-50/60 px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+    <div className="bg-ink-50/60 px-3 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">
       {children}
     </div>
   )

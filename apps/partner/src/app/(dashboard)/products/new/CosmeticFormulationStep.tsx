@@ -122,7 +122,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
                 {inciResults.map((e) => (
                   <button key={e.name} type="button" onClick={() => addFromInci(e)} className="flex w-full items-center justify-between gap-2 border-b border-ink-50 px-3 py-2 text-left text-[13px] last:border-0 hover:bg-pink-50/40">
                     <span className="min-w-0"><span className="font-medium text-ink-900">{e.name}</span><span className="ml-1 text-[11px] text-ink-500">{e.fn}</span></span>
-                    {(e.color || e.fragrance) && <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-600">{e.color ? 'Color' : 'Fragrance'}</span>}
+                    {(e.color || e.fragrance) && <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-ink-700">{e.color ? 'Color' : 'Fragrance'}</span>}
                   </button>
                 ))}
                 {inciResults.length === 0 && <div className="px-3 py-2 text-[12px] text-ink-500">No match — type the INCI name manually in the table.</div>}

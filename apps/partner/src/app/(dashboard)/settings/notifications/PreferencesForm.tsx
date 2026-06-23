@@ -136,7 +136,7 @@ export function PreferencesForm({
         </h3>
         <div className="overflow-hidden rounded-md border border-ink-200">
           <table className="w-full text-sm">
-            <thead className="bg-ink-50 text-left text-xs font-semibold uppercase tracking-wide text-ink-500">
+            <thead className="bg-ink-50 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700">
               <tr>
                 <th className="px-4 py-2">Event</th>
                 <th className="w-24 px-4 py-2 text-center">In app</th>

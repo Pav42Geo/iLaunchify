@@ -163,7 +163,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
                 {aafcoResults.map((e) => (
                   <button key={e.name} type="button" onClick={() => addFromAafco(e)} className="flex w-full items-center justify-between gap-2 border-b border-ink-50 px-3 py-2 text-left text-[13px] last:border-0 hover:bg-pink-50/40">
                     <span className="font-medium text-ink-900">{e.name}</span>
-                    <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-600">{e.category}</span>
+                    <span className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-ink-700">{e.category}</span>
                   </button>
                 ))}
                 {aafcoResults.length === 0 && <div className="px-3 py-2 text-[12px] text-ink-500">No match — type the ingredient name manually in the table.</div>}

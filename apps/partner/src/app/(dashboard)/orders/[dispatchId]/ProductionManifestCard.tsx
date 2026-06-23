@@ -172,7 +172,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
             type="button"
             disabled
             title="Print-ready PDF + die-line SVG render lands in V1.5 (headless-browser worker)."
-            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 bg-ink-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-ink-500"
+            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 bg-ink-50 px-3 py-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700"
           >
             <Download className="h-3 w-3" />
             Download bundle (V1.5)

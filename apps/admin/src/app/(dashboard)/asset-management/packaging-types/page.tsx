@@ -93,7 +93,7 @@ export default async function PackingTypesPage() {
         ) : (
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-ink-200 bg-ink-50 text-left text-[10.5px] font-semibold uppercase tracking-wide text-ink-500">
+              <tr className="border-b border-ink-200 bg-ink-50 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700">
                 <th className="px-4 py-2.5">Type</th>
                 <th className="px-3 py-2.5">Group</th>
                 <th className="px-3 py-2.5">Recipe shape</th>
