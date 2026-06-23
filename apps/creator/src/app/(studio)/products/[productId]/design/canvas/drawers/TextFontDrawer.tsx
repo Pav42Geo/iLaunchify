@@ -502,7 +502,7 @@ function FontRow({
       ref={ref}
       className={
         'group flex items-center justify-between gap-2 px-4 py-2 cursor-pointer transition-colors ' +
-        (selected ? 'bg-pink-50' : 'hover:bg-ink-50')
+        (selected ? 'bg-ink-100' : 'hover:bg-ink-50')
       }
       onClick={() => onPick(family)}
       role="option"
@@ -510,7 +510,7 @@ function FontRow({
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {selected ? (
-          <Check className="h-3.5 w-3.5 text-pink-700 flex-shrink-0" />
+          <Check className="h-3.5 w-3.5 text-ink-700 flex-shrink-0" />
         ) : starred ? (
           <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
         ) : pinned ? (
@@ -561,7 +561,7 @@ function FontRow({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+      <div className="px-4 pb-1.5 pt-3.5 text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
         {title}
       </div>
       {children}
