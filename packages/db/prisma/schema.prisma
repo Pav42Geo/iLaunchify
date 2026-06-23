@@ -2724,6 +2724,15 @@ model BrandTextStyle {
   brandId   String
   role      String // 'HEADING' | 'SUBHEADING' | 'BODY' (string for additive flexibility)
   fontKey   String // FONT_CATALOG family or `custom:<BrandFont.id>`
+  // Slice 4 — the full Canva-style type spec for this role. All optional + additive;
+  // null falls back to the canvas default. colorRef is either a hex (#RRGGBB) or a
+  // palette token ('primary' | 'secondary' | 'accent') resolved against the brand.
+  fontSize      Int? // px
+  fontWeight    String? // 'Regular' | 'Medium' | 'SemiBold' | 'Bold' (or numeric '700')
+  letterSpacing Float? // em (reserved — applied when the canvas supports it)
+  lineHeight    Float? // multiplier (reserved)
+  textCase      String? // 'none' | 'uppercase' | 'lowercase' | 'capitalize'
+  colorRef      String? // '#RRGGBB' or 'primary' | 'secondary' | 'accent'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)

@@ -99,9 +99,10 @@ export interface BrandCanvasAssets {
   extraSwatches: string[]
   // Fonts — the canvas font dropdown pins these to the top
   fonts: BrandFontAsset[]
-  // Text-style → font-family assignments (Brand Kit V2 Slice 2c). When a role is set,
-  // the Text tool uses that family for the role instead of falling back to fonts[0]/[1].
-  textStyles?: { heading?: string; subheading?: string; body?: string } | null
+  // Text-style → full type spec (Brand Kit V2 Slice 2c + Slice 4). When a role is set,
+  // the Text tool applies that role's font + size/weight/case/color instead of the
+  // fonts[0]/[1] fallback. fontFamily is always present; the rest are optional.
+  textStyles?: { heading?: BrandTextStyleSpec; subheading?: BrandTextStyleSpec; body?: BrandTextStyleSpec } | null
   // Logos — drag onto canvas from the Images drawer's "My Brand" section
   logos: BrandLogoAsset[]
   // Brand Kit V2 Slice 3 — creator-pinned visual assets (photos/graphics/backgrounds)
@@ -116,6 +117,19 @@ export interface BrandImageAsset {
   assetId: string                   // underlying Asset.id
   url: string | null                // resolved display URL
   label: string | null
+}
+
+// Brand Kit V2 Slice 4 — a named text style's full spec, applied when a creator
+// adds role text on the canvas. fontFamily required; the rest fall back to canvas
+// defaults when null. `color` is a resolved hex (palette tokens resolved in loader).
+export interface BrandTextStyleSpec {
+  fontFamily: string
+  fontSize?: number | null
+  fontWeight?: string | null
+  letterSpacing?: number | null
+  lineHeight?: number | null
+  textCase?: 'none' | 'uppercase' | 'lowercase' | 'capitalize' | null
+  color?: string | null
 }
 
 export interface BrandFontAsset {

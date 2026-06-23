@@ -18,6 +18,8 @@ import {
   createBrandFont,
   deleteBrandFont,
   getBrandFontsByIds,
+  setBrandTextStyleSpec,
+  type BrandTextRole,
 } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, canUploadCustomFonts } from '@ilaunchify/auth'
 import { isKnownFontFamily, isCustomFontRef, customFontId, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
@@ -230,6 +232,70 @@ export async function setBrandTagline(input: {
     data: { tagline: trimmed || null },
   })
 
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+// ---- Text styles (Brand Kit V2 Slice 4) ------------------------------------
+
+const TEXT_ROLES: BrandTextRole[] = ['HEADING', 'SUBHEADING', 'BODY']
+const TEXT_CASES = ['none', 'uppercase', 'lowercase', 'capitalize']
+const FONT_WEIGHTS = ['Regular', 'Medium', 'SemiBold', 'Bold']
+const COLOR_TOKENS = ['primary', 'secondary', 'accent']
+
+/** Save one role's full text style (font + size/weight/case/color). The font must be
+ *  a catalog family or a custom ref already on this brand; colorRef is a palette token
+ *  or a hex. Owner-guarded. */
+export async function saveBrandTextStyle(input: {
+  brandId: string
+  role: BrandTextRole
+  fontKey?: string
+  fontSize?: number | null
+  fontWeight?: string | null
+  textCase?: string | null
+  colorRef?: string | null
+}): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+  if (!TEXT_ROLES.includes(input.role)) return { ok: false, error: 'Unknown text style.' }
+
+  // Validate the font ref if provided.
+  if (input.fontKey !== undefined) {
+    if (isCustomFontRef(input.fontKey)) {
+      const id = customFontId(input.fontKey)
+      const owned = id ? await getBrandFontsByIds(input.brandId, [id]) : []
+      if (owned.length === 0) return { ok: false, error: 'That custom font is not on this brand.' }
+    } else if (!isKnownFontFamily(input.fontKey)) {
+      return { ok: false, error: 'That font is not available.' }
+    }
+  }
+  if (input.fontWeight != null && !FONT_WEIGHTS.includes(input.fontWeight)) {
+    return { ok: false, error: 'Invalid font weight.' }
+  }
+  if (input.textCase != null && !TEXT_CASES.includes(input.textCase)) {
+    return { ok: false, error: 'Invalid text case.' }
+  }
+  if (
+    input.colorRef != null &&
+    input.colorRef !== '' &&
+    !COLOR_TOKENS.includes(input.colorRef) &&
+    !HEX_REGEX.test(input.colorRef)
+  ) {
+    return { ok: false, error: 'Color must be a brand swatch or a #hex value.' }
+  }
+  const fontSize =
+    input.fontSize == null ? input.fontSize : Math.min(400, Math.max(6, Math.round(input.fontSize)))
+
+  const ok = await setBrandTextStyleSpec(input.brandId, input.role, {
+    ...(input.fontKey !== undefined ? { fontKey: input.fontKey } : {}),
+    ...(input.fontSize !== undefined ? { fontSize } : {}),
+    ...(input.fontWeight !== undefined ? { fontWeight: input.fontWeight } : {}),
+    ...(input.textCase !== undefined ? { textCase: input.textCase } : {}),
+    ...(input.colorRef !== undefined ? { colorRef: input.colorRef || null } : {}),
+  })
+  if (!ok) {
+    return { ok: false, error: 'Text styles need a database update — run db push, then retry.' }
+  }
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }

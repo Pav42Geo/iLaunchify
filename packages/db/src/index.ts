@@ -59,9 +59,11 @@ export {
 export {
   listBrandTextStyles,
   setBrandTextStyle,
+  setBrandTextStyleSpec,
   clearBrandTextStyle,
   type BrandTextRole,
   type BrandTextStyleRow,
+  type BrandTextStyleSpecInput,
 } from './brand-text-styles'
 // Brand visual-asset library (Brand Kit V2 Slice 3 — pinned photos/graphics/backgrounds).
 export {

@@ -13,7 +13,7 @@
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { prisma, listBrandTemplates, listBrandFonts } from '@ilaunchify/db'
+import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
@@ -23,6 +23,7 @@ import { ColorsSection } from './ColorsSection'
 import { FontsSection } from './FontsSection'
 import { TaglineSection } from './TaglineSection'
 import { TemplatesSection } from './TemplatesSection'
+import { TextStylesSection, type RoleStyleState } from './TextStylesSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,6 +101,24 @@ export default async function BrandAssetsPage({ params }: PageProps) {
     webUrl: f.webAssetId ? customUrlById.get(f.webAssetId) ?? null : null,
   }))
 
+  // Brand Kit V2 Slice 4 — text styles (font + size/weight/case/color per role).
+  const textStyleRows = await listBrandTextStyles(brand.id)
+  const textStyleFontOptions = [
+    ...fontCatalog.map((f) => ({ value: f.family, label: f.family })),
+    ...customFonts.map((f) => ({ value: f.ref, label: `${f.family} (custom)` })),
+  ]
+  const ROLE_SET = new Set(['HEADING', 'SUBHEADING', 'BODY'])
+  const textStyleInitial: RoleStyleState[] = textStyleRows
+    .filter((r) => ROLE_SET.has(r.role))
+    .map((r) => ({
+      role: r.role as RoleStyleState['role'],
+      fontKey: r.fontKey || null,
+      fontSize: r.fontSize,
+      fontWeight: r.fontWeight,
+      textCase: r.textCase,
+      colorRef: r.colorRef,
+    }))
+
   return (
     <div className="space-y-6">
       <header>
@@ -144,6 +163,17 @@ export default async function BrandAssetsPage({ params }: PageProps) {
           catalog={fontCatalog}
           customFonts={customFonts}
           canUploadCustomFonts={canUploadCustomFonts(tier)}
+        />
+
+        <TextStylesSection
+          brandId={brand.id}
+          fonts={textStyleFontOptions}
+          colors={{
+            primary: brand.colorPrimary,
+            secondary: brand.colorSecondary,
+            accent: brand.colorAccent,
+          }}
+          initial={textStyleInitial}
         />
 
         <TaglineSection brandId={brand.id} initial={brand.tagline} />

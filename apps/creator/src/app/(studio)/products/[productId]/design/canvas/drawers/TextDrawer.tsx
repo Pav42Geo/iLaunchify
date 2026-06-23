@@ -18,6 +18,7 @@ import {
   loadBrandFont,
   ElementRail,
   type BrandCanvasAssets,
+  type BrandTextStyleSpec,
   type FabricCanvas,
 } from '@ilaunchify/ui'
 
@@ -32,12 +33,12 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
   // drills into one group's full grid. (Pavel 2026-06-23)
   const [seeAll, setSeeAll] = React.useState<'combos' | ChipCategoryKey | null>(null)
 
-  // Text-style roles win when assigned ("Add to Brand → Heading/Body", Slice 2c);
-  // otherwise fall back to the first/second brand fonts.
-  const brandHeadingFont =
-    brandAssets.textStyles?.heading ?? brandAssets.fonts[0]?.family ?? 'Bricolage Grotesque'
-  const brandBodyFont =
-    brandAssets.textStyles?.body ?? brandAssets.fonts[1]?.family ?? 'Inter'
+  // Text-style roles win when assigned (Slice 2c font + Slice 4 size/weight/case/color);
+  // otherwise fall back to the first/second brand fonts + primary color.
+  const headingSpec = brandAssets.textStyles?.heading
+  const bodySpec = brandAssets.textStyles?.body
+  const brandHeadingFont = headingSpec?.fontFamily ?? brandAssets.fonts[0]?.family ?? 'Bricolage Grotesque'
+  const brandBodyFont = bodySpec?.fontFamily ?? brandAssets.fonts[1]?.family ?? 'Inter'
   const brandFill =
     brandAssets.colorPrimary ?? brandAssets.extraSwatches[0] ?? '#0F1116'
 
@@ -49,13 +50,13 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
 
   function handleAdd() {
     if (!canvas || !value.trim()) return
-    addText(canvas, value.trim(), { fontFamily: brandBodyFont, fill: brandFill })
+    addText(canvas, applyCase(value.trim(), bodySpec?.textCase), bodyOpts(bodySpec, brandBodyFont, brandFill))
     setValue('')
   }
 
   function handleAddChip(text: string) {
     if (!canvas) return
-    addText(canvas, text, { fontFamily: brandBodyFont, fill: brandFill, fontSize: 18 })
+    addText(canvas, applyCase(text, bodySpec?.textCase), bodyOpts(bodySpec, brandBodyFont, brandFill, 18))
   }
 
   function handleAddCombo(combo: { heading: string; sub: string }) {
@@ -246,6 +247,54 @@ function ChipButton({
       {item}
     </button>
   )
+}
+
+// ============================================================================
+// Brand text-style application (Slice 4)
+// ============================================================================
+
+/** Map a brand fontWeight label (or numeric string) to a fabric-friendly value. */
+function cssWeight(w?: string | null): number | string | undefined {
+  if (!w) return undefined
+  if (/^\d+$/.test(w)) return Number(w)
+  const map: Record<string, number | string> = {
+    Regular: 'normal',
+    Medium: 500,
+    SemiBold: 600,
+    Bold: 'bold',
+  }
+  return map[w]
+}
+
+/** Transform text per a style's textCase (applied at add time — fabric has no CSS case). */
+function applyCase(text: string, c?: string | null): string {
+  switch (c) {
+    case 'uppercase':
+      return text.toUpperCase()
+    case 'lowercase':
+      return text.toLowerCase()
+    case 'capitalize':
+      return text.replace(/\b\w/g, (ch) => ch.toUpperCase())
+    default:
+      return text
+  }
+}
+
+/** Build addText opts from a body/role spec, falling back to brand font + fill. */
+function bodyOpts(
+  spec: BrandTextStyleSpec | undefined,
+  fallbackFont: string,
+  fallbackFill: string,
+  fallbackSize?: number,
+): { fontFamily: string; fill: string; fontSize?: number; fontWeight?: number | string } {
+  const weight = cssWeight(spec?.fontWeight)
+  const size = spec?.fontSize ?? fallbackSize
+  return {
+    fontFamily: spec?.fontFamily ?? fallbackFont,
+    fill: spec?.color ?? fallbackFill,
+    ...(size != null ? { fontSize: size } : {}),
+    ...(weight !== undefined ? { fontWeight: weight } : {}),
+  }
 }
 
 // ============================================================================

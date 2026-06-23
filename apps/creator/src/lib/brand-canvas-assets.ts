@@ -7,7 +7,12 @@
 import { prisma, getBrandFontsByIds, listBrandTextStyles, listBrandAssets } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { isKnownFontFamily, isCustomFontRef, customFontId } from '@ilaunchify/ui'
-import type { BrandCanvasAssets, BrandLogoAsset, BrandImageAsset } from '@ilaunchify/ui'
+import type {
+  BrandCanvasAssets,
+  BrandLogoAsset,
+  BrandImageAsset,
+  BrandTextStyleSpec,
+} from '@ilaunchify/ui'
 
 const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
 
@@ -124,20 +129,50 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     })
     .filter((f): f is NonNullable<typeof f> => f !== null)
 
-  // Text-style → font-family map (Slice 2c). Each role's fontKey resolves to a family
-  // via the already-resolved fonts (role fonts are kept in brandFontIds). A catalog
-  // family resolves to itself even if not in brandFontIds.
+  // Text-style → full spec (Slice 2c font + Slice 4 size/weight/case/color). Each
+  // role's fontKey resolves to a family via the already-resolved fonts; a catalog
+  // family resolves to itself even if not in brandFontIds. colorRef resolves palette
+  // tokens (primary/secondary/accent) to the brand's hex; bare hex passes through.
   const refToFamily = new Map(fonts.map((f) => [f.id, f.family]))
   const styleRows = await listBrandTextStyles(brand.id)
   const roleFamily = (key: string): string | undefined =>
     refToFamily.get(key) ?? (isKnownFontFamily(key) && !isCustomFontRef(key) ? key : undefined)
-  const textStyles: { heading?: string; subheading?: string; body?: string } = {}
-  for (const row of styleRows) {
+  const resolveColor = (ref: string | null): string | null => {
+    if (!ref) return null
+    if (ref === 'primary') return brand.colorPrimary
+    if (ref === 'secondary') return brand.colorSecondary
+    if (ref === 'accent') return brand.colorAccent
+    return ref // assume a hex
+  }
+  const VALID_CASE = ['none', 'uppercase', 'lowercase', 'capitalize'] as const
+  type CaseT = (typeof VALID_CASE)[number]
+  const toSpec = (row: (typeof styleRows)[number]): BrandTextStyleSpec | null => {
     const fam = roleFamily(row.fontKey)
-    if (!fam) continue
-    if (row.role === 'HEADING') textStyles.heading = fam
-    else if (row.role === 'SUBHEADING') textStyles.subheading = fam
-    else if (row.role === 'BODY') textStyles.body = fam
+    if (!fam) return null
+    const textCase = (VALID_CASE as readonly string[]).includes(row.textCase ?? '')
+      ? (row.textCase as CaseT)
+      : null
+    return {
+      fontFamily: fam,
+      fontSize: row.fontSize,
+      fontWeight: row.fontWeight,
+      letterSpacing: row.letterSpacing,
+      lineHeight: row.lineHeight,
+      textCase,
+      color: resolveColor(row.colorRef),
+    }
+  }
+  const textStyles: {
+    heading?: BrandTextStyleSpec
+    subheading?: BrandTextStyleSpec
+    body?: BrandTextStyleSpec
+  } = {}
+  for (const row of styleRows) {
+    const spec = toSpec(row)
+    if (!spec) continue
+    if (row.role === 'HEADING') textStyles.heading = spec
+    else if (row.role === 'SUBHEADING') textStyles.subheading = spec
+    else if (row.role === 'BODY') textStyles.body = spec
   }
 
   // Brand Kit V2 Slice 3 — pinned visual assets, resolved to display URLs.

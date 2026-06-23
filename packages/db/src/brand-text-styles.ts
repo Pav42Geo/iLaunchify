@@ -12,10 +12,29 @@ export type BrandTextRole = 'HEADING' | 'SUBHEADING' | 'BODY'
 export interface BrandTextStyleRow {
   role: string
   fontKey: string
+  // Slice 4 — full type spec (all optional/additive).
+  fontSize: number | null
+  fontWeight: string | null
+  letterSpacing: number | null
+  lineHeight: number | null
+  textCase: string | null
+  colorRef: string | null
+}
+
+/** Styling attributes for a role (fontKey + the Slice 4 columns). */
+export interface BrandTextStyleSpecInput {
+  fontKey?: string
+  fontSize?: number | null
+  fontWeight?: string | null
+  letterSpacing?: number | null
+  lineHeight?: number | null
+  textCase?: string | null
+  colorRef?: string | null
 }
 
 interface BrandTextStyleDelegate {
   findMany: (a: unknown) => Promise<Record<string, unknown>[]>
+  findFirst: (a: unknown) => Promise<Record<string, unknown> | null>
   upsert: (a: unknown) => Promise<unknown>
   delete: (a: unknown) => Promise<unknown>
 }
@@ -25,15 +44,62 @@ function delegate(): BrandTextStyleDelegate | null {
   return d ?? null
 }
 
-/** All role→font assignments for a brand. Empty on pre-migration. */
+function toRow(r: Record<string, unknown>): BrandTextStyleRow {
+  return {
+    role: (r.role as string) ?? '',
+    fontKey: (r.fontKey as string) ?? '',
+    fontSize: (r.fontSize as number | null) ?? null,
+    fontWeight: (r.fontWeight as string | null) ?? null,
+    letterSpacing: (r.letterSpacing as number | null) ?? null,
+    lineHeight: (r.lineHeight as number | null) ?? null,
+    textCase: (r.textCase as string | null) ?? null,
+    colorRef: (r.colorRef as string | null) ?? null,
+  }
+}
+
+/** All role→style assignments for a brand. Empty on pre-migration. */
 export async function listBrandTextStyles(brandId: string): Promise<BrandTextStyleRow[]> {
   const d = delegate()
   if (!d) return []
   try {
     const rows = await d.findMany({ where: { brandId } }).catch(() => [])
-    return rows.map((r) => ({ role: (r.role as string) ?? '', fontKey: (r.fontKey as string) ?? '' }))
+    return rows.map(toRow)
   } catch {
     return []
+  }
+}
+
+/** Upsert a role's FULL style spec (font + size/weight/case/color). Only provided
+ *  fields are written. Requires a fontKey on first create — if none is stored yet
+ *  and none is provided, the role can't exist, so we no-op false. */
+export async function setBrandTextStyleSpec(
+  brandId: string,
+  role: BrandTextRole,
+  spec: BrandTextStyleSpecInput,
+): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  try {
+    const existing = await d
+      .findFirst({ where: { brandId_role: { brandId, role } } })
+      .catch(() => null)
+    const fontKey = spec.fontKey ?? (existing?.fontKey as string | undefined)
+    if (!fontKey) return false
+    const data: Record<string, unknown> = {}
+    if (spec.fontSize !== undefined) data.fontSize = spec.fontSize
+    if (spec.fontWeight !== undefined) data.fontWeight = spec.fontWeight
+    if (spec.letterSpacing !== undefined) data.letterSpacing = spec.letterSpacing
+    if (spec.lineHeight !== undefined) data.lineHeight = spec.lineHeight
+    if (spec.textCase !== undefined) data.textCase = spec.textCase
+    if (spec.colorRef !== undefined) data.colorRef = spec.colorRef
+    await d.upsert({
+      where: { brandId_role: { brandId, role } },
+      update: { fontKey, ...data },
+      create: { brandId, role, fontKey, ...data },
+    })
+    return true
+  } catch {
+    return false
   }
 }
 
