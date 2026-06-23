@@ -1007,6 +1007,8 @@ export function CanvasLayoutShell({
               recipeHash={recipeHash}
               activeBrandId={activeBrandId}
               onActiveBrandChange={setActiveBrandId}
+              creatorTier={creatorTier}
+              onSaveAsTemplate={handleSaveAsTemplate}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1517,6 +1519,8 @@ function ToolDrawer({
   recipeHash,
   activeBrandId,
   onActiveBrandChange,
+  creatorTier,
+  onSaveAsTemplate,
   onClose,
 }: {
   tool: ToolKey
@@ -1549,6 +1553,8 @@ function ToolDrawer({
   recipeHash: string | null
   activeBrandId: string
   onActiveBrandChange: (brandId: string) => void
+  creatorTier: TierKey
+  onSaveAsTemplate: () => void
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1556,6 +1562,7 @@ function ToolDrawer({
   const titles: Record<ToolKey, string> = {
     product: 'Product',
     label: 'Label',
+    templates: 'Templates',
     brand: 'Brand',
     text: 'Text',
     elements: 'Elements',
@@ -1624,7 +1631,7 @@ function ToolDrawer({
             canvas={canvas}
             activeBrandId={activeBrandId}
             canPremium={canRecolorTemplate(creatorTier)}
-            onSaveAsTemplate={handleSaveAsTemplate}
+            onSaveAsTemplate={onSaveAsTemplate}
           />
         )}
         {tool === 'brand' && (
@@ -1634,7 +1641,7 @@ function ToolDrawer({
             activeBrandId={activeBrandId}
             onActiveBrandChange={onActiveBrandChange}
             canRecolor={canRecolorTemplate(creatorTier)}
-            onSaveAsTemplate={handleSaveAsTemplate}
+            onSaveAsTemplate={onSaveAsTemplate}
           />
         )}
         {tool === 'text' && <TextDrawer canvas={canvas} brandAssets={brandAssets} />}
