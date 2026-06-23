@@ -30,6 +30,7 @@ import type { Capability } from '@ilaunchify/auth'
 import {
   Database,
   LayoutDashboard,
+  LayoutTemplate,
   GraduationCap,
   PlaySquare,
   BookOpen,
@@ -187,6 +188,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Niches', icon: Sparkles, href: '/niches', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Premium Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
         { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
         { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
