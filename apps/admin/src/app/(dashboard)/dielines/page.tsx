@@ -3,7 +3,8 @@
 // docs/DIELINE_FRAME_EDITOR_SPEC.md §3.
 // =============================================================================
 
-import { SquareDashedBottom } from 'lucide-react'
+import Link from 'next/link'
+import { SquareDashedBottom, SlidersHorizontal } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { DielineReviewActions } from './DielineReviewActions'
 
@@ -52,9 +53,12 @@ export default async function AdminDielinesPage() {
           <Empty />
         ) : (
           pending.map((d) => (
-            <li key={d.id} className="flex items-center justify-between px-4 py-3">
+            <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <Meta d={d} />
-              <DielineReviewActions dielineId={d.id} />
+              <div className="inline-flex items-center gap-2">
+                <CurateLink id={d.id} />
+                <DielineReviewActions dielineId={d.id} />
+              </div>
             </li>
           ))
         )}
@@ -63,11 +67,14 @@ export default async function AdminDielinesPage() {
       {active.length > 0 && (
         <Section title={`Active (${active.length})`}>
           {active.map((d) => (
-            <li key={d.id} className="flex items-center justify-between px-4 py-3">
+            <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <Meta d={d} />
-              <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${STATUS_TONE[d.status]}`}>
-                {d.status.toLowerCase()}
-              </span>
+              <div className="inline-flex items-center gap-2">
+                <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${STATUS_TONE[d.status]}`}>
+                  {d.status.toLowerCase()}
+                </span>
+                <CurateLink id={d.id} label="Re-curate" />
+              </div>
             </li>
           ))}
         </Section>
@@ -97,6 +104,17 @@ function Meta({ d }: { d: Row }) {
         {d.partnerConfirmedAt ? ` · confirmed ${new Date(d.partnerConfirmedAt).toLocaleDateString()}` : ''}
       </p>
     </div>
+  )
+}
+
+function CurateLink({ id, label = 'Curate' }: { id: string; label?: string }) {
+  return (
+    <Link
+      href={`/dielines/${id}`}
+      className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-3 py-1 text-[11.5px] font-semibold text-ink-700 hover:bg-ink-50"
+    >
+      <SlidersHorizontal className="h-3.5 w-3.5" /> {label}
+    </Link>
   )
 }
 

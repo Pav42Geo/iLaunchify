@@ -6,6 +6,8 @@
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { uploadFile, dielineNormalizedKey } from '@ilaunchify/storage'
+import { dielineSvgFromSpec, type DielineFold, type DielineSurface } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -28,6 +30,121 @@ export async function verifyDieline(dielineId: string): Promise<Result> {
     toValue: 'ACTIVE',
   })
   revalidatePath('/dielines')
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Die-line Curator (Slice C9.g) — admin normalizes a partner-confirmed die-line.
+//
+// The admin NEVER edits the partner's original file (PackagingDieline.partnerFile
+// stays immutable). Instead the admin corrects the structured prepress spec
+// (trim dimensions + bleed + safe inset) to the house standard; we regenerate a
+// clean NORMALIZED SVG from that spec and store it under normalizedSvgKey — the
+// uniform representation every creator's Studio renders. Saving stamps the
+// die-line ADMIN_VERIFIED + ACTIVE.
+// -----------------------------------------------------------------------------
+
+export interface CurateDielineInput {
+  dielineId: string
+  widthMm: number
+  heightMm: number
+  bleedMm: number
+  /** Safe-area inset from trim, mm. */
+  safeAreaMm: number
+}
+
+function box(x: number, y: number, w: number, h: number) {
+  return { x, y, w, h }
+}
+
+export async function curateDieline(input: CurateDielineInput): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const width = Number(input.widthMm)
+  const height = Number(input.heightMm)
+  const bleed = Math.max(0, Number(input.bleedMm))
+  const safeInset = Math.max(0, Number(input.safeAreaMm))
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+    return { ok: false, error: 'Trim width and height must be positive numbers (mm).' }
+  }
+  if (safeInset * 2 >= width || safeInset * 2 >= height) {
+    return { ok: false, error: 'Safe-area inset is too large for these trim dimensions.' }
+  }
+
+  const dl = await prisma.packagingDieline.findUnique({
+    where: { id: input.dielineId },
+    select: {
+      id: true,
+      status: true,
+      foldLines: true,
+      surfaces: true,
+      partnerService: { select: { partnerId: true } },
+    },
+  })
+  if (!dl) return { ok: false, error: 'Die-line not found.' }
+  if (dl.status !== 'PARTNER_CONFIRMED' && dl.status !== 'ACTIVE') {
+    return { ok: false, error: `Cannot curate from ${dl.status}.` }
+  }
+
+  // Carry the real geometry (folds + named surfaces) through untouched; the admin
+  // only standardizes trim/bleed/safe here.
+  const foldLines = (dl.foldLines as DielineFold[] | null) ?? undefined
+  const surfaces = (dl.surfaces as DielineSurface[] | null) ?? undefined
+
+  // Generate the normalized SVG from the standardized spec (trim/safe derived
+  // uniformly from dims + bleed + inset).
+  const svg = dielineSvgFromSpec({
+    widthMm: width,
+    heightMm: height,
+    bleedMm: bleed,
+    safeAreaMm: safeInset,
+    foldLines,
+    surfaces,
+  })
+
+  // Persist the SVG to R2 — the artifact the Studio reads. Original file untouched.
+  let normalizedSvgKey: string
+  try {
+    const key = dielineNormalizedKey({ dielineId: dl.id })
+    await uploadFile({
+      key,
+      body: Buffer.from(svg, 'utf8'),
+      contentType: 'image/svg+xml',
+      contentDisposition: 'inline',
+      cacheControl: 'private, max-age=0',
+    })
+    normalizedSvgKey = key
+  } catch {
+    return { ok: false, error: 'Could not store the normalized die-line. Check storage configuration and try again.' }
+  }
+
+  // Standardized geometry, stored self-consistently with the generated SVG.
+  const trimBox = box(bleed, bleed, width, height)
+  const safeAreaBox = box(bleed + safeInset, bleed + safeInset, width - 2 * safeInset, height - 2 * safeInset)
+
+  await prisma.packagingDieline.update({
+    where: { id: dl.id },
+    data: {
+      widthMm: width,
+      heightMm: height,
+      bleedMm: bleed,
+      trimBox,
+      safeAreaBox,
+      normalizedSvgKey,
+      status: 'ACTIVE',
+      adminVerifiedAt: new Date(),
+      adminVerifiedById: admin.id,
+    },
+  })
+  await logAuditAs(admin, {
+    entityType: 'PackagingDieline',
+    entityId: dl.id,
+    action: 'dieline.curated',
+    fromValue: dl.status,
+    toValue: 'ACTIVE',
+  })
+  revalidatePath('/dielines')
+  revalidatePath(`/dielines/${dl.id}`)
   return { ok: true }
 }
 

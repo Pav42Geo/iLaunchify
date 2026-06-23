@@ -113,3 +113,14 @@ export function packagingAssetKey(params: {
   const safe = sanitizeFilename(params.filename)
   return `partners/${params.partnerId}/packaging/${params.packagingSystemId}/${params.kind}/${id}-${safe}`
 }
+
+// Admin-normalized die-line SVG (Slice C9.g — Die-line Curator). Path convention:
+//   dielines/{dielineId}/normalized/{cuid}.svg
+// This is the platform-generated NORMALIZED artifact the Studio renders — it is
+// NOT the partner's original file (that stays immutable under partnerFileKey /
+// packagingAssetKey). Keyed per die-line so re-normalization overwrites cleanly
+// (we store the newest key on PackagingDieline.normalizedSvgKey).
+export function dielineNormalizedKey(params: { dielineId: string }): string {
+  const id = generateCuid()
+  return `dielines/${params.dielineId}/normalized/${id}.svg`
+}

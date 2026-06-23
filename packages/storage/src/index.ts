@@ -28,4 +28,5 @@ export {
   certPdfKey,
   certificateThumbnailKey,
   ticketAttachmentKey,
+  dielineNormalizedKey,
 } from './keys'
