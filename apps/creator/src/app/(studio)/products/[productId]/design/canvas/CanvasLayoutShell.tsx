@@ -1630,6 +1630,9 @@ function ToolDrawer({
           <TemplatesDrawer
             canvas={canvas}
             activeBrandId={activeBrandId}
+            productId={productId}
+            domain={labelingType}
+            dieCut={dieCut}
             canPremium={canRecolorTemplate(creatorTier)}
             onSaveAsTemplate={onSaveAsTemplate}
           />

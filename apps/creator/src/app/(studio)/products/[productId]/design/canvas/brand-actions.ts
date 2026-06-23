@@ -14,9 +14,13 @@ import {
   createBrandTemplate,
   listPremiumTemplates,
   getPremiumTemplate,
+  listMatchablePremiumTemplates,
+  listMatchableBrandTemplates,
   type BrandTemplateValues,
   type PremiumTemplateValues,
+  type MatchableTemplateRow,
 } from '@ilaunchify/db'
+import type { ProductComponentDieline } from '@ilaunchify/ui'
 import { logAuditAs } from '@ilaunchify/audit'
 import type { BrandCanvasAssets } from '@ilaunchify/ui'
 import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
@@ -161,6 +165,69 @@ export async function listStudioBrandTemplates(brandId: string): Promise<BrandTe
   })
   if (!brand) return []
   return listBrandTemplates(brandId)
+}
+
+// ---------------------------------------------------------------------------
+// Template library — die-line-aware browse (docs/DESIGN_TEMPLATE_LIBRARY.md §6/§7).
+// Returns the product's surface as a matchable component + the candidate templates
+// (premium, Agency-gated + the brand's own), in the @ilaunchify/ui engine's shape.
+// The drawer runs matchTemplatesToProduct() client-side to group by category.
+// ---------------------------------------------------------------------------
+
+export interface StudioTemplateLibrary {
+  component: ProductComponentDieline
+  premium: MatchableTemplateRow[]
+  own: MatchableTemplateRow[]
+}
+
+export async function loadStudioTemplateLibrary(input: {
+  productId: string
+  brandId: string
+  domain: string
+  surface: {
+    componentId: string
+    label: string
+    packagingTypeId: string | null
+    widthMm: number | null
+    heightMm: number | null
+  }
+}): Promise<StudioTemplateLibrary | null> {
+  const user = await requireUser()
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
+    select: { id: true, variant: { select: { packagingTypeId: true } } },
+  })
+  if (!product) return null
+
+  const packagingTypeId = input.surface.packagingTypeId ?? product.variant?.packagingTypeId ?? null
+  let containerCategory: string | null = null
+  if (packagingTypeId) {
+    const pt = await prisma.packagingType.findUnique({
+      where: { id: packagingTypeId },
+      select: { containerCategory: true },
+    })
+    containerCategory = (pt?.containerCategory as string | null) ?? null
+  }
+
+  const component: ProductComponentDieline = {
+    componentId: input.surface.componentId,
+    label: input.surface.label,
+    packagingTypeId,
+    containerCategory,
+    widthMm: input.surface.widthMm,
+    heightMm: input.surface.heightMm,
+  }
+
+  const tier = await getCreatorTier(user.id)
+  const premium = canRecolorTemplate(tier) ? await listMatchablePremiumTemplates(input.domain) : []
+
+  const brand = await prisma.brand.findFirst({
+    where: { id: input.brandId, creatorProfile: { userId: user.id } },
+    select: { id: true },
+  })
+  const own = brand ? await listMatchableBrandTemplates(input.brandId, input.domain) : []
+
+  return { component, premium, own }
 }
 
 /** A premium template's Fabric JSON to load onto the canvas. Agency-gated. */
