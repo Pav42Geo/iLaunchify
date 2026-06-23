@@ -14,7 +14,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles, listBrandPalettes } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony, canExtractPalette } from '@ilaunchify/auth'
 import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
@@ -120,6 +120,11 @@ export default async function BrandAssetsPage({ params }: PageProps) {
       colorRef: r.colorRef,
     }))
 
+  // Resolved logo image URLs for the generator's "use my logo" extraction.
+  const brandLogoUrls = logoAssets
+    .map((a) => a.publicUrl)
+    .filter((u): u is string => !!u)
+
   // Brand Kit V2 Slice 5 — color palettes.
   const paletteRows = await listBrandPalettes(brand.id)
   const paletteInitial: PaletteState[] = paletteRows.map((p) => ({
@@ -177,7 +182,13 @@ export default async function BrandAssetsPage({ params }: PageProps) {
           }}
         />
 
-        <PalettesSection brandId={brand.id} initial={paletteInitial} canHarmony={canUseColorHarmony(tier)} />
+        <PalettesSection
+          brandId={brand.id}
+          initial={paletteInitial}
+          canHarmony={canUseColorHarmony(tier)}
+          canExtract={canExtractPalette(tier)}
+          logoUrls={brandLogoUrls}
+        />
 
         <FontsSection
           brandId={brand.id}

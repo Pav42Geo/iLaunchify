@@ -7,11 +7,12 @@
 // via the pure @ilaunchify/ui color engine; only Save hits the server (tier-gated there
 // too). Harmony methods beyond Auto are Builder+; Auto is free.
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
-import { Lock, LockOpen, Shuffle, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
+import { Lock, LockOpen, Shuffle, X, Upload, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   generatePalette,
+  extractPalette,
   nearestColorName,
   readableTextOn,
   HARMONY_METHODS,
@@ -23,17 +24,30 @@ import type { PaletteState } from './PalettesSection'
 interface Props {
   brandId: string
   canHarmony: boolean
+  /** Agency: may extract a palette from an image/logo. */
+  canExtract?: boolean
+  /** Resolved brand logo image URLs for "use my logo". */
+  logoUrls?: string[]
   onSaved: (palette: PaletteState) => void
   onClose: () => void
 }
 
-export function PaletteGenerator({ brandId, canHarmony, onSaved, onClose }: Props) {
+export function PaletteGenerator({
+  brandId,
+  canHarmony,
+  canExtract = false,
+  logoUrls = [],
+  onSaved,
+  onClose,
+}: Props) {
   const [method, setMethod] = useState<HarmonyMethod>('AUTO')
   const [count, setCount] = useState(5)
   const [colors, setColors] = useState<string[]>(() => generatePalette({ method: 'AUTO', count: 5 }))
   const [locked, setLocked] = useState<boolean[]>(() => Array(5).fill(false))
   const [name, setName] = useState('')
   const [saving, startSave] = useTransition()
+  const [extracting, setExtracting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const roll = useCallback(() => {
     setColors((prev) => {
@@ -76,6 +90,54 @@ export function PaletteGenerator({ brandId, canHarmony, onSaved, onClose }: Prop
 
   function toggleLock(i: number) {
     setLocked((prev) => prev.map((v, idx) => (idx === i ? !v : v)))
+  }
+
+  function loadImage(src: string, cors: boolean): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      if (cors) img.crossOrigin = 'anonymous'
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error('image load failed'))
+      img.src = src
+    })
+  }
+
+  async function runExtract(src: File | string) {
+    if (!canExtract) {
+      toast.error('Extracting a palette from an image is an Agency feature.')
+      return
+    }
+    setExtracting(true)
+    let objectUrl: string | null = null
+    try {
+      const url = typeof src === 'string' ? src : (objectUrl = URL.createObjectURL(src))
+      const img = await loadImage(url, typeof src === 'string')
+      const max = 160
+      const scale = Math.min(1, max / Math.max(img.width || max, img.height || max))
+      const w = Math.max(1, Math.round((img.width || max) * scale))
+      const h = Math.max(1, Math.round((img.height || max) * scale))
+      const cv = document.createElement('canvas')
+      cv.width = w
+      cv.height = h
+      const ctx = cv.getContext('2d')
+      if (!ctx) throw new Error('no canvas context')
+      ctx.drawImage(img, 0, 0, w, h)
+      const data = ctx.getImageData(0, 0, w, h).data // throws if tainted
+      const cols = extractPalette(data, { count, dropBackground: true })
+      if (cols.length < 2) {
+        toast.error('Couldn’t read enough colors from that image.')
+        return
+      }
+      const next = [...cols]
+      while (next.length < count) next.push(cols[next.length % cols.length] as string)
+      setColors(next.slice(0, count))
+      setLocked(Array(count).fill(false))
+    } catch {
+      toast.error('Couldn’t read that image — try uploading the file directly.')
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+      setExtracting(false)
+    }
   }
 
   function save() {
@@ -189,6 +251,47 @@ export function PaletteGenerator({ brandId, canHarmony, onSaved, onClose }: Prop
             )
           })}
         </div>
+      </div>
+
+      {/* Extract from image (Agency) */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
+          Extract from image
+        </span>
+        {!canExtract && (
+          <span className="rounded bg-ink-100 px-1 text-[8px] font-bold uppercase tracking-wider text-ink-500">
+            Agency
+          </span>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void runExtract(f)
+            e.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          disabled={extracting}
+          onClick={() => (canExtract ? fileRef.current?.click() : runExtract(''))}
+          className="inline-flex items-center gap-1 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 hover:border-pink-400 hover:text-pink-700 disabled:opacity-50"
+        >
+          <Upload className="h-3.5 w-3.5" /> {extracting ? 'Reading…' : 'Upload image'}
+        </button>
+        {logoUrls.length > 0 && (
+          <button
+            type="button"
+            disabled={extracting}
+            onClick={() => runExtract(logoUrls[0] as string)}
+            className="inline-flex items-center gap-1 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 hover:border-pink-400 hover:text-pink-700 disabled:opacity-50"
+          >
+            <ImageIcon className="h-3.5 w-3.5" /> Use my logo
+          </button>
+        )}
       </div>
 
       {/* Save */}

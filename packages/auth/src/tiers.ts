@@ -120,12 +120,14 @@ export interface AdvancedBrandFeatures {
   customFontUpload: boolean
   /** Generate palettes with color-harmony methods (not just Auto). Builder+. */
   colorHarmony: boolean
+  /** Extract a palette from an uploaded image / the brand logo. Agency. */
+  paletteExtract: boolean
 }
 
 export const ADVANCED_BRAND_FEATURES: Record<TierKey, AdvancedBrandFeatures> = {
-  maker: { customFontUpload: false, colorHarmony: false },
-  builder: { customFontUpload: true, colorHarmony: true },
-  agency: { customFontUpload: true, colorHarmony: true },
+  maker: { customFontUpload: false, colorHarmony: false, paletteExtract: false },
+  builder: { customFontUpload: true, colorHarmony: true, paletteExtract: false },
+  agency: { customFontUpload: true, colorHarmony: true, paletteExtract: true },
 }
 
 export function advancedBrandFeatures(tier: TierKey): AdvancedBrandFeatures {
@@ -140,6 +142,11 @@ export function canUploadCustomFonts(tier: TierKey): boolean {
 /** Convenience: may this tier use color-harmony palette methods? (Builder+) Auto is free. */
 export function canUseColorHarmony(tier: TierKey): boolean {
   return ADVANCED_BRAND_FEATURES[tier].colorHarmony
+}
+
+/** Convenience: may this tier extract a palette from an image / logo? (Agency) */
+export function canExtractPalette(tier: TierKey): boolean {
+  return ADVANCED_BRAND_FEATURES[tier].paletteExtract
 }
 
 /**

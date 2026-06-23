@@ -17,7 +17,14 @@ import {
   type BrandTextRole,
   type BrandAssetKind,
 } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony } from '@ilaunchify/auth'
+import {
+  requireUser,
+  getCreatorTier,
+  brandLimits,
+  canUploadCustomFonts,
+  canUseColorHarmony,
+  canExtractPalette,
+} from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { brandFontCatalog, isKnownFontFamily, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
@@ -65,6 +72,8 @@ export type LoadBrandKitEditorResult =
       customFonts: StudioCustomFont[]
       canUploadCustomFonts: boolean
       canHarmony: boolean
+      canExtract: boolean
+      logoUrls: string[]
       // Slice 4 — text styles (shape matches TextStylesSection's RoleStyleState).
       textStyles: {
         role: 'HEADING' | 'SUBHEADING' | 'BODY'
@@ -236,6 +245,8 @@ export async function loadStudioBrandKitEditor(
     customFonts,
     canUploadCustomFonts: canUploadCustomFonts(tier),
     canHarmony: canUseColorHarmony(tier),
+    canExtract: canExtractPalette(tier),
+    logoUrls: resolved.map((a) => a.publicUrl).filter((u): u is string => !!u),
     textStyles,
     fontOptions,
     palettes,

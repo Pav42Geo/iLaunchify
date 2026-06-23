@@ -47,6 +47,10 @@ interface Props {
   initial: PaletteState[]
   /** Builder+ may use color-harmony methods in the generator (Auto is free). */
   canHarmony?: boolean
+  /** Agency may extract a palette from an image / logo. */
+  canExtract?: boolean
+  /** Resolved brand logo image URLs for "use my logo". */
+  logoUrls?: string[]
 }
 
 function gradientCss(g: GradientState | null): string {
@@ -57,7 +61,13 @@ function gradientCss(g: GradientState | null): string {
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 
-export function PalettesSection({ brandId, initial, canHarmony = false }: Props) {
+export function PalettesSection({
+  brandId,
+  initial,
+  canHarmony = false,
+  canExtract = false,
+  logoUrls = [],
+}: Props) {
   const [palettes, setPalettes] = useState<PaletteState[]>(initial)
   const [selected, setSelected] = useState<string | null>(null)
   const [showGen, setShowGen] = useState(false)
@@ -180,6 +190,8 @@ export function PalettesSection({ brandId, initial, canHarmony = false }: Props)
           <PaletteGenerator
             brandId={brandId}
             canHarmony={canHarmony}
+            canExtract={canExtract}
+            logoUrls={logoUrls}
             onSaved={(p) => setPalettes((prev) => [...prev, p])}
             onClose={() => setShowGen(false)}
           />

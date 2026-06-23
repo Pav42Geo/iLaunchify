@@ -60,6 +60,7 @@ export {
   ADVANCED_BRAND_FEATURES,
   canUploadCustomFonts,
   canUseColorHarmony,
+  canExtractPalette,
 } from './tiers'
 export type { TierKey, BrandLimits, AdvancedBrandFeatures } from './tiers'
 

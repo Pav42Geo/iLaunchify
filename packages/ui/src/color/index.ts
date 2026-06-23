@@ -2,3 +2,4 @@
 export * from './convert'
 export * from './harmony'
 export * from './names'
+export * from './extract'
