@@ -70,6 +70,21 @@ export interface FrameConditions {
   requiresBarcode?: boolean
 }
 
+/**
+ * Die-line-INTRINSIC content pinned onto a frame (content fidelity, Pavel
+ * 2026-06-23). Most frames resolve their content per-product at composition, but
+ * a partner may pin a SPECIFIC phrase or packaging symbol directly on the
+ * die-line (e.g. "Keep Frozen", a recycling mark). Pinned content renders
+ * immediately on every canvas — die-line editor, Studio, mockups — independent
+ * of any product, so whatever the partner placed + saved actually shows up.
+ */
+export interface PinnedContent {
+  /** A specific phrase / line of text drawn directly in the frame. */
+  text?: string
+  /** A specific packaging symbol slug (from the PackagingSymbol library). */
+  symbolSlug?: string
+}
+
 export interface Frame {
   id: string
   kind: FrameKind
@@ -79,9 +94,11 @@ export interface Frame {
   rotationDeg?: number
   /** Drives the submit gate. */
   required: boolean
-  /** PLATFORM = seeded default; PARTNER = moved/added by the partner. */
-  source: 'PLATFORM' | 'PARTNER'
+  /** PLATFORM = seeded default; PARTNER = partner-placed; ADMIN = admin-adjusted. */
+  source: 'PLATFORM' | 'PARTNER' | 'ADMIN'
   appliesTo?: FrameConditions
+  /** Die-line-intrinsic content the partner pinned — renders directly. */
+  pinnedContent?: PinnedContent
   notes?: string
 }
 

@@ -296,6 +296,19 @@ function FrameRect({ frame, selected, onPointerDown }: { frame: Frame; selected:
       <span style={{ color: c.stroke }} className="pointer-events-none absolute left-1 top-0.5 text-[8.5px] font-semibold uppercase leading-tight tracking-wide">
         {KIND_LABEL[frame.kind]}{!frame.required && ' ·opt'}
       </span>
+      {/* Pinned content (die-line-intrinsic) renders directly so partner-placed
+          phrases / symbols actually appear on the canvas. */}
+      {frame.pinnedContent?.text ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center text-[9px] font-medium leading-tight text-ink-800">
+          {frame.pinnedContent.text}
+        </span>
+      ) : frame.pinnedContent?.symbolSlug ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="rounded bg-white/85 px-1 py-0.5 text-[8px] font-semibold text-ink-700">
+            ⬡ {frame.pinnedContent.symbolSlug}
+          </span>
+        </span>
+      ) : null}
       {selected && (
         <span
           onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e, 'resize') }}
@@ -417,6 +430,22 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
           <label className="mt-2 flex items-center gap-2 text-[12px]">
             <input type="checkbox" checked={selected.required} onChange={(e) => onPatch(selected.id, { required: e.target.checked })} className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600" />
             Required (blocks submit if missing)
+          </label>
+          {/* Pinned content — a SPECIFIC phrase or symbol that renders directly on
+              the canvas (die-line-intrinsic), independent of any product. */}
+          <label className="mt-2 block">
+            <span className="mb-0.5 block text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Pinned text / mark</span>
+            <input
+              defaultValue={selected.pinnedContent?.text ?? ''}
+              onBlur={(e) => {
+                const text = e.target.value.trim()
+                onPatch(selected.id, {
+                  pinnedContent: text ? { ...selected.pinnedContent, text } : undefined,
+                })
+              }}
+              placeholder='e.g. "Keep Frozen" (shows on the canvas)'
+              className="w-full rounded border border-ink-200 px-2 py-1 text-[11.5px]"
+            />
           </label>
           {FRAME_SCOPE[selected.kind] === 'MATERIAL' && (
             <input
