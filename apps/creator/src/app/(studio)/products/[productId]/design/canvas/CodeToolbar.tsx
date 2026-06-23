@@ -45,6 +45,29 @@ const STAPLE_SWATCHES = [
   '#1E90FF', '#10B981', '#F59E0B', '#7C3AED', '#EF4444',
 ]
 
+// Session-level "recently used" color store, shared across every ColorChip (FG/BG
+// of any code). In-memory ring buffer (most-recent first, de-duped); resets on
+// reload. Subscribed via useSyncExternalStore so all open pickers stay in sync.
+const RECENT_COLOR_LIMIT = 12
+let recentColors: string[] = []
+const recentColorListeners = new Set<() => void>()
+function recordRecentColor(hex: string): void {
+  const n = normalizeHex(hex)
+  if (!n) return
+  recentColors = [n, ...recentColors.filter((c) => c !== n)].slice(0, RECENT_COLOR_LIMIT)
+  recentColorListeners.forEach((l) => l())
+}
+function useRecentColors(): string[] {
+  return React.useSyncExternalStore(
+    (cb) => {
+      recentColorListeners.add(cb)
+      return () => recentColorListeners.delete(cb)
+    },
+    () => recentColors,
+    () => recentColors,
+  )
+}
+
 interface Props {
   canvas: FabricCanvas | null
   active: FabricObject
@@ -607,6 +630,47 @@ function DebouncedTextInput({
   )
 }
 
+// A labeled row of swatches (Recently used / Brand colors / Default).
+function SwatchGroup({
+  label,
+  colors,
+  value,
+  onPick,
+}: {
+  label: string
+  colors: string[]
+  value: string
+  onPick: (hex: string) => void
+}) {
+  const current = normalizeHex(value) ?? ''
+  return (
+    <div>
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">{label}</div>
+      <div className="grid grid-cols-6 gap-1.5">
+        {colors.map((hex) => {
+          const norm = normalizeHex(hex) ?? hex
+          const active = current === norm
+          return (
+            <button
+              key={hex}
+              type="button"
+              onClick={() => onPick(norm)}
+              title={hex}
+              className={
+                'aspect-square rounded border transition-all ' +
+                (active ? 'border-pink-500 ring-2 ring-pink-500/25' : 'border-ink-200 hover:border-ink-400')
+              }
+              style={{ backgroundColor: hex }}
+            >
+              <span className="sr-only">{hex}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ColorChip({
   label,
   value,
@@ -631,10 +695,18 @@ function ColorChip({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
+  const recent = useRecentColors()
   const cmyk = hexToCmyk(value)
   const setCmyk = (patch: Partial<typeof cmyk>) => onChange(cmykToHex({ ...cmyk, ...patch }))
 
-  const swatches = Array.from(new Set([...brandSwatches, ...STAPLE_SWATCHES]))
+  // Apply a deliberate color pick + remember it under "Recently used".
+  const apply = (hex: string) => {
+    const n = normalizeHex(hex) ?? hex
+    recordRecentColor(n)
+    onChange(n)
+  }
+
+  const brand = Array.from(new Set(brandSwatches.map((h) => normalizeHex(h) ?? h)))
 
   return (
     <div ref={ref} className="relative">
@@ -656,7 +728,7 @@ function ColorChip({
               <input
                 type="color"
                 value={normalizeHex(value) ?? '#000000'}
-                onChange={(e) => onChange(e.target.value.toUpperCase())}
+                onChange={(e) => apply(e.target.value.toUpperCase())}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
               <span className="absolute inset-0" style={{ backgroundColor: value }} />
@@ -667,7 +739,7 @@ function ColorChip({
               key={value}
               onBlur={(e) => {
                 const n = normalizeHex(e.target.value)
-                if (n) onChange(n)
+                if (n) apply(n)
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
@@ -697,25 +769,14 @@ function ColorChip({
           </div>
 
           {tab === 'swatches' ? (
-            <div className="mt-2.5 grid grid-cols-6 gap-1.5">
-              {swatches.map((hex) => {
-                const active = (normalizeHex(value) ?? '') === (normalizeHex(hex) ?? hex)
-                return (
-                  <button
-                    key={hex}
-                    type="button"
-                    onClick={() => onChange(normalizeHex(hex) ?? hex)}
-                    title={hex}
-                    className={
-                      'aspect-square rounded border transition-all ' +
-                      (active ? 'border-pink-500 ring-2 ring-pink-500/25' : 'border-ink-200 hover:border-ink-400')
-                    }
-                    style={{ backgroundColor: hex }}
-                  >
-                    <span className="sr-only">{hex}</span>
-                  </button>
-                )
-              })}
+            <div className="mt-2.5 space-y-2.5">
+              {recent.length > 0 && (
+                <SwatchGroup label="Recently used" colors={recent} value={value} onPick={apply} />
+              )}
+              {brand.length > 0 && (
+                <SwatchGroup label="Brand colors" colors={brand} value={value} onPick={apply} />
+              )}
+              <SwatchGroup label="Default" colors={STAPLE_SWATCHES} value={value} onPick={apply} />
             </div>
           ) : (
             <div className="mt-2.5 space-y-2">
