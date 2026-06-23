@@ -24,6 +24,7 @@ import {
   MoreHorizontal,
   RotateCw,
   Move,
+  Ratio,
 } from 'lucide-react'
 import {
   duplicateObject,
@@ -152,6 +153,29 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
     force()
   }
 
+  // "Reset proportions" — show only when the object has been stretched out of
+  // its natural aspect ratio (e.g. by a template or legacy non-uniform scale).
+  const sx = Number((active as { scaleX?: number }).scaleX) || 1
+  const sy = Number((active as { scaleY?: number }).scaleY) || 1
+  const stretched = Math.abs(sx - sy) > 0.01 * Math.max(sx, sy, 1)
+  const resetProportions = () => {
+    if (!canvas) return
+    const g = Math.sqrt(sx * sy) || 1 // preserve area, restore square scaling
+    const o = active as unknown as {
+      getCenterPoint: () => unknown
+      setPositionByOrigin: (p: unknown, ox: string, oy: string) => void
+      set: (v: object) => void
+      setCoords?: () => void
+    }
+    const c = o.getCenterPoint()
+    o.set({ scaleX: g, scaleY: g })
+    o.setPositionByOrigin(c, 'center', 'center')
+    o.setCoords?.()
+    canvas.fire('object:modified', { target: active })
+    canvas.requestRenderAll()
+    force()
+  }
+
   return (
     <>
       <div
@@ -178,6 +202,11 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           >
             <Trash2 className="h-3.5 w-3.5" />
           </IconBtn>
+          {stretched && (
+            <IconBtn ariaLabel="Reset proportions" onClick={resetProportions}>
+              <Ratio className="h-3.5 w-3.5" />
+            </IconBtn>
+          )}
           <div className="mx-0.5 h-4 w-px bg-ink-200" />
           <IconBtn
             ariaLabel="More actions"
