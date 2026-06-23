@@ -50,6 +50,7 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const [interacting, setInteracting] = React.useState(false)
   const rotateRef = React.useRef<{ cx: number; cy: number; startPointer: number; startAngle: number } | null>(null)
   const moveRef = React.useRef<{ px: number; py: number; left: number; top: number; zoom: number } | null>(null)
+  const edgeRef = React.useRef<{ axis: 'x' | 'y'; px: number; py: number; left: number; top: number; zoom: number } | null>(null)
 
   React.useEffect(() => {
     if (!canvas) return
@@ -92,6 +93,10 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const bottom = computeBottomPosition(active, canvasContainer)
   // Hidden while locked — a locked object can't be moved or rotated.
   const showHandles = !!bottom && !locked
+  // Mid-edge move bars — not on text boxes (they keep native width handles there).
+  const edges = computeEdgeHandles(active, canvasContainer)
+  const isTextbox = (active as { type?: string }).type === 'textbox'
+  const showEdges = showHandles && !isTextbox && !!edges
 
   // --- Rotate handle: drag around the object center to spin it -------------
   const onRotateDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -159,6 +164,37 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const onMoveUp = () => {
     if (!moveRef.current) return
     moveRef.current = null
+    canvas?.fire('object:modified', { target: active })
+    force()
+  }
+
+  // --- Edge bars: drag the mid-right / mid-bottom border line to nudge the object
+  // along one axis WITHOUT stretching it (Canva-style). The object only moves. ---
+  const onEdgeDown = (axis: 'x' | 'y') => (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!canvas || locked) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    edgeRef.current = {
+      axis,
+      px: e.clientX,
+      py: e.clientY,
+      left: Number(active.left) || 0,
+      top: Number(active.top) || 0,
+      zoom: canvas.getZoom?.() || 1,
+    }
+  }
+  const onEdgeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const m = edgeRef.current
+    if (!m || e.buttons !== 1) return
+    if (m.axis === 'x') active.set({ left: m.left + (e.clientX - m.px) / m.zoom })
+    else active.set({ top: m.top + (e.clientY - m.py) / m.zoom })
+    active.setCoords?.()
+    canvas?.requestRenderAll()
+  }
+  const onEdgeUp = () => {
+    if (!edgeRef.current) return
+    edgeRef.current = null
     canvas?.fire('object:modified', { target: active })
     force()
   }
@@ -275,6 +311,41 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
           </div>
         </div>
       )}
+
+      {/* Mid-edge "move" bars — drag the right/bottom border line to nudge the
+          object along one axis without stretching it (Canva-style). */}
+      {showEdges && edges && (
+        <>
+          <div
+            className={`pointer-events-none fixed z-30 ${visibility}`}
+            style={{ left: edges.right.x, top: edges.right.y, transform: 'translate(-50%, -50%)' }}
+          >
+            <button
+              type="button"
+              aria-label="Move left/right"
+              title="Drag to move left / right"
+              onPointerDown={onEdgeDown('x')}
+              onPointerMove={onEdgeMove}
+              onPointerUp={onEdgeUp}
+              className="pointer-events-auto block h-6 w-2 cursor-ew-resize touch-none rounded-full border border-pink-500 bg-white shadow-sm"
+            />
+          </div>
+          <div
+            className={`pointer-events-none fixed z-30 ${visibility}`}
+            style={{ left: edges.bottom.x, top: edges.bottom.y, transform: 'translate(-50%, -50%)' }}
+          >
+            <button
+              type="button"
+              aria-label="Move up/down"
+              title="Drag to move up / down"
+              onPointerDown={onEdgeDown('y')}
+              onPointerMove={onEdgeMove}
+              onPointerUp={onEdgeUp}
+              className="pointer-events-auto block h-2 w-6 cursor-ns-resize touch-none rounded-full border border-pink-500 bg-white shadow-sm"
+            />
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -314,6 +385,21 @@ function computeBottomPosition(
   return {
     left: c.left + rect.left + rect.width / 2,
     top: c.top + rect.top + rect.height + 14,
+  }
+}
+
+/** Mid-right and mid-bottom border points, in viewport coords — anchors for the
+ *  edge "move" bars. */
+function computeEdgeHandles(
+  obj: FabricObject,
+  container: HTMLElement | null,
+): { right: { x: number; y: number }; bottom: { x: number; y: number } } | null {
+  if (!container) return null
+  const r = obj.getBoundingRect()
+  const c = container.getBoundingClientRect()
+  return {
+    right: { x: c.left + r.left + r.width, y: c.top + r.top + r.height / 2 },
+    bottom: { x: c.left + r.left + r.width / 2, y: c.top + r.top + r.height },
   }
 }
 
