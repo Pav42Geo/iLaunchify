@@ -130,8 +130,18 @@ export function TextFontDrawer({
     window.setTimeout(() => setNotice(null), 3000)
   }
 
-  // Favorites section: pinned fonts at the top, minus the active one (it shows as selected).
-  const favoriteFamilies = favorites.filter((f) => f !== currentFamily)
+  // Favorites section: pinned fonts at the top. Keep ALL of them in place — never
+  // filter out the active one, or clicking a favorite would reflow the list and the
+  // next click would land on a different font (the active one just shows a checkmark).
+  const favoriteFamilies = favorites
+
+  // Warm favorite fonts so their rows render in-face right away (no fallback flash).
+  React.useEffect(() => {
+    for (const f of favorites) {
+      const url = brandFontUrlByFamily.get(f)
+      void loadBrandFont(f, url)
+    }
+  }, [favorites, brandFontUrlByFamily])
 
   async function applyFont(family: string) {
     if (!canvas) return
