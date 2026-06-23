@@ -2,25 +2,14 @@
 
 // ElementsDrawer — Canva-style "Elements" panel (Pavel 2026-06-23).
 //
-// Consolidates five formerly-separate rail tools — Images, Graphics, Clipart,
-// Background, Patterns — into one menu. Navigation mirrors Canva's Elements
-// panel: an OVERVIEW of horizontal "rails", one per group, each sliding
-// left/right with its own "See all". Picking "See all" drills into that single
-// group's full drawer (search / upload / every swatch). A back arrow returns to
-// the overview. No accordion — Pavel disliked that for these elements.
-//
-// Each rail's tiles perform the primary action on click (drop a logo, add an
-// icon, set a background, apply a pattern); the full drawers underneath are the
-// originals, reused unchanged.
+// One menu that gathers every insertable: Photos & uploads, Graphics, Clipart,
+// Background, Patterns, plus Components and Phrases (pulled in here from their
+// own rail tools). Navigation mirrors Canva: an OVERVIEW of horizontal rails
+// (shared ElementRail — slides left/right, prominent "See all"); "See all"
+// drills into that group's full drawer with a back arrow. No accordion.
 
 import * as React from 'react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  ImagePlus,
-  Upload,
-  Brush,
-} from 'lucide-react'
+import { ChevronLeft, Upload, Brush } from 'lucide-react'
 import {
   addImageFromUrl,
   addIconFromUrl,
@@ -28,6 +17,7 @@ import {
   setCanvasPatternBackground,
   PATTERN_TILES,
   patternTileDataUrl,
+  ElementRail,
   type BrandCanvasAssets,
   type FabricCanvas,
 } from '@ilaunchify/ui'
@@ -45,6 +35,14 @@ interface Props {
 
 type GroupKey = 'photos' | 'graphics' | 'clipart' | 'background' | 'patterns'
 
+const TITLES: Record<GroupKey, string> = {
+  photos: 'Photos & uploads',
+  graphics: 'Graphics',
+  clipart: 'Clipart',
+  background: 'Background',
+  patterns: 'Patterns',
+}
+
 const INK_HEX = '0F1116'
 function iconSvgUrl(id: string, heightPx: number, colorHex = INK_HEX): string {
   const [prefix, name] = id.split(':')
@@ -58,15 +56,8 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
 
   // ---- Drill-in: a single group's full original drawer ----
   if (seeAll) {
-    const TITLES: Record<GroupKey, string> = {
-      photos: 'Photos & uploads',
-      graphics: 'Graphics',
-      clipart: 'Clipart',
-      background: 'Background',
-      patterns: 'Patterns',
-    }
     return (
-      <div>
+      <div className="overflow-x-clip">
         <button
           type="button"
           onClick={() => setSeeAll(null)}
@@ -103,12 +94,9 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
   const patternColor = brandSwatches[0] ?? '#94908A'
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 overflow-x-clip">
       {/* Photos & uploads */}
-      <Rail
-        label="Photos & uploads"
-        onSeeAll={() => setSeeAll('photos')}
-      >
+      <ElementRail label="Photos & uploads" onSeeAll={() => setSeeAll('photos')}>
         <ActionTile
           onClick={() => setSeeAll('photos')}
           className="border-dashed border-ink-300 bg-ink-50 text-ink-500 hover:border-pink-400 hover:text-pink-600"
@@ -128,10 +116,10 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
           />
         ))}
         {logos.length === 0 && <EmptyHint>Brand logos appear here</EmptyHint>}
-      </Rail>
+      </ElementRail>
 
       {/* Graphics */}
-      <Rail label="Graphics" onSeeAll={() => setSeeAll('graphics')}>
+      <ElementRail label="Graphics" onSeeAll={() => setSeeAll('graphics')}>
         {previewIcons.map((id) => (
           <ActionTile
             key={id}
@@ -143,10 +131,10 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
             <img src={iconSvgUrl(id, 40)} alt={id} loading="lazy" className="h-7 w-7 object-contain" />
           </ActionTile>
         ))}
-      </Rail>
+      </ElementRail>
 
       {/* Clipart — not built yet */}
-      <Rail label="Clipart" onSeeAll={() => setSeeAll('clipart')} seeAllLabel="Learn more">
+      <ElementRail label="Clipart" onSeeAll={() => setSeeAll('clipart')} seeAllLabel="Learn more">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
@@ -156,10 +144,10 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
             <span className="mt-1 text-[8px] font-semibold uppercase tracking-wider">Soon</span>
           </div>
         ))}
-      </Rail>
+      </ElementRail>
 
       {/* Background */}
-      <Rail label="Background" onSeeAll={() => setSeeAll('background')}>
+      <ElementRail label="Background" onSeeAll={() => setSeeAll('background')}>
         {bgSwatches.map((hex) => (
           <button
             key={hex}
@@ -173,10 +161,10 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
             <span className="sr-only">Background {hex}</span>
           </button>
         ))}
-      </Rail>
+      </ElementRail>
 
       {/* Patterns */}
-      <Rail label="Patterns" onSeeAll={() => setSeeAll('patterns')}>
+      <ElementRail label="Patterns" onSeeAll={() => setSeeAll('patterns')}>
         {PATTERN_TILES.map((tile) => (
           <button
             key={tile.id}
@@ -190,74 +178,14 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
             <span className="sr-only">{tile.label}</span>
           </button>
         ))}
-      </Rail>
+      </ElementRail>
     </div>
   )
 }
 
 // ============================================================================
-// Rail — a Canva-style horizontal group: header (label + See all) over a
-// slide-left/right strip with hover chevrons.
+// Tiles
 // ============================================================================
-
-function Rail({
-  label,
-  seeAllLabel = 'See all',
-  onSeeAll,
-  children,
-}: {
-  label: string
-  seeAllLabel?: string
-  onSeeAll: () => void
-  children: React.ReactNode
-}) {
-  const scroller = React.useRef<HTMLDivElement>(null)
-  const by = (dx: number) => scroller.current?.scrollBy({ left: dx, behavior: 'smooth' })
-
-  return (
-    <section className="group/rail py-2">
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
-          {label}
-        </span>
-        <button
-          type="button"
-          onClick={onSeeAll}
-          className="text-[11px] font-semibold text-pink-700 hover:text-pink-600"
-        >
-          {seeAllLabel}
-        </button>
-      </div>
-
-      <div className="relative">
-        {/* slide controls — fade in on row hover */}
-        <button
-          type="button"
-          aria-label="Scroll left"
-          onClick={() => by(-160)}
-          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-ink-200 bg-white p-1 opacity-0 shadow-sm transition-opacity hover:bg-ink-50 group-hover/rail:opacity-100"
-        >
-          <ChevronLeft className="h-3.5 w-3.5 text-ink-700" />
-        </button>
-        <button
-          type="button"
-          aria-label="Scroll right"
-          onClick={() => by(160)}
-          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-ink-200 bg-white p-1 opacity-0 shadow-sm transition-opacity hover:bg-ink-50 group-hover/rail:opacity-100"
-        >
-          <ChevronRight className="h-3.5 w-3.5 text-ink-700" />
-        </button>
-
-        <div
-          ref={scroller}
-          className="flex snap-x gap-2 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {children}
-        </div>
-      </div>
-    </section>
-  )
-}
 
 function ActionTile({
   onClick,
@@ -323,7 +251,7 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
 function ClipartSoon() {
   return (
     <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-5 text-center">
-      <ImagePlus className="mx-auto h-5 w-5 text-ink-400" />
+      <Brush className="mx-auto h-5 w-5 text-ink-400" />
       <p className="mt-2 text-xs font-medium text-ink-700">Clipart library is coming soon</p>
       <p className="mt-0.5 text-[11px] text-ink-500">
         For now, search vector icons under Graphics.

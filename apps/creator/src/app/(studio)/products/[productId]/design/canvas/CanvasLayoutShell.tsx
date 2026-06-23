@@ -279,11 +279,11 @@ const TOOLS: Array<{
   // Elements (Pavel 2026-06-23) — Canva-style merge of Images / Graphics /
   // Clipart / Background / Patterns into one grouped menu.
   { key: 'elements', label: 'Elements', icon: Shapes, v1: true },
+  { key: 'components', label: 'Components', icon: Boxes, v1: true },
+  { key: 'phrases', label: 'Phrases', icon: ScrollText, v1: true },
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
-  { key: 'components', label: 'Components', icon: Boxes, v1: true },
-  { key: 'phrases', label: 'Phrases', icon: ScrollText, v1: true },
   // Conditional — only renders when partnerOffersFinishes flag is true.
   {
     key: 'finishes',
