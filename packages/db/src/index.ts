@@ -63,6 +63,15 @@ export {
   type BrandTextRole,
   type BrandTextStyleRow,
 } from './brand-text-styles'
+// Brand visual-asset library (Brand Kit V2 Slice 3 — pinned photos/graphics/backgrounds).
+export {
+  listBrandAssets,
+  isAssetPinnedToBrand,
+  addBrandAsset,
+  removeBrandAsset,
+  type BrandAssetKind,
+  type BrandAssetRow,
+} from './brand-assets'
 export {
   getRoleCapabilityMatrix,
   getRoleCapabilities,

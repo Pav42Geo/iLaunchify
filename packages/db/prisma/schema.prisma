@@ -1157,6 +1157,8 @@ model Brand {
   brandFonts              BrandFont[]
   // Brand Kit V2 Slice 2c/4 — named text-style → font assignments (Heading/Subheading/Body).
   brandTextStyles         BrandTextStyle[]
+  // Brand Kit V2 Slice 3 — creator-pinned visual assets (photos/graphics/backgrounds).
+  brandAssets             BrandAsset[]
   products                Product[]
   templates               Template[]
   designs                 Design[]
@@ -2690,6 +2692,24 @@ model BrandFont {
   licenseAttested Boolean  @default(false) // creator attests embedding rights
   createdAt       DateTime @default(now())
   brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+}
+
+/// Brand Kit V2 Slice 3 — a creator-pinned visual asset (a product photo, graphic,
+/// or background image) scoped to one brand kit. Surfaces in the Design Studio
+/// "Elements → Photos & uploads" rail so the creator can drop their saved brand
+/// imagery straight onto the canvas. `kind` groups where it appears; `assetId`
+/// points at the uploaded Asset. Distinct from logos (Brand.logo*AssetId) which
+/// stay first-class named slots.
+model BrandAsset {
+  id        String   @id @default(uuid())
+  brandId   String
+  kind      String // 'IMAGE' | 'GRAPHIC' | 'BACKGROUND' (string for additive flexibility)
+  assetId   String // → Asset (the uploaded file)
+  label     String?
+  createdAt DateTime @default(now())
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId])
 }

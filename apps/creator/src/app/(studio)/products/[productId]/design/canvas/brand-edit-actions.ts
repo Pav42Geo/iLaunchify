@@ -6,7 +6,15 @@
 // (LogosSection / ColorsSection / FontsSection / TaglineSection) need as props.
 // Ownership-guarded: only the signed-in creator's own brands.
 
-import { prisma, listBrandFonts, setBrandTextStyle, type BrandTextRole } from '@ilaunchify/db'
+import {
+  prisma,
+  listBrandFonts,
+  setBrandTextStyle,
+  addBrandAsset,
+  removeBrandAsset,
+  type BrandTextRole,
+  type BrandAssetKind,
+} from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -286,4 +294,55 @@ export async function quickCreateBrandKit(
   })
   await logAuditAs(user, { entityType: 'Brand', entityId: brand.id, action: 'BRAND_CREATED' })
   return { ok: true, brandId: brand.id, name }
+}
+
+// ============================================================================
+// Brand Kit V2 Slice 3 — pin/unpin a visual asset to a brand kit. Pinned assets
+// surface in the Design Studio "Elements → Photos & uploads" rail. Owner-guarded
+// by brand; the assetId comes from the creator's own canvas library.
+// ============================================================================
+
+async function ownsBrand(userId: string, brandId: string): Promise<boolean> {
+  const brand = await prisma.brand.findFirst({
+    where: { id: brandId, creatorProfile: { userId } },
+    select: { id: true },
+  })
+  return !!brand
+}
+
+export async function pinAssetToBrand(
+  brandId: string,
+  assetId: string,
+  kind: BrandAssetKind = 'IMAGE',
+): Promise<{ ok: true; brandAssetId: string | null } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (!(await ownsBrand(user.id, brandId))) {
+    return { ok: false, error: 'That brand kit is not on your account.' }
+  }
+  // Confirm the asset exists (it comes from the creator's own library in the UI).
+  const asset = await prisma.asset.findUnique({ where: { id: assetId }, select: { id: true } })
+  if (!asset) return { ok: false, error: 'That image is no longer available.' }
+
+  const id = await addBrandAsset({ brandId, assetId, kind })
+  if (id === null) {
+    return { ok: false, error: 'Brand images need a database update — run db push, then retry.' }
+  }
+  await logAuditAs(user, { entityType: 'Brand', entityId: brandId, action: 'BRAND_UPDATED' })
+  return { ok: true, brandAssetId: id }
+}
+
+export async function unpinBrandAsset(
+  brandId: string,
+  brandAssetId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (!(await ownsBrand(user.id, brandId))) {
+    return { ok: false, error: 'That brand kit is not on your account.' }
+  }
+  const removed = await removeBrandAsset(brandId, brandAssetId)
+  if (!removed) return { ok: false, error: 'That image was already removed.' }
+  await logAuditAs(user, { entityType: 'Brand', entityId: brandId, action: 'BRAND_UPDATED' })
+  return { ok: true }
 }

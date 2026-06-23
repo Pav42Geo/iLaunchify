@@ -104,8 +104,18 @@ export interface BrandCanvasAssets {
   textStyles?: { heading?: string; subheading?: string; body?: string } | null
   // Logos — drag onto canvas from the Images drawer's "My Brand" section
   logos: BrandLogoAsset[]
+  // Brand Kit V2 Slice 3 — creator-pinned visual assets (photos/graphics/backgrounds)
+  // surfaced in the Elements "Photos & uploads" rail. Drop onto canvas like logos.
+  brandImages: BrandImageAsset[]
   // Tagline — pre-fillable text element
   tagline: string | null
+}
+
+export interface BrandImageAsset {
+  id: string                        // BrandAsset.id (for unpin)
+  assetId: string                   // underlying Asset.id
+  url: string | null                // resolved display URL
+  label: string | null
 }
 
 export interface BrandFontAsset {

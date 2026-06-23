@@ -4,10 +4,10 @@
 // brand's assets through the exact same path. Logos use the Asset.publicUrl already
 // stored on the brand's logo assets.
 
-import { prisma, getBrandFontsByIds, listBrandTextStyles } from '@ilaunchify/db'
+import { prisma, getBrandFontsByIds, listBrandTextStyles, listBrandAssets } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { isKnownFontFamily, isCustomFontRef, customFontId } from '@ilaunchify/ui'
-import type { BrandCanvasAssets, BrandLogoAsset } from '@ilaunchify/ui'
+import type { BrandCanvasAssets, BrandLogoAsset, BrandImageAsset } from '@ilaunchify/ui'
 
 const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
 
@@ -140,6 +140,25 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     else if (row.role === 'BODY') textStyles.body = fam
   }
 
+  // Brand Kit V2 Slice 3 — pinned visual assets, resolved to display URLs.
+  const brandAssetRows = await listBrandAssets(brand.id)
+  const brandAssetIds = brandAssetRows.map((a) => a.assetId).filter(Boolean)
+  const brandAssetFiles = brandAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: brandAssetIds } },
+        select: { id: true, publicUrl: true, storageKey: true },
+      })
+    : []
+  const brandAssetUrlById = new Map(
+    await Promise.all(brandAssetFiles.map(async (a) => [a.id, await resolveLogoUrl(a)] as const)),
+  )
+  const brandImages: BrandImageAsset[] = brandAssetRows.map((a) => ({
+    id: a.id,
+    assetId: a.assetId,
+    url: brandAssetUrlById.get(a.assetId) ?? null,
+    label: a.label,
+  }))
+
   return {
     brandId: brand.id,
     brandName: brand.name,
@@ -156,6 +175,7 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
       mkLogo('ICON', brand.logoIconAssetId, logoByAssetId),
       mkLogo('HORIZONTAL', brand.logoHorizontalAssetId, logoByAssetId),
     ].filter((l): l is BrandLogoAsset => l !== null),
+    brandImages,
     tagline: brand.tagline,
   }
 }

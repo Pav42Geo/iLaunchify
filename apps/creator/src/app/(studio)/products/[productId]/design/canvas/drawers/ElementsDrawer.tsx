@@ -115,7 +115,18 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
             }
           />
         ))}
-        {logos.length === 0 && <EmptyHint>Brand logos appear here</EmptyHint>}
+        {brandImages.map((img) => (
+          <ImageTile
+            key={img.id}
+            src={img.url as string}
+            alt={img.label ?? 'Brand image'}
+            disabled={!canvas}
+            onClick={() => img.url && addImageFromUrl(canvas!, img.url, { maxFraction: 0.4 })}
+          />
+        ))}
+        {logos.length === 0 && brandImages.length === 0 && (
+          <EmptyHint>Pin brand photos from your library</EmptyHint>
+        )}
       </ElementRail>
 
       {/* Graphics */}

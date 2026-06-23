@@ -15,7 +15,7 @@
 // each successful upload so refreshing the page doesn't lose history.
 
 import * as React from 'react'
-import { Upload, ImagePlus, X } from 'lucide-react'
+import { Upload, ImagePlus, X, Star } from 'lucide-react'
 import {
   addImageFromUrl,
   type BrandCanvasAssets,
@@ -26,6 +26,7 @@ import {
   listCanvasUploads,
   type UploadedAsset,
 } from '../actions'
+import { pinAssetToBrand, unpinBrandAsset } from '../brand-edit-actions'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -43,6 +44,37 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
   const [error, setError] = React.useState<string | null>(null)
   const [isDraggingOver, setDraggingOver] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  // Brand Kit V2 Slice 3 — assetId → BrandAsset.id for everything currently pinned
+  // to this brand. Seeds from the loader, then updates optimistically on toggle.
+  const [pinned, setPinned] = React.useState<Map<string, string>>(
+    () => new Map(brandAssets.brandImages.map((i) => [i.assetId, i.id])),
+  )
+  const [pinBusy, setPinBusy] = React.useState<string | null>(null)
+
+  async function togglePin(assetId: string) {
+    if (pinBusy) return
+    setPinBusy(assetId)
+    try {
+      const existing = pinned.get(assetId)
+      if (existing) {
+        const r = await unpinBrandAsset(brandAssets.brandId, existing)
+        if (r.ok) {
+          setPinned((prev) => {
+            const m = new Map(prev)
+            m.delete(assetId)
+            return m
+          })
+        }
+      } else {
+        const r = await pinAssetToBrand(brandAssets.brandId, assetId)
+        if (r.ok && r.brandAssetId) {
+          setPinned((prev) => new Map(prev).set(assetId, r.brandAssetId as string))
+        }
+      }
+    } finally {
+      setPinBusy(null)
+    }
+  }
 
   // Load existing uploads on mount.
   React.useEffect(() => {
@@ -223,24 +255,51 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
         {/* Library grid */}
         {library.length > 0 && (
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {library.map((asset) => (
-              <button
-                key={asset.id}
-                type="button"
-                onClick={() => handleDropLibrary(asset.publicUrl)}
-                disabled={!canvas}
-                className="group relative aspect-square rounded-md border border-ink-200 bg-white hover:border-pink-300 hover:shadow-sm transition-all overflow-hidden disabled:opacity-50"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={asset.publicUrl}
-                  alt="Library asset"
-                  className="absolute inset-0 w-full h-full object-contain bg-ink-50"
-                />
-              </button>
-            ))}
+            {library.map((asset) => {
+              const isPinned = pinned.has(asset.id)
+              return (
+                <div
+                  key={asset.id}
+                  className="group relative aspect-square overflow-hidden rounded-md border border-ink-200 bg-white transition-all hover:border-pink-300 hover:shadow-sm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleDropLibrary(asset.publicUrl)}
+                    disabled={!canvas}
+                    className="absolute inset-0 disabled:opacity-50"
+                    aria-label="Add to canvas"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={asset.publicUrl}
+                      alt="Library asset"
+                      className="absolute inset-0 h-full w-full bg-ink-50 object-contain"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePin(asset.id)}
+                    disabled={pinBusy === asset.id}
+                    aria-label={isPinned ? 'Unpin from brand' : 'Pin to brand'}
+                    title={isPinned ? 'Pinned to your brand' : 'Pin to your brand'}
+                    className={
+                      'absolute right-1 top-1 rounded-full p-1 shadow-sm transition-all disabled:opacity-50 ' +
+                      (isPinned
+                        ? 'bg-pink-600 text-white'
+                        : 'bg-white/90 text-ink-500 opacity-0 hover:text-pink-600 group-hover:opacity-100')
+                    }
+                  >
+                    <Star className={'h-3 w-3 ' + (isPinned ? 'fill-current' : '')} />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
+        <p className="mt-2 text-[11px] text-ink-500">
+          Tap the <Star className="inline h-3 w-3 -translate-y-px" /> on any upload to pin it to
+          your brand — pinned images show up here for every product.
+        </p>
       </section>
     </div>
   )
