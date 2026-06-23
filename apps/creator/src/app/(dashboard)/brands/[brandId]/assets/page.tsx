@@ -13,9 +13,9 @@
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { prisma, listBrandTemplates } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
-import { brandFontCatalog } from '@ilaunchify/ui'
+import { prisma, listBrandTemplates, listBrandFonts } from '@ilaunchify/db'
+import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
+import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
 import { LogosSection } from './LogosSection'
@@ -79,6 +79,27 @@ export default async function BrandAssetsPage({ params }: PageProps) {
   ])
   const templateCap = brandLimits(tier).templatesPerKit
 
+  // Brand Kit V2 Slice 2 — the brand's uploaded custom fonts (resolved web URLs).
+  const customFontRows = await listBrandFonts(brand.id)
+  const customWebAssetIds = customFontRows.map((f) => f.webAssetId).filter(Boolean)
+  const customAssets = customWebAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: customWebAssetIds } },
+        select: { id: true, publicUrl: true, storageKey: true },
+      })
+    : []
+  const customUrlById = new Map(
+    await Promise.all(
+      customAssets.map(async (a) => [a.id, await resolveAssetReadUrl(a)] as const),
+    ),
+  )
+  const customFonts = customFontRows.map((f) => ({
+    ref: `${CUSTOM_FONT_PREFIX}${f.id}`,
+    id: f.id,
+    family: f.family,
+    webUrl: f.webAssetId ? customUrlById.get(f.webAssetId) ?? null : null,
+  }))
+
   return (
     <div className="space-y-6">
       <header>
@@ -121,6 +142,8 @@ export default async function BrandAssetsPage({ params }: PageProps) {
           brandId={brand.id}
           selectedFontIds={brand.brandFontIds}
           catalog={fontCatalog}
+          customFonts={customFonts}
+          canUploadCustomFonts={canUploadCustomFonts(tier)}
         />
 
         <TaglineSection brandId={brand.id} initial={brand.tagline} />
