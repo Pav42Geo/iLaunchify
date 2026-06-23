@@ -8,11 +8,12 @@
 // it's reversible via Version History; "Save as template" keeps the new combination.
 
 import * as React from 'react'
-import { Wand2, ArrowRight } from 'lucide-react'
+import { Wand2, ArrowRight, Shuffle, Lock, Unlock } from 'lucide-react'
 import {
   collectCanvasColors,
   recolorCanvasJson,
   autoMapColors,
+  shuffleColorMap,
   normalizeHex,
   CANVAS_PROPERTIES_TO_INCLUDE,
   type FabricCanvas,
@@ -31,6 +32,7 @@ export function RecolorPanel({ canvas, palettes, onSaveAsTemplate }: Props) {
   const [colors, setColors] = React.useState<{ hex: string; count: number }[] | null>(null)
   const [paletteId, setPaletteId] = React.useState<string>('')
   const [map, setMap] = React.useState<Record<string, string>>({})
+  const [locked, setLocked] = React.useState<Set<string>>(new Set())
   const [applied, setApplied] = React.useState(false)
   const [notice, setNotice] = React.useState<string | null>(null)
 
@@ -69,7 +71,31 @@ export function RecolorPanel({ canvas, palettes, onSaveAsTemplate }: Props) {
   function pickPalette(id: string, cols = colors) {
     setPaletteId(id)
     const pal = usable.find((p) => p.id === id)
-    if (pal && cols) setMap(autoMapColors(cols.map((c) => c.hex), pal.hexes))
+    if (pal && cols) {
+      const auto = autoMapColors(cols.map((c) => c.hex), pal.hexes)
+      // Keep locked color groups on their current target.
+      setMap((prev) => {
+        const next = { ...auto }
+        for (const key of locked) if (prev[key]) next[key] = prev[key]
+        return next
+      })
+    }
+  }
+
+  function shuffle() {
+    if (!colors || !activePalette) return
+    const lockedMap: Record<string, string> = {}
+    for (const key of locked) if (map[key]) lockedMap[key] = map[key] as string
+    setMap(shuffleColorMap(colors.map((c) => c.hex), activePalette.hexes, { locked: lockedMap }))
+  }
+
+  function toggleLock(key: string) {
+    setLocked((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   }
 
   function scan() {
@@ -77,6 +103,7 @@ export function RecolorPanel({ canvas, palettes, onSaveAsTemplate }: Props) {
     if (!json) return
     const found = collectCanvasColors(json, { skipLocked: true })
     setColors(found)
+    setLocked(new Set())
     setApplied(false)
     if (found.length === 0) {
       flash('No recolorable colors found on this design.')
@@ -142,33 +169,55 @@ export function RecolorPanel({ canvas, palettes, onSaveAsTemplate }: Props) {
         </button>
       ) : (
         <div className="space-y-2.5">
-          {/* Palette selector */}
-          <select
-            value={paletteId}
-            onChange={(e) => pickPalette(e.target.value)}
-            className="w-full rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-          >
-            {usable.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.hexes.length})
-              </option>
-            ))}
-          </select>
+          {/* Palette selector + Shuffle */}
+          <div className="flex gap-2">
+            <select
+              value={paletteId}
+              onChange={(e) => pickPalette(e.target.value)}
+              className="min-w-0 flex-1 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              {usable.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.hexes.length})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={shuffle}
+              title="Shuffle — re-mix the palette across the design (locked colors stay)"
+              className="flex flex-shrink-0 items-center gap-1 rounded-md border border-ink-300 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+            >
+              <Shuffle className="h-3.5 w-3.5" /> Shuffle
+            </button>
+          </div>
 
           {/* Color mapping rows */}
           <div className="space-y-2 rounded-lg border border-ink-200 p-2">
             {colors.map((c) => {
               const key = normalizeHex(c.hex) ?? c.hex
               const target = map[key] ?? key
+              const isLocked = locked.has(key)
               return (
                 <div key={key} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleLock(key)}
+                    title={isLocked ? 'Unlock this color' : 'Lock this color (kept on apply + shuffle)'}
+                    className={
+                      'flex-shrink-0 rounded p-0.5 ' +
+                      (isLocked ? 'text-pink-600' : 'text-ink-300 hover:text-ink-500')
+                    }
+                  >
+                    {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </button>
                   <span
                     title={c.hex}
                     className="h-5 w-5 flex-shrink-0 rounded border border-ink-200"
                     style={{ backgroundColor: c.hex }}
                   />
                   <ArrowRight className="h-3 w-3 flex-shrink-0 text-ink-400" />
-                  <div className="flex flex-wrap gap-1">
+                  <div className={'flex flex-wrap gap-1' + (isLocked ? ' pointer-events-none opacity-40' : '')}>
                     <button
                       type="button"
                       onClick={() => setMap((m) => ({ ...m, [key]: key }))}

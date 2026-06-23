@@ -143,3 +143,54 @@ export function autoMapColors(colors: string[], palette: string[]): Record<strin
   })
   return out
 }
+
+export interface ShuffleOptions {
+  /** source hex → target hex to preserve verbatim (locked color groups). */
+  locked?: Record<string, string>
+  /** injectable RNG for deterministic tests (default Math.random). */
+  rng?: () => number
+}
+
+/**
+ * Re-permute a palette across the design's source colors (the §7.1 "Shuffle"). Locked
+ * source colors keep their target; the rest get palette colors in a freshly shuffled
+ * order (palette cycles if there are more source colors than palette stops). Pure.
+ */
+export function shuffleColorMap(
+  colors: string[],
+  palette: string[],
+  opts?: ShuffleOptions,
+): Record<string, string> {
+  const src = colors.map((c) => normalizeHex(c)).filter((c): c is string => c !== null)
+  const pal = palette.map((c) => normalizeHex(c)).filter((c): c is string => c !== null)
+  if (src.length === 0 || pal.length === 0) return {}
+
+  const rng = opts?.rng ?? Math.random
+  const locked: Record<string, string> = {}
+  for (const [k, v] of Object.entries(opts?.locked ?? {})) {
+    const nk = normalizeHex(k)
+    const nv = normalizeHex(v)
+    if (nk && nv) locked[nk] = nv
+  }
+
+  // Fisher–Yates over palette indices.
+  const idx = pal.map((_, i) => i)
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const tmp = idx[i] as number
+    idx[i] = idx[j] as number
+    idx[j] = tmp
+  }
+
+  const out: Record<string, string> = {}
+  let p = 0
+  for (const hex of src) {
+    if (locked[hex]) {
+      out[hex] = locked[hex] as string
+      continue
+    }
+    out[hex] = pal[idx[p % idx.length] as number] as string
+    p += 1
+  }
+  return out
+}
