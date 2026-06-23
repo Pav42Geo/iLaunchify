@@ -132,7 +132,50 @@ export function getLoadedFonts(): string[] {
   return [...SELF_HOSTED_FAMILIES, ...loadedFamilies]
 }
 
+/**
+ * Load a creator-UPLOADED custom font (Brand Kit V2 Slice 2). Catalog fonts come
+ * from Bunny by family; custom fonts have no catalog entry, so we register an
+ * @font-face from the uploaded file's URL. `family` becomes the usable CSS
+ * fontFamily on the canvas. Idempotent + cached like loadFont().
+ *
+ *   await loadCustomFont('Acme Display', signedWoff2Url)
+ *   text.set({ fontFamily: 'Acme Display' })
+ */
+export async function loadCustomFont(family: string, src: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !src) return false
+  if (loadedFamilies.has(family)) return true
+  try {
+    if (typeof FontFace !== 'undefined' && document.fonts) {
+      const face = new FontFace(family, `url(${JSON.stringify(src)})`)
+      await face.load()
+      document.fonts.add(face)
+      loadedFamilies.add(family)
+      return true
+    }
+    // Fallback for environments without the FontFace API — inject @font-face CSS.
+    injectCustomFontFace(family, src)
+    loadedFamilies.add(family)
+    return true
+  } catch (err) {
+    console.warn('[fonts/loader] loadCustomFont failed for', family, err)
+    loadedFamilies.delete(family)
+    return false
+  }
+}
+
 /* ============ internal ============ */
+
+function injectCustomFontFace(family: string, src: string): void {
+  if (typeof document === 'undefined') return
+  const marker = `custom-font:${family}`
+  if (document.querySelector(`style[data-font-loader="${marker}"]`)) return
+  const style = document.createElement('style')
+  style.dataset.fontLoader = marker
+  style.textContent = `@font-face{font-family:${JSON.stringify(
+    family,
+  )};src:url(${JSON.stringify(src)});font-display:swap;}`
+  document.head.appendChild(style)
+}
 
 function injectFontLink(url: string): void {
   if (typeof document === 'undefined') return

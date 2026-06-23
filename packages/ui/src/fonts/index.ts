@@ -5,6 +5,9 @@ export {
   findFontInCatalog,
   brandFontCatalog,
   isKnownFontFamily,
+  isCustomFontRef,
+  customFontId,
+  CUSTOM_FONT_PREFIX,
   type FontCategory,
   type FontEntry,
   type BrandFontOption,
@@ -12,6 +15,7 @@ export {
 
 export {
   loadFont,
+  loadCustomFont,
   preloadFonts,
   buildBunnyFontUrl,
   isFontLoaded,

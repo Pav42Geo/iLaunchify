@@ -56,8 +56,11 @@ export {
   normalizeTier,
   brandLimits,
   BRAND_LIMITS,
+  advancedBrandFeatures,
+  ADVANCED_BRAND_FEATURES,
+  canUploadCustomFonts,
 } from './tiers'
-export type { TierKey, BrandLimits } from './tiers'
+export type { TierKey, BrandLimits, AdvancedBrandFeatures } from './tiers'
 
 // V1.5-T2 — single write path for CreatorProfile.subscriptionTier
 // (admin Tier Management + Stripe-webhook tier-flip handlers).

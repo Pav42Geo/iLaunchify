@@ -13,12 +13,16 @@
 // can swap in CreatorMembership without touching call-sites — per
 // ilaunchify-creator-team-model-v1.5 memory).
 
-import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
-import { isKnownFontFamily } from '@ilaunchify/ui'
+import {
+  prisma,
+  createBrandFont,
+  deleteBrandFont,
+  getBrandFontsByIds,
+} from '@ilaunchify/db'
+import { requireUser, getCreatorTier, canUploadCustomFonts } from '@ilaunchify/auth'
+import { isKnownFontFamily, isCustomFontRef, customFontId, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
-import { uploadFile } from '@ilaunchify/storage'
-import { brandAssetKey } from '@ilaunchify/storage'
+import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/
 const MAX_SWATCHES = 2 // beyond the named primary/secondary/accent
@@ -186,11 +190,21 @@ export async function setBrandFonts(input: {
   const { error } = await authorizeBrandAccess(input.brandId)
   if (error) return { ok: false, error }
 
-  // Brand Kit V2 Slice 1: brand fonts are FONT_CATALOG **family** keys (the key the
-  // canvas applies + loadFont() resolves), not TypographyFont ids. Keep only known
-  // catalog families — this also self-heals any legacy TypographyFont-id values by
-  // dropping them on the next save. (Pavel 2026-06-22)
-  const fontIds = input.brandFontIds.filter(isKnownFontFamily).slice(0, MAX_FONTS)
+  // Brand fonts are FONT_CATALOG family keys, or `custom:<id>` refs to an uploaded
+  // BrandFont (Slice 1 + 2). Keep only known values — self-heals legacy TypographyFont
+  // ids by dropping them. For custom refs, verify the BrandFont belongs to THIS brand
+  // so a creator can't inject another brand's font id. (Pavel 2026-06-22)
+  const candidate = input.brandFontIds.filter(isKnownFontFamily).slice(0, MAX_FONTS)
+  const customIds = candidate
+    .filter(isCustomFontRef)
+    .map((v) => customFontId(v))
+    .filter((v): v is string => v !== null)
+  const ownedRefs = new Set(
+    customIds.length
+      ? (await getBrandFontsByIds(input.brandId, customIds)).map((f) => `${CUSTOM_FONT_PREFIX}${f.id}`)
+      : [],
+  )
+  const fontIds = candidate.filter((v) => !isCustomFontRef(v) || ownedRefs.has(v))
 
   await prisma.brand.update({
     where: { id: input.brandId },
@@ -215,6 +229,122 @@ export async function setBrandTagline(input: {
     where: { id: input.brandId },
     data: { tagline: trimmed || null },
   })
+
+  revalidatePath(`/brands/${input.brandId}/assets`)
+  return { ok: true }
+}
+
+// ---- Custom fonts (Brand Kit V2 Slice 2) -----------------------------------
+
+const FONT_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
+// Web-renderable font files. WOFF2 preferred; TTF/OTF accepted (browsers render them).
+const FONT_ALLOWED_EXT = ['.woff2', '.woff', '.ttf', '.otf'] as const
+
+/**
+ * Upload a creator custom font to a brand kit. Tier-gated to Builder+. Requires a
+ * license attestation. Creates an Asset + BrandFont; the font becomes selectable in
+ * the kit's font list (it is NOT auto-added to the active brandFontIds selection —
+ * the creator picks it like any catalog font). Returns the new font id + family.
+ */
+export async function uploadBrandFont(
+  formData: FormData,
+): Promise<Result<{ fontId: string; family: string }>> {
+  const { user, error } = await authorizeBrandAccess(
+    String(formData.get('brandId') ?? ''),
+  )
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
+  const brandId = String(formData.get('brandId') ?? '')
+
+  // Tier gate — custom font upload is a Builder+ advanced feature.
+  const tier = await getCreatorTier(user.id)
+  if (!canUploadCustomFonts(tier)) {
+    return {
+      ok: false,
+      error: 'Custom font upload is available on Builder and Agency plans. Upgrade to add your own fonts.',
+    }
+  }
+
+  const family = String(formData.get('family') ?? '').trim()
+  if (family.length < 2 || family.length > 80) {
+    return { ok: false, error: 'Font name must be 2–80 characters.' }
+  }
+  if (formData.get('licenseAttested') !== 'true') {
+    return {
+      ok: false,
+      error: 'Please confirm you have the right to use and embed this font for print.',
+    }
+  }
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'Choose a font file (WOFF2, WOFF, TTF, or OTF).' }
+  }
+  if (file.size > FONT_MAX_BYTES) {
+    return { ok: false, error: 'Font file is too large (max 5 MB).' }
+  }
+  const lower = file.name.toLowerCase()
+  if (!FONT_ALLOWED_EXT.some((ext) => lower.endsWith(ext))) {
+    return { ok: false, error: 'Unsupported file type. Use WOFF2, WOFF, TTF, or OTF.' }
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const key = brandAssetKey({ brandId, kind: 'font', filename: file.name })
+  const upload = await uploadFile({
+    key,
+    body: buffer,
+    contentType: file.type || 'font/woff2',
+  })
+  const asset = await prisma.asset.create({
+    data: {
+      ownerType: 'BRAND',
+      ownerId: brandId,
+      type: 'FONT',
+      source: 'USER_UPLOAD',
+      storageKey: upload.key,
+      mimeType: file.type || 'font/woff2',
+      sizeBytes: upload.sizeBytes,
+      uploadedByUserId: user.id,
+    },
+    select: { id: true },
+  })
+
+  const fontId = await createBrandFont({
+    brandId,
+    family,
+    webAssetId: asset.id,
+    licenseAttested: true,
+  })
+  if (!fontId) {
+    return { ok: false, error: 'Could not save the font. Please try again.' }
+  }
+
+  revalidatePath(`/brands/${brandId}/assets`)
+  return { ok: true, fontId, family }
+}
+
+/** Delete a custom brand font + drop it from the active selection. */
+export async function removeBrandFont(input: {
+  brandId: string
+  fontId: string
+}): Promise<Result> {
+  const { error } = await authorizeBrandAccess(input.brandId)
+  if (error) return { ok: false, error }
+
+  const removed = await deleteBrandFont(input.brandId, input.fontId)
+  if (!removed) return { ok: false, error: 'Font not found.' }
+
+  // Drop the custom ref from the brand's selected fonts if present.
+  const ref = `${CUSTOM_FONT_PREFIX}${input.fontId}`
+  const brand = await prisma.brand.findUnique({
+    where: { id: input.brandId },
+    select: { brandFontIds: true },
+  })
+  if (brand && brand.brandFontIds.includes(ref)) {
+    await prisma.brand.update({
+      where: { id: input.brandId },
+      data: { brandFontIds: brand.brandFontIds.filter((v) => v !== ref) },
+    })
+  }
 
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }

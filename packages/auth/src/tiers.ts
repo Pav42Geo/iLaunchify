@@ -104,6 +104,35 @@ export function brandLimits(tier: TierKey): BrandLimits {
   return BRAND_LIMITS[tier]
 }
 
+// ---------------------------------------------------------------------------
+// Advanced Brand Kit features (Brand Kit V2 — Pavel 2026-06-22).
+//
+// Per the V2 tier stance: a *usable* kit (full font catalog, solid colors, logos)
+// stays equal for everyone; the advanced power features are the upsell. This is
+// the first such gate — custom font upload (Builder + Agency). Keep advanced
+// capability checks here so the gating is centralized as more land.
+// ---------------------------------------------------------------------------
+
+export interface AdvancedBrandFeatures {
+  /** Upload + use custom (non-catalog) fonts in the brand kit. */
+  customFontUpload: boolean
+}
+
+export const ADVANCED_BRAND_FEATURES: Record<TierKey, AdvancedBrandFeatures> = {
+  maker: { customFontUpload: false },
+  builder: { customFontUpload: true },
+  agency: { customFontUpload: true },
+}
+
+export function advancedBrandFeatures(tier: TierKey): AdvancedBrandFeatures {
+  return ADVANCED_BRAND_FEATURES[tier]
+}
+
+/** Convenience: may this tier upload custom brand fonts? (Builder+) */
+export function canUploadCustomFonts(tier: TierKey): boolean {
+  return ADVANCED_BRAND_FEATURES[tier].customFontUpload
+}
+
 /**
  * Load the subscription tier for a given creator user. Returns 'maker'
  * for users who haven't completed creator-profile onboarding (admin

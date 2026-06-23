@@ -969,7 +969,28 @@ export function brandFontCatalog(): BrandFontOption[] {
   return out
 }
 
-/** Is this a font family a creator may save to their brand kit? */
-export function isKnownFontFamily(family: string): boolean {
-  return FONT_CATALOG.some((f) => f.family === family) || SELF_HOSTED_FAMILIES.has(family)
+/**
+ * Prefix marking a Brand.brandFontIds entry as a creator-uploaded custom font
+ * (`custom:<BrandFont.id>`) rather than a catalog family. The DB resolves the id
+ * to the real family + @font-face src; see buildBrandCanvasAssets. (Slice 2)
+ */
+export const CUSTOM_FONT_PREFIX = 'custom:'
+
+/** Does a brandFontIds entry reference an uploaded custom font? */
+export function isCustomFontRef(value: string): boolean {
+  return value.startsWith(CUSTOM_FONT_PREFIX)
+}
+
+/** Extract the BrandFont id from a `custom:<id>` ref (null if not a custom ref). */
+export function customFontId(value: string): string | null {
+  return isCustomFontRef(value) ? value.slice(CUSTOM_FONT_PREFIX.length) : null
+}
+
+/**
+ * May this value be stored in a brand kit's font list? True for catalog/self-hosted
+ * families AND `custom:<id>` references (the id's ownership is verified server-side).
+ */
+export function isKnownFontFamily(value: string): boolean {
+  if (isCustomFontRef(value)) return true
+  return FONT_CATALOG.some((f) => f.family === value) || SELF_HOSTED_FAMILIES.has(value)
 }

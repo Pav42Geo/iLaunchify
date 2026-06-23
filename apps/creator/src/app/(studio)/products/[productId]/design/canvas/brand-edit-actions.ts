@@ -6,11 +6,11 @@
 // (LogosSection / ColorsSection / FontsSection / TaglineSection) need as props.
 // Ownership-guarded: only the signed-in creator's own brands.
 
-import { prisma } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { prisma, listBrandFonts } from '@ilaunchify/db'
+import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
-import { brandFontCatalog } from '@ilaunchify/ui'
+import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 
 export interface StudioAssetSummary {
   id: string
@@ -24,6 +24,14 @@ export interface StudioFontOption {
   weight: string
   style: string
   webfontUrl: string | null
+}
+/** A creator-uploaded custom brand font (Brand Kit V2 Slice 2). */
+export interface StudioCustomFont {
+  /** Stored in brandFontIds as `custom:<id>`. */
+  ref: string
+  id: string
+  family: string
+  webUrl: string | null
 }
 
 export type LoadBrandKitEditorResult =
@@ -44,6 +52,8 @@ export type LoadBrandKitEditorResult =
       }
       selectedFontIds: string[]
       fontCatalog: StudioFontOption[]
+      customFonts: StudioCustomFont[]
+      canUploadCustomFonts: boolean
     }
   | { ok: false; error: string }
 
@@ -99,6 +109,37 @@ export async function loadStudioBrandKitEditor(
   // TypographyFont seed. brandFontIds therefore store family keys. (Pavel 2026-06-22)
   const fontCatalog = brandFontCatalog()
 
+  // Slice 2: the brand's uploaded custom fonts + per-tier upload eligibility.
+  const customFontRows = await listBrandFonts(brandId)
+  const customWebAssetIds = customFontRows.map((f) => f.webAssetId).filter(Boolean)
+  const customAssets = customWebAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: customWebAssetIds } },
+        select: { id: true, publicUrl: true, storageKey: true },
+      })
+    : []
+  const customUrlById = new Map(
+    await Promise.all(
+      customAssets.map(
+        async (a) =>
+          [
+            a.id,
+            a.publicUrl ??
+              (a.storageKey
+                ? await getSignedReadUrl(a.storageKey, { expiresInSeconds: 8 * 60 * 60 }).catch(() => null)
+                : null),
+          ] as const,
+      ),
+    ),
+  )
+  const customFonts = customFontRows.map((f) => ({
+    ref: `${CUSTOM_FONT_PREFIX}${f.id}`,
+    id: f.id,
+    family: f.family,
+    webUrl: f.webAssetId ? customUrlById.get(f.webAssetId) ?? null : null,
+  }))
+  const tier = await getCreatorTier(user.id)
+
   return {
     ok: true as const,
     name: brand.name,
@@ -116,6 +157,8 @@ export async function loadStudioBrandKitEditor(
     },
     selectedFontIds: brand.brandFontIds,
     fontCatalog,
+    customFonts,
+    canUploadCustomFonts: canUploadCustomFonts(tier),
   }
 }
 

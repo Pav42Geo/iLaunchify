@@ -1153,6 +1153,8 @@ model Brand {
   socialAccounts          SocialAccount[]
   // Brand Kit templates — reusable packaging/label starting points (docs/BRAND_KIT_PROPOSAL.md).
   brandTemplates          BrandTemplate[]
+  // Brand Kit V2 Slice 2 — creator-uploaded custom fonts (docs/BRAND_KIT_V2_PROPOSAL.md §3b).
+  brandFonts              BrandFont[]
   products                Product[]
   templates               Template[]
   designs                 Design[]
@@ -2667,6 +2669,24 @@ model BrandTemplate {
   packagingTypeId String? // which container this layout targets (optional)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+}
+
+/// Creator-uploaded custom brand font (Brand Kit V2 Slice 2, docs/BRAND_KIT_V2_PROPOSAL.md §3b).
+/// Referenced from Brand.brandFontIds as `custom:<id>` (catalog families are stored as the
+/// bare family string). `family` is both the display name and the CSS fontFamily applied on
+/// the canvas; the web asset is loaded via @font-face (loadCustomFont). A print file (OTF/TTF)
+/// is recommended for production PDF but optional at design time. Tier-gated (Builder+).
+model BrandFont {
+  id              String   @id @default(uuid())
+  brandId         String
+  family          String // display name + CSS fontFamily, e.g. 'Acme Display'
+  webAssetId      String // WOFF2/TTF/OTF for browser rendering (→ Asset)
+  printAssetId    String? // OTF/TTF for print PDF (recommended, enforced at order time later)
+  licenseAttested Boolean  @default(false) // creator attests embedding rights
+  createdAt       DateTime @default(now())
   brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId])

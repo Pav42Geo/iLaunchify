@@ -46,6 +46,15 @@ export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 // Default-brand provisioning — brand is optional for creators, but Product.brandId
 // is required, so the launch flow lazily ensures a default brand (Pavel 2026-06-22).
 export { getOrCreateDefaultBrand, type EnsureBrandResult } from './default-brand'
+// Brand custom fonts (Brand Kit V2 Slice 2 — uploaded fonts scoped to a brand kit).
+export {
+  listBrandFonts,
+  getBrandFontsByIds,
+  createBrandFont,
+  deleteBrandFont,
+  countBrandFonts,
+  type BrandFontRow,
+} from './brand-fonts'
 export {
   getRoleCapabilityMatrix,
   getRoleCapabilities,

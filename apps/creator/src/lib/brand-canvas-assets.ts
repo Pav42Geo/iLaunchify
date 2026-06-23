@@ -4,9 +4,9 @@
 // brand's assets through the exact same path. Logos use the Asset.publicUrl already
 // stored on the brand's logo assets.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getBrandFontsByIds } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
-import { isKnownFontFamily } from '@ilaunchify/ui'
+import { isKnownFontFamily, isCustomFontRef, customFontId } from '@ilaunchify/ui'
 import type { BrandCanvasAssets, BrandLogoAsset } from '@ilaunchify/ui'
 
 const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
@@ -55,12 +55,18 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     (v): v is string => v !== null,
   )
 
-  // Brand fonts are now FONT_CATALOG family keys (Brand Kit V2 Slice 1). Legacy
-  // brands may still hold TypographyFont ids — resolve those to their family so
-  // existing kits keep their fonts. (Pavel 2026-06-22)
-  const legacyFontIds = brand.brandFontIds.filter((v) => !isKnownFontFamily(v))
+  // Brand fonts come in three shapes (Brand Kit V2): FONT_CATALOG family keys
+  // (Slice 1), `custom:<id>` refs to an uploaded BrandFont (Slice 2), and legacy
+  // TypographyFont ids (pre-Slice-1, resolved to their family). (Pavel 2026-06-22)
+  const customIds = brand.brandFontIds
+    .filter(isCustomFontRef)
+    .map((v) => customFontId(v))
+    .filter((v): v is string => v !== null)
+  const legacyFontIds = brand.brandFontIds.filter(
+    (v) => !isCustomFontRef(v) && !isKnownFontFamily(v),
+  )
 
-  const [logoAssets, legacyFontRows] = await Promise.all([
+  const [logoAssets, legacyFontRows, customFontRows] = await Promise.all([
     logoIds.length
       ? prisma.asset.findMany({
           where: { id: { in: logoIds } },
@@ -72,18 +78,51 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
           .findMany({ where: { id: { in: legacyFontIds } }, select: { id: true, family: true } })
           .catch(() => [] as { id: string; family: string }[])
       : Promise.resolve([] as { id: string; family: string }[]),
+    customIds.length ? getBrandFontsByIds(brand.id, customIds) : Promise.resolve([]),
   ])
   const legacyFamilyById = new Map(legacyFontRows.map((r) => [r.id, r.family]))
-  // Preserve the saved order (fonts[0] = heading, fonts[1] = body downstream).
-  const fontFamilies = brand.brandFontIds
-    .map((v) => (isKnownFontFamily(v) ? v : legacyFamilyById.get(v) ?? null))
-    .filter((v): v is string => v !== null)
+
+  // Resolve a signed/public URL for each custom font's web asset (for @font-face).
+  const customWebAssetIds = customFontRows.map((f) => f.webAssetId).filter(Boolean)
+  const customAssets = customWebAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: customWebAssetIds } },
+        select: { id: true, publicUrl: true, storageKey: true },
+      })
+    : []
+  const customAssetUrlById = new Map(
+    await Promise.all(
+      customAssets.map(async (a) => [a.id, await resolveLogoUrl(a)] as const),
+    ),
+  )
+  const customById = new Map(
+    customFontRows.map((f) => [
+      f.id,
+      { family: f.family, url: f.webAssetId ? customAssetUrlById.get(f.webAssetId) ?? null : null },
+    ]),
+  )
 
   // Resolve a displayable URL per logo (publicUrl, else a signed read URL).
   const resolvedLogos = await Promise.all(
     logoAssets.map(async (a) => ({ id: a.id, mimeType: a.mimeType, url: await resolveLogoUrl(a) })),
   )
   const logoByAssetId = new Map(resolvedLogos.map((a) => [a.id, a]))
+
+  // Build the fonts array in saved order (fonts[0] = heading, fonts[1] = body).
+  const fonts = brand.brandFontIds
+    .map((v) => {
+      if (isCustomFontRef(v)) {
+        const id = customFontId(v)
+        const c = id ? customById.get(id) : undefined
+        return c ? { id: v, family: c.family, weight: 'Regular', style: 'Normal', webfontUrl: c.url } : null
+      }
+      if (isKnownFontFamily(v)) {
+        return { id: v, family: v, weight: 'Regular', style: 'Normal', webfontUrl: null }
+      }
+      const fam = legacyFamilyById.get(v)
+      return fam ? { id: v, family: fam, weight: 'Regular', style: 'Normal', webfontUrl: null } : null
+    })
+    .filter((f): f is NonNullable<typeof f> => f !== null)
 
   return {
     brandId: brand.id,
@@ -92,14 +131,9 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     colorSecondary: brand.colorSecondary,
     colorAccent: brand.colorAccent,
     extraSwatches: brand.brandSwatches,
-    // id === family; webfontUrl null — fonts load on demand via loadFont(family).
-    fonts: fontFamilies.map((family) => ({
-      id: family,
-      family,
-      weight: 'Regular',
-      style: 'Normal',
-      webfontUrl: null,
-    })),
+    // Catalog fonts: webfontUrl null (loaded via loadFont(family)). Custom fonts:
+    // webfontUrl is the uploaded file URL → loaded via loadCustomFont(family, url).
+    fonts,
     logos: [
       mkLogo('PRIMARY', brand.logoAssetId, logoByAssetId),
       mkLogo('ICON', brand.logoIconAssetId, logoByAssetId),

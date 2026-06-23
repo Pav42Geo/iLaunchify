@@ -48,7 +48,7 @@ export function partnerFileKey(params: {
 // Brand-scoped namespacing lets us delete-all-by-brand on brand teardown.
 export function brandAssetKey(params: {
   brandId: string
-  kind: 'logo' | 'logo_icon' | 'logo_horizontal' | 'logo_vertical' | 'logo_monogram' | 'logo_inverse' | 'hero_image' | 'pattern' | 'favicon'
+  kind: 'logo' | 'logo_icon' | 'logo_horizontal' | 'logo_vertical' | 'logo_monogram' | 'logo_inverse' | 'hero_image' | 'pattern' | 'favicon' | 'font'
   filename: string
 }): string {
   const id = generateCuid()
