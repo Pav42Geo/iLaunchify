@@ -3,37 +3,39 @@
 // ElementsDrawer — Canva-style "Elements" panel (Pavel 2026-06-23).
 //
 // Consolidates five formerly-separate rail tools — Images, Graphics, Clipart,
-// Background, Patterns — into one menu, grouped the way Canva groups its
-// Elements panel: a single scroll of labelled, collapsible sections. Each
-// section reuses the original drawer component unchanged, so all upload /
-// search / swatch logic is preserved; this is purely an information-architecture
-// merge.
+// Background, Patterns — into one menu. Navigation mirrors Canva's Elements
+// panel: an OVERVIEW of horizontal "rails", one per group, each sliding
+// left/right with its own "See all". Picking "See all" drills into that single
+// group's full drawer (search / upload / every swatch). A back arrow returns to
+// the overview. No accordion — Pavel disliked that for these elements.
 //
-// Grouping:
-//   - Photos & uploads  → ImagesDrawer   (brand logos + library + upload)
-//   - Graphics          → GraphicsDrawer (Iconify vector search)
-//   - Clipart           → coming soon (was a v1:false rail stub)
-//   - Background        → BackgroundDrawer (brand swatches + staples + hex)
-//   - Patterns          → PatternsDrawer (tileable fills)
-//
-// Default: the first group (Photos) is expanded; the rest start collapsed so
-// the panel reads as a compact, scannable index — exactly the Canva pattern.
+// Each rail's tiles perform the primary action on click (drop a logo, add an
+// icon, set a background, apply a pattern); the full drawers underneath are the
+// originals, reused unchanged.
 
 import * as React from 'react'
 import {
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ImagePlus,
-  Sparkles,
+  Upload,
   Brush,
-  ImageDown,
-  Grid3x3,
-  type LucideIcon,
 } from 'lucide-react'
-import type { BrandCanvasAssets, FabricCanvas } from '@ilaunchify/ui'
+import {
+  addImageFromUrl,
+  addIconFromUrl,
+  setCanvasBackground,
+  setCanvasPatternBackground,
+  PATTERN_TILES,
+  patternTileDataUrl,
+  type BrandCanvasAssets,
+  type FabricCanvas,
+} from '@ilaunchify/ui'
 import { ImagesDrawer } from './ImagesDrawer'
 import { GraphicsDrawer } from './GraphicsDrawer'
 import { BackgroundDrawer } from './BackgroundDrawer'
 import { PatternsDrawer } from './PatternsDrawer'
+import { ICON_COLLECTIONS } from '../graphics-collections'
 
 interface Props {
   canvas: FabricCanvas | null
@@ -43,132 +45,289 @@ interface Props {
 
 type GroupKey = 'photos' | 'graphics' | 'clipart' | 'background' | 'patterns'
 
-export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
-  // Canva lets several groups stay open at once; default just the first.
-  const [open, setOpen] = React.useState<Record<GroupKey, boolean>>({
-    photos: true,
-    graphics: false,
-    clipart: false,
-    background: false,
-    patterns: false,
-  })
+const INK_HEX = '0F1116'
+function iconSvgUrl(id: string, heightPx: number, colorHex = INK_HEX): string {
+  const [prefix, name] = id.split(':')
+  return `https://api.iconify.design/${prefix}/${name}.svg?height=${heightPx}&color=%23${colorHex}`
+}
 
-  const toggle = (key: GroupKey) =>
-    setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
+const STAPLE_BG = ['#FFFFFF', '#FAF7F0', '#0F1116', '#FF2E63', '#B5FF3D', '#FFE9F0', '#E8F5E1']
+
+export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
+  const [seeAll, setSeeAll] = React.useState<GroupKey | null>(null)
+
+  // ---- Drill-in: a single group's full original drawer ----
+  if (seeAll) {
+    const TITLES: Record<GroupKey, string> = {
+      photos: 'Photos & uploads',
+      graphics: 'Graphics',
+      clipart: 'Clipart',
+      background: 'Background',
+      patterns: 'Patterns',
+    }
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setSeeAll(null)}
+          className="mb-3 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-600 hover:text-ink-900"
+        >
+          <ChevronLeft className="h-4 w-4" /> All elements
+        </button>
+        <div className="mb-3 text-[15px] font-semibold text-ink-900">{TITLES[seeAll]}</div>
+        {seeAll === 'photos' && (
+          <ImagesDrawer canvas={canvas} brandAssets={brandAssets} productId={productId} />
+        )}
+        {seeAll === 'graphics' && <GraphicsDrawer canvas={canvas} />}
+        {seeAll === 'background' && <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {seeAll === 'patterns' && <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />}
+        {seeAll === 'clipart' && <ClipartSoon />}
+      </div>
+    )
+  }
+
+  // ---- Overview: one horizontal rail per group ----
+  const logos = brandAssets.logos.filter((l) => l.publicUrl)
+  const previewIcons = ICON_COLLECTIONS.flatMap((c) => c.icons).slice(0, 16)
+  const brandSwatches = Array.from(
+    new Set(
+      [
+        brandAssets.colorPrimary,
+        brandAssets.colorSecondary,
+        brandAssets.colorAccent,
+        ...brandAssets.extraSwatches,
+      ].filter((c): c is string => Boolean(c)),
+    ),
+  )
+  const bgSwatches = Array.from(new Set([...brandSwatches, ...STAPLE_BG]))
+  const patternColor = brandSwatches[0] ?? '#94908A'
 
   return (
-    <div className="divide-y divide-ink-200">
-      <Group
-        groupKey="photos"
+    <div className="space-y-1">
+      {/* Photos & uploads */}
+      <Rail
         label="Photos & uploads"
-        hint="Brand logos, your library, and uploads"
-        icon={ImagePlus}
-        open={open.photos}
-        onToggle={toggle}
+        onSeeAll={() => setSeeAll('photos')}
       >
-        <ImagesDrawer canvas={canvas} brandAssets={brandAssets} productId={productId} />
-      </Group>
+        <ActionTile
+          onClick={() => setSeeAll('photos')}
+          className="border-dashed border-ink-300 bg-ink-50 text-ink-500 hover:border-pink-400 hover:text-pink-600"
+        >
+          <Upload className="h-4 w-4" />
+          <span className="mt-1 text-[9px] font-semibold">Upload</span>
+        </ActionTile>
+        {logos.map((logo) => (
+          <ImageTile
+            key={logo.id}
+            src={logo.publicUrl as string}
+            alt={`${logo.variant} logo`}
+            disabled={!canvas}
+            onClick={() =>
+              logo.publicUrl && addImageFromUrl(canvas!, logo.publicUrl, { maxFraction: 0.4 })
+            }
+          />
+        ))}
+        {logos.length === 0 && <EmptyHint>Brand logos appear here</EmptyHint>}
+      </Rail>
 
-      <Group
-        groupKey="graphics"
-        label="Graphics"
-        hint="Thousands of open-source vector icons"
-        icon={Sparkles}
-        open={open.graphics}
-        onToggle={toggle}
-      >
-        <GraphicsDrawer canvas={canvas} />
-      </Group>
+      {/* Graphics */}
+      <Rail label="Graphics" onSeeAll={() => setSeeAll('graphics')}>
+        {previewIcons.map((id) => (
+          <ActionTile
+            key={id}
+            title={id}
+            disabled={!canvas}
+            onClick={() => canvas && addIconFromUrl(canvas, iconSvgUrl(id, 200), { sizePx: 96 })}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={iconSvgUrl(id, 40)} alt={id} loading="lazy" className="h-7 w-7 object-contain" />
+          </ActionTile>
+        ))}
+      </Rail>
 
-      <Group
-        groupKey="clipart"
-        label="Clipart"
-        hint="Illustrated stickers — coming soon"
-        icon={Brush}
-        open={open.clipart}
-        onToggle={toggle}
-      >
-        <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-4 text-center">
-          <Brush className="mx-auto h-4 w-4 text-ink-400" />
-          <p className="mt-1.5 text-xs font-medium text-ink-700">
-            Clipart library is coming soon
-          </p>
-          <p className="mt-0.5 text-[11px] text-ink-500">
-            For now, search vector icons under Graphics.
-          </p>
-        </div>
-      </Group>
+      {/* Clipart — not built yet */}
+      <Rail label="Clipart" onSeeAll={() => setSeeAll('clipart')} seeAllLabel="Learn more">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="flex h-16 w-16 shrink-0 snap-start flex-col items-center justify-center rounded-md border border-dashed border-ink-200 bg-ink-50 text-ink-300"
+          >
+            <Brush className="h-4 w-4" />
+            <span className="mt-1 text-[8px] font-semibold uppercase tracking-wider">Soon</span>
+          </div>
+        ))}
+      </Rail>
 
-      <Group
-        groupKey="background"
-        label="Background"
-        hint="Brand swatches, staples, and custom color"
-        icon={ImageDown}
-        open={open.background}
-        onToggle={toggle}
-      >
-        <BackgroundDrawer canvas={canvas} brandAssets={brandAssets} />
-      </Group>
+      {/* Background */}
+      <Rail label="Background" onSeeAll={() => setSeeAll('background')}>
+        {bgSwatches.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            title={hex}
+            disabled={!canvas}
+            onClick={() => canvas && setCanvasBackground(canvas, hex)}
+            className="h-16 w-16 shrink-0 snap-start rounded-md border border-ink-200 transition-transform hover:scale-105 disabled:opacity-50"
+            style={{ backgroundColor: hex }}
+          >
+            <span className="sr-only">Background {hex}</span>
+          </button>
+        ))}
+      </Rail>
 
-      <Group
-        groupKey="patterns"
-        label="Patterns"
-        hint="Tileable fills in your brand colors"
-        icon={Grid3x3}
-        open={open.patterns}
-        onToggle={toggle}
-      >
-        <PatternsDrawer canvas={canvas} brandAssets={brandAssets} />
-      </Group>
+      {/* Patterns */}
+      <Rail label="Patterns" onSeeAll={() => setSeeAll('patterns')}>
+        {PATTERN_TILES.map((tile) => (
+          <button
+            key={tile.id}
+            type="button"
+            title={tile.label}
+            disabled={!canvas}
+            onClick={() => canvas && void setCanvasPatternBackground(canvas, tile.svg, patternColor)}
+            className="h-16 w-16 shrink-0 snap-start rounded-md border border-ink-200 bg-white bg-repeat transition-transform hover:scale-105 disabled:opacity-50"
+            style={{ backgroundImage: `url("${patternTileDataUrl(tile.svg, patternColor)}")` }}
+          >
+            <span className="sr-only">{tile.label}</span>
+          </button>
+        ))}
+      </Rail>
     </div>
   )
 }
 
-function Group({
-  groupKey,
+// ============================================================================
+// Rail — a Canva-style horizontal group: header (label + See all) over a
+// slide-left/right strip with hover chevrons.
+// ============================================================================
+
+function Rail({
   label,
-  hint,
-  icon: Icon,
-  open,
-  onToggle,
+  seeAllLabel = 'See all',
+  onSeeAll,
   children,
 }: {
-  groupKey: GroupKey
   label: string
-  hint: string
-  icon: LucideIcon
-  open: boolean
-  onToggle: (key: GroupKey) => void
+  seeAllLabel?: string
+  onSeeAll: () => void
+  children: React.ReactNode
+}) {
+  const scroller = React.useRef<HTMLDivElement>(null)
+  const by = (dx: number) => scroller.current?.scrollBy({ left: dx, behavior: 'smooth' })
+
+  return (
+    <section className="group/rail py-2">
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <span className="text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="text-[11px] font-semibold text-pink-700 hover:text-pink-600"
+        >
+          {seeAllLabel}
+        </button>
+      </div>
+
+      <div className="relative">
+        {/* slide controls — fade in on row hover */}
+        <button
+          type="button"
+          aria-label="Scroll left"
+          onClick={() => by(-160)}
+          className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-ink-200 bg-white p-1 opacity-0 shadow-sm transition-opacity hover:bg-ink-50 group-hover/rail:opacity-100"
+        >
+          <ChevronLeft className="h-3.5 w-3.5 text-ink-700" />
+        </button>
+        <button
+          type="button"
+          aria-label="Scroll right"
+          onClick={() => by(160)}
+          className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full border border-ink-200 bg-white p-1 opacity-0 shadow-sm transition-opacity hover:bg-ink-50 group-hover/rail:opacity-100"
+        >
+          <ChevronRight className="h-3.5 w-3.5 text-ink-700" />
+        </button>
+
+        <div
+          ref={scroller}
+          className="flex snap-x gap-2 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {children}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ActionTile({
+  onClick,
+  disabled,
+  title,
+  className = '',
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  title?: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
-    <section className="py-1">
-      <button
-        type="button"
-        onClick={() => onToggle(groupKey)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-md px-1 py-2.5 text-left transition-colors hover:bg-ink-50"
-      >
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-ink-100 text-ink-700">
-          <Icon className="h-4 w-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
-            {label}
-          </span>
-          <span className="mt-0.5 block truncate text-[11px] font-normal normal-case tracking-normal text-ink-500">
-            {hint}
-          </span>
-        </span>
-        <ChevronDown
-          className={
-            'h-4 w-4 flex-shrink-0 text-ink-500 transition-transform ' +
-            (open ? 'rotate-180' : '')
-          }
-        />
-      </button>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={
+        'flex h-16 w-16 shrink-0 snap-start flex-col items-center justify-center rounded-md border border-ink-200 bg-white transition-all hover:border-pink-300 hover:shadow-sm disabled:opacity-50 ' +
+        className
+      }
+    >
+      {children}
+    </button>
+  )
+}
 
-      {open && <div className="px-1 pb-4 pt-2">{children}</div>}
-    </section>
+function ImageTile({
+  src,
+  alt,
+  onClick,
+  disabled,
+}: {
+  src: string
+  alt: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-md border border-ink-200 bg-white transition-all hover:border-pink-300 hover:shadow-sm disabled:opacity-50"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="absolute inset-1.5 h-[calc(100%-0.75rem)] w-[calc(100%-0.75rem)] object-contain" />
+    </button>
+  )
+}
+
+function EmptyHint({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-16 shrink-0 items-center rounded-md border border-dashed border-ink-200 bg-ink-50 px-3 text-[11px] text-ink-500">
+      {children}
+    </div>
+  )
+}
+
+function ClipartSoon() {
+  return (
+    <div className="rounded-md border border-dashed border-ink-300 bg-ink-50 p-5 text-center">
+      <ImagePlus className="mx-auto h-5 w-5 text-ink-400" />
+      <p className="mt-2 text-xs font-medium text-ink-700">Clipart library is coming soon</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">
+        For now, search vector icons under Graphics.
+      </p>
+    </div>
   )
 }
