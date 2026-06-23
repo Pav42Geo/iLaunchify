@@ -13,6 +13,7 @@
 import { useEffect, useRef } from 'react'
 import * as fabric from 'fabric'
 import type { DieCutSpec } from './types'
+import { computeSmartGuides, type SGRect, type SGGap } from './smartGuides'
 
 // ---------------------------------------------------------------------------
 // Selection chrome — Canva-style (Pavel 2026-06-23). Solid brand-pink border
@@ -43,6 +44,32 @@ function applySelectionChrome(): void {
     const proto = f[klass]?.prototype
     if (proto) Object.assign(proto, SELECTION_CHROME)
   }
+}
+
+/** Canva-style measurement pill — pink-bordered when normal, filled pink (symmetry
+ *  match) when the two surrounding gaps are equal. */
+function drawGuidePill(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  text: string,
+  equal: boolean,
+): void {
+  const w = ctx.measureText(text).width + 10
+  const h = 15
+  ctx.save()
+  ctx.beginPath()
+  const rr = (ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect
+  if (rr) rr.call(ctx, cx - w / 2, cy - h / 2, w, h, 4)
+  else ctx.rect(cx - w / 2, cy - h / 2, w, h)
+  ctx.fillStyle = equal ? SELECTION_PINK : '#ffffff'
+  ctx.strokeStyle = SELECTION_PINK
+  ctx.lineWidth = 1
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = equal ? '#ffffff' : SELECTION_PINK
+  ctx.fillText(text, cx, cy)
+  ctx.restore()
 }
 
 interface StageProps {
@@ -157,6 +184,111 @@ export function Stage({
         /* getBoundingRect on a disposed/odd object — ignore */
       }
     })
+
+    // ---- Smart alignment guides + spacing measurements (Canva-style) --------
+    // While dragging, snap the object's edges/center to the die-line trim box,
+    // its center, and other objects' edges/centers (sticky), and show guide lines
+    // + distance pills with equal-spacing (symmetry) detection.
+    let guides: { vLines: number[]; hLines: number[]; gaps: SGGap[] } | null = null
+    const frameRect: SGRect = {
+      left: dieCut.bleedMm * pxPerMm,
+      top: dieCut.bleedMm * pxPerMm,
+      width: dieCut.widthMm * pxPerMm,
+      height: dieCut.heightMm * pxPerMm,
+    }
+    const bbox = (o: fabric.FabricObject): SGRect => {
+      const r = o.getBoundingRect()
+      return { left: r.left, top: r.top, width: r.width, height: r.height }
+    }
+    const clearGuides = () => {
+      if (guides) {
+        guides = null
+        canvas.requestRenderAll()
+      }
+    }
+    canvas.on('object:moving', (e) => {
+      const t = (e as { target?: fabric.FabricObject }).target
+      if (!t) return
+      const z = canvas.getZoom() || 1
+      const others = canvas
+        .getObjects()
+        .filter((o) => o !== t && (o.width ?? 0) > 0 && (o.height ?? 0) > 0)
+        .map(bbox)
+      const res = computeSmartGuides(bbox(t), frameRect, others, { threshold: 6 / z, zoom: 1 })
+      if (res.dx || res.dy) {
+        t.set({ left: (t.left ?? 0) + res.dx, top: (t.top ?? 0) + res.dy })
+        t.setCoords()
+      }
+      guides = res.vLines.length || res.hLines.length || res.gaps.length ? res : null
+      canvas.requestRenderAll()
+    })
+    canvas.on('mouse:up', clearGuides)
+    canvas.on('object:modified', clearGuides)
+    canvas.on('after:render', () => {
+      if (!guides) return
+      const vpt = (canvas.viewportTransform as number[] | undefined) ?? [1, 0, 0, 1, 0, 0]
+      const z = vpt[0] || 1
+      const ex = vpt[4] || 0
+      const ey = vpt[5] || 0
+      const toX = (x: number) => x * z + ex
+      const toY = (y: number) => y * z + ey
+      const ctx = canvas.getContext()
+      const W = canvas.getWidth()
+      const H = canvas.getHeight()
+      ctx.save()
+      ctx.strokeStyle = SELECTION_PINK
+      ctx.lineWidth = 1
+      ctx.setLineDash([])
+      ctx.font = '11px ui-sans-serif, system-ui, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      for (const x of guides.vLines) {
+        const sx = toX(x)
+        ctx.beginPath()
+        ctx.moveTo(sx, 0)
+        ctx.lineTo(sx, H)
+        ctx.stroke()
+      }
+      for (const y of guides.hLines) {
+        const sy = toY(y)
+        ctx.beginPath()
+        ctx.moveTo(0, sy)
+        ctx.lineTo(W, sy)
+        ctx.stroke()
+      }
+      for (const gap of guides.gaps) {
+        const label = String(Math.round(gap.dist))
+        if (gap.axis === 'x') {
+          const x1 = toX(gap.a)
+          const x2 = toX(gap.b)
+          const y = toY(gap.cross)
+          ctx.beginPath()
+          ctx.moveTo(x1, y)
+          ctx.lineTo(x2, y)
+          ctx.moveTo(x1, y - 4)
+          ctx.lineTo(x1, y + 4)
+          ctx.moveTo(x2, y - 4)
+          ctx.lineTo(x2, y + 4)
+          ctx.stroke()
+          drawGuidePill(ctx, (x1 + x2) / 2, y, label, gap.equal)
+        } else {
+          const y1 = toY(gap.a)
+          const y2 = toY(gap.b)
+          const x = toX(gap.cross)
+          ctx.beginPath()
+          ctx.moveTo(x, y1)
+          ctx.lineTo(x, y2)
+          ctx.moveTo(x - 4, y1)
+          ctx.lineTo(x + 4, y1)
+          ctx.moveTo(x - 4, y2)
+          ctx.lineTo(x + 4, y2)
+          ctx.stroke()
+          drawGuidePill(ctx, x, (y1 + y2) / 2, label, gap.equal)
+        }
+      }
+      ctx.restore()
+    })
+
     // Fabric v6 copies class defaults onto each instance at construction, so
     // setting the prototype isn't enough for objects already built from JSON —
     // stamp the selection chrome onto every object so SELECTED objects show the
