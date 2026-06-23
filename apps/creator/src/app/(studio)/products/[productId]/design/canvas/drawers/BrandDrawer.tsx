@@ -336,7 +336,6 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
           <section>
             <div className={labelClass + ' mb-2 flex items-center gap-1.5'}>
               <ImagePlus className="h-3 w-3" /> Logos
-              <span className="ml-0.5 normal-case font-normal tracking-normal text-ink-400">tap to add</span>
             </div>
             {usableLogos.length === 0 ? (
               <p className="text-[11px] text-ink-500">
@@ -375,9 +374,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
           {/* Colors */}
           <section>
             <div className={labelClass + ' mb-2 flex items-center gap-1.5'}>
-              <Palette className="h-3 w-3" /> Colors
-              <span className="ml-0.5 normal-case font-normal tracking-normal text-ink-400">tap to apply</span>
-            </div>
+              <Palette className="h-3 w-3" /> Colors            </div>
             {swatches.length === 0 ? (
               <p className="text-[11px] text-ink-500">No colors yet — add them in Edit kit.</p>
             ) : (
@@ -400,9 +397,7 @@ export function BrandDrawer({ canvas, brandAssets, activeBrandId, onActiveBrandC
           {/* Fonts */}
           <section>
             <div className={labelClass + ' mb-2 flex items-center gap-1.5'}>
-              <TypeIcon className="h-3 w-3" /> Fonts
-              <span className="ml-0.5 normal-case font-normal tracking-normal text-ink-400">tap to apply</span>
-            </div>
+              <TypeIcon className="h-3 w-3" /> Fonts            </div>
             {assets.fonts.length === 0 ? (
               <p className="text-[11px] text-ink-500">No fonts yet — add them in Edit kit.</p>
             ) : (
