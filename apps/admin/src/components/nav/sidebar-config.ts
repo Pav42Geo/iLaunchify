@@ -316,11 +316,9 @@ const APPLICATIONS: SidebarRegion = {
           label: 'Admin Mode',
           icon: Brush,
           // Opens the real creator Design Studio in admin template-author mode (cross-app).
-          // Hidden until the product-less Studio mount is smoke-tested + confirmed working;
-          // flip hiddenUntilBuilt → false once it's ready.
+          // Live — product-less Studio mount smoke-tested (Pavel 2026-06-23).
           href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`,
           capability: 'catalog:write',
-          hiddenUntilBuilt: true,
         },
         // Studio-feeding building blocks (Pavel 2026-06-23 unification) — the catalogs
         // the Design Studio consumes, gathered here from Asset Management.
