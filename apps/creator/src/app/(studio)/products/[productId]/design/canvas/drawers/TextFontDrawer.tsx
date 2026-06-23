@@ -272,6 +272,7 @@ export function TextFontDrawer({
                 selected={f === currentFamily}
                 onPick={applyFont}
                 onPin={openMenu}
+                menuOpen={menuFamily === f}
                 starred
               />
             ))}
@@ -287,6 +288,7 @@ export function TextFontDrawer({
                 selected={f === currentFamily}
                 onPick={applyFont}
                 onPin={openMenu}
+                menuOpen={menuFamily === f}
               />
             ))}
           </Section>
@@ -301,6 +303,7 @@ export function TextFontDrawer({
                 selected={f === currentFamily}
                 onPick={applyFont}
                 onPin={openMenu}
+                menuOpen={menuFamily === f}
                 pinned
               />
             ))}
@@ -320,6 +323,7 @@ export function TextFontDrawer({
                 selected={f === currentFamily}
                 onPick={applyFont}
                 onPin={openMenu}
+                menuOpen={menuFamily === f}
               />
             ))}
           </Section>
@@ -333,6 +337,7 @@ export function TextFontDrawer({
               selected={f.family === currentFamily}
               onPick={applyFont}
               onPin={openMenu}
+              menuOpen={menuFamily === f.family}
             />
           ))}
           {filtered.length === 0 && (
@@ -458,6 +463,7 @@ function FontRow({
   onPin,
   pinned,
   starred,
+  menuOpen,
 }: {
   family: string
   selected: boolean
@@ -465,6 +471,8 @@ function FontRow({
   onPin?: (family: string, rect?: DOMRect) => void | Promise<void>
   pinned?: boolean
   starred?: boolean
+  /** Keep the 3-dot visible while this row's menu is open. */
+  menuOpen?: boolean
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = React.useState(() => isFontLoaded(family))
@@ -534,7 +542,10 @@ function FontRow({
           }}
           aria-label={`Font options for ${family}`}
           title="Font options"
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 inline-flex flex-shrink-0 items-center justify-center rounded-md p-1.5 text-ink-500 hover:bg-ink-100 hover:text-ink-800 transition-opacity"
+          className={
+            'inline-flex flex-shrink-0 items-center justify-center rounded-md p-1.5 text-ink-500 hover:bg-ink-100 hover:text-ink-800 transition-opacity focus-visible:opacity-100 ' +
+            (menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
+          }
         >
           <MoreVertical className="h-5 w-5" />
         </button>
