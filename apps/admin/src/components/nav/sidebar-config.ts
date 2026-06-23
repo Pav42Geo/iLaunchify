@@ -200,10 +200,8 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Labeling Symbols', icon: ScrollText, href: '/assets/labeling-symbols' },
         { kind: 'item', label: 'Bulk import (assets)', icon: FileText, href: '/assets/import' },
         { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Die-lines', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
-        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
-        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
+        // Die-lines / Packing Types / Facts Labels / Mandatory Phrases moved to the
+        // Design Studio group (2026-06-23 unification) — they feed the Studio.
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
         { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
@@ -324,6 +322,12 @@ const APPLICATIONS: SidebarRegion = {
           capability: 'catalog:write',
           hiddenUntilBuilt: true,
         },
+        // Studio-feeding building blocks (Pavel 2026-06-23 unification) — the catalogs
+        // the Design Studio consumes, gathered here from Asset Management.
+        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
+        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
+        { kind: 'item', label: 'Die-lines', icon: Layout, href: '/asset-management/die-cut-shapes', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
       ],
     },
     {
