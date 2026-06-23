@@ -172,13 +172,19 @@ export function Stage({
       if (!hovered || hovered === canvas.getActiveObject()) return
       try {
         const r = hovered.getBoundingRect()
+        // getBoundingRect is in object space — apply the viewport transform so the
+        // outline lands on the object at any zoom.
+        const vpt = (canvas.viewportTransform as number[] | undefined) ?? [1, 0, 0, 1, 0, 0]
+        const z = vpt[0] || 1
+        const x = r.left * z + (vpt[4] || 0)
+        const y = r.top * z + (vpt[5] || 0)
         const ctx = canvas.getContext()
         ctx.save()
         ctx.strokeStyle = SELECTION_PINK
         ctx.globalAlpha = 0.85
         ctx.lineWidth = 1.5
         ctx.setLineDash([])
-        ctx.strokeRect(r.left + 0.5, r.top + 0.5, Math.max(0, r.width - 1), Math.max(0, r.height - 1))
+        ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, r.width * z - 1), Math.max(0, r.height * z - 1))
         ctx.restore()
       } catch {
         /* getBoundingRect on a disposed/odd object — ignore */

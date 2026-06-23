@@ -91,8 +91,10 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   const isEditing = !!(active as { isEditing?: boolean }).isEditing
   if (isEditing) return null
 
-  const pos = computeChromePosition(active, canvasContainer)
-  if (!pos) return null
+  // Single zoom-aware screen rect for the object — every overlay (top bar, rotate/
+  // move pills, edge bars) derives from this, so they track the object at any zoom.
+  const sr = objScreenRect(active, canvasContainer, canvas)
+  if (!sr) return null
 
   const locked = isLocked(active)
 
@@ -100,25 +102,31 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
   // visually hide so the chrome doesn't lag behind the gesture.
   const visibility = interacting ? 'opacity-0 pointer-events-none' : 'opacity-100'
 
-  const bottom = computeBottomPosition(active, canvasContainer)
+  const pos = { left: sr.left + sr.width / 2, top: sr.top - 10 }
+  const bottom = { left: sr.left + sr.width / 2, top: sr.top + sr.height + 14 }
   // Hidden while locked — a locked object can't be moved or rotated.
-  const showHandles = !!bottom && !locked
-  // Mid-edge move bars — not on text boxes (they keep native width handles there).
-  const edges = computeEdgeHandles(active, canvasContainer)
+  const showHandles = !locked
+  // Mid-edge resize bars — not on text boxes (they keep native width handles there).
+  const edges = {
+    right: { x: sr.left + sr.width, y: sr.top + sr.height / 2 },
+    bottom: { x: sr.left + sr.width / 2, y: sr.top + sr.height },
+  }
   const isTextbox = (active as { type?: string }).type === 'textbox'
-  const showEdges = showHandles && !isTextbox && !!edges
+  const showEdges = showHandles && !isTextbox
 
   // --- Rotate handle: drag around the object center to spin it -------------
   const onRotateDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!canvas || locked) return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
-    const c = objectScreenCenter(active, canvasContainer)
-    if (!c) return
+    const r = objScreenRect(active, canvasContainer, canvas)
+    if (!r) return
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
     rotateRef.current = {
-      cx: c.cx,
-      cy: c.cy,
-      startPointer: Math.atan2(e.clientY - c.cy, e.clientX - c.cx),
+      cx,
+      cy,
+      startPointer: Math.atan2(e.clientY - cy, e.clientX - cx),
       startAngle: Number(active.angle) || 0,
     }
   }
@@ -377,70 +385,30 @@ export function ObjectActions({ canvas, active, canvasContainer, onShowMore }: P
 }
 
 /**
- * Translate the active object's bounding rect (canvas coords) into
- * viewport-space coords for the floating chrome.
+ * The object's bounding rect mapped to PAGE coordinates, zoom-aware.
  *
- * The chrome wants to sit centered horizontally above the object, with a
- * small gap. We anchor at the top-center of the object's bounding rect
- * and add a fixed pixel gap.
+ * getBoundingRect() is in object/canvas space (no viewport transform), so we
+ * apply the canvas viewport transform (zoom + pan) and add the canvas element's
+ * page offset. Every floating overlay derives from this, so they track the
+ * object precisely at any studio zoom level.
  */
-function computeChromePosition(
+function objScreenRect(
   obj: FabricObject,
   container: HTMLElement | null,
-): { left: number; top: number } | null {
-  if (!container) return null
-  const rect = obj.getBoundingRect()
-  const containerRect = container.getBoundingClientRect()
-  // rect.left / rect.top are in canvas-element coordinates; the canvas
-  // element fills the container, so we add the container's viewport offset.
-  return {
-    left: containerRect.left + rect.left + rect.width / 2,
-    top: containerRect.top + rect.top - 10,
-  }
-}
-
-/** Bottom-center of the object's bounding rect, in viewport coords, with a gap —
- *  anchor for the rotate + move handles. */
-function computeBottomPosition(
-  obj: FabricObject,
-  container: HTMLElement | null,
-): { left: number; top: number } | null {
-  if (!container) return null
-  const rect = obj.getBoundingRect()
-  const c = container.getBoundingClientRect()
-  return {
-    left: c.left + rect.left + rect.width / 2,
-    top: c.top + rect.top + rect.height + 14,
-  }
-}
-
-/** Mid-right and mid-bottom border points, in viewport coords — anchors for the
- *  edge "move" bars. */
-function computeEdgeHandles(
-  obj: FabricObject,
-  container: HTMLElement | null,
-): { right: { x: number; y: number }; bottom: { x: number; y: number } } | null {
+  canvas: FabricCanvas | null,
+): { left: number; top: number; width: number; height: number } | null {
   if (!container) return null
   const r = obj.getBoundingRect()
   const c = container.getBoundingClientRect()
+  const vpt = ((canvas as unknown as { viewportTransform?: number[] })?.viewportTransform) ?? [1, 0, 0, 1, 0, 0]
+  const z = vpt[0] || 1
+  const ex = vpt[4] || 0
+  const ey = vpt[5] || 0
   return {
-    right: { x: c.left + r.left + r.width, y: c.top + r.top + r.height / 2 },
-    bottom: { x: c.left + r.left + r.width / 2, y: c.top + r.top + r.height },
-  }
-}
-
-/** Center of the object's bounding rect, in viewport coords (the rotation pivot
- *  for centered rotation). */
-function objectScreenCenter(
-  obj: FabricObject,
-  container: HTMLElement | null,
-): { cx: number; cy: number } | null {
-  if (!container) return null
-  const rect = obj.getBoundingRect()
-  const c = container.getBoundingClientRect()
-  return {
-    cx: c.left + rect.left + rect.width / 2,
-    cy: c.top + rect.top + rect.height / 2,
+    left: c.left + r.left * z + ex,
+    top: c.top + r.top * z + ey,
+    width: r.width * z,
+    height: r.height * z,
   }
 }
 
