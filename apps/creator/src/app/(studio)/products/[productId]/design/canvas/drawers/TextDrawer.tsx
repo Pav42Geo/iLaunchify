@@ -11,11 +11,12 @@
 // Brand fonts (when present) pin to the top of the font combinations row.
 
 import * as React from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronLeft } from 'lucide-react'
 import {
   addText,
   addTextCombo,
   loadBrandFont,
+  ElementRail,
   type BrandCanvasAssets,
   type FabricCanvas,
 } from '@ilaunchify/ui'
@@ -27,7 +28,9 @@ interface Props {
 
 export function TextDrawer({ canvas, brandAssets }: Props) {
   const [value, setValue] = React.useState('')
-  const [category, setCategory] = React.useState<ChipCategoryKey>('storage')
+  // Canva-style rails: overview shows every group as a slide rail; "See all"
+  // drills into one group's full grid. (Pavel 2026-06-23)
+  const [seeAll, setSeeAll] = React.useState<'combos' | ChipCategoryKey | null>(null)
 
   // Text-style roles win when assigned ("Add to Brand → Heading/Body", Slice 2c);
   // otherwise fall back to the first/second brand fonts.
@@ -101,87 +104,147 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
         </p>
       </section>
 
-      {/* Font Combinations */}
-      <section>
-        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
-          Font Combinations
-          {brandAssets.fonts.length > 0 && (
-            <span className="ml-2 inline-block text-pink-700 normal-case font-normal tracking-normal">
-              · using your brand fonts
-            </span>
+      {seeAll ? (
+        // ---- Drill-in: one group's full grid ----
+        <div className="overflow-x-clip">
+          <button
+            type="button"
+            onClick={() => setSeeAll(null)}
+            className="mb-3 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-600 hover:text-ink-900"
+          >
+            <ChevronLeft className="h-4 w-4" /> All text
+          </button>
+          <div className="mb-3 text-[15px] font-semibold text-ink-900">
+            {seeAll === 'combos' ? 'Font combinations' : CHIP_LIBRARY[seeAll].label}
+          </div>
+          {seeAll === 'combos' ? (
+            <div className="grid grid-cols-2 gap-2">
+              {FONT_COMBOS.map((combo) => (
+                <ComboCard
+                  key={combo.heading}
+                  combo={combo}
+                  headingFont={brandHeadingFont}
+                  bodyFont={brandBodyFont}
+                  disabled={!canvas}
+                  onClick={() => handleAddCombo(combo)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {CHIP_LIBRARY[seeAll].items.map((item) => (
+                <ChipButton
+                  key={item}
+                  item={item}
+                  disabled={!canvas}
+                  onClick={() => handleAddChip(item)}
+                />
+              ))}
+            </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {FONT_COMBOS.map((combo) => (
-            <button
-              key={combo.heading}
-              type="button"
-              onClick={() => handleAddCombo(combo)}
-              disabled={!canvas}
-              className="text-left rounded-md border border-ink-200 hover:border-pink-300 hover:shadow-sm bg-white p-3 transition-all disabled:opacity-50"
+      ) : (
+        // ---- Overview: every group as a slide rail ----
+        <div className="overflow-x-clip">
+          <ElementRail label="Font combinations" onSeeAll={() => setSeeAll('combos')}>
+            {FONT_COMBOS.map((combo) => (
+              <ComboCard
+                key={combo.heading}
+                combo={combo}
+                headingFont={brandHeadingFont}
+                bodyFont={brandBodyFont}
+                disabled={!canvas}
+                onClick={() => handleAddCombo(combo)}
+                rail
+              />
+            ))}
+          </ElementRail>
+
+          {(Object.keys(CHIP_LIBRARY) as ChipCategoryKey[]).map((key) => (
+            <ElementRail
+              key={key}
+              label={CHIP_LIBRARY[key].label}
+              onSeeAll={() => setSeeAll(key)}
             >
-              <div
-                className="font-bold text-[15px] text-ink-900 leading-tight"
-                style={{ fontFamily: brandHeadingFont }}
-              >
-                {combo.heading}
-              </div>
-              <div
-                className="text-[11px] text-ink-500 mt-0.5"
-                style={{ fontFamily: brandBodyFont }}
-              >
-                {combo.sub}
-              </div>
-            </button>
+              {CHIP_LIBRARY[key].items.map((item) => (
+                <ChipButton
+                  key={item}
+                  item={item}
+                  disabled={!canvas}
+                  onClick={() => handleAddChip(item)}
+                  rail
+                />
+              ))}
+            </ElementRail>
           ))}
         </div>
-      </section>
-
-      {/* Ready-to-Use chip library */}
-      <section>
-        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
-          Ready-to-Use
-        </div>
-        <div className="flex gap-1 overflow-x-auto pb-2 mb-2.5 -mx-4 px-4">
-          {(Object.keys(CHIP_LIBRARY) as ChipCategoryKey[]).map((key) => {
-            const isActive = key === category
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setCategory(key)}
-                className={
-                  'h-7 px-2.5 text-[11px] font-semibold rounded-full whitespace-nowrap transition-colors ' +
-                  (isActive
-                    ? 'bg-ink-900 text-white'
-                    : 'bg-ink-100 text-ink-700 hover:bg-ink-200')
-                }
-              >
-                {CHIP_LIBRARY[key].label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {CHIP_LIBRARY[category].items.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => handleAddChip(item)}
-              disabled={!canvas}
-              className="text-[12px] px-2.5 py-1.5 rounded-md border border-ink-200 bg-white text-ink-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 transition-colors disabled:opacity-50 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-700"
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        <p className="mt-3 text-[11px] text-ink-500">
-          Click any chip to drop it on the canvas. Edit in place by
-          double-clicking the text.
-        </p>
-      </section>
+      )}
     </div>
+  )
+}
+
+// ============================================================================
+// Tiles
+// ============================================================================
+
+function ComboCard({
+  combo,
+  headingFont,
+  bodyFont,
+  disabled,
+  onClick,
+  rail,
+}: {
+  combo: { heading: string; sub: string }
+  headingFont: string
+  bodyFont: string
+  disabled?: boolean
+  onClick: () => void
+  rail?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        'text-left rounded-md border border-ink-200 bg-white p-3 transition-all hover:border-pink-300 hover:shadow-sm disabled:opacity-50 ' +
+        (rail ? 'w-44 shrink-0 snap-start' : '')
+      }
+    >
+      <div className="font-bold text-[15px] leading-tight text-ink-900" style={{ fontFamily: headingFont }}>
+        {combo.heading}
+      </div>
+      <div className="mt-0.5 text-[11px] text-ink-500" style={{ fontFamily: bodyFont }}>
+        {combo.sub}
+      </div>
+    </button>
+  )
+}
+
+function ChipButton({
+  item,
+  disabled,
+  onClick,
+  rail,
+}: {
+  item: string
+  disabled?: boolean
+  onClick: () => void
+  rail?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        'rounded-md border border-ink-200 bg-white px-2.5 py-1.5 text-[12px] text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:opacity-50 ' +
+        (rail ? 'shrink-0 snap-start whitespace-nowrap' : '')
+      }
+    >
+      {item}
+    </button>
   )
 }
 
