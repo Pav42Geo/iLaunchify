@@ -82,3 +82,19 @@ export function isImageLikeCustomType(ct: CanvasCustomType | null): boolean {
 export function isCodeCustomType(ct: CanvasCustomType | null): boolean {
   return ct === 'qr-code' || ct === 'barcode' || ct === 'internal-sku'
 }
+
+/**
+ * True for regulated/structured label panels that own a dedicated editor (or are
+ * intentionally locked) and must NOT fall through to the generic image toolbar:
+ * Nutrition / Supplement / AAFCO / Drug Facts panels + cert badges.
+ */
+export function isLabelPanelType(ct: CanvasCustomType | null): boolean {
+  return (
+    ct === 'nutrition-panel' ||
+    ct === 'nutrition-aggregate-panel' ||
+    ct === 'supplement-panel' ||
+    ct === 'aafco-panel' ||
+    ct === 'drug-facts-panel' ||
+    ct === 'cert-badge'
+  )
+}

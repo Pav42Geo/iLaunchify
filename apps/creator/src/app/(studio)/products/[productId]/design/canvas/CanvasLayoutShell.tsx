@@ -58,8 +58,8 @@ import {
   useSelectedObject,
   isTextObject,
   getCustomType,
-  isImageLikeCustomType,
   isCodeCustomType,
+  isLabelPanelType,
 } from './useSelectedObject'
 import { useAutoSave, type SaveStatus } from './useAutoSave'
 import {
@@ -667,7 +667,16 @@ export function CanvasLayoutShell({
   const showTextToolbar = isTextObject(selected)
   const showNutritionToolbar = selectedCustomType === 'nutrition-panel'
   const showCodeToolbar = isCodeCustomType(selectedCustomType)
-  const showImageToolbar = isImageLikeCustomType(selectedCustomType)
+  // ImageToolbar is the generic fallback for any non-text / non-code object that
+  // isn't a regulated label panel — covers uploads, brand logos, AND all Elements
+  // (graphics / clipart / backgrounds / patterns / shapes), which previously had
+  // no contextual toolbar when their customType wasn't 'image'/'brand-logo'.
+  const showImageToolbar =
+    !!selected &&
+    !showTextToolbar &&
+    !showCodeToolbar &&
+    !showNutritionToolbar &&
+    !isLabelPanelType(selectedCustomType)
 
   // DS-66f — auto-close the font drawer when selection moves off the text
   // object that opened it (the trigger button is no longer visible, and
