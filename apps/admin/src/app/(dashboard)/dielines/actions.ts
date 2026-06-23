@@ -258,6 +258,9 @@ export interface AutoParseDetected {
   safeAreaMm: number
   parseScore: number
   unrecognized: string[]
+  confidence: { trim: number; bleed: number; safe: number; folds: number }
+  /** Outline of exactly what the parser detected (house colors) for the report. */
+  detectedSvg: string
 }
 type AutoParseResult = { ok: true; detected: AutoParseDetected } | { ok: false; error: string }
 
@@ -290,15 +293,32 @@ export async function autoParseDieline(dielineId: string): Promise<AutoParseResu
   const bleedMm = p.bleedBox ? Math.max(0, Math.round((trim.x - p.bleedBox.x) * 100) / 100) : 3
   const safeAreaMm = p.safeBox ? Math.max(0, Math.round((p.safeBox.x - trim.x) * 100) / 100) : 3
 
+  // Render exactly what was detected (house colors) for the Detection report.
+  const n = (v: number) => Math.round(v * 100) / 100
+  const rect = (b: { x: number; y: number; w: number; h: number }, stroke: string, dash?: string) =>
+    `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}" fill="none" stroke="${stroke}" stroke-width="0.4"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`
+  const parts: string[] = []
+  if (p.bleedBox) parts.push(rect(p.bleedBox, '#9AA0A6', '2 1.5'))
+  parts.push(rect(trim, '#00AEEF'))
+  if (p.safeBox) parts.push(rect(p.safeBox, '#34A853', '1 1'))
+  for (const f of p.foldLines) parts.push(`<line x1="${n(f.x1)}" y1="${n(f.y1)}" x2="${n(f.x2)}" y2="${n(f.y2)}" stroke="#D6219B" stroke-width="0.4"/>`)
+  const detectedSvg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(p.sheetW || trim.w)} ${n(p.sheetH || trim.h)}">` +
+    `<rect x="0" y="0" width="${n(p.sheetW || trim.w)}" height="${n(p.sheetH || trim.h)}" fill="#FFFFFF"/>` +
+    parts.join('') +
+    `</svg>`
+
   return {
     ok: true,
     detected: {
-      widthMm: Math.round(trim.w * 100) / 100,
-      heightMm: Math.round(trim.h * 100) / 100,
+      widthMm: n(trim.w),
+      heightMm: n(trim.h),
       bleedMm,
       safeAreaMm,
       parseScore: p.parseAccuracyScore,
       unrecognized: p.unrecognized,
+      confidence: p.confidence,
+      detectedSvg,
     },
   }
 }

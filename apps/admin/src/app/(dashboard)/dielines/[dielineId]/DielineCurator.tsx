@@ -20,7 +20,7 @@ import {
   type FrameLayout,
   type NormBox,
 } from '@ilaunchify/ui'
-import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape, autoParseDieline } from '../actions'
+import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape, autoParseDieline, type AutoParseDetected } from '../actions'
 
 interface ShapeOption {
   id: string
@@ -83,6 +83,7 @@ export function DielineCurator({
   const [overlay, setOverlay] = useState(false)
   const [overlayOpacity, setOverlayOpacity] = useState(0.6)
   const [reviewed, setReviewed] = useState(false)
+  const [report, setReport] = useState<AutoParseDetected | null>(null)
 
   const canSave = status === 'PARTNER_CONFIRMED' || status === 'ACTIVE'
   const valid =
@@ -141,6 +142,7 @@ export function DielineCurator({
         bleedMm: r.detected.bleedMm,
         safeAreaMm: r.detected.safeAreaMm,
       })
+      setReport(r.detected)
       toast.success(`Detected at ${Math.round(r.detected.parseScore * 100)}% — review before saving`)
       if (r.detected.unrecognized.length > 0) {
         toast.warning(`${r.detected.unrecognized.length} unrecognized element${r.detected.unrecognized.length === 1 ? '' : 's'} — check nothing was dropped`)
@@ -341,6 +343,41 @@ export function DielineCurator({
             Toggle <span className="font-semibold text-ink-600">Overlay</span> above to confirm the normalized lines sit on the
             original. The original file is never modified and ships to the printer untouched.
           </p>
+
+          {report && (
+            <div className="mt-3 rounded-lg border border-ink-100 bg-white p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-600">Detection report</p>
+                <span className="rounded-full border border-ink-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-700">
+                  {Math.round(report.parseScore * 100)}% overall
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div
+                  className="h-16 w-16 shrink-0 overflow-hidden rounded border border-ink-100 [&_svg]:h-full [&_svg]:w-full"
+                  dangerouslySetInnerHTML={{ __html: report.detectedSvg }}
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <ConfChip label="Trim" v={report.confidence.trim} />
+                  <ConfChip label="Bleed" v={report.confidence.bleed} />
+                  <ConfChip label="Safe" v={report.confidence.safe} />
+                  <ConfChip label="Folds" v={report.confidence.folds} />
+                </div>
+              </div>
+              {report.unrecognized.length > 0 ? (
+                <p className="mt-2 inline-flex items-start gap-1.5 text-[11.5px] font-medium text-amber-700">
+                  <FileWarning className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {report.unrecognized.length} unrecognized element{report.unrecognized.length === 1 ? '' : 's'} — confirm
+                  nothing was dropped: {report.unrecognized.slice(0, 6).join(', ')}
+                  {report.unrecognized.length > 6 ? '…' : ''}
+                </p>
+              ) : (
+                <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Every element accounted for — no coverage gaps.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <label className="mt-3 flex items-start gap-2 text-[12px] text-ink-700">
@@ -369,6 +406,15 @@ export function DielineCurator({
         </div>
       </div>
     </div>
+  )
+}
+
+function ConfChip({ label, v }: { label: string; v: number }) {
+  const tone = v === 0 ? 'border-ink-200 bg-ink-50 text-ink-400' : v >= 0.9 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : v >= 0.7 ? 'border-sky-200 bg-sky-50 text-sky-700' : 'border-amber-200 bg-amber-50 text-amber-800'
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${tone}`}>
+      {label} {v === 0 ? '—' : `${Math.round(v * 100)}%`}
+    </span>
   )
 }
 
