@@ -405,6 +405,84 @@ export async function deletePremiumTemplate(id: string): Promise<boolean> {
   return true
 }
 
+// ---------------------------------------------------------------------------
+// Admin library management — operates on the whole system templates brand
+// (regular + premium), so admins can save/list/edit/delete both. NOT isPremium-
+// guarded (that guard stays on the creator-facing premium reads).
+// ---------------------------------------------------------------------------
+
+export interface AdminLibraryTemplate {
+  id: string
+  name: string
+  thumbnailUrl: string | null
+  isPremium: boolean
+  tier: string | null
+  domain: string | null
+  createdAt: Date
+}
+
+/** All admin-library templates (the system brand), newest first. */
+export async function listAdminLibraryTemplates(): Promise<AdminLibraryTemplate[]> {
+  const d = delegate()
+  if (!d) return []
+  const systemBrandId = await getSystemTemplatesBrandId()
+  if (!systemBrandId) return []
+  const rows = await d
+    .findMany({
+      where: { brandId: systemBrandId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true, thumbnailUrl: true, isPremium: true, tier: true, domain: true, createdAt: true },
+    })
+    .catch(() => [] as Record<string, unknown>[])
+  return rows.map((r) => ({
+    id: String(r.id),
+    name: String(r.name),
+    thumbnailUrl: (r.thumbnailUrl as string | null) ?? null,
+    isPremium: (r.isPremium as boolean) ?? false,
+    tier: (r.tier as string | null) ?? null,
+    domain: (r.domain as string | null) ?? null,
+    createdAt: (r.createdAt as Date) ?? new Date(0),
+  }))
+}
+
+/** Update any admin-library template (system-brand-guarded). Accepts tier / isPremium /
+ *  targeting; tolerates both regular and premium rows. */
+export async function updateLibraryTemplate(
+  id: string,
+  patch: { name?: string; tier?: string | null; isPremium?: boolean } & TemplateTargeting,
+): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  const systemBrandId = await getSystemTemplatesBrandId()
+  if (!systemBrandId) return false
+  const row = await d.findUnique({ where: { id }, select: { brandId: true } }).catch(() => null)
+  if (!row || row.brandId !== systemBrandId) return false
+  const data: Record<string, unknown> = {}
+  if (patch.name !== undefined) data.name = patch.name
+  if (patch.tier !== undefined) data.tier = patch.tier
+  if (patch.isPremium !== undefined) data.isPremium = patch.isPremium
+  if (patch.domain !== undefined) data.domain = patch.domain
+  if (patch.matchMode !== undefined && patch.matchMode !== null) data.matchMode = patch.matchMode
+  if (patch.targetContainerCategory !== undefined) data.targetContainerCategory = patch.targetContainerCategory
+  if (patch.targetTopology !== undefined) data.targetTopology = patch.targetTopology
+  if (patch.aspectBucket !== undefined) data.aspectBucket = patch.aspectBucket
+  if (patch.targetSurface !== undefined) data.targetSurface = patch.targetSurface
+  await d.update({ where: { id }, data })
+  return true
+}
+
+/** Delete any admin-library template (system-brand-guarded). */
+export async function deleteLibraryTemplate(id: string): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  const systemBrandId = await getSystemTemplatesBrandId()
+  if (!systemBrandId) return false
+  const row = await d.findUnique({ where: { id }, select: { brandId: true } }).catch(() => null)
+  if (!row || row.brandId !== systemBrandId) return false
+  await d.delete({ where: { id } })
+  return true
+}
+
 /** Owner-guarded delete: only removes the template if it belongs to `brandId`. */
 export async function deleteBrandTemplate(brandId: string, templateId: string): Promise<boolean> {
   const d = delegate()
