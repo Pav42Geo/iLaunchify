@@ -318,8 +318,11 @@ const APPLICATIONS: SidebarRegion = {
           label: 'Admin Mode',
           icon: Brush,
           // Opens the real creator Design Studio in admin template-author mode (cross-app).
+          // Hidden until the product-less Studio mount is smoke-tested + confirmed working;
+          // flip hiddenUntilBuilt → false once it's ready.
           href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`,
           capability: 'catalog:write',
+          hiddenUntilBuilt: true,
         },
       ],
     },
