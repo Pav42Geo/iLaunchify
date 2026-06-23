@@ -211,5 +211,7 @@ export {
   listMatchablePremiumTemplates,
   listMatchableBrandTemplates,
   listMatchableRegularLibraryTemplates,
+  listActiveDieCuts,
   type MatchableTemplateRow,
+  type AdminDieCutOption,
 } from './template-library'

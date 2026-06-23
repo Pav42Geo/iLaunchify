@@ -279,6 +279,39 @@ Admins build templates the way a designer would, not by pasting JSON:
 This is the largest build phase; it reuses the creator canvas wholesale and adds a die-line picker
 + a template-metadata save panel.
 
+**Reuse the EXISTING Design Studio — not a separate editor (Pavel 2026-06-23).** Admin authoring
+mounts the same `CanvasLayoutShell` creators use, with admin-appropriate functionality. Key
+constraint: `CanvasLayoutShell` lives in **apps/creator**, so the admin app can't import it. The
+authoring route therefore lives in the **creator app, gated to admins** (`requireCapability`), e.g.
+`/(studio)/template-author?dieCut=…&domain=…`:
+- A server loader builds **neutral, product-less props** (chosen die-line → `dieCut`; system
+  templates brand → `brandAssets`; `labelingType` = chosen domain; recipe/nutrition/mockups/flavors
+  = null/[]).
+- `CanvasLayoutShell` gains a thin `templateAuthor` mode that (a) hides product-only rail tools
+  (Product, Label-facts, Compliance/Mockup/Export) and (b) routes "Save as template" → the admin
+  library save (Regular/Premium + domain + style + die-line metadata) instead of `saveAsBrandTemplate`.
+- The admin /templates page links out to this route ("Design in Studio").
+The metadata-save plumbing already exists (`adminCreateLibraryTemplate`, style options, regular/
+premium, `listActiveDieCuts`); the Studio mode just calls it. Because `CanvasLayoutShell` is the
+central (Code-shared) Studio file, the `templateAuthor` hook must be surgical.
+
+### 8.1 Admin Design Studio — broader vision (Pavel 2026-06-23)
+
+Pavel's larger intent: the admin uses the **same Design Studio** in an admin mode, with editing
+capabilities for the platform building blocks creators consume — not only templates, but also:
+- **Templates** — author Regular/Premium designs per die-line (this phase).
+- **Mandatory phrases** — create/edit the regulated phrase library surfaced in the Studio.
+- **Categories** — create/manage product categories + their domain bindings.
+- **Packaging & die-lines** — add/edit packaging types and die-lines from inside the Studio.
+- Potentially **everything** the Studio touches, with admin-grade permissions.
+
+This is a multi-slice program, not one build. Each block already has an admin surface today
+(`/admin/phrases`, `/admin/categories`, `/admin/packing-types`, `/admin/dielines`, `/admin/products`);
+the vision is to bring those authoring/edit capabilities **into the Studio shell** behind an admin
+mode, so the admin designs and curates in the same canvas creators use. Sequencing + which blocks
+move into the Studio first is an open product decision — start with template authoring (plumbing
+ready), then layer the others.
+
 ## 9. Phasing
 
 1. **Research + taxonomy** — this doc. ✅

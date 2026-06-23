@@ -86,6 +86,52 @@ export async function listMatchableBrandTemplates(
   return rows.map(toRow)
 }
 
+/** A die-cut the admin can design a template on (maps to @ilaunchify/ui DieCutSpec). */
+export interface AdminDieCutOption {
+  id: string
+  name: string
+  category: string
+  widthMm: number
+  heightMm: number
+  bleedMm: number
+  safeAreaMm: number
+  outlineSvg: string
+}
+
+/** Active die-cuts for the in-Studio template authoring picker. */
+export async function listActiveDieCuts(): Promise<AdminDieCutOption[]> {
+  const p = (prisma as unknown as {
+    dieCutTemplate?: { findMany: (a: unknown) => Promise<Record<string, unknown>[]> }
+  }).dieCutTemplate
+  if (!p) return []
+  const rows = await p
+    .findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        widthMm: true,
+        heightMm: true,
+        bleedMm: true,
+        safeAreaMm: true,
+        outlineSvg: true,
+      },
+    })
+    .catch(() => [] as Record<string, unknown>[])
+  return rows.map((r) => ({
+    id: String(r.id),
+    name: String(r.name),
+    category: String(r.category),
+    widthMm: Number(r.widthMm) || 0,
+    heightMm: Number(r.heightMm) || 0,
+    bleedMm: Number(r.bleedMm) || 3,
+    safeAreaMm: Number(r.safeAreaMm) || 3,
+    outlineSvg: (r.outlineSvg as string | null) ?? '',
+  }))
+}
+
 /**
  * Admin-authored REGULAR library templates for a domain (system templates brand,
  * isPremium=false). Available to ALL creator tiers — only the premium library is
