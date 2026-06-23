@@ -182,53 +182,6 @@ const PRIMARY: SidebarRegion = {
     },
     {
       kind: 'group',
-      label: 'Design Studio',
-      icon: LayoutTemplate,
-      children: [
-        { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
-        {
-          kind: 'item',
-          label: 'Admin Mode',
-          icon: Brush,
-          // Opens the real creator Design Studio in admin template-author mode (cross-app).
-          href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`,
-          capability: 'catalog:write',
-        },
-      ],
-    },
-    {
-      kind: 'group',
-      label: 'Applications',
-      icon: Sparkles,
-      children: [
-        {
-          kind: 'group',
-          label: 'Marketplace',
-          icon: Sparkles,
-          children: [
-            { kind: 'item', label: 'Niches', icon: Sparkles, href: '/niches', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
-            { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
-          ],
-        },
-        {
-          kind: 'group',
-          label: 'Academy',
-          icon: BookOpen,
-          children: [
-            { kind: 'item', label: 'Overview', icon: LayoutDashboard, href: '/academy', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Courses', icon: GraduationCap, href: '/academy/courses', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Lessons', icon: PlaySquare, href: '/academy/lessons', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Topics', icon: Tag, href: '/academy/categories', hiddenUntilBuilt: false },
-          ],
-        },
-      ],
-    },
-    {
-      kind: 'group',
       label: 'Users & Roles',
       icon: Users,
       children: [
@@ -354,8 +307,46 @@ const APPLICATIONS: SidebarRegion = {
   id: 'applications',
   label: 'Applications',
   items: [
-    { kind: 'item', label: 'Marketplace', icon: Store, href: '/applications/marketplace', hiddenUntilBuilt: true },
-    { kind: 'item', label: 'Design Studio (with Admin mode)', icon: Brush, href: '/applications/design-studio', hiddenUntilBuilt: true },
+    {
+      kind: 'group',
+      label: 'Design Studio',
+      icon: LayoutTemplate,
+      children: [
+        { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
+        {
+          kind: 'item',
+          label: 'Admin Mode',
+          icon: Brush,
+          // Opens the real creator Design Studio in admin template-author mode (cross-app).
+          href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/template-author`,
+          capability: 'catalog:write',
+        },
+      ],
+    },
+    {
+      kind: 'group',
+      label: 'Marketplace',
+      icon: Sparkles,
+      children: [
+        { kind: 'item', label: 'Niches', icon: Sparkles, href: '/niches', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
+        { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
+      ],
+    },
+    {
+      kind: 'group',
+      label: 'Academy',
+      icon: BookOpen,
+      children: [
+        { kind: 'item', label: 'Overview', icon: LayoutDashboard, href: '/academy', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Courses', icon: GraduationCap, href: '/academy/courses', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Lessons', icon: PlaySquare, href: '/academy/lessons', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Topics', icon: Tag, href: '/academy/categories', hiddenUntilBuilt: false },
+      ],
+    },
     { kind: 'item', label: 'Packaging Studio', icon: Boxes, href: '/applications/packaging-studio', hiddenUntilBuilt: true },
     {
       kind: 'group',
