@@ -5,7 +5,22 @@
 // stored on the brand's logo assets.
 
 import { prisma } from '@ilaunchify/db'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import type { BrandCanvasAssets, BrandLogoAsset } from '@ilaunchify/ui'
+
+const LOGO_URL_TTL_SECONDS = 8 * 60 * 60 // matches the design-session signed-URL window
+
+/** A displayable URL for a logo asset: the stored public URL, else a signed read URL
+ *  from its storage key (uploaded brand logos don't get a publicUrl set). */
+async function resolveLogoUrl(a: { publicUrl: string | null; storageKey: string | null }): Promise<string | null> {
+  if (a.publicUrl) return a.publicUrl
+  if (!a.storageKey) return null
+  try {
+    return await getSignedReadUrl(a.storageKey, { expiresInSeconds: LOGO_URL_TTL_SECONDS })
+  } catch {
+    return null
+  }
+}
 
 /** The brand columns this builder reads. The canvas loader already selects all of
  *  these on `product.brand`, so it can pass the row straight through. */
@@ -26,12 +41,12 @@ export interface BrandRowForAssets {
 function mkLogo(
   variant: BrandLogoAsset['variant'],
   assetId: string | null,
-  byId: Map<string, { id: string; publicUrl: string | null; mimeType: string }>,
+  byId: Map<string, { id: string; url: string | null; mimeType: string }>,
 ): BrandLogoAsset | null {
   if (!assetId) return null
   const asset = byId.get(assetId)
   if (!asset) return null
-  return { id: asset.id, variant, publicUrl: asset.publicUrl, mimeType: asset.mimeType }
+  return { id: asset.id, variant, publicUrl: asset.url, mimeType: asset.mimeType }
 }
 
 export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<BrandCanvasAssets> {
@@ -43,7 +58,7 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     logoIds.length
       ? prisma.asset.findMany({
           where: { id: { in: logoIds } },
-          select: { id: true, publicUrl: true, mimeType: true },
+          select: { id: true, publicUrl: true, storageKey: true, mimeType: true },
         })
       : Promise.resolve([]),
     brand.brandFontIds.length
@@ -54,7 +69,11 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
       : Promise.resolve([]),
   ])
 
-  const logoByAssetId = new Map(logoAssets.map((a) => [a.id, a]))
+  // Resolve a displayable URL per logo (publicUrl, else a signed read URL).
+  const resolvedLogos = await Promise.all(
+    logoAssets.map(async (a) => ({ id: a.id, mimeType: a.mimeType, url: await resolveLogoUrl(a) })),
+  )
+  const logoByAssetId = new Map(resolvedLogos.map((a) => [a.id, a]))
 
   return {
     brandId: brand.id,

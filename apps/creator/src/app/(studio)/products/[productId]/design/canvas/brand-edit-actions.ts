@@ -8,6 +8,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 
 export interface StudioAssetSummary {
@@ -76,7 +77,21 @@ export async function loadStudioBrandKitEditor(
         select: { id: true, publicUrl: true, storageKey: true, mimeType: true },
       })
     : []
-  const byId = new Map(logoAssets.map((a) => [a.id, a]))
+  // Resolve a displayable URL per logo: publicUrl, else a signed read URL from the
+  // storage key (uploaded brand logos don't get a publicUrl set).
+  const resolved: StudioAssetSummary[] = await Promise.all(
+    logoAssets.map(async (a) => ({
+      id: a.id,
+      storageKey: a.storageKey,
+      mimeType: a.mimeType,
+      publicUrl:
+        a.publicUrl ??
+        (a.storageKey
+          ? await getSignedReadUrl(a.storageKey, { expiresInSeconds: 8 * 60 * 60 }).catch(() => null)
+          : null),
+    })),
+  )
+  const byId = new Map(resolved.map((a) => [a.id, a]))
 
   const fontCatalog = await prisma.typographyFont.findMany({
     where: { status: 'ACTIVE' },
