@@ -97,8 +97,11 @@ export interface BrandCanvasAssets {
   colorSecondary: string | null
   colorAccent: string | null
   extraSwatches: string[]
-  // Fonts — TypographyFont references the canvas font dropdown pins to top
+  // Fonts — the canvas font dropdown pins these to the top
   fonts: BrandFontAsset[]
+  // Text-style → font-family assignments (Brand Kit V2 Slice 2c). When a role is set,
+  // the Text tool uses that family for the role instead of falling back to fonts[0]/[1].
+  textStyles?: { heading?: string; subheading?: string; body?: string } | null
   // Logos — drag onto canvas from the Images drawer's "My Brand" section
   logos: BrandLogoAsset[]
   // Tagline — pre-fillable text element

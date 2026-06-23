@@ -17,7 +17,7 @@
 // drawer doesn't trigger 120 simultaneous network requests.
 
 import * as React from 'react'
-import { Check, Pin, Plus, Search, Sparkles, X } from 'lucide-react'
+import { Check, MoreVertical, Pin, Search, Sparkles, Star, X } from 'lucide-react'
 import {
   loadFont,
   loadBrandFont,
@@ -31,7 +31,7 @@ import {
   type FontCategory,
   type FontEntry,
 } from '@ilaunchify/ui'
-import { addFontToBrandKit } from '../brand-edit-actions'
+import { setBrandRoleFont } from '../brand-edit-actions'
 import { listStudioBrandKits, type StudioBrandKitOption } from '../brand-actions'
 
 interface Props {
@@ -43,6 +43,7 @@ interface Props {
 
 const PREVIEW_TEXT = 'AaBbCc 123'
 const RECENT_KEY = 'ilaunchify_design_studio_recent_fonts'
+const FAVORITES_KEY = 'ilaunchify_design_studio_fav_fonts'
 const MAX_RECENT = 8
 
 /** Quick-access mood chips. Each maps to a tag in the catalog. */
@@ -87,31 +88,50 @@ export function TextFontDrawer({
     for (const f of brandAssets.fonts) void loadBrandFont(f.family, f.webfontUrl)
   }, [brandAssets.fonts])
 
-  // "Add to Brand Kit" (Slice 2c): the 3-dot action on each font row. Adds the font
-  // to the creator's brand — directly when they have one brand, via a brand-picker
-  // popover when they have several.
+  // Row 3-dot menu (Slice 2c): "Pin font" (a personal favorite that floats to the top)
+  // and "Add to Brand → text style" (Heading / Subheading / Body, with a brand picker
+  // when the creator has more than one kit).
   const [brandOpts, setBrandOpts] = React.useState<StudioBrandKitOption[]>([])
   const [menuFamily, setMenuFamily] = React.useState<string | null>(null)
+  const [pickBrandId, setPickBrandId] = React.useState<string>(brandAssets.brandId)
   const [notice, setNotice] = React.useState<string | null>(null)
+  const [favorites, setFavorites] = React.useState<string[]>(() => readFavorites())
   React.useEffect(() => {
     listStudioBrandKits()
-      .then(setBrandOpts)
+      .then((opts) => {
+        setBrandOpts(opts)
+        setPickBrandId(opts[0]?.id ?? brandAssets.brandId)
+      })
       .catch(() => {})
-  }, [])
+  }, [brandAssets.brandId])
 
-  async function addToBrand(brandId: string, family: string) {
+  function openMenu(family: string) {
+    setPickBrandId(brandOpts[0]?.id ?? brandAssets.brandId)
+    setMenuFamily(family)
+  }
+  function toggleFavorite(family: string) {
+    setFavorites((prev) => {
+      const next = prev.includes(family)
+        ? prev.filter((f) => f !== family)
+        : [family, ...prev].slice(0, 12)
+      writeFavorites(next)
+      return next
+    })
+  }
+  async function addRoleFont(role: 'HEADING' | 'SUBHEADING' | 'BODY') {
+    if (!menuFamily) return
+    const family = menuFamily
+    const brandId = brandOpts.length > 1 ? pickBrandId : brandOpts[0]?.id ?? brandAssets.brandId
     setMenuFamily(null)
-    const res = await addFontToBrandKit(brandId, family)
-    setNotice(res.ok ? `Added “${family}” to ${res.brandName}.` : res.error)
-    window.setTimeout(() => setNotice(null), 2600)
+    const res = await setBrandRoleFont(brandId, role, family)
+    setNotice(
+      res.ok ? `Set ${res.roleLabel} font to “${family}” in ${res.brandName}.` : res.error,
+    )
+    window.setTimeout(() => setNotice(null), 3000)
   }
-  function onAddToBrand(family: string) {
-    if (brandOpts.length <= 1) {
-      void addToBrand(brandOpts[0]?.id ?? brandAssets.brandId, family)
-    } else {
-      setMenuFamily(family)
-    }
-  }
+
+  // Favorites section: pinned fonts at the top, minus the active one (it shows as selected).
+  const favoriteFamilies = favorites.filter((f) => f !== currentFamily)
 
   async function applyFont(family: string) {
     if (!canvas) return
@@ -222,6 +242,21 @@ export function TextFontDrawer({
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto">
+        {favoriteFamilies.length > 0 && (
+          <Section title="Favorites">
+            {favoriteFamilies.map((f) => (
+              <FontRow
+                key={`fav-${f}`}
+                family={f}
+                selected={f === currentFamily}
+                onPick={applyFont}
+                onPin={openMenu}
+                starred
+              />
+            ))}
+          </Section>
+        )}
+
         {documentFamilies.length > 0 && (
           <Section title="Document fonts">
             {documentFamilies.map((f) => (
@@ -230,7 +265,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onAddToBrand}
+                onPin={openMenu}
               />
             ))}
           </Section>
@@ -244,7 +279,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onAddToBrand}
+                onPin={openMenu}
                 pinned
               />
             ))}
@@ -263,7 +298,7 @@ export function TextFontDrawer({
                 family={f}
                 selected={f === currentFamily}
                 onPick={applyFont}
-                onPin={onAddToBrand}
+                onPin={openMenu}
               />
             ))}
           </Section>
@@ -276,7 +311,7 @@ export function TextFontDrawer({
               family={f.family}
               selected={f.family === currentFamily}
               onPick={applyFont}
-              onPin={onAddToBrand}
+              onPin={openMenu}
             />
           ))}
           {filtered.length === 0 && (
@@ -300,7 +335,7 @@ export function TextFontDrawer({
         </div>
       </div>
 
-      {/* Confirmation toast for "Add to Brand Kit". */}
+      {/* Confirmation toast. */}
       {notice && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
           <div className="pointer-events-auto rounded-md bg-ink-900 px-3 py-1.5 text-[12px] font-medium text-white shadow-lg">
@@ -309,7 +344,7 @@ export function TextFontDrawer({
         </div>
       )}
 
-      {/* Multi-brand picker — only when the creator has more than one brand kit. */}
+      {/* Font 3-dot menu: Pin to favorites + Add to Brand → text style. */}
       {menuFamily && (
         <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
           <button
@@ -318,24 +353,61 @@ export function TextFontDrawer({
             className="absolute inset-0 bg-ink-900/30"
             onClick={() => setMenuFamily(null)}
           />
-          <div className="relative z-10 w-full max-w-[280px] rounded-xl border border-ink-200 bg-white p-3 shadow-2xl">
-            <div className="mb-2 text-[12px] font-semibold text-ink-900">
-              Add <span className="text-pink-700">{menuFamily}</span> to…
+          <div className="relative z-10 w-full max-w-[260px] rounded-xl border border-ink-200 bg-white p-2 shadow-2xl">
+            <div className="px-2 pb-1.5 pt-1 text-[12px] font-semibold text-ink-900" style={{ fontFamily: `"${menuFamily}"` }}>
+              {menuFamily}
             </div>
-            <ul className="max-h-56 space-y-0.5 overflow-y-auto">
-              {brandOpts.map((b) => (
-                <li key={b.id}>
-                  <button
-                    type="button"
-                    onClick={() => void addToBrand(b.id, menuFamily)}
-                    className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-pink-50"
-                  >
-                    <span className="truncate">{b.name}</span>
-                    <Plus className="h-3.5 w-3.5 flex-shrink-0 text-ink-400" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+
+            {/* Pin font — personal favorite, floats to top. */}
+            <button
+              type="button"
+              onClick={() => {
+                toggleFavorite(menuFamily)
+                setMenuFamily(null)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-ink-50"
+            >
+              <Star
+                className={
+                  'h-3.5 w-3.5 flex-shrink-0 ' +
+                  (favorites.includes(menuFamily) ? 'fill-amber-400 text-amber-400' : 'text-ink-400')
+                }
+              />
+              {favorites.includes(menuFamily) ? 'Unpin from favorites' : 'Pin font (favorite)'}
+            </button>
+
+            <div className="my-1 border-t border-ink-100" />
+
+            <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+              Add to brand
+            </div>
+            {brandOpts.length > 1 && (
+              <select
+                value={pickBrandId}
+                onChange={(e) => setPickBrandId(e.target.value)}
+                className="mx-2.5 mb-1.5 w-[calc(100%-1.25rem)] rounded-md border border-ink-200 bg-white px-2 py-1 text-[12px]"
+              >
+                {brandOpts.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="px-1 pb-1 text-[11px] text-ink-500">Use this font as the brand’s…</div>
+            {(['HEADING', 'SUBHEADING', 'BODY'] as const).map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => void addRoleFont(role)}
+                className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink-800 hover:bg-pink-50"
+              >
+                <span>
+                  {role === 'HEADING' ? 'Heading' : role === 'SUBHEADING' ? 'Subheading' : 'Body'}
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-ink-400">text style</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -353,12 +425,14 @@ function FontRow({
   onPick,
   onPin,
   pinned,
+  starred,
 }: {
   family: string
   selected: boolean
   onPick: (family: string) => void | Promise<void>
   onPin?: (family: string) => void | Promise<void>
   pinned?: boolean
+  starred?: boolean
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = React.useState(() => isFontLoaded(family))
@@ -397,6 +471,8 @@ function FontRow({
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {selected ? (
           <Check className="h-3.5 w-3.5 text-pink-700 flex-shrink-0" />
+        ) : starred ? (
+          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
         ) : pinned ? (
           <Pin className="h-3 w-3 text-pink-500 flex-shrink-0" />
         ) : (
@@ -417,18 +493,18 @@ function FontRow({
           </div>
         </div>
       </div>
-      {onPin && !pinned && (
+      {onPin && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
             void onPin(family)
           }}
-          aria-label={`Add ${family} to Brand Kit`}
-          title="Add to Brand Kit"
-          className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-0.5 rounded p-1 text-ink-400 hover:text-pink-600 hover:bg-pink-50 transition-opacity"
+          aria-label={`Font options for ${family}`}
+          title="Font options"
+          className="opacity-0 group-hover:opacity-100 inline-flex items-center rounded p-1 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-opacity"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <MoreVertical className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
@@ -568,6 +644,28 @@ function readRecents(): string[] {
     return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : []
   } catch {
     return []
+  }
+}
+
+// "Pin font" favorites — personal quick-access list, persisted locally (Slice 2c).
+function readFavorites(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(FAVORITES_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeFavorites(list: string[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(list))
+  } catch {
+    // localStorage disabled / full — silently skip.
   }
 }
 

@@ -4,7 +4,7 @@
 // brand's assets through the exact same path. Logos use the Asset.publicUrl already
 // stored on the brand's logo assets.
 
-import { prisma, getBrandFontsByIds } from '@ilaunchify/db'
+import { prisma, getBrandFontsByIds, listBrandTextStyles } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { isKnownFontFamily, isCustomFontRef, customFontId } from '@ilaunchify/ui'
 import type { BrandCanvasAssets, BrandLogoAsset } from '@ilaunchify/ui'
@@ -124,6 +124,22 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     })
     .filter((f): f is NonNullable<typeof f> => f !== null)
 
+  // Text-style → font-family map (Slice 2c). Each role's fontKey resolves to a family
+  // via the already-resolved fonts (role fonts are kept in brandFontIds). A catalog
+  // family resolves to itself even if not in brandFontIds.
+  const refToFamily = new Map(fonts.map((f) => [f.id, f.family]))
+  const styleRows = await listBrandTextStyles(brand.id)
+  const roleFamily = (key: string): string | undefined =>
+    refToFamily.get(key) ?? (isKnownFontFamily(key) && !isCustomFontRef(key) ? key : undefined)
+  const textStyles: { heading?: string; subheading?: string; body?: string } = {}
+  for (const row of styleRows) {
+    const fam = roleFamily(row.fontKey)
+    if (!fam) continue
+    if (row.role === 'HEADING') textStyles.heading = fam
+    else if (row.role === 'SUBHEADING') textStyles.subheading = fam
+    else if (row.role === 'BODY') textStyles.body = fam
+  }
+
   return {
     brandId: brand.id,
     brandName: brand.name,
@@ -134,6 +150,7 @@ export async function buildBrandCanvasAssets(brand: BrandRowForAssets): Promise<
     // Catalog fonts: webfontUrl null (loaded via loadFont(family)). Custom fonts:
     // webfontUrl is the uploaded file URL → loaded via loadCustomFont(family, url).
     fonts,
+    textStyles: Object.keys(textStyles).length ? textStyles : null,
     logos: [
       mkLogo('PRIMARY', brand.logoAssetId, logoByAssetId),
       mkLogo('ICON', brand.logoIconAssetId, logoByAssetId),

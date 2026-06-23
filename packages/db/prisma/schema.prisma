@@ -1155,6 +1155,8 @@ model Brand {
   brandTemplates          BrandTemplate[]
   // Brand Kit V2 Slice 2 — creator-uploaded custom fonts (docs/BRAND_KIT_V2_PROPOSAL.md §3b).
   brandFonts              BrandFont[]
+  // Brand Kit V2 Slice 2c/4 — named text-style → font assignments (Heading/Subheading/Body).
+  brandTextStyles         BrandTextStyle[]
   products                Product[]
   templates               Template[]
   designs                 Design[]
@@ -2689,6 +2691,24 @@ model BrandFont {
   createdAt       DateTime @default(now())
   brand           Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
+  @@index([brandId])
+}
+
+/// Brand text style → font assignment (Brand Kit V2 Slice 2c / 4 foundation). Each
+/// brand maps named roles (HEADING / SUBHEADING / BODY …) to a fontKey — a FONT_CATALOG
+/// family or a `custom:<id>` ref. Slice 4 adds weight/size/case/color columns; for now
+/// it's role→font so "Add to Brand → Heading" assigns exactly which text style a font
+/// drives. One row per (brand, role).
+model BrandTextStyle {
+  id        String   @id @default(uuid())
+  brandId   String
+  role      String // 'HEADING' | 'SUBHEADING' | 'BODY' (string for additive flexibility)
+  fontKey   String // FONT_CATALOG family or `custom:<BrandFont.id>`
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, role])
   @@index([brandId])
 }
 

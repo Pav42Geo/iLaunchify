@@ -29,19 +29,20 @@ export function TextDrawer({ canvas, brandAssets }: Props) {
   const [value, setValue] = React.useState('')
   const [category, setCategory] = React.useState<ChipCategoryKey>('storage')
 
-  const headingFontAsset = brandAssets.fonts[0] ?? null
-  const bodyFontAsset = brandAssets.fonts[1] ?? null
-  const brandHeadingFont = headingFontAsset?.family ?? 'Bricolage Grotesque'
-  const brandBodyFont = bodyFontAsset?.family ?? 'Inter'
+  // Text-style roles win when assigned ("Add to Brand → Heading/Body", Slice 2c);
+  // otherwise fall back to the first/second brand fonts.
+  const brandHeadingFont =
+    brandAssets.textStyles?.heading ?? brandAssets.fonts[0]?.family ?? 'Bricolage Grotesque'
+  const brandBodyFont =
+    brandAssets.textStyles?.body ?? brandAssets.fonts[1]?.family ?? 'Inter'
   const brandFill =
     brandAssets.colorPrimary ?? brandAssets.extraSwatches[0] ?? '#0F1116'
 
-  // Ensure brand fonts (incl. uploaded custom fonts via @font-face) are loaded
-  // before they're applied, so the canvas renders the real face. (Slice 2b)
+  // Ensure brand fonts (incl. uploaded custom fonts via @font-face) are loaded before
+  // they're applied, so the canvas renders the real face. (Slice 2b)
   React.useEffect(() => {
-    if (headingFontAsset) void loadBrandFont(headingFontAsset.family, headingFontAsset.webfontUrl)
-    if (bodyFontAsset) void loadBrandFont(bodyFontAsset.family, bodyFontAsset.webfontUrl)
-  }, [headingFontAsset, bodyFontAsset])
+    for (const f of brandAssets.fonts) void loadBrandFont(f.family, f.webfontUrl)
+  }, [brandAssets.fonts])
 
   function handleAdd() {
     if (!canvas || !value.trim()) return

@@ -6,7 +6,7 @@
 // (LogosSection / ColorsSection / FontsSection / TaglineSection) need as props.
 // Ownership-guarded: only the signed-in creator's own brands.
 
-import { prisma, listBrandFonts } from '@ilaunchify/db'
+import { prisma, listBrandFonts, setBrandTextStyle, type BrandTextRole } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -189,6 +189,51 @@ export async function addFontToBrandKit(
     data: { brandFontIds: [...brand.brandFontIds, fontRef] },
   })
   return { ok: true, brandName: brand.name }
+}
+
+// Assign a font to a specific brand TEXT STYLE (Heading/Subheading/Body) from the Text
+// font drawer's 3-dot → "Add to Brand → <style>" (Slice 2c). Records the role→font
+// mapping AND keeps the font in brandFontIds so the canvas can load/render it. Owner-
+// guarded. Returns the brand name + role label for the confirmation toast.
+const ROLE_LABELS: Record<BrandTextRole, string> = {
+  HEADING: 'Heading',
+  SUBHEADING: 'Subheading',
+  BODY: 'Body',
+}
+// Keep room for distinct fonts across all roles (heading/subheading/body) + the manual
+// 3-font picker, without letting the list grow unbounded.
+const MAX_BRAND_FONTS = 6
+
+export async function setBrandRoleFont(
+  brandId: string,
+  role: BrandTextRole,
+  fontRef: string,
+): Promise<{ ok: true; brandName: string; roleLabel: string } | { ok: false; error: string }> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (!isKnownFontFamily(fontRef)) return { ok: false, error: 'That font is not available.' }
+
+  const brand = await prisma.brand.findFirst({
+    where: { id: brandId, creatorProfile: { userId: user.id } },
+    select: { id: true, name: true, brandFontIds: true },
+  })
+  if (!brand) return { ok: false, error: 'That brand kit is not on your account.' }
+
+  // Ensure the role font is present in brandFontIds so it resolves (family + URL) for
+  // the canvas; trim oldest extras beyond the cap, never dropping the new one.
+  let fontIds = brand.brandFontIds
+  if (!fontIds.includes(fontRef)) {
+    fontIds = [...fontIds, fontRef].slice(-MAX_BRAND_FONTS)
+  }
+  if (fontIds !== brand.brandFontIds) {
+    await prisma.brand.update({ where: { id: brand.id }, data: { brandFontIds: fontIds } })
+  }
+
+  const saved = await setBrandTextStyle(brand.id, role, fontRef)
+  if (!saved) {
+    return { ok: false, error: 'Text styles need a database update — run db push, then retry.' }
+  }
+  return { ok: true, brandName: brand.name, roleLabel: ROLE_LABELS[role] }
 }
 
 // Quick-create a new brand kit from inside the Studio (name only — handle is derived).

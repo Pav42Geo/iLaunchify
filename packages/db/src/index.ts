@@ -55,6 +55,14 @@ export {
   countBrandFonts,
   type BrandFontRow,
 } from './brand-fonts'
+// Brand text-style → font assignments (Brand Kit V2 Slice 2c — Heading/Subheading/Body).
+export {
+  listBrandTextStyles,
+  setBrandTextStyle,
+  clearBrandTextStyle,
+  type BrandTextRole,
+  type BrandTextStyleRow,
+} from './brand-text-styles'
 export {
   getRoleCapabilityMatrix,
   getRoleCapabilities,
