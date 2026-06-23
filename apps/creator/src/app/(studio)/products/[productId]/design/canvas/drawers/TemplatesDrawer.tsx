@@ -19,6 +19,7 @@ import {
   loadStudioTemplateLibrary,
   getStudioBrandTemplateJson,
   getStudioPremiumTemplateJson,
+  getStudioRegularLibraryTemplateJson,
 } from '../brand-actions'
 
 interface Props {
@@ -47,6 +48,8 @@ export function TemplatesDrawer({
   onSaveAsTemplate,
 }: Props) {
   const [matched, setMatched] = React.useState<MatchedTemplate[]>([])
+  // ids of admin REGULAR-library templates (system brand) — apply via their own loader.
+  const [regularIds, setRegularIds] = React.useState<Set<string>>(new Set())
   const [surfaceLabel, setSurfaceLabel] = React.useState(dieCut.name)
   const [loading, setLoading] = React.useState(true)
   const [notice, setNotice] = React.useState<string | null>(null)
@@ -74,7 +77,12 @@ export function TemplatesDrawer({
         setLoading(false)
         return
       }
-      const sections = matchTemplatesToProduct([lib.component], domain, [...lib.premium, ...lib.own])
+      setRegularIds(new Set(lib.regular.map((t) => t.id)))
+      const sections = matchTemplatesToProduct([lib.component], domain, [
+        ...lib.premium,
+        ...lib.regular,
+        ...lib.own,
+      ])
       const section = sections[0]
       setSurfaceLabel(section?.label ?? dieCut.name)
       setMatched(section ? section.groups.flatMap((g) => g.templates) : [])
@@ -129,7 +137,9 @@ export function TemplatesDrawer({
     if (!ok) return
     const res = t.isPremium
       ? await getStudioPremiumTemplateJson(t.id)
-      : await getStudioBrandTemplateJson(activeBrandId, t.id)
+      : regularIds.has(t.id)
+        ? await getStudioRegularLibraryTemplateJson(t.id)
+        : await getStudioBrandTemplateJson(activeBrandId, t.id)
     if (res.ok) loadJson(res.canvasJson)
     else flash(res.error)
   }

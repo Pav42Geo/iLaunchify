@@ -16,6 +16,8 @@ import {
   getPremiumTemplate,
   listMatchablePremiumTemplates,
   listMatchableBrandTemplates,
+  listMatchableRegularLibraryTemplates,
+  getSystemTemplatesBrandId,
   type BrandTemplateValues,
   type PremiumTemplateValues,
   type MatchableTemplateRow,
@@ -176,7 +178,11 @@ export async function listStudioBrandTemplates(brandId: string): Promise<BrandTe
 
 export interface StudioTemplateLibrary {
   component: ProductComponentDieline
+  /** Admin premium library — Agency only (empty for lower tiers). */
   premium: MatchableTemplateRow[]
+  /** Admin regular library — available to all tiers. */
+  regular: MatchableTemplateRow[]
+  /** The creator's own saved templates. */
   own: MatchableTemplateRow[]
 }
 
@@ -219,7 +225,9 @@ export async function loadStudioTemplateLibrary(input: {
   }
 
   const tier = await getCreatorTier(user.id)
+  // Premium library is Agency-gated; the regular library is open to all tiers.
   const premium = canRecolorTemplate(tier) ? await listMatchablePremiumTemplates(input.domain) : []
+  const regular = await listMatchableRegularLibraryTemplates(input.domain)
 
   const brand = await prisma.brand.findFirst({
     where: { id: input.brandId, creatorProfile: { userId: user.id } },
@@ -227,7 +235,20 @@ export async function loadStudioTemplateLibrary(input: {
   })
   const own = brand ? await listMatchableBrandTemplates(input.brandId, input.domain) : []
 
-  return { component, premium, own }
+  return { component, premium, regular, own }
+}
+
+/** A regular admin-library template's Fabric JSON. Open to all tiers (only premium is
+ *  Agency-gated). Reads the system templates brand's isPremium=false rows. */
+export async function getStudioRegularLibraryTemplateJson(
+  templateId: string,
+): Promise<BrandTemplateJsonResult> {
+  await requireUser()
+  const systemBrandId = await getSystemTemplatesBrandId()
+  if (!systemBrandId) return { ok: false, error: 'Template not found.' }
+  const json = await getBrandTemplateCanvasJson(systemBrandId, templateId)
+  if (!json) return { ok: false, error: 'Template not found.' }
+  return { ok: true, canvasJson: json }
 }
 
 /** A premium template's Fabric JSON to load onto the canvas. Agency-gated. */
