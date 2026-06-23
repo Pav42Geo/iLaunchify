@@ -20,7 +20,7 @@ import {
   type FrameLayout,
   type NormBox,
 } from '@ilaunchify/ui'
-import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape } from '../actions'
+import { curateDieline, saveAdminDielineFrames, saveAdminDielineGeometry, mapDielineToShape, autoParseDieline } from '../actions'
 
 interface ShapeOption {
   id: string
@@ -125,6 +125,26 @@ export function DielineCurator({
       toast.success('Normalized & verified')
       router.push('/dielines')
       router.refresh()
+    })
+  }
+
+  function detect() {
+    start(async () => {
+      const r = await autoParseDieline(dielineId)
+      if (!r.ok) {
+        toast.error(r.error)
+        return
+      }
+      setSpec({
+        widthMm: r.detected.widthMm,
+        heightMm: r.detected.heightMm,
+        bleedMm: r.detected.bleedMm,
+        safeAreaMm: r.detected.safeAreaMm,
+      })
+      toast.success(`Detected at ${Math.round(r.detected.parseScore * 100)}% — review before saving`)
+      if (r.detected.unrecognized.length > 0) {
+        toast.warning(`${r.detected.unrecognized.length} unrecognized element${r.detected.unrecognized.length === 1 ? '' : 's'} — check nothing was dropped`)
+      }
     })
   }
 
@@ -249,9 +269,19 @@ export function DielineCurator({
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-5">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-pink-600" />
-          <h2 className="text-[13.5px] font-bold text-ink-900">Standardize the spec</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-pink-600" />
+            <h2 className="text-[13.5px] font-bold text-ink-900">Standardize the spec</h2>
+          </div>
+          <button
+            onClick={detect}
+            disabled={pending}
+            title="Auto-detect trim / bleed / safe from the original SVG"
+            className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-[11.5px] font-semibold text-pink-700 hover:bg-pink-100 disabled:opacity-50"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Detect from original
+          </button>
         </div>
         <p className="mt-1 text-[12px] text-ink-500">
           Trim, bleed and safe area are normalized to the house standard. Fold lines and named surfaces from the

@@ -119,6 +119,7 @@ export {
   type DielineFold,
   type DielineSurface,
 } from './canvas/dielineSvg'
+export { parseDielineSvg, type DielineParseResult, type ParsedBox as DielineParsedBox, type ParsedFold as DielineParsedFold } from './canvas/dielineParse'
 // C9.g — shared interactive die-line frame editor (partner studio + admin curator)
 export {
   DielineFrameEditor,

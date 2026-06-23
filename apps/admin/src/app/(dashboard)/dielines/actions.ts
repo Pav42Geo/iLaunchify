@@ -6,10 +6,11 @@
 import { prisma, setDielineCanonicalShape } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { uploadFile, dielineNormalizedKey } from '@ilaunchify/storage'
+import { uploadFile, dielineNormalizedKey, getSignedReadUrl } from '@ilaunchify/storage'
 import {
   dielineSvgFromSpec,
   aspectBucketFor,
+  parseDielineSvg,
   type DielineFold,
   type DielineSurface,
   type FrameLayout,
@@ -242,6 +243,64 @@ export async function mapDielinesToShape(dielineIds: string[], shapeId: string |
   }
   revalidatePath('/dielines')
   return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// Auto-parse (C9.d / DIELINE_MANAGEMENT_UX §4). Read the partner's ORIGINAL SVG
+// die-line and recover the structured spec (trim/bleed/safe) + confidence +
+// unrecognized elements (coverage). SVG only for now; PDF/AI = future bg job.
+// -----------------------------------------------------------------------------
+
+export interface AutoParseDetected {
+  widthMm: number
+  heightMm: number
+  bleedMm: number
+  safeAreaMm: number
+  parseScore: number
+  unrecognized: string[]
+}
+type AutoParseResult = { ok: true; detected: AutoParseDetected } | { ok: false; error: string }
+
+export async function autoParseDieline(dielineId: string): Promise<AutoParseResult> {
+  await requireRole('ADMIN')
+  const dl = await prisma.packagingDieline.findUnique({
+    where: { id: dielineId },
+    select: { id: true, originalFileFormat: true, partnerFile: { select: { r2Key: true } } },
+  })
+  if (!dl) return { ok: false, error: 'Die-line not found.' }
+  if (dl.originalFileFormat !== 'SVG' || !dl.partnerFile?.r2Key) {
+    return { ok: false, error: 'Auto-parse supports SVG originals for now (PDF/AI parsing is a background job, coming).' }
+  }
+
+  let svg: string
+  try {
+    const url = await getSignedReadUrl(dl.partnerFile.r2Key)
+    svg = await fetch(url).then((r) => r.text())
+  } catch {
+    return { ok: false, error: 'Could not read the original file from storage.' }
+  }
+
+  const p = parseDielineSvg(svg)
+  if (!p.trimBox) {
+    return { ok: false, error: 'No trim/cut line detected in the SVG. Set the spec manually.' }
+  }
+  // Detected boxes are in user units; die-line SVGs are conventionally authored
+  // in mm, so we read them as mm (the admin verifies via the Conversion Verifier).
+  const trim = p.trimBox
+  const bleedMm = p.bleedBox ? Math.max(0, Math.round((trim.x - p.bleedBox.x) * 100) / 100) : 3
+  const safeAreaMm = p.safeBox ? Math.max(0, Math.round((p.safeBox.x - trim.x) * 100) / 100) : 3
+
+  return {
+    ok: true,
+    detected: {
+      widthMm: Math.round(trim.w * 100) / 100,
+      heightMm: Math.round(trim.h * 100) / 100,
+      bleedMm,
+      safeAreaMm,
+      parseScore: p.parseAccuracyScore,
+      unrecognized: p.unrecognized,
+    },
+  }
 }
 
 export async function sendBackDieline(dielineId: string): Promise<Result> {
