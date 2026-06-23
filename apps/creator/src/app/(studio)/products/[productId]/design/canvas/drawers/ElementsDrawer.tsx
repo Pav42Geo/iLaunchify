@@ -79,6 +79,7 @@ export function ElementsDrawer({ canvas, brandAssets, productId }: Props) {
 
   // ---- Overview: one horizontal rail per group ----
   const logos = brandAssets.logos.filter((l) => l.publicUrl)
+  const brandImages = brandAssets.brandImages.filter((i) => i.url)
   const previewIcons = ICON_COLLECTIONS.flatMap((c) => c.icons).slice(0, 16)
   const brandSwatches = Array.from(
     new Set(
