@@ -985,6 +985,7 @@ export function CanvasLayoutShell({
             onToggle={toggleTool}
             onHover={scheduleOpen}
             partnerOffersFinishes={partnerOffersFinishes}
+            templateAuthorMode={!!templateAuthor}
           />
 
           {/* Drawer slot — font drawer (DS-66f) takes precedence over the
@@ -1465,6 +1466,7 @@ function LeftRail({
   onToggle,
   onHover,
   partnerOffersFinishes,
+  templateAuthorMode = false,
 }: {
   activeTool: ToolKey | null
   onToggle: (k: ToolKey) => void
@@ -1472,11 +1474,17 @@ function LeftRail({
   onHover: (k: ToolKey) => void
   /** DS-70b — controls whether the Finishes icon renders. */
   partnerOffersFinishes: boolean
+  /** Admin template-author mode — hide product-coupled tools (no real product). */
+  templateAuthorMode?: boolean
 }) {
   // Filter out conditional tools whose gates aren't met. V1 always
   // hides Finishes; later phases flip the gate per-product.
+  // In admin template-author mode there is no product, so tools that read product
+  // data (Product / Label facts / Components / Mandatory phrases) are hidden.
+  const TEMPLATE_AUTHOR_HIDDEN: ToolKey[] = ['product', 'label', 'components', 'phrases']
   const visibleTools = TOOLS.filter((t) => {
     if (t.conditional === 'finishes') return partnerOffersFinishes
+    if (templateAuthorMode && TEMPLATE_AUTHOR_HIDDEN.includes(t.key)) return false
     return true
   })
   return (
