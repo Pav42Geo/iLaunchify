@@ -159,6 +159,12 @@ export function DielineOpsWorkspace({ rows, shapeOptions }: { rows: OpsRow[]; sh
           Triage partner-submitted die-lines, normalize their geometry + mandatory-element frames, and activate them for
           the Design Studio. Originals are never modified.
         </p>
+        <Link
+          href="/dielines/readiness"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
+        >
+          <Boxes className="h-3.5 w-3.5" /> Product readiness →
+        </Link>
       </div>
 
       {/* KPI strip */}
