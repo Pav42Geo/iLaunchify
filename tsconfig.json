@@ -35,7 +35,8 @@
       "@ilaunchify/academy": ["./packages/academy/src"],
       "@ilaunchify/nutrition": ["./packages/nutrition/src"],
       "@ilaunchify/support": ["./packages/support/src"],
-      "@ilaunchify/ai-design": ["./packages/ai-design/src"]
+      "@ilaunchify/ai-design": ["./packages/ai-design/src"],
+      "@ilaunchify/imagegen": ["./packages/imagegen/src"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],

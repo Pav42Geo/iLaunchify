@@ -351,7 +351,72 @@ of the die-line stack.
 
 ---
 
-## 12. The one-sentence pitch
+## 12. Provider & economics (locked direction 2026-06-23)
+
+### Stack
+- **Raster backgrounds/illustration** → **fal.ai FLUX.1 [dev] + ControlNet**, the
+  `flux-general` **inpainting** endpoint (takes ControlNet + IP-Adapter + LoRA). We
+  feed it the keep-clear mask (§2) so it paints CREATIVE zones only; the Brand Kit
+  logo/board rides in as the **IP-Adapter reference** for on-brand output. ~$0.075/MP
+  (ControlNet rate), billed rounded up to the nearest MP. Flux [dev] is non-commercial
+  weights but **hosted fal inference is licensed for commercial use** — keep it on fal.
+- **In-frame decorative type** → **Recraft** (v3/v4), **vector/SVG output** ($0.08),
+  best-in-class text fidelity + palette control. Drops straight into the Fabric/SVG
+  layer, stays crisp. CREATIVE frames only — never legal/mandatory text.
+- **Finalize** → an **upscaler**, not native print-res generation. Upscaling an approved
+  ~1 MP draft to 300 DPI is cheaper and preserves the chosen composition.
+
+### Two-stage cost model (the hinge)
+Drafts are cheap (~1 MP each); print resolution is the expensive lever and only paid on
+the **one** finalized design — not all four drafts.
+- **Draft cycle** (4 concepts @ ~1 MP, Flux+ControlNet): **~$0.32**.
+- **Finalize** (upscale the chosen concept to print res + one Recraft vector pass):
+  a 120×180 mm panel ≈ 3 MP ≈ **~$0.23**; a large carton 8–16 MP ≈ **$0.60–1.20**.
+
+### Tiering (Pavel's resolution-vs-quantity idea → a per-period megapixel budget)
+Sell **two meters**, not a confusing resolution slider:
+1. **Draft generations / period** — cheap, generous.
+2. **Finalize megapixel budget / period** — the real lever. A creator spends it on
+   **many small labels OR a few big cartons** (same budget, their choice), with a
+   **max single-render res** cap per tier. Because MP is exactly fal's billing unit,
+   margin is predictable.
+
+Starting numbers (DEFAULT_TIER_LIMITS in `@ilaunchify/imagegen` — **Pavel tunes**):
+
+| | Maker | Builder | Agency |
+|---|---|---|---|
+| Draft cycles / period | 0 | 30 | 120 |
+| Finalize MP budget | 0 | 36 | 240 |
+| Max single render | — | 6 MP (~A5@300) | 16 MP (large cartons) |
+| Stored-template storage | — | 500 MB | 5 GB |
+
+Maker = premium templates + recolour only (no raw generation). Admin = unmetered.
+Top-ups (extra credits, extra storage) ride the existing Stripe stack.
+
+### Storage cap
+A finalized print-res PNG of one panel is **5–30 MB**; a saved template also keeps the
+composite SVG + thumbnail. So storage is a real R2 cost → **per-tier MB cap + a usage
+ledger** (`GenerationStorageUsage`, KB-precision). Save debits bytes; over-cap blocks the
+save with an upgrade/delete prompt. Drafts auto-expire (~30 days); finalized templates
+persist.
+
+### Build state (P3 foundation, no key needed)
+- `@ilaunchify/imagegen` SHIPPED: the **provider seam** (`ImageGenProvider` —
+  `generatePanels`/`generateVectorType`/`upscale`; `providerStatus(env)` reports
+  configured/missing for `FAL_KEY`/`RECRAFT_API_KEY`) + the **pure metering engine**
+  (`tierLimits`, `panelMegapixels`, `quoteDraft`, `quoteFinalize`, `canStartDraft`/
+  `canFinalize`/`canStore`, `estimateStoredTemplateBytes`). 10 golden cases.
+- Schema SHIPPED (additive, needs Mac `db push`): `AiDesignGeneration`,
+  `AiGenerationUsage`, `AiGenerationCredit`, `GenerationStorageUsage` + `AiGenScope`/
+  `AiGenStatus` enums.
+- **Still gated on Pavel:** final price points + allotments, and the fal/Recraft keys.
+- **P3 next:** fal + Recraft adapters implementing `ImageGenProvider`; `AiDesignGeneration`
+  FSM + usage debits via the metering engine; reuse the Tier-0.4 AI rate-limiter; keys in
+  the Integrations registry.
+
+---
+
+## 13. The one-sentence pitch
 
 > Describe it in plain words; we generate four on-brand concepts **into your real
 > die-line**, drop in your **true** ingredients, allergens, Nutrition Facts, barcode and
