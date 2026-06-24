@@ -8,6 +8,7 @@
 // ADMIN_VERIFIED + ACTIVE.
 
 import { useMemo, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CheckCircle2, FileWarning, ShieldCheck, SlidersHorizontal, LayoutGrid, ArrowLeft, Check, Boxes, Sparkles, Palette, Layers, Maximize2, X, Box, Square } from 'lucide-react'
@@ -513,11 +514,37 @@ export function DielineCurator({
           view={expandView}
           setView={setExpandView}
           surfaceBg={surfaceBg}
+          shape={shape3dForCategory(currentShapeCategory)}
+          widthMm={spec.widthMm}
+          heightMm={spec.heightMm}
+          baseColor={substrateById(substrate).chip}
           onClose={() => setExpanded(false)}
         />
       )}
     </div>
   )
+}
+
+// Three.js viewer — client-only (WebGL needs window). Dynamic-import keeps it
+// out of the SSR graph, matching how the Fabric canvas components are mounted.
+const Dieline3DViewer = dynamic(
+  () => import('@ilaunchify/ui').then((m) => m.Dieline3DViewer),
+  {
+    ssr: false,
+    loading: () => <p className="text-[12px] text-ink-400">Loading 3D…</p>,
+  },
+)
+
+function shape3dForCategory(category: string | null): 'BOX' | 'CYLINDER' | 'FLAT' {
+  switch ((category ?? '').toUpperCase()) {
+    case 'BOX_PANEL':
+      return 'BOX'
+    case 'BOTTLE_WRAP':
+    case 'TUB_LID':
+      return 'CYLINDER'
+    default:
+      return 'FLAT'
+  }
 }
 
 function PreviewDockModal({
@@ -526,6 +553,10 @@ function PreviewDockModal({
   view,
   setView,
   surfaceBg,
+  shape,
+  widthMm,
+  heightMm,
+  baseColor,
   onClose,
 }: {
   svg: string
@@ -533,6 +564,10 @@ function PreviewDockModal({
   view: '2d' | '3d'
   setView: (v: '2d' | '3d') => void
   surfaceBg: string
+  shape: 'BOX' | 'CYLINDER' | 'FLAT'
+  widthMm: number
+  heightMm: number
+  baseColor: string
   onClose: () => void
 }) {
   return (
@@ -561,27 +596,25 @@ function PreviewDockModal({
           </button>
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center overflow-auto p-8" style={{ background: surfaceBg }}>
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden p-8" style={{ background: surfaceBg }}>
           {view === '2d' ? (
-            <div className="max-h-full max-w-[640px] [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div className="max-h-full max-w-[640px] overflow-auto [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           ) : (
-            // 3D canvas slot — the Three.js viewer mounts here once the dependency
-            // is installed (pnpm add three @types/three). Until then, a 2D thumb +
-            // hint keeps the dock fully usable.
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-44 rounded-lg border border-ink-200 bg-white p-3 [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
-              <div className="max-w-sm">
-                <p className="text-[13px] font-semibold text-ink-800">3D fold preview</p>
-                <p className="mt-1 text-[12px] text-ink-500">
-                  Renders the normalized die-line wrapped on its 3D structure with an Open ⇄ Close fold slider — a
-                  mis-folded box reveals a parse error at a glance. Enable by adding <code className="rounded bg-ink-100 px-1">three</code> to the workspace.
-                </p>
-                {originalUrl && (
-                  <a href={originalUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[12px] font-semibold text-pink-700 hover:underline">
-                    Open the original file ↗
-                  </a>
-                )}
-              </div>
+            // 3D fold preview — the normalized die-line wrapped on its structure.
+            // A mis-folded box reveals a parse error at a glance (§8).
+            <div className="flex h-full w-full max-w-3xl flex-col">
+              <Dieline3DViewer
+                shape={shape}
+                widthMm={widthMm}
+                heightMm={heightMm}
+                textureSvg={svg}
+                baseColor={baseColor}
+              />
+              {originalUrl && (
+                <a href={originalUrl} target="_blank" rel="noopener noreferrer" className="mt-1 shrink-0 self-center text-[11px] font-semibold text-pink-700 hover:underline">
+                  Compare with the original file ↗
+                </a>
+              )}
             </div>
           )}
         </div>
