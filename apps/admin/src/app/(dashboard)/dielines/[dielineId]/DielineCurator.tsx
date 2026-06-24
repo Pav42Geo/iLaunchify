@@ -380,7 +380,7 @@ export function DielineCurator({
           <button
             onClick={detect}
             disabled={pending}
-            title="Auto-detect trim / bleed / safe from the original SVG"
+            title="Auto-detect trim / bleed / safe from the original (SVG geometry or PDF/AI page boxes)"
             className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-[11.5px] font-semibold text-pink-700 hover:bg-pink-100 disabled:opacity-50"
           >
             <Sparkles className="h-3.5 w-3.5" /> Detect from original
@@ -448,7 +448,12 @@ export function DielineCurator({
           {report && (
             <div className="mt-3 rounded-lg border border-ink-100 bg-white p-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-600">Detection report</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-600">
+                  Detection report
+                  <span className="ml-1.5 rounded border border-ink-200 bg-zinc-50 px-1 py-px text-[9.5px] font-semibold tracking-normal text-ink-500">
+                    {report.source === 'pdf' ? 'PDF page boxes' : 'SVG geometry'}
+                  </span>
+                </p>
                 <span className="rounded-full border border-ink-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-700">
                   {Math.round(report.parseScore * 100)}% overall
                 </span>
@@ -476,6 +481,16 @@ export function DielineCurator({
                 <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-emerald-700">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Every element accounted for — no coverage gaps.
                 </p>
+              )}
+              {report.separations && report.separations.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-400">Spot colours / layers:</span>
+                  {report.separations.slice(0, 8).map((s) => (
+                    <span key={s} className="rounded border border-sky-200 bg-sky-50 px-1.5 py-px text-[10.5px] font-medium text-sky-700">
+                      {s}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}

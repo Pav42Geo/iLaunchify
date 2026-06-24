@@ -11,6 +11,8 @@ import {
   dielineSvgFromSpec,
   aspectBucketFor,
   parseDielineSvg,
+  parsePdfDieline,
+  type PdfDielineResult,
   type DielineFold,
   type DielineSurface,
   type FrameLayout,
@@ -246,9 +248,16 @@ export async function mapDielinesToShape(dielineIds: string[], shapeId: string |
 }
 
 // -----------------------------------------------------------------------------
-// Auto-parse (C9.d / DIELINE_MANAGEMENT_UX §4). Read the partner's ORIGINAL SVG
-// die-line and recover the structured spec (trim/bleed/safe) + confidence +
-// unrecognized elements (coverage). SVG only for now; PDF/AI = future bg job.
+// Auto-parse (C9.d / DIELINE_MANAGEMENT_UX §4). Read the partner's ORIGINAL file
+// and recover the structured spec (trim/bleed/safe) + confidence + unrecognized
+// elements (coverage). Two readers:
+//   • SVG → geometry recognizer (parseDielineSvg): layer name → stroke colour →
+//     size-rank, with exact box + fold geometry.
+//   • PDF / AI → parsePdfDieline: PDF page boxes (TrimBox/BleedBox/ArtBox) give
+//     authoritative trim + bleed; separation / OCG layer names declare the line
+//     types. Geometry of fold/cut lines is confirmed by the admin in Frames.
+// DXF and anything else → set the spec manually.
+// The admin always verifies in the Conversion Verifier before saving.
 // -----------------------------------------------------------------------------
 
 export interface AutoParseDetected {
@@ -261,8 +270,34 @@ export interface AutoParseDetected {
   confidence: { trim: number; bleed: number; safe: number; folds: number }
   /** Outline of exactly what the parser detected (house colors) for the report. */
   detectedSvg: string
+  /** Source reader — lets the report explain how the dims were recovered. */
+  source: 'svg' | 'pdf'
+  /** Spot-colour / layer names recovered from a PDF/AI (empty for SVG). */
+  separations?: string[]
 }
 type AutoParseResult = { ok: true; detected: AutoParseDetected } | { ok: false; error: string }
+
+const n2 = (v: number) => Math.round(v * 100) / 100
+
+/** Schematic outline (house colours) of the boxes a PDF/AI parse recovered. */
+function pdfDetectedSvg(r: PdfDielineResult): string {
+  const outer = r.bleedBox ?? r.mediaBox ?? r.trimBox
+  if (!outer) return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>'
+  const ox = outer.x
+  const oy = outer.y
+  const rect = (b: { x: number; y: number; w: number; h: number }, stroke: string, dash?: string) =>
+    `<rect x="${n2(b.x - ox)}" y="${n2(b.y - oy)}" width="${n2(b.w)}" height="${n2(b.h)}" fill="none" stroke="${stroke}" stroke-width="0.4"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`
+  const parts: string[] = []
+  if (r.bleedBox) parts.push(rect(r.bleedBox, '#9AA0A6', '2 1.5'))
+  if (r.trimBox ?? r.cropBox ?? r.mediaBox) parts.push(rect((r.trimBox ?? r.cropBox ?? r.mediaBox)!, '#00AEEF'))
+  if (r.artBox) parts.push(rect(r.artBox, '#34A853', '1 1'))
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n2(outer.w)} ${n2(outer.h)}">` +
+    `<rect x="0" y="0" width="${n2(outer.w)}" height="${n2(outer.h)}" fill="#FFFFFF"/>` +
+    parts.join('') +
+    `</svg>`
+  )
+}
 
 export async function autoParseDieline(dielineId: string): Promise<AutoParseResult> {
   await requireRole('ADMIN')
@@ -271,8 +306,48 @@ export async function autoParseDieline(dielineId: string): Promise<AutoParseResu
     select: { id: true, originalFileFormat: true, partnerFile: { select: { r2Key: true } } },
   })
   if (!dl) return { ok: false, error: 'Die-line not found.' }
-  if (dl.originalFileFormat !== 'SVG' || !dl.partnerFile?.r2Key) {
-    return { ok: false, error: 'Auto-parse supports SVG originals for now (PDF/AI parsing is a background job, coming).' }
+  if (!dl.partnerFile?.r2Key) {
+    return { ok: false, error: 'No original file is attached to this die-line.' }
+  }
+  const fmt = dl.originalFileFormat
+
+  // ---- PDF / Illustrator: read page boxes + separation / layer names. ----
+  if (fmt === 'PDF' || fmt === 'AI') {
+    let pdfStr: string
+    try {
+      const url = await getSignedReadUrl(dl.partnerFile.r2Key)
+      const ab = await fetch(url).then((res) => res.arrayBuffer())
+      pdfStr = Buffer.from(new Uint8Array(ab)).toString('latin1')
+    } catch {
+      return { ok: false, error: 'Could not read the original file from storage.' }
+    }
+    const r = parsePdfDieline(pdfStr)
+    if (r.trimSource === 'none') {
+      return {
+        ok: false,
+        error: 'No page box (TrimBox/MediaBox) found — the PDF is likely compressed. Upload an SVG or set the spec manually.',
+      }
+    }
+    return {
+      ok: true,
+      detected: {
+        widthMm: r.widthMm,
+        heightMm: r.heightMm,
+        bleedMm: r.bleedMm || 3,
+        safeAreaMm: r.safeAreaMm || 3,
+        parseScore: r.parseAccuracyScore,
+        unrecognized: r.unrecognized,
+        confidence: r.confidence,
+        detectedSvg: pdfDetectedSvg(r),
+        source: 'pdf',
+        separations: r.separations,
+      },
+    }
+  }
+
+  // ---- SVG: full geometry recognizer. ----
+  if (fmt !== 'SVG') {
+    return { ok: false, error: `Auto-parse supports SVG and PDF/AI originals. ${fmt ?? 'This format'} — set the spec manually.` }
   }
 
   let svg: string
@@ -319,6 +394,7 @@ export async function autoParseDieline(dielineId: string): Promise<AutoParseResu
       unrecognized: p.unrecognized,
       confidence: p.confidence,
       detectedSvg,
+      source: 'svg',
     },
   }
 }

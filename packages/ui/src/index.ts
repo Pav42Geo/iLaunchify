@@ -120,6 +120,7 @@ export {
   type DielineSurface,
 } from './canvas/dielineSvg'
 export { parseDielineSvg, type DielineParseResult, type ParsedBox as DielineParsedBox, type ParsedFold as DielineParsedFold } from './canvas/dielineParse'
+export { parsePdfDieline, type PdfDielineResult, type PdfDielineBox } from './canvas/dielinePdf'
 export { SUBSTRATE_SWATCHES, substrateById, defaultSubstrateId, type SubstrateSwatch } from './canvas/substrates'
 export { Dieline3DViewer, shapeKindForCategory, type Dieline3DViewerProps, type DielineShapeKind } from './canvas/Dieline3DViewer'
 // C9.g — shared interactive die-line frame editor (partner studio + admin curator)
