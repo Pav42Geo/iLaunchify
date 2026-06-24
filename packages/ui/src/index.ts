@@ -133,6 +133,7 @@ export {
   type SurfaceDims,
   type CompositeInput,
 } from './canvas/aiComposite'
+export { planGeneration, type PlanGenerationInput, type GenerationPlan } from './canvas/aiPlan'
 // C9.g — shared interactive die-line frame editor (partner studio + admin curator)
 export {
   DielineFrameEditor,

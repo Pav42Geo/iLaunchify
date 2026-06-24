@@ -16,6 +16,7 @@
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
+    "@ilaunchify/ai-design": "workspace:*",
     "@fontsource/bricolage-grotesque": "^5.2.10",
     "@fontsource/fraunces": "^5.2.9",
     "@fontsource/inter": "^5.2.8",
