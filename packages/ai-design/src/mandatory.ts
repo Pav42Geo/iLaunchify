@@ -120,6 +120,61 @@ export function requiredElements(domain: LabelingDomain, _market: MarketCode = '
   return US_PACKS[domain].slice()
 }
 
+/**
+ * Bridge: which mandatory element(s) a die-line FRAME satisfies, given the domain.
+ * Takes the FrameKind as a plain string so this engine stays dependency-free (the
+ * names mirror @ilaunchify/ui's FrameKind). The facts slot resolves to the domain's
+ * specific panel; the ingredients slot resolves to INCI for cosmetics. Ambiguous
+ * frames (PHRASES) return [] — the app marks those satisfied explicitly when it
+ * renders the actual disclaimer/warning/direction text.
+ */
+export function elementKindsForFrame(frameKind: string, domain: LabelingDomain): LabelElementKind[] {
+  switch (frameKind) {
+    case 'NUTRITION_FACTS':
+      // The single "facts" frame slot resolves to the domain's panel.
+      switch (domain) {
+        case 'FOOD':
+          return ['NUTRITION_FACTS']
+        case 'DIETARY_SUPPLEMENT':
+          return ['SUPPLEMENT_FACTS']
+        case 'OTC':
+          return ['DRUG_FACTS']
+        case 'PET_PRODUCT':
+          return ['GUARANTEED_ANALYSIS']
+        case 'COSMETIC':
+          return [] // cosmetics have no facts panel
+      }
+      return []
+    case 'INGREDIENTS':
+      return domain === 'COSMETIC' ? ['INCI_DECLARATION'] : ['INGREDIENTS']
+    case 'ALLERGENS':
+      return ['ALLERGENS']
+    case 'STATEMENT_OF_IDENTITY':
+      return ['STATEMENT_OF_IDENTITY']
+    case 'NET_QUANTITY':
+      return ['NET_QUANTITY']
+    case 'MANUFACTURER':
+      return ['MANUFACTURER']
+    case 'BARCODE':
+      return ['BARCODE']
+    case 'RECYCLING_MARK':
+      return ['RECYCLING_MARK']
+    case 'CERTIFICATIONS':
+      return ['CERTIFICATIONS']
+    case 'LABELING_SYMBOL':
+      return domain === 'COSMETIC' ? ['PAO_SYMBOL'] : []
+    default:
+      return [] // LOGO/IMAGERY/CUSTOM/PHRASES/COMPOSTABILITY/DISPOSAL — no mandatory element
+  }
+}
+
+/** Collapse the frames present on a design into the set of mandatory elements satisfied. */
+export function satisfiedElementsFromFrames(frameKinds: ReadonlyArray<string>, domain: LabelingDomain): LabelElementKind[] {
+  const out = new Set<LabelElementKind>()
+  for (const fk of frameKinds) for (const ek of elementKindsForFrame(fk, domain)) out.add(ek)
+  return [...out]
+}
+
 export interface ComplianceReport {
   domain: LabelingDomain
   market: MarketCode

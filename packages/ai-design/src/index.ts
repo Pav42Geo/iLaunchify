@@ -10,6 +10,8 @@ export {
 export {
   requiredElements,
   evaluateCompliance,
+  elementKindsForFrame,
+  satisfiedElementsFromFrames,
   type LabelingDomain,
   type MarketCode,
   type LabelElementKind,

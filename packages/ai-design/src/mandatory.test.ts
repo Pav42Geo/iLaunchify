@@ -1,6 +1,6 @@
 // Golden self-test for the mandatory-element pack engine. Run via:
 //   tsc --module commonjs ... mandatory.test.ts && node mandatory.test.js
-import { requiredElements, evaluateCompliance, type LabelElementKind } from './mandatory'
+import { requiredElements, evaluateCompliance, elementKindsForFrame, satisfiedElementsFromFrames, type LabelElementKind } from './mandatory'
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error('FAIL: ' + msg)
@@ -46,6 +46,20 @@ export function runMandatorySelfTest(): void {
   assert(full.complete && full.coverageScore === 1, 'all required → complete, score 1')
   assert(full.availableRecommended.some((e) => e.kind === 'BARCODE'), 'barcode still offered as recommended')
   assert(/\/\d/.test(full.summary), 'summary like "6/6 required present"')
+
+  // 8. Frame→element bridge resolves the facts slot per domain.
+  assert(elementKindsForFrame('NUTRITION_FACTS', 'FOOD').includes('NUTRITION_FACTS'), 'food facts slot → Nutrition')
+  assert(elementKindsForFrame('NUTRITION_FACTS', 'DIETARY_SUPPLEMENT').includes('SUPPLEMENT_FACTS'), 'supp facts slot → Supplement')
+  assert(elementKindsForFrame('NUTRITION_FACTS', 'OTC').includes('DRUG_FACTS'), 'otc facts slot → Drug')
+  assert(elementKindsForFrame('NUTRITION_FACTS', 'COSMETIC').length === 0, 'cosmetic has no facts panel')
+  assert(elementKindsForFrame('INGREDIENTS', 'COSMETIC').includes('INCI_DECLARATION'), 'cosmetic ingredients → INCI')
+  assert(elementKindsForFrame('LOGO', 'FOOD').length === 0, 'logo satisfies no mandatory element')
+
+  // 9. End-to-end: frames present on a FOOD design → satisfied set → evaluateCompliance.
+  const present = ['STATEMENT_OF_IDENTITY', 'NET_QUANTITY', 'NUTRITION_FACTS', 'INGREDIENTS', 'ALLERGENS', 'MANUFACTURER', 'LOGO', 'IMAGERY']
+  const satisfied = satisfiedElementsFromFrames(present, 'FOOD')
+  const report = evaluateCompliance('FOOD', satisfied)
+  assert(report.complete && report.coverageScore === 1, 'full FOOD frame set → compliant via bridge')
 
   console.log('Mandatory golden: PASS')
 }
