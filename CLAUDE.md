@@ -48,7 +48,7 @@ CockroachDB Serverless via Prisma. Schema at `packages/db/prisma/schema.prisma`.
 - **Black pill** primary CTA (white text)
 - **Neon green** `#B5FF3D` accent on **dark surfaces only**
 - **Pink-700** accent on light surfaces
-- **Cream** `#F3EFE8` admin v2 hero band
+- **Hero band** `var(--bg-hero)` = `#F7F8FA` cool gray (mood-board) — admin v2 header bands + panel headers. **Changed 2026-06-25** from cream `#F3EFE8`/`bg-cream`; all admin bands now use `bg-[var(--bg-hero)]`. (Marketing landing keeps its own cream.)
 - **Inter** body, **Bricolage Grotesque** display, **Fraunces** italic emphasis
 - Dark hero / light explainer / dark CTA section pattern
 
@@ -58,7 +58,7 @@ Tokens live in `packages/ui/src/tokens` and `packages/ui/src/theme.css`. Tailwin
 
 Every admin list page follows this chrome — **no exceptions, no shadcn Card, no @ilaunchify/ui Card**:
 
-1. Cream `#F3EFE8` rounded-3xl hero band with title + subtitle
+1. `bg-[var(--bg-hero)]` (#F7F8FA cool gray) rounded-3xl hero band with title + subtitle
 2. 5-card KPI strip (KpiWidget)
 3. URL-driven filter chip rows (status chips, type chips, dropdowns)
 4. Sortable plain `<table>` with focus-visible:ring-pink-500 on headers
@@ -95,6 +95,16 @@ Use the `marketplace-taxonomy-guardian` subagent before adding any new taxonomy 
 3. **Cross-app links** — see Architecture section.
 4. **No `@db.Text`** on CockroachDB.
 5. **No function-shaped props across RSC boundary** — Next 15 / React 19 rejects passing Lucide icon refs from server → client. Import icons inside the client component instead.
+
+## Multi-agent collaboration (Cowork + Code share one working tree)
+
+Two agents edit this repo in parallel (Cowork via desktop, Code via CLI). Git has **no file-level lock** — whoever holds *uncommitted* edits when the other commits or `git reset`s gets clobbered. Rules to avoid collisions:
+
+1. **Single writer per file.** Only one agent edits a given file during a session. Before the other agent touches a "hot" file, the current owner commits/stashes it (clean working tree for that path) and verbally hands it off. Announce ownership; don't assume.
+2. **Commit immediately after each change.** Never leave edits sitting uncommitted while the other agent is active — that's when work is lost. (Cowork's sandbox can't write `.git`; the human runs the `git add … && git commit && git push` Cowork hands them, promptly.)
+3. **No repo-wide destructive ops while the other is active** — no `git reset --hard`, `git checkout .`, or rebases that wipe uncommitted work across the tree.
+4. **`.git/index.lock` "Operation not permitted"** = the other agent's git is mid-operation. Wait for it to finish; only `rm -f .git/index.lock` when **no** agent is running a git command (deleting it mid-op corrupts the commit).
+5. **Hot zones today:** partner New-Product builder (`apps/partner/src/app/(dashboard)/products/new/*`) and the Design Studio canvas. Treat these as single-writer by default. See `.claude/memory/ilaunchify-two-agent-hot-file-collisions.md`.
 
 ## Commands
 
