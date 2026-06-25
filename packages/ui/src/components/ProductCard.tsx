@@ -127,9 +127,9 @@ export function ProductCard({
     <Link
       href={href}
       className={cn(
-        'group flex flex-col bg-white border border-ink-200 rounded-xl overflow-hidden ' +
+        'group flex flex-col bg-[var(--bg-surface)] border border-[var(--card-border)] rounded-[var(--card-radius)] overflow-hidden ' +
           'transition-[transform,box-shadow,border-color] duration-base ease-out-quart ' +
-          'hover:-translate-y-0.5 hover:shadow-lg hover:border-ink-300 cursor-pointer',
+          'hover:-translate-y-0.5 hover:shadow-lg hover:border-[var(--card-border-hover)] cursor-pointer',
         className,
       )}
     >

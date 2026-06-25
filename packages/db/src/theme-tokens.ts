@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer' | 'Studio'
+  group: 'Scale' | 'Spacing' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons' | 'Chips & badges' | 'Menus' | 'Sidebar' | 'Header' | 'Footer' | 'Studio'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -73,6 +73,11 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'body-scale', label: 'Body size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.3, step: 0.01, hint: 'Fine-tune body/label text only (on top of Text size).' },
   { name: 'heading-scale', label: 'Heading size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.5, step: 0.01, hint: 'Fine-tune titles/headings only (on top of Text size).' },
   { name: 'radius-scale', label: 'Corner size', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
+
+  // Density / spacing — comfortable (creator) vs compact (partner). Overriding
+  // here beats the per-app data-density defaults platform-wide.
+  { name: 'card-padding', label: 'Card padding', kind: 'length', group: 'Spacing', default: '24px', min: 8, max: 40, step: 1, hint: 'Padding inside cards. Lower = more compact (16px = partner density).' },
+  { name: 'section-gap', label: 'Section spacing', kind: 'length', group: 'Spacing', default: '48px', min: 16, max: 72, step: 2, hint: 'Vertical gap between major sections. Lower = denser.' },
 
   // Fonts (curated stacks only — self-hosted faces + system fonts)
   { name: 'font-sans', label: 'Body font', kind: 'font', group: 'Fonts', default: FONT_STACKS.inter!, hint: 'UI, body, buttons, tables.' },
@@ -107,6 +112,8 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Borders & cards
   { name: 'border-soft', label: 'Hairline border', kind: 'color', group: 'Borders & cards', default: '#E0E1E5', hint: 'Default card / input border.' },
   { name: 'card-radius', label: 'Card corners', kind: 'length', group: 'Borders & cards', default: '16px', min: 0, max: 28, step: 1, hint: 'Card corner radius.' },
+  { name: 'card-border', label: 'Card border', kind: 'color', group: 'Borders & cards', default: '#E0E1E5', hint: 'Card / product-tile border (marketplace).' },
+  { name: 'card-border-hover', label: 'Card border (hover)', kind: 'color', group: 'Borders & cards', default: '#C9CACF', hint: 'Card border on hover.' },
 
   // Forms — input / select fields
   { name: 'input-bg', label: 'Field background', kind: 'color', group: 'Forms', default: '#FFFFFF', hint: 'Input / select fill.' },
@@ -115,9 +122,34 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'input-focus', label: 'Focus ring', kind: 'color', group: 'Forms', default: '#FF2E63', hint: 'Focus outline color.' },
   { name: 'input-radius', label: 'Field corners', kind: 'length', group: 'Forms', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
 
-  // Buttons & chips — pill by default (the locked signature); override to a px to square them off.
-  { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
-  { name: 'chip-radius', label: 'Chip corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Chip / pill-tag corner radius. Pill by default.' },
+  // Buttons — radius (pill signature) + per-variant fills/text/border. Each
+  // defaults to the brand ramp, so they follow the palette until overridden.
+  { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
+  { name: 'button-primary-bg', label: 'Primary fill', kind: 'color', group: 'Buttons', default: '#18181A', hint: 'Primary (black pill) button background.' },
+  { name: 'button-primary-fg', label: 'Primary text', kind: 'color', group: 'Buttons', default: '#FFFFFF', hint: 'Primary button label color.' },
+  { name: 'button-primary-bg-hover', label: 'Primary fill (hover)', kind: 'color', group: 'Buttons', default: '#000000', hint: 'Primary button hover background.' },
+  { name: 'button-pink-bg', label: 'Pink fill', kind: 'color', group: 'Buttons', default: '#FF2E63', hint: 'Pink button background.' },
+  { name: 'button-pink-fg', label: 'Pink text', kind: 'color', group: 'Buttons', default: '#FFFFFF', hint: 'Pink button label color.' },
+  { name: 'button-neon-bg', label: 'Neon fill', kind: 'color', group: 'Buttons', default: '#B5FF3D', hint: 'Neon button background (dark surfaces).' },
+  { name: 'button-neon-fg', label: 'Neon text', kind: 'color', group: 'Buttons', default: '#18181A', hint: 'Neon button label color.' },
+  { name: 'button-secondary-bg', label: 'Secondary fill', kind: 'color', group: 'Buttons', default: '#FFFFFF', hint: 'Secondary (light) button background.' },
+  { name: 'button-secondary-fg', label: 'Secondary text', kind: 'color', group: 'Buttons', default: '#18181A', hint: 'Secondary button label color.' },
+  { name: 'button-secondary-border', label: 'Secondary border', kind: 'color', group: 'Buttons', default: '#C9CACF', hint: 'Secondary button border.' },
+  { name: 'button-outline-fg', label: 'Outline text', kind: 'color', group: 'Buttons', default: '#18181A', hint: 'Outline (tertiary) button label + ghost text.' },
+  { name: 'button-outline-border', label: 'Outline border', kind: 'color', group: 'Buttons', default: '#C9CACF', hint: 'Outline button border.' },
+
+  // Chips & badges — radius + independent default/active palette.
+  { name: 'chip-radius', label: 'Chip corners', kind: 'length', group: 'Chips & badges', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Chip / pill-tag corner radius. Pill by default.' },
+  { name: 'badge-radius', label: 'Badge corners', kind: 'length', group: 'Chips & badges', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Status badge corner radius. (Badge colors follow the Status group.)' },
+  { name: 'chip-bg', label: 'Chip fill', kind: 'color', group: 'Chips & badges', default: '#FFFFFF', hint: 'Default chip background.' },
+  { name: 'chip-fg', label: 'Chip text', kind: 'color', group: 'Chips & badges', default: '#474954', hint: 'Default chip text.' },
+  { name: 'chip-border', label: 'Chip border', kind: 'color', group: 'Chips & badges', default: '#C9CACF', hint: 'Default chip border.' },
+  { name: 'chip-active-bg', label: 'Active chip fill', kind: 'color', group: 'Chips & badges', default: '#FF2E63', hint: 'Selected chip background.' },
+  { name: 'chip-active-fg', label: 'Active chip text', kind: 'color', group: 'Chips & badges', default: '#FFFFFF', hint: 'Selected chip text.' },
+
+  // Menus — select dropdowns + mega-menu popovers.
+  { name: 'menu-bg', label: 'Menu background', kind: 'color', group: 'Menus', default: '#FFFFFF', hint: 'Dropdown / popover surface.' },
+  { name: 'menu-item-active-bg', label: 'Menu item (active)', kind: 'color', group: 'Menus', default: '#EFEFF1', hint: 'Highlighted / focused menu item fill.' },
 
   // Sidebar (Layout / Chrome) — admin sidebar; per-scope-able.
   { name: 'sidebar-width', label: 'Sidebar width', kind: 'length', group: 'Sidebar', default: '256px', min: 180, max: 360, step: 2, hint: 'Sidebar column width.' },
@@ -181,8 +213,12 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Muted text on page', fg: 'ink-500-rgb', bg: 'bg-canvas', min: 4.5 },
   { label: 'Text on cards', fg: 'ink-900-rgb', bg: 'bg-surface', min: 4.5 },
   { label: 'Text on hero band', fg: 'ink-900-rgb', bg: 'bg-hero', min: 4.5 },
-  { label: 'Primary button label', fg: '#FFFFFF', bg: 'ink-900-rgb', min: 4.5 },
-  { label: 'Pink button label', fg: '#FFFFFF', bg: 'pink-500-rgb', min: 3.0 },
+  { label: 'Primary button label', fg: 'button-primary-fg', bg: 'button-primary-bg', min: 4.5 },
+  { label: 'Pink button label', fg: 'button-pink-fg', bg: 'button-pink-bg', min: 3.0 },
+  { label: 'Neon button label', fg: 'button-neon-fg', bg: 'button-neon-bg', min: 3.0 },
+  { label: 'Secondary button label', fg: 'button-secondary-fg', bg: 'button-secondary-bg', min: 4.5 },
+  { label: 'Active chip label', fg: 'chip-active-fg', bg: 'chip-active-bg', min: 3.0 },
+  { label: 'Chip label', fg: 'chip-fg', bg: 'chip-bg', min: 4.5 },
   { label: 'Accent text on cards', fg: 'pink-700-rgb', bg: 'bg-surface', min: 4.5 },
   { label: 'Sidebar text', fg: 'sidebar-fg', bg: 'sidebar-bg', min: 4.5 },
   { label: 'Sidebar active text', fg: 'sidebar-active-fg', bg: 'sidebar-active-bg', min: 4.5 },

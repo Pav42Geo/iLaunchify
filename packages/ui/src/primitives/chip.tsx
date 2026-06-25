@@ -35,8 +35,8 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
             'transition-[background,color,border-color] duration-base ease-out-quart ' +
             'cursor-pointer whitespace-nowrap',
           active
-            ? 'bg-pink-500 text-white border border-pink-500 hover:bg-pink-600'
-            : 'bg-white text-ink-600 border border-ink-300 hover:border-ink-400 hover:text-ink-900',
+            ? 'bg-[var(--chip-active-bg)] text-[var(--chip-active-fg)] border border-[var(--chip-active-border)]'
+            : 'bg-[var(--chip-bg)] text-[var(--chip-fg)] border border-[var(--chip-border)] hover:text-ink-900',
           className,
         )}
         {...props}

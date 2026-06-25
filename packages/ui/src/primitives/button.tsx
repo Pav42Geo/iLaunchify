@@ -33,12 +33,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:   'bg-ink-900 text-white hover:bg-black hover:-translate-y-px',
-        neon:      'bg-neon-500 text-ink-900 hover:bg-neon-400 hover:-translate-y-px',
-        pink:      'bg-pink-500 text-white hover:bg-pink-600 hover:-translate-y-px',
-        secondary: 'bg-white text-ink-900 border border-ink-300 shadow-sm hover:bg-ink-50',
-        outline:   'bg-transparent text-ink-900 border border-ink-300 hover:bg-ink-50',
-        ghost:     'bg-transparent text-ink-900 hover:bg-ink-100',
+        primary:   'bg-[var(--button-primary-bg)] text-[var(--button-primary-fg)] hover:bg-[var(--button-primary-bg-hover)] hover:-translate-y-px',
+        neon:      'bg-[var(--button-neon-bg)] text-[var(--button-neon-fg)] hover:bg-[var(--button-neon-bg-hover)] hover:-translate-y-px',
+        pink:      'bg-[var(--button-pink-bg)] text-[var(--button-pink-fg)] hover:bg-[var(--button-pink-bg-hover)] hover:-translate-y-px',
+        secondary: 'bg-[var(--button-secondary-bg)] text-[var(--button-secondary-fg)] border border-[var(--button-secondary-border)] shadow-sm hover:bg-[var(--button-secondary-bg-hover)]',
+        outline:   'bg-transparent text-[var(--button-outline-fg)] border border-[var(--button-outline-border)] hover:bg-[var(--button-outline-bg-hover)]',
+        ghost:     'bg-transparent text-[var(--button-ghost-fg)] hover:bg-[var(--button-ghost-bg-hover)]',
       },
       size: {
         sm: 'h-9 px-4 text-[length:var(--fs-md)]',   // 36px · 14px text

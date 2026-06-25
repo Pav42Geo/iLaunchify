@@ -78,7 +78,7 @@ export function CategoriesMegaMenu() {
               role="dialog"
               aria-label="All categories"
               style={{ position: 'fixed', left: box.left, top: box.top, width: box.width, maxHeight: '74vh' }}
-              className="z-[100] flex overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl"
+              className="z-[100] flex overflow-hidden rounded-[var(--radius-2xl)] border border-ink-200 bg-[var(--menu-bg)] shadow-2xl"
             >
               {/* Left rail — category list */}
               <nav className="w-[252px] shrink-0 overflow-y-auto border-r border-ink-100 bg-ink-50/40 py-2">

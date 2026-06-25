@@ -172,6 +172,7 @@
   --radius-md:   calc(8px  * var(--radius-scale));
   --radius-lg:   calc(12px * var(--radius-scale));
   --radius-xl:   calc(16px * var(--radius-scale));
+  --radius-2xl:  calc(20px * var(--radius-scale));
   --radius-pill: 999px;
 
   /* Borders — Tier-1 */
@@ -233,6 +234,47 @@
   --button-radius: var(--radius-pill);
   --input-radius:  var(--radius-md);
   --chip-radius:   var(--radius-pill);
+
+  /* Per-variant BUTTON fills/text/border (each defaults to the brand ramp so
+     they follow the palette until an admin overrides a single variant). */
+  --button-primary-bg:        var(--ink-900);
+  --button-primary-fg:        #FFFFFF;
+  --button-primary-bg-hover:  #000000;
+  --button-pink-bg:           var(--pink-500);
+  --button-pink-fg:           #FFFFFF;
+  --button-pink-bg-hover:     var(--pink-600);
+  --button-neon-bg:           var(--neon-500);
+  --button-neon-fg:           var(--ink-900);
+  --button-neon-bg-hover:     var(--neon-400);
+  --button-secondary-bg:        #FFFFFF;
+  --button-secondary-fg:        var(--ink-900);
+  --button-secondary-border:    var(--ink-300);
+  --button-secondary-bg-hover:  var(--ink-50);
+  --button-outline-fg:        var(--ink-900);
+  --button-outline-border:    var(--ink-300);
+  --button-outline-bg-hover:  var(--ink-50);
+  --button-ghost-fg:        var(--ink-900);
+  --button-ghost-bg-hover:  var(--ink-100);
+
+  /* CARD border (marketplace + shared Card) */
+  --card-border:        var(--border-soft);
+  --card-border-hover:  var(--ink-300);
+
+  /* BADGE */
+  --badge-radius: var(--radius-pill);
+
+  /* CHIP — default + active states (independent of the brand pink). */
+  --chip-bg:            #FFFFFF;
+  --chip-fg:            var(--ink-600);
+  --chip-border:        var(--ink-300);
+  --chip-active-bg:     var(--pink-500);
+  --chip-active-fg:     #FFFFFF;
+  --chip-active-border: var(--pink-500);
+
+  /* MENU / popover surfaces (select dropdown, mega-menu) */
+  --menu-bg:              #FFFFFF;
+  --menu-item-active-bg:  var(--ink-100);
+
   /* Form fields */
   --input-bg:          #FFFFFF;
   --input-text:        var(--ink-900);
