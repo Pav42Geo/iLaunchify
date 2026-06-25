@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips' | 'Sidebar'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -104,6 +104,15 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Buttons & chips — pill by default (the locked signature); override to a px to square them off.
   { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
   { name: 'chip-radius', label: 'Chip corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Chip / pill-tag corner radius. Pill by default.' },
+
+  // Sidebar (Layout / Chrome) — admin sidebar; per-scope-able.
+  { name: 'sidebar-width', label: 'Sidebar width', kind: 'length', group: 'Sidebar', default: '256px', min: 180, max: 360, step: 2, hint: 'Sidebar column width.' },
+  { name: 'sidebar-bg', label: 'Sidebar background', kind: 'color', group: 'Sidebar', default: '#FFFFFF', hint: 'Sidebar surface.' },
+  { name: 'sidebar-fg', label: 'Sidebar text', kind: 'color', group: 'Sidebar', default: '#33343C', hint: 'Nav item text.' },
+  { name: 'sidebar-active-bg', label: 'Active item background', kind: 'color', group: 'Sidebar', default: '#FFE9F0', hint: 'Selected nav item fill.' },
+  { name: 'sidebar-active-fg', label: 'Active item text', kind: 'color', group: 'Sidebar', default: '#C71350', hint: 'Selected nav item text.' },
+  { name: 'sidebar-item-fs', label: 'Sidebar text size', kind: 'length', group: 'Sidebar', default: '13px', min: 11, max: 16, step: 0.5, hint: 'Nav item font size.' },
+  { name: 'sidebar-icon-size', label: 'Sidebar icon size', kind: 'length', group: 'Sidebar', default: '16px', min: 12, max: 28, step: 1, hint: 'Nav icon size.' },
 ]
 
 const EDITABLE_BY_NAME = new Map(EDITABLE_THEME_TOKENS.map((t) => [t.name, t]))
@@ -144,6 +153,8 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Primary button label', fg: '#FFFFFF', bg: 'ink-900-rgb', min: 4.5 },
   { label: 'Pink button label', fg: '#FFFFFF', bg: 'pink-500-rgb', min: 3.0 },
   { label: 'Accent text on cards', fg: 'pink-700-rgb', bg: 'bg-surface', min: 4.5 },
+  { label: 'Sidebar text', fg: 'sidebar-fg', bg: 'sidebar-bg', min: 4.5 },
+  { label: 'Sidebar active text', fg: 'sidebar-active-fg', bg: 'sidebar-active-bg', min: 4.5 },
 ]
 
 /** Resolve a pairing side (token name or literal) to a hex, from proposed values. */

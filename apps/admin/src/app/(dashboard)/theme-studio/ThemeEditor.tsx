@@ -123,7 +123,7 @@ export function ThemeEditor({
     })
   }
 
-  const groups: EditableThemeToken['group'][] = ['Scale', 'Fonts', 'Text', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs', 'Buttons & chips']
+  const groups: EditableThemeToken['group'][] = ['Scale', 'Fonts', 'Text', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs', 'Buttons & chips', 'Sidebar']
 
   return (
     <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">

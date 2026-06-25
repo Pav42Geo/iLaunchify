@@ -127,7 +127,7 @@ export function AdminSidebarTree({ badges, capabilities }: AdminSidebarTreeProps
   return (
     <aside
       aria-label="Admin navigation"
-      className="hidden w-64 shrink-0 overflow-y-auto border-r border-ink-200 bg-white px-3 py-5 lg:block"
+      className="hidden w-[var(--sidebar-width)] shrink-0 overflow-y-auto border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] px-3 py-5 lg:block"
     >
       {regions.map((region, idx) => (
         <div
@@ -135,10 +135,10 @@ export function AdminSidebarTree({ badges, capabilities }: AdminSidebarTreeProps
           className={cn(idx > 0 && 'mt-5 pt-4')}
         >
           {region.label && (
-            <div className="mb-2 flex items-center gap-2 px-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-ink-700">
-              <span className="h-px flex-1 bg-ink-200" />
+            <div className="mb-2 flex items-center gap-2 px-2.5 text-[length:var(--sidebar-section-fs)] font-bold uppercase tracking-[0.14em] text-[var(--sidebar-fg)]">
+              <span className="h-px flex-1 bg-[var(--sidebar-border)]" />
               <span>{region.label}</span>
-              <span className="h-px flex-1 bg-ink-200" />
+              <span className="h-px flex-1 bg-[var(--sidebar-border)]" />
             </div>
           )}
           <nav className="space-y-0.5">
@@ -259,18 +259,18 @@ function SidebarGroup({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
           depth === 0 ? 'pl-2.5 pr-2' : 'pl-2 pr-2',
           depth === 0
-            ? 'text-[13px] font-medium'
-            : 'text-[12.5px]',
+            ? 'text-[length:var(--sidebar-item-fs)] font-medium'
+            : 'text-[length:var(--sidebar-item-fs)]',
           onActivePath
-            ? 'text-pink-700'
-            : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900',
+            ? 'text-[var(--sidebar-active-fg)]'
+            : 'text-[var(--sidebar-fg)] hover:bg-[var(--sidebar-hover-bg)] hover:text-ink-900',
         )}
       >
         {Icon && (
           <Icon
             aria-hidden="true"
             className={cn(
-              'h-4 w-4 shrink-0',
+              'h-[var(--sidebar-icon-size)] w-[var(--sidebar-icon-size)] shrink-0',
               onActivePath ? 'text-pink-600' : 'text-ink-400',
             )}
           />
@@ -341,13 +341,13 @@ function SidebarLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'relative flex items-center gap-2 rounded-md py-1.5 text-[12.5px]',
+        'relative flex items-center gap-2 rounded-md py-1.5 text-[length:var(--sidebar-item-fs)]',
         'transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
         depth === 0 ? 'pl-2 pr-2.5' : 'pl-2 pr-2',
         active
-          ? 'bg-pink-50 font-semibold text-pink-700'
-          : 'text-ink-700 hover:bg-ink-50 hover:text-ink-900',
+          ? 'bg-[var(--sidebar-active-bg)] font-semibold text-[var(--sidebar-active-fg)]'
+          : 'text-[var(--sidebar-fg)] hover:bg-[var(--sidebar-hover-bg)] hover:text-ink-900',
       )}
     >
       {active && (
@@ -358,7 +358,7 @@ function SidebarLink({
       )}
       <Icon
         aria-hidden="true"
-        className={cn('h-4 w-4 shrink-0', active ? 'text-pink-600' : 'text-ink-400')}
+        className={cn('h-[var(--sidebar-icon-size)] w-[var(--sidebar-icon-size)] shrink-0', active ? 'text-pink-600' : 'text-ink-400')}
       />
       <span className="flex-1 truncate">{label}</span>
       {showBadge && (

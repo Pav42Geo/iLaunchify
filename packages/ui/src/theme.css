@@ -233,6 +233,22 @@
   --button-radius: var(--radius-pill);
   --input-radius:  var(--radius-md);
   --chip-radius:   var(--radius-pill);
+
+  /* ============================================================
+     CHROME TOKENS — sidebars / headers / footers (Theme Studio
+     "Layout / Chrome"). Defaults reference the brand tokens so they
+     follow the palette until explicitly overridden.
+     ============================================================ */
+  --sidebar-width:      256px;
+  --sidebar-bg:         #FFFFFF;
+  --sidebar-fg:         var(--ink-700);
+  --sidebar-active-fg:  var(--pink-700);
+  --sidebar-active-bg:  var(--pink-50);
+  --sidebar-hover-bg:   var(--ink-50);
+  --sidebar-border:     var(--ink-200);
+  --sidebar-icon-size:  16px;
+  --sidebar-item-fs:    13px;
+  --sidebar-section-fs: 12px;
 }
 
 /* ============================================================
