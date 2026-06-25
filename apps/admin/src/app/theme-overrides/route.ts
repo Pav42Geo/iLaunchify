@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const preview = (await cookies()).get('theme-preview')?.value === '1'
-  const css = preview ? await getThemePreviewCss() : await getThemeOverrideCss()
+  const css = preview ? await getThemePreviewCss() : await getThemeOverrideCss('admin')
   return new Response(css, {
     headers: {
       'Content-Type': 'text/css; charset=utf-8',

@@ -202,23 +202,56 @@ export function validateTheme(proposed: Record<string, string>): ValidationResul
   return { ok: true }
 }
 
-/** Active overrides as a name→value map. Safe before migration (returns {}). */
-export async function getThemeOverrides(): Promise<Record<string, string>> {
+// --- Scopes -----------------------------------------------------------------
+// 'global' applies everywhere; per-app scopes override the global value WITHIN
+// that app (each app's /theme-overrides endpoint merges global ⊕ its scope).
+export const SCOPES = ['global', 'marketing', 'creator', 'partner', 'admin'] as const
+export type ThemeScope = (typeof SCOPES)[number]
+export const SCOPE_LABELS: Record<ThemeScope, string> = {
+  global: 'Global · all apps',
+  marketing: 'Marketing & marketplace',
+  creator: 'Creator app',
+  partner: 'Partner app',
+  admin: 'Admin',
+}
+export function isThemeScope(s: string | undefined): s is ThemeScope {
+  return !!s && (SCOPES as readonly string[]).includes(s)
+}
+
+/**
+ * Effective overrides for a scope = global rows overlaid by the scope's own rows
+ * (scope wins). For 'global' it's just the global rows. Safe before migration.
+ */
+export async function getThemeOverrides(scope: ThemeScope = 'global'): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   try {
+    const wanted = scope === 'global' ? ['global'] : ['global', scope]
     const rows = await (prisma as unknown as {
-      themeTokenOverride: { findMany: (a?: unknown) => Promise<Array<{ name: string; value: string }>> }
-    }).themeTokenOverride.findMany()
-    for (const r of rows) out[r.name] = r.value
+      themeTokenOverride: { findMany: (a: unknown) => Promise<Array<{ name: string; value: string; scope: string }>> }
+    }).themeTokenOverride.findMany({ where: { scope: { in: wanted } } })
+    for (const r of rows) if (r.scope === 'global') out[r.name] = r.value
+    if (scope !== 'global') for (const r of rows) if (r.scope === scope) out[r.name] = r.value
   } catch {
     // Table not migrated yet — defaults apply.
   }
   return out
 }
 
+/** Just one scope's OWN rows (not merged) — used to seed reset baselines. */
+export async function getScopeOnlyOverrides(scope: ThemeScope): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  try {
+    const rows = await (prisma as unknown as {
+      themeTokenOverride: { findMany: (a: unknown) => Promise<Array<{ name: string; value: string }>> }
+    }).themeTokenOverride.findMany({ where: { scope } })
+    for (const r of rows) out[r.name] = r.value
+  } catch {}
+  return out
+}
+
 /** Serialize active, ALLOWLISTED, format-valid overrides to a `:root:root{…}` block. */
-export async function getThemeOverrideCss(): Promise<string> {
-  const overrides = await getThemeOverrides()
+export async function getThemeOverrideCss(scope: ThemeScope = 'global'): Promise<string> {
+  const overrides = await getThemeOverrides(scope)
   const decls: string[] = []
   for (const [name, value] of Object.entries(overrides)) {
     if (!EDITABLE_BY_NAME.has(name)) continue
@@ -228,18 +261,18 @@ export async function getThemeOverrideCss(): Promise<string> {
   return decls.length ? `:root:root{${decls.join('')}}` : ''
 }
 
-/** Upsert one override (caller does requireCapability + audit). */
-export async function upsertThemeOverride(name: string, value: string): Promise<void> {
+/** Upsert one scoped override (caller does requireCapability + audit). */
+export async function upsertThemeOverride(name: string, value: string, scope: ThemeScope = 'global'): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { upsert: (a: unknown) => Promise<unknown> }
-  }).themeTokenOverride.upsert({ where: { name }, update: { value }, create: { name, value } })
+  }).themeTokenOverride.upsert({ where: { name_scope: { name, scope } }, update: { value }, create: { name, value, scope } })
 }
 
-/** Remove an override → the token reverts to its theme.css default. */
-export async function deleteThemeOverride(name: string): Promise<void> {
+/** Remove a scoped override → reverts to global (or theme.css default). */
+export async function deleteThemeOverride(name: string, scope: ThemeScope = 'global'): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { deleteMany: (a: unknown) => Promise<unknown> }
-  }).themeTokenOverride.deleteMany({ where: { name } })
+  }).themeTokenOverride.deleteMany({ where: { name, scope } })
 }
 
 /** Default value for a token name (for "is this an override?" checks). */

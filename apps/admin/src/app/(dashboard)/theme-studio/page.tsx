@@ -14,7 +14,17 @@
 import type { ReactNode } from 'react'
 import { requireCapability } from '@ilaunchify/auth'
 import { cookies } from 'next/headers'
-import { EDITABLE_THEME_TOKENS, THEME_PAIRINGS, FONT_OPTIONS, getThemeOverrides, getThemeDraft } from '@ilaunchify/db'
+import {
+  EDITABLE_THEME_TOKENS,
+  THEME_PAIRINGS,
+  FONT_OPTIONS,
+  SCOPES,
+  SCOPE_LABELS,
+  isThemeScope,
+  getThemeOverrides,
+  getThemeDraft,
+  type ThemeScope,
+} from '@ilaunchify/db'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
 import { ThemeEditor } from './ThemeEditor'
 
@@ -137,12 +147,21 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 // Page
 // -----------------------------------------------------------------------------
 
-export default async function ThemeStudioPage() {
+export default async function ThemeStudioPage({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {
   await requireCapability('platform:admin')
-  const [overrides, draft] = await Promise.all([getThemeOverrides(), getThemeDraft()])
-  const previewActive = (await cookies()).get('theme-preview')?.value === '1'
-  // Open the editor to the saved draft if one exists, else the live theme.
-  const seed = Object.keys(draft).length ? draft : overrides
+  const sp = await searchParams
+  const scope: ThemeScope = isThemeScope(sp.scope) ? sp.scope : 'global'
+
+  const [overrides, draft, baseline] = await Promise.all([
+    getThemeOverrides(scope),
+    scope === 'global' ? getThemeDraft() : Promise.resolve({} as Record<string, string>),
+    // A per-app scope inherits from (and resets to) the effective GLOBAL theme.
+    scope === 'global' ? Promise.resolve({} as Record<string, string>) : getThemeOverrides('global'),
+  ])
+  const previewActive = scope === 'global' && (await cookies()).get('theme-preview')?.value === '1'
+  // Global opens to the saved draft if any; a scope opens to its effective theme.
+  const seed = scope === 'global' && Object.keys(draft).length ? draft : overrides
+  const scopeChoices = SCOPES.map((s) => ({ value: s, label: SCOPE_LABELS[s] }))
 
   const semanticFlat: Record<string, string> = {
     'success-50': semantic.success[50], 'success-500': semantic.success[500],
@@ -157,7 +176,7 @@ export default async function ThemeStudioPage() {
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <div className="flex items-center gap-2">
           <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
-            Phase 3a · read-only
+            Editing: {SCOPE_LABELS[scope]}
           </span>
         </div>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink-900">Theme Studio</h1>
@@ -169,7 +188,16 @@ export default async function ThemeStudioPage() {
         </p>
       </div>
 
-      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} pairings={THEME_PAIRINGS} fontOptions={FONT_OPTIONS} current={seed} previewActive={previewActive} />
+      <ThemeEditor
+        tokens={EDITABLE_THEME_TOKENS}
+        pairings={THEME_PAIRINGS}
+        fontOptions={FONT_OPTIONS}
+        current={seed}
+        baseline={baseline}
+        scope={scope}
+        scopes={scopeChoices}
+        previewActive={previewActive}
+      />
 
       <Section title="Color">
         <Ramp title="Pink — brand" scale={pink} />

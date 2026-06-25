@@ -6559,13 +6559,18 @@ model GenerationStorageUsage {
 // multi-theme / scopes come later (THEME_MANAGEMENT_ARCHITECTURE.md Phase 4).
 model ThemeTokenOverride {
   id        String   @id @default(uuid())
+  /// 'global' applies to every app; per-app scopes (marketing / creator /
+  /// partner / admin) override the global value WITHIN that app. Allowlisted.
+  scope     String   @default("global")
   /// CSS custom-property name WITHOUT the leading --, e.g. "font-scale",
   /// "radius-scale", "bg-hero". Allowlist-validated before write.
-  name      String   @unique
+  name      String
   /// Raw CSS value, e.g. "1.15", "#FFFFFF", "255 46 99".
   value     String
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+
+  @@unique([name, scope])
 }
 
 /// Theme Studio working draft — a single row holding the in-progress

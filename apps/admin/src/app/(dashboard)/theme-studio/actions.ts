@@ -1,18 +1,20 @@
 'use server'
 
-// Theme Studio — draft / preview / publish (Phase 3b, 2026-06-25).
-// platform:admin gated + audited. Draft = unpublished working copy; Preview
-// injects the draft via a cookie; Publish WCAG-gates the whole theme then
-// promotes it to the live ThemeTokenOverride rows.
+// Theme Studio — draft / preview / publish, scope-aware (Phase 3b + 4).
+// platform:admin gated + audited. Draft & Preview are GLOBAL-only (the common
+// case). Publish/Reset target a scope: 'global' (all apps) or a per-app scope
+// that overrides global within that app. The full proposed (effective) theme is
+// WCAG-gated before any write.
 
 import { cookies } from 'next/headers'
 import {
   upsertThemeOverride,
   deleteThemeOverride,
+  getThemeOverrides,
   saveThemeDraftRow,
   validateTheme,
-  defaultThemeValue,
   EDITABLE_THEME_TOKENS,
+  type ThemeScope,
 } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -22,8 +24,7 @@ type Result = { ok: true } | { ok: false; error: string }
 
 const PREVIEW_COOKIE = 'theme-preview'
 
-/** Save the in-progress draft (no live change). WIP is allowed to be imperfect,
- *  so this does NOT run the publish gate — getThemePreviewCss filters invalids. */
+/** Save the GLOBAL in-progress draft (no live change; not gated — WIP). */
 export async function saveThemeDraft(input: { name: string; value: string }[]): Promise<Result> {
   await requireCapability('platform:admin')
   const tokens: Record<string, string> = {}
@@ -37,7 +38,7 @@ export async function saveThemeDraft(input: { name: string; value: string }[]): 
   }
 }
 
-/** Turn admin-only draft preview on/off (cookie read by the admin root layout). */
+/** Turn admin-only GLOBAL draft preview on/off (cookie read by the admin layout + endpoint). */
 export async function setThemePreview(on: boolean): Promise<Result> {
   await requireCapability('platform:admin')
   const jar = await cookies()
@@ -47,8 +48,13 @@ export async function setThemePreview(on: boolean): Promise<Result> {
   return { ok: true }
 }
 
-/** WCAG-gate the full proposed theme, promote it to live, and sync the draft. */
-export async function publishThemeTokens(input: { name: string; value: string }[]): Promise<Result> {
+/** WCAG-gate the proposed (effective) theme and promote it to `scope`. Stores
+ *  only true diffs from the scope's baseline (theme defaults for global; the
+ *  effective global theme for a per-app scope). */
+export async function publishThemeTokens(
+  input: { name: string; value: string }[],
+  scope: ThemeScope = 'global',
+): Promise<Result> {
   const admin = await requireCapability('platform:admin')
 
   const proposed: Record<string, string> = {}
@@ -58,18 +64,23 @@ export async function publishThemeTokens(input: { name: string; value: string }[
   if (!gate.ok) return gate
 
   try {
+    // Baseline this scope inherits from — store only values that differ from it.
+    const baseline: Record<string, string> = {}
+    for (const t of EDITABLE_THEME_TOKENS) baseline[t.name] = t.default
+    if (scope !== 'global') Object.assign(baseline, await getThemeOverrides('global'))
+
     for (const t of input) {
       const value = t.value.trim()
-      if (value === defaultThemeValue(t.name)) await deleteThemeOverride(t.name)
-      else await upsertThemeOverride(t.name, value)
+      if (value === baseline[t.name]) await deleteThemeOverride(t.name, scope)
+      else await upsertThemeOverride(t.name, value, scope)
     }
-    await saveThemeDraftRow(proposed) // keep draft == published after a publish
-    ;(await cookies()).delete(PREVIEW_COOKIE) // leave preview mode on publish
+    if (scope === 'global') await saveThemeDraftRow(proposed) // keep global draft synced
+    ;(await cookies()).delete(PREVIEW_COOKIE)
     await logAuditAs(admin, {
       entityType: 'ThemeTokenOverride',
-      entityId: 'platform',
+      entityId: scope,
       action: 'THEME_PUBLISHED',
-      payload: { tokens: input },
+      payload: { scope, tokens: input },
     })
     revalidatePath('/', 'layout')
     return { ok: true }
@@ -78,13 +89,13 @@ export async function publishThemeTokens(input: { name: string; value: string }[
   }
 }
 
-/** Reset every editable token to its theme.css default (clears all overrides). */
-export async function resetThemeTokens(): Promise<Result> {
+/** Clear all overrides for `scope` (reverts to global / theme defaults). */
+export async function resetThemeTokens(scope: ThemeScope = 'global'): Promise<Result> {
   const admin = await requireCapability('platform:admin')
   try {
-    for (const t of EDITABLE_THEME_TOKENS) await deleteThemeOverride(t.name)
-    await saveThemeDraftRow({})
-    await logAuditAs(admin, { entityType: 'ThemeTokenOverride', entityId: 'platform', action: 'THEME_RESET', payload: {} })
+    for (const t of EDITABLE_THEME_TOKENS) await deleteThemeOverride(t.name, scope)
+    if (scope === 'global') await saveThemeDraftRow({})
+    await logAuditAs(admin, { entityType: 'ThemeTokenOverride', entityId: scope, action: 'THEME_RESET', payload: { scope } })
     revalidatePath('/', 'layout')
     return { ok: true }
   } catch (err) {

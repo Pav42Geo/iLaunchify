@@ -7,7 +7,7 @@ import { getThemeOverrideCss } from '@ilaunchify/db'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const css = await getThemeOverrideCss()
+  const css = await getThemeOverrideCss('marketing')
   return new Response(css, {
     headers: {
       'Content-Type': 'text/css; charset=utf-8',

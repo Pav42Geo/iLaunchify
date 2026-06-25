@@ -8,7 +8,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { EditableThemeToken } from '@ilaunchify/db'
+import type { EditableThemeToken, ThemeScope } from '@ilaunchify/db'
 import { publishThemeTokens, resetThemeTokens, saveThemeDraft, setThemePreview } from './actions'
 
 type Pairing = { label: string; fg: string; bg: string; min: number }
@@ -43,15 +43,24 @@ export function ThemeEditor({
   pairings,
   fontOptions,
   current,
+  baseline,
+  scope,
+  scopes,
   previewActive,
 }: {
   tokens: EditableThemeToken[]
   pairings: Pairing[]
   fontOptions: { label: string; value: string }[]
   current: Record<string, string>
+  /** Values this scope inherits from (resets to). Empty for global → token defaults. */
+  baseline: Record<string, string>
+  scope: ThemeScope
+  scopes: { value: ThemeScope; label: string }[]
   previewActive: boolean
 }) {
   const router = useRouter()
+  const isGlobal = scope === 'global'
+  const baseOf = (name: string, fallback: string) => baseline[name] ?? fallback
   const byName = useMemo(() => new Map(tokens.map((t) => [t.name, t])), [tokens])
   const initial = useMemo(() => {
     const o: Record<string, string> = {}
@@ -82,8 +91,8 @@ export function ThemeEditor({
 
   function publish() {
     start(async () => {
-      const r = await publishThemeTokens(allInput())
-      if (r.ok) toast.success('Theme published — applies platform-wide.')
+      const r = await publishThemeTokens(allInput(), scope)
+      if (r.ok) toast.success(isGlobal ? 'Theme published — applies to all apps.' : `Published to ${scope} scope.`)
       else toast.error(r.error)
     })
   }
@@ -106,10 +115,10 @@ export function ThemeEditor({
   }
   function resetAll() {
     start(async () => {
-      const r = await resetThemeTokens()
+      const r = await resetThemeTokens(scope)
       if (r.ok) {
-        for (const t of tokens) setVal(t.name, t.default)
-        toast.success('Reset to theme defaults.')
+        for (const t of tokens) setVal(t.name, baseOf(t.name, t.default))
+        toast.success(isGlobal ? 'Reset to theme defaults.' : 'Reset — this scope now inherits global.')
       } else toast.error(r.error)
     })
   }
@@ -118,13 +127,34 @@ export function ThemeEditor({
 
   return (
     <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
+      {/* Scope picker */}
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[length:var(--fs-xs)] font-semibold text-ink-500">Scope:</span>
+        {scopes.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => router.push(`/theme-studio?scope=${s.value}`)}
+            className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold ${
+              s.value === scope ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {!isGlobal && (
+        <div className="mb-4 rounded-[var(--radius-md)] border border-info-500/30 bg-info-50 px-3 py-2 text-[length:var(--fs-sm)] text-info-500">
+          Editing the <strong>{scope}</strong> scope — these values override Global within that app only. Unchanged
+          tokens inherit Global. (Draft &amp; Preview are Global-only; for a scope, publish and check the target app.)
+        </div>
+      )}
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">Edit &amp; publish</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-50 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+          <button onClick={togglePreview} disabled={pending || !isGlobal} title={isGlobal ? '' : 'Preview is Global-only'} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
             {previewActive ? 'Preview: On' : 'Preview'}
           </button>
-          <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
+          <button onClick={saveDraft} disabled={pending || !isGlobal} title={isGlobal ? '' : 'Draft is Global-only'} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">
             Save draft
           </button>
           <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
@@ -161,7 +191,7 @@ export function ThemeEditor({
               <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</div>
               <div className="space-y-4">
                 {items.map((t) => (
-                  <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, t.default)} />
+                  <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
                 ))}
               </div>
             </div>
