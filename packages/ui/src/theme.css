@@ -249,6 +249,17 @@
   --sidebar-icon-size:  16px;
   --sidebar-item-fs:    13px;
   --sidebar-section-fs: 12px;
+
+  /* Header (shared AppHeader). The translucent blur bg stays locked; these
+     control the hairline, height, and wordmark. */
+  --header-fg:          var(--ink-900);
+  --header-border:      var(--ink-200);
+  --header-py:          12px;
+  --header-wordmark-fs: 23px;
+
+  /* Footer (marketing LandingFooter — dark surface). */
+  --footer-bg:          var(--ink-900);
+  --footer-fg:          #FFFFFF;
 }
 
 /* ============================================================

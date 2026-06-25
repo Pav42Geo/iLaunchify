@@ -25,7 +25,7 @@ export function LandingFooter() {
   return (
     <footer
       data-surface="dark"
-      className="bg-ink-900 text-white px-6 sm:px-8 py-16 sm:py-20"
+      className="bg-[var(--footer-bg)] text-[var(--footer-fg)] px-6 sm:px-8 py-16 sm:py-20"
     >
       <div className="max-w-[1400px] mx-auto">
         <Link href="/" className="inline-flex items-center gap-2.5 mb-12">

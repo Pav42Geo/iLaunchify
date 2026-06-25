@@ -74,13 +74,13 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 border-b border-ink-200 bg-white/90 backdrop-blur-xl backdrop-saturate-150',
+        'sticky top-0 z-50 border-b border-[var(--header-border)] bg-white/90 backdrop-blur-xl backdrop-saturate-150',
         className,
       )}
     >
       <div
         className={cn(
-          'flex items-center gap-5 py-3',
+          'flex items-center gap-5 py-[var(--header-py)]',
           flushLeft
             ? // Sidebar uses p-4 then each nav item has its own px-3 —
               // so the nav icons sit ~28px from viewport-left. pl-7
@@ -129,7 +129,7 @@ export function AppHeaderBrandMark({
         aria-hidden="true"
         className={cn('h-[26px] w-[26px] rounded-md bg-pink-500', className)}
       />
-      <span className="font-display text-[23px] font-extrabold tracking-[-0.04em] text-ink-900">
+      <span className="font-display text-[length:var(--header-wordmark-fs)] font-extrabold tracking-[-0.04em] text-[var(--header-fg)]">
         {label}
       </span>
     </>

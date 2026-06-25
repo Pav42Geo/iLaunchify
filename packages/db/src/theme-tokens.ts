@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips' | 'Sidebar'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -113,6 +113,16 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'sidebar-active-fg', label: 'Active item text', kind: 'color', group: 'Sidebar', default: '#C71350', hint: 'Selected nav item text.' },
   { name: 'sidebar-item-fs', label: 'Sidebar text size', kind: 'length', group: 'Sidebar', default: '13px', min: 11, max: 16, step: 0.5, hint: 'Nav item font size.' },
   { name: 'sidebar-icon-size', label: 'Sidebar icon size', kind: 'length', group: 'Sidebar', default: '16px', min: 12, max: 28, step: 1, hint: 'Nav icon size.' },
+
+  // Header (shared AppHeader)
+  { name: 'header-fg', label: 'Header wordmark', kind: 'color', group: 'Header', default: '#18181A', hint: '“iLaunchify” wordmark color.' },
+  { name: 'header-border', label: 'Header hairline', kind: 'color', group: 'Header', default: '#E0E1E5', hint: 'Bottom border.' },
+  { name: 'header-py', label: 'Header height', kind: 'length', group: 'Header', default: '12px', min: 6, max: 24, step: 1, hint: 'Top-bar vertical padding.' },
+  { name: 'header-wordmark-fs', label: 'Wordmark size', kind: 'length', group: 'Header', default: '23px', min: 16, max: 32, step: 1, hint: 'Wordmark font size.' },
+
+  // Footer (marketing LandingFooter — dark)
+  { name: 'footer-bg', label: 'Footer background', kind: 'color', group: 'Footer', default: '#18181A', hint: 'Footer surface.' },
+  { name: 'footer-fg', label: 'Footer text', kind: 'color', group: 'Footer', default: '#FFFFFF', hint: 'Footer text color.' },
 ]
 
 const EDITABLE_BY_NAME = new Map(EDITABLE_THEME_TOKENS.map((t) => [t.name, t]))
@@ -155,6 +165,8 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Accent text on cards', fg: 'pink-700-rgb', bg: 'bg-surface', min: 4.5 },
   { label: 'Sidebar text', fg: 'sidebar-fg', bg: 'sidebar-bg', min: 4.5 },
   { label: 'Sidebar active text', fg: 'sidebar-active-fg', bg: 'sidebar-active-bg', min: 4.5 },
+  { label: 'Header wordmark', fg: 'header-fg', bg: '#FFFFFF', min: 4.5 },
+  { label: 'Footer text', fg: 'footer-fg', bg: 'footer-bg', min: 4.5 },
 ]
 
 /** Resolve a pairing side (token name or literal) to a hex, from proposed values. */
