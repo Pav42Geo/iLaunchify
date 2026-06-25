@@ -111,18 +111,20 @@
      --font-scale (globally, or per-scope) resizes all token-driven
      type at once — the single knob Theme Studio will expose.
      (Named --fs-* so they don't collide with the --text-* COLOR
-     tokens below.) px-based to match the existing visual design.
+     tokens below.) rem-based for WCAG 2.1 SC 1.4.4 (Resize Text) — the
+     ramp scales with the browser/root font size. Values equal the prior
+     px at the default 16px root, so there is no visual change today.
      ============================================================ */
   --font-scale: 1;
-  --fs-2xs:  calc(10px * var(--font-scale));
-  --fs-xs:   calc(11px * var(--font-scale));
-  --fs-sm:   calc(12px * var(--font-scale));
-  --fs-base: calc(13px * var(--font-scale));
-  --fs-md:   calc(14px * var(--font-scale));
-  --fs-lg:   calc(16px * var(--font-scale));
-  --fs-xl:   calc(20px * var(--font-scale));
-  --fs-2xl:  calc(24px * var(--font-scale));
-  --fs-3xl:  calc(30px * var(--font-scale));
+  --fs-2xs:  calc(0.625rem  * var(--font-scale)); /* 10px */
+  --fs-xs:   calc(0.6875rem * var(--font-scale)); /* 11px */
+  --fs-sm:   calc(0.75rem   * var(--font-scale)); /* 12px */
+  --fs-base: calc(0.8125rem * var(--font-scale)); /* 13px */
+  --fs-md:   calc(0.875rem  * var(--font-scale)); /* 14px */
+  --fs-lg:   calc(1rem      * var(--font-scale)); /* 16px */
+  --fs-xl:   calc(1.25rem   * var(--font-scale)); /* 20px */
+  --fs-2xl:  calc(1.5rem    * var(--font-scale)); /* 24px */
+  --fs-3xl:  calc(1.875rem  * var(--font-scale)); /* 30px */
 
   /* Corners — Tier-1 radius ramp + global multiplier. */
   --radius-scale: 1;
@@ -224,6 +226,20 @@
   --bg-surface: #FFFFFF;
   --bg-subtle:  #F3EFE8;
   --bg-muted:   var(--ink-100);
+
+  /* Text + accent + emphasis inherit from :root (light defaults). */
+}
+
+/* ============================================================
+   GRAY SURFACE — cool neutral canvas (marketplace). Mood-board
+   marketplace mockup uses --ink-50 (#F8F8F9) as the page with white
+   cards lifting off it. Same semantics as light, gray canvas.
+   ============================================================ */
+[data-surface='gray'] {
+  --bg-canvas:  var(--ink-50);   /* #F8F8F9 */
+  --bg-surface: #FFFFFF;         /* white cards lift off the gray */
+  --bg-subtle:  var(--ink-100);
+  --bg-muted:   var(--ink-200);
 
   /* Text + accent + emphasis inherit from :root (light defaults). */
 }
