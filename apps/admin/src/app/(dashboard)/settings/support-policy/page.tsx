@@ -11,7 +11,7 @@ export default async function SupportPolicyPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Support Policy</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-600">
           How a creator&apos;s subscription tier shapes a new support ticket: the first-response SLA

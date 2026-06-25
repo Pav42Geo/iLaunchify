@@ -147,7 +147,7 @@ export default async function ThemeStudioPage() {
   return (
     <div className="space-y-6">
       {/* Cream hero (admin v2 LOCKED pattern) */}
-      <div className="rounded-3xl bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <div className="flex items-center gap-2">
           <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
             Phase 3a · read-only

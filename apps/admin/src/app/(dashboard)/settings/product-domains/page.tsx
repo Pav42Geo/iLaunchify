@@ -29,7 +29,7 @@ export default async function ProductDomainsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Product Domains</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-600">
           Turn each product domain on or off for the partner new-product builder. Disabled domains

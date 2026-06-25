@@ -11,7 +11,7 @@ export default async function LibraryTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Design templates</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-600">
           The curated template library creators browse in the Design Studio. Tag each with a product
