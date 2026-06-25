@@ -10,6 +10,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Check, Sparkles } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { setRoleCapabilityAction, applyRolePresetAction } from './actions'
 
 type RoleCol = { value: string; label: string }
@@ -118,13 +119,11 @@ export function RoleMatrix({
                 return (
                   <td key={r.value} className="px-3 py-2.5 text-center">
                     <span className="relative inline-flex items-center justify-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={on}
                         disabled={pending}
                         onChange={(e) => toggle(r.value, cap, e.target.checked)}
                         aria-label={`${r.label}: ${cap}${suggested ? ' (suggested)' : ''}`}
-                        className="h-4 w-4 accent-pink-600 disabled:opacity-50"
                       />
                       {!on && suggested && (
                         <span

@@ -6,6 +6,7 @@
 
 import { useId, useState, useTransition } from 'react'
 import { Pencil, Plus, X } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import type { LifestyleTagGroup } from '@ilaunchify/db'
 import { createLifestyleTag, updateLifestyleTag } from './actions'
 
@@ -207,15 +208,12 @@ export function LifestyleTagFormDialog({
                 defaultValue={String(tag?.displayOrder ?? '')}
                 placeholder="10, 20, 30…"
               />
-              <label className="inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-900">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  defaultChecked={tag?.isActive ?? true}
-                  className="h-3.5 w-3.5 accent-pink-500"
-                />
-                Active
-              </label>
+              <Checkbox
+                name="isActive"
+                defaultChecked={tag?.isActive ?? true}
+                label="Active"
+                className="text-[12.5px] text-ink-900"
+              />
 
               {error && (
                 <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">

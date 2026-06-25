@@ -14,6 +14,7 @@
 
 import { useId, useMemo, useState, useTransition } from 'react'
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import type { NicheRuleConditionKind } from '@ilaunchify/marketplace'
 import {
   createNicheRule,
@@ -295,24 +296,18 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-900">
-                    <input
-                      type="checkbox"
-                      checked={isLocked}
-                      onChange={(e) => setIsLocked(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-pink-500"
-                    />
-                    Locked
-                  </label>
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-ink-900">
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-pink-500"
-                    />
-                    Active
-                  </label>
+                  <Checkbox
+                    checked={isLocked}
+                    onChange={(e) => setIsLocked(e.target.checked)}
+                    label="Locked"
+                    className="text-[12.5px] text-ink-900"
+                  />
+                  <Checkbox
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    label="Active"
+                    className="text-[12.5px] text-ink-900"
+                  />
                 </div>
               </div>
 

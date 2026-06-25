@@ -14,6 +14,7 @@
 
 import { useId, useState, useTransition } from 'react'
 import { Pencil, Plus, X } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { createCategory, updateCategory } from './actions'
 
 const MAIN_CATEGORY_OPTIONS = ['Food', 'Beverages', 'Supplements', 'Other'] as const
@@ -196,17 +197,12 @@ export function CategoryFormDialog({
                 />
               </div>
 
-              <label className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  defaultChecked={category?.isActive ?? true}
-                  className="h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-200"
-                />
-                <span className="text-[12.5px] text-ink-700">
-                  Active — fileable in the product flow. Uncheck to hide this category (e.g. Gift &amp; Seasonal).
-                </span>
-              </label>
+              <Checkbox
+                name="isActive"
+                defaultChecked={category?.isActive ?? true}
+                className="pt-1 text-[12.5px] text-ink-700"
+                label="Active — fileable in the product flow. Uncheck to hide this category (e.g. Gift & Seasonal)."
+              />
 
               {error && (
                 <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">
