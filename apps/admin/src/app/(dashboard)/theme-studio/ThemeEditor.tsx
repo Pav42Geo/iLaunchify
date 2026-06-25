@@ -51,7 +51,7 @@ const CATEGORY: Record<'foundations' | 'colors' | 'components' | 'chrome', Edita
   foundations: ['Scale', 'Fonts'],
   colors: ['Text', 'Brand', 'Backgrounds', 'Status'],
   components: ['Borders & cards', 'Forms', 'Buttons & chips'],
-  chrome: ['Sidebar', 'Header', 'Footer'],
+  chrome: ['Sidebar', 'Header', 'Footer', 'Studio'],
 }
 
 export function ThemeEditor({

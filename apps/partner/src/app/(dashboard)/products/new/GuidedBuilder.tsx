@@ -705,13 +705,13 @@ const CSS = `
 .gb .facts .big{font-size:24px;font-weight:800;border-bottom:6px solid #000;margin:0 0 2px}
 .gb .facts .r{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:2px 0}
 .gb .studio{display:grid;grid-template-columns:1fr 230px;border:1px solid var(--ink-200);border-radius:18px;overflow:hidden;min-height:480px}
-.gb .studio .canvas{padding:18px;background:var(--ink-50)} .gb .studio .drawer{border-left:1px solid var(--ink-200);background:#fff;padding:12px}
+.gb .studio .canvas{padding:18px;background:var(--studio-canvas-bg)} .gb .studio .drawer{border-left:1px solid var(--ink-200);background:var(--studio-panel-bg);padding:12px}
 .gb .drawer .ditem{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:11px;cursor:pointer;font-size:var(--fs-sm);font-weight:500;color:var(--ink-600)}
 .gb .drawer .ditem.on{background:var(--pink-50);color:var(--pink-700)} .gb .drawer .ditem:hover{background:var(--ink-50)}
-.gb .pacshell{display:grid;grid-template-columns:240px 1fr 250px;border:1px solid var(--ink-200);border-radius:18px;overflow:hidden;min-height:520px}
-.gb .pacshell .lib{border-right:1px solid var(--ink-200);padding:12px;background:#fff;overflow:auto;max-height:560px}
+.gb .pacshell{display:grid;grid-template-columns:var(--studio-rail-width) 1fr var(--studio-inspector-width);border:1px solid var(--ink-200);border-radius:18px;overflow:hidden;min-height:520px}
+.gb .pacshell .lib{border-right:1px solid var(--ink-200);padding:12px;background:var(--studio-panel-bg);overflow:auto;max-height:560px}
 .gb .pacshell .stage{background:linear-gradient(180deg,#fafafa,#eee);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
-.gb .pacshell .insp{border-left:1px solid var(--ink-200);padding:12px;background:#fff}
+.gb .pacshell .insp{border-left:1px solid var(--ink-200);padding:12px;background:var(--studio-panel-bg)}
 .gb .cat{font-size:var(--fs-xs);font-weight:700;color:var(--ink-700);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
 .gb .subcat{font-size:var(--fs-sm);color:var(--ink-600);padding:5px 8px;border-radius:8px;cursor:pointer}
 .gb .subcat:hover{background:var(--ink-50)} .gb .subcat.on{background:var(--pink-50);color:var(--pink-700);font-weight:600}

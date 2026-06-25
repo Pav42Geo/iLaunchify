@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer' | 'Studio'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -138,6 +138,12 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Footer (marketing LandingFooter — dark)
   { name: 'footer-bg', label: 'Footer background', kind: 'color', group: 'Footer', default: '#18181A', hint: 'Footer surface.' },
   { name: 'footer-fg', label: 'Footer text', kind: 'color', group: 'Footer', default: '#FFFFFF', hint: 'Footer text color.' },
+
+  // Studio chrome (Design Studio canvas + Packaging Studio shell)
+  { name: 'studio-panel-bg', label: 'Studio panel', kind: 'color', group: 'Studio', default: '#FFFFFF', hint: 'Library / inspector / drawer background.' },
+  { name: 'studio-canvas-bg', label: 'Studio canvas', kind: 'color', group: 'Studio', default: '#F8F8F9', hint: 'Canvas / stage background.' },
+  { name: 'studio-rail-width', label: 'Library rail width', kind: 'length', group: 'Studio', default: '240px', min: 180, max: 320, step: 2, hint: 'Left tools/library column.' },
+  { name: 'studio-inspector-width', label: 'Inspector width', kind: 'length', group: 'Studio', default: '250px', min: 180, max: 340, step: 2, hint: 'Right properties column.' },
 ]
 
 const EDITABLE_BY_NAME = new Map(EDITABLE_THEME_TOKENS.map((t) => [t.name, t]))

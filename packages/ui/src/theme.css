@@ -266,6 +266,12 @@
   /* Footer (marketing LandingFooter — dark surface). */
   --footer-bg:          var(--ink-900);
   --footer-fg:          #FFFFFF;
+
+  /* Studio chrome (Design Studio canvas + Packaging Studio shell). */
+  --studio-panel-bg:        #FFFFFF;
+  --studio-canvas-bg:       var(--ink-50);
+  --studio-rail-width:      240px;
+  --studio-inspector-width: 250px;
 }
 
 /* ============================================================
