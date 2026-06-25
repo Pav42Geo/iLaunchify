@@ -648,6 +648,7 @@ const CSS = `
 .gb .field label{display:block;font-size:var(--fs-xs);font-weight:600;color:var(--ink-600);margin-bottom:5px}
 .gb .input,.gb .sel,.gb textarea{width:100%;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);background:#fff}
 .gb .input:focus,.gb .sel:focus,.gb textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+.gb input[type=checkbox],.gb input[type=radio]{accent-color:var(--control-accent);cursor:pointer}
 .gb .row{display:flex;gap:14px;flex-wrap:wrap} .gb .grid{display:grid;gap:14px}
 .gb .chip{display:inline-flex;align-items:center;gap:6px;border-radius:var(--chip-radius);border:var(--border-width) solid var(--border-soft);padding:5px 11px;font-size:var(--fs-sm);cursor:pointer;background:#fff;color:var(--ink-700)}
 .gb .chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}

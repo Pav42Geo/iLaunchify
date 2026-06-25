@@ -13,6 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
   Button,
+  Checkbox,
 } from '@ilaunchify/ui'
 import { ShieldCheck } from 'lucide-react'
 import { CERT_CLAIM_CONSENT_TEXT } from './claim-consent'
@@ -98,19 +99,18 @@ export function CertConsentModal({
             {CERT_CLAIM_CONSENT_TEXT}
           </p>
 
-          <label className="flex items-start gap-2 text-[12.5px] text-ink-800">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              disabled={isPending}
-              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span>
-              I confirm the above and consent to display the {cert?.certTypeName ?? 'certification'}{' '}
-              badge on this label.
-            </span>
-          </label>
+          <Checkbox
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            disabled={isPending}
+            className="items-start text-[12.5px] text-ink-800"
+            label={
+              <span>
+                I confirm the above and consent to display the {cert?.certTypeName ?? 'certification'}{' '}
+                badge on this label.
+              </span>
+            }
+          />
         </div>
 
         <DialogFooter>

@@ -27,6 +27,7 @@ import {
   addDrugFactsPanel,
   SAMPLE_DRUG_FACTS_DATA,
   addLabelSection,
+  Checkbox,
   LABEL_SECTION_LABELS,
   SAMPLE_NUTRITION_DATA,
   type BrandCanvasAssets,
@@ -567,24 +568,18 @@ export function LabelDrawer({
           <InfoTip text="Applied when you add the panel. Hiding required sections may flag in the compliance scan." />
         </div>
         <div className="space-y-1.5">
-          <label className="flex items-center gap-2 text-[12px] text-ink-800">
-            <input
-              type="checkbox"
-              checked={showTitle}
-              onChange={(e) => setShowTitle(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
-            />
-            Show panel title
-          </label>
-          <label className="flex items-center gap-2 text-[12px] text-ink-800">
-            <input
-              type="checkbox"
-              checked={showFootnote}
-              onChange={(e) => setShowFootnote(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
-            />
-            Show footnote / disclosure
-          </label>
+          <Checkbox
+            checked={showTitle}
+            onChange={(e) => setShowTitle(e.target.checked)}
+            label="Show panel title"
+            className="text-[12px] text-ink-800"
+          />
+          <Checkbox
+            checked={showFootnote}
+            onChange={(e) => setShowFootnote(e.target.checked)}
+            label="Show footnote / disclosure"
+            className="text-[12px] text-ink-800"
+          />
         </div>
       </section>
 

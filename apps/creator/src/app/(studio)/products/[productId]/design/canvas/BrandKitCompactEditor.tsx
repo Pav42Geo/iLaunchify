@@ -17,7 +17,7 @@ import {
   removeBrandFont,
   type LogoVariant,
 } from '@/app/(dashboard)/brands/[brandId]/assets/actions'
-import { loadCustomFont } from '@ilaunchify/ui'
+import { loadCustomFont, Checkbox } from '@ilaunchify/ui'
 import type { StudioAssetSummary, StudioFontOption, StudioCustomFont } from './brand-edit-actions'
 import { applyBrandKitFromUrl } from './brand-kit-builder'
 
@@ -533,10 +533,13 @@ export function FontsCompact({
               disabled={uploading}
               className="w-full text-[10.5px] text-ink-600 file:mr-1.5 file:rounded file:border file:border-ink-200 file:bg-white file:px-1.5 file:py-0.5 file:text-[10.5px]"
             />
-            <label className="flex items-start gap-1 text-[10px] text-ink-500">
-              <input type="checkbox" checked={upLicense} onChange={(e) => setUpLicense(e.target.checked)} disabled={uploading} className="mt-0.5" />
-              <span>I have the right to use &amp; embed this font.</span>
-            </label>
+            <Checkbox
+              checked={upLicense}
+              onChange={(e) => setUpLicense(e.target.checked)}
+              disabled={uploading}
+              className="items-start gap-1 text-[10px] text-ink-500"
+              label={<span>I have the right to use &amp; embed this font.</span>}
+            />
             <button
               type="submit"
               disabled={uploading || !upFile || !upName.trim() || !upLicense}
