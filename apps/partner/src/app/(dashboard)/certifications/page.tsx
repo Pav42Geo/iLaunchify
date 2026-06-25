@@ -83,7 +83,7 @@ export default async function CertificationsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Certifications
         </p>
@@ -251,7 +251,7 @@ function CertSection({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex items-center gap-2 border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="flex items-center gap-2 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <Icon className={`h-4 w-4 ${iconClass}`} aria-hidden="true" />
         <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           {title}

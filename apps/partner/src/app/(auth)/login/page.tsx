@@ -19,7 +19,7 @@ export default async function LoginPage({
   const { email } = await searchParams
 
   return (
-    <div className="min-h-screen flex flex-col bg-cream">
+    <div className="min-h-screen flex flex-col bg-[var(--bg-hero)]">
       <header className="px-6 py-5">
         <a
           href={marketingUrl('/business')}

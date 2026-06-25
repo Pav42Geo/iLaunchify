@@ -91,7 +91,7 @@ export default async function PackagingEditPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <Link

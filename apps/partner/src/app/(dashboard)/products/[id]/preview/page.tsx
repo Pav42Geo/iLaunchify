@@ -300,7 +300,7 @@ export default async function ProductPreviewPage({
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
@@ -376,7 +376,7 @@ export default async function ProductPreviewPage({
               { label: 'Lead time', value: firstVariant ? `${firstVariant.leadTimeDays}d` : '—' },
               { label: 'Margin', value: `${marginPct}%` },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl bg-cream px-3 py-2.5">
+              <div key={s.label} className="rounded-xl bg-[var(--bg-hero)] px-3 py-2.5">
                 <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{s.label}</p>
                 <p className="mt-0.5 font-display text-[16px] font-bold tabular-nums text-ink-900">{s.value}</p>
               </div>
@@ -430,7 +430,7 @@ export default async function ProductPreviewPage({
                     { label: 'Total units', value: totalUnits.toLocaleString() },
                     { label: 'Total revenue', value: money(totalRevenue) },
                   ].map((s) => (
-                    <div key={s.label} className="rounded-xl bg-cream px-3 py-2.5">
+                    <div key={s.label} className="rounded-xl bg-[var(--bg-hero)] px-3 py-2.5">
                       <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{s.label}</p>
                       <p className="mt-0.5 font-display text-[16px] font-bold tabular-nums text-ink-900">{s.value}</p>
                     </div>

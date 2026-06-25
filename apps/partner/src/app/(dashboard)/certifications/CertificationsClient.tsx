@@ -115,7 +115,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border border-ink-200 bg-cream/60 p-5"
+      className="space-y-4 rounded-2xl border border-ink-200 bg-[var(--bg-hero)]/60 p-5"
     >
       <div className="flex items-start justify-between">
         <div>

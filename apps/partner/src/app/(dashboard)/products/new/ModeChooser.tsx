@@ -44,7 +44,7 @@ export function ModeChooser({
 }: ModeChooserProps) {
   if (collapsed) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-cream px-3 py-2 text-xs text-ink-600">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-[var(--bg-hero)] px-3 py-2 text-xs text-ink-600">
         <span>
           Built with:{' '}
           <strong className="font-semibold text-ink-900">
@@ -127,10 +127,10 @@ function ModeTile({
       className={
         'relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ' +
         (disabled
-          ? 'cursor-not-allowed border-ink-200 bg-cream opacity-60'
+          ? 'cursor-not-allowed border-ink-200 bg-[var(--bg-hero)] opacity-60'
           : active
             ? 'border-[1.5px] border-pink-500 bg-[#FFF8FA]'
-            : 'border-ink-200 bg-cream hover:border-pink-300 hover:bg-[#FFF8FA]')
+            : 'border-ink-200 bg-[var(--bg-hero)] hover:border-pink-300 hover:bg-[#FFF8FA]')
       }
     >
       {badge && (

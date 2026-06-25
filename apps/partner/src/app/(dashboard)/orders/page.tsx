@@ -132,7 +132,7 @@ export default async function OrdersPage({
   return (
     <div className="space-y-6">
       {/* Cream hero + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Orders
         </p>
@@ -308,7 +308,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
           {pill.label}
         </span>
@@ -357,7 +357,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
         </div>
       </div>
 
-      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
+      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px]">
         <ActionLink href={`/orders/${d.id}`} icon={Eye}>
           Open dispatch
         </ActionLink>

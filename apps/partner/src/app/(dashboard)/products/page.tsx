@@ -157,7 +157,7 @@ export default async function ProductsListPage({
   return (
     <div className="space-y-6">
       {/* Hero — cream band + KPI strip (partner-v2 chrome) */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
@@ -522,7 +522,7 @@ function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, str
 
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         {r.status === 'PUBLISHED' || r.status === 'PAUSED' ? (
           <LiveToggle id={r.id} name={r.name} status={r.status} />
         ) : (
@@ -559,7 +559,7 @@ function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, str
         </div>
       </div>
 
-      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
+      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px]">
         {authoring ? (
           <ProductActionLink href={`/products/new?draft=${r.id}`} icon={Pencil}>
             Edit product

@@ -38,7 +38,7 @@ export default async function ServicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Manufacturing · Services
         </p>
@@ -55,7 +55,7 @@ export default async function ServicesPage() {
       <div className="space-y-4">
         {partner.services.map((s) => (
           <section key={s.id} className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-            <header className="flex flex-wrap items-center gap-2 border-b border-ink-100 bg-cream px-4 py-2.5">
+            <header className="flex flex-wrap items-center gap-2 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
               <h2 className="font-display text-[14px] font-semibold leading-none tracking-tight text-ink-900">
                 {SERVICE_LABEL[s.type] ?? s.type}
               </h2>

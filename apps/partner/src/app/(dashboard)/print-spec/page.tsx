@@ -74,7 +74,7 @@ export default async function PrintSpecPage({
   })
 
   const header = (
-    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
       <Link
         href="/packaging"
         className="inline-flex items-center gap-1 rounded text-[12px] font-medium text-ink-500 transition-colors hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
