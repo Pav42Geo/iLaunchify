@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Check } from 'lucide-react'
+import { Check, Minus } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 // Checkbox — native <input type="checkbox"> (sr-only, keeps full a11y +
@@ -19,12 +19,17 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         <input ref={ref} type="checkbox" className="peer sr-only" {...props} />
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[var(--checkbox-radius)] border border-[var(--control-border)] bg-[var(--control-bg)] transition-colors peer-checked:border-[var(--control-accent)] peer-checked:bg-[var(--control-accent)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--input-focus)] peer-focus-visible:ring-offset-1 peer-disabled:opacity-50"
+          className="pointer-events-none absolute inset-0 rounded-[var(--checkbox-radius)] border border-[var(--control-border)] bg-[var(--control-bg)] transition-colors peer-checked:border-[var(--control-accent)] peer-checked:bg-[var(--control-accent)] peer-indeterminate:border-[var(--control-accent)] peer-indeterminate:bg-[var(--control-accent)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--input-focus)] peer-focus-visible:ring-offset-1 peer-disabled:opacity-50"
         />
         <Check
           aria-hidden
           strokeWidth={3}
           className="pointer-events-none absolute inset-0 m-auto h-3 w-3 opacity-0 text-[var(--control-accent-fg)] transition-opacity peer-checked:opacity-100"
+        />
+        <Minus
+          aria-hidden
+          strokeWidth={3}
+          className="pointer-events-none absolute inset-0 m-auto h-3 w-3 opacity-0 text-[var(--control-accent-fg)] transition-opacity peer-indeterminate:opacity-100 peer-checked:opacity-0"
         />
       </span>
       {label != null && <span className="text-[length:var(--fs-md)]">{label}</span>}

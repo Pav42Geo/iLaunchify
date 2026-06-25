@@ -14,6 +14,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { AlertTriangle, Lock } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { PARTNER_TIER_STYLE, tierPillStyle } from './tier-style'
 import { BulkTierActions } from './BulkTierActions'
 import { bulkChangePartnerTier } from './actions'
@@ -100,15 +101,13 @@ export function PartnersBulkTable({ rows }: Props) {
           <thead className="bg-zinc-50 text-left text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
             <tr>
               <th className="px-3 py-2.5 w-[34px]">
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label="Select all visible partners"
                   checked={allOnPageSelected}
                   ref={(el) => {
                     if (el) el.indeterminate = someSelected
                   }}
                   onChange={toggleAll}
-                  className="h-3.5 w-3.5 cursor-pointer accent-pink-600"
                 />
               </th>
               <th className="px-4 py-2.5">Partner</th>
@@ -134,12 +133,10 @@ export function PartnersBulkTable({ rows }: Props) {
                   }
                 >
                   <td className="px-3 py-2.5">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label={`Select ${r.companyName}`}
                       checked={isSelected}
                       onChange={() => toggleRow(r.id)}
-                      className="h-3.5 w-3.5 cursor-pointer accent-pink-600"
                     />
                   </td>
                   <td className="px-4 py-2.5">
