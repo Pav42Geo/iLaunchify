@@ -111,6 +111,17 @@ export async function applyThemePreset(presetId: string, scope: ThemeScope = 'gl
   }
 }
 
+/** Apply a preset AND publish it live to (scope, mode) in one step — runs the
+ *  full WCAG gate + version snapshot. Replaces the scope's overrides with exactly
+ *  the preset (tokens it doesn't set reset to baseline). Reversible via History. */
+export async function applyAndPublishPreset(presetId: string, scope: ThemeScope = 'global', mode: ThemeMode = 'light'): Promise<Result> {
+  await requireCapability('platform:admin')
+  const tokens = getPresetTokens(presetId) ?? (await getCustomPresetTokens(presetId))
+  if (!tokens) return { ok: false, error: 'Unknown preset.' }
+  const input = EDITABLE_THEME_TOKENS.map((t) => ({ name: t.name, value: tokens[t.name] ?? t.default }))
+  return publishThemeTokens(input, scope, mode)
+}
+
 /** Save the current editor values as a named custom preset. */
 export async function saveCurrentAsPreset(name: string, input: { name: string; value: string }[]): Promise<Result> {
   const admin = await requireCapability('platform:admin')

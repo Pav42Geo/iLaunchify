@@ -33,6 +33,30 @@ import { ThemeHistory } from './ThemeHistory'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Theme Studio — Admin' }
 
+/** Resolve a preset's token diffs (over defaults) into the handful of colors/
+ *  fonts the gallery preview renders. rgb-channel values → rgb(); else as-is. */
+const TOKEN_DEFAULTS: Record<string, string> = Object.fromEntries(EDITABLE_THEME_TOKENS.map((t) => [t.name, t.default]))
+function presetPreview(tokens: Record<string, string>) {
+  const m = { ...TOKEN_DEFAULTS, ...tokens }
+  const css = (v: string | undefined) =>
+    v && /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/.test(v.trim()) ? `rgb(${v.trim()})` : (v ?? '')
+  return {
+    canvas: css(m['bg-canvas']),
+    surface: css(m['bg-surface']),
+    ink: css(m['ink-900-rgb']),
+    sub: css(m['ink-600-rgb']),
+    pink: css(m['pink-500-rgb']),
+    neon: css(m['neon-500-rgb']),
+    btnBg: css(m['button-primary-bg']),
+    btnFg: css(m['button-primary-fg']),
+    chipBg: css(m['chip-active-bg']),
+    chipFg: css(m['chip-active-fg']),
+    fontDisplay: m['font-display'] ?? '',
+    fontSans: m['font-sans'] ?? '',
+    cardRadius: m['card-radius'] ?? '16px',
+  }
+}
+
 export default async function ThemeStudioPage({ searchParams }: { searchParams: Promise<{ scope?: string; mode?: string }> }) {
   await requireCapability('platform:admin')
   const sp = await searchParams
@@ -86,8 +110,8 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
           <ThemePresets
             scope={scope}
             mode={mode}
-            presets={BUILTIN_PRESETS.map((p) => ({ id: p.id, name: p.name, description: p.description, swatch: p.swatch }))}
-            custom={customPresets.map((c) => ({ id: c.id, name: c.name }))}
+            presets={BUILTIN_PRESETS.map((p) => ({ id: p.id, name: p.name, description: p.description, preview: presetPreview(p.tokens) }))}
+            custom={customPresets.map((c) => ({ id: c.id, name: c.name, preview: presetPreview(c.tokens) }))}
           />
         }
         historySlot={
