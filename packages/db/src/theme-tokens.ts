@@ -25,7 +25,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
+  group: 'Scale' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -45,13 +45,17 @@ export interface EditableThemeToken {
  */
 export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Global scales
-  { name: 'font-scale', label: 'Font scale', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Global type-size multiplier (rem-based, WCAG-safe).' },
-  { name: 'radius-scale', label: 'Corner scale', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
+  { name: 'font-scale', label: 'Text size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Scales ALL text together (rem-based, WCAG-safe). Right = larger.' },
+  { name: 'radius-scale', label: 'Corner size', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
 
-  // Brand colors (channel tokens — drive utilities + aliases + components)
-  { name: 'pink-500-rgb', label: 'Brand pink', kind: 'rgb', group: 'Brand', default: '255 46 99', hint: 'Pink fills: logo, pink buttons, active chips, focus ring.' },
-  { name: 'pink-700-rgb', label: 'Accent text', kind: 'rgb', group: 'Brand', default: '199 19 80', hint: 'Pink text on light surfaces (links, accents).' },
-  { name: 'ink-900-rgb', label: 'Ink / primary', kind: 'rgb', group: 'Brand', default: '24 24 26', hint: 'Primary text AND the primary (black) button fill.' },
+  // Text colors (channel tokens drive every text-ink-* / text-pink-* utility)
+  { name: 'ink-900-rgb', label: 'Primary text & buttons', kind: 'rgb', group: 'Text', default: '24 24 26', hint: 'Body + heading text AND the black primary-button fill.' },
+  { name: 'ink-600-rgb', label: 'Secondary text', kind: 'rgb', group: 'Text', default: '71 73 84', hint: 'Sub-headings, secondary labels.' },
+  { name: 'ink-500-rgb', label: 'Muted text', kind: 'rgb', group: 'Text', default: '107 109 120', hint: 'Captions, hints, placeholders.' },
+  { name: 'pink-700-rgb', label: 'Link / accent text', kind: 'rgb', group: 'Text', default: '199 19 80', hint: 'Pink text on light surfaces (links, accents).' },
+
+  // Brand fills
+  { name: 'pink-500-rgb', label: 'Brand pink (fills)', kind: 'rgb', group: 'Brand', default: '255 46 99', hint: 'Pink fills: logo, pink buttons, active chips, focus ring.' },
   { name: 'neon-500-rgb', label: 'Neon (dark only)', kind: 'rgb', group: 'Brand', default: '181 255 61', hint: 'Accent on dark surfaces only — never text on light.' },
 
   // Backgrounds / surfaces
@@ -103,6 +107,8 @@ export function rgbToHex(triplet: string): string {
  */
 export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: number }[] = [
   { label: 'Body text on page', fg: 'ink-900-rgb', bg: 'bg-canvas', min: 4.5 },
+  { label: 'Secondary text on page', fg: 'ink-600-rgb', bg: 'bg-canvas', min: 4.5 },
+  { label: 'Muted text on page', fg: 'ink-500-rgb', bg: 'bg-canvas', min: 4.5 },
   { label: 'Text on cards', fg: 'ink-900-rgb', bg: 'bg-surface', min: 4.5 },
   { label: 'Text on hero band', fg: 'ink-900-rgb', bg: 'bg-hero', min: 4.5 },
   { label: 'Primary button label', fg: '#FFFFFF', bg: 'ink-900-rgb', min: 4.5 },
