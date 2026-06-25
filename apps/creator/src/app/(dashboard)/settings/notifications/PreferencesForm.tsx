@@ -3,7 +3,7 @@
 // Per-event toggles for IN_APP + EMAIL channels, plus a quiet-hours editor.
 
 import { useState, useTransition } from 'react'
-import { Button, Input, Label } from '@ilaunchify/ui'
+import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import type { NotificationChannel, NotificationEvent } from '@ilaunchify/db'
 import { togglePreference, saveQuietHours } from './actions'
@@ -131,21 +131,19 @@ export function PreferencesForm({ preferences, events, quietHoursStartUtc, quiet
                     <div className="text-xs text-ink-500">{e.help}</div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isEnabled(e.value, 'IN_APP')}
                       onChange={(ev) => handleToggle(e.value, 'IN_APP', ev.target.checked)}
                       disabled={isPending}
-                      className="h-4 w-4 cursor-pointer accent-pink-600"
+                      aria-label={`${e.label} — in app`}
                     />
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isEnabled(e.value, 'EMAIL')}
                       onChange={(ev) => handleToggle(e.value, 'EMAIL', ev.target.checked)}
                       disabled={isPending}
-                      className="h-4 w-4 cursor-pointer accent-pink-600"
+                      aria-label={`${e.label} — email`}
                     />
                   </td>
                 </tr>
