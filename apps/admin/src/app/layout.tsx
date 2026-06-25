@@ -1,7 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
-import { getThemeOverrideCss, getThemePreviewCss } from '@ilaunchify/db'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { Toaster } from '@/components/providers/Toaster'
 
@@ -11,17 +10,14 @@ export const metadata: Metadata = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Theme Studio (Phase 3b). When the admin has Preview on, inject the DRAFT;
-  // otherwise the live published overrides. `:root:root{…}` wins over theme.css
-  // regardless of order; empty before the migration / when nothing is set.
+  // Theme Studio (Phase 3b). Overrides come from the render-blocking
+  // /theme-overrides stylesheet (preview-aware, uncached) so a publish is
+  // instant without making pages dynamic. Cookie here only drives the banner.
   const preview = (await cookies()).get('theme-preview')?.value === '1'
-  const themeOverrideCss = preview ? await getThemePreviewCss() : await getThemeOverrideCss()
   return (
     <html lang="en">
       <head>
-        {themeOverrideCss ? (
-          <style id="ilaunchify-theme-overrides" dangerouslySetInnerHTML={{ __html: themeOverrideCss }} />
-        ) : null}
+        <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body className="bg-zinc-50 text-zinc-900 antialiased">
         {preview ? (

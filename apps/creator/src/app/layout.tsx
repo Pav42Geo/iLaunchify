@@ -1,6 +1,5 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { getThemeOverrideCss } from '@ilaunchify/db'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { Toaster } from '@/components/providers/Toaster'
 
@@ -9,19 +8,16 @@ export const metadata: Metadata = {
   description: 'Design, comply, ship.',
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Theme Studio overrides (Phase 3b) — `:root:root{…}`, empty before migration.
-  const themeOverrideCss = await getThemeOverrideCss()
   return (
     <html lang="en">
       <head>
-        {themeOverrideCss ? (
-          <style id="ilaunchify-theme-overrides" dangerouslySetInnerHTML={{ __html: themeOverrideCss }} />
-        ) : null}
+        {/* Theme Studio overrides — render-blocking, always fresh (Phase 3b). */}
+        <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body className="bg-white text-ink-900 antialiased">
         <QueryProvider>
