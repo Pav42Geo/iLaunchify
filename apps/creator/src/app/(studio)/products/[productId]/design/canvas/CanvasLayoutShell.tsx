@@ -914,7 +914,7 @@ export function CanvasLayoutShell({
   }, [history])
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-ink-50">
+    <div className="fixed inset-0 flex flex-col bg-[var(--studio-canvas-bg)]">
       {/* Top bar */}
       <TopBar
         productName={productName}
@@ -1337,7 +1337,7 @@ function TopBar({
   templateAuthorMode: boolean
 }) {
   return (
-    <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-white px-4">
+    <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-[var(--studio-panel-bg)] px-4">
       <div className="flex items-center gap-2.5">
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">
@@ -1498,7 +1498,7 @@ function LeftRail({
   })
   return (
     <nav
-      className="flex w-20 flex-col gap-0.5 border-r border-ink-200 bg-white py-2"
+      className="flex w-20 flex-col gap-0.5 border-r border-ink-200 bg-[var(--studio-panel-bg)] py-2"
       role="toolbar"
       aria-label="Design tools"
     >
@@ -1623,7 +1623,7 @@ function ToolDrawer({
   }
 
   return (
-    <aside className="flex w-[400px] flex-col border-r border-ink-200 bg-white">
+    <aside className="flex w-[400px] flex-col border-r border-ink-200 bg-[var(--studio-panel-bg)]">
       <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
         <h2 className="text-base font-semibold text-ink-900">{titles[tool]}</h2>
         <button
