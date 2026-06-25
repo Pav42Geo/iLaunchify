@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import {
   FORMAT_OPTIONS,
   MANUFACTURING_PROCESS_OPTIONS,
@@ -288,27 +289,13 @@ function MultiGroup({
         {options.slice(0, visible).map((opt) => {
           const on = active.has(opt.value)
           return (
-            <label
+            <Checkbox
               key={opt.value}
-              className={'flex cursor-pointer items-center gap-2.5 text-[13px] ' + (on ? 'text-ink-900' : 'text-ink-600')}
-            >
-              <button
-                type="button"
-                onClick={() => onToggle(opt.value)}
-                aria-pressed={on}
-                className={
-                  'relative h-4 w-4 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
-                  (on ? 'border-pink-500 bg-pink-500' : 'border-ink-300 hover:border-ink-500')
-                }
-              >
-                {on && (
-                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">
-                    ✓
-                  </span>
-                )}
-              </button>
-              {opt.label}
-            </label>
+              checked={on}
+              onChange={() => onToggle(opt.value)}
+              label={opt.label}
+              className={'gap-2.5 text-[13px] ' + (on ? 'text-ink-900' : 'text-ink-600')}
+            />
           )
         })}
       </div>
@@ -465,27 +452,19 @@ function PackagingGroup({
           return (
             <div key={g.parent}>
               <div className="flex items-center justify-between">
-                <label className={'flex cursor-pointer items-center gap-2.5 text-[13px] ' + (on ? 'text-ink-900' : 'text-ink-600')}>
-                  <button
-                    type="button"
-                    onClick={() => onToggleParent(g.parent)}
-                    aria-pressed={on}
-                    className={
-                      'relative h-4 w-4 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
-                      (on ? 'border-pink-500 bg-pink-500' : 'border-ink-300 hover:border-ink-500')
-                    }
-                  >
-                    {on && (
-                      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">
-                        ✓
-                      </span>
-                    )}
-                  </button>
-                  {g.label}
-                  {childActive > 0 && (
-                    <span className="text-[10px] font-semibold text-pink-700">· {childActive}</span>
-                  )}
-                </label>
+                <Checkbox
+                  checked={on}
+                  onChange={() => onToggleParent(g.parent)}
+                  className={'gap-2.5 text-[13px] ' + (on ? 'text-ink-900' : 'text-ink-600')}
+                  label={
+                    <>
+                      {g.label}
+                      {childActive > 0 && (
+                        <span className="ml-1 text-[10px] font-semibold text-pink-700">· {childActive}</span>
+                      )}
+                    </>
+                  }
+                />
                 {g.children.length > 0 && (
                   <button
                     type="button"
@@ -502,24 +481,13 @@ function PackagingGroup({
                   {g.children.map((c) => {
                     const cOn = children_.has(c.slug)
                     return (
-                      <label key={c.slug} className={'flex cursor-pointer items-center gap-2 text-[12px] ' + (cOn ? 'text-ink-900' : 'text-ink-500')}>
-                        <button
-                          type="button"
-                          onClick={() => onToggleChild(c.slug)}
-                          aria-pressed={cOn}
-                          className={
-                            'relative h-3.5 w-3.5 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
-                            (cOn ? 'border-pink-500 bg-pink-500' : 'border-ink-300 hover:border-ink-500')
-                          }
-                        >
-                          {cOn && (
-                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white">
-                              ✓
-                            </span>
-                          )}
-                        </button>
-                        {c.name}
-                      </label>
+                      <Checkbox
+                        key={c.slug}
+                        checked={cOn}
+                        onChange={() => onToggleChild(c.slug)}
+                        label={c.name}
+                        className={'gap-2 text-[12px] ' + (cOn ? 'text-ink-900' : 'text-ink-500')}
+                      />
                     )
                   })}
                 </div>
