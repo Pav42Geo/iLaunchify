@@ -84,7 +84,7 @@ export function RowActionsMenu({
           side={side}
           sideOffset={4}
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-xl border border-ink-200 bg-white p-1 shadow-lg',
+            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-ink-200 bg-white p-1 shadow-lg',
             'origin-[var(--radix-dropdown-menu-content-transform-origin)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
@@ -186,7 +186,7 @@ export function RowActionSeparator() {
 
 export function RowActionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Dropdown.Label className="px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
+    <Dropdown.Label className="px-2.5 py-1 text-[length:var(--fs-sm)] font-bold uppercase tracking-[0.08em] text-ink-700">
       {children}
     </Dropdown.Label>
   )
@@ -250,7 +250,7 @@ export function RowActionSubMenu({
           sideOffset={2}
           alignOffset={-4}
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-xl border border-ink-200 bg-white p-1 shadow-lg',
+            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-ink-200 bg-white p-1 shadow-lg',
             'origin-[var(--radix-dropdown-menu-content-transform-origin)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
