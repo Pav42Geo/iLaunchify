@@ -13,7 +13,9 @@
 
 import type { ReactNode } from 'react'
 import { requireCapability } from '@ilaunchify/auth'
+import { EDITABLE_THEME_TOKENS, getThemeOverrides } from '@ilaunchify/db'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
+import { ThemeEditor } from './ThemeEditor'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Theme Studio — Admin' }
@@ -136,6 +138,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export default async function ThemeStudioPage() {
   await requireCapability('platform:admin')
+  const overrides = await getThemeOverrides()
 
   const semanticFlat: Record<string, string> = {
     'success-50': semantic.success[50], 'success-500': semantic.success[500],
@@ -161,6 +164,8 @@ export default async function ThemeStudioPage() {
           ink&nbsp;900; anything marked <span className="font-semibold text-danger-500">FAIL</span> must not carry text.
         </p>
       </div>
+
+      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} current={overrides} />
 
       <Section title="Color">
         <Ramp title="Pink — brand" scale={pink} />

@@ -20,6 +20,20 @@ if (process.env.NODE_ENV !== 'production') {
 
 export * from '@prisma/client'
 
+// Theme Studio — runtime design-token overrides (Phase 3b, 2026-06-25).
+export {
+  EDITABLE_THEME_TOKENS,
+  getThemeOverrides,
+  getThemeOverrideCss,
+  upsertThemeOverride,
+  deleteThemeOverride,
+  validateThemeToken,
+  contrastRatio,
+  type EditableThemeToken,
+  type ThemeTokenKind,
+  type ValidationResult,
+} from './theme-tokens'
+
 // Banned-ingredient runtime enforcement helpers (FDA_REGULATORY_POSTURE §5).
 export {
   isIngredientBanned,

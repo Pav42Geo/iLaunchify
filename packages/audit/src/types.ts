@@ -11,6 +11,7 @@ import type { AuditActorRole as PrismaActorRole, AuditLog } from '@ilaunchify/db
  * list central makes the /admin/audit filter dropdown easy.
  */
 export const AUDIT_ENTITY_TYPES = [
+  'ThemeTokenOverride', // Theme Studio runtime design-token overrides (2026-06-25)
   'Partner',
   'PartnerService',
   'PartnerVerificationSection',

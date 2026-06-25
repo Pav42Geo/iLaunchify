@@ -6548,3 +6548,22 @@ model GenerationStorageUsage {
   kilobytesUsed  Int      @default(0)
   updatedAt      DateTime @updatedAt
 }
+
+// =============================================================================
+// Theme Studio — runtime design-token overrides (Phase 3b, 2026-06-25)
+// =============================================================================
+// Flat name→value overrides of the platform CSS variables (theme.css holds the
+// defaults). The set of rows IS the active published theme; the admin Theme
+// Studio edits them and they inject into each app's :root at request time.
+// Names are allowlisted in code (packages/db/src/theme-tokens.ts). Versioning /
+// multi-theme / scopes come later (THEME_MANAGEMENT_ARCHITECTURE.md Phase 4).
+model ThemeTokenOverride {
+  id        String   @id @default(uuid())
+  /// CSS custom-property name WITHOUT the leading --, e.g. "font-scale",
+  /// "radius-scale", "bg-hero". Allowlist-validated before write.
+  name      String   @unique
+  /// Raw CSS value, e.g. "1.15", "#FFFFFF", "255 46 99".
+  value     String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
