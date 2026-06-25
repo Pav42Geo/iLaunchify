@@ -48,7 +48,7 @@ function RailCard({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[#FBFAF7] px-4 py-3">
+      <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-3">
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>

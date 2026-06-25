@@ -571,7 +571,7 @@ function Card({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-ink-100 bg-[#FBFAF7] px-5 py-3.5">
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
             <Icon className="h-4 w-4" aria-hidden="true" />

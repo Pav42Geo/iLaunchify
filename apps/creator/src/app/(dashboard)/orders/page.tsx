@@ -200,7 +200,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
       className="overflow-hidden rounded-xl border border-ink-200 bg-white"
       data-order-id={o.id}
     >
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         <StatusPill palette={palette} />
         <span>
           <span className="text-ink-500">Order</span>{' '}
@@ -280,7 +280,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
       </div>
 
       {/* Footer action rail */}
-      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[#FBFAF7] px-4 py-2.5 text-[12px]">
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px]">
         <ActionLink href={`/orders/${o.id}#thread`} icon={MessageCircle}>
           Ask partner
         </ActionLink>
@@ -451,7 +451,7 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
           See breakdown
           <span className="transition-transform group-open:rotate-180">▾</span>
         </summary>
-        <dl className="mt-2 w-full rounded-md border border-ink-200 bg-[#FBFAF7] px-3 py-2 text-[11.5px]">
+        <dl className="mt-2 w-full rounded-md border border-ink-200 bg-[var(--bg-hero)] px-3 py-2 text-[11.5px]">
           {partnerBreakdown.length > 0 && (
             <>
               <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700">
@@ -566,7 +566,7 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
   const iconCls = accepted ? 'text-emerald-700' : 'text-ink-400'
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-[#FBFAF7] px-3 py-2 text-[12.5px]">
+    <div className="flex items-center gap-3 rounded-lg bg-[var(--bg-hero)] px-3 py-2 text-[12.5px]">
       <Icon className={`h-4 w-4 flex-shrink-0 ${iconCls}`} />
       <span className="min-w-[6rem] text-[12px] font-bold uppercase tracking-[0.04em] text-ink-700">
         {role}

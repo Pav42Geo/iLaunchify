@@ -84,7 +84,7 @@ export default async function RegionsPage() {
           key={group.marketCode}
           className="overflow-hidden rounded-2xl border border-ink-200 bg-white"
         >
-          <header className="flex items-center justify-between gap-3 border-b border-ink-100 bg-[#FBFAF7] px-5 py-3">
+          <header className="flex items-center justify-between gap-3 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3">
             <div className="flex items-center gap-2.5">
               <span className="inline-flex h-6 w-7 items-center justify-center rounded-md border border-ink-200 bg-white text-[10px] font-bold uppercase tracking-wider text-ink-700">
                 {group.marketCode}

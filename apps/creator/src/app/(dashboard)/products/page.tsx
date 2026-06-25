@@ -321,7 +321,7 @@ export default async function ProductsListPage({
   return (
     <div className="space-y-6">
       {/* Cream hero + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
@@ -604,7 +604,7 @@ function ProductCard({ row: r, canDownloadLabels }: { row: Row; canDownloadLabel
 
   return (
     <article className="overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         <span
           className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
           style={{ background: palette.bg, color: palette.fg, borderColor: palette.border }}

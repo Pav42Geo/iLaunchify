@@ -55,7 +55,7 @@ export default async function CreatorSubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <header className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Creator · Subscribe &amp; save
         </p>
@@ -137,7 +137,7 @@ function SubscriptionCard({ sub }: { sub: SubView }) {
     <li>
       <article className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         {/* Header band */}
-        <header className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-ink-100 bg-cream px-5 py-2.5 text-[12px] text-ink-700">
+        <header className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-2.5 text-[12px] text-ink-700">
           <span
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
             style={{

@@ -36,7 +36,7 @@ export default async function SignupPage({
   const { email, brandName, plan } = await searchParams
 
   return (
-    <div className="min-h-screen bg-cream grid grid-cols-1 md:grid-cols-[1fr_1fr]">
+    <div className="min-h-screen bg-[var(--bg-hero)] grid grid-cols-1 md:grid-cols-[1fr_1fr]">
       {/* Left — marketing panel (dark) */}
       <aside
         data-surface="dark"

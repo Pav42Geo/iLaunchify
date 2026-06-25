@@ -98,7 +98,7 @@ function SpecSheetView({
   const q = snapshot.quote
   return (
     <div className="mt-4 space-y-5">
-      <header className="rounded-2xl border border-ink-200 bg-cream px-5 py-4">
+      <header className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-5 py-4">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Product spec sheet · v{version}
         </p>

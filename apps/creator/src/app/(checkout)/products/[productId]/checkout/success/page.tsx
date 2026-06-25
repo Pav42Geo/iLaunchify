@@ -175,7 +175,7 @@ function ComingNextCard({
 }) {
   return (
     <article className="overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-ink-100 bg-cream px-4 py-2.5 text-[12px] text-ink-700">
+      <div className="flex items-center gap-2 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-white">
           {icon}
         </span>
