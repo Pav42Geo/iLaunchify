@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Button } from '@ilaunchify/ui'
+import { Button, Brand } from '@ilaunchify/ui'
 import { partnerUrl } from '@/lib/app-urls'
 
 /**
@@ -18,11 +18,8 @@ export function BusinessHeader() {
   return (
     <header className="sticky top-0 z-50 bg-ink-900 border-b border-ink-700">
       <div className="max-w-[1400px] mx-auto px-8 py-3.5 flex items-center gap-8">
-        <Link href="/business" className="flex items-center gap-[9px] flex-shrink-0">
-          <span className="w-[26px] h-[26px] rounded-md bg-[var(--brand-mark-bg)]" />
-          <span className="font-display text-[22px] font-extrabold tracking-[-0.04em] text-white">
-            iLaunchify<span className="text-neon-500 font-bold ml-0.5"> Business</span>
-          </span>
+        <Link href="/business" className="flex items-center flex-shrink-0">
+          <Brand label="iLaunchify" sublabel="Business" wordmarkClassName="text-[22px] text-white" sublabelClassName="text-neon-500" />
         </Link>
 
         <nav className="flex gap-7 text-sm font-medium text-ink-400">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Brand } from '@ilaunchify/ui'
 import { NICHES } from '@/lib/niches'
 import { partnerUrl } from '@/lib/app-urls'
 
@@ -28,11 +29,8 @@ export function LandingFooter() {
       className="bg-[var(--footer-bg)] text-[var(--footer-fg)] px-6 sm:px-8 py-16 sm:py-20"
     >
       <div className="max-w-[1400px] mx-auto">
-        <Link href="/" className="inline-flex items-center gap-2.5 mb-12">
-          <span className="w-7 h-7 rounded-md bg-[var(--brand-mark-bg)]" />
-          <span className="font-display text-2xl font-extrabold tracking-[-0.04em]">
-            iLaunchify
-          </span>
+        <Link href="/" className="inline-flex items-center mb-12">
+          <Brand label="iLaunchify" markClassName="h-7 w-7" wordmarkClassName="text-2xl text-[var(--footer-fg)]" />
         </Link>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
