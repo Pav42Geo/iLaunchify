@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Switch } from '@ilaunchify/ui'
 import { toggleChannel } from './actions'
 
 export function ChannelToggle({
@@ -25,21 +26,11 @@ export function ChannelToggle({
   }
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
+    <Switch
+      checked={enabled}
       disabled={isPending}
-      onClick={() => handleToggle(!enabled)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-        enabled ? 'bg-zinc-900' : 'bg-zinc-300'
-      } disabled:opacity-50`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-          enabled ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
+      onChange={(e) => handleToggle(e.target.checked)}
+      aria-label={enabled ? 'Disable channel' : 'Enable channel'}
+    />
   )
 }

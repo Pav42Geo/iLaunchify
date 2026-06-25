@@ -4,6 +4,7 @@
 // (audited) and optimistically updates. Builder picks up the change on next load.
 
 import { useState, useTransition } from 'react'
+import { Switch } from '@ilaunchify/ui'
 import { setDomainEnabled } from './actions'
 
 export interface DomainRow {
@@ -58,20 +59,13 @@ export function DomainTogglesClient({ rows }: { rows: DomainRow[] }) {
                   {!r.flowLive && on ? ' · enabled, but won’t appear in the builder until the flow ships' : ''}
                 </div>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={`${on ? 'Disable' : 'Enable'} ${r.label}`}
+              <Switch
+                checked={on}
                 disabled={busy === r.key}
-                onClick={() => toggle(r.key)}
-                className={
-                  'relative inline-flex h-6 w-11 flex-none items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-60 ' +
-                  (on ? 'bg-pink-500' : 'bg-ink-300')
-                }
-              >
-                <span className={'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ' + (on ? 'translate-x-[22px]' : 'translate-x-0.5')} />
-              </button>
+                onChange={() => toggle(r.key)}
+                aria-label={`${on ? 'Disable' : 'Enable'} ${r.label}`}
+                className="flex-none"
+              />
             </li>
           )
         })}
