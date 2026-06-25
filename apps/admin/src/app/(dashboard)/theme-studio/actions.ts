@@ -14,6 +14,7 @@ import {
   saveThemeDraftRow,
   recordThemeVersion,
   getThemeVersion,
+  getPresetTokens,
   validateTheme,
   EDITABLE_THEME_TOKENS,
   type ThemeScope,
@@ -90,6 +91,20 @@ export async function publishThemeTokens(
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not publish: ${(err as Error).message}` }
+  }
+}
+
+/** Load a built-in preset's full look into a scope's draft (preview, then publish). */
+export async function applyThemePreset(presetId: string, scope: ThemeScope = 'global'): Promise<Result> {
+  await requireCapability('platform:admin')
+  const tokens = getPresetTokens(presetId)
+  if (!tokens) return { ok: false, error: 'Unknown preset.' }
+  try {
+    await saveThemeDraftRow(scope, tokens)
+    revalidatePath('/', 'layout')
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: `Could not apply preset: ${(err as Error).message}` }
   }
 }
 

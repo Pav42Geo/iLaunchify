@@ -53,6 +53,9 @@ export {
   type ValidationResult,
 } from './theme-tokens'
 
+// Theme Studio — built-in presets (Phase C).
+export { BUILTIN_PRESETS, getPresetTokens, type ThemePresetDef } from './theme-presets'
+
 // Banned-ingredient runtime enforcement helpers (FDA_REGULATORY_POSTURE §5).
 export {
   isIngredientBanned,

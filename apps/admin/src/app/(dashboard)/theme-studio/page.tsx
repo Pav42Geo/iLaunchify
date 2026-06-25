@@ -24,9 +24,11 @@ import {
   getThemeOverrides,
   getThemeDraft,
   listThemeVersions,
+  BUILTIN_PRESETS,
   type ThemeScope,
 } from '@ilaunchify/db'
 import { ThemeHistory } from './ThemeHistory'
+import { ThemePresets } from './ThemePresets'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
 import { ThemeEditor } from './ThemeEditor'
 
@@ -190,6 +192,11 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
           ink&nbsp;900; anything marked <span className="font-semibold text-danger-500">FAIL</span> must not carry text.
         </p>
       </div>
+
+      <ThemePresets
+        scope={scope}
+        presets={BUILTIN_PRESETS.map((p) => ({ id: p.id, name: p.name, description: p.description, swatch: p.swatch }))}
+      />
 
       <ThemeEditor
         tokens={EDITABLE_THEME_TOKENS}
