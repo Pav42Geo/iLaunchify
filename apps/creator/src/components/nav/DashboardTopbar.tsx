@@ -11,7 +11,7 @@
 // misroute).
 
 import { cookies } from 'next/headers'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getPublicBrandLogos } from '@ilaunchify/db'
 import type { User } from '@ilaunchify/auth'
 import { AppHeader } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
@@ -45,10 +45,13 @@ export async function DashboardTopbar({ user }: { user: User }) {
   const activeBrandId =
     brands.find((b) => b.id === activeBrandIdCookie)?.id ?? brands[0]?.id ?? ''
 
+  const logos = await getPublicBrandLogos()
+
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
+      logoSrc={logos.fullLight}
       right={
         <TopbarRight
           email={user.email}

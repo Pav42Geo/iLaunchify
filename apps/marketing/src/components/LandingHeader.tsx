@@ -18,6 +18,7 @@ import {
 } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { Heart, Bell } from 'lucide-react'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { LandingNavDropdown } from './LandingNavDropdown'
@@ -30,16 +31,18 @@ export interface LandingHeaderProps {
   activeBrandId?: string
 }
 
-export function LandingHeader({
+export async function LandingHeader({
   user,
   hasUnreadNotifications = false,
   brands = [],
   activeBrandId,
 }: LandingHeaderProps = {}) {
   const isGuest = !user
+  const logos = await getPublicBrandLogos()
 
   return (
     <AppHeader
+      logoSrc={logos.fullLight}
       center={
         <nav className="hidden items-center gap-7 md:flex">
           <Link

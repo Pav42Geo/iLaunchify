@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Brand } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { NICHES } from '@/lib/niches'
 import { partnerUrl } from '@/lib/app-urls'
 
@@ -22,7 +23,8 @@ import { partnerUrl } from '@/lib/app-urls'
  * stays inside the "dark surface = neon accent" rule. White wordmark at
  * top, copyright at bottom under a hairline divider.
  */
-export function LandingFooter() {
+export async function LandingFooter() {
+  const logos = await getPublicBrandLogos()
   return (
     <footer
       data-surface="dark"
@@ -30,7 +32,7 @@ export function LandingFooter() {
     >
       <div className="max-w-[1400px] mx-auto">
         <Link href="/" className="inline-flex items-center mb-12">
-          <Brand label="iLaunchify" markClassName="h-7 w-7" wordmarkClassName="text-2xl text-[var(--footer-fg)]" />
+          <Brand label="iLaunchify" imageSrc={logos.fullDark} markClassName="h-7 w-7" wordmarkClassName="text-2xl text-[var(--footer-fg)]" />
         </Link>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">

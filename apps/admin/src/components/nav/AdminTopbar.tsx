@@ -6,14 +6,17 @@
 
 import type { User } from '@ilaunchify/auth'
 import { AppHeader } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { AdminTopbarRight } from './AdminTopbarRight'
 import { AdminCenterNav } from './AdminCenterNav'
 
-export function AdminTopbar({ user }: { user: User }) {
+export async function AdminTopbar({ user }: { user: User }) {
+  const logos = await getPublicBrandLogos()
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
+      logoSrc={logos.fullLight}
       center={
         // Facebook-style center cluster: Home / Marketplace / Design Studio
         // (large graphic-grey icons with active pink underline). Sits inside

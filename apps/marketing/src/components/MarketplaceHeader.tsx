@@ -24,6 +24,7 @@ import {
   AppHeaderIconButton,
   AppHeaderSubnavStrip,
 } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
@@ -69,7 +70,7 @@ export interface MarketplaceHeaderProps {
   niches?: ReadonlyArray<MarketplaceHeaderNiche>
 }
 
-export function MarketplaceHeader({
+export async function MarketplaceHeader({
   user,
   hasUnreadNotifications = false,
   brands = [],
@@ -78,9 +79,11 @@ export function MarketplaceHeader({
   niches = NICHES,
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
+  const logos = await getPublicBrandLogos()
 
   return (
     <AppHeader
+      logoSrc={logos.fullLight}
       center={
         // The 'All Categories' button moved out of the header centre into
         // the niche subnav (as a hamburger trigger that opens the mega

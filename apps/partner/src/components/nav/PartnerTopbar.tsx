@@ -7,19 +7,22 @@
 
 import type { User } from '@ilaunchify/auth'
 import { AppHeader } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { PartnerTopbarRight } from './PartnerTopbarRight'
 
-export function PartnerTopbar({
+export async function PartnerTopbar({
   user,
   companyName,
 }: {
   user: User
   companyName: string
 }) {
+  const logos = await getPublicBrandLogos()
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
+      logoSrc={logos.fullLight}
       // Empty portal targets the product builder injects its Saved chip + Save
       // Draft (center, next to the logo) and Next button (right, next to the
       // bell) into. Harmless on every other page.

@@ -61,6 +61,12 @@ export interface AppHeaderProps {
   flushLeft?: boolean
   /** Optional extra classes on the outer header. */
   className?: string
+  /**
+   * Admin-uploaded logo URL (Theme Studio › Logos) for the default brand mark.
+   * Light surfaces pass the "full / light" variant. Null → CSS mark fallback.
+   * Ignored when a custom `brand` node is supplied.
+   */
+  logoSrc?: string | null
 }
 
 export function AppHeader({
@@ -71,6 +77,7 @@ export function AppHeader({
   subnav,
   flushLeft = false,
   className,
+  logoSrc,
 }: AppHeaderProps) {
   return (
     <header
@@ -96,7 +103,7 @@ export function AppHeader({
           className="flex flex-shrink-0 items-center gap-[7px]"
           aria-label="iLaunchify home"
         >
-          {brand ?? <AppHeaderBrandMark />}
+          {brand ?? <AppHeaderBrandMark logoSrc={logoSrc} />}
         </a>
 
         {center}
@@ -120,13 +127,15 @@ export function AppHeader({
 export function AppHeaderBrandMark({
   label = 'iLaunchify',
   className,
+  logoSrc,
 }: {
   label?: string
   className?: string
+  logoSrc?: string | null
 }) {
   return (
     <>
-      <Brand label={label} markClassName={className} />
+      <Brand label={label} markClassName={className} imageSrc={logoSrc} />
     </>
   )
 }

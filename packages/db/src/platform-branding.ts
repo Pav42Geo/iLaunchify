@@ -36,6 +36,31 @@ export async function listPlatformLogos(): Promise<PlatformLogoRow[]> {
   }
 }
 
+export interface PublicBrandLogos {
+  fullLight: string | null
+  fullDark: string | null
+  markLight: string | null
+  markDark: string | null
+}
+
+/**
+ * Stable public logo URLs for rendering in app chrome (headers/footer).
+ * Only returns publicUrl (set when R2_PUBLIC_BASE_URL is configured) so this is
+ * safe to call in hot render paths — no signing. Missing slots → null → the
+ * <Brand> CSS mark fallback. Safe before migration ({} → all null).
+ */
+export async function getPublicBrandLogos(): Promise<PublicBrandLogos> {
+  const rows = await listPlatformLogos()
+  const pick = (kind: string, variant: string) =>
+    rows.find((r) => r.kind === kind && r.variant === variant)?.publicUrl ?? null
+  return {
+    fullLight: pick('full', 'light'),
+    fullDark: pick('full', 'dark'),
+    markLight: pick('mark', 'light'),
+    markDark: pick('mark', 'dark'),
+  }
+}
+
 /** Upsert one (kind, variant) slot. Returns the PREVIOUS storageKey (to delete from R2), if any. */
 export async function upsertPlatformLogo(input: {
   kind: LogoKind
