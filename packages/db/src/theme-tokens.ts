@@ -18,14 +18,38 @@
 
 import { prisma } from './index'
 
-export type ThemeTokenKind = 'scale' | 'rgb' | 'color' | 'length'
+export type ThemeTokenKind = 'scale' | 'rgb' | 'color' | 'length' | 'font'
+
+/**
+ * Curated font stacks (self-hosted faces + always-available system stacks).
+ * Defaults MUST byte-match theme.css `--font-sans` / `--font-display` so an
+ * unchanged selection writes no override.
+ */
+export const FONT_STACKS: Record<string, string> = {
+  inter: "'Inter', -apple-system, system-ui, sans-serif",
+  bricolage: "'Bricolage Grotesque', 'Inter', sans-serif",
+  fraunces: "'Fraunces', Georgia, serif",
+  system: 'system-ui, -apple-system, sans-serif',
+  georgia: "Georgia, 'Times New Roman', serif",
+  mono: "ui-monospace, 'SF Mono', Menlo, monospace",
+}
+/** Label + value for the editor's font <select>. */
+export const FONT_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Inter (default)', value: FONT_STACKS.inter! },
+  { label: 'Bricolage Grotesque', value: FONT_STACKS.bricolage! },
+  { label: 'Fraunces (serif)', value: FONT_STACKS.fraunces! },
+  { label: 'System UI', value: FONT_STACKS.system! },
+  { label: 'Georgia (serif)', value: FONT_STACKS.georgia! },
+  { label: 'Monospace', value: FONT_STACKS.mono! },
+]
+const FONT_VALUES = new Set(Object.values(FONT_STACKS))
 
 export interface EditableThemeToken {
   /** CSS var name WITHOUT the leading `--`. */
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -47,6 +71,10 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Global scales
   { name: 'font-scale', label: 'Text size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Scales ALL text together (rem-based, WCAG-safe). Right = larger.' },
   { name: 'radius-scale', label: 'Corner size', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
+
+  // Fonts (curated stacks only — self-hosted faces + system fonts)
+  { name: 'font-sans', label: 'Body font', kind: 'font', group: 'Fonts', default: FONT_STACKS.inter!, hint: 'UI, body, buttons, tables.' },
+  { name: 'font-display', label: 'Display font', kind: 'font', group: 'Fonts', default: FONT_STACKS.bricolage!, hint: 'Large headlines.' },
 
   // Text colors (channel tokens drive every text-ink-* / text-pink-* utility)
   { name: 'ink-900-rgb', label: 'Primary text & buttons', kind: 'rgb', group: 'Text', default: '24 24 26', hint: 'Body + heading text AND the black primary-button fill.' },
@@ -147,6 +175,10 @@ export function validateThemeToken(name: string, value: string): ValidationResul
     const parts = v.split(/\s+/)
     if (parts.length !== 3 || parts.some((p) => !/^\d{1,3}$/.test(p) || Number(p) > 255))
       return { ok: false, error: `${def.label} must be RGB channels like "255 46 99".` }
+    return { ok: true }
+  }
+  if (def.kind === 'font') {
+    if (!FONT_VALUES.has(v)) return { ok: false, error: `${def.label} must be one of the supported fonts.` }
     return { ok: true }
   }
   // length

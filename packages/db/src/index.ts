@@ -24,6 +24,8 @@ export * from '@prisma/client'
 export {
   EDITABLE_THEME_TOKENS,
   THEME_PAIRINGS,
+  FONT_OPTIONS,
+  FONT_STACKS,
   getThemeOverrides,
   getThemeOverrideCss,
   upsertThemeOverride,

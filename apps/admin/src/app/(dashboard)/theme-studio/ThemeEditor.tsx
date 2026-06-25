@@ -40,10 +40,12 @@ function contrast(a: string, b: string) {
 export function ThemeEditor({
   tokens,
   pairings,
+  fontOptions,
   current,
 }: {
   tokens: EditableThemeToken[]
   pairings: Pairing[]
+  fontOptions: { label: string; value: string }[]
   current: Record<string, string>
 }) {
   const byName = useMemo(() => new Map(tokens.map((t) => [t.name, t])), [tokens])
@@ -92,7 +94,7 @@ export function ThemeEditor({
     })
   }
 
-  const groups: EditableThemeToken['group'][] = ['Scale', 'Text', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs', 'Buttons & chips']
+  const groups: EditableThemeToken['group'][] = ['Scale', 'Fonts', 'Text', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs', 'Buttons & chips']
 
   return (
     <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
@@ -133,7 +135,7 @@ export function ThemeEditor({
               <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</div>
               <div className="space-y-4">
                 {items.map((t) => (
-                  <Control key={t.name} t={t} value={vals[t.name] ?? t.default} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, t.default)} />
+                  <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, t.default)} />
                 ))}
               </div>
             </div>
@@ -153,11 +155,13 @@ export function ThemeEditor({
 function Control({
   t,
   value,
+  fontOptions,
   onChange,
   onReset,
 }: {
   t: EditableThemeToken
   value: string
+  fontOptions: { label: string; value: string }[]
   onChange: (v: string) => void
   onReset: () => void
 }) {
@@ -172,6 +176,25 @@ function Control({
         <div className="flex flex-1 items-center gap-3">
           <input type="range" min={t.min} max={t.max} step={t.step} value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 accent-pink-500" />
           <span className="w-12 text-right font-mono text-[length:var(--fs-sm)] text-ink-700">{Number(value).toFixed(2)}×</span>
+        </div>
+      )}
+
+      {t.kind === 'font' && (
+        <div className="flex flex-1 items-center gap-3">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1 rounded-[var(--input-radius)] border border-ink-200 bg-white px-2 py-1.5 text-[length:var(--fs-sm)]"
+          >
+            {fontOptions.map((o) => (
+              <option key={o.label} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <span className="w-32 shrink-0 truncate text-[length:var(--fs-lg)] text-ink-700" style={{ fontFamily: value }}>
+            Ag — Sample
+          </span>
         </div>
       )}
 

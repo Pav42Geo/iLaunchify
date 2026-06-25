@@ -33,7 +33,7 @@ const channelScale = (scale: Record<string | number, unknown>, prefix: string): 
   Object.fromEntries(
     Object.keys(scale).map((k) => [k, `rgb(var(--${prefix}-${k}-rgb) / <alpha-value>)`]),
   )
-import { fontFamily, fontSize } from './src/tokens/typography'
+import { fontSize } from './src/tokens/typography'
 import { spacing } from './src/tokens/spacing'
 import { shadows } from './src/tokens/shadows'
 import { easing, duration } from './src/tokens/motion'
@@ -51,10 +51,13 @@ export const ilaunchifyPreset = {
         info:    channelScale(semantic.info, 'info'),
         cream: '#FBFAF7',
       },
+      // Font utilities read the live CSS vars (the vars hold the full stacks),
+      // so font-sans/font-display/font-serif are runtime-themeable via Theme
+      // Studio. Value-preserving — the vars default to the same stacks.
       fontFamily: {
-        sans: [...fontFamily.sans],
-        display: [...fontFamily.display],
-        serif: [...fontFamily.serif],
+        sans: ['var(--font-sans)'],
+        display: ['var(--font-display)'],
+        serif: ['var(--font-serif)'],
       },
       fontSize: fontSize as unknown as Record<string, [string, Record<string, string>]>,
       spacing: spacing,
