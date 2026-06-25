@@ -172,12 +172,14 @@ The signature headline pattern across both audiences:
 
 ---
 
-## 4. Spacing — strict 8pt grid
+## 4. Spacing — 8pt grid with a 4pt sub-grid (LOCKED 2026-06-25)
+
+**The grid.** iLaunchify is an **8-point grid with a 4-point sub-grid** — the same structure Material (8dp + 4dp) and Apple HIG (4pt) use. The 8px step (`s-2`) is the base unit; everything that defines layout rhythm lands on a multiple of 8. 4px (`s-1`) is the *only* permitted half-step, reserved for tight internal nudges (icon-to-label gaps, badge padding). This keeps the system on-grid without being impractical.
 
 ```
-s-1   4px    fine-tune inside components
-s-2   8px    minimum component-internal spacing
-s-3   12px   button/input internal padding
+s-1   4px    SUB-GRID — tight internal nudges only (icon gap, badge padding)
+s-2   8px    BASE UNIT — minimum component-internal spacing
+s-3   12px   button/input internal padding        (8 + 4 sub-step)
 s-4   16px   compact card padding (partner mode)
 s-5   24px   comfortable card padding (creator mode)
 s-6   32px   between distinct content blocks
@@ -187,7 +189,18 @@ s-9   96px   landing page section gaps
 s-10  128px  marketing surface section gaps
 ```
 
-**Internal-≤-external rule:** spacing inside a component never exceeds spacing around it. Single most-broken rule in early drafts; enforce on every new component.
+### 4.0 Grid rules (the spec)
+
+1. **Layout & spacing land on multiples of 8.** Gaps, margins, padding between elements = 8, 16, 24, 32, 48, 64, 96, 128.
+2. **4px is the only sub-step.** Use it for tight *internal* spacing only. Never 6px, 10px, or 20px — those are off-grid and banned.
+3. **1px is the sole exception below 4px**, reserved for hairline borders (`--border-width`).
+4. **Control heights ride the 4pt sub-grid.** Standard input/button height is **48px** (on-grid); 40px for compact. 44px is tolerated only where the iOS minimum tap target is the driver, but **prefer 48**.
+5. **Single source of truth.** Reach for the `s-*` tokens (`p-s-5`, `gap-s-4`) for layout spacing rather than raw Tailwind numerics (`p-3`, `gap-2.5`), so off-grid values can't creep back in.
+6. **Internal-≤-external rule:** spacing inside a component never exceeds spacing around it. The single most-broken rule in early drafts — enforce on every new component.
+
+### 4.x Current state vs. this spec (reconciliation note)
+
+The `s-*` scale (`packages/ui/src/tokens/spacing.ts` + the `--s-*` CSS vars) **is** a clean 8pt grid and is the declared standard. In practice, components still lean on Tailwind's default 4px scale (`p-3`, `gap-2`, `py-1.5`, `h-11`), which mixes in 2px half-steps (6px, 10px) and a couple of off-8 control heights (44px). So today's *effective* grid is a soft 4px grid. Migrating layout spacing onto the `s-*` tokens and standardizing control heights to 48px is the path to making the 8pt grid real everywhere; it's a gradual, opt-in sweep (not yet executed).
 
 ### 4.1 Density modes
 
