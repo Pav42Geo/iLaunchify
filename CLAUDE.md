@@ -48,7 +48,7 @@ CockroachDB Serverless via Prisma. Schema at `packages/db/prisma/schema.prisma`.
 - **Black pill** primary CTA (white text)
 - **Neon green** `#B5FF3D` accent on **dark surfaces only**
 - **Pink-700** accent on light surfaces
-- **Hero band** `var(--bg-hero)` = `#F7F8FA` cool gray (mood-board) — admin v2 header bands + panel headers. **Changed 2026-06-25** from cream `#F3EFE8`/`bg-cream`; all admin bands now use `bg-[var(--bg-hero)]`. (Marketing landing keeps its own cream.)
+- **Hero band** `var(--bg-hero)` = `#FFFFFF` card white — admin v2 header bands + panel headers, reading via their hairline `border-ink-200`. **Changed 2026-06-25** from cream `#F3EFE8`/`bg-cream` (briefly `#F7F8FA` gray, too close to the shell); all admin bands now use `bg-[var(--bg-hero)]`. One-line token swap. (Marketing landing keeps its own cream.)
 - **Inter** body, **Bricolage Grotesque** display, **Fraunces** italic emphasis
 - Dark hero / light explainer / dark CTA section pattern
 
@@ -58,7 +58,7 @@ Tokens live in `packages/ui/src/tokens` and `packages/ui/src/theme.css`. Tailwin
 
 Every admin list page follows this chrome — **no exceptions, no shadcn Card, no @ilaunchify/ui Card**:
 
-1. `bg-[var(--bg-hero)]` (#F7F8FA cool gray) rounded-3xl hero band with title + subtitle
+1. `bg-[var(--bg-hero)]` (#FFFFFF card white, hairline border) rounded-3xl hero band with title + subtitle
 2. 5-card KPI strip (KpiWidget)
 3. URL-driven filter chip rows (status chips, type chips, dropdowns)
 4. Sortable plain `<table>` with focus-visible:ring-pink-500 on headers

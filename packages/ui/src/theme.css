@@ -187,9 +187,11 @@
   --bg-surface:    #FFFFFF;
   --bg-subtle:     var(--ink-50);
   --bg-muted:      var(--ink-100);
-  /* Hero / band tint — admin v2 header bands + panel headers. Mood-board cool
-     gray (Pavel 2026-06-25), replacing the old cream #F3EFE8 / #FBFAF7 bands. */
-  --bg-hero:       #F7F8FA;
+  /* Hero / band surface — admin v2 header bands + panel headers. Card white
+     (Pavel 2026-06-25): the #F7F8FA gray read too close to the near-white admin
+     shell, so bands now match the card surface; they read via their hairline
+     border. Replaced the old cream #F3EFE8 / #FBFAF7 bands. */
+  --bg-hero:       #FFFFFF;
 
   --border-soft:   var(--ink-200);
   --border-firm:   var(--ink-300);
