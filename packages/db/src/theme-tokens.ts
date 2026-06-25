@@ -2,25 +2,31 @@
 //
 // theme.css holds the DEFAULT token values. The admin Theme Studio writes
 // overrides into ThemeTokenOverride rows; getThemeOverrideCss() serializes the
-// active set to a `:root:root{…}` block that each app injects at request time
-// (the doubled `:root` raises specificity so it always wins over theme.css,
-// regardless of stylesheet order). Only ALLOWLISTED names are ever emitted —
-// arbitrary CSS can never reach the page.
+// active set to a `:root:root{…}` block each app injects at request time (the
+// doubled `:root` raises specificity so it always wins over theme.css). Only
+// ALLOWLISTED names are ever emitted — arbitrary CSS can never reach the page.
 //
-// Cast-guarded + try/caught, so every reader is safe to call BEFORE the
-// migration lands (mirrors getDomainSettings).
+// Colors come in two storage forms:
+//   • `rgb`   — channel tokens like `pink-500-rgb` ("255 46 99"). Editing these
+//               cascades to the Tailwind utilities (bg-pink-500) AND the alias
+//               `--pink-500` AND every semantic/component token built on them.
+//   • `color` — semantic/surface tokens stored as a hex (#RRGGBB).
+//   • `length`— component radii ("16px").
+//   • `scale` — global multipliers ("1.15").
+//
+// Cast-guarded + try/caught, so every reader is safe BEFORE the migration lands.
 
 import { prisma } from './index'
 
-export type ThemeTokenKind = 'scale' | 'color' | 'rgb'
+export type ThemeTokenKind = 'scale' | 'rgb' | 'color' | 'length'
 
 export interface EditableThemeToken {
   /** CSS var name WITHOUT the leading `--`. */
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Surface' | 'Brand'
-  /** theme.css default — used for reset + as the preview baseline. */
+  group: 'Scale' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs'
+  /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
   max?: number
@@ -29,41 +35,86 @@ export interface EditableThemeToken {
 }
 
 /**
- * The curated, safe-to-edit token set (Phase 3b slice 1). Scales + the hero
- * surface — non-destructive and easy to gate. Brand color ramps come in a later
- * slice (they need the full pairing-contrast gate, §6.5).
+ * The curated, safe-to-edit token set. Editing brand channels cascades through
+ * the alias + semantic + component layers, so these few knobs recolor buttons,
+ * cards, text and backgrounds platform-wide. (Button/chip pill radius stays the
+ * locked signature — use the global Corner scale to move all radii.)
  */
 export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
-  { name: 'font-scale', label: 'Font scale', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Global type-size multiplier (WCAG-safe; rem-based).' },
-  { name: 'radius-scale', label: 'Corner scale', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier.' },
-  { name: 'bg-hero', label: 'Hero band', kind: 'color', group: 'Surface', default: '#FFFFFF', hint: 'Admin header-band surface. Body text (ink-900) must stay AA on it.' },
+  // Global scales
+  { name: 'font-scale', label: 'Font scale', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Global type-size multiplier (rem-based, WCAG-safe).' },
+  { name: 'radius-scale', label: 'Corner scale', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
+
+  // Brand colors (channel tokens — drive utilities + aliases + components)
+  { name: 'pink-500-rgb', label: 'Brand pink', kind: 'rgb', group: 'Brand', default: '255 46 99', hint: 'Pink fills: logo, pink buttons, active chips, focus ring.' },
+  { name: 'pink-700-rgb', label: 'Accent text', kind: 'rgb', group: 'Brand', default: '199 19 80', hint: 'Pink text on light surfaces (links, accents).' },
+  { name: 'ink-900-rgb', label: 'Ink / primary', kind: 'rgb', group: 'Brand', default: '24 24 26', hint: 'Primary text AND the primary (black) button fill.' },
+  { name: 'neon-500-rgb', label: 'Neon (dark only)', kind: 'rgb', group: 'Brand', default: '181 255 61', hint: 'Accent on dark surfaces only — never text on light.' },
+
+  // Backgrounds / surfaces
+  { name: 'bg-canvas', label: 'Page background', kind: 'color', group: 'Backgrounds', default: '#FFFFFF', hint: 'The app canvas behind everything.' },
+  { name: 'bg-surface', label: 'Card surface', kind: 'color', group: 'Backgrounds', default: '#FFFFFF', hint: 'Card / panel background.' },
+  { name: 'bg-hero', label: 'Hero band', kind: 'color', group: 'Backgrounds', default: '#FFFFFF', hint: 'Admin header-band surface.' },
+  { name: 'bg-subtle', label: 'Subtle background', kind: 'color', group: 'Backgrounds', default: '#F8F8F9', hint: 'Inset / muted backgrounds.' },
+
+  // Borders & cards
+  { name: 'border-soft', label: 'Hairline border', kind: 'color', group: 'Borders & cards', default: '#E0E1E5', hint: 'Default card / input border.' },
+  { name: 'card-radius', label: 'Card corners', kind: 'length', group: 'Borders & cards', default: '16px', min: 0, max: 28, step: 1, hint: 'Card corner radius.' },
+
+  // Inputs
+  { name: 'input-radius', label: 'Input corners', kind: 'length', group: 'Inputs', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
 ]
 
 const EDITABLE_BY_NAME = new Map(EDITABLE_THEME_TOKENS.map((t) => [t.name, t]))
 
-// --- WCAG 2.1 contrast (SC 1.4.3) -------------------------------------------
+// --- color math --------------------------------------------------------------
 function chan(c: number): number {
   const s = c / 255
   return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
 }
-function lum(hex: string): number {
+function lumHex(hex: string): number {
   const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
+  return 0.2126 * chan(parseInt(h.slice(0, 2), 16)) + 0.7152 * chan(parseInt(h.slice(2, 4), 16)) + 0.0722 * chan(parseInt(h.slice(4, 6), 16))
 }
 export function contrastRatio(a: string, b: string): number {
-  const la = lum(a)
-  const lb = lum(b)
+  const la = lumHex(a)
+  const lb = lumHex(b)
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
 }
+export function rgbToHex(triplet: string): string {
+  const [r, g, b] = triplet.trim().split(/\s+/).map((n) => Math.max(0, Math.min(255, parseInt(n, 10))))
+  const h = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${h(r ?? 0)}${h(g ?? 0)}${h(b ?? 0)}`.toUpperCase()
+}
 
-const INK_900 = '#18181A'
+/**
+ * WCAG pairings checked at publish (and live in the editor). Defaults all pass;
+ * the gate only fires when an admin picks a combination that fails. Borders are
+ * intentionally NOT gated (the default hairline is decorative + sub-3:1).
+ * fg/bg are editable token names or a literal `#RRGGBB`. `min`: 4.5 normal text,
+ * 3.0 large/UI text (e.g. button labels).
+ */
+export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: number }[] = [
+  { label: 'Body text on page', fg: 'ink-900-rgb', bg: 'bg-canvas', min: 4.5 },
+  { label: 'Text on cards', fg: 'ink-900-rgb', bg: 'bg-surface', min: 4.5 },
+  { label: 'Text on hero band', fg: 'ink-900-rgb', bg: 'bg-hero', min: 4.5 },
+  { label: 'Primary button label', fg: '#FFFFFF', bg: 'ink-900-rgb', min: 4.5 },
+  { label: 'Pink button label', fg: '#FFFFFF', bg: 'pink-500-rgb', min: 3.0 },
+  { label: 'Accent text on cards', fg: 'pink-700-rgb', bg: 'bg-surface', min: 4.5 },
+]
+
+/** Resolve a pairing side (token name or literal) to a hex, from proposed values. */
+export function resolveHex(side: string, proposed: Record<string, string>): string {
+  if (side.startsWith('#')) return side.toUpperCase()
+  const def = EDITABLE_BY_NAME.get(side)
+  const v = proposed[side] ?? def?.default ?? '#000000'
+  if (def?.kind === 'rgb') return rgbToHex(v)
+  return v.toUpperCase()
+}
 
 export type ValidationResult = { ok: true } | { ok: false; error: string }
 
-/** Validate a single override against its allowlist entry + WCAG gate. */
+/** Format-validate ONE token against its allowlist entry. */
 export function validateThemeToken(name: string, value: string): ValidationResult {
   const def = EDITABLE_BY_NAME.get(name)
   if (!def) return { ok: false, error: `"${name}" is not an editable token.` }
@@ -77,13 +128,30 @@ export function validateThemeToken(name: string, value: string): ValidationResul
   }
   if (def.kind === 'color') {
     if (!/^#[0-9A-Fa-f]{6}$/.test(v)) return { ok: false, error: `${def.label} must be a #RRGGBB hex.` }
-    // SC 1.4.3 publish-gate: body text (ink-900) must read AA (≥4.5:1) on a surface token.
-    const ratio = contrastRatio(INK_900, v)
-    if (ratio < 4.5) return { ok: false, error: `${def.label} fails WCAG AA for body text (${ratio.toFixed(2)}:1 < 4.5:1).` }
     return { ok: true }
   }
-  // rgb channels "r g b"
-  if (!/^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/.test(v)) return { ok: false, error: `${def.label} must be RGB channels like "255 46 99".` }
+  if (def.kind === 'rgb') {
+    const parts = v.split(/\s+/)
+    if (parts.length !== 3 || parts.some((p) => !/^\d{1,3}$/.test(p) || Number(p) > 255))
+      return { ok: false, error: `${def.label} must be RGB channels like "255 46 99".` }
+    return { ok: true }
+  }
+  // length
+  if (!/^\d+(\.\d+)?px$/.test(v)) return { ok: false, error: `${def.label} must be a px length like "16px".` }
+  return { ok: true }
+}
+
+/** Full-theme gate: format every token, then run the WCAG pairing checks. */
+export function validateTheme(proposed: Record<string, string>): ValidationResult {
+  for (const [name, value] of Object.entries(proposed)) {
+    const r = validateThemeToken(name, value)
+    if (!r.ok) return r
+  }
+  for (const p of THEME_PAIRINGS) {
+    const ratio = contrastRatio(resolveHex(p.fg, proposed), resolveHex(p.bg, proposed))
+    if (ratio < p.min)
+      return { ok: false, error: `${p.label}: ${ratio.toFixed(2)}:1 fails WCAG (needs ≥ ${p.min}:1). Adjust the colors.` }
+  }
   return { ok: true }
 }
 
@@ -96,21 +164,18 @@ export async function getThemeOverrides(): Promise<Record<string, string>> {
     }).themeTokenOverride.findMany()
     for (const r of rows) out[r.name] = r.value
   } catch {
-    // Table not migrated yet — no overrides, defaults apply.
+    // Table not migrated yet — defaults apply.
   }
   return out
 }
 
-/**
- * Serialize the active, ALLOWLISTED overrides to a `:root:root{…}` block for
- * injection in each app's root layout. Returns '' when there's nothing to apply.
- */
+/** Serialize active, ALLOWLISTED, format-valid overrides to a `:root:root{…}` block. */
 export async function getThemeOverrideCss(): Promise<string> {
   const overrides = await getThemeOverrides()
   const decls: string[] = []
   for (const [name, value] of Object.entries(overrides)) {
-    if (!EDITABLE_BY_NAME.has(name)) continue // never emit non-allowlisted names
-    if (!validateThemeToken(name, value).ok) continue // never emit invalid values
+    if (!EDITABLE_BY_NAME.has(name)) continue
+    if (!validateThemeToken(name, value).ok) continue
     decls.push(`--${name}:${value};`)
   }
   return decls.length ? `:root:root{${decls.join('')}}` : ''
@@ -120,11 +185,7 @@ export async function getThemeOverrideCss(): Promise<string> {
 export async function upsertThemeOverride(name: string, value: string): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { upsert: (a: unknown) => Promise<unknown> }
-  }).themeTokenOverride.upsert({
-    where: { name },
-    update: { value },
-    create: { name, value },
-  })
+  }).themeTokenOverride.upsert({ where: { name }, update: { value }, create: { name, value } })
 }
 
 /** Remove an override → the token reverts to its theme.css default. */
@@ -132,4 +193,9 @@ export async function deleteThemeOverride(name: string): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { deleteMany: (a: unknown) => Promise<unknown> }
   }).themeTokenOverride.deleteMany({ where: { name } })
+}
+
+/** Default value for a token name (for "is this an override?" checks). */
+export function defaultThemeValue(name: string): string | undefined {
+  return EDITABLE_BY_NAME.get(name)?.default
 }

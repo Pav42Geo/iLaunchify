@@ -1,14 +1,17 @@
 'use server'
 
 // Theme Studio — publish/reset runtime token overrides (Phase 3b, 2026-06-25).
-// platform:admin gated + audited. Every value is allowlist + WCAG validated
-// (validateThemeToken) before it can be written, so the editor can never
-// publish an inaccessible or arbitrary token.
+// platform:admin gated + audited. The whole proposed theme is WCAG-gated
+// (validateTheme: per-token format + cross-token pairing contrast) before any
+// write, so the editor can never publish an inaccessible or arbitrary theme.
+// Tokens equal to their theme.css default are stored as NO row (the override
+// table stays minimal; the default applies).
 
 import {
   upsertThemeOverride,
   deleteThemeOverride,
-  validateThemeToken,
+  validateTheme,
+  defaultThemeValue,
   EDITABLE_THEME_TOKENS,
 } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
@@ -17,26 +20,29 @@ import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
 
-/** Validate-then-publish the supplied token overrides. All-or-nothing on validation. */
+/** Validate the FULL proposed theme, then persist only the non-default values. */
 export async function publishThemeTokens(input: { name: string; value: string }[]): Promise<Result> {
   const admin = await requireCapability('platform:admin')
 
-  // Gate every value FIRST — a single failure blocks the whole publish.
-  for (const t of input) {
-    const v = validateThemeToken(t.name, t.value)
-    if (!v.ok) return v
-  }
+  const proposed: Record<string, string> = {}
+  for (const t of input) proposed[t.name] = t.value.trim()
+
+  const gate = validateTheme(proposed)
+  if (!gate.ok) return gate
 
   try {
-    for (const t of input) await upsertThemeOverride(t.name, t.value.trim())
+    for (const t of input) {
+      const value = t.value.trim()
+      if (value === defaultThemeValue(t.name)) await deleteThemeOverride(t.name)
+      else await upsertThemeOverride(t.name, value)
+    }
     await logAuditAs(admin, {
       entityType: 'ThemeTokenOverride',
       entityId: 'platform',
       action: 'THEME_PUBLISHED',
       payload: { tokens: input },
     })
-    // Re-run the root layout (re-injects overrides) across the admin app.
-    revalidatePath('/', 'layout')
+    revalidatePath('/', 'layout') // re-inject overrides across the admin app
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not publish: ${(err as Error).message}` }

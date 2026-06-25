@@ -13,7 +13,7 @@
 
 import type { ReactNode } from 'react'
 import { requireCapability } from '@ilaunchify/auth'
-import { EDITABLE_THEME_TOKENS, getThemeOverrides } from '@ilaunchify/db'
+import { EDITABLE_THEME_TOKENS, THEME_PAIRINGS, getThemeOverrides } from '@ilaunchify/db'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
 import { ThemeEditor } from './ThemeEditor'
 
@@ -165,7 +165,7 @@ export default async function ThemeStudioPage() {
         </p>
       </div>
 
-      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} current={overrides} />
+      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} pairings={THEME_PAIRINGS} current={overrides} />
 
       <Section title="Color">
         <Ramp title="Pink — brand" scale={pink} />

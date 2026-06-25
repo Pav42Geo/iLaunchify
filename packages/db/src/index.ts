@@ -23,12 +23,17 @@ export * from '@prisma/client'
 // Theme Studio — runtime design-token overrides (Phase 3b, 2026-06-25).
 export {
   EDITABLE_THEME_TOKENS,
+  THEME_PAIRINGS,
   getThemeOverrides,
   getThemeOverrideCss,
   upsertThemeOverride,
   deleteThemeOverride,
   validateThemeToken,
+  validateTheme,
+  defaultThemeValue,
   contrastRatio,
+  rgbToHex,
+  resolveHex,
   type EditableThemeToken,
   type ThemeTokenKind,
   type ValidationResult,
