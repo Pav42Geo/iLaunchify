@@ -6,6 +6,7 @@
 
 import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
+import { Switch } from '@ilaunchify/ui'
 import { deleteLifestyleTag, toggleLifestyleTagActive } from './actions'
 
 export function LifestyleTagActiveToggle({
@@ -24,25 +25,12 @@ export function LifestyleTagActiveToggle({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
+    <Switch
+      checked={isActive}
       disabled={pending}
-      role="switch"
-      aria-checked={isActive}
+      onChange={handleToggle}
       aria-label={isActive ? 'Deactivate tag' : 'Activate tag'}
-      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 disabled:opacity-50 ${
-        isActive
-          ? 'border-emerald-300 bg-emerald-500'
-          : 'border-ink-200 bg-ink-100'
-      }`}
-    >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-          isActive ? 'translate-x-[18px]' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
+    />
   )
 }
 

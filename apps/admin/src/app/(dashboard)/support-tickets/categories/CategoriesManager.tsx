@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, X } from 'lucide-react'
-import { cn } from '@ilaunchify/ui'
+import { cn, Switch } from '@ilaunchify/ui'
 import {
   createTicketCategory,
   updateTicketCategory,
@@ -123,20 +123,13 @@ export function CategoriesManager({
                 <td className="px-4 py-3 text-right align-top tabular-nums text-ink-700">{c.ticketCount}</td>
                 <td className="px-4 py-3 text-right align-top tabular-nums text-ink-500">{c.sortOrder}</td>
                 <td className="px-4 py-3 align-top">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={c.isActive}
-                    aria-label={`${c.isActive ? 'Hide' : 'Activate'} ${c.name}`}
+                  <Switch
+                    checked={c.isActive}
                     disabled={busyId === c.id}
-                    onClick={() => toggle(c)}
-                    className={cn(
-                      'relative inline-flex h-5 w-9 flex-none items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-60',
-                      c.isActive ? 'bg-pink-500' : 'bg-ink-300',
-                    )}
-                  >
-                    <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', c.isActive ? 'translate-x-[18px]' : 'translate-x-0.5')} />
-                  </button>
+                    onChange={() => toggle(c)}
+                    aria-label={`${c.isActive ? 'Hide' : 'Activate'} ${c.name}`}
+                    className="flex-none"
+                  />
                 </td>
                 <td className="px-3 py-3 text-right align-top">
                   <button

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Switch } from '@ilaunchify/ui'
 import type { SupportSettingsValues, SupportPriority } from '@ilaunchify/db'
 import { saveSupportSettings } from './actions'
 
@@ -162,19 +163,7 @@ function Toggle({
         <p className="text-[13.5px] font-semibold text-ink-900">{label}</p>
         <p className="mt-0.5 text-[12px] text-ink-500">{desc}</p>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        onClick={onToggle}
-        className={
-          'relative inline-flex h-6 w-11 flex-none items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ' +
-          (on ? 'bg-pink-500' : 'bg-ink-300')
-        }
-      >
-        <span className={'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ' + (on ? 'translate-x-[22px]' : 'translate-x-0.5')} />
-      </button>
+      <Switch checked={on} onChange={onToggle} aria-label={label} className="flex-none" />
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
-import { cn } from '@ilaunchify/ui'
+import { cn, Switch } from '@ilaunchify/ui'
 import {
   createCannedReply,
   updateCannedReply,
@@ -122,17 +122,13 @@ export function SavedRepliesManager({
                   </td>
                   <td className="px-4 py-3 text-right align-top tabular-nums text-ink-500">{r.sortOrder}</td>
                   <td className="px-4 py-3 align-top">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={r.isActive}
-                      aria-label={`${r.isActive ? 'Hide' : 'Activate'} ${r.title}`}
+                    <Switch
+                      checked={r.isActive}
                       disabled={busyId === r.id}
-                      onClick={() => toggle(r)}
-                      className={cn('relative inline-flex h-5 w-9 flex-none items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-60', r.isActive ? 'bg-pink-500' : 'bg-ink-300')}
-                    >
-                      <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', r.isActive ? 'translate-x-[18px]' : 'translate-x-0.5')} />
-                    </button>
+                      onChange={() => toggle(r)}
+                      aria-label={`${r.isActive ? 'Hide' : 'Activate'} ${r.title}`}
+                      className="flex-none"
+                    />
                   </td>
                   <td className="px-3 py-3 align-top">
                     <div className="flex items-center justify-end gap-1.5">
