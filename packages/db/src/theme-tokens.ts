@@ -246,3 +246,42 @@ export async function deleteThemeOverride(name: string): Promise<void> {
 export function defaultThemeValue(name: string): string | undefined {
   return EDITABLE_BY_NAME.get(name)?.default
 }
+
+// --- Draft / preview --------------------------------------------------------
+
+/** The working (unpublished) draft token map. Safe before migration ({}). */
+export async function getThemeDraft(): Promise<Record<string, string>> {
+  try {
+    const row = await (prisma as unknown as {
+      themeDraft: { findUnique: (a: unknown) => Promise<{ tokens: unknown } | null> }
+    }).themeDraft.findUnique({ where: { id: 'draft' } })
+    const t = row?.tokens
+    if (t && typeof t === 'object' && !Array.isArray(t)) return t as Record<string, string>
+  } catch {
+    // Table not migrated yet.
+  }
+  return {}
+}
+
+/** Upsert the singleton draft row (caller does requireCapability + audit). */
+export async function saveThemeDraftRow(tokens: Record<string, string>): Promise<void> {
+  await (prisma as unknown as {
+    themeDraft: { upsert: (a: unknown) => Promise<unknown> }
+  }).themeDraft.upsert({
+    where: { id: 'draft' },
+    update: { tokens },
+    create: { id: 'draft', tokens },
+  })
+}
+
+/** Serialize the DRAFT (allowlisted + valid) to a `:root:root{…}` preview block. */
+export async function getThemePreviewCss(): Promise<string> {
+  const draft = await getThemeDraft()
+  const decls: string[] = []
+  for (const [name, value] of Object.entries(draft)) {
+    if (!EDITABLE_BY_NAME.has(name)) continue
+    if (!validateThemeToken(name, value).ok) continue
+    decls.push(`--${name}:${value};`)
+  }
+  return decls.length ? `:root:root{${decls.join('')}}` : ''
+}

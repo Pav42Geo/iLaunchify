@@ -13,7 +13,8 @@
 
 import type { ReactNode } from 'react'
 import { requireCapability } from '@ilaunchify/auth'
-import { EDITABLE_THEME_TOKENS, THEME_PAIRINGS, FONT_OPTIONS, getThemeOverrides } from '@ilaunchify/db'
+import { cookies } from 'next/headers'
+import { EDITABLE_THEME_TOKENS, THEME_PAIRINGS, FONT_OPTIONS, getThemeOverrides, getThemeDraft } from '@ilaunchify/db'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
 import { ThemeEditor } from './ThemeEditor'
 
@@ -138,7 +139,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export default async function ThemeStudioPage() {
   await requireCapability('platform:admin')
-  const overrides = await getThemeOverrides()
+  const [overrides, draft] = await Promise.all([getThemeOverrides(), getThemeDraft()])
+  const previewActive = (await cookies()).get('theme-preview')?.value === '1'
+  // Open the editor to the saved draft if one exists, else the live theme.
+  const seed = Object.keys(draft).length ? draft : overrides
 
   const semanticFlat: Record<string, string> = {
     'success-50': semantic.success[50], 'success-500': semantic.success[500],
@@ -165,7 +169,7 @@ export default async function ThemeStudioPage() {
         </p>
       </div>
 
-      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} pairings={THEME_PAIRINGS} fontOptions={FONT_OPTIONS} current={overrides} />
+      <ThemeEditor tokens={EDITABLE_THEME_TOKENS} pairings={THEME_PAIRINGS} fontOptions={FONT_OPTIONS} current={seed} previewActive={previewActive} />
 
       <Section title="Color">
         <Ramp title="Pink — brand" scale={pink} />

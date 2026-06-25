@@ -6,9 +6,10 @@
 // blocks publish on any failure.
 
 import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { EditableThemeToken } from '@ilaunchify/db'
-import { publishThemeTokens, resetThemeTokens } from './actions'
+import { publishThemeTokens, resetThemeTokens, saveThemeDraft, setThemePreview } from './actions'
 
 type Pairing = { label: string; fg: string; bg: string; min: number }
 
@@ -42,12 +43,15 @@ export function ThemeEditor({
   pairings,
   fontOptions,
   current,
+  previewActive,
 }: {
   tokens: EditableThemeToken[]
   pairings: Pairing[]
   fontOptions: { label: string; value: string }[]
   current: Record<string, string>
+  previewActive: boolean
 }) {
+  const router = useRouter()
   const byName = useMemo(() => new Map(tokens.map((t) => [t.name, t])), [tokens])
   const initial = useMemo(() => {
     const o: Record<string, string> = {}
@@ -74,14 +78,30 @@ export function ThemeEditor({
   const pairResults = pairings.map((p) => ({ ...p, ratio: contrast(resolveSide(p.fg), resolveSide(p.bg)) }))
   const failing = pairResults.filter((p) => p.ratio < p.min)
   const blocked = failing.length > 0
-  const dirty = tokens.some((t) => (vals[t.name] ?? t.default) !== (current[t.name] ?? t.default))
+  const allInput = () => tokens.map((t) => ({ name: t.name, value: vals[t.name] ?? t.default }))
 
   function publish() {
-    const input = tokens.map((t) => ({ name: t.name, value: vals[t.name] ?? t.default }))
     start(async () => {
-      const r = await publishThemeTokens(input)
+      const r = await publishThemeTokens(allInput())
       if (r.ok) toast.success('Theme published — applies platform-wide.')
       else toast.error(r.error)
+    })
+  }
+
+  function saveDraft() {
+    start(async () => {
+      const r = await saveThemeDraft(allInput())
+      if (r.ok) toast.success('Draft saved.')
+      else toast.error(r.error)
+    })
+  }
+
+  function togglePreview() {
+    start(async () => {
+      await saveThemeDraft(allInput()) // preview reflects the latest edits
+      const r = await setThemePreview(!previewActive)
+      if (!r.ok) { toast.error(r.error); return }
+      router.refresh()
     })
   }
   function resetAll() {
@@ -100,12 +120,18 @@ export function ThemeEditor({
     <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">Edit &amp; publish</h2>
-        <div className="flex items-center gap-2">
-          <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
-            Reset to defaults
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-50 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+            {previewActive ? 'Preview: On' : 'Preview'}
           </button>
-          <button onClick={publish} disabled={pending || blocked || !dirty} className="rounded-pill bg-ink-900 px-4 py-1.5 text-[length:var(--fs-sm)] font-semibold text-white hover:bg-black disabled:opacity-50">
-            {pending ? 'Publishing…' : 'Publish'}
+          <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
+            Save draft
+          </button>
+          <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
+            Reset
+          </button>
+          <button onClick={publish} disabled={pending || blocked} className="rounded-pill bg-ink-900 px-4 py-1.5 text-[length:var(--fs-sm)] font-semibold text-white hover:bg-black disabled:opacity-50">
+            {pending ? 'Working…' : 'Publish'}
           </button>
         </div>
       </div>

@@ -6567,3 +6567,13 @@ model ThemeTokenOverride {
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
+
+/// Theme Studio working draft — a single row holding the in-progress
+/// (unpublished) token map. Admin edits save here; Preview mode injects it;
+/// Publish promotes it into ThemeTokenOverride (live). Singleton (id "draft").
+model ThemeDraft {
+  id        String   @id @default("draft")
+  /// { tokenName: value } map of the draft overrides.
+  tokens    Json
+  updatedAt DateTime @updatedAt
+}
