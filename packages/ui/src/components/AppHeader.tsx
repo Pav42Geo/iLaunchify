@@ -22,6 +22,7 @@
 
 import * as React from 'react'
 import { cn } from '../lib/utils'
+import { Brand } from './Brand'
 
 // =============================================================================
 // AppHeader (composition root)
@@ -125,13 +126,7 @@ export function AppHeaderBrandMark({
 }) {
   return (
     <>
-      <span
-        aria-hidden="true"
-        className={cn('h-[26px] w-[26px] rounded-md bg-pink-500', className)}
-      />
-      <span className="font-display text-[length:var(--header-wordmark-fs)] font-extrabold tracking-[-0.04em] text-[var(--header-fg)]">
-        {label}
-      </span>
+      <Brand label={label} markClassName={className} />
     </>
   )
 }

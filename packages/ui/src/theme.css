@@ -261,6 +261,7 @@
   --header-border:      var(--ink-200);
   --header-py:          12px;
   --header-wordmark-fs: 23px;
+  --brand-mark-bg:      var(--pink-500); /* the logo square / mark fill */
 
   /* Footer (marketing LandingFooter — dark surface). */
   --footer-bg:          var(--ink-900);

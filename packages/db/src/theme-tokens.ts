@@ -123,6 +123,7 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'header-border', label: 'Header hairline', kind: 'color', group: 'Header', default: '#E0E1E5', hint: 'Bottom border.' },
   { name: 'header-py', label: 'Header height', kind: 'length', group: 'Header', default: '12px', min: 6, max: 24, step: 1, hint: 'Top-bar vertical padding.' },
   { name: 'header-wordmark-fs', label: 'Wordmark size', kind: 'length', group: 'Header', default: '23px', min: 16, max: 32, step: 1, hint: 'Wordmark font size.' },
+  { name: 'brand-mark-bg', label: 'Logo mark color', kind: 'color', group: 'Header', default: '#FF2E63', hint: 'The logo square / mark fill (header, footer, business).' },
 
   // Footer (marketing LandingFooter — dark)
   { name: 'footer-bg', label: 'Footer background', kind: 'color', group: 'Footer', default: '#18181A', hint: 'Footer surface.' },
@@ -246,17 +247,25 @@ export function isThemeScope(s: string | undefined): s is ThemeScope {
   return !!s && (SCOPES as readonly string[]).includes(s)
 }
 
+// --- Modes ------------------------------------------------------------------
+// 'light' = the default surface (:root); 'dark' = data-surface="dark" surfaces.
+export const MODES = ['light', 'dark'] as const
+export type ThemeMode = (typeof MODES)[number]
+export function isThemeMode(s: string | undefined): s is ThemeMode {
+  return s === 'light' || s === 'dark'
+}
+
 /**
- * Effective overrides for a scope = global rows overlaid by the scope's own rows
- * (scope wins). For 'global' it's just the global rows. Safe before migration.
+ * Effective overrides for a (scope, mode) = global rows overlaid by the scope's
+ * own rows (scope wins). For 'global' it's just the global rows. Safe before migration.
  */
-export async function getThemeOverrides(scope: ThemeScope = 'global'): Promise<Record<string, string>> {
+export async function getThemeOverrides(scope: ThemeScope = 'global', mode: ThemeMode = 'light'): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   try {
     const wanted = scope === 'global' ? ['global'] : ['global', scope]
     const rows = await (prisma as unknown as {
       themeTokenOverride: { findMany: (a: unknown) => Promise<Array<{ name: string; value: string; scope: string }>> }
-    }).themeTokenOverride.findMany({ where: { scope: { in: wanted } } })
+    }).themeTokenOverride.findMany({ where: { mode, scope: { in: wanted } } })
     for (const r of rows) if (r.scope === 'global') out[r.name] = r.value
     if (scope !== 'global') for (const r of rows) if (r.scope === scope) out[r.name] = r.value
   } catch {
@@ -265,42 +274,30 @@ export async function getThemeOverrides(scope: ThemeScope = 'global'): Promise<R
   return out
 }
 
-/** Just one scope's OWN rows (not merged) — used to seed reset baselines. */
-export async function getScopeOnlyOverrides(scope: ThemeScope): Promise<Record<string, string>> {
+/** Just one (scope, mode)'s OWN rows (not merged) — used to seed reset baselines. */
+export async function getScopeOnlyOverrides(scope: ThemeScope, mode: ThemeMode = 'light'): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   try {
     const rows = await (prisma as unknown as {
       themeTokenOverride: { findMany: (a: unknown) => Promise<Array<{ name: string; value: string }>> }
-    }).themeTokenOverride.findMany({ where: { scope } })
+    }).themeTokenOverride.findMany({ where: { scope, mode } })
     for (const r of rows) out[r.name] = r.value
   } catch {}
   return out
 }
 
-/** Serialize active, ALLOWLISTED, format-valid overrides to a `:root:root{…}` block. */
-export async function getThemeOverrideCss(scope: ThemeScope = 'global'): Promise<string> {
-  const overrides = await getThemeOverrides(scope)
-  const decls: string[] = []
-  for (const [name, value] of Object.entries(overrides)) {
-    if (!EDITABLE_BY_NAME.has(name)) continue
-    if (!validateThemeToken(name, value).ok) continue
-    decls.push(`--${name}:${value};`)
-  }
-  return decls.length ? `:root:root{${decls.join('')}}` : ''
-}
-
-/** Upsert one scoped override (caller does requireCapability + audit). */
-export async function upsertThemeOverride(name: string, value: string, scope: ThemeScope = 'global'): Promise<void> {
+/** Upsert one scoped+moded override (caller does requireCapability + audit). */
+export async function upsertThemeOverride(name: string, value: string, scope: ThemeScope = 'global', mode: ThemeMode = 'light'): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { upsert: (a: unknown) => Promise<unknown> }
-  }).themeTokenOverride.upsert({ where: { name_scope: { name, scope } }, update: { value }, create: { name, value, scope } })
+  }).themeTokenOverride.upsert({ where: { name_scope_mode: { name, scope, mode } }, update: { value }, create: { name, value, scope, mode } })
 }
 
-/** Remove a scoped override → reverts to global (or theme.css default). */
-export async function deleteThemeOverride(name: string, scope: ThemeScope = 'global'): Promise<void> {
+/** Remove a scoped+moded override → reverts to global (or theme.css default). */
+export async function deleteThemeOverride(name: string, scope: ThemeScope = 'global', mode: ThemeMode = 'light'): Promise<void> {
   await (prisma as unknown as {
     themeTokenOverride: { deleteMany: (a: unknown) => Promise<unknown> }
-  }).themeTokenOverride.deleteMany({ where: { name, scope } })
+  }).themeTokenOverride.deleteMany({ where: { name, scope, mode } })
 }
 
 /** Default value for a token name (for "is this an override?" checks). */
@@ -310,29 +307,39 @@ export function defaultThemeValue(name: string): string | undefined {
 
 // --- Draft / preview --------------------------------------------------------
 
-/** The working (unpublished) draft token map for a scope (id = scope). Safe before migration. */
-export async function getThemeDraft(scope: ThemeScope = 'global'): Promise<Record<string, string>> {
+/** A scope's draft holds BOTH modes: { light: {...}, dark: {...} }. */
+function asModeDraft(v: unknown): { light: Record<string, string>; dark: Record<string, string> } {
+  const o = v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+  const norm = (x: unknown) => (x && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, string>) : {})
+  // Back-compat: a pre-modes flat draft is treated as the light map.
+  if ('light' in o || 'dark' in o) return { light: norm(o.light), dark: norm(o.dark) }
+  return { light: o as Record<string, string>, dark: {} }
+}
+
+/** The working (unpublished) draft for a (scope, mode). Safe before migration. */
+export async function getThemeDraft(scope: ThemeScope = 'global', mode: ThemeMode = 'light'): Promise<Record<string, string>> {
   try {
     const row = await (prisma as unknown as {
       themeDraft: { findUnique: (a: unknown) => Promise<{ tokens: unknown } | null> }
     }).themeDraft.findUnique({ where: { id: scope } })
-    const t = row?.tokens
-    if (t && typeof t === 'object' && !Array.isArray(t)) return t as Record<string, string>
+    return asModeDraft(row?.tokens)[mode]
   } catch {
     // Table not migrated yet.
   }
   return {}
 }
 
-/** Upsert a scope's draft row (caller does requireCapability + audit). */
-export async function saveThemeDraftRow(scope: ThemeScope, tokens: Record<string, string>): Promise<void> {
-  await (prisma as unknown as {
-    themeDraft: { upsert: (a: unknown) => Promise<unknown> }
-  }).themeDraft.upsert({
-    where: { id: scope },
-    update: { tokens },
-    create: { id: scope, tokens },
-  })
+/** Upsert a scope's draft for ONE mode (preserving the other mode). */
+export async function saveThemeDraftRow(scope: ThemeScope, mode: ThemeMode, tokens: Record<string, string>): Promise<void> {
+  const db = (prisma as unknown as {
+    themeDraft: {
+      findUnique: (a: unknown) => Promise<{ tokens: unknown } | null>
+      upsert: (a: unknown) => Promise<unknown>
+    }
+  }).themeDraft
+  const existing = asModeDraft((await db.findUnique({ where: { id: scope } }))?.tokens)
+  const next = { ...existing, [mode]: tokens }
+  await db.upsert({ where: { id: scope }, update: { tokens: next }, create: { id: scope, tokens: next } })
 }
 
 // --- Version history --------------------------------------------------------
@@ -340,6 +347,7 @@ export async function saveThemeDraftRow(scope: ThemeScope, tokens: Record<string
 export interface ThemeVersionRow {
   id: string
   scope: string
+  mode: string
   tokens: Record<string, string>
   note: string | null
   createdBy: string | null
@@ -350,8 +358,8 @@ function asTokenMap(v: unknown): Record<string, string> {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, string>) : {}
 }
 
-/** Snapshot a published theme (per scope) and ring-buffer to the last 20. */
-export async function recordThemeVersion(scope: ThemeScope, tokens: Record<string, string>, createdBy?: string): Promise<void> {
+/** Snapshot a published theme (per scope+mode) and ring-buffer to the last 20. */
+export async function recordThemeVersion(scope: ThemeScope, mode: ThemeMode, tokens: Record<string, string>, createdBy?: string): Promise<void> {
   try {
     const m = (prisma as unknown as {
       themeVersion: {
@@ -360,63 +368,68 @@ export async function recordThemeVersion(scope: ThemeScope, tokens: Record<strin
         deleteMany: (a: unknown) => Promise<unknown>
       }
     }).themeVersion
-    await m.create({ data: { scope, tokens, createdBy: createdBy ?? null } })
-    const stale = await m.findMany({ where: { scope }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } })
+    await m.create({ data: { scope, mode, tokens, createdBy: createdBy ?? null } })
+    const stale = await m.findMany({ where: { scope, mode }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } })
     if (stale.length) await m.deleteMany({ where: { id: { in: stale.map((r) => r.id) } } })
   } catch {
     // Table not migrated yet — history is best-effort.
   }
 }
 
-/** Recent published versions for a scope (newest first). */
-export async function listThemeVersions(scope: ThemeScope, limit = 10): Promise<ThemeVersionRow[]> {
+/** Recent published versions for a (scope, mode), newest first. */
+export async function listThemeVersions(scope: ThemeScope, mode: ThemeMode = 'light', limit = 10): Promise<ThemeVersionRow[]> {
   try {
     const rows = await (prisma as unknown as {
-      themeVersion: { findMany: (a: unknown) => Promise<Array<{ id: string; scope: string; tokens: unknown; note: string | null; createdBy: string | null; createdAt: Date }>> }
-    }).themeVersion.findMany({ where: { scope }, orderBy: { createdAt: 'desc' }, take: limit })
-    return rows.map((r) => ({ id: r.id, scope: r.scope, tokens: asTokenMap(r.tokens), note: r.note, createdBy: r.createdBy, createdAt: r.createdAt }))
+      themeVersion: { findMany: (a: unknown) => Promise<Array<{ id: string; scope: string; mode: string; tokens: unknown; note: string | null; createdBy: string | null; createdAt: Date }>> }
+    }).themeVersion.findMany({ where: { scope, mode }, orderBy: { createdAt: 'desc' }, take: limit })
+    return rows.map((r) => ({ id: r.id, scope: r.scope, mode: r.mode, tokens: asTokenMap(r.tokens), note: r.note, createdBy: r.createdBy, createdAt: r.createdAt }))
   } catch {
     return []
   }
 }
 
-/** Load one version's scope + token map (for restore). */
-export async function getThemeVersion(id: string): Promise<{ scope: string; tokens: Record<string, string> } | null> {
+/** Load one version's scope+mode + token map (for restore). */
+export async function getThemeVersion(id: string): Promise<{ scope: string; mode: string; tokens: Record<string, string> } | null> {
   try {
     const r = await (prisma as unknown as {
-      themeVersion: { findUnique: (a: unknown) => Promise<{ scope: string; tokens: unknown } | null> }
+      themeVersion: { findUnique: (a: unknown) => Promise<{ scope: string; mode: string; tokens: unknown } | null> }
     }).themeVersion.findUnique({ where: { id } })
-    return r ? { scope: r.scope, tokens: asTokenMap(r.tokens) } : null
+    return r ? { scope: r.scope, mode: r.mode, tokens: asTokenMap(r.tokens) } : null
   } catch {
     return null
   }
 }
 
-/** Serialize a name→value map to a `:root:root{…}` block (allowlisted + valid only). */
-function serializeOverrides(map: Record<string, string>): string {
+/** Serialize a name→value map under a CSS selector (allowlisted + valid only). */
+function serializeOverrides(map: Record<string, string>, selector: string): string {
   const decls: string[] = []
   for (const [name, value] of Object.entries(map)) {
     if (!EDITABLE_BY_NAME.has(name)) continue
     if (!validateThemeToken(name, value).ok) continue
     decls.push(`--${name}:${value};`)
   }
-  return decls.length ? `:root:root{${decls.join('')}}` : ''
+  return decls.length ? `${selector}{${decls.join('')}}` : ''
 }
 
-/**
- * Effective theme CSS for an app: global ⊕ appScope (published). When a
- * previewScope is active, the matching layer is swapped to its DRAFT:
- *   - previewScope === 'global'  → global layer = global draft (every app previews it)
- *   - previewScope === appScope  → app layer  = that scope's draft (that app only)
- * Other previewScopes leave this app on its published theme.
- */
-export async function getEffectiveThemeCss(appScope: ThemeScope, previewScope?: ThemeScope | null): Promise<string> {
-  const globalLayer = previewScope === 'global' ? await getThemeDraft('global') : await getScopeOnlyOverrides('global')
+async function effectiveModeMap(appScope: ThemeScope, previewScope: ThemeScope | null | undefined, mode: ThemeMode): Promise<Record<string, string>> {
+  const globalLayer = previewScope === 'global' ? await getThemeDraft('global', mode) : await getScopeOnlyOverrides('global', mode)
   const scopeLayer =
     appScope === 'global'
       ? {}
       : previewScope === appScope
-        ? await getThemeDraft(appScope)
-        : await getScopeOnlyOverrides(appScope)
-  return serializeOverrides({ ...globalLayer, ...scopeLayer })
+        ? await getThemeDraft(appScope, mode)
+        : await getScopeOnlyOverrides(appScope, mode)
+  return { ...globalLayer, ...scopeLayer }
+}
+
+/**
+ * Effective theme CSS for an app — emits BOTH modes:
+ *   light → `:root:root{…}` (beats theme.css :root)
+ *   dark  → `[data-surface="dark"][data-surface="dark"]{…}` (beats theme.css [data-surface=dark])
+ * When previewScope is set, the matching layer uses that scope's DRAFT instead of published.
+ */
+export async function getEffectiveThemeCss(appScope: ThemeScope, previewScope?: ThemeScope | null): Promise<string> {
+  const light = serializeOverrides(await effectiveModeMap(appScope, previewScope, 'light'), ':root:root')
+  const dark = serializeOverrides(await effectiveModeMap(appScope, previewScope, 'dark'), '[data-surface="dark"][data-surface="dark"]')
+  return light + dark
 }

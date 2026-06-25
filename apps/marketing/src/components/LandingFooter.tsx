@@ -29,7 +29,7 @@ export function LandingFooter() {
     >
       <div className="max-w-[1400px] mx-auto">
         <Link href="/" className="inline-flex items-center gap-2.5 mb-12">
-          <span className="w-7 h-7 rounded-md bg-pink-500" />
+          <span className="w-7 h-7 rounded-md bg-[var(--brand-mark-bg)]" />
           <span className="font-display text-2xl font-extrabold tracking-[-0.04em]">
             iLaunchify
           </span>

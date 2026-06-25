@@ -6562,6 +6562,8 @@ model ThemeTokenOverride {
   /// 'global' applies to every app; per-app scopes (marketing / creator /
   /// partner / admin) override the global value WITHIN that app. Allowlisted.
   scope     String   @default("global")
+  /// 'light' (default surface) or 'dark' (data-surface="dark" surfaces).
+  mode      String   @default("light")
   /// CSS custom-property name WITHOUT the leading --, e.g. "font-scale",
   /// "radius-scale", "bg-hero". Allowlist-validated before write.
   name      String
@@ -6570,7 +6572,7 @@ model ThemeTokenOverride {
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
-  @@unique([name, scope])
+  @@unique([name, scope, mode])
 }
 
 /// Theme Studio working draft — a single row holding the in-progress
@@ -6589,6 +6591,7 @@ model ThemeDraft {
 model ThemeVersion {
   id        String   @id @default(uuid())
   scope     String   @default("global")
+  mode      String   @default("light")
   /// Full editable-token map { name: value } that was published.
   tokens    Json
   note      String?
@@ -6596,5 +6599,5 @@ model ThemeVersion {
   createdBy String?
   createdAt DateTime @default(now())
 
-  @@index([scope, createdAt])
+  @@index([scope, mode, createdAt])
 }
