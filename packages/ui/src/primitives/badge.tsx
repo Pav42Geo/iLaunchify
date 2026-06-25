@@ -12,7 +12,7 @@ import { cn } from '../lib/utils'
  * sparingly and never as a body-text color on white.
  */
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-[var(--badge-radius)] px-2 py-0.5 text-[length:var(--fs-xs)] font-semibold leading-none tracking-[0.02em] whitespace-nowrap',
+  'inline-flex items-center gap-s-1 rounded-[var(--badge-radius)] px-s-2 py-0.5 text-[length:var(--fs-xs)] font-semibold leading-none tracking-[0.02em] whitespace-nowrap',
   {
     variants: {
       variant: {

@@ -31,7 +31,7 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
         type="button"
         aria-pressed={active}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-[var(--chip-radius)] px-3 py-1.5 text-[length:var(--fs-base)] font-medium ' +
+          'inline-flex items-center gap-s-1 rounded-[var(--chip-radius)] px-s-3 py-s-2 text-[length:var(--fs-base)] font-medium ' +
             'transition-[background,color,border-color] duration-base ease-out-quart ' +
             'cursor-pointer whitespace-nowrap',
           active

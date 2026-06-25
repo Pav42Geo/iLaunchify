@@ -26,7 +26,7 @@ import { cn } from '../lib/utils'
  */
 const buttonVariants = cva(
   // Base — full pill, semibold, transition, focus ring, disabled state.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--button-radius)] font-semibold ' +
+  'inline-flex items-center justify-center gap-s-2 whitespace-nowrap rounded-[var(--button-radius)] font-semibold ' +
     'transition-[background,color,transform,box-shadow] duration-base ease-out-quart ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ' +
     'disabled:pointer-events-none disabled:opacity-50 active:translate-y-px',
@@ -41,9 +41,9 @@ const buttonVariants = cva(
         ghost:     'bg-transparent text-[var(--button-ghost-fg)] hover:bg-[var(--button-ghost-bg-hover)]',
       },
       size: {
-        sm: 'h-9 px-4 text-[length:var(--fs-md)]',   // 36px · 14px text
-        md: 'h-11 px-5 text-[length:var(--fs-md)]',  // 44px (default — matches input height)
-        lg: 'h-13 px-7 text-[length:var(--fs-lg)]',  // 52px · 16px text
+        sm: 'h-9 px-s-4 text-[length:var(--fs-md)]',   // 36px · pad 16 (s-4)
+        md: 'h-11 px-s-5 text-[length:var(--fs-md)]',  // 44px · pad 24 (s-5, was 20 off-grid)
+        lg: 'h-13 px-s-6 text-[length:var(--fs-lg)]',  // 52px · pad 32 (s-6, was 28 off-grid)
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

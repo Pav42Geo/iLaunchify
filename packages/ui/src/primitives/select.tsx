@@ -16,7 +16,7 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-10 w-full items-center justify-between rounded-[var(--input-radius)] border border-[var(--border-soft)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--fs-md)] text-[var(--input-text)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--input-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+      'flex h-10 w-full items-center justify-between rounded-[var(--input-radius)] border border-[var(--border-soft)] bg-[var(--input-bg)] px-s-3 py-s-2 text-[length:var(--fs-md)] text-[var(--input-text)] placeholder:text-[var(--input-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--input-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}
@@ -44,7 +44,7 @@ export const SelectContent = React.forwardRef<
       position={position}
       {...props}
     >
-      <SelectPrimitive.Viewport className={cn('p-1', position === 'popper' && 'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]')}>
+      <SelectPrimitive.Viewport className={cn('p-s-1', position === 'popper' && 'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]')}>
         {children}
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
@@ -59,7 +59,7 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-[length:var(--fs-md)] outline-none focus:bg-[var(--menu-item-active-bg)]',
+      'relative flex w-full cursor-default select-none items-center rounded-sm py-s-2 pl-s-6 pr-s-2 text-[length:var(--fs-md)] outline-none focus:bg-[var(--menu-item-active-bg)]',
       className,
     )}
     {...props}
