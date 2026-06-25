@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -98,8 +98,12 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'border-soft', label: 'Hairline border', kind: 'color', group: 'Borders & cards', default: '#E0E1E5', hint: 'Default card / input border.' },
   { name: 'card-radius', label: 'Card corners', kind: 'length', group: 'Borders & cards', default: '16px', min: 0, max: 28, step: 1, hint: 'Card corner radius.' },
 
-  // Inputs
-  { name: 'input-radius', label: 'Input corners', kind: 'length', group: 'Inputs', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
+  // Forms — input / select fields
+  { name: 'input-bg', label: 'Field background', kind: 'color', group: 'Forms', default: '#FFFFFF', hint: 'Input / select fill.' },
+  { name: 'input-text', label: 'Field text', kind: 'color', group: 'Forms', default: '#18181A', hint: 'Typed value color.' },
+  { name: 'input-placeholder', label: 'Placeholder', kind: 'color', group: 'Forms', default: '#9A9CA6', hint: 'Placeholder text (kept intentionally light).' },
+  { name: 'input-focus', label: 'Focus ring', kind: 'color', group: 'Forms', default: '#FF2E63', hint: 'Focus outline color.' },
+  { name: 'input-radius', label: 'Field corners', kind: 'length', group: 'Forms', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
 
   // Buttons & chips — pill by default (the locked signature); override to a px to square them off.
   { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
@@ -167,6 +171,7 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Sidebar active text', fg: 'sidebar-active-fg', bg: 'sidebar-active-bg', min: 4.5 },
   { label: 'Header wordmark', fg: 'header-fg', bg: '#FFFFFF', min: 4.5 },
   { label: 'Footer text', fg: 'footer-fg', bg: 'footer-bg', min: 4.5 },
+  { label: 'Field text', fg: 'input-text', bg: 'input-bg', min: 4.5 },
 ]
 
 /** Resolve a pairing side (token name or literal) to a hex, from proposed values. */

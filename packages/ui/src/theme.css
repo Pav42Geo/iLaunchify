@@ -233,6 +233,11 @@
   --button-radius: var(--radius-pill);
   --input-radius:  var(--radius-md);
   --chip-radius:   var(--radius-pill);
+  /* Form fields */
+  --input-bg:          #FFFFFF;
+  --input-text:        var(--ink-900);
+  --input-placeholder: var(--ink-400);
+  --input-focus:       var(--pink-500);
 
   /* ============================================================
      CHROME TOKENS — sidebars / headers / footers (Theme Studio
