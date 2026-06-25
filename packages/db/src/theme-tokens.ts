@@ -121,6 +121,9 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'input-placeholder', label: 'Placeholder', kind: 'color', group: 'Forms', default: '#9A9CA6', hint: 'Placeholder text (kept intentionally light).' },
   { name: 'input-focus', label: 'Focus ring', kind: 'color', group: 'Forms', default: '#FF2E63', hint: 'Focus outline color.' },
   { name: 'input-radius', label: 'Field corners', kind: 'length', group: 'Forms', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
+  { name: 'control-accent', label: 'Control accent', kind: 'color', group: 'Forms', default: '#FF2E63', hint: 'Selected checkbox / radio / switch color.' },
+  { name: 'control-border', label: 'Control border', kind: 'color', group: 'Forms', default: '#C9CACF', hint: 'Unchecked checkbox / radio border.' },
+  { name: 'switch-off-bg', label: 'Switch (off) track', kind: 'color', group: 'Forms', default: '#C9CACF', hint: 'Toggle track color when off.' },
 
   // Buttons — radius (pill signature) + per-variant fills/text/border. Each
   // defaults to the brand ramp, so they follow the palette until overridden.
@@ -225,6 +228,7 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Header wordmark', fg: 'header-fg', bg: '#FFFFFF', min: 4.5 },
   { label: 'Footer text', fg: 'footer-fg', bg: 'footer-bg', min: 4.5 },
   { label: 'Field text', fg: 'input-text', bg: 'input-bg', min: 4.5 },
+  { label: 'Checkmark on control', fg: '#FFFFFF', bg: 'control-accent', min: 3 },
   // Status pills are bold UI affordances → the 3:1 large/UI threshold.
   { label: 'Success pill', fg: 'success-500-rgb', bg: 'success-50-rgb', min: 3 },
   { label: 'Warning pill', fg: 'warning-500-rgb', bg: 'warning-50-rgb', min: 3 },

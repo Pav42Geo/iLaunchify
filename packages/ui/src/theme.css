@@ -281,6 +281,15 @@
   --input-placeholder: var(--ink-400);
   --input-focus:       var(--pink-500);
 
+  /* Selection controls (checkbox / radio / switch) — one accent drives the
+     "on" state of all three so they stay consistent. */
+  --control-accent:     var(--pink-500); /* checked box / radio dot / switch-on track */
+  --control-accent-fg:  #FFFFFF;         /* checkmark + switch thumb-on contrast */
+  --control-border:     var(--ink-300);  /* unchecked border */
+  --control-bg:         #FFFFFF;         /* unchecked fill */
+  --switch-off-bg:      var(--ink-300);  /* switch track when off */
+  --checkbox-radius:    var(--radius-sm);
+
   /* ============================================================
      CHROME TOKENS — sidebars / headers / footers (Theme Studio
      "Layout / Chrome"). Defaults reference the brand tokens so they
