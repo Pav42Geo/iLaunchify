@@ -110,12 +110,15 @@ Two agents edit this repo in parallel (Cowork via desktop, Code via CLI). Git ha
 
 ```bash
 pnpm dev                  # start all apps
-pnpm --filter @ilaunchify/db prisma migrate dev    # apply pending migrations
-pnpm --filter @ilaunchify/db prisma generate       # regenerate client (DO THIS after migrate)
-pnpm --filter @ilaunchify/db prisma db seed        # reseed
+pnpm db:push              # APPLY SCHEMA CHANGES — this repo uses `prisma db push`, NOT migrate.
+                          # (migrate dev sees the pushed-but-unmigrated DB as drift and tries to RESET. Don't.)
+pnpm db:generate          # regenerate the Prisma client (DO THIS after every db:push)
+pnpm db:seed              # reseed
 pnpm typecheck            # workspace-wide tsc
 pnpm lint                 # workspace-wide eslint
 ```
+
+After `db:push` + `db:generate`, also `rm -rf apps/*/.next` and restart `next dev` — the old client gets bundled into `.next` (see Database §stale-client gotcha).
 
 ## Memory + decision history
 

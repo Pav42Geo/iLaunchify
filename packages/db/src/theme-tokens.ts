@@ -25,12 +25,15 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs'
+  group: 'Scale' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Inputs' | 'Buttons & chips'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
   max?: number
   step?: number
+  /** length tokens whose default is the pill signature (999px) — the editor
+   *  offers a Pill toggle alongside the px slider. */
+  pillable?: boolean
   hint?: string
 }
 
@@ -63,6 +66,10 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
 
   // Inputs
   { name: 'input-radius', label: 'Input corners', kind: 'length', group: 'Inputs', default: '8px', min: 0, max: 24, step: 1, hint: 'Input / select corner radius.' },
+
+  // Buttons & chips — pill by default (the locked signature); override to a px to square them off.
+  { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
+  { name: 'chip-radius', label: 'Chip corners', kind: 'length', group: 'Buttons & chips', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Chip / pill-tag corner radius. Pill by default.' },
 ]
 
 const EDITABLE_BY_NAME = new Map(EDITABLE_THEME_TOKENS.map((t) => [t.name, t]))

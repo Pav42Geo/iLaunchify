@@ -92,7 +92,7 @@ export function ThemeEditor({
     })
   }
 
-  const groups: EditableThemeToken['group'][] = ['Scale', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs']
+  const groups: EditableThemeToken['group'][] = ['Scale', 'Brand', 'Backgrounds', 'Borders & cards', 'Inputs', 'Buttons & chips']
 
   return (
     <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
@@ -190,20 +190,40 @@ function Control({
         </div>
       )}
 
-      {t.kind === 'length' && (
-        <div className="flex flex-1 items-center gap-3">
-          <input
-            type="range"
-            min={t.min}
-            max={t.max}
-            step={t.step}
-            value={parseFloat(value) || 0}
-            onChange={(e) => onChange(`${e.target.value}px`)}
-            className="flex-1 accent-pink-500"
-          />
-          <span className="w-12 text-right font-mono text-[length:var(--fs-sm)] text-ink-700">{value}</span>
-        </div>
-      )}
+      {t.kind === 'length' &&
+        (() => {
+          const px = parseFloat(value) || 0
+          const isPill = t.pillable === true && px >= 100
+          return (
+            <div className="flex flex-1 items-center gap-3">
+              {isPill ? (
+                <span className="flex-1 text-[length:var(--fs-sm)] text-ink-500">Pill — fully rounded</span>
+              ) : (
+                <input
+                  type="range"
+                  min={t.min}
+                  max={t.max}
+                  step={t.step}
+                  value={px}
+                  onChange={(e) => onChange(`${e.target.value}px`)}
+                  className="flex-1 accent-pink-500"
+                />
+              )}
+              {t.pillable && (
+                <button
+                  type="button"
+                  onClick={() => onChange(isPill ? '12px' : '999px')}
+                  className={`rounded-pill border px-2 py-0.5 text-[length:var(--fs-2xs)] font-semibold ${
+                    isPill ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 text-ink-600'
+                  }`}
+                >
+                  Pill
+                </button>
+              )}
+              <span className="w-12 text-right font-mono text-[length:var(--fs-sm)] text-ink-700">{isPill ? '∞' : value}</span>
+            </div>
+          )
+        })()}
 
       <button onClick={onReset} className="text-[length:var(--fs-xs)] text-ink-400 hover:text-ink-700">
         reset
