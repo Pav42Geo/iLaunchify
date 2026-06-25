@@ -23,8 +23,10 @@ import {
   isThemeScope,
   getThemeOverrides,
   getThemeDraft,
+  listThemeVersions,
   type ThemeScope,
 } from '@ilaunchify/db'
+import { ThemeHistory } from './ThemeHistory'
 import { pink, neon, ink, semantic, radii } from '@ilaunchify/ui/tokens'
 import { ThemeEditor } from './ThemeEditor'
 
@@ -158,6 +160,7 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
     // A per-app scope inherits from (and resets to) the effective GLOBAL theme.
     scope === 'global' ? Promise.resolve({} as Record<string, string>) : getThemeOverrides('global'),
   ])
+  const versions = await listThemeVersions(scope, 10)
   const previewActive = scope === 'global' && (await cookies()).get('theme-preview')?.value === '1'
   // Global opens to the saved draft if any; a scope opens to its effective theme.
   const seed = scope === 'global' && Object.keys(draft).length ? draft : overrides
@@ -197,6 +200,11 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
         scope={scope}
         scopes={scopeChoices}
         previewActive={previewActive}
+      />
+
+      <ThemeHistory
+        scopeLabel={SCOPE_LABELS[scope]}
+        versions={versions.map((v) => ({ id: v.id, count: Object.keys(v.tokens).length, createdAt: v.createdAt.toISOString() }))}
       />
 
       <Section title="Color">

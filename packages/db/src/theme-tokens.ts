@@ -307,6 +307,63 @@ export async function saveThemeDraftRow(tokens: Record<string, string>): Promise
   })
 }
 
+// --- Version history --------------------------------------------------------
+
+export interface ThemeVersionRow {
+  id: string
+  scope: string
+  tokens: Record<string, string>
+  note: string | null
+  createdBy: string | null
+  createdAt: Date
+}
+
+function asTokenMap(v: unknown): Record<string, string> {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, string>) : {}
+}
+
+/** Snapshot a published theme (per scope) and ring-buffer to the last 20. */
+export async function recordThemeVersion(scope: ThemeScope, tokens: Record<string, string>, createdBy?: string): Promise<void> {
+  try {
+    const m = (prisma as unknown as {
+      themeVersion: {
+        create: (a: unknown) => Promise<unknown>
+        findMany: (a: unknown) => Promise<Array<{ id: string }>>
+        deleteMany: (a: unknown) => Promise<unknown>
+      }
+    }).themeVersion
+    await m.create({ data: { scope, tokens, createdBy: createdBy ?? null } })
+    const stale = await m.findMany({ where: { scope }, orderBy: { createdAt: 'desc' }, skip: 20, select: { id: true } })
+    if (stale.length) await m.deleteMany({ where: { id: { in: stale.map((r) => r.id) } } })
+  } catch {
+    // Table not migrated yet — history is best-effort.
+  }
+}
+
+/** Recent published versions for a scope (newest first). */
+export async function listThemeVersions(scope: ThemeScope, limit = 10): Promise<ThemeVersionRow[]> {
+  try {
+    const rows = await (prisma as unknown as {
+      themeVersion: { findMany: (a: unknown) => Promise<Array<{ id: string; scope: string; tokens: unknown; note: string | null; createdBy: string | null; createdAt: Date }>> }
+    }).themeVersion.findMany({ where: { scope }, orderBy: { createdAt: 'desc' }, take: limit })
+    return rows.map((r) => ({ id: r.id, scope: r.scope, tokens: asTokenMap(r.tokens), note: r.note, createdBy: r.createdBy, createdAt: r.createdAt }))
+  } catch {
+    return []
+  }
+}
+
+/** Load one version's scope + token map (for restore). */
+export async function getThemeVersion(id: string): Promise<{ scope: string; tokens: Record<string, string> } | null> {
+  try {
+    const r = await (prisma as unknown as {
+      themeVersion: { findUnique: (a: unknown) => Promise<{ scope: string; tokens: unknown } | null> }
+    }).themeVersion.findUnique({ where: { id } })
+    return r ? { scope: r.scope, tokens: asTokenMap(r.tokens) } : null
+  } catch {
+    return null
+  }
+}
+
 /** Serialize the DRAFT (allowlisted + valid) to a `:root:root{…}` preview block. */
 export async function getThemePreviewCss(): Promise<string> {
   const draft = await getThemeDraft()

@@ -12,6 +12,8 @@ import {
   deleteThemeOverride,
   getThemeOverrides,
   saveThemeDraftRow,
+  recordThemeVersion,
+  getThemeVersion,
   validateTheme,
   EDITABLE_THEME_TOKENS,
   type ThemeScope,
@@ -75,6 +77,7 @@ export async function publishThemeTokens(
       else await upsertThemeOverride(t.name, value, scope)
     }
     if (scope === 'global') await saveThemeDraftRow(proposed) // keep global draft synced
+    await recordThemeVersion(scope, proposed, admin.id) // history snapshot (ring-buffered)
     ;(await cookies()).delete(PREVIEW_COOKIE)
     await logAuditAs(admin, {
       entityType: 'ThemeTokenOverride',
@@ -87,6 +90,15 @@ export async function publishThemeTokens(
   } catch (err) {
     return { ok: false, error: `Could not publish: ${(err as Error).message}` }
   }
+}
+
+/** Restore a previous version: re-publish its snapshot to its scope (re-gated). */
+export async function restoreThemeVersion(id: string): Promise<Result> {
+  await requireCapability('platform:admin')
+  const v = await getThemeVersion(id)
+  if (!v) return { ok: false, error: 'Version not found.' }
+  const input = Object.entries(v.tokens).map(([name, value]) => ({ name, value }))
+  return publishThemeTokens(input, v.scope as ThemeScope)
 }
 
 /** Clear all overrides for `scope` (reverts to global / theme defaults). */

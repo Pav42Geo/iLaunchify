@@ -6582,3 +6582,18 @@ model ThemeDraft {
   tokens    Json
   updatedAt DateTime @updatedAt
 }
+
+/// Theme Studio version history — one snapshot per publish (per scope), for
+/// one-click rollback. Ring-buffered to the last ~20 per scope in code.
+model ThemeVersion {
+  id        String   @id @default(uuid())
+  scope     String   @default("global")
+  /// Full editable-token map { name: value } that was published.
+  tokens    Json
+  note      String?
+  /// Soft FK → User id of the admin who published.
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([scope, createdAt])
+}
