@@ -5,7 +5,7 @@
 // the CSS var on <html>, runs the same WCAG pairing checks as the server, and
 // blocks publish on any failure.
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { EditableThemeToken, ThemeScope } from '@ilaunchify/db'
@@ -38,6 +38,22 @@ function contrast(a: string, b: string) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
 }
 
+type TabId = 'foundations' | 'colors' | 'components' | 'chrome' | 'presets' | 'history'
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'foundations', label: 'Foundations' },
+  { id: 'colors', label: 'Colors' },
+  { id: 'components', label: 'Components' },
+  { id: 'chrome', label: 'Chrome' },
+  { id: 'presets', label: 'Presets' },
+  { id: 'history', label: 'History' },
+]
+const CATEGORY: Record<'foundations' | 'colors' | 'components' | 'chrome', EditableThemeToken['group'][]> = {
+  foundations: ['Scale', 'Fonts'],
+  colors: ['Text', 'Brand', 'Backgrounds'],
+  components: ['Borders & cards', 'Forms', 'Buttons & chips'],
+  chrome: ['Sidebar', 'Header', 'Footer'],
+}
+
 export function ThemeEditor({
   tokens,
   pairings,
@@ -47,6 +63,8 @@ export function ThemeEditor({
   scope,
   scopes,
   previewActive,
+  presetsSlot,
+  historySlot,
 }: {
   tokens: EditableThemeToken[]
   pairings: Pairing[]
@@ -57,6 +75,8 @@ export function ThemeEditor({
   scope: ThemeScope
   scopes: { value: ThemeScope; label: string }[]
   previewActive: boolean
+  presetsSlot: ReactNode
+  historySlot: ReactNode
 }) {
   const router = useRouter()
   const isGlobal = scope === 'global'
@@ -123,87 +143,99 @@ export function ThemeEditor({
     })
   }
 
-  const groups: EditableThemeToken['group'][] = ['Scale', 'Fonts', 'Text', 'Brand', 'Backgrounds', 'Borders & cards', 'Forms', 'Buttons & chips', 'Sidebar', 'Header', 'Footer']
+  const [tab, setTab] = useState<TabId>('colors')
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+  const searchHits = q ? tokens.filter((t) => t.label.toLowerCase().includes(q) || t.name.includes(q)) : []
+
+  const control = (t: EditableThemeToken) => (
+    <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
+  )
+  const renderGroups = (groupList: EditableThemeToken['group'][]) => (
+    <div className="space-y-6">
+      {groupList.map((g) => {
+        const items = tokens.filter((t) => t.group === g)
+        if (!items.length) return null
+        return (
+          <div key={g}>
+            <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</div>
+            <div className="space-y-4">{items.map(control)}</div>
+          </div>
+        )
+      })}
+    </div>
+  )
 
   return (
-    <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
-      {/* Scope picker */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[length:var(--fs-xs)] font-semibold text-ink-500">Scope:</span>
-        {scopes.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => router.push(`/theme-studio?scope=${s.value}`)}
-            className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold ${
-              s.value === scope ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-      {!isGlobal && (
-        <div className="mb-4 rounded-[var(--radius-md)] border border-info-500/30 bg-info-50 px-3 py-2 text-[length:var(--fs-sm)] text-info-500">
-          Editing the <strong>{scope}</strong> scope — values override Global within the {scope} app only; unchanged
-          tokens inherit Global. Preview shows your draft inside the {scope} app (open it on localhost).
+    <section className="rounded-3xl border border-ink-200 bg-white">
+      {/* Sticky action + accessibility bar */}
+      <div className="sticky top-0 z-10 rounded-t-3xl border-b border-ink-200 bg-white/95 px-6 pt-5 pb-3 backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[length:var(--fs-xs)] font-semibold text-ink-500">Scope</span>
+            {scopes.map((s) => (
+              <button key={s.value} onClick={() => router.push(`/theme-studio?scope=${s.value}`)} className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold ${s.value === scope ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+              {previewActive ? 'Preview: On' : 'Preview'}
+            </button>
+            <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">Save draft</button>
+            <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">Reset</button>
+            <button onClick={publish} disabled={pending || blocked} className="rounded-pill bg-ink-900 px-4 py-1.5 text-[length:var(--fs-sm)] font-semibold text-white hover:bg-black disabled:opacity-50">{pending ? 'Working…' : 'Publish'}</button>
+          </div>
         </div>
-      )}
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">Edit &amp; publish</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
-            {previewActive ? 'Preview: On' : 'Preview'}
-          </button>
-          <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">
-            Save draft
-          </button>
-          <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">
-            Reset
-          </button>
-          <button onClick={publish} disabled={pending || blocked} className="rounded-pill bg-ink-900 px-4 py-1.5 text-[length:var(--fs-sm)] font-semibold text-white hover:bg-black disabled:opacity-50">
-            {pending ? 'Working…' : 'Publish'}
-          </button>
+        {/* WCAG summary */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[length:var(--fs-xs)]">
+          {blocked ? (
+            <>
+              <span className="rounded-pill border border-danger-500/30 bg-danger-50 px-2 py-0.5 font-semibold text-danger-500">✕ {failing.length} accessibility check{failing.length > 1 ? 's' : ''} failing</span>
+              {failing.map((p) => (
+                <span key={p.label} className="text-danger-500">{p.label} {p.ratio.toFixed(2)}:1</span>
+              ))}
+            </>
+          ) : (
+            <span className="rounded-pill border border-success-500/30 bg-success-50 px-2 py-0.5 font-semibold text-success-500">✓ all {pairResults.length} accessibility checks pass · WCAG 2.1 AA</span>
+          )}
         </div>
       </div>
 
-      {/* Live WCAG pairing panel */}
-      <div className="mb-6 rounded-[var(--radius-lg)] border border-ink-200 bg-ink-50/60 p-3">
-        <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">Accessibility (WCAG 2.1 AA) — live</div>
-        <div className="flex flex-wrap gap-2">
-          {pairResults.map((p) => {
-            const pass = p.ratio >= p.min
-            return (
-              <span key={p.label} className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-2xs)] font-semibold ${pass ? 'bg-success-50 text-success-500 border-success-500/30' : 'bg-danger-50 text-danger-500 border-danger-500/30'}`}>
-                {p.label}: {p.ratio.toFixed(2)}:1 {pass ? '✓' : `✕ (need ${p.min})`}
-              </span>
-            )
-          })}
+      {/* Tabs + token search */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 px-6 pt-3">
+        <div className="flex flex-wrap gap-1">
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => { setTab(t.id); setQuery('') }} className={`rounded-t-lg px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold ${tab === t.id && !q ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'}`}>
+              {t.label}
+            </button>
+          ))}
         </div>
-        {blocked && <div className="mt-2 text-[length:var(--fs-sm)] font-medium text-danger-500">Fix the failing pair(s) above before publishing.</div>}
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tokens…" className="mb-2 w-44 rounded-[var(--input-radius)] border border-ink-200 px-2.5 py-1 text-[length:var(--fs-sm)]" />
       </div>
 
-      <div className="space-y-6">
-        {groups.map((g) => {
-          const items = tokens.filter((t) => t.group === g)
-          if (!items.length) return null
-          return (
-            <div key={g}>
-              <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</div>
-              <div className="space-y-4">
-                {items.map((t) => (
-                  <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
-                ))}
-              </div>
-            </div>
+      {/* Content */}
+      <div className="px-6 py-6">
+        {!isGlobal && (
+          <div className="mb-4 rounded-[var(--radius-md)] border border-info-500/30 bg-info-50 px-3 py-2 text-[length:var(--fs-sm)] text-info-500">
+            Editing the <strong>{scope}</strong> scope — values override Global within the {scope} app only; unchanged tokens inherit Global. Preview shows your draft inside the {scope} app.
+          </div>
+        )}
+        {q ? (
+          searchHits.length ? (
+            <div className="space-y-4">{searchHits.map(control)}</div>
+          ) : (
+            <p className="text-[length:var(--fs-sm)] text-ink-400">No tokens match “{query}”.</p>
           )
-        })}
+        ) : tab === 'presets' ? (
+          presetsSlot
+        ) : tab === 'history' ? (
+          historySlot
+        ) : (
+          renderGroups(CATEGORY[tab as keyof typeof CATEGORY])
+        )}
       </div>
-
-      <p className="mt-5 text-[length:var(--fs-xs)] text-ink-400">
-        Changes preview live here. Publish writes them to all four apps (admin updates instantly; creator / partner /
-        marketing on their next render). Editing a brand color cascades to every button, chip, link and surface built on it.
-        Audited; Reset clears all overrides.
-      </p>
     </section>
   )
 }

@@ -30,7 +30,7 @@ export function ThemePresets({
   }
 
   return (
-    <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
+    <div>
       <h2 className="mb-1 font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">Presets</h2>
       <p className="mb-4 text-[length:var(--fs-sm)] text-ink-500">
         Apply a complete look to the <strong>{scope}</strong> draft, then Preview &amp; Publish. Fully reversible via History.
@@ -55,6 +55,6 @@ export function ThemePresets({
           </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

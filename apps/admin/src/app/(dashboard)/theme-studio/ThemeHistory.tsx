@@ -29,7 +29,7 @@ export function ThemeHistory({
   }
 
   return (
-    <section className="rounded-3xl border border-ink-200 bg-white px-6 py-6">
+    <div>
       <h2 className="mb-1 font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">History</h2>
       <p className="mb-4 text-[length:var(--fs-sm)] text-ink-500">
         Recent publishes for <strong>{scopeLabel}</strong>. Restoring re-publishes that snapshot (re-checked against the WCAG gate). Last 20 kept.
@@ -60,6 +60,6 @@ export function ThemeHistory({
           ))}
         </ul>
       )}
-    </section>
+    </div>
   )
 }
