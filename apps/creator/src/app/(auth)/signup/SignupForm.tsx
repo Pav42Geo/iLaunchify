@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Input, Label } from '@ilaunchify/ui'
+import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -127,26 +127,25 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
         <p className="text-xs text-ink-500">Don&apos;t worry if you haven&apos;t picked a name yet.</p>
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-ink-600">
-        <input
-          type="checkbox"
-          checked={agreedToTerms}
-          onChange={(e) => setAgreedToTerms(e.target.checked)}
-          className="mt-1"
-          disabled={busy}
-        />
-        <span>
-          I agree to the{' '}
-          <a href="/terms" className="underline">
-            terms
-          </a>{' '}
-          and{' '}
-          <a href="/privacy" className="underline">
-            privacy policy
-          </a>
-          .
-        </span>
-      </label>
+      <Checkbox
+        checked={agreedToTerms}
+        onChange={(e) => setAgreedToTerms(e.target.checked)}
+        disabled={busy}
+        className="items-start text-sm text-ink-600"
+        label={
+          <span>
+            I agree to the{' '}
+            <a href="/terms" className="underline">
+              terms
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" className="underline">
+              privacy policy
+            </a>
+            .
+          </span>
+        }
+      />
 
       <Button type="submit" className="w-full" disabled={busy || !agreedToTerms || !name || !email}>
         {busy ? 'Creating account…' : 'Start my creator account'}

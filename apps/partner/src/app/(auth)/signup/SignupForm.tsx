@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Input, Label } from '@ilaunchify/ui'
+import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -114,26 +114,25 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
         />
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-ink-600">
-        <input
-          type="checkbox"
-          checked={agreedToTerms}
-          onChange={(e) => setAgreedToTerms(e.target.checked)}
-          className="mt-1"
-          disabled={busy}
-        />
-        <span>
-          I agree to the{' '}
-          <a href="/terms" className="underline">
-            partner terms
-          </a>{' '}
-          and{' '}
-          <a href="/privacy" className="underline">
-            privacy policy
-          </a>
-          . I understand I&apos;ll need to complete identity verification before becoming active.
-        </span>
-      </label>
+      <Checkbox
+        checked={agreedToTerms}
+        onChange={(e) => setAgreedToTerms(e.target.checked)}
+        disabled={busy}
+        className="items-start text-sm text-ink-600"
+        label={
+          <span>
+            I agree to the{' '}
+            <a href="/terms" className="underline">
+              partner terms
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" className="underline">
+              privacy policy
+            </a>
+            . I understand I&apos;ll need to complete identity verification before becoming active.
+          </span>
+        }
+      />
 
       <Button type="submit" className="w-full" disabled={busy || !agreedToTerms || !name || !email || !companyName}>
         {busy ? 'Creating account…' : 'Apply to join the network'}
