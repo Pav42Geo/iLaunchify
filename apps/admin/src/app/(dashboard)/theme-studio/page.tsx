@@ -17,11 +17,14 @@ import {
   SCOPES,
   SCOPE_LABELS,
   isThemeScope,
+  isThemeMode,
   getThemeOverrides,
   getThemeDraft,
   listThemeVersions,
+  listCustomPresets,
   BUILTIN_PRESETS,
   type ThemeScope,
+  type ThemeMode,
 } from '@ilaunchify/db'
 import { ThemeEditor } from './ThemeEditor'
 import { ThemePresets } from './ThemePresets'
@@ -30,18 +33,20 @@ import { ThemeHistory } from './ThemeHistory'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Theme Studio — Admin' }
 
-export default async function ThemeStudioPage({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {
+export default async function ThemeStudioPage({ searchParams }: { searchParams: Promise<{ scope?: string; mode?: string }> }) {
   await requireCapability('platform:admin')
   const sp = await searchParams
   const scope: ThemeScope = isThemeScope(sp.scope) ? sp.scope : 'global'
+  const mode: ThemeMode = isThemeMode(sp.mode) ? sp.mode : 'light'
 
   const [overrides, draft, baseline] = await Promise.all([
-    getThemeOverrides(scope),
-    getThemeDraft(scope),
+    getThemeOverrides(scope, mode),
+    getThemeDraft(scope, mode),
     // A per-app scope inherits from (and resets to) the effective GLOBAL theme.
-    scope === 'global' ? Promise.resolve({} as Record<string, string>) : getThemeOverrides('global'),
+    scope === 'global' ? Promise.resolve({} as Record<string, string>) : getThemeOverrides('global', mode),
   ])
-  const versions = await listThemeVersions(scope, 10)
+  const versions = await listThemeVersions(scope, mode, 10)
+  const customPresets = await listCustomPresets()
   const previewActive = (await cookies()).get('theme-preview')?.value === scope
   const seed = Object.keys(draft).length ? draft : overrides
   const scopeChoices = SCOPES.map((s) => ({ value: s, label: SCOPE_LABELS[s] }))
@@ -51,7 +56,7 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
       {/* Hero */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
-          Editing: {SCOPE_LABELS[scope]}
+          Editing: {SCOPE_LABELS[scope]} · {mode}
         </span>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink-900">Theme Studio</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink-600">
@@ -69,11 +74,14 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
         baseline={baseline}
         scope={scope}
         scopes={scopeChoices}
+        mode={mode}
         previewActive={previewActive}
         presetsSlot={
           <ThemePresets
             scope={scope}
+            mode={mode}
             presets={BUILTIN_PRESETS.map((p) => ({ id: p.id, name: p.name, description: p.description, swatch: p.swatch }))}
+            custom={customPresets.map((c) => ({ id: c.id, name: c.name }))}
           />
         }
         historySlot={

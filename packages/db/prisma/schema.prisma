@@ -6601,3 +6601,14 @@ model ThemeVersion {
 
   @@index([scope, mode, createdAt])
 }
+
+/// Theme Studio custom presets — an admin-saved "mood board" (full token map)
+/// that can be re-applied to any scope/mode. Built-in presets live in code.
+model ThemePreset {
+  id        String   @id @default(uuid())
+  name      String
+  /// { tokenName: value } map.
+  tokens    Json
+  createdBy String?
+  createdAt DateTime @default(now())
+}

@@ -5,23 +5,40 @@
 // then you Preview → Publish (reversible via History).
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { ThemeScope } from '@ilaunchify/db'
-import { applyThemePreset } from './actions'
+import type { ThemeScope, ThemeMode } from '@ilaunchify/db'
+import { applyThemePreset, deleteThemePreset } from './actions'
 
 export function ThemePresets({
   presets,
+  custom,
   scope,
+  mode,
 }: {
   presets: { id: string; name: string; description: string; swatch: string[] }[]
+  custom: { id: string; name: string }[]
   scope: ThemeScope
+  mode: ThemeMode
 }) {
   const [pending, start] = useTransition()
+  const router = useRouter()
+
+  function removeCustom(id: string, name: string) {
+    if (!confirm(`Delete preset “${name}”? This can't be undone.`)) return
+    start(async () => {
+      const r = await deleteThemePreset(id)
+      if (r.ok) {
+        toast.success('Preset deleted.')
+        router.refresh()
+      } else toast.error(r.error)
+    })
+  }
 
   function apply(id: string, name: string) {
-    if (!confirm(`Apply “${name}” to the ${scope} draft? This replaces unsaved edits in this scope — you can preview before publishing.`)) return
+    if (!confirm(`Apply “${name}” to the ${scope} · ${mode} draft? This replaces unsaved edits — you can preview before publishing.`)) return
     start(async () => {
-      const r = await applyThemePreset(id, scope)
+      const r = await applyThemePreset(id, scope, mode)
       if (r.ok) {
         toast.success(`Loaded “${name}” into the draft.`)
         window.location.reload() // re-seed the editor from the new draft
@@ -55,6 +72,23 @@ export function ThemePresets({
           </div>
         ))}
       </div>
+
+      {custom.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">Your presets</div>
+          <ul className="divide-y divide-ink-100">
+            {custom.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="text-[length:var(--fs-sm)] font-medium text-ink-800">{c.name}</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => apply(c.id, c.name)} disabled={pending} className="rounded-pill bg-ink-900 px-3 py-1 text-[length:var(--fs-xs)] font-semibold text-white hover:bg-black disabled:opacity-50">Apply</button>
+                  <button onClick={() => removeCustom(c.id, c.name)} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold text-ink-600 hover:bg-ink-50 disabled:opacity-50">Delete</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

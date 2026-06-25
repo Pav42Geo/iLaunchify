@@ -415,6 +415,53 @@ export async function getThemeVersion(id: string): Promise<{ scope: string; mode
   }
 }
 
+// --- Custom presets (admin-saved) -------------------------------------------
+
+export interface CustomPresetRow {
+  id: string
+  name: string
+  tokens: Record<string, string>
+  createdAt: Date
+}
+
+/** Admin-saved presets (newest first). Safe before migration ([]). */
+export async function listCustomPresets(): Promise<CustomPresetRow[]> {
+  try {
+    const rows = await (prisma as unknown as {
+      themePreset: { findMany: (a: unknown) => Promise<Array<{ id: string; name: string; tokens: unknown; createdAt: Date }>> }
+    }).themePreset.findMany({ orderBy: { createdAt: 'desc' } })
+    return rows.map((r) => ({ id: r.id, name: r.name, tokens: asTokenMap(r.tokens), createdAt: r.createdAt }))
+  } catch {
+    return []
+  }
+}
+
+/** Save the current theme as a named custom preset. */
+export async function saveCustomPreset(name: string, tokens: Record<string, string>, createdBy?: string): Promise<void> {
+  await (prisma as unknown as {
+    themePreset: { create: (a: unknown) => Promise<unknown> }
+  }).themePreset.create({ data: { name, tokens, createdBy: createdBy ?? null } })
+}
+
+/** Delete a custom preset. */
+export async function deleteCustomPreset(id: string): Promise<void> {
+  await (prisma as unknown as {
+    themePreset: { deleteMany: (a: unknown) => Promise<unknown> }
+  }).themePreset.deleteMany({ where: { id } })
+}
+
+/** A custom preset's token map (for apply). */
+export async function getCustomPresetTokens(id: string): Promise<Record<string, string> | null> {
+  try {
+    const r = await (prisma as unknown as {
+      themePreset: { findUnique: (a: unknown) => Promise<{ tokens: unknown } | null> }
+    }).themePreset.findUnique({ where: { id } })
+    return r ? asTokenMap(r.tokens) : null
+  } catch {
+    return null
+  }
+}
+
 /** Serialize a name→value map under a CSS selector (allowlisted + valid only). */
 function serializeOverrides(map: Record<string, string>, selector: string): string {
   const decls: string[] = []
