@@ -99,7 +99,7 @@ export function ThemeEditor({
 
   function saveDraft() {
     start(async () => {
-      const r = await saveThemeDraft(allInput())
+      const r = await saveThemeDraft(allInput(), scope)
       if (r.ok) toast.success('Draft saved.')
       else toast.error(r.error)
     })
@@ -107,8 +107,8 @@ export function ThemeEditor({
 
   function togglePreview() {
     start(async () => {
-      await saveThemeDraft(allInput()) // preview reflects the latest edits
-      const r = await setThemePreview(!previewActive)
+      await saveThemeDraft(allInput(), scope) // preview reflects the latest edits
+      const r = await setThemePreview(previewActive ? null : scope)
       if (!r.ok) { toast.error(r.error); return }
       router.refresh()
     })
@@ -144,17 +144,17 @@ export function ThemeEditor({
       </div>
       {!isGlobal && (
         <div className="mb-4 rounded-[var(--radius-md)] border border-info-500/30 bg-info-50 px-3 py-2 text-[length:var(--fs-sm)] text-info-500">
-          Editing the <strong>{scope}</strong> scope — these values override Global within that app only. Unchanged
-          tokens inherit Global. (Draft &amp; Preview are Global-only; for a scope, publish and check the target app.)
+          Editing the <strong>{scope}</strong> scope — values override Global within the {scope} app only; unchanged
+          tokens inherit Global. Preview shows your draft inside the {scope} app (open it on localhost).
         </div>
       )}
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="font-display text-[length:var(--fs-xl)] font-bold tracking-tight text-ink-900">Edit &amp; publish</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={togglePreview} disabled={pending || !isGlobal} title={isGlobal ? '' : 'Preview is Global-only'} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+          <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
             {previewActive ? 'Preview: On' : 'Preview'}
           </button>
-          <button onClick={saveDraft} disabled={pending || !isGlobal} title={isGlobal ? '' : 'Draft is Global-only'} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">
+          <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">
             Save draft
           </button>
           <button onClick={resetAll} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-50">

@@ -37,7 +37,7 @@ export {
   deleteThemeOverride,
   getThemeDraft,
   saveThemeDraftRow,
-  getThemePreviewCss,
+  getEffectiveThemeCss,
   recordThemeVersion,
   listThemeVersions,
   getThemeVersion,

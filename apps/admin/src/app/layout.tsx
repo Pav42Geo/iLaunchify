@@ -13,16 +13,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Theme Studio (Phase 3b). Overrides come from the render-blocking
   // /theme-overrides stylesheet (preview-aware, uncached) so a publish is
   // instant without making pages dynamic. Cookie here only drives the banner.
-  const preview = (await cookies()).get('theme-preview')?.value === '1'
+  const previewScope = (await cookies()).get('theme-preview')?.value || null
   return (
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body className="bg-zinc-50 text-zinc-900 antialiased">
-        {preview ? (
+        {previewScope ? (
           <div className="fixed bottom-3 left-1/2 z-[100] -translate-x-1/2 rounded-pill border border-pink-200 bg-pink-50 px-3 py-1 text-[length:var(--fs-xs)] font-semibold text-pink-700 shadow-lg">
-            Theme preview — draft, not published
+            Theme preview — {previewScope} draft, not published
           </div>
         ) : null}
         <QueryProvider>

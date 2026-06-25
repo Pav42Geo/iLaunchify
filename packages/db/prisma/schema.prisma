@@ -6577,7 +6577,8 @@ model ThemeTokenOverride {
 /// (unpublished) token map. Admin edits save here; Preview mode injects it;
 /// Publish promotes it into ThemeTokenOverride (live). Singleton (id "draft").
 model ThemeDraft {
-  id        String   @id @default("draft")
+  /// = scope ('global' | 'marketing' | 'creator' | 'partner' | 'admin').
+  id        String   @id
   /// { tokenName: value } map of the draft overrides.
   tokens    Json
   updatedAt DateTime @updatedAt

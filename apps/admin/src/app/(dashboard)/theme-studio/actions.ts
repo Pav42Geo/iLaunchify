@@ -26,13 +26,13 @@ type Result = { ok: true } | { ok: false; error: string }
 
 const PREVIEW_COOKIE = 'theme-preview'
 
-/** Save the GLOBAL in-progress draft (no live change; not gated — WIP). */
-export async function saveThemeDraft(input: { name: string; value: string }[]): Promise<Result> {
+/** Save a scope's in-progress draft (no live change; not gated — WIP). */
+export async function saveThemeDraft(input: { name: string; value: string }[], scope: ThemeScope = 'global'): Promise<Result> {
   await requireCapability('platform:admin')
   const tokens: Record<string, string> = {}
   for (const t of input) tokens[t.name] = t.value.trim()
   try {
-    await saveThemeDraftRow(tokens)
+    await saveThemeDraftRow(scope, tokens)
     revalidatePath('/', 'layout')
     return { ok: true }
   } catch (err) {
@@ -40,11 +40,12 @@ export async function saveThemeDraft(input: { name: string; value: string }[]): 
   }
 }
 
-/** Turn admin-only GLOBAL draft preview on/off (cookie read by the admin layout + endpoint). */
-export async function setThemePreview(on: boolean): Promise<Result> {
+/** Preview a scope's draft (cookie value = scope, read by every app's endpoint),
+ *  or pass null to exit preview. Cross-app on localhost (cookies ignore port). */
+export async function setThemePreview(scope: ThemeScope | null): Promise<Result> {
   await requireCapability('platform:admin')
   const jar = await cookies()
-  if (on) jar.set(PREVIEW_COOKIE, '1', { path: '/', sameSite: 'lax' })
+  if (scope) jar.set(PREVIEW_COOKIE, scope, { path: '/', sameSite: 'lax' })
   else jar.delete(PREVIEW_COOKIE)
   revalidatePath('/', 'layout')
   return { ok: true }
@@ -76,7 +77,7 @@ export async function publishThemeTokens(
       if (value === baseline[t.name]) await deleteThemeOverride(t.name, scope)
       else await upsertThemeOverride(t.name, value, scope)
     }
-    if (scope === 'global') await saveThemeDraftRow(proposed) // keep global draft synced
+    await saveThemeDraftRow(scope, proposed) // keep this scope's draft synced to live
     await recordThemeVersion(scope, proposed, admin.id) // history snapshot (ring-buffered)
     ;(await cookies()).delete(PREVIEW_COOKIE)
     await logAuditAs(admin, {
@@ -106,7 +107,7 @@ export async function resetThemeTokens(scope: ThemeScope = 'global'): Promise<Re
   const admin = await requireCapability('platform:admin')
   try {
     for (const t of EDITABLE_THEME_TOKENS) await deleteThemeOverride(t.name, scope)
-    if (scope === 'global') await saveThemeDraftRow({})
+    await saveThemeDraftRow(scope, {})
     await logAuditAs(admin, { entityType: 'ThemeTokenOverride', entityId: scope, action: 'THEME_RESET', payload: { scope } })
     revalidatePath('/', 'layout')
     return { ok: true }

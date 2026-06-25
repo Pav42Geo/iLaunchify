@@ -1,21 +1,17 @@
-// Theme Studio overrides served as a render-blocking stylesheet (Phase 3b).
-// The root layout links this instead of inlining a <style>, so a publish
-// reaches every app on its next request WITHOUT making pages dynamic — only
-// this tiny CSS resource is dynamic. Admin honors the preview cookie and is
-// uncached so the editor's publish/preview is instant.
+// Theme Studio overrides as a render-blocking stylesheet (Phase 3b/4). Honors
+// the preview cookie (value = the scope being previewed; cross-app on localhost
+// since cookies ignore port). Admin is uncached so editing feels instant.
 
 import { cookies } from 'next/headers'
-import { getThemeOverrideCss, getThemePreviewCss } from '@ilaunchify/db'
+import { getEffectiveThemeCss, isThemeScope } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const preview = (await cookies()).get('theme-preview')?.value === '1'
-  const css = preview ? await getThemePreviewCss() : await getThemeOverrideCss('admin')
+  const raw = (await cookies()).get('theme-preview')?.value
+  const previewScope = isThemeScope(raw) ? raw : null
+  const css = await getEffectiveThemeCss('admin', previewScope)
   return new Response(css, {
-    headers: {
-      'Content-Type': 'text/css; charset=utf-8',
-      'Cache-Control': 'no-store',
-    },
+    headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' },
   })
 }

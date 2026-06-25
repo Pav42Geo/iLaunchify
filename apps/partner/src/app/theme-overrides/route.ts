@@ -1,17 +1,20 @@
-// Theme Studio overrides served as a render-blocking stylesheet (Phase 3b).
-// Linked from the root layout so a publish reaches this app within the cache
-// window without making pages dynamic. Published overrides only (no preview).
+// Theme Studio overrides as a render-blocking stylesheet (Phase 3b/4). Serves
+// global ⊕ partner (published), or the partner/global DRAFT when previewing.
+// Cross-app preview works on localhost (cookies ignore port).
 
-import { getThemeOverrideCss } from '@ilaunchify/db'
+import { cookies } from 'next/headers'
+import { getEffectiveThemeCss, isThemeScope } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const css = await getThemeOverrideCss('partner')
+  const raw = (await cookies()).get('theme-preview')?.value
+  const previewScope = isThemeScope(raw) ? raw : null
+  const css = await getEffectiveThemeCss('partner', previewScope)
   return new Response(css, {
     headers: {
       'Content-Type': 'text/css; charset=utf-8',
-      'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
+      'Cache-Control': previewScope ? 'no-store' : 'public, max-age=5, stale-while-revalidate=30',
     },
   })
 }

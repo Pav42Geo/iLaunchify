@@ -156,14 +156,14 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
 
   const [overrides, draft, baseline] = await Promise.all([
     getThemeOverrides(scope),
-    scope === 'global' ? getThemeDraft() : Promise.resolve({} as Record<string, string>),
+    getThemeDraft(scope),
     // A per-app scope inherits from (and resets to) the effective GLOBAL theme.
     scope === 'global' ? Promise.resolve({} as Record<string, string>) : getThemeOverrides('global'),
   ])
   const versions = await listThemeVersions(scope, 10)
-  const previewActive = scope === 'global' && (await cookies()).get('theme-preview')?.value === '1'
-  // Global opens to the saved draft if any; a scope opens to its effective theme.
-  const seed = scope === 'global' && Object.keys(draft).length ? draft : overrides
+  const previewActive = (await cookies()).get('theme-preview')?.value === scope
+  // Open to this scope's saved draft if any, else its effective published theme.
+  const seed = Object.keys(draft).length ? draft : overrides
   const scopeChoices = SCOPES.map((s) => ({ value: s, label: SCOPE_LABELS[s] }))
 
   const semanticFlat: Record<string, string> = {

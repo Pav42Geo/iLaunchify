@@ -282,12 +282,12 @@ export function defaultThemeValue(name: string): string | undefined {
 
 // --- Draft / preview --------------------------------------------------------
 
-/** The working (unpublished) draft token map. Safe before migration ({}). */
-export async function getThemeDraft(): Promise<Record<string, string>> {
+/** The working (unpublished) draft token map for a scope (id = scope). Safe before migration. */
+export async function getThemeDraft(scope: ThemeScope = 'global'): Promise<Record<string, string>> {
   try {
     const row = await (prisma as unknown as {
       themeDraft: { findUnique: (a: unknown) => Promise<{ tokens: unknown } | null> }
-    }).themeDraft.findUnique({ where: { id: 'draft' } })
+    }).themeDraft.findUnique({ where: { id: scope } })
     const t = row?.tokens
     if (t && typeof t === 'object' && !Array.isArray(t)) return t as Record<string, string>
   } catch {
@@ -296,14 +296,14 @@ export async function getThemeDraft(): Promise<Record<string, string>> {
   return {}
 }
 
-/** Upsert the singleton draft row (caller does requireCapability + audit). */
-export async function saveThemeDraftRow(tokens: Record<string, string>): Promise<void> {
+/** Upsert a scope's draft row (caller does requireCapability + audit). */
+export async function saveThemeDraftRow(scope: ThemeScope, tokens: Record<string, string>): Promise<void> {
   await (prisma as unknown as {
     themeDraft: { upsert: (a: unknown) => Promise<unknown> }
   }).themeDraft.upsert({
-    where: { id: 'draft' },
+    where: { id: scope },
     update: { tokens },
-    create: { id: 'draft', tokens },
+    create: { id: scope, tokens },
   })
 }
 
@@ -364,14 +364,31 @@ export async function getThemeVersion(id: string): Promise<{ scope: string; toke
   }
 }
 
-/** Serialize the DRAFT (allowlisted + valid) to a `:root:root{…}` preview block. */
-export async function getThemePreviewCss(): Promise<string> {
-  const draft = await getThemeDraft()
+/** Serialize a name→value map to a `:root:root{…}` block (allowlisted + valid only). */
+function serializeOverrides(map: Record<string, string>): string {
   const decls: string[] = []
-  for (const [name, value] of Object.entries(draft)) {
+  for (const [name, value] of Object.entries(map)) {
     if (!EDITABLE_BY_NAME.has(name)) continue
     if (!validateThemeToken(name, value).ok) continue
     decls.push(`--${name}:${value};`)
   }
   return decls.length ? `:root:root{${decls.join('')}}` : ''
+}
+
+/**
+ * Effective theme CSS for an app: global ⊕ appScope (published). When a
+ * previewScope is active, the matching layer is swapped to its DRAFT:
+ *   - previewScope === 'global'  → global layer = global draft (every app previews it)
+ *   - previewScope === appScope  → app layer  = that scope's draft (that app only)
+ * Other previewScopes leave this app on its published theme.
+ */
+export async function getEffectiveThemeCss(appScope: ThemeScope, previewScope?: ThemeScope | null): Promise<string> {
+  const globalLayer = previewScope === 'global' ? await getThemeDraft('global') : await getScopeOnlyOverrides('global')
+  const scopeLayer =
+    appScope === 'global'
+      ? {}
+      : previewScope === appScope
+        ? await getThemeDraft(appScope)
+        : await getScopeOnlyOverrides(appScope)
+  return serializeOverrides({ ...globalLayer, ...scopeLayer })
 }
