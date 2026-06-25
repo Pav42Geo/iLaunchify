@@ -60,7 +60,10 @@ export const ilaunchifyPreset = {
         serif: ['var(--font-serif)'],
       },
       fontSize: fontSize as unknown as Record<string, [string, Record<string, string>]>,
-      spacing: spacing,
+      // s-* spacing utilities resolve to the live CSS vars (values mirror
+      // src/tokens/spacing.ts), so `p-s-*`/`gap-s-*` are runtime-scaled by
+      // --space-scale via Theme Studio — same pattern as borderRadius below.
+      spacing: Object.fromEntries(Object.keys(spacing).map((k) => [k, `var(--${k})`])),
       // Radius utilities resolve to the live CSS variables (values mirror
       // src/tokens/radii.ts), so `rounded-*` is runtime-themeable via Theme
       // Studio and stays in lock-step with var(--radius-*) used in components.

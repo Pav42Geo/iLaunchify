@@ -76,8 +76,9 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
 
   // Density / spacing — comfortable (creator) vs compact (partner). Overriding
   // here beats the per-app data-density defaults platform-wide.
-  { name: 'card-padding', label: 'Card padding', kind: 'length', group: 'Spacing', default: '24px', min: 8, max: 40, step: 1, hint: 'Padding inside cards. Lower = more compact (16px = partner density).' },
-  { name: 'section-gap', label: 'Section spacing', kind: 'length', group: 'Spacing', default: '48px', min: 16, max: 72, step: 2, hint: 'Vertical gap between major sections. Lower = denser.' },
+  { name: 'space-scale', label: 'Spacing density', kind: 'scale', group: 'Spacing', default: '1', min: 0.8, max: 1.4, step: 0.05, hint: 'Multiplies the whole 8pt spacing scale at once. Lower = denser; higher = roomier.' },
+  { name: 'card-padding', label: 'Card padding', kind: 'length', group: 'Spacing', default: '24px', min: 8, max: 40, step: 1, hint: 'Fine override for card padding (on top of Spacing density). 16px = partner-compact.' },
+  { name: 'section-gap', label: 'Section spacing', kind: 'length', group: 'Spacing', default: '48px', min: 16, max: 72, step: 2, hint: 'Fine override for the gap between major sections.' },
 
   // Fonts (curated stacks only — self-hosted faces + system fonts)
   { name: 'font-sans', label: 'Body font', kind: 'font', group: 'Fonts', default: FONT_STACKS.inter!, hint: 'UI, body, buttons, tables.' },

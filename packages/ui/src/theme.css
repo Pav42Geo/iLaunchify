@@ -99,16 +99,19 @@
   --info-50: rgb(var(--info-50-rgb));
 
   /* Spacing — 8pt grid */
-  --s-1:  4px;
-  --s-2:  8px;
-  --s-3:  12px;
-  --s-4:  16px;
-  --s-5:  24px;
-  --s-6:  32px;
-  --s-7:  48px;
-  --s-8:  64px;
-  --s-9:  96px;
-  --s-10: 128px;
+  /* 8pt grid (4pt sub). --space-scale (Theme Studio) multiplies the whole
+     scale for a live density control; 1 = stock. Mirrors --radius-scale. */
+  --space-scale: 1;
+  --s-1:  calc(4px   * var(--space-scale));
+  --s-2:  calc(8px   * var(--space-scale));
+  --s-3:  calc(12px  * var(--space-scale));
+  --s-4:  calc(16px  * var(--space-scale));
+  --s-5:  calc(24px  * var(--space-scale));
+  --s-6:  calc(32px  * var(--space-scale));
+  --s-7:  calc(48px  * var(--space-scale));
+  --s-8:  calc(64px  * var(--space-scale));
+  --s-9:  calc(96px  * var(--space-scale));
+  --s-10: calc(128px * var(--space-scale));
 
   /* Radius */
   --r-xs:   4px;
