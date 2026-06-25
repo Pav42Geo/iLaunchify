@@ -63,17 +63,16 @@ export function MarketplaceAttributesCard({
   }
   const toggle = (
     set: React.Dispatch<React.SetStateAction<Set<string>>>,
+    current: Set<string>,
     key: 'processes' | 'allergenFree' | 'markets',
     value: string,
   ) => {
     if (preview) return
-    set((prev) => {
-      const nextSet = new Set(prev)
-      if (nextSet.has(value)) nextSet.delete(value)
-      else nextSet.add(value)
-      persist({ [key]: nextSet })
-      return nextSet
-    })
+    const nextSet = new Set(current)
+    if (nextSet.has(value)) nextSet.delete(value)
+    else nextSet.add(value)
+    set(nextSet)
+    persist({ [key]: nextSet }) // side-effect OUTSIDE the state updater
   }
 
   return (
@@ -91,15 +90,15 @@ export function MarketplaceAttributesCard({
         </Group>
 
         <Group title="Manufacturing process" hint="How it's produced. Multi-select.">
-          <ChipMulti options={MANUFACTURING_PROCESS_OPTIONS} active={processes} disabled={preview} onToggle={(v) => toggle(setProcesses, 'processes', v)} />
+          <ChipMulti options={MANUFACTURING_PROCESS_OPTIONS} active={processes} disabled={preview} onToggle={(v) => toggle(setProcesses, processes, 'processes', v)} />
         </Group>
 
         <Group title="Allergen-free claims" hint="An explicit free-from claim — only check what the product is verified to be.">
-          <ChipMulti options={ALLERGEN_FREE_OPTIONS} active={allergenFree} disabled={preview} onToggle={(v) => toggle(setAllergenFree, 'allergenFree', v)} />
+          <ChipMulti options={ALLERGEN_FREE_OPTIONS} active={allergenFree} disabled={preview} onToggle={(v) => toggle(setAllergenFree, allergenFree, 'allergenFree', v)} />
         </Group>
 
         <Group title="Markets" hint="Markets this template is available in. V1: US only is ACTIVE.">
-          <ChipMulti options={MARKET_FILTER_OPTIONS} active={markets} disabled={preview} onToggle={(v) => toggle(setMarkets, 'markets', v)} />
+          <ChipMulti options={MARKET_FILTER_OPTIONS} active={markets} disabled={preview} onToggle={(v) => toggle(setMarkets, markets, 'markets', v)} />
         </Group>
       </div>
     </div>
