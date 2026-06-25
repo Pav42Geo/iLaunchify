@@ -20,6 +20,19 @@
 import type { Config } from 'tailwindcss'
 
 import { pink, neon, ink, semantic } from './src/tokens/colors'
+
+/**
+ * Map a token scale to Tailwind colors that read the live CSS channel vars,
+ * e.g. pink-500 → `rgb(var(--pink-500-rgb) / <alpha-value>)`. This keeps
+ * `bg-pink-500`, `text-pink-500/80`, `border-ink-200/60` etc. all working AND
+ * makes color runtime-themeable — Theme Studio edits the `--*-rgb` channels in
+ * theme.css and every utility + component follows. Values mirror
+ * src/tokens/colors.ts (kept in sync with the channels declared there).
+ */
+const channelScale = (scale: Record<string | number, unknown>, prefix: string): Record<string, string> =>
+  Object.fromEntries(
+    Object.keys(scale).map((k) => [k, `rgb(var(--${prefix}-${k}-rgb) / <alpha-value>)`]),
+  )
 import { fontFamily, fontSize } from './src/tokens/typography'
 import { spacing } from './src/tokens/spacing'
 import { shadows } from './src/tokens/shadows'
@@ -29,13 +42,13 @@ export const ilaunchifyPreset = {
   theme: {
     extend: {
       colors: {
-        pink: pink,
-        neon: neon,
-        ink: ink,
-        success: semantic.success,
-        warning: semantic.warning,
-        danger: semantic.danger,
-        info: semantic.info,
+        pink:    channelScale(pink, 'pink'),
+        neon:    channelScale(neon, 'neon'),
+        ink:     channelScale(ink, 'ink'),
+        success: channelScale(semantic.success, 'success'),
+        warning: channelScale(semantic.warning, 'warning'),
+        danger:  channelScale(semantic.danger, 'danger'),
+        info:    channelScale(semantic.info, 'info'),
         cream: '#FBFAF7',
       },
       fontFamily: {

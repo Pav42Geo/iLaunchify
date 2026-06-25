@@ -24,47 +24,79 @@
      ============================================================ */
 
   /* Pink — brand */
-  --pink-50:  #FFE9F0;
-  --pink-100: #FFD0E0;
-  --pink-200: #FFB3CC;
-  --pink-300: #FF7FA8;
-  --pink-400: #FF5285;
-  --pink-500: #FF2E63;
-  --pink-600: #E91E5A;
-  --pink-700: #C71350;
-  --pink-800: #9E0E40;
-  --pink-900: #6E0A2D;
+  --pink-50-rgb: 255 233 240;
+  --pink-50: rgb(var(--pink-50-rgb));
+  --pink-100-rgb: 255 208 224;
+  --pink-100: rgb(var(--pink-100-rgb));
+  --pink-200-rgb: 255 179 204;
+  --pink-200: rgb(var(--pink-200-rgb));
+  --pink-300-rgb: 255 127 168;
+  --pink-300: rgb(var(--pink-300-rgb));
+  --pink-400-rgb: 255 82 133;
+  --pink-400: rgb(var(--pink-400-rgb));
+  --pink-500-rgb: 255 46 99;
+  --pink-500: rgb(var(--pink-500-rgb));
+  --pink-600-rgb: 233 30 90;
+  --pink-600: rgb(var(--pink-600-rgb));
+  --pink-700-rgb: 199 19 80;
+  --pink-700: rgb(var(--pink-700-rgb));
+  --pink-800-rgb: 158 14 64;
+  --pink-800: rgb(var(--pink-800-rgb));
+  --pink-900-rgb: 110 10 45;
+  --pink-900: rgb(var(--pink-900-rgb));
 
   /* Neon green — accent (DARK SURFACES ONLY) */
-  --neon-300: #D4FF7A;
-  --neon-400: #C2FF4D;
-  --neon-500: #B5FF3D;
-  --neon-600: #9EE61F;
+  --neon-300-rgb: 212 255 122;
+  --neon-300: rgb(var(--neon-300-rgb));
+  --neon-400-rgb: 194 255 77;
+  --neon-400: rgb(var(--neon-400-rgb));
+  --neon-500-rgb: 181 255 61;
+  --neon-500: rgb(var(--neon-500-rgb));
+  --neon-600-rgb: 158 230 31;
+  --neon-600: rgb(var(--neon-600-rgb));
 
   /* Ink — cool near-neutral */
-  --ink-50:  #F8F8F9;
-  --ink-100: #EEEFF1;
-  --ink-200: #E0E1E5;
-  --ink-300: #CBCCD3;
-  --ink-400: #9A9CA6;
-  --ink-500: #6B6D78;
-  --ink-600: #474954;
-  --ink-700: #33343C;
-  --ink-800: #232327;
-  --ink-900: #18181A;
+  --ink-50-rgb: 248 248 249;
+  --ink-50: rgb(var(--ink-50-rgb));
+  --ink-100-rgb: 238 239 241;
+  --ink-100: rgb(var(--ink-100-rgb));
+  --ink-200-rgb: 224 225 229;
+  --ink-200: rgb(var(--ink-200-rgb));
+  --ink-300-rgb: 203 204 211;
+  --ink-300: rgb(var(--ink-300-rgb));
+  --ink-400-rgb: 154 156 166;
+  --ink-400: rgb(var(--ink-400-rgb));
+  --ink-500-rgb: 107 109 120;
+  --ink-500: rgb(var(--ink-500-rgb));
+  --ink-600-rgb: 71 73 84;
+  --ink-600: rgb(var(--ink-600-rgb));
+  --ink-700-rgb: 51 52 60;
+  --ink-700: rgb(var(--ink-700-rgb));
+  --ink-800-rgb: 35 35 39;
+  --ink-800: rgb(var(--ink-800-rgb));
+  --ink-900-rgb: 24 24 26;
+  --ink-900: rgb(var(--ink-900-rgb));
 
   /* Cream — warm canvas for landing-page light bands */
   --cream: #FBFAF7;
 
   /* Semantic */
-  --success-500: #1E7C4A;
-  --success-50:  #E5F2EC;
-  --warning-500: #B07A0A;
-  --warning-50:  #FBEFD3;
-  --danger-500:  #B33636;
-  --danger-50:   #F8E1E1;
-  --info-500:    #1F4D8F;
-  --info-50:     #E1ECF8;
+  --success-500-rgb: 30 124 74;
+  --success-500: rgb(var(--success-500-rgb));
+  --success-50-rgb: 229 242 236;
+  --success-50: rgb(var(--success-50-rgb));
+  --warning-500-rgb: 176 122 10;
+  --warning-500: rgb(var(--warning-500-rgb));
+  --warning-50-rgb: 251 239 211;
+  --warning-50: rgb(var(--warning-50-rgb));
+  --danger-500-rgb: 179 54 54;
+  --danger-500: rgb(var(--danger-500-rgb));
+  --danger-50-rgb: 248 225 225;
+  --danger-50: rgb(var(--danger-50-rgb));
+  --info-500-rgb: 31 77 143;
+  --info-500: rgb(var(--info-500-rgb));
+  --info-50-rgb: 225 236 248;
+  --info-50: rgb(var(--info-50-rgb));
 
   /* Spacing — 8pt grid */
   --s-1:  4px;
