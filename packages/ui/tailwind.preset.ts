@@ -22,7 +22,6 @@ import type { Config } from 'tailwindcss'
 import { pink, neon, ink, semantic } from './src/tokens/colors'
 import { fontFamily, fontSize } from './src/tokens/typography'
 import { spacing } from './src/tokens/spacing'
-import { radii } from './src/tokens/radii'
 import { shadows } from './src/tokens/shadows'
 import { easing, duration } from './src/tokens/motion'
 
@@ -46,13 +45,16 @@ export const ilaunchifyPreset = {
       },
       fontSize: fontSize as unknown as Record<string, [string, Record<string, string>]>,
       spacing: spacing,
+      // Radius utilities resolve to the live CSS variables (values mirror
+      // src/tokens/radii.ts), so `rounded-*` is runtime-themeable via Theme
+      // Studio and stays in lock-step with var(--radius-*) used in components.
       borderRadius: {
-        xs: radii.xs,
-        sm: radii.sm,
-        md: radii.md,
-        lg: radii.lg,
-        xl: radii.xl,
-        pill: radii.pill,
+        xs: 'var(--radius-xs)',
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        pill: 'var(--radius-pill)',
       },
       boxShadow: shadows,
       transitionTimingFunction: {

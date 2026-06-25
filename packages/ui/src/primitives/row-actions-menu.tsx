@@ -84,7 +84,7 @@ export function RowActionsMenu({
           side={side}
           sideOffset={4}
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-ink-200 bg-white p-1 shadow-lg',
+            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-xl)] border border-ink-200 bg-white p-1 shadow-lg',
             'origin-[var(--radix-dropdown-menu-content-transform-origin)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
@@ -250,7 +250,7 @@ export function RowActionSubMenu({
           sideOffset={2}
           alignOffset={-4}
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-md)] border border-ink-200 bg-white p-1 shadow-lg',
+            'z-50 min-w-[180px] overflow-hidden rounded-[var(--radius-xl)] border border-ink-200 bg-white p-1 shadow-lg',
             'origin-[var(--radix-dropdown-menu-content-transform-origin)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',

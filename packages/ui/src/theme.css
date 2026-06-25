@@ -126,12 +126,16 @@
   --fs-2xl:  calc(1.5rem    * var(--font-scale)); /* 24px */
   --fs-3xl:  calc(1.875rem  * var(--font-scale)); /* 30px */
 
-  /* Corners — Tier-1 radius ramp + global multiplier. */
+  /* Corners — Tier-1 radius ramp + global multiplier.
+     Values MIRROR packages/ui/src/tokens/radii.ts (the scale the Tailwind
+     preset emits) so `rounded-*` utilities and var(--radius-*) always agree.
+     Keep the two in sync if either changes. */
   --radius-scale: 1;
-  --radius-sm:   calc(8px  * var(--radius-scale));
-  --radius-md:   calc(12px * var(--radius-scale));
-  --radius-lg:   calc(18px * var(--radius-scale));
-  --radius-xl:   calc(24px * var(--radius-scale));
+  --radius-xs:   calc(4px  * var(--radius-scale));
+  --radius-sm:   calc(6px  * var(--radius-scale));
+  --radius-md:   calc(8px  * var(--radius-scale));
+  --radius-lg:   calc(12px * var(--radius-scale));
+  --radius-xl:   calc(16px * var(--radius-scale));
   --radius-pill: 999px;
 
   /* Borders — Tier-1 */
@@ -179,7 +183,7 @@
   --radius-default:   var(--radius-md);
   --border-default:   var(--border-width) solid var(--border-soft);
 
-  --card-radius:        var(--radius-lg);
+  --card-radius:        var(--radius-xl); /* 16px — matches the prior rounded-2xl Card */
   --card-border-width:  var(--border-width);
   --card-border-color:  var(--border-soft);
   --card-shadow:        var(--elevation-card);
