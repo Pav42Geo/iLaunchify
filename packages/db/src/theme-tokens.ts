@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
+  group: 'Scale' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons & chips' | 'Sidebar' | 'Header' | 'Footer'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -93,6 +93,16 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'bg-surface', label: 'Card surface', kind: 'color', group: 'Backgrounds', default: '#FFFFFF', hint: 'Card / panel background.' },
   { name: 'bg-hero', label: 'Hero band', kind: 'color', group: 'Backgrounds', default: '#FFFFFF', hint: 'Admin header-band surface.' },
   { name: 'bg-subtle', label: 'Subtle background', kind: 'color', group: 'Backgrounds', default: '#F8F8F9', hint: 'Inset / muted backgrounds.' },
+
+  // Status colors (channel tokens — drive success/warning/danger/info pills, badges, alerts)
+  { name: 'success-500-rgb', label: 'Success', kind: 'rgb', group: 'Status', default: '30 124 74', hint: 'Success text / icon.' },
+  { name: 'success-50-rgb', label: 'Success fill', kind: 'rgb', group: 'Status', default: '229 242 236', hint: 'Success pill / banner fill.' },
+  { name: 'warning-500-rgb', label: 'Warning', kind: 'rgb', group: 'Status', default: '176 122 10', hint: 'Warning text / icon.' },
+  { name: 'warning-50-rgb', label: 'Warning fill', kind: 'rgb', group: 'Status', default: '251 239 211', hint: 'Warning pill / banner fill.' },
+  { name: 'danger-500-rgb', label: 'Danger', kind: 'rgb', group: 'Status', default: '179 54 54', hint: 'Danger / error text.' },
+  { name: 'danger-50-rgb', label: 'Danger fill', kind: 'rgb', group: 'Status', default: '248 225 225', hint: 'Danger pill / banner fill.' },
+  { name: 'info-500-rgb', label: 'Info', kind: 'rgb', group: 'Status', default: '31 77 143', hint: 'Info text / icon.' },
+  { name: 'info-50-rgb', label: 'Info fill', kind: 'rgb', group: 'Status', default: '225 236 248', hint: 'Info pill / banner fill.' },
 
   // Borders & cards
   { name: 'border-soft', label: 'Hairline border', kind: 'color', group: 'Borders & cards', default: '#E0E1E5', hint: 'Default card / input border.' },
@@ -173,6 +183,11 @@ export const THEME_PAIRINGS: { label: string; fg: string; bg: string; min: numbe
   { label: 'Header wordmark', fg: 'header-fg', bg: '#FFFFFF', min: 4.5 },
   { label: 'Footer text', fg: 'footer-fg', bg: 'footer-bg', min: 4.5 },
   { label: 'Field text', fg: 'input-text', bg: 'input-bg', min: 4.5 },
+  // Status pills are bold UI affordances → the 3:1 large/UI threshold.
+  { label: 'Success pill', fg: 'success-500-rgb', bg: 'success-50-rgb', min: 3 },
+  { label: 'Warning pill', fg: 'warning-500-rgb', bg: 'warning-50-rgb', min: 3 },
+  { label: 'Danger pill', fg: 'danger-500-rgb', bg: 'danger-50-rgb', min: 3 },
+  { label: 'Info pill', fg: 'info-500-rgb', bg: 'info-50-rgb', min: 3 },
 ]
 
 /** Resolve a pairing side (token name or literal) to a hex, from proposed values. */

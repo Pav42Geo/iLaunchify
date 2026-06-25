@@ -8,7 +8,7 @@
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { EditableThemeToken, ThemeScope } from '@ilaunchify/db'
+import type { EditableThemeToken, ThemeScope, ThemeMode } from '@ilaunchify/db'
 import { publishThemeTokens, resetThemeTokens, saveThemeDraft, setThemePreview } from './actions'
 
 type Pairing = { label: string; fg: string; bg: string; min: number }
@@ -49,7 +49,7 @@ const TABS: { id: TabId; label: string }[] = [
 ]
 const CATEGORY: Record<'foundations' | 'colors' | 'components' | 'chrome', EditableThemeToken['group'][]> = {
   foundations: ['Scale', 'Fonts'],
-  colors: ['Text', 'Brand', 'Backgrounds'],
+  colors: ['Text', 'Brand', 'Backgrounds', 'Status'],
   components: ['Borders & cards', 'Forms', 'Buttons & chips'],
   chrome: ['Sidebar', 'Header', 'Footer'],
 }
@@ -62,6 +62,7 @@ export function ThemeEditor({
   baseline,
   scope,
   scopes,
+  mode,
   previewActive,
   presetsSlot,
   historySlot,
@@ -74,6 +75,7 @@ export function ThemeEditor({
   baseline: Record<string, string>
   scope: ThemeScope
   scopes: { value: ThemeScope; label: string }[]
+  mode: ThemeMode
   previewActive: boolean
   presetsSlot: ReactNode
   historySlot: ReactNode
@@ -111,15 +113,15 @@ export function ThemeEditor({
 
   function publish() {
     start(async () => {
-      const r = await publishThemeTokens(allInput(), scope)
-      if (r.ok) toast.success(isGlobal ? 'Theme published — applies to all apps.' : `Published to ${scope} scope.`)
+      const r = await publishThemeTokens(allInput(), scope, mode)
+      if (r.ok) toast.success(`Published ${mode} · ${isGlobal ? 'all apps' : scope}.`)
       else toast.error(r.error)
     })
   }
 
   function saveDraft() {
     start(async () => {
-      const r = await saveThemeDraft(allInput(), scope)
+      const r = await saveThemeDraft(allInput(), scope, mode)
       if (r.ok) toast.success('Draft saved.')
       else toast.error(r.error)
     })
@@ -127,7 +129,7 @@ export function ThemeEditor({
 
   function togglePreview() {
     start(async () => {
-      await saveThemeDraft(allInput(), scope) // preview reflects the latest edits
+      await saveThemeDraft(allInput(), scope, mode) // preview reflects the latest edits
       const r = await setThemePreview(previewActive ? null : scope)
       if (!r.ok) { toast.error(r.error); return }
       router.refresh()
@@ -135,7 +137,7 @@ export function ThemeEditor({
   }
   function resetAll() {
     start(async () => {
-      const r = await resetThemeTokens(scope)
+      const r = await resetThemeTokens(scope, mode)
       if (r.ok) {
         for (const t of tokens) setVal(t.name, baseOf(t.name, t.default))
         toast.success(isGlobal ? 'Reset to theme defaults.' : 'Reset — this scope now inherits global.')
@@ -174,8 +176,14 @@ export function ThemeEditor({
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[length:var(--fs-xs)] font-semibold text-ink-500">Scope</span>
             {scopes.map((s) => (
-              <button key={s.value} onClick={() => router.push(`/theme-studio?scope=${s.value}`)} className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold ${s.value === scope ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+              <button key={s.value} onClick={() => router.push(`/theme-studio?scope=${s.value}&mode=${mode}`)} className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold ${s.value === scope ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
                 {s.label}
+              </button>
+            ))}
+            <span className="ml-2 mr-1 text-[length:var(--fs-xs)] font-semibold text-ink-500">Mode</span>
+            {(['light', 'dark'] as const).map((m) => (
+              <button key={m} onClick={() => router.push(`/theme-studio?scope=${scope}&mode=${m}`)} className={`rounded-pill border px-2.5 py-1 text-[length:var(--fs-xs)] font-semibold capitalize ${m === mode ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+                {m}
               </button>
             ))}
           </div>
