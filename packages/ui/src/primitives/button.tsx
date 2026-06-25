@@ -26,7 +26,7 @@ import { cn } from '../lib/utils'
  */
 const buttonVariants = cva(
   // Base — full pill, semibold, transition, focus ring, disabled state.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold ' +
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--button-radius)] font-semibold ' +
     'transition-[background,color,transform,box-shadow] duration-base ease-out-quart ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ' +
     'disabled:pointer-events-none disabled:opacity-50 active:translate-y-px',
@@ -41,9 +41,9 @@ const buttonVariants = cva(
         ghost:     'bg-transparent text-ink-900 hover:bg-ink-100',
       },
       size: {
-        sm: 'h-9 px-4 text-sm',   // 36px
-        md: 'h-11 px-5 text-sm',  // 44px (default — matches input height)
-        lg: 'h-13 px-7 text-base', // 52px
+        sm: 'h-9 px-4 text-[length:var(--fs-md)]',   // 36px · 14px text
+        md: 'h-11 px-5 text-[length:var(--fs-md)]',  // 44px (default — matches input height)
+        lg: 'h-13 px-7 text-[length:var(--fs-lg)]',  // 52px · 16px text
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

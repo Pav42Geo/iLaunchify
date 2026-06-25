@@ -9,7 +9,7 @@ import { cn } from '../lib/utils'
 
 export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('rounded-2xl border border-ink-200 bg-white', className)} {...props} />
+    <div ref={ref} className={cn('rounded-[var(--card-radius)] border border-[var(--card-border-color)] bg-white', className)} {...props} />
   ),
 )
 Card.displayName = 'Card'
@@ -23,14 +23,14 @@ CardHeader.displayName = 'CardHeader'
 
 export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn('font-display text-[16px] font-semibold leading-tight tracking-[-0.01em] text-ink-900', className)} {...props} />
+    <h3 ref={ref} className={cn('font-display text-[length:var(--fs-lg)] font-semibold leading-tight tracking-[-0.01em] text-ink-900', className)} {...props} />
   ),
 )
 CardTitle.displayName = 'CardTitle'
 
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn('text-[13px] leading-snug text-ink-500', className)} {...props} />
+    <p ref={ref} className={cn('text-[length:var(--fs-base)] leading-snug text-ink-500', className)} {...props} />
   ),
 )
 CardDescription.displayName = 'CardDescription'

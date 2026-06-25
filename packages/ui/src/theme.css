@@ -106,6 +106,41 @@
   --font-serif:   'Fraunces', Georgia, serif;
 
   /* ============================================================
+     TYPOGRAPHY SCALE — Tier-1 size ramp + one global multiplier.
+     Components read --fs-* instead of hardcoding px. Nudging
+     --font-scale (globally, or per-scope) resizes all token-driven
+     type at once — the single knob Theme Studio will expose.
+     (Named --fs-* so they don't collide with the --text-* COLOR
+     tokens below.) px-based to match the existing visual design.
+     ============================================================ */
+  --font-scale: 1;
+  --fs-2xs:  calc(10px * var(--font-scale));
+  --fs-xs:   calc(11px * var(--font-scale));
+  --fs-sm:   calc(12px * var(--font-scale));
+  --fs-base: calc(13px * var(--font-scale));
+  --fs-md:   calc(14px * var(--font-scale));
+  --fs-lg:   calc(16px * var(--font-scale));
+  --fs-xl:   calc(20px * var(--font-scale));
+  --fs-2xl:  calc(24px * var(--font-scale));
+  --fs-3xl:  calc(30px * var(--font-scale));
+
+  /* Corners — Tier-1 radius ramp + global multiplier. */
+  --radius-scale: 1;
+  --radius-sm:   calc(8px  * var(--radius-scale));
+  --radius-md:   calc(12px * var(--radius-scale));
+  --radius-lg:   calc(18px * var(--radius-scale));
+  --radius-xl:   calc(24px * var(--radius-scale));
+  --radius-pill: 999px;
+
+  /* Borders — Tier-1 */
+  --border-width:        1px;
+  --border-width-strong: 1.5px;
+
+  /* Elevation — Tier-1 */
+  --elevation-card: 0 1px 2px rgba(24, 24, 26, 0.05);
+  --elevation-pop:  0 16px 40px -16px rgba(24, 24, 26, 0.30);
+
+  /* ============================================================
      SEMANTIC TOKENS — default (light surface).
      Components should always reference these, never raw tokens.
      ============================================================ */
@@ -133,6 +168,24 @@
   /* Default density = creator (comfortable) */
   --card-padding: var(--s-5);
   --section-gap:  var(--s-7);
+
+  /* ============================================================
+     COMPONENT TOKENS (Tier 3) — the knobs Theme Studio exposes for
+     cards, corners, borders, inputs, buttons, chips. Each references
+     a semantic/Tier-1 token so editing one ramp cascades everywhere.
+     ============================================================ */
+  --radius-default:   var(--radius-md);
+  --border-default:   var(--border-width) solid var(--border-soft);
+
+  --card-radius:        var(--radius-lg);
+  --card-border-width:  var(--border-width);
+  --card-border-color:  var(--border-soft);
+  --card-shadow:        var(--elevation-card);
+  /* --card-padding is set per density (above + density blocks). */
+
+  --button-radius: var(--radius-pill);
+  --input-radius:  var(--radius-md);
+  --chip-radius:   var(--radius-pill);
 }
 
 /* ============================================================
