@@ -18,7 +18,7 @@ export default async function IngredientSourcesPage() {
   return (
     <div className="space-y-6">
       {/* Cream hero band + KPI strip (v2 admin pattern — matches /tiers) */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div>
           <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             <Database className="h-3 w-3" /> Integrations · Ingredient data

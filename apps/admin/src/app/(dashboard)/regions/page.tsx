@@ -197,7 +197,7 @@ function Header({
 }) {
   return (
     <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="flex flex-wrap items-end justify-between gap-3 bg-[#F3EFE8] px-5 py-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 bg-[var(--bg-hero)] px-5 py-4">
         <div className="min-w-0">
           <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
             Catalog

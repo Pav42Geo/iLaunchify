@@ -255,7 +255,7 @@ function Header({
 }) {
   return (
     <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="bg-[#F3EFE8] px-5 py-4">
+      <div className="bg-[var(--bg-hero)] px-5 py-4">
         <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
           Operate
         </p>

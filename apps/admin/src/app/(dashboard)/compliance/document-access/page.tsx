@@ -108,7 +108,7 @@ export default async function DocumentAccessLogPage({ searchParams }: PageProps)
   return (
     <div className="space-y-6">
       {/* Hero + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
             Compliance &amp; Data Rights · GDPR accountability

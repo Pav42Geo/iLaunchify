@@ -82,6 +82,7 @@ import {
   RotateCcw,
   Wallet,
   Landmark,
+  Palette,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -261,6 +262,7 @@ const PRIMARY: SidebarRegion = {
           ],
         },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
+        { kind: 'item', label: 'Theme Studio', icon: Palette, href: '/theme-studio', capability: 'platform:admin' }, // Phase 3a read-only token catalog (2026-06-25)
         { kind: 'item', label: 'Developer & API', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
         {
           kind: 'group',

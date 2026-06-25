@@ -83,7 +83,7 @@ export default async function CancellationsQueuePage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           <RotateCcw className="h-3 w-3" /> Inbox · Cancellation requests
         </p>

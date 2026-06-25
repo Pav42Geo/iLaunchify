@@ -259,7 +259,7 @@ export function MarketplacePlacementPanel(props: Props) {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex items-center gap-2.5 border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-pink-100 text-pink-700">
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
         </span>

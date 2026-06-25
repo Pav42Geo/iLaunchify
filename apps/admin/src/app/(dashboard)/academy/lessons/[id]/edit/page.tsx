@@ -29,7 +29,7 @@ export default async function EditLessonPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <Link href={`/academy/courses/${lesson.course.id}/edit`} className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded">
           <ArrowLeft className="h-3.5 w-3.5" /> {lesson.course.title}
         </Link>

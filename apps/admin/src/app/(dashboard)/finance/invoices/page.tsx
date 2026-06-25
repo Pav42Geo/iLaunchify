@@ -98,7 +98,7 @@ export default async function FinanceInvoicesPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Invoices
@@ -136,7 +136,7 @@ export default async function FinanceInvoicesPage({
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <header className="border-b border-ink-100 bg-[#F3EFE8] px-4 py-2.5">
+        <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
           <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
             Creator invoices
           </h2>

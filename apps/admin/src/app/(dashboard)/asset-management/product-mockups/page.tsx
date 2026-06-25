@@ -75,7 +75,7 @@ export default async function ProductMockupsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-cream px-7 py-6">
+      <div className="rounded-3xl bg-[var(--bg-hero)] px-7 py-6">
         <h1 className="font-display text-[26px] font-bold tracking-[-0.02em] text-ink-900">Packaging mockups (2D &amp; 3D)</h1>
         <p className="mt-1 max-w-[64ch] text-[13.5px] text-ink-600">
           White-label photo-mockups a creator designs on. Upload a clean product photo for a

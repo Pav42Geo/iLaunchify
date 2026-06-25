@@ -62,7 +62,7 @@ export default async function TicketCategoriesPage() {
       </Link>
 
       <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="bg-[#F3EFE8] px-5 py-4">
+        <div className="bg-[var(--bg-hero)] px-5 py-4">
           <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
             <Tag className="h-5 w-5 text-pink-600" aria-hidden="true" />
             Ticket categories

@@ -845,7 +845,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       {/* HEADER — cream rounded-3xl band + 5-card KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <Link
           href="/products"
           className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded"
@@ -1777,7 +1777,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               tier / disclosure / certs / banned ingredients / high-weight
               self-attested / allergens / region / MOQ). */}
           <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-cream px-4 py-2.5">
+            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
                 <Building2 className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
@@ -1986,7 +1986,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
 
           {/* Approval-map preview — static reference per §8b. */}
           <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-cream px-4 py-2.5">
+            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
                 <ScrollText className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
@@ -2016,7 +2016,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
 
           {/* Compliance pre-check — static forward-pointer per §8.2. */}
           <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-cream px-4 py-2.5">
+            <header className="flex items-center gap-2.5 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
                 <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
               </span>

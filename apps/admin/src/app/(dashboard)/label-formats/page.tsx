@@ -257,7 +257,7 @@ function Header({
   totalPresets: number
 }) {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-cream px-8 py-10">
+    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-8 py-10">
       <div>
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Compliance · Label-format presets

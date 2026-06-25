@@ -39,7 +39,7 @@ export default async function FinanceOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[#F3EFE8] px-7 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Finance overview

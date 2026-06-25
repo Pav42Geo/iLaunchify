@@ -58,7 +58,7 @@ export default async function SecurityPage() {
 
 function Header({ kpis }: { kpis: SecurityData['kpis'] }) {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
@@ -143,7 +143,7 @@ const ROLE_TONE: Record<string, string> = {
 function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           Active sessions <span className="font-normal text-ink-500">· {sessions.length}</span>
         </h2>
@@ -202,7 +202,7 @@ function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
 function EventsPanel({ events }: { events: SecurityData['events'] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex items-center justify-between border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="flex items-center justify-between border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           Security events
         </h2>
@@ -246,7 +246,7 @@ function EventsPanel({ events }: { events: SecurityData['events'] }) {
 function RatePressurePanel({ rows }: { rows: SecurityData['ratePressure'] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           Rate-limit pressure <span className="font-normal text-ink-500">· live windows</span>
         </h2>
@@ -281,7 +281,7 @@ function AdminsPanel({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
           Admins &amp; roles
         </h2>

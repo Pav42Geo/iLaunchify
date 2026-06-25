@@ -239,7 +239,7 @@ function Header({
   currentParams: Record<string, string | undefined>
 }) {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

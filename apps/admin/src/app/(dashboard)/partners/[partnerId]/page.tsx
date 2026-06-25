@@ -317,7 +317,7 @@ export default async function PartnerDetail({ params }: PageProps) {
       </div>
 
       {/* HEADER */}
-      <header className="overflow-hidden rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <header className="overflow-hidden rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

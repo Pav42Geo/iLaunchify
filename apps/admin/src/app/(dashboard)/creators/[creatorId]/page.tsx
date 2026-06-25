@@ -147,7 +147,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
 
       {/* HERO HEADER */}
       <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="relative bg-gradient-to-br from-[#F3EFE8] via-white to-pink-50/40 px-6 py-5">
+        <div className="relative bg-gradient-to-br from-[var(--bg-hero)] via-white to-pink-50/40 px-6 py-5">
           <div className="flex flex-wrap items-start gap-4">
             <Avatar name={creator.displayName ?? creator.user.name ?? creator.user.email} size="lg" />
             <div className="min-w-0 flex-1">

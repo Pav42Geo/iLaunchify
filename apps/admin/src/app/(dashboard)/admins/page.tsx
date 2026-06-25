@@ -46,7 +46,7 @@ export default async function AdminsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Users &amp; Roles · Admin team
         </p>
@@ -68,7 +68,7 @@ export default async function AdminsPage() {
       <PendingInvitesTable invites={invites} />
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+        <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
           <h2 className="font-display text-[13.5px] font-semibold tracking-tight text-ink-900">
             {admins.length} admin{admins.length === 1 ? '' : 's'}
           </h2>

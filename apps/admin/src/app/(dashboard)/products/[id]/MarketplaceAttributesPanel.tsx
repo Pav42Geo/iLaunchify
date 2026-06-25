@@ -81,7 +81,7 @@ export function MarketplaceAttributesPanel({
 
   return (
     <section className="rounded-3xl border border-ink-200 bg-white">
-      <div className="flex items-center gap-2 rounded-t-3xl border-b border-ink-200 bg-cream px-5 py-3">
+      <div className="flex items-center gap-2 rounded-t-3xl border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
         <SlidersHorizontal className="h-4 w-4 text-ink-600" />
         <h3 className="font-display text-[15px] font-semibold text-ink-900">Marketplace filters</h3>
         <span className="ml-auto text-[11.5px] text-ink-500">Drives the §7 catalog filters</span>

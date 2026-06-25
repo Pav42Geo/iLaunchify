@@ -226,7 +226,7 @@ function Header({
 }) {
   void filters // reserved for future "active tab" KPI highlighting
   return (
-    <div className="rounded-3xl border border-ink-200 bg-cream px-6 py-6">
+    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

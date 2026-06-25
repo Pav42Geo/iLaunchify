@@ -34,7 +34,7 @@ export function PendingInvitesTable({ invites }: { invites: InviteRow[] }) {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="border-b border-ink-100 bg-cream px-4 py-2.5">
+      <header className="border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
         <h2 className="font-display text-[13.5px] font-semibold tracking-tight text-ink-900">
           {invites.length} pending invite{invites.length === 1 ? '' : 's'}
         </h2>

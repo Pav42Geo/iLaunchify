@@ -105,7 +105,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
 
       {/* Header */}
       <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="bg-[#F3EFE8] px-5 py-4">
+        <div className="bg-[var(--bg-hero)] px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-mono text-[12px] uppercase tracking-wider text-ink-700">
