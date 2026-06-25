@@ -148,15 +148,19 @@
      px at the default 16px root, so there is no visual change today.
      ============================================================ */
   --font-scale: 1;
-  --fs-2xs:  calc(0.625rem  * var(--font-scale)); /* 10px */
-  --fs-xs:   calc(0.6875rem * var(--font-scale)); /* 11px */
-  --fs-sm:   calc(0.75rem   * var(--font-scale)); /* 12px */
-  --fs-base: calc(0.8125rem * var(--font-scale)); /* 13px */
-  --fs-md:   calc(0.875rem  * var(--font-scale)); /* 14px */
-  --fs-lg:   calc(1rem      * var(--font-scale)); /* 16px */
-  --fs-xl:   calc(1.25rem   * var(--font-scale)); /* 20px */
-  --fs-2xl:  calc(1.5rem    * var(--font-scale)); /* 24px */
-  --fs-3xl:  calc(1.875rem  * var(--font-scale)); /* 30px */
+  /* Per-role multipliers (layer on top of --font-scale; Theme Studio exposes
+     them as Body size / Heading size). Body = 2xs…md; Heading = lg…3xl. */
+  --body-scale: 1;
+  --heading-scale: 1;
+  --fs-2xs:  calc(0.625rem  * var(--font-scale) * var(--body-scale));    /* 10px */
+  --fs-xs:   calc(0.6875rem * var(--font-scale) * var(--body-scale));    /* 11px */
+  --fs-sm:   calc(0.75rem   * var(--font-scale) * var(--body-scale));    /* 12px */
+  --fs-base: calc(0.8125rem * var(--font-scale) * var(--body-scale));    /* 13px */
+  --fs-md:   calc(0.875rem  * var(--font-scale) * var(--body-scale));    /* 14px */
+  --fs-lg:   calc(1rem      * var(--font-scale) * var(--heading-scale)); /* 16px */
+  --fs-xl:   calc(1.25rem   * var(--font-scale) * var(--heading-scale)); /* 20px */
+  --fs-2xl:  calc(1.5rem    * var(--font-scale) * var(--heading-scale)); /* 24px */
+  --fs-3xl:  calc(1.875rem  * var(--font-scale) * var(--heading-scale)); /* 30px */
 
   /* Corners — Tier-1 radius ramp + global multiplier.
      Values MIRROR packages/ui/src/tokens/radii.ts (the scale the Tailwind

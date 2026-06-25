@@ -69,7 +69,9 @@ export interface EditableThemeToken {
  */
 export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Global scales
-  { name: 'font-scale', label: 'Text size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Scales ALL text together (rem-based, WCAG-safe). Right = larger.' },
+  { name: 'font-scale', label: 'Text size (all)', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.4, step: 0.01, hint: 'Scales ALL text together (rem-based, WCAG-safe). Right = larger.' },
+  { name: 'body-scale', label: 'Body size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.3, step: 0.01, hint: 'Fine-tune body/label text only (on top of Text size).' },
+  { name: 'heading-scale', label: 'Heading size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.5, step: 0.01, hint: 'Fine-tune titles/headings only (on top of Text size).' },
   { name: 'radius-scale', label: 'Corner size', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
 
   // Fonts (curated stacks only — self-hosted faces + system fonts)
