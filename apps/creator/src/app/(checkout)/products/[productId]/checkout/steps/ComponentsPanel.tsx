@@ -13,6 +13,7 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Lock } from 'lucide-react'
+import { Radio } from '@ilaunchify/ui'
 import {
   listProductComponents,
   listContainerPackagingTypes,
@@ -333,35 +334,36 @@ function ComponentSlotRow({
               <span className="text-[11.5px] text-ink-500">Standard — included</span>
             ) : (
               <>
-                <label className="flex items-center gap-1.5 text-[12px] text-ink-700">
-                  <input
-                    type="radio"
-                    name={`variant-${row.id}`}
-                    checked={!row.selectedVariantId}
-                    onChange={() => pick(null)}
-                    disabled={pending}
-                  />
-                  Standard — included
-                </label>
+                <Radio
+                  name={`variant-${row.id}`}
+                  checked={!row.selectedVariantId}
+                  onChange={() => pick(null)}
+                  disabled={pending}
+                  label="Standard — included"
+                  className="gap-1.5 text-[12px] text-ink-700"
+                />
                 {variants.map((v) => (
-                  <label key={v.id} className="flex items-center gap-1.5 text-[12px] text-ink-700">
-                    <input
-                      type="radio"
-                      name={`variant-${row.id}`}
-                      checked={row.selectedVariantId === v.id}
-                      onChange={() => pick(v.id)}
-                      disabled={pending}
-                    />
-                    {v.name}
-                    {v.baseSurchargePerUnitCents > 0 && (
-                      <span className="text-ink-500">
-                        +${(v.baseSurchargePerUnitCents / 100).toFixed(2)}/unit
-                      </span>
-                    )}
-                    {v.leadTimeDeltaDays > 0 && (
-                      <span className="text-ink-400">+{v.leadTimeDeltaDays}d</span>
-                    )}
-                  </label>
+                  <Radio
+                    key={v.id}
+                    name={`variant-${row.id}`}
+                    checked={row.selectedVariantId === v.id}
+                    onChange={() => pick(v.id)}
+                    disabled={pending}
+                    className="gap-1.5 text-[12px] text-ink-700"
+                    label={
+                      <>
+                        {v.name}
+                        {v.baseSurchargePerUnitCents > 0 && (
+                          <span className="text-ink-500">
+                            +${(v.baseSurchargePerUnitCents / 100).toFixed(2)}/unit
+                          </span>
+                        )}
+                        {v.leadTimeDeltaDays > 0 && (
+                          <span className="text-ink-400">+{v.leadTimeDeltaDays}d</span>
+                        )}
+                      </>
+                    }
+                  />
                 ))}
               </>
             )}

@@ -26,6 +26,7 @@ import {
   Truck,
   Warehouse,
 } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { StepShell } from './_StepShell'
 import type {
@@ -744,15 +745,12 @@ function NewAddressBlock({
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-2">
-        <label className="flex items-center gap-2 text-xs text-ink-700">
-          <input
-            type="checkbox"
-            checked={state.saveNewAddress}
-            onChange={(e) => onChange({ saveNewAddress: e.target.checked })}
-            className="accent-pink-500"
-          />
-          Save to my address book for next time
-        </label>
+        <Checkbox
+          checked={state.saveNewAddress}
+          onChange={(e) => onChange({ saveNewAddress: e.target.checked })}
+          label="Save to my address book for next time"
+          className="text-xs text-ink-700"
+        />
         {state.saveNewAddress && (
           <button
             type="button"

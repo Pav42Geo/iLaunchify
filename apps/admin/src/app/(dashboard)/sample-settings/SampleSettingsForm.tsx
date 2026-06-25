@@ -101,7 +101,7 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
         <div className="text-[13px] font-medium text-ink-800">{label}</div>
         {hint && <div className="text-[11.5px] text-ink-500">{hint}</div>}
       </div>
-      <span className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-pink-600' : 'bg-ink-300'}`}>
+      <span className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-[var(--control-accent)]' : 'bg-[var(--switch-off-bg)]'}`}>
         <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
         <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
       </span>

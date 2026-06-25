@@ -8,6 +8,7 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 import { Beaker, Package, Lock, Minus, Plus, Check } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { quoteSample, hasSamplerSet, formatCents, type SampleOption, type SampleMode } from '@/lib/sample-quote'
 import { createSampleOrder } from '../checkout/sample-actions'
 
@@ -192,10 +193,12 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
             <p className="text-[12.5px] leading-relaxed text-ink-700">
               This <strong className="font-semibold text-ink-900">branded sample</strong> is produced from your saved packaging artwork for {productName}. It&rsquo;s a pre-production proof to approve the final SKU — not for resale.
             </p>
-            <label className="mt-3 flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-800">
-              <input type="checkbox" checked={brandedAck} onChange={(e) => setBrandedAck(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-pink-600" />
-              <span>I understand this is a not-for-resale sample of my branded artwork, and I approve it for production.</span>
-            </label>
+            <Checkbox
+              checked={brandedAck}
+              onChange={(e) => setBrandedAck(e.target.checked)}
+              className="mt-3 items-start text-[12.5px] text-ink-800"
+              label={<span>I understand this is a not-for-resale sample of my branded artwork, and I approve it for production.</span>}
+            />
           </div>
         )}
       </section>

@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Input, Label, loadCustomFont } from '@ilaunchify/ui'
+import { Button, Input, Label, loadCustomFont, Checkbox } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Search, Check, Upload, Trash2 } from 'lucide-react'
 import { setBrandFonts, uploadBrandFont, removeBrandFont } from './actions'
@@ -258,16 +258,13 @@ export function FontsSection({
                 className="text-xs text-ink-600 file:mr-2 file:rounded file:border file:border-ink-200 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium"
               />
             </div>
-            <label className="flex items-start gap-2 text-xs text-ink-600">
-              <input
-                type="checkbox"
-                checked={uploadLicense}
-                onChange={(e) => setUploadLicense(e.target.checked)}
-                disabled={uploading}
-                className="mt-0.5"
-              />
-              <span>I have the right to use and embed this font for print and digital.</span>
-            </label>
+            <Checkbox
+              checked={uploadLicense}
+              onChange={(e) => setUploadLicense(e.target.checked)}
+              disabled={uploading}
+              className="items-start text-xs text-ink-600"
+              label={<span>I have the right to use and embed this font for print and digital.</span>}
+            />
             <Button
               type="submit"
               size="sm"

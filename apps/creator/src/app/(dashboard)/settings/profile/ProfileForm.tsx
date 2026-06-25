@@ -106,7 +106,7 @@ export function ProfileForm({
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleMarket(m.id)}
-                  className="mt-0.5 accent-pink-500"
+                  className="mt-0.5 accent-[var(--control-accent)]"
                 />
                 <div className="min-w-0">
                   <div className="text-[13px] font-medium text-ink-900">{m.name}</div>
