@@ -64,6 +64,12 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
           preview it across the apps, and publish (or roll back). Every change is checked against WCAG&nbsp;2.1&nbsp;AA
           contrast before it can go live.
         </p>
+        <a
+          href="/theme-studio/logos"
+          className="mt-3 inline-flex items-center gap-1 rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-sm font-semibold text-ink-800 hover:bg-ink-50"
+        >
+          Manage logos →
+        </a>
       </div>
 
       <ThemeEditor

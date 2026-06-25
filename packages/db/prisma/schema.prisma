@@ -6612,3 +6612,21 @@ model ThemePreset {
   createdBy String?
   createdAt DateTime @default(now())
 }
+
+/// Theme Studio platform logos (Phase D). One row per (kind, variant) slot:
+/// kind = 'full' | 'mark'; variant = 'light' | 'dark'. Files live in R2.
+model PlatformBrandAsset {
+  id         String   @id @default(uuid())
+  kind       String
+  variant    String
+  storageKey String
+  /// Stable public URL when R2_PUBLIC_BASE_URL is configured; else null (sign on read).
+  publicUrl  String?
+  mimeType   String
+  sizeBytes  Int
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([kind, variant])
+}

@@ -63,6 +63,19 @@ export {
 // Theme Studio — built-in presets (Phase C).
 export { BUILTIN_PRESETS, getPresetTokens, type ThemePresetDef } from './theme-presets'
 
+export {
+  LOGO_KINDS,
+  LOGO_VARIANTS,
+  isLogoKind,
+  isLogoVariant,
+  listPlatformLogos,
+  upsertPlatformLogo,
+  deletePlatformLogoRow,
+  type LogoKind,
+  type LogoVariant,
+  type PlatformLogoRow,
+} from './platform-branding'
+
 // Banned-ingredient runtime enforcement helpers (FDA_REGULATORY_POSTURE §5).
 export {
   isIngredientBanned,
