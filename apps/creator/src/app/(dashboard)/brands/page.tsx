@@ -127,7 +127,7 @@ export default async function BrandsHubPage() {
             return (
               <Link
                 key={b.id}
-                href={`/brands/${b.id}/assets`}
+                href={`/brands/${b.id}`}
                 className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-colors hover:border-ink-300 hover:bg-ink-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
               >
                 <div className="flex items-center gap-3">
@@ -171,7 +171,7 @@ export default async function BrandsHubPage() {
                     )}
                   </div>
                   <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-pink-700 group-hover:text-pink-800">
-                    Edit kit
+                    Open brand
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                   </span>
                 </div>
