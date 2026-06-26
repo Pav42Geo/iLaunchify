@@ -1,9 +1,25 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Inbox, Wrench, Settings, BarChart3, FileCheck2, LifeBuoy, DollarSign, Box, Award, Package, Gift, Printer } from 'lucide-react'
+import {
+  Inbox,
+  Wrench,
+  Settings,
+  BarChart3,
+  FileCheck2,
+  LifeBuoy,
+  DollarSign,
+  Box,
+  Award,
+  Package,
+  Gift,
+  Printer,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 
 interface NavItem {
@@ -40,38 +56,93 @@ interface PartnerSidebarProps {
   restricted: boolean
 }
 
-function statusBadge(status: PartnerStatus): { label: string; className: string } {
+function statusBadge(status: PartnerStatus): {
+  label: string
+  className: string
+  dotClassName: string
+} {
   switch (status) {
     case 'ACTIVE':
-      return { label: 'Active', className: 'bg-success-50 text-success-700 ring-success-200' }
+      return { label: 'Active', className: 'bg-success-50 text-success-700 ring-success-200', dotClassName: 'bg-success-500' }
     case 'UNDER_REVIEW':
-      return { label: 'Under review', className: 'bg-info-50 text-info-700 ring-info-200' }
+      return { label: 'Under review', className: 'bg-info-50 text-info-700 ring-info-200', dotClassName: 'bg-info-500' }
     case 'IN_PROGRESS':
-      return { label: 'Action needed', className: 'bg-warning-50 text-warning-700 ring-warning-200' }
+      return { label: 'Action needed', className: 'bg-warning-50 text-warning-700 ring-warning-200', dotClassName: 'bg-warning-500' }
     case 'SUSPENDED':
-      return { label: 'Suspended', className: 'bg-danger-50 text-danger-700 ring-danger-200' }
+      return { label: 'Suspended', className: 'bg-danger-50 text-danger-700 ring-danger-200', dotClassName: 'bg-danger-500' }
     case 'DRAFT':
     case 'INVITED':
     default:
-      return { label: status, className: 'bg-ink-100 text-ink-700 ring-ink-200' }
+      return { label: status, className: 'bg-ink-100 text-ink-700 ring-ink-200', dotClassName: 'bg-ink-400' }
   }
 }
+
+const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
 export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
   const pathname = usePathname()
   const nav = restricted ? RESTRICTED_NAV : FULL_NAV
   const badge = statusBadge(status)
 
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Persist the fold state across navigations / refreshes (mirrors the creator
+  // sidebar — its own key so the two apps don't share state).
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(STORAGE_KEY) === '1')
+    } catch {
+      /* localStorage unavailable — stay expanded */
+    }
+  }, [])
+
+  function toggle() {
+    setCollapsed((c) => {
+      const next = !c
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
   return (
-    <aside data-partner-sidebar className="hidden w-56 shrink-0 border-r border-ink-200 bg-white p-4 lg:block">
-      <div className="mb-6 px-2">
-        <div className="text-xs font-medium text-ink-500">Partner portal</div>
-        <span
-          className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
-        >
-          {badge.label}
-        </span>
-      </div>
+    <aside
+      data-partner-sidebar
+      className={cn(
+        'relative hidden shrink-0 border-r border-ink-200 bg-white p-3 transition-[width] duration-200 ease-out lg:block',
+        collapsed ? 'w-[68px]' : 'w-56',
+      )}
+    >
+      {/* Fold toggle — circular button straddling the right border (Printful-style) */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsed ? 'Expand' : 'Collapse'}
+        className="absolute -right-3 top-5 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-500 shadow-sm transition-colors hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      >
+        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+      </button>
+
+      {/* Status block — full when expanded, a single status dot when collapsed */}
+      {collapsed ? (
+        <div className="mb-4 mt-1 flex justify-center" title={`Partner portal · ${badge.label}`}>
+          <span className={cn('inline-block h-2.5 w-2.5 rounded-full', badge.dotClassName)} />
+        </div>
+      ) : (
+        <div className="mb-6 px-2">
+          <div className="text-xs font-medium text-ink-500">Partner portal</div>
+          <span
+            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
+          >
+            {badge.label}
+          </span>
+        </div>
+      )}
+
       <nav className="space-y-1">
         {nav.map(({ href, label, icon: Icon }) => {
           const active =
@@ -80,18 +151,21 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
             <Link
               key={href}
               href={href}
+              title={collapsed ? label : undefined}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                'flex items-center rounded-md text-sm transition-colors',
+                collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
                 active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
               )}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {!collapsed && <span>{label}</span>}
             </Link>
           )
         })}
       </nav>
-      {restricted && (
+
+      {restricted && !collapsed && (
         <p className="mt-6 px-2 text-xs text-ink-500">
           {status === 'UNDER_REVIEW' && (
             <>Your application is being reviewed. We&apos;ll email you when there&apos;s an update.</>

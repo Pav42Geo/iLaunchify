@@ -59,9 +59,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <LaunchChecklistProvider initialSnapshot={snapshot} meta={{ shouldAutoOpen }}>
-      <div className="flex min-h-screen flex-col">
+      <div className="flex h-screen flex-col">
         <DashboardTopbar user={user} />
-        <div className="flex flex-1">
+        <div className="flex min-h-0 flex-1">
           <DashboardSidebar />
           {/* overflow-x-clip lets a landing page's hero break full-bleed
               (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to

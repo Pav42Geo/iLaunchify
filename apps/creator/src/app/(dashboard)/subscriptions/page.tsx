@@ -155,7 +155,7 @@ export default async function PlansPage() {
           + width: 100vw), clipped by the main's overflow-x-clip so it never
           spills under the sidebar. Crisp pink grid pattern fading out. */}
       <section
-        className="relative -mt-6 overflow-hidden border-b border-ink-100 bg-white px-6 pb-14 pt-16 text-center"
+        className="relative -mt-6 overflow-hidden border-b border-ink-100 bg-white px-6 pb-10 pt-11 text-center"
         style={{ marginLeft: 'calc(50% - 50vw)', marginRight: 'calc(50% - 50vw)', width: '100vw' }}
       >
         {/* graph-paper grid, pink-tinted, fading radially from the top */}
@@ -174,15 +174,15 @@ export default async function PlansPage() {
 
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">iLaunchify Plans</p>
-          <h1 className="mx-auto mt-3 max-w-[18ch] font-display text-4xl font-extrabold leading-[0.98] tracking-[-0.03em] text-ink-900 sm:text-5xl">
+          <h1 className="mx-auto mt-2 font-display text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] text-ink-900 sm:text-4xl md:text-5xl md:whitespace-nowrap">
             Plans that{' '}
             <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">pay for themselves.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-[56ch] text-[15px] leading-relaxed text-ink-700 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-[74ch] text-[15px] leading-relaxed text-ink-700 sm:text-base">
             Every plan unlocks a lower platform fee on production. The more you make, the more you save —
             most creators find a paid plan costs less than it saves.
           </p>
-          <div className="mt-6 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium text-ink-600 backdrop-blur-sm">
+          <div className="mt-5 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium text-ink-600 backdrop-blur-sm">
             Billed monthly · cancel anytime · you’re on{' '}
             <span className="font-semibold capitalize text-ink-900">{currentTier}</span> today
           </div>
