@@ -23,7 +23,9 @@ import {
   AlertOctagon,
   CalendarClock,
   Package,
+  ArrowRight,
 } from 'lucide-react'
+import { EmptyState } from '@ilaunchify/ui'
 import { CancelSubscriptionButton } from './CancelSubscriptionButton'
 
 export const dynamic = 'force-dynamic'
@@ -70,7 +72,7 @@ export default async function CreatorSubscriptionsPage() {
       </header>
 
       {subs.length === 0 ? (
-        <EmptyState />
+        <SubscriptionsEmpty />
       ) : (
         <ul className="space-y-3">
           {subs.map((s) => (
@@ -280,29 +282,26 @@ function Field({
 // Empty state
 // =============================================================================
 
-function EmptyState() {
+function SubscriptionsEmpty() {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-300 bg-ink-50/40 px-6 py-12 text-center">
-      <span
-        aria-hidden="true"
-        className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-pink-700"
-      >
-        <Repeat className="h-5 w-5" />
-      </span>
-      <h2 className="mt-3 font-display text-lg font-semibold text-ink-900">
-        No recurring runs yet
-      </h2>
-      <p className="mx-auto mt-1 max-w-[440px] text-[13px] text-ink-600">
-        Subscribe &amp; save locks in a cadence so you never have to re-spec a
-        production run again. Save up to 12% on every cycle. The option
-        appears at checkout once you&rsquo;ve picked a quantity.
-      </p>
-      <Link
-        href="/products"
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-      >
-        Pick a product
-      </Link>
-    </div>
+    <EmptyState
+      icon={<Repeat className="h-[22px] w-[22px]" aria-hidden="true" />}
+      title="No recurring runs yet"
+      body={
+        <>
+          Subscribe &amp; save locks in a cadence so you never re-spec a production run again — save
+          up to 12% every cycle. The option appears at checkout once you&rsquo;ve picked a quantity.
+        </>
+      }
+      actions={
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <Package className="h-4 w-4" aria-hidden="true" /> Pick a product
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      }
+    />
   )
 }

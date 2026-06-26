@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Plus, ArrowRight, Lock, Palette } from 'lucide-react'
 import { requireUser, getCreatorTier, brandLimits, nextTier } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { EmptyState } from '@ilaunchify/ui'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
 
 export const dynamic = 'force-dynamic'
@@ -103,20 +104,20 @@ export default async function BrandsHubPage() {
       </div>
 
       {brands.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
-          <Palette className="mx-auto h-7 w-7 text-ink-400" aria-hidden="true" />
-          <p className="mt-3 text-[14px] font-semibold text-ink-900">Create your first brand kit</p>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-500">
-            Add your logo, colors, and fonts once — then apply them to every product you design.
-          </p>
-          <Link
-            href="/brands/new"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:bg-ink-700"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            New brand kit
-          </Link>
-        </div>
+        <EmptyState
+          align="center"
+          icon={<Palette className="h-[22px] w-[22px]" aria-hidden="true" />}
+          title="Create your first brand kit"
+          body="Add your logo, colors, and fonts once — then apply them to every product you design."
+          actions={
+            <Link
+              href="/brands/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> New brand kit
+            </Link>
+          }
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {brands.map((b) => {

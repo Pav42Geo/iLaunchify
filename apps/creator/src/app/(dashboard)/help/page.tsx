@@ -5,7 +5,7 @@ import { LifeBuoy, Plus, MessageSquare, CheckCircle2 } from 'lucide-react'
 import { requireUser } from '@ilaunchify/auth'
 import type { TicketStatus } from '@ilaunchify/db'
 import { listTickets } from '@ilaunchify/support'
-import { cn } from '@ilaunchify/ui'
+import { cn, EmptyState } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Help & Support' }
@@ -44,21 +44,20 @@ export default async function CreatorHelpPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-14 text-center">
-          <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700">
-            <CheckCircle2 className="h-5 w-5" />
-          </span>
-          <h2 className="mt-3 text-lg font-semibold text-ink-900">No tickets yet</h2>
-          <p className="mx-auto mt-1 max-w-[420px] text-[13px] text-ink-600">
-            Stuck on an order, a charge, or the Design Studio? Open a ticket and we&apos;ll help.
-          </p>
-          <Link
-            href="/help/new"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:bg-ink-800"
-          >
-            <Plus className="h-4 w-4" /> Open your first ticket
-          </Link>
-        </div>
+        <EmptyState
+          align="center"
+          icon={<CheckCircle2 className="h-[22px] w-[22px]" aria-hidden="true" />}
+          title="No tickets yet"
+          body="Stuck on an order, a charge, or the Design Studio? Open a ticket and we’ll help."
+          actions={
+            <Link
+              href="/help/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> Open your first ticket
+            </Link>
+          }
+        />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <ul className="divide-y divide-ink-100">

@@ -4,6 +4,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { listNotifications, markAllRead } from '@ilaunchify/notifications'
 import Link from 'next/link'
 import { CheckCheck, Mail, Inbox } from 'lucide-react'
+import { EmptyState } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
@@ -51,15 +52,12 @@ export default async function NotificationsPage() {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-14 text-center">
-          <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700">
-            <Inbox className="h-5 w-5" />
-          </span>
-          <h2 className="mt-3 text-lg font-semibold text-ink-900">You&apos;re all caught up</h2>
-          <p className="mx-auto mt-1 max-w-[420px] text-[13px] text-ink-600">
-            Order updates, partner activity, and replies from support will show up here.
-          </p>
-        </div>
+        <EmptyState
+          align="center"
+          icon={<Inbox className="h-[22px] w-[22px]" aria-hidden="true" />}
+          title="You’re all caught up"
+          body="Order updates, partner activity, and replies from support will show up here."
+        />
       ) : (
         <ul className="space-y-2">
           {notifications.map((n) => {
