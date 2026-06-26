@@ -36,8 +36,13 @@ import {
   Shuffle,
   ArrowRight,
   LifeBuoy,
+  ShoppingBag,
+  ShieldCheck,
+  FlaskConical,
+  Wand2,
 } from 'lucide-react'
-import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
+import { cn, ViewToggle, EmptyState, type ViewMode } from '@ilaunchify/ui'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — iLaunchify' }
@@ -110,6 +115,28 @@ export default async function OrdersListPage({
     },
   })
 
+  // No orders yet → look up the creator's products so the empty state can branch:
+  // no product at all → "design first"; a ready product exists → "order it now".
+  const myProducts =
+    orders.length === 0
+      ? ((
+          await prisma.creatorProfile.findUnique({
+            where: { userId: user.id },
+            select: {
+              brands: {
+                select: {
+                  products: {
+                    select: { id: true, name: true, status: true },
+                    orderBy: { updatedAt: 'desc' },
+                  },
+                },
+              },
+            },
+          })
+        )?.brands.flatMap((b) => b.products) ?? [])
+      : []
+  const readyProduct = myProducts.find((p) => p.status === 'COMPLIANT') ?? null
+
   return (
     <div className="space-y-6">
       <header>
@@ -121,18 +148,7 @@ export default async function OrdersListPage({
       </header>
 
       {orders.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-12 text-center">
-          <Package className="mx-auto h-7 w-7 text-ink-400" />
-          <p className="mt-3 text-sm text-ink-600">
-            No orders yet. Open a product and place your first production batch.
-          </p>
-          <Link
-            href="/products"
-            className="mt-2 inline-block text-sm font-medium text-pink-700 underline"
-          >
-            Go to products →
-          </Link>
-        </div>
+        <OrdersEmpty hasProducts={myProducts.length > 0} readyProduct={readyProduct} />
       ) : (
         <>
           <div className="flex items-center justify-between gap-2">
@@ -154,6 +170,102 @@ export default async function OrdersListPage({
         </>
       )}
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Empty state — conditional first-run (no product → design; ready product → order)
+// -----------------------------------------------------------------------------
+
+const BLACK_PILL =
+  'inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2'
+
+function ReassuranceRail() {
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-ink-500">
+      <span className="inline-flex items-center gap-1.5">
+        <ShieldCheck className="h-3.5 w-3.5 text-success-600" aria-hidden="true" /> You approve everything before production
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Package className="h-3.5 w-3.5" aria-hidden="true" /> MOQ 250
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Clock className="h-3.5 w-3.5" aria-hidden="true" /> ~10-day lead
+      </span>
+    </div>
+  )
+}
+
+function OrdersEmpty({
+  hasProducts,
+  readyProduct,
+}: {
+  hasProducts: boolean
+  readyProduct: { id: string; name: string } | null
+}) {
+  // Case A — no product at all → the real first step is designing one.
+  if (!hasProducts) {
+    return (
+      <EmptyState
+        icon={<ClipboardList className="h-[22px] w-[22px]" aria-hidden="true" />}
+        title="Your orders will appear here"
+        body="An order turns a product into a real production run. Design your first product, and you’ll be able to order it."
+        actions={
+          <a href={marketingUrl('/marketplace')} className={BLACK_PILL}>
+            <Wand2 className="h-4 w-4" aria-hidden="true" /> Design your first product
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        }
+      >
+        <ReassuranceRail />
+      </EmptyState>
+    )
+  }
+
+  // Case B — a production-ready product exists → order it (or a sample first).
+  if (readyProduct) {
+    return (
+      <EmptyState
+        icon={<ClipboardList className="h-[22px] w-[22px]" aria-hidden="true" />}
+        title="Ready to produce?"
+        body="Place your first order and our partners start making it. Not ready for a full run? Order a single sample first."
+      >
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-ink-200 p-3">
+          <Thumbnail name={readyProduct.name} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[14px] font-semibold text-ink-900">{readyProduct.name}</div>
+            <div className="text-[12px] text-ink-500">Ready to order · recipe compliant</div>
+          </div>
+          <Link href={`/products/${readyProduct.id}/checkout`} className={BLACK_PILL}>
+            Set up your order <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Link
+            href={`/products/${readyProduct.id}/sample`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <FlaskConical className="h-3.5 w-3.5" aria-hidden="true" /> Order a sample first
+          </Link>
+        </div>
+        <ReassuranceRail />
+      </EmptyState>
+    )
+  }
+
+  // Case C — products exist but none compliant yet → finish one.
+  return (
+    <EmptyState
+      icon={<ClipboardList className="h-[22px] w-[22px]" aria-hidden="true" />}
+      title="Finish a product, then place your order"
+      body="Your products aren’t production-ready yet. Get one compliant in the Studio and you can order it here."
+      actions={
+        <Link href="/products" className={BLACK_PILL}>
+          <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Go to your products
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </Link>
+      }
+    />
   )
 }
 

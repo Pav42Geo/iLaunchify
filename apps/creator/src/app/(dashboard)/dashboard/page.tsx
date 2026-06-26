@@ -19,6 +19,8 @@ import {
   ListWidget,
   TrendChart,
   StatusFunnel,
+  GettingStartedChecklist,
+  HowItWorksStrip,
   type QueueWidgetItem,
   type ListWidgetItem,
 } from '@ilaunchify/ui'
@@ -35,6 +37,9 @@ import {
   ShieldAlert,
   Sparkles,
   ShoppingBag,
+  Wand2,
+  Truck,
+  ArrowRight,
 } from 'lucide-react'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -206,6 +211,14 @@ export default async function DashboardHome() {
     tone: PRODUCT_TONE[p.status as string] ?? 'ink',
   }))
 
+  // First-run: a brand-new creator (no products, no orders) gets the Get-started
+  // hub — the journey orchestrator — instead of an empty cockpit. It recedes to
+  // the normal dashboard the moment they have a product or an order (one URL,
+  // time-aware). See docs/CREATOR_FIRST_RUN_PROPOSAL.md.
+  if (totalProducts === 0 && orders.length === 0) {
+    return <GetStartedHub userName={user.name ?? null} brandId={brand?.id ?? null} />
+  }
+
   return (
     <div className="space-y-6">
       {/* Hero — compact, unified */}
@@ -318,6 +331,96 @@ export default async function DashboardHome() {
           span={5}
         />
       </section>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Get-started hub — the first-run orchestrator (preview + progress + how-it-works)
+// -----------------------------------------------------------------------------
+
+function GetStartedHub({ userName, brandId }: { userName: string | null; brandId: string | null }) {
+  const marketplace = marketingUrl('/marketplace')
+  return (
+    <div className="space-y-5">
+      {/* Hero — value prop + ONE primary action + outcome preview */}
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="grid sm:grid-cols-[1.4fr_1fr]">
+          <div className="px-6 py-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Get started</p>
+            <h1 className="mt-1.5 font-display text-[26px] font-bold leading-[1.1] tracking-[-0.02em] text-ink-900">
+              {userName ? `Welcome, ${userName} — ` : ''}launch your first product
+            </h1>
+            <p className="mt-2 max-w-prose text-[13.5px] leading-relaxed text-ink-600">
+              Pick a proven base product, make it yours in the Design Studio, and we handle
+              manufacturing, printing &amp; fulfillment.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <a
+                href={marketplace}
+                className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+              >
+                <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Browse the marketplace
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+              <Link
+                href={brandId ? `/brands/${brandId}/assets` : '/brands'}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+              >
+                <Palette className="h-3.5 w-3.5" aria-hidden="true" /> Add your logo &amp; colors
+              </Link>
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center gap-2.5 border-t border-ink-100 bg-ink-50/50 p-5 sm:border-l sm:border-t-0">
+            <div
+              className="flex h-[108px] w-[80px] items-end justify-center rounded-xl pb-3 shadow-[0_10px_24px_-12px_rgba(255,46,99,0.55)]"
+              style={{ background: 'linear-gradient(135deg,#FFE9F0 0%,#FF2E63 100%)' }}
+              aria-hidden="true"
+            >
+              <span className="text-center font-display text-[12px] font-bold leading-tight text-white">
+                YOUR
+                <br />
+                BRAND
+              </span>
+            </div>
+            <p className="text-center text-[11px] leading-snug text-ink-500">
+              A finished product,
+              <br />
+              made with your brand
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Launch progress — the funnel, with the brand step pre-completed */}
+      <GettingStartedChecklist
+        steps={[
+          { label: 'Account created', state: 'done' },
+          {
+            label: 'Design your first product',
+            state: 'active',
+            action: (
+              <a
+                href={marketplace}
+                className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+              >
+                Start designing
+              </a>
+            ),
+          },
+          { label: 'Make it production-ready', state: 'locked', lockedHint: 'after you design' },
+          { label: 'Place your first order', state: 'locked', lockedHint: 'after it’s ready' },
+        ]}
+      />
+
+      {/* How it works — the mental model */}
+      <HowItWorksStrip
+        steps={[
+          { icon: <Wand2 className="h-[18px] w-[18px]" aria-hidden="true" />, title: 'Design', sub: 'Pick & customize a base product' },
+          { icon: <Factory className="h-[18px] w-[18px]" aria-hidden="true" />, title: 'Produce', sub: 'Vetted partners make it' },
+          { icon: <Truck className="h-[18px] w-[18px]" aria-hidden="true" />, title: 'Fulfill', sub: 'Ships to you or your channels' },
+        ]}
+      />
     </div>
   )
 }

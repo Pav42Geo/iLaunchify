@@ -35,8 +35,11 @@ import {
   Radio,
   Archive,
   ShieldAlert,
+  Pill,
+  Cookie,
+  Dog,
 } from 'lucide-react'
-import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
+import { cn, ViewToggle, EmptyState, StarterTiles, type ViewMode } from '@ilaunchify/ui'
 import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { marketingUrl } from '@/lib/marketing-url'
 import { ProductRowActions } from './ProductRowActions'
@@ -732,24 +735,49 @@ function ResumeChip({
 // Empty states
 // -----------------------------------------------------------------------------
 
+// First-run (no products at all). A LIGHT, object-focused on-ramp — the rich
+// walkthrough lives on the Dashboard hub, so this defers to it and leads with
+// the distinctive value here: category quick-starts (intent-first). See
+// docs/CREATOR_FIRST_RUN_PROPOSAL.md.
 function FirstRunEmpty() {
   return (
-    <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-12 text-center">
-      <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
-        <Package className="h-6 w-6 text-pink-600" aria-hidden="true" />
-      </div>
-      <p className="mt-3 text-sm font-medium text-ink-900">No products yet</p>
-      <p className="mt-1 text-sm text-ink-500">
-        Pick a template from the marketplace, customise it for your brand, and
-        we&apos;ll handle manufacturing, printing, and fulfilment.
+    <EmptyState
+      icon={<Package className="h-[22px] w-[22px]" aria-hidden="true" />}
+      title="Design your first product"
+      body={
+        <>
+          This is where your products live. Start from a proven base — supplements, snacks,
+          drinks, pet &amp; more — and customize it for your brand. We handle production.
+        </>
+      }
+      actions={
+        <a
+          href={marketingUrl('/marketplace')}
+          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Browse the marketplace
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      }
+    >
+      <StarterTiles
+        label="Jump in by category"
+        className="mt-5"
+        tiles={[
+          { icon: <Coffee className="h-5 w-5" aria-hidden="true" />, label: 'Coffee', href: marketingUrl('/marketplace?q=coffee') },
+          { icon: <Pill className="h-5 w-5" aria-hidden="true" />, label: 'Supplement', href: marketingUrl('/marketplace?q=supplement') },
+          { icon: <Cookie className="h-5 w-5" aria-hidden="true" />, label: 'Snack', href: marketingUrl('/marketplace?q=snack') },
+          { icon: <Dog className="h-5 w-5" aria-hidden="true" />, label: 'Pet', href: marketingUrl('/marketplace?q=pet') },
+        ]}
+      />
+      <p className="mt-3 text-[12px] text-ink-400">
+        New here? Your{' '}
+        <Link href="/dashboard" className="font-medium text-pink-700 hover:text-pink-800">
+          Dashboard
+        </Link>{' '}
+        walks you through the whole launch.
       </p>
-      <Link
-        href={marketingUrl('/marketplace')}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-medium text-white hover:bg-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
-      >
-        <Plus className="h-4 w-4" aria-hidden="true" /> Browse the marketplace
-      </Link>
-    </div>
+    </EmptyState>
   )
 }
 
