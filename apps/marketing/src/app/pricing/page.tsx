@@ -4,6 +4,7 @@ import { Check, X, ArrowRight } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { Reveal } from '@/components/Reveal'
 import { PricingCards } from '@/components/PricingCards'
 import { creatorUrl } from '@/lib/app-urls'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
@@ -89,6 +90,7 @@ export default async function PricingPage({
       </section>
 
       {/* COMPARISON TABLE */}
+      <Reveal>
       <section className="max-w-[1200px] mx-auto px-6 py-16">
         <div className="text-center mb-10">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-2">
@@ -145,8 +147,10 @@ export default async function PricingPage({
           </table>
         </div>
       </section>
+      </Reveal>
 
       {/* FAQ */}
+      <Reveal>
       <section className="max-w-[860px] mx-auto px-6 py-16">
         <div className="text-center mb-10">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-2">
@@ -185,8 +189,10 @@ export default async function PricingPage({
           ))}
         </div>
       </section>
+      </Reveal>
 
       {/* DARK CTA */}
+      <Reveal>
       <section data-surface="dark" className="bg-ink-900 text-white">
         <div className="max-w-[1200px] mx-auto px-6 py-20 text-center">
           <h2 className="font-display text-4xl sm:text-5xl font-extrabold leading-[1] tracking-[-0.03em] mb-5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
@@ -210,6 +216,7 @@ export default async function PricingPage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       <LandingFooter />
     </>

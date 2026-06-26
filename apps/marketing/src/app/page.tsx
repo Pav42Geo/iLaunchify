@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { Reveal } from '@/components/Reveal'
 import { NICHES } from '@/lib/niches'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
@@ -186,6 +187,7 @@ export default async function HomePage({
       </section>
 
       {/* ============ STATS ============ */}
+      <Reveal>
       <section className="max-w-[1400px] mx-auto px-6 sm:px-8 py-24 sm:py-32">
         <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-4">
           What&apos;s wired
@@ -201,8 +203,10 @@ export default async function HomePage({
           <StatCard variant="ink" number="13" label="Curated product categories. One taxonomy. Zero free-text fields." />
         </div>
       </section>
+      </Reveal>
 
       {/* ============ NICHES (dark) ============ */}
+      <Reveal>
       <section
         data-surface="dark"
         className="bg-ink-900 text-white py-24 px-6 sm:px-8 rounded-t-[48px]"
@@ -240,8 +244,10 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       {/* ============ EDITORIAL QUOTE ============ */}
+      <Reveal>
       <section className="bg-white py-24 sm:py-32 px-6 sm:px-8">
         <div className="max-w-[1100px] mx-auto">
           <p className="font-serif italic font-normal leading-[1.15] tracking-[-0.02em] mb-8 text-[clamp(36px,5vw,64px)]">
@@ -264,8 +270,10 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       {/* ============ FINAL CTA ============ */}
+      <Reveal>
       <section className="relative overflow-hidden text-center px-6 sm:px-8 py-32 sm:py-40">
         <div
           aria-hidden="true"
@@ -307,6 +315,7 @@ export default async function HomePage({
           </Link>
         </div>
       </section>
+      </Reveal>
 
       <LandingFooter />
     </>
