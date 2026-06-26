@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Button, HeroBanner } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { Reveal } from '@/components/Reveal'
 
 /**
  * /influencers — iLaunchify Influencer Program landing.
@@ -49,34 +50,36 @@ export default function InfluencersPage() {
             Apply via Impact →
           </a>
         </Button>
-        <Link
-          href="#faq"
-          className="inline-flex items-center text-sm font-medium text-ink-300 hover:text-white border border-ink-700 hover:border-ink-500 rounded-pill px-[22px] py-2.5 transition-colors"
+        <Button
+          variant="outline"
+          size="lg"
+          asChild
+          className="border-ink-700 text-ink-200 hover:bg-ink-800 hover:text-white hover:border-ink-600"
         >
-          Read the FAQ
-        </Link>
+          <a href="#faq">Read the FAQ</a>
+        </Button>
       </HeroBanner>
 
       {/* LIGHT — Quick stats band */}
-      <Stats />
+      <Reveal><Stats /></Reveal>
 
       {/* DARK ISLAND — How it works */}
-      <HowItWorks />
+      <Reveal><HowItWorks /></Reveal>
 
       {/* LIGHT — Why partner */}
-      <WhyPartner />
+      <Reveal><WhyPartner /></Reveal>
 
       {/* LIGHT — Who this is for */}
-      <WhoItsFor />
+      <Reveal><WhoItsFor /></Reveal>
 
       {/* LIGHT — FAQ */}
-      <Faq />
+      <Reveal><Faq /></Reveal>
 
       {/* LIGHT cream — Contact card */}
-      <ContactCard />
+      <Reveal><ContactCard /></Reveal>
 
       {/* DARK — Final CTA */}
-      <FinalCta />
+      <Reveal><FinalCta /></Reveal>
 
       {/* DARK — Shared site footer */}
       <LandingFooter />
@@ -188,30 +191,39 @@ function InfluencerGraphic() {
         <text x="525" y="250" textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="0.6" fill="#B5FF3D" opacity="0.85">+30%/MO</text>
       </g>
 
-      {/* === the cyber head (creator) — angular, foreground, occludes the tunnel mouth === */}
+      {/* === the cyber head (creator) — fine LINE-ART, foreground over the tunnel === */}
       <g filter="url(#infNeon)">
-        {/* angular side comms modules (not round cups) */}
-        <path d="M238 176 L223 183 L223 214 L238 221 Z" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M362 176 L377 183 L377 214 L362 221 Z" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" strokeLinejoin="round" />
-        {/* thin crest sensor (diamond, not a toy ball) */}
-        <line x1="300" y1="130" x2="300" y2="113" stroke="#B5FF3D" strokeWidth="2.4" strokeLinecap="round" />
-        <path d="M300 104 L306 111 L300 118 L294 111 Z" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.35;1" dur="1.7s" repeatCount="indefinite" /></path>
-        {/* faceted helmet */}
-        <path d="M258 134 L342 134 L362 158 L362 206 L336 248 L300 272 L264 248 L238 206 L238 158 Z" fill="#0E0E12" stroke="#2DE2E6" strokeWidth="2.5" strokeLinejoin="round" />
-        {/* brow seam */}
-        <path d="M252 150 L348 150" stroke="#2DE2E6" strokeWidth="1.2" opacity="0.35" />
-        {/* slit visor + horizontal scan */}
-        <path d="M252 164 L348 159 L348 178 L252 183 Z" fill="#0A1518" stroke="#2DE2E6" strokeWidth="1.5" strokeLinejoin="round" />
-        <rect x="256" y="167" width="15" height="9" rx="2" fill="#2DE2E6"><animate attributeName="x" values="256;328;256" dur="2.6s" repeatCount="indefinite" /></rect>
-        {/* jaw seam */}
-        <path d="M262 246 L300 262 L338 246" fill="none" stroke="#2DE2E6" strokeWidth="1.4" opacity="0.5" strokeLinejoin="round" />
-        {/* talking mouth — equaliser */}
-        <g stroke="#B5FF3D" strokeWidth="3.5" strokeLinecap="round">
-          <line x1="282" y1="236" x2="282" y2="224"><animate attributeName="y2" values="224;216;226;224" dur="0.5s" repeatCount="indefinite" /></line>
-          <line x1="291" y1="236" x2="291" y2="218"><animate attributeName="y2" values="218;208;220;218" dur="0.66s" repeatCount="indefinite" /></line>
-          <line x1="300" y1="236" x2="300" y2="212"><animate attributeName="y2" values="212;200;214;212" dur="0.8s" repeatCount="indefinite" /></line>
-          <line x1="309" y1="236" x2="309" y2="218"><animate attributeName="y2" values="218;209;220;218" dur="0.6s" repeatCount="indefinite" /></line>
-          <line x1="318" y1="236" x2="318" y2="224"><animate attributeName="y2" values="224;217;226;224" dur="0.72s" repeatCount="indefinite" /></line>
+        {/* faint fill knocks the grid back so the line-art reads */}
+        <path d="M258 134 L342 134 L362 158 L362 206 L336 248 L300 272 L264 248 L238 206 L238 158 Z" fill="#0B0B0F" opacity="0.6" />
+        {/* structure — thin contour line-art */}
+        <g fill="none" stroke="#2DE2E6" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M258 134 L342 134 L362 158 L362 206 L336 248 L300 272 L264 248 L238 206 L238 158 Z" />
+          <path d="M252 152 L348 152" opacity="0.55" />
+          <path d="M238 158 L256 168 M362 158 L344 168" opacity="0.55" />
+          <path d="M256 186 L268 202 L268 238" opacity="0.7" />
+          <path d="M344 186 L332 202 L332 238" opacity="0.7" />
+          <path d="M300 184 L300 214" opacity="0.45" />
+          <path d="M268 238 L300 256 L332 238" opacity="0.7" />
+          <path d="M264 248 L300 272 L336 248" opacity="0.45" />
+        </g>
+        {/* side comms modules — line-art */}
+        <g fill="none" stroke="#FF2E63" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M238 178 L226 184 L226 212 L238 218" />
+          <path d="M362 178 L374 184 L374 212 L362 218" />
+        </g>
+        {/* crest sensor — line-art diamond */}
+        <line x1="300" y1="134" x2="300" y2="116" stroke="#B5FF3D" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M300 108 L305 113 L300 118 L295 113 Z" fill="none" stroke="#B5FF3D" strokeWidth="1.6"><animate attributeName="opacity" values="1;0.3;1" dur="1.7s" repeatCount="indefinite" /></path>
+        {/* visor slit (line) + horizontal scan beam */}
+        <path d="M254 166 L346 161 L346 178 L254 183 Z" fill="none" stroke="#2DE2E6" strokeWidth="1.8" strokeLinejoin="round" />
+        <line x1="258" y1="172" x2="296" y2="170" stroke="#2DE2E6" strokeWidth="3" strokeLinecap="round" opacity="0.9"><animate attributeName="x1" values="258;306;258" dur="2.6s" repeatCount="indefinite" /><animate attributeName="x2" values="296;344;296" dur="2.6s" repeatCount="indefinite" /></line>
+        {/* talking mouth — equaliser, line-art */}
+        <g stroke="#B5FF3D" strokeWidth="2.6" strokeLinecap="round">
+          <line x1="282" y1="236" x2="282" y2="226"><animate attributeName="y2" values="226;218;228;226" dur="0.5s" repeatCount="indefinite" /></line>
+          <line x1="291" y1="236" x2="291" y2="220"><animate attributeName="y2" values="220;210;222;220" dur="0.66s" repeatCount="indefinite" /></line>
+          <line x1="300" y1="236" x2="300" y2="214"><animate attributeName="y2" values="214;202;216;214" dur="0.8s" repeatCount="indefinite" /></line>
+          <line x1="309" y1="236" x2="309" y2="220"><animate attributeName="y2" values="220;211;222;220" dur="0.6s" repeatCount="indefinite" /></line>
+          <line x1="318" y1="236" x2="318" y2="226"><animate attributeName="y2" values="226;219;228;226" dur="0.72s" repeatCount="indefinite" /></line>
         </g>
       </g>
 
