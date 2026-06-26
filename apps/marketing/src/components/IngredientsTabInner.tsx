@@ -111,7 +111,7 @@ export function IngredientsTabInner({ slug, ingredients, addOns }: IngredientsTa
       </div>
 
       <aside className="lg:sticky lg:top-24 flex flex-col gap-4">
-        <div className="border border-ink-200 rounded-xl bg-cream p-5">
+        <div className="border border-ink-200 rounded-xl bg-white p-5">
           <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-2.5">
             Recipe summary
           </div>

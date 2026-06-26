@@ -144,8 +144,8 @@ export const productGradient = {
   sky: 'radial-gradient(120% 130% at 50% 0%, #E5EFFF, #B8CCFF 60%, #8DA8FF)',
 } as const
 
-/** Warm cream canvas used in landing-page light bands (Business landing stats/why/test). */
-export const cream = '#FBFAF7' as const
+/** Cream — retired 2026-06-26; repointed to pure white. Key kept for any residual reference. */
+export const cream = '#FFFFFF' as const
 
 /** All platform color tokens, grouped. */
 export const colors = {

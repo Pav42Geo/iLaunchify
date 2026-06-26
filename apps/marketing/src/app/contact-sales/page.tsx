@@ -35,7 +35,7 @@ export default async function ContactSalesPage({
         hasUnreadNotifications={false}
       />
 
-      <div className="bg-cream">
+      <div className="bg-white">
         <div className="max-w-[1200px] mx-auto px-6 pt-14 pb-20 sm:pt-16">
           {/* Hero */}
           <div className="max-w-[36ch] mb-12">

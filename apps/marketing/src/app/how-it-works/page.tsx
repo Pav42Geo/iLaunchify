@@ -77,7 +77,7 @@ export default async function HowItWorksPage({
       </section>
 
       {/* 4-STEP JOURNEY */}
-      <section className="bg-cream border-y border-ink-200">
+      <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
           <div className="mb-12 max-w-[40ch]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-2">
@@ -241,7 +241,7 @@ export default async function HowItWorksPage({
       </section>
 
       {/* COMPLIANCE + TRUST GRID */}
-      <section className="bg-cream border-y border-ink-200">
+      <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
           <div className="text-center max-w-[32ch] mx-auto mb-12">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">

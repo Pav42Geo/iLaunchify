@@ -49,7 +49,7 @@ export const ilaunchifyPreset = {
         warning: channelScale(semantic.warning, 'warning'),
         danger:  channelScale(semantic.danger, 'danger'),
         info:    channelScale(semantic.info, 'info'),
-        cream: '#FBFAF7',
+        cream: '#FFFFFF', // retired 2026-06-26 — repointed to white; bg-cream now renders white
       },
       // Font utilities read the live CSS vars (the vars hold the full stacks),
       // so font-sans/font-display/font-serif are runtime-themeable via Theme

@@ -85,7 +85,7 @@ export function ProductionManifestView({
             The exact spec the creator paid for — substrate, packaging, finishes and die-cut are locked at this version.
           </p>
         </div>
-        <span className="flex-shrink-0 whitespace-nowrap rounded-full border border-ink-200 bg-cream px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-600">
+        <span className="flex-shrink-0 whitespace-nowrap rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-600">
           v{manifest.manifestVersion}
         </span>
       </div>
@@ -135,7 +135,7 @@ export function ProductionManifestView({
           <Block title={`Finishes (${manifest.finishes.length})`}>
             <ul className="space-y-1.5">
               {manifest.finishes.map((f) => (
-                <li key={f.partnerFinishId} className="rounded-lg border border-ink-100 bg-cream px-2.5 py-1.5">
+                <li key={f.partnerFinishId} className="rounded-lg border border-ink-100 bg-white px-2.5 py-1.5">
                   <div className="text-[13px] font-medium text-ink-900">{f.finishName}</div>
                   <div className="text-[11.5px] text-ink-500">{humanFinishCategory(f.category)} · pricing: {f.pricingMode}</div>
                 </li>
@@ -156,7 +156,7 @@ export function ProductionManifestView({
           <Block title={`Components to print (${manifest.components.length})`}>
             <ul className="space-y-1.5">
               {manifest.components.map((c) => (
-                <li key={c.componentId} className="rounded-lg border border-ink-100 bg-cream px-2.5 py-1.5">
+                <li key={c.componentId} className="rounded-lg border border-ink-100 bg-white px-2.5 py-1.5">
                   <div className="text-[13px] font-medium text-ink-900">
                     {humanRole(c.role)}
                     {c.packagingTypeName ? <span className="text-ink-500"> · {c.packagingTypeName}</span> : null}
@@ -172,7 +172,7 @@ export function ProductionManifestView({
           <Block title={`Pack flavors (${manifest.flavors.length})`}>
             <ul className="space-y-1.5">
               {manifest.flavors.map((f, i) => (
-                <li key={i} className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 bg-cream px-2.5 py-1.5">
+                <li key={i} className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 bg-white px-2.5 py-1.5">
                   <span className="min-w-0">
                     <span className="block truncate text-[13px] font-medium text-ink-900">{f.flavorName}</span>
                     {f.statementOfIdentity ? <span className="block truncate text-[11px] text-ink-500">{f.statementOfIdentity}</span> : null}

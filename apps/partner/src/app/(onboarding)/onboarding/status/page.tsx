@@ -158,7 +158,7 @@ export default async function ApplicationStatusPage() {
           </div>
         </section>
       ) : (
-        <section className="mt-10 flex flex-col items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-cream px-6 py-6 text-center sm:flex-row sm:text-left">
+        <section className="mt-10 flex flex-col items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-white px-6 py-6 text-center sm:flex-row sm:text-left">
           <p className="text-[14px] text-ink-700">
             {needsChanges ? (
               <>Open the flagged sections above, make the updates, and resubmit — we’ll re-review right away.</>

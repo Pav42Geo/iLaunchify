@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 export default function LaunchLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      data-surface="cream"
+      data-surface="light"
       className="min-h-screen bg-[var(--bg-canvas)]"
     >
       {children}

@@ -67,7 +67,7 @@ export default async function PricingPage({
         <PricingCards isLoggedIn={Boolean(session?.user)} />
 
         {/* "First sample" perk pip */}
-        <div className="mt-12 max-w-[640px] mx-auto bg-cream border border-ink-200 rounded-xl p-5 flex items-start gap-3">
+        <div className="mt-12 max-w-[640px] mx-auto bg-white border border-ink-200 rounded-xl p-5 flex items-start gap-3">
           <span
             aria-hidden="true"
             className="w-9 h-9 rounded-pill bg-neon-500 flex items-center justify-center flex-shrink-0 text-lg"
@@ -104,7 +104,7 @@ export default async function PricingPage({
 
         <div className="border border-ink-200 rounded-2xl overflow-hidden bg-white">
           <table className="w-full text-[13px]">
-            <thead className="bg-cream">
+            <thead className="bg-white">
               <tr className="border-b border-ink-200">
                 <th className="text-left px-6 py-4 text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 w-[34%]">
                   Feature

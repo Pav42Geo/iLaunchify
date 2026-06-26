@@ -159,7 +159,7 @@ export function PricingTierModal({
           </table>
         </div>
 
-        <div className="px-6 py-4 border-t border-ink-200 bg-cream text-[13px] text-ink-700 space-y-1.5">
+        <div className="px-6 py-4 border-t border-ink-200 bg-white text-[13px] text-ink-700 space-y-1.5">
           {matchedRow && (
             <div>
               At {currentQuantity.toLocaleString()} units ·{' '}

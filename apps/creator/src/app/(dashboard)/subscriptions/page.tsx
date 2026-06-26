@@ -272,7 +272,7 @@ export default async function PlansPage() {
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
-              <thead className="bg-cream">
+              <thead className="bg-white">
                 <tr className="border-b border-ink-200">
                   <th className="w-[40%] px-6 py-4 text-left text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">Feature</th>
                   <th className="px-4 py-4 text-center font-display text-[15px] font-bold text-ink-900">Maker</th>

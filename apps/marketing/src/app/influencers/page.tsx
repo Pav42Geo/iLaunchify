@@ -87,7 +87,7 @@ export default function InfluencersPage() {
 
 function Stats() {
   return (
-    <section data-surface="light" className="bg-cream text-ink-900 border-b border-ink-200">
+    <section data-surface="light" className="bg-white text-ink-900 border-b border-ink-200">
       <div className="max-w-[1400px] mx-auto px-8">
         <div className="grid grid-cols-2 md:grid-cols-4">
           {STATS.map((s, i) => (
@@ -159,7 +159,7 @@ function HowItWorks() {
 
 function WhyPartner() {
   return (
-    <section data-surface="cream" className="bg-cream text-ink-900 py-24 px-8">
+    <section data-surface="light" className="bg-white text-ink-900 py-24 px-8">
       <div className="max-w-[1400px] mx-auto">
         <header className="mb-14 max-w-[60ch]">
           <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
@@ -208,7 +208,7 @@ function WhoItsFor() {
           {AUDIENCES.map((a) => (
             <div
               key={a.title}
-              className="rounded-lg border border-ink-200 bg-cream/50 p-5"
+              className="rounded-lg border border-ink-200 bg-white/50 p-5"
             >
               <div className="text-2xl mb-2.5">{a.icon}</div>
               <div className="text-sm font-bold text-ink-900 mb-1.5">{a.title}</div>
@@ -227,8 +227,8 @@ function Faq() {
   return (
     <section
       id="faq"
-      data-surface="cream"
-      className="bg-cream text-ink-900 py-24 px-8 border-t border-ink-200"
+      data-surface="light"
+      className="bg-white text-ink-900 py-24 px-8 border-t border-ink-200"
     >
       <div className="max-w-[900px] mx-auto">
         <header className="mb-12">
@@ -269,7 +269,7 @@ function ContactCard() {
       data-surface="light"
       className="bg-white text-ink-900 py-20 px-8 border-t border-ink-200"
     >
-      <div className="max-w-[900px] mx-auto rounded-2xl border border-ink-200 bg-cream/60 px-8 py-10 sm:px-12 sm:py-14 flex flex-col sm:flex-row items-start sm:items-center gap-7 sm:gap-12">
+      <div className="max-w-[900px] mx-auto rounded-2xl border border-ink-200 bg-white/60 px-8 py-10 sm:px-12 sm:py-14 flex flex-col sm:flex-row items-start sm:items-center gap-7 sm:gap-12">
         <div
           aria-hidden="true"
           className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-pink-500 text-3xl"

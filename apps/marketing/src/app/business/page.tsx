@@ -67,7 +67,7 @@ export default function BusinessLandingPage() {
 
 function Stats() {
   return (
-    <section data-surface="light" className="bg-cream text-ink-900 border-b border-ink-200">
+    <section data-surface="light" className="bg-white text-ink-900 border-b border-ink-200">
       <div className="max-w-[1400px] mx-auto px-8">
         <div className="grid grid-cols-1 md:grid-cols-3">
           {STATS.map((s, i) => (
@@ -124,7 +124,7 @@ function PartnerTypes() {
 
 function WhyJoin() {
   return (
-    <section data-surface="cream" id="why" className="bg-cream text-ink-900 py-24 px-8">
+    <section data-surface="light" id="why" className="bg-white text-ink-900 py-24 px-8">
       <div className="max-w-[1400px] mx-auto">
         <header className="mb-14 max-w-[60ch]">
           <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
@@ -192,8 +192,8 @@ function HowItWorks() {
 function Testimonial() {
   return (
     <section
-      data-surface="cream"
-      className="bg-cream text-ink-900 py-24 px-8 border-t border-b border-ink-200"
+      data-surface="light"
+      className="bg-white text-ink-900 py-24 px-8 border-t border-b border-ink-200"
     >
       <div className="max-w-[1100px] mx-auto">
         <p className="font-serif italic text-3xl sm:text-4xl font-normal leading-[1.25] tracking-[-0.015em] text-ink-900 mb-8">

@@ -345,7 +345,7 @@ export default async function ProductPreviewPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={images[0]} alt={tpl.name} className="mx-auto max-h-80 w-full object-contain" />
             ) : (
-              <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-50 to-cream">
+              <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-50 to-white">
                 <Package className="h-10 w-10 text-ink-300" aria-hidden="true" />
               </div>
             )}
@@ -783,7 +783,7 @@ export default async function ProductPreviewPage({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={images[0]} alt={tpl.name} className="h-32 w-full object-cover" />
               ) : (
-                <div className="flex h-32 items-center justify-center bg-gradient-to-br from-pink-50 to-cream">
+                <div className="flex h-32 items-center justify-center bg-gradient-to-br from-pink-50 to-white">
                   <Package className="h-8 w-8 text-ink-400" aria-hidden="true" />
                 </div>
               )}

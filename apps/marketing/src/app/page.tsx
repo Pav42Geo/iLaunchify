@@ -210,7 +210,7 @@ export default async function HomePage({
       </section>
 
       {/* ============ EDITORIAL QUOTE ============ */}
-      <section className="bg-cream py-24 sm:py-32 px-6 sm:px-8">
+      <section className="bg-white py-24 sm:py-32 px-6 sm:px-8">
         <div className="max-w-[1100px] mx-auto">
           <p className="font-serif italic font-normal leading-[1.15] tracking-[-0.02em] mb-8 text-[clamp(36px,5vw,64px)]">
             Each order decomposes into a workflow graph across manufacturer,

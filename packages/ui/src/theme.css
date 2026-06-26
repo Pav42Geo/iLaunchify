@@ -77,8 +77,9 @@
   --ink-900-rgb: 24 24 26;
   --ink-900: rgb(var(--ink-900-rgb));
 
-  /* Cream — warm canvas for landing-page light bands */
-  --cream: #FBFAF7;
+  /* Cream — retired; repointed to pure white (2026-06-26). Kept as a token key
+     so any residual reference renders white. */
+  --cream: #FFFFFF;
 
   /* Semantic — full 50→900 ramps (2026-06-25). Retuned so warning sheds the
      muddy mustard/tan (the "brown" above tables) and the set harmonizes with

@@ -77,7 +77,7 @@ export function CertStrip({
   return (
     <section
       className={cn(
-        'border-t border-b border-ink-200 bg-cream py-7',
+        'border-t border-b border-ink-200 bg-white py-7',
         className,
       )}
     >

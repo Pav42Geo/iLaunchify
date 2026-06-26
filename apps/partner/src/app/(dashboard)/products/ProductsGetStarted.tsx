@@ -249,6 +249,8 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
             <a
               key={c.title}
               href={marketingUrl('/business/academy')}
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.18)]"
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-pink-700">
@@ -373,60 +375,98 @@ function Band({
 // nodes, in pink + neon on ink. Pure inline SVG (no raster asset needed).
 function BrandStack() {
   return (
-    <svg viewBox="0 0 440 360" className="h-auto w-full max-w-[440px]" role="img" aria-label="iLaunchify orchestration">
+    <svg viewBox="0 0 420 420" className="h-auto w-full max-w-[400px]" role="img" aria-label="iLaunchify production cycle: formulate, fill, label, pack and ship">
       <defs>
-        <radialGradient id="bsGlow" cx="50%" cy="42%" r="55%">
-          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.35" />
+        <radialGradient id="bsGlow" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.30" />
           <stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      {/* breathing pink glow */}
-      <rect x="70" y="40" width="300" height="280" fill="url(#bsGlow)">
+      {/* breathing glow */}
+      <rect x="40" y="40" width="340" height="340" fill="url(#bsGlow)">
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
-      {/* wiring — energy flows from the core out to the nodes */}
-      <g stroke="#B5FF3D" strokeWidth="1.5" fill="none" opacity="0.6" strokeDasharray="5 9" strokeLinecap="round">
-        <path d="M220 182 L86 86"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></path>
-        <path d="M220 182 L360 96"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></path>
-        <path d="M220 182 L96 286"><animate attributeName="stroke-dashoffset" values="0;-28" dur="2.2s" repeatCount="indefinite" /></path>
-        <path d="M220 182 L356 276"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></path>
+      {/* spokes hub → stations */}
+      <g stroke="#3A3A41" strokeWidth="2">
+        <line x1="210" y1="210" x2="210" y2="78" />
+        <line x1="210" y1="210" x2="342" y2="210" />
+        <line x1="210" y1="210" x2="210" y2="342" />
+        <line x1="210" y1="210" x2="78" y2="210" />
       </g>
 
-      {/* orbiting service nodes — gentle staggered float */}
-      <rect x="62" y="62" width="44" height="44" rx="12" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.5">
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-      </rect>
-      <rect x="336" y="72" width="44" height="44" rx="12" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.5">
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0.9s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-      </rect>
-      <rect x="72" y="262" width="44" height="44" rx="12" fill="#26262B" stroke="#FF2E63" strokeWidth="1.5">
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-      </rect>
-      <rect x="332" y="252" width="44" height="44" rx="12" fill="#26262B" stroke="#FF2E63" strokeWidth="1.5">
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1.3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-      </rect>
+      {/* the process circle — base ring + flowing neon current */}
+      <circle cx="210" cy="210" r="132" fill="none" stroke="#3A3A41" strokeWidth="3" />
+      <circle cx="210" cy="210" r="132" fill="none" stroke="#B5FF3D" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.85">
+        <animate attributeName="stroke-dashoffset" values="0;-32" dur="2s" repeatCount="indefinite" />
+      </circle>
 
-      {/* layered core tiles (depth, static) */}
-      <rect x="150" y="118" width="150" height="128" rx="22" fill="#26262B" transform="rotate(-9 225 182)" />
-      <rect x="156" y="120" width="150" height="128" rx="22" fill="#1F1F24" stroke="#3A3A41" strokeWidth="1.5" transform="rotate(6 231 184)" />
-
-      {/* front brand tile + glyph — floats together as one */}
+      {/* the unit travelling around the cycle */}
       <g>
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 -5;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
-        <rect x="158" y="120" width="124" height="124" rx="26" fill="#FF2E63" />
-        <g stroke="#FFFFFF" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
-          <path d="M220 150 L250 165 L220 180 L190 165 Z" />
-          <path d="M190 184 L220 199 L250 184" />
-          <path d="M190 203 L220 218 L250 203" />
+        <animateTransform attributeName="transform" type="rotate" from="0 210 210" to="360 210 210" dur="7s" repeatCount="indefinite" />
+        <circle cx="210" cy="78" r="6" fill="#FF2E63" />
+      </g>
+
+      {/* ===== process stations on the ring (icons in squares, gentle float) ===== */}
+      {/* top — Formulate (flask) */}
+      <g transform="translate(182,50)">
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
+          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M22 14 L22 24 L14 40 Q13 44 17 44 L39 44 Q43 44 42 40 L34 24 L34 14" />
+            <line x1="19" y1="14" x2="37" y2="14" />
+            <line x1="20" y1="34" x2="36" y2="34" />
+          </g>
+        </g>
+      </g>
+      {/* right — Fill (droplet) */}
+      <g transform="translate(314,182)">
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
+          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M28 14 C 37 26, 37 35, 28 39 C 19 35, 19 26, 28 14 Z" />
+            <line x1="16" y1="44" x2="40" y2="44" />
+          </g>
+        </g>
+      </g>
+      {/* bottom — Label (tag) */}
+      <g transform="translate(182,314)">
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
+          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
+            <rect x="14" y="20" width="28" height="18" rx="4" />
+            <line x1="20" y1="26" x2="36" y2="26" />
+            <line x1="20" y1="32" x2="30" y2="32" />
+          </g>
+        </g>
+      </g>
+      {/* left — Pack & ship (box) */}
+      <g transform="translate(50,182)">
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
+          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M16 22 L28 16 L40 22 L40 38 L28 44 L16 38 Z" />
+            <path d="M16 22 L28 28 L40 22" />
+            <path d="M28 28 L28 44" />
+          </g>
         </g>
       </g>
 
-      {/* accent dots — pulse */}
-      <circle cx="120" cy="170" r="4" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite" /></circle>
-      <circle cx="322" cy="190" r="4" fill="#B5FF3D"><animate attributeName="opacity" values="0.25;1;0.25" dur="2.4s" repeatCount="indefinite" /></circle>
-      <circle cx="226" cy="300" r="4" fill="#FF2E63"><animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" /></circle>
+      {/* central brand tile + layers glyph — the hub */}
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <rect x="158" y="158" width="104" height="104" rx="24" fill="#FF2E63" />
+        <g stroke="#FFFFFF" strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
+          <path d="M210 184 L236 198 L210 212 L184 198 Z" />
+          <path d="M184 202 L210 216 L236 202" />
+          <path d="M184 218 L210 232 L236 218" />
+        </g>
+      </g>
     </svg>
   )
 }
