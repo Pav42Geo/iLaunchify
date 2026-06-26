@@ -134,8 +134,20 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
           }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
-          <div>
+        {/* spatial graphic — right-anchored faded background (lg+); enlarges to fill */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[56%] items-center justify-end lg:flex"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent, #000 46%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, #000 46%)',
+          }}
+        >
+          <ProductionLine />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-16 lg:py-20">
+          <div className="max-w-[620px]">
             <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-400">
               <span className="h-1.5 w-1.5 rounded-full bg-neon-500" aria-hidden="true" />
               {companyName} · Partner program
@@ -164,10 +176,6 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
             <p className="mt-6 text-[12.5px] font-medium text-ink-400">
               No upfront cost · You set MOQ &amp; pricing · Stripe payouts · 3–5 day verification
             </p>
-          </div>
-
-          <div className="hidden justify-center lg:flex">
-            <BrandStack />
           </div>
         </div>
       </Band>
@@ -370,131 +378,81 @@ function Band({
   )
 }
 
-// On-brand hero graphic — an abstract "orchestration" stack built from the
-// iLaunchify rounded-square mark: layered product tiles wired to partner/service
-// nodes, in pink + neon on ink. Pure inline SVG (no raster asset needed).
-function BrandStack() {
+// Hero graphic — a PERSPECTIVE PRODUCTION LINE. Product tiles spawn at the
+// vanishing point and travel toward the viewer down three lanes of a neon belt,
+// growing as they approach (depth) — "your line producing recurring orders."
+// A distinct spatial effect from the orbital/orchestration graphics elsewhere.
+function ProductionLine() {
+  const tile = (lane: string, dur: string, begin: string, color: string) => (
+    <g>
+      <animateMotion path={lane} dur={dur} begin={begin} repeatCount="indefinite" calcMode="linear" />
+      <g>
+        <animateTransform attributeName="transform" type="scale" values="0.12;1.05" dur={dur} begin={begin} repeatCount="indefinite" calcMode="linear" />
+        <rect x="-15" y="-15" width="30" height="30" rx="8" fill={color} />
+        <g stroke="#0B0B0F" strokeWidth="2.4" fill="none" strokeLinejoin="round" strokeLinecap="round" opacity="0.85">
+          <path d="M0 -7 L8 -2 L0 3 L-8 -2 Z" /><path d="M-8 0 L0 5 L8 0" />
+        </g>
+      </g>
+      <animate attributeName="opacity" values="0.15;1;1;0" keyTimes="0;0.25;0.8;1" dur={dur} begin={begin} repeatCount="indefinite" />
+    </g>
+  )
   return (
-    <svg viewBox="0 0 480 440" className="h-auto w-full max-w-[440px]" role="img" aria-label="iLaunchify production cycle: formulate, fill, label, pack and ship">
+    <svg viewBox="0 0 600 400" className="h-auto w-full" role="img" aria-label="Your production line: units flowing into recurring orders">
       <defs>
-        <radialGradient id="bsGlow" cx="50%" cy="50%" r="55%">
-          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.30" />
-          <stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
+        <filter id="plNeon" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <radialGradient id="plGlow" cx="50%" cy="34%" r="55%">
+          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.3" /><stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
         </radialGradient>
+        <radialGradient id="plMaskGrad" cx="50%" cy="48%" r="62%">
+          <stop offset="0%" stopColor="#fff" /><stop offset="56%" stopColor="#fff" /><stop offset="100%" stopColor="#000" />
+        </radialGradient>
+        <mask id="plMask"><rect width="600" height="400" fill="url(#plMaskGrad)" /></mask>
       </defs>
 
-      {/* breathing glow */}
-      <rect x="50" y="40" width="380" height="360" fill="url(#bsGlow)">
+      <rect x="80" y="40" width="440" height="320" fill="url(#plGlow)">
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
-      {/* spokes hub → stations: faint rail + flowing neon energy out to the spread corners */}
-      <g stroke="#2E2E34" strokeWidth="2">
-        <line x1="240" y1="215" x2="128" y2="116" />
-        <line x1="240" y1="215" x2="352" y2="124" />
-        <line x1="240" y1="215" x2="348" y2="322" />
-        <line x1="240" y1="215" x2="132" y2="316" />
-      </g>
-      <g stroke="#B5FF3D" strokeWidth="2" strokeDasharray="4 10" strokeLinecap="round" fill="none" opacity="0.7">
-        <line x1="240" y1="215" x2="128" y2="116"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="352" y2="124"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="348" y2="322"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="132" y2="316"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.6s" repeatCount="indefinite" /></line>
+      {/* perspective belt — converges to the vanishing point, dissolves at edges */}
+      <g mask="url(#plMask)">
+        <g stroke="#FF2E63" strokeWidth="1.2" fill="none" opacity="0.42" strokeLinecap="round">
+          <path d="M300 120 L80 400" /><path d="M300 120 L230 400" /><path d="M300 120 L300 400" /><path d="M300 120 L370 400" /><path d="M300 120 L520 400" />
+          <path d="M272 160 H328" /><path d="M240 200 H360" /><path d="M200 250 H400" /><path d="M152 312 H448" /><path d="M96 384 H504" />
+        </g>
+        {/* live scan rung */}
+        <path d="M200 250 H400" stroke="#B5FF3D" strokeWidth="1.4" fill="none" opacity="0.5" filter="url(#plNeon)">
+          <animate attributeName="opacity" values="0.1;0.6;0.1" dur="2.6s" repeatCount="indefinite" />
+        </path>
       </g>
 
-      {/* the cycle — gray arcs curving from one station to the next (subtitle gray),
-          with the unit travelling around the loop */}
-      <path d="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" fill="none" stroke="#3A3A41" strokeWidth="3" strokeLinecap="round" />
-      <path d="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" fill="none" stroke="#CBCCD3" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.7">
-        <animate attributeName="stroke-dashoffset" values="0;-32" dur="2.4s" repeatCount="indefinite" />
-      </path>
-      <circle r="6" fill="#FF2E63">
-        <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear" path="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" />
-      </circle>
-
-      {/* ===== process stations — floating icon-squares at the spread corners + labels ===== */}
-      {/* upper-left — Formulate (flask) */}
-      <g transform="translate(100,88)">
-        <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
-          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M22 14 L22 24 L14 40 Q13 44 17 44 L39 44 Q43 44 42 40 L34 24 L34 14" />
-            <line x1="19" y1="14" x2="37" y2="14" />
-            <line x1="20" y1="34" x2="36" y2="34" />
-          </g>
-          <text x="28" y="-19" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#B5FF3D">
-            FORMULATE
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="0s" repeatCount="indefinite" />
-          </text>
-        </g>
-      </g>
-      {/* upper-right — Fill (droplet) */}
-      <g transform="translate(324,96)">
-        <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.9s" begin="0.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
-          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M28 14 C 37 26, 37 35, 28 39 C 19 35, 19 26, 28 14 Z" />
-            <line x1="16" y1="44" x2="40" y2="44" />
-          </g>
-          <text x="28" y="-19" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#FF2E63">
-            FILL
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="0.8s" repeatCount="indefinite" />
-          </text>
-        </g>
-      </g>
-      {/* lower-right — Label (tag) */}
-      <g transform="translate(320,294)">
-        <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 7;0 0" dur="4.2s" begin="1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
-          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <rect x="14" y="20" width="28" height="18" rx="4" />
-            <line x1="20" y1="26" x2="36" y2="26" />
-            <line x1="20" y1="32" x2="30" y2="32" />
-          </g>
-          <text x="28" y="82" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#B5FF3D">
-            LABEL
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="1.6s" repeatCount="indefinite" />
-          </text>
-        </g>
-      </g>
-      {/* lower-left — Pack & ship (box) */}
-      <g transform="translate(104,288)">
-        <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="3.7s" begin="1.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
-          <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M16 22 L28 16 L40 22 L40 38 L28 44 L16 38 Z" />
-            <path d="M16 22 L28 28 L40 22" />
-            <path d="M28 28 L28 44" />
-          </g>
-          <text x="28" y="74" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#FF2E63">
-            <tspan x="28">PACK &amp;</tspan>
-            <tspan x="28" dy="15">SHIP</tspan>
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="2.4s" repeatCount="indefinite" />
-          </text>
-        </g>
+      {/* product tiles flowing toward the viewer (3 lanes, staggered) */}
+      <g filter="url(#plNeon)">
+        {tile('M300 123 L180 400', '3.2s', '0s', '#B5FF3D')}
+        {tile('M300 123 L300 400', '3.6s', '0.6s', '#FF2E63')}
+        {tile('M300 123 L420 400', '3.4s', '1.2s', '#2DE2E6')}
+        {tile('M300 123 L180 400', '3.2s', '1.7s', '#2DE2E6')}
+        {tile('M300 123 L300 400', '3.6s', '2.3s', '#B5FF3D')}
+        {tile('M300 123 L420 400', '3.4s', '2.9s', '#FF2E63')}
       </g>
 
-      {/* central brand tile + layers glyph — the hub */}
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
-        <rect x="188" y="163" width="104" height="104" rx="24" fill="#FF2E63" />
-        <g stroke="#FFFFFF" strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
-          {/* the three layers gently fan apart + settle — the stack breathes */}
-          <path d="M240 189 L266 203 L240 217 L214 203 Z">
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 -2.5;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          </path>
-          <path d="M214 207 L240 221 L266 207">
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 1;0 0" dur="3.4s" begin="0.3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          </path>
-          <path d="M214 223 L240 237 L266 223">
-            <animateTransform attributeName="transform" type="translate" values="0 0;0 2.5;0 0" dur="3.8s" begin="0.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-          </path>
-        </g>
+      {/* line source at the vanishing point */}
+      <g filter="url(#plNeon)">
+        <circle cx="300" cy="120" r="10" fill="#FF2E63" />
+        <circle cx="300" cy="120" r="10" fill="none" stroke="#FF2E63" strokeWidth="2">
+          <animate attributeName="r" values="10;26" dur="2.6s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.7;0" dur="2.6s" repeatCount="indefinite" />
+        </circle>
       </g>
+
+      {/* HUD labels */}
+      <text x="14" y="28" fontSize="11" fontWeight="700" letterSpacing="2" fill="#B5FF3D" opacity="0.8">YOUR_LINE</text>
+      <text x="586" y="28" textAnchor="end" fontSize="11" fontWeight="700" letterSpacing="2" fill="#B5FF3D" opacity="0.8">RECURRING // LIVE</text>
+
+      {/* scanline sweep */}
+      <rect x="0" y="0" width="600" height="2" fill="#2DE2E6" opacity="0.18">
+        <animateTransform attributeName="transform" type="translate" values="0 -6;0 406" dur="6s" repeatCount="indefinite" />
+      </rect>
     </svg>
   )
 }

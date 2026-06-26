@@ -159,7 +159,16 @@ export default async function HowItWorksPage({
 
             {/* Stylized orchestration graphic */}
             <div className="relative">
-              <div className="grid grid-cols-2 gap-3">
+              {/* animated links — the hub routes orders out to each partner */}
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
+                <g stroke="#B5FF3D" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3 5" strokeLinecap="round" vectorEffect="non-scaling-stroke">
+                  <line x1="50" y1="50" x2="24" y2="24"><animate attributeName="stroke-dashoffset" values="0;-16" dur="1.6s" repeatCount="indefinite" /></line>
+                  <line x1="50" y1="50" x2="76" y2="24"><animate attributeName="stroke-dashoffset" values="0;-16" dur="2s" repeatCount="indefinite" /></line>
+                  <line x1="50" y1="50" x2="24" y2="76"><animate attributeName="stroke-dashoffset" values="0;-16" dur="1.8s" repeatCount="indefinite" /></line>
+                  <line x1="50" y1="50" x2="76" y2="76"><animate attributeName="stroke-dashoffset" values="0;-16" dur="2.2s" repeatCount="indefinite" /></line>
+                </g>
+              </svg>
+              <div className="relative z-10 grid grid-cols-2 gap-3">
                 {[
                   { icon: Factory, label: 'Manufacturer', sub: 'Spray-dry · QC' },
                   { icon: Printer, label: 'Printer', sub: 'CMYK · Die-cut' },
@@ -182,7 +191,8 @@ export default async function HowItWorksPage({
               </div>
               {/* Central orchestrator node */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="w-20 h-20 rounded-pill bg-pink-500 flex items-center justify-center shadow-2xl ring-8 ring-ink-900">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-pill bg-pink-500/40 motion-safe:animate-ping" />
+                <div className="relative w-20 h-20 rounded-pill bg-pink-500 flex items-center justify-center shadow-2xl ring-8 ring-ink-900">
                   <span className="w-3 h-3 rounded-pill bg-white" />
                 </div>
                 <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.1em] whitespace-nowrap text-white/70">
