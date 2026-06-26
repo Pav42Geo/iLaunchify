@@ -16,13 +16,13 @@ import {
   Workflow,
   Lock,
   ArrowRight,
-  Pencil,
   GripVertical,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { NicheEditDialog } from './NicheEditDialog'
 import { NicheActiveToggle, NicheReorderControls } from './NicheRowControls'
 
@@ -203,20 +203,14 @@ function Header({
   lockedRules: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Marketplace · Niches
-        </p>
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Creator Niches
-        </h1>
-        <p className="max-w-3xl text-[13px] text-ink-600">
-          8 audience-lens lenses creators identify with. Locked vocabulary — admin can edit copy / colors / icon but not add / remove rows.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Niches"
+        title="Creator Niches"
+        description="8 audience-lens lenses creators identify with. Locked vocabulary — admin can edit copy / colors / icon but not add / remove rows."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
           href="/niches"
           label="Total niches"
@@ -246,7 +240,7 @@ function Header({
           tone="amber"
         />
       </div>
-    </div>
+    </>
   )
 }
 

@@ -11,6 +11,7 @@ import {
 } from '@ilaunchify/auth'
 import { prisma, listAdminInvites } from '@ilaunchify/db'
 import { Shield } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { AdminRoleSelect } from './AdminRoleSelect'
 import { AddAdminForm } from './AddAdminForm'
 import { InviteAdminForm } from './InviteAdminForm'
@@ -46,19 +47,17 @@ export default async function AdminsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Users &amp; Roles · Admin team
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Admins
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Assign each teammate the least access they need. A role is a fixed bundle of
-          capabilities — Support agents work tickets but never touch money, settings, or the
-          admin team. Changes are audited. You can&apos;t change your own role.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Users & Roles · Admin team"
+        title="Admins"
+        description={
+          <>
+            Assign each teammate the least access they need. A role is a fixed bundle of
+            capabilities — Support agents work tickets but never touch money, settings, or the
+            admin team. Changes are audited. You can&apos;t change your own role.
+          </>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AddAdminForm roles={ROLE_OPTIONS} />

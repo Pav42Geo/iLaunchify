@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 import { CreatorRowActions } from './CreatorRowActions'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Creators — Admin' }
@@ -232,30 +233,24 @@ function Header({
   newThisMonthCount: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Users & Roles · Creators
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Creator roster
-          </h1>
-          <p className="mt-1 text-[13px] text-ink-600">
-            Every creator on the platform — tier, brand portfolio, lifetime spend, and account age in one place.
-          </p>
-        </div>
-        <Link
-          href="/tiers"
-          className="inline-flex h-9 items-center gap-2 rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <Crown className="h-4 w-4" />
-          Manage tiers
-        </Link>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Users & Roles · Creators"
+        title="Creator roster"
+        description="Every creator on the platform — tier, brand portfolio, lifetime spend, and account age in one place."
+        actions={
+          <Link
+            href="/tiers"
+            className="inline-flex h-9 items-center gap-2 rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Crown className="h-4 w-4" />
+            Manage tiers
+          </Link>
+        }
+      />
 
       {/* KPI strip */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/creators"
           label="Total"
@@ -292,7 +287,7 @@ function Header({
           tone="amber"
         />
       </div>
-    </div>
+    </>
   )
 }
 

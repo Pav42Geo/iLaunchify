@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { ArrowRight, FileText, Wallet, RotateCcw, Landmark } from 'lucide-react'
 import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Finance overview — Admin' }
@@ -39,27 +40,22 @@ export default async function FinanceOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Finance overview
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Lifetime reconciliation across charges, partner payouts, platform fees, and refunds.
-          Read-only — Stripe is the system of record.
-        </p>
+      <AdminPageHeader
+        eyebrow="Finance"
+        title="Finance overview"
+        description="Lifetime reconciliation across charges, partner payouts, platform fees, and refunds. Read-only — Stripe is the system of record."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Gross charged" value={fmtCents(grossCharged)} />
-          <Kpi label="Platform fees earned" value={fmtCents(platformFees)} tone="pink" />
-          <Kpi label="Paid to partners" value={fmtCents(paidToPartners)} />
-          <Kpi label="Refunded" value={fmtCents(refunded)} tone={refunded > 0 ? 'amber' : 'ink'} />
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <Kpi label="Net platform revenue (fees − refunds)" value={fmtCents(netRevenue)} tone={netRevenue >= 0 ? 'pink' : 'red'} />
-          <Kpi label="Pending payouts" value={fmtCents(pendingPayouts)} tone={pendingPayouts > 0 ? 'amber' : 'ink'} />
-          <Kpi label="Charged orders" value={String(orderCount)} />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Gross charged" value={fmtCents(grossCharged)} />
+        <Kpi label="Platform fees earned" value={fmtCents(platformFees)} tone="pink" />
+        <Kpi label="Paid to partners" value={fmtCents(paidToPartners)} />
+        <Kpi label="Refunded" value={fmtCents(refunded)} tone={refunded > 0 ? 'amber' : 'ink'} />
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Kpi label="Net platform revenue (fees − refunds)" value={fmtCents(netRevenue)} tone={netRevenue >= 0 ? 'pink' : 'red'} />
+        <Kpi label="Pending payouts" value={fmtCents(pendingPayouts)} tone={pendingPayouts > 0 ? 'amber' : 'ink'} />
+        <Kpi label="Charged orders" value={String(orderCount)} />
       </div>
 
       {/* Reconciliation note */}

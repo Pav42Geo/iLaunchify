@@ -9,6 +9,7 @@
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Refunds — Admin' }
@@ -91,22 +92,17 @@ export default async function FinanceRefundsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Refunds
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Read-only ledger of refund records. To approve or action a refund, use the Inbox
-          (Refund requests / Cancellation requests / Disputes). Execution runs through Stripe.
-        </p>
+      <AdminPageHeader
+        eyebrow="Finance"
+        title="Refunds"
+        description="Read-only ledger of refund records. To approve or action a refund, use the Inbox (Refund requests / Cancellation requests / Disputes). Execution runs through Stripe."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Refunded (recent)" value={fmtCents(refundedCents)} tone="pink" />
-          <Kpi label="Pending" value={fmtCents(pendingCents)} tone={pendingCents > 0 ? 'amber' : 'ink'} />
-          <Kpi label="Failed" value={String(failedCount)} tone={failedCount > 0 ? 'red' : 'ink'} />
-          <Kpi label="Records" value={String(refunds.length)} />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Refunded (recent)" value={fmtCents(refundedCents)} tone="pink" />
+        <Kpi label="Pending" value={fmtCents(pendingCents)} tone={pendingCents > 0 ? 'amber' : 'ink'} />
+        <Kpi label="Failed" value={String(failedCount)} tone={failedCount > 0 ? 'red' : 'ink'} />
+        <Kpi label="Records" value={String(refunds.length)} />
       </div>
 
       <div className="flex flex-wrap gap-1.5">

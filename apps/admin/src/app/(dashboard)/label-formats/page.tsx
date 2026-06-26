@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { LabelFormatRowActions } from './LabelFormatRowActions'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Label templates — Admin' }
@@ -257,22 +258,14 @@ function Header({
   totalPresets: number
 }) {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-8 py-10">
-      <div>
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Compliance · Label-format presets
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Facts &amp; label-format templates
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          The FDA/AAFCO label-format presets (Nutrition / Supplement / Drug / Pet
-          Facts) the Studio offers per product type — CFR citation, size + font
-          minimums, and column capabilities for each.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Compliance · Label-format presets"
+        title="Facts & label-format templates"
+        description="The FDA/AAFCO label-format presets (Nutrition / Supplement / Drug / Pet Facts) the Studio offers per product type — CFR citation, size + font minimums, and column capabilities for each."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/label-formats"
           label="Total presets"
@@ -309,7 +302,7 @@ function Header({
           tone="rose"
         />
       </div>
-    </div>
+    </>
   )
 }
 

@@ -2,9 +2,9 @@
 // (Pavel 2026-06-11). Reuses the existing form + actions from the original
 // /sample-settings route (which now redirects here).
 
-import { Beaker } from 'lucide-react'
 import { getSampleSettings } from '../../sample-settings/actions'
 import { SampleSettingsForm } from '../../sample-settings/SampleSettingsForm'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Sample Policy — Admin' }
@@ -13,14 +13,11 @@ export default async function OrderSampleSettingsPage() {
   const settings = await getSampleSettings()
   return (
     <div className="space-y-6">
-      <header className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700"><Beaker className="h-3 w-3" /> Order settings</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Sample Policy</h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Platform-wide constraints for pre-production samples. Changes apply to new sample orders and credit
-          calculations — no deploy needed.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Order settings"
+        title="Sample Policy"
+        description="Platform-wide constraints for pre-production samples. Changes apply to new sample orders and credit calculations — no deploy needed."
+      />
 
       <SampleSettingsForm initial={settings} />
     </div>

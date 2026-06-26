@@ -3,9 +3,10 @@
 // =============================================================================
 
 import Link from 'next/link'
-import { ArrowLeft, MessageSquareText } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { prisma, getCannedReplies } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { SavedRepliesManager, type CannedReplyRowVM } from './SavedRepliesManager'
 
 export const dynamic = 'force-dynamic'
@@ -40,19 +41,10 @@ export default async function SavedRepliesPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to tickets
       </Link>
 
-      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="bg-[var(--bg-hero)] px-5 py-4">
-          <h1 className="flex items-center gap-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            <MessageSquareText className="h-5 w-5 text-pink-600" aria-hidden="true" />
-            Saved replies
-          </h1>
-          <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">
-            Reusable canned responses agents insert when replying to a ticket. Scope a reply to a
-            category, or leave it global to show on every ticket. Inactive replies stay out of the
-            picker.
-          </p>
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Saved replies"
+        description="Reusable canned responses agents insert when replying to a ticket. Scope a reply to a category, or leave it global to show on every ticket. Inactive replies stay out of the picker."
+      />
 
       <SavedRepliesManager rows={rows} categories={categories} />
     </div>

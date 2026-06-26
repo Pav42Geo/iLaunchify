@@ -16,6 +16,7 @@
 
 import { MapPin, Globe, Users, Building2 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Regions — Admin' }
@@ -196,17 +197,11 @@ function Header({
   chips: Array<{ icon: typeof Globe; label: string }>
 }) {
   return (
-    <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="flex flex-wrap items-end justify-between gap-3 bg-[var(--bg-hero)] px-5 py-4">
-        <div className="min-w-0">
-          <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
-            Catalog
-          </p>
-          <h1 className="mt-0.5 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            {title}
-          </h1>
-          <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">{subtitle}</p>
-        </div>
+    <AdminPageHeader
+      eyebrow="Catalog"
+      title={title}
+      description={subtitle}
+      actions={
         <div className="flex flex-wrap gap-2">
           {chips.map((c, idx) => (
             <span
@@ -218,8 +213,8 @@ function Header({
             </span>
           ))}
         </div>
-      </div>
-    </header>
+      }
+    />
   )
 }
 

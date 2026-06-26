@@ -8,6 +8,7 @@ import { requireRole } from '@ilaunchify/auth'
 import { Button, KpiWidget } from '@ilaunchify/ui'
 import { Plus, ScrollText, CheckCircle2, AlertTriangle, FileText, ShieldAlert } from 'lucide-react'
 import { PhraseRowActions } from './PhraseRowActions'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Phrase library — Admin' }
@@ -94,24 +95,24 @@ export default async function MandatoryPhrasesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-            Compliance · Phrase library
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Phrase library</h1>
-          <p className="mt-1 max-w-2xl text-sm text-zinc-600">
-            Mandatory + recommended label phrases — allergen "Contains:", DSHEA disclaimer, warnings,
+      <AdminPageHeader
+        eyebrow="Compliance · Phrase library"
+        title="Phrase library"
+        description={
+          <>
+            Mandatory + recommended label phrases — allergen &quot;Contains:&quot;, DSHEA disclaimer, warnings,
             claims, sustainability — that the Studio phrase drawer + compliance scanner reference per
             labeling type.
-          </p>
-        </div>
-        <Button asChild className="bg-zinc-900 hover:bg-black">
-          <Link href="/mandatory-phrases/new">
-            <Plus className="mr-1.5 h-4 w-4" /> Add phrase
-          </Link>
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button asChild className="bg-zinc-900 hover:bg-black">
+            <Link href="/mandatory-phrases/new">
+              <Plus className="mr-1.5 h-4 w-4" /> Add phrase
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiWidget label="Total" value={total} icon={ScrollText} tone="ink" />

@@ -36,6 +36,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { InvitePartnerDialog } from './InvitePartnerDialog'
 import { PartnerRowActions } from './PartnerRowActions'
 import {
@@ -117,10 +118,14 @@ export default async function PartnersPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <Header
-        filters={data.filters}
-        kpis={data.kpis}
+      <AdminPageHeader
+        eyebrow="Manage · Partner CRM"
+        title="Partner CRM"
+        description="Manufacturers, printers, co-packers and warehouses on the platform — verification, activation, and ops in one place."
+        actions={<InvitePartnerDialog />}
       />
+
+      <PartnerKpiStrip kpis={data.kpis} />
 
       {data.kpis.atRisk > 0 && (
         <Link
@@ -163,11 +168,9 @@ export default async function PartnersPage({ searchParams }: PageProps) {
 // Header (cream band) + KPI strip
 // =============================================================================
 
-function Header({
-  filters,
+function PartnerKpiStrip({
   kpis,
 }: {
-  filters: ParsedFilters
   kpis: {
     total: number
     activeCount: number
@@ -176,28 +179,8 @@ function Header({
     atRisk: number
   }
 }) {
-  // Suppress unused-prop noise — kept on the signature for future extensions.
-  void filters
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Manage · Partner CRM
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Partner CRM
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Manufacturers, printers, co-packers and warehouses on the platform — verification, activation, and ops in one place.
-          </p>
-        </div>
-
-        <InvitePartnerDialog />
-      </div>
-
-      {/* KPI strip — 5 cards */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/partners"
           label="Total partners"
@@ -235,7 +218,6 @@ function Header({
           tone="sky"
           subline="ACTIVE · >60d no orders"
         />
-      </div>
     </div>
   )
 }

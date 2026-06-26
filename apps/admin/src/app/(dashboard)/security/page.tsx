@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { loadSecurityData, type SecurityData } from './security-data'
 import { SessionRowControls } from './SessionRowControls'
 
@@ -36,7 +37,28 @@ export default async function SecurityPage() {
 
   return (
     <div className="space-y-6">
-      <Header kpis={data.kpis} />
+      <AdminPageHeader
+        eyebrow="Settings · Security & Access"
+        title="Security & Access"
+        description={
+          <>
+            Live sessions, security-relevant activity, and rate-limit pressure.
+            Revoking a session signs that device out on its next request;
+            &ldquo;revoke all&rdquo; is the account-compromise response.
+          </>
+        }
+        actions={
+          <Link
+            href="/audit"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <History className="h-3 w-3" aria-hidden="true" />
+            Full audit log
+          </Link>
+        }
+      />
+
+      <SecurityKpiStrip kpis={data.kpis} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-6">
@@ -56,39 +78,14 @@ export default async function SecurityPage() {
 // Header — cream rounded-3xl band + KPI strip (locked v2 chrome)
 // =============================================================================
 
-function Header({ kpis }: { kpis: SecurityData['kpis'] }) {
+function SecurityKpiStrip({ kpis }: { kpis: SecurityData['kpis'] }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Settings · Security &amp; Access
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Security &amp; Access
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Live sessions, security-relevant activity, and rate-limit pressure.
-            Revoking a session signs that device out on its next request;
-            &ldquo;revoke all&rdquo; is the account-compromise response.
-          </p>
-        </div>
-        <Link
-          href="/audit"
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-        >
-          <History className="h-3 w-3" aria-hidden="true" />
-          Full audit log
-        </Link>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard label="Active sessions" value={kpis.activeSessions} icon={MonitorSmartphone} tone="ink" />
         <KpiCard label="Admins" value={kpis.adminCount} icon={Crown} tone="pink" subline={`${kpis.totalUsers.toLocaleString()} users total`} />
         <KpiCard label="Security events · 24h" value={kpis.securityEvents24h} icon={ShieldCheck} tone="amber" />
         <KpiCard label="Rate buckets live" value={kpis.activeRateBuckets} icon={Gauge} tone="sky" />
         <KpiCard label="Users" value={kpis.totalUsers} icon={History} tone="ink" />
-      </div>
     </div>
   )
 }

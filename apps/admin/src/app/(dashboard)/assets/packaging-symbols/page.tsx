@@ -8,6 +8,7 @@ import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { Boxes, CheckCircle2, AlertOctagon, Layers, Plus, Recycle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import type { PackagingSymbolFamily, AssetCatalogStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
@@ -57,35 +58,26 @@ export default async function PackagingSymbolsPage({ searchParams }: PageProps) 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Asset Management · Packaging symbols
-            </p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              Packaging symbols
-            </h1>
-            <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-              Resin codes, recycling marks, compostability + disposal symbols, with approved
-              artwork variants + applicability rules.
-            </p>
-          </div>
+      <AdminPageHeader
+        eyebrow="Asset Management · Packaging symbols"
+        title="Packaging symbols"
+        description="Resin codes, recycling marks, compostability + disposal symbols, with approved artwork variants + applicability rules."
+        actions={
           <Link
             href="/assets/packaging-symbols/new"
             className="inline-flex h-10 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[13px] font-semibold text-white hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
             <Plus className="h-3.5 w-3.5" /> Add symbol
           </Link>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Kpi label="Total symbols" value={total} icon={Boxes} active />
-          <Kpi label="Active" value={active} icon={CheckCircle2} tone="emerald" />
-          <Kpi label="Deprecated" value={deprecated} icon={AlertOctagon} tone="rose" />
-          <Kpi label="Families" value={familyCountMap.size} icon={Layers} tone="sky" />
-          <Kpi label="Artwork variants" value={totalVariants} icon={Recycle} tone="violet" />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Kpi label="Total symbols" value={total} icon={Boxes} active />
+        <Kpi label="Active" value={active} icon={CheckCircle2} tone="emerald" />
+        <Kpi label="Deprecated" value={deprecated} icon={AlertOctagon} tone="rose" />
+        <Kpi label="Families" value={familyCountMap.size} icon={Layers} tone="sky" />
+        <Kpi label="Artwork variants" value={totalVariants} icon={Recycle} tone="violet" />
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-4 space-y-3">

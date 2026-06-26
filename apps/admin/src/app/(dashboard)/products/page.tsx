@@ -40,6 +40,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ProductRowActions } from './ProductRowActions'
 import { marketingUrl } from '@/lib/marketing-url'
 import {
@@ -174,7 +175,13 @@ export default async function AdminProductsListPage({ searchParams }: PageProps)
 
   return (
     <div className="space-y-6">
-      <Header kpis={data.kpis} filters={data.filters} />
+      <AdminPageHeader
+        eyebrow="Products & Categories · Admin queue"
+        title="Product approvals"
+        description="Review submissions, monitor catalog health, and supervise marketplace placement."
+      />
+
+      <ProductKpiStrip kpis={data.kpis} filters={data.filters} />
 
       <FilterBar
         filters={data.filters}
@@ -211,7 +218,7 @@ export default async function AdminProductsListPage({ searchParams }: PageProps)
 // Header (cream band) + 5-card KPI strip
 // =============================================================================
 
-function Header({
+function ProductKpiStrip({
   kpis,
   filters,
 }: {
@@ -224,25 +231,8 @@ function Header({
   }
   filters: ParsedFilters
 }) {
-  void filters // reserved for future "active tab" KPI highlighting
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Products & Categories · Admin queue
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Product approvals
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Review submissions, monitor catalog health, and supervise marketplace placement.
-          </p>
-        </div>
-      </div>
-
-      {/* KPI strip — 5 cards */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href={buildProductsHref(
             { ...filters, page: 1 },
@@ -295,7 +285,6 @@ function Header({
           tone="rose"
           subline="Last 90 days"
         />
-      </div>
     </div>
   )
 }

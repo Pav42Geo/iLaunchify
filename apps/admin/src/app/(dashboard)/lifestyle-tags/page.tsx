@@ -12,7 +12,6 @@ import {
   Heart,
   Users,
   Flame,
-  Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
@@ -24,6 +23,7 @@ import {
   DeleteLifestyleTagButton,
   LifestyleTagActiveToggle,
 } from './LifestyleTagRowControls'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Lifestyle tags — Admin' }
@@ -231,20 +231,14 @@ function Header({
   trendCount: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Marketplace · Lifestyle Tags
-        </p>
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Lifestyle tags
-        </h1>
-        <p className="max-w-3xl text-[13px] text-ink-600">
-          Discovery + personalization vocabulary. 30 tags across Lifestyle / Audience / Trend groups. Admin-curated to prevent vocabulary drift.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Lifestyle Tags"
+        title="Lifestyle tags"
+        description="Discovery + personalization vocabulary. 30 tags across Lifestyle / Audience / Trend groups. Admin-curated to prevent vocabulary drift."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
           href="/lifestyle-tags"
           label="Total tags"
@@ -274,7 +268,7 @@ function Header({
           tone="amber"
         />
       </div>
-    </div>
+    </>
   )
 }
 

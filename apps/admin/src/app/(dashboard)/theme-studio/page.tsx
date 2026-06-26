@@ -26,6 +26,7 @@ import {
   type ThemeScope,
   type ThemeMode,
 } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ThemeEditor } from './ThemeEditor'
 import { ThemePresets } from './ThemePresets'
 import { ThemeHistory } from './ThemeHistory'
@@ -78,23 +79,25 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
-          Editing: {SCOPE_LABELS[scope]} · {mode}
-        </span>
-        <h1 className="mt-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Theme Studio</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-600">
-          The single source of design truth for the platform — colors, type, fonts, components, and chrome. Edit a draft,
-          preview it across the apps, and publish (or roll back). Every change is checked against WCAG&nbsp;2.1&nbsp;AA
-          contrast before it can go live.
-        </p>
-        <a
-          href="/theme-studio/logos"
-          className="mt-3 inline-flex items-center gap-1 rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-sm font-semibold text-ink-800 hover:bg-ink-50"
-        >
-          Manage logos →
-        </a>
-      </div>
+      <AdminPageHeader
+        eyebrow={`Editing: ${SCOPE_LABELS[scope]} · ${mode}`}
+        title="Theme Studio"
+        description={
+          <>
+            The single source of design truth for the platform — colors, type, fonts, components, and chrome. Edit a draft,
+            preview it across the apps, and publish (or roll back). Every change is checked against WCAG&nbsp;2.1&nbsp;AA
+            contrast before it can go live.
+          </>
+        }
+        actions={
+          <a
+            href="/theme-studio/logos"
+            className="inline-flex items-center gap-1 rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-sm font-semibold text-ink-800 hover:bg-ink-50"
+          >
+            Manage logos →
+          </a>
+        }
+      />
 
       <ThemeEditor
         tokens={EDITABLE_THEME_TOKENS}

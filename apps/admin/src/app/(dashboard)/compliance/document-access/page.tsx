@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { DocumentAccessReason } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Document access log — Admin' }
@@ -107,28 +108,19 @@ export default async function DocumentAccessLogPage({ searchParams }: PageProps)
 
   return (
     <div className="space-y-6">
-      {/* Hero + KPI strip */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Compliance &amp; Data Rights · GDPR accountability
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Document access log
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Every read of a private partner document (certificate PDFs) is logged here with a
-            required reason — the accountability record behind the cert-PDF viewer.
-          </p>
-        </div>
+      <AdminPageHeader
+        eyebrow="Compliance & Data Rights · GDPR accountability"
+        title="Document access log"
+        description="Every read of a private partner document (certificate PDFs) is logged here with a required reason — the accountability record behind the cert-PDF viewer."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Kpi label="Total reads" value={totalCount} icon={Eye} active />
-          <Kpi label="Last 7 days" value={last7Count} icon={Clock} tone="amber" />
-          <Kpi label="Last 30 days" value={last30Count} icon={CalendarDays} tone="sky" />
-          <Kpi label="Documents (shown)" value={distinctDocs} icon={FileText} tone="violet" />
-          <Kpi label="Viewers (shown)" value={distinctViewers} icon={Users} tone="emerald" />
-        </div>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Kpi label="Total reads" value={totalCount} icon={Eye} active />
+        <Kpi label="Last 7 days" value={last7Count} icon={Clock} tone="amber" />
+        <Kpi label="Last 30 days" value={last30Count} icon={CalendarDays} tone="sky" />
+        <Kpi label="Documents (shown)" value={distinctDocs} icon={FileText} tone="violet" />
+        <Kpi label="Viewers (shown)" value={distinctViewers} icon={Users} tone="emerald" />
       </div>
 
       {/* Reason chips */}

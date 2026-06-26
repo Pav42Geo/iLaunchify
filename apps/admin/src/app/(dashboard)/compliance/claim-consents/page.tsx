@@ -9,6 +9,7 @@ import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { BadgeCheck, ShieldCheck, Undo2, Users, Package } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Label-claim consents — Admin' }
@@ -51,28 +52,18 @@ export default async function ClaimConsentsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Compliance &amp; Data Rights · Liability record
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Label-claim consents
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Every certification badge a creator places on a label is recorded here — who consented,
-            which product + cert, the consent wording version, and the IP/device. Badges never
-            auto-stamp; this is the proof.
-          </p>
-        </div>
+      <AdminPageHeader
+        eyebrow="Compliance & Data Rights · Liability record"
+        title="Label-claim consents"
+        description="Every certification badge a creator places on a label is recorded here — who consented, which product + cert, the consent wording version, and the IP/device. Badges never auto-stamp; this is the proof."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Kpi label="Total consents" value={total} icon={BadgeCheck} active />
-          <Kpi label="Active" value={activeCount} icon={ShieldCheck} tone="emerald" />
-          <Kpi label="Revoked" value={revokedCount} icon={Undo2} tone="rose" />
-          <Kpi label="Creators (shown)" value={distinctCreators} icon={Users} tone="sky" />
-          <Kpi label="Products (shown)" value={distinctProducts} icon={Package} tone="violet" />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Kpi label="Total consents" value={total} icon={BadgeCheck} active />
+        <Kpi label="Active" value={activeCount} icon={ShieldCheck} tone="emerald" />
+        <Kpi label="Revoked" value={revokedCount} icon={Undo2} tone="rose" />
+        <Kpi label="Creators (shown)" value={distinctCreators} icon={Users} tone="sky" />
+        <Kpi label="Products (shown)" value={distinctProducts} icon={Package} tone="violet" />
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-4">

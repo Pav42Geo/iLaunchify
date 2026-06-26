@@ -7,6 +7,7 @@
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Invoices — Admin' }
@@ -98,22 +99,17 @@ export default async function FinanceInvoicesPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Invoices
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          What creators were billed for production — every order and its charge. Read-only;
-          receipts are hosted by Stripe.
-        </p>
+      <AdminPageHeader
+        eyebrow="Finance"
+        title="Invoices"
+        description="What creators were billed for production — every order and its charge. Read-only; receipts are hosted by Stripe."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Billed · paid (recent)" value={fmtCents(paidCents)} tone="pink" />
-          <Kpi label="Unpaid / cancelled" value={String(unpaidCount)} tone={unpaidCount > 0 ? 'amber' : 'ink'} />
-          <Kpi label="Refunded" value={fmtCents(refundedCents)} />
-          <Kpi label="Invoices" value={String(rows.length)} />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Billed · paid (recent)" value={fmtCents(paidCents)} tone="pink" />
+        <Kpi label="Unpaid / cancelled" value={String(unpaidCount)} tone={unpaidCount > 0 ? 'amber' : 'ink'} />
+        <Kpi label="Refunded" value={fmtCents(refundedCents)} />
+        <Kpi label="Invoices" value={String(rows.length)} />
       </div>
 
       <div className="flex flex-wrap gap-1.5">

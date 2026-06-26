@@ -6,6 +6,7 @@
 
 import { requireRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { MockupManager, type PackagingTypeGroup, type MockupRow } from './MockupManager'
 
 export const dynamic = 'force-dynamic'
@@ -75,18 +76,14 @@ export default async function ProductMockupsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <h1 className="font-display text-[26px] font-bold tracking-[-0.02em] text-ink-900">Packaging mockups (2D &amp; 3D)</h1>
-        <p className="mt-1 max-w-[64ch] text-[13.5px] text-ink-600">
-          White-label photo-mockups a creator designs on. Upload a clean product photo for a
-          packaging type and drag the print area; it lights up for every product on that container.
-          (2D photo-mask, manufacturer-supplied — 3D via Pacdora is a later phase.)
-        </p>
-        <div className="mt-3 flex gap-6 text-[12px] text-ink-500">
-          <span><strong className="text-ink-900">{packagingTypes.length}</strong> packaging types</span>
-          <span><strong className="text-ink-900">{withMockups}</strong> with mockups</span>
-          <span><strong className="text-ink-900">{totalMockups}</strong> total mockups</span>
-        </div>
+      <AdminPageHeader
+        title="Packaging mockups (2D & 3D)"
+        description="White-label photo-mockups a creator designs on. Upload a clean product photo for a packaging type and drag the print area; it lights up for every product on that container. (2D photo-mask, manufacturer-supplied — 3D via Pacdora is a later phase.)"
+      />
+      <div className="flex gap-6 text-[12px] text-ink-500">
+        <span><strong className="text-ink-900">{packagingTypes.length}</strong> packaging types</span>
+        <span><strong className="text-ink-900">{withMockups}</strong> with mockups</span>
+        <span><strong className="text-ink-900">{totalMockups}</strong> total mockups</span>
       </div>
 
       {groups.length === 0 ? (

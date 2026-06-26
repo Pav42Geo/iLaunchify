@@ -17,6 +17,7 @@ import {
   Building2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RequestReviewActions } from './RequestReviewActions'
 
 export const dynamic = 'force-dynamic'
@@ -71,27 +72,18 @@ export default async function CertificateRequestsPage({ searchParams }: PageProp
 
   return (
     <div className="space-y-6">
-      {/* Hero + KPI strip */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Inbox · Certificate library
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Certificate type requests
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Partners can request a certification that isn&apos;t in the library yet. Approve
-            to promote it into a CertificateType, or reject with a reason.
-          </p>
-        </div>
+      <AdminPageHeader
+        eyebrow="Inbox · Certificate library"
+        title="Certificate type requests"
+        description="Partners can request a certification that isn't in the library yet. Approve to promote it into a CertificateType, or reject with a reason."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Total requests" value={total} icon={ScrollText} active />
-          <Kpi label="Pending" value={pending} icon={Clock} tone="amber" />
-          <Kpi label="Approved" value={approved} icon={CheckCircle2} tone="emerald" />
-          <Kpi label="Rejected" value={rejected} icon={XCircle} tone="rose" />
-        </div>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Total requests" value={total} icon={ScrollText} active />
+        <Kpi label="Pending" value={pending} icon={Clock} tone="amber" />
+        <Kpi label="Approved" value={approved} icon={CheckCircle2} tone="emerald" />
+        <Kpi label="Rejected" value={rejected} icon={XCircle} tone="rose" />
       </div>
 
       {/* Status chips */}

@@ -1,6 +1,7 @@
 // Admin — bulk JSON import for the asset library (C7). Packaging symbols,
 // labeling symbols, and certificate variants.
 
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ImportPanel } from './ImportPanel'
 
 export const dynamic = 'force-dynamic'
@@ -9,18 +10,11 @@ export const metadata = { title: 'Bulk import — Asset library — Admin' }
 export default function AssetImportPage() {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Asset Management · Bulk import
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Bulk import
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Seed or update the asset catalogs from JSON. Idempotent — re-running the same payload
-          updates existing rows and appends only new variants.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Asset Management · Bulk import"
+        title="Bulk import"
+        description="Seed or update the asset catalogs from JSON. Idempotent — re-running the same payload updates existing rows and appends only new variants."
+      />
 
       <ImportPanel />
     </div>

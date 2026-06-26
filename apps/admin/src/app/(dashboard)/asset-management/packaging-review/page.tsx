@@ -3,6 +3,7 @@
 // ACTIVE PackagingType (Library catalog) + assigns a category, or rejects.
 
 import { requireRole } from '@ilaunchify/auth'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { loadPackagingReviewQueue } from './actions'
 import { ReviewQueue } from './ReviewQueue'
 
@@ -15,13 +16,15 @@ export default async function PackagingReviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Packaging review</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-600">
-          Partner-submitted custom packaging awaiting approval into the Library catalog. Approve to create an ACTIVE
-          packaging type (then add 3D/2D mockups in <b>Product Mockups</b>), or reject with a note.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Packaging review"
+        description={
+          <>
+            Partner-submitted custom packaging awaiting approval into the Library catalog. Approve to create an ACTIVE
+            packaging type (then add 3D/2D mockups in <b>Product Mockups</b>), or reject with a note.
+          </>
+        }
+      />
 
       <ReviewQueue initial={queue} />
     </div>

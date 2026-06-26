@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Payouts & transfers — Admin' }
@@ -104,24 +105,17 @@ export default async function FinancePayoutsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Finance
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Payouts &amp; transfers
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Platform-wide partner payout ledger. Read-only — money moves through Stripe Connect;
-          use the Stripe dashboard for any adjustment.
-        </p>
+      <AdminPageHeader
+        eyebrow="Finance"
+        title="Payouts & transfers"
+        description="Platform-wide partner payout ledger. Read-only — money moves through Stripe Connect; use the Stripe dashboard for any adjustment."
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Paid out (recent)" value={fmtCents(paidCents)} />
-          <Kpi label="Pending payout" value={fmtCents(pendingCents)} tone={pendingCents > 0 ? 'amber' : 'ink'} />
-          <Kpi label="Failed transfers" value={String(failedCount)} tone={failedCount > 0 ? 'red' : 'ink'} />
-          <Kpi label="Platform fees (lifetime)" value={fmtCents(platformFeesCents)} tone="pink" />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Paid out (recent)" value={fmtCents(paidCents)} />
+        <Kpi label="Pending payout" value={fmtCents(pendingCents)} tone={pendingCents > 0 ? 'amber' : 'ink'} />
+        <Kpi label="Failed transfers" value={String(failedCount)} tone={failedCount > 0 ? 'red' : 'ink'} />
+        <Kpi label="Platform fees (lifetime)" value={fmtCents(platformFeesCents)} tone="pink" />
       </div>
 
       {/* Status filter chips */}

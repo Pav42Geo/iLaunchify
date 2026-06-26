@@ -7,6 +7,7 @@
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Tax forms (1099) — Admin' }
@@ -73,35 +74,35 @@ export default async function FinanceTaxFormsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Finance</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Tax forms (1099)
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Per-partner earnings and 1099 outlook for {year}. Forms are issued and filed by Stripe
-          Connect Tax Forms — enable that in Stripe to generate the actual documents.
-        </p>
+      <AdminPageHeader
+        eyebrow="Finance"
+        title="Tax forms (1099)"
+        description={
+          <>
+            Per-partner earnings and 1099 outlook for {year}. Forms are issued and filed by Stripe
+            Connect Tax Forms — enable that in Stripe to generate the actual documents.
+          </>
+        }
+      />
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {years.map((y) => (
-            <Link
-              key={y}
-              href={`/finance/tax-forms?year=${y}`}
-              className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
-                y === year ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
-              }`}
-            >
-              {y}
-            </Link>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {years.map((y) => (
+          <Link
+            key={y}
+            href={`/finance/tax-forms?year=${y}`}
+            className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold transition-colors ${
+              y === year ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
+            }`}
+          >
+            {y}
+          </Link>
+        ))}
+      </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <Kpi label={`Total paid out · ${year}`} value={fmtCents(totalGross)} tone="pink" />
-          <Kpi label="Partners paid" value={String(rows.length)} />
-          <Kpi label="Likely 1099 recipients" value={String(qualifying)} tone={qualifying > 0 ? 'amber' : 'ink'} />
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Kpi label={`Total paid out · ${year}`} value={fmtCents(totalGross)} tone="pink" />
+        <Kpi label="Partners paid" value={String(rows.length)} />
+        <Kpi label="Likely 1099 recipients" value={String(qualifying)} tone={qualifying > 0 ? 'amber' : 'ink'} />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

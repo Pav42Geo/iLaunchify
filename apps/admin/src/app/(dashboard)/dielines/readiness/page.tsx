@@ -11,6 +11,7 @@
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, AlertTriangle, SquareDashedBottom } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Product die-line readiness — Admin' }
@@ -81,18 +82,19 @@ export default async function ProductReadinessPage() {
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Packaging · Product readiness</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Product die-line readiness
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Each product carries a set of component die-lines. A product is packaging-ready when every component&rsquo;s
-          die-line is verified &amp; active.
-        </p>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
-          {readyCount} of {rows.length} products ready
-        </div>
+      <AdminPageHeader
+        eyebrow="Packaging · Product readiness"
+        title="Product die-line readiness"
+        description={
+          <>
+            Each product carries a set of component die-lines. A product is packaging-ready when every component&rsquo;s
+            die-line is verified &amp; active.
+          </>
+        }
+      />
+
+      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+        {readyCount} of {rows.length} products ready
       </div>
 
       {rows.length === 0 ? (

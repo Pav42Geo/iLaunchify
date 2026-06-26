@@ -6,6 +6,7 @@ import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RefundRequestActions } from './RefundRequestActions'
 
 export const dynamic = 'force-dynamic'
@@ -49,18 +50,16 @@ export default async function RefundRequestsPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Support tickets
       </Link>
 
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Support · Refund requests
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Refund requests
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          {pendingCount} pending · agents propose, you approve or reject. Approving runs the
-          refund through the gated executor.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Support · Refund requests"
+        title="Refund requests"
+        description={
+          <>
+            {pendingCount} pending · agents propose, you approve or reject. Approving runs the
+            refund through the gated executor.
+          </>
+        }
+      />
 
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         {rows.length === 0 ? (

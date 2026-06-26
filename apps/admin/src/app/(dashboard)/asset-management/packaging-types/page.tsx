@@ -3,8 +3,8 @@
 // subscription / pick-N) shape the recipe + label downstream. Admins tune them
 // here. v2 admin surface: cream hero + KPI strip + table.
 
-import { Package } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { PackingTypeRowActions, type ProfileRow } from './PackingTypeRowActions'
 import { AddPackingTypeButton } from './AddPackingTypeButton'
 
@@ -56,20 +56,17 @@ export default async function PackingTypesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Cream hero */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">
-          Asset management · Taxonomy
-        </p>
-        <h1 className="mt-1 flex items-center gap-2 font-display text-[24px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          <Package className="h-6 w-6 text-ink-500" aria-hidden="true" /> Packing Types
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          The 15-group product packing taxonomy. Each row&apos;s structural flags drive the partner
-          turnkey builder — the recipe shape (one recipe vs base + flavor presets), the Nutrition
-          Facts column count, and pack composition. Toggle active to control what partners can pick.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Asset management · Taxonomy"
+        title="Packing Types"
+        description={
+          <>
+            The 15-group product packing taxonomy. Each row&apos;s structural flags drive the partner
+            turnkey builder — the recipe shape (one recipe vs base + flavor presets), the Nutrition
+            Facts column count, and pack composition. Toggle active to control what partners can pick.
+          </>
+        }
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

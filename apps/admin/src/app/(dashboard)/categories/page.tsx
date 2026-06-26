@@ -36,6 +36,7 @@ import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { CategoryFormDialog } from './CategoryFormDialog'
 import {
   SubcategoryFormDialog,
@@ -213,20 +214,14 @@ function Header({
   inactiveSubcategoryCount: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Marketplace · Taxonomy
-        </p>
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Category management
-        </h1>
-        <p className="max-w-3xl text-[13px] text-ink-600">
-          The marketplace taxonomy creators browse. Manufacturers pick one subcategory when submitting a product — keep it clean.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Taxonomy"
+        title="Category management"
+        description="The marketplace taxonomy creators browse. Manufacturers pick one subcategory when submitting a product — keep it clean."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard
           href="/categories?tab=management"
           label="Main categories"
@@ -256,7 +251,7 @@ function Header({
           tone="rose"
         />
       </div>
-    </div>
+    </>
   )
 }
 

@@ -1,5 +1,6 @@
 import { requireCapability } from '@ilaunchify/auth'
 import { getDomainSettings, DOMAIN_KEYS, type DomainKey } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { DomainTogglesClient, type DomainRow } from './DomainTogglesClient'
 
 export const dynamic = 'force-dynamic'
@@ -29,14 +30,10 @@ export default async function ProductDomainsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Product Domains</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-600">
-          Turn each product domain on or off for the partner new-product builder. Disabled domains
-          don’t appear in the domain picker, and the change is enforced server-side. OTC (Drug Facts)
-          ships disabled until its builder flow is live.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Product Domains"
+        description="Turn each product domain on or off for the partner new-product builder. Disabled domains don’t appear in the domain picker, and the change is enforced server-side. OTC (Drug Facts) ships disabled until its builder flow is live."
+      />
 
       <DomainTogglesClient rows={rows} />
     </div>

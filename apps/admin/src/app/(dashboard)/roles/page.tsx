@@ -10,6 +10,7 @@ import {
   type AdminRole,
 } from '@ilaunchify/auth'
 import { getRoleCapabilityMatrix } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RoleMatrix } from './RoleMatrix'
 
 export const dynamic = 'force-dynamic'
@@ -28,22 +29,20 @@ export default async function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Users &amp; Roles · Permissions
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Roles &amp; Permissions
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Grant each role exactly the capabilities it needs. Roles start with nothing — use
-          <span className="font-medium text-ink-800"> Apply preset</span> to load a role&apos;s
-          suggested bundle, then fine-tune. Suggested-but-not-granted capabilities show a hollow
-          dot. Changes take effect immediately and are audited.
-          <span className="font-medium text-ink-800"> Super admin always holds every
-          capability</span> and can&apos;t be edited here.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Users & Roles · Permissions"
+        title="Roles & Permissions"
+        description={
+          <>
+            Grant each role exactly the capabilities it needs. Roles start with nothing — use
+            <span className="font-medium text-ink-800"> Apply preset</span> to load a role&apos;s
+            suggested bundle, then fine-tune. Suggested-but-not-granted capabilities show a hollow
+            dot. Changes take effect immediately and are audited.
+            <span className="font-medium text-ink-800"> Super admin always holds every
+            capability</span> and can&apos;t be edited here.
+          </>
+        }
+      />
 
       <RoleMatrix
         capabilities={[...ALL_CAPABILITIES]}

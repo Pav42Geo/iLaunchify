@@ -33,6 +33,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ContainerCategory, DecorationMethod } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { CompatRowActions } from './CompatRowActions'
 import {
   buildCompatHref,
@@ -132,33 +133,24 @@ export default async function DecorationCompatibilityPage({ searchParams }: Page
 
 function Header({ kpis }: { kpis: CompatKpis }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Marketplace · Packaging
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Decoration compatibility
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            The admin-curated matrix of which decoration methods are valid on
-            each container category. It gates which decorations partners can
-            offer per container — only active combos surface in the partner
-            packaging editor.
-          </p>
-        </div>
-        <Link
-          href="/decoration-compatibility/new"
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add combo
-        </Link>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Packaging"
+        title="Decoration compatibility"
+        description="The admin-curated matrix of which decoration methods are valid on each container category. It gates which decorations partners can offer per container — only active combos surface in the partner packaging editor."
+        actions={
+          <Link
+            href="/decoration-compatibility/new"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add combo
+          </Link>
+        }
+      />
 
       {/* KPI strip — 5 cards */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/decoration-compatibility"
           label="Total combos"
@@ -196,7 +188,7 @@ function Header({ kpis }: { kpis: CompatKpis }) {
           subline={`of ${CONTAINER_CATEGORY_ORDER.length}`}
         />
       </div>
-    </div>
+    </>
   )
 }
 

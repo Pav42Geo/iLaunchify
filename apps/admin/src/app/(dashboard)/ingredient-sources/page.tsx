@@ -1,6 +1,7 @@
 import { Database, ToggleRight, Radio, HardDrive, Workflow } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { getIngredientSourceConfigs } from './actions'
 import { IngredientSourcesTable } from './IngredientSourcesTable'
 
@@ -17,29 +18,25 @@ export default async function IngredientSourcesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cream hero band + KPI strip (v2 admin pattern — matches /tiers) */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div>
-          <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            <Database className="h-3 w-3" /> Integrations · Ingredient data
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Ingredient Data Sources
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
+      <AdminPageHeader
+        eyebrow="Integrations · Ingredient data"
+        title="Ingredient Data Sources"
+        description={
+          <>
             Manage how each source is consulted — <b>Mirror</b> (DB copy), <b>Live</b> (external API), or{' '}
             <b>Hybrid</b> (live + snapshot) — with auto-failover to the mirrored copy if a live API is down. The
             ingredient search adapter reads these per product domain.
-          </p>
-        </div>
+          </>
+        }
+      />
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <KpiCard label="Sources" value={total} icon={Database} />
-          <KpiCard label="Enabled" value={enabled} icon={ToggleRight} tone="emerald" />
-          <KpiCard label="Live / Hybrid" value={liveOrHybrid} icon={Radio} tone="sky" />
-          <KpiCard label="With failover" value={failover} icon={Workflow} tone="amber" />
-          <KpiCard label="Mirrored rows" value={mirroredRows} icon={HardDrive} />
-        </div>
+      {/* KPI strip (v2 admin pattern — matches /tiers) */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <KpiCard label="Sources" value={total} icon={Database} />
+        <KpiCard label="Enabled" value={enabled} icon={ToggleRight} tone="emerald" />
+        <KpiCard label="Live / Hybrid" value={liveOrHybrid} icon={Radio} tone="sky" />
+        <KpiCard label="With failover" value={failover} icon={Workflow} tone="amber" />
+        <KpiCard label="Mirrored rows" value={mirroredRows} icon={HardDrive} />
       </div>
 
       <IngredientSourcesTable sources={sources} />

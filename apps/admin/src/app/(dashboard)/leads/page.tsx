@@ -26,7 +26,6 @@ import {
   AlertTriangle,
   ArrowUpDown,
   Search,
-  Building2,
   Globe,
   Phone,
   MapPin,
@@ -39,6 +38,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ServiceType } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { LeadRowActions } from './LeadRowActions'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Leads — Admin' }
@@ -257,24 +257,20 @@ function Header({
     oldestStuckDays != null && oldestStuckDays >= STUCK_LEAD_DAYS ? 'rose' : 'emerald'
 
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Inbox · Leads
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Lead inbox
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
+    <>
+      <AdminPageHeader
+        eyebrow="Inbox · Leads"
+        title="Lead inbox"
+        description={
+          <>
             Partners who registered but haven&apos;t started the 5-layer onboarding yet — qualify
             or invite to advance them.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI strip */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/leads"
           label="Total open"
@@ -312,7 +308,7 @@ function Header({
           tone="emerald"
         />
       </div>
-    </div>
+    </>
   )
 }
 

@@ -6,6 +6,7 @@
 
 import { requireCapability } from '@ilaunchify/auth'
 import { getIntegrationMetaMap } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ExternalLink, ShieldCheck, KeyRound, RotateCw } from 'lucide-react'
 import {
   resolveIntegrationStatuses,
@@ -76,19 +77,11 @@ export default async function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Developer &amp; API
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          API keys &amp; integration status
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Every external service the platform talks to, and whether it&apos;s configured in this
-          environment. Rotate a key in the vendor&apos;s dashboard, then update the matching env
-          var on your host.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Developer & API"
+        title="API keys & integration status"
+        description="Every external service the platform talks to, and whether it's configured in this environment. Rotate a key in the vendor's dashboard, then update the matching env var on your host."
+      />
 
       {/* Security banner — the whole point of the design */}
       <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">

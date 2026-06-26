@@ -27,6 +27,7 @@ import { listAuditLogs, AUDIT_ENTITY_TYPES } from '@ilaunchify/audit'
 import { ADMIN_ROLE_LABEL, ADMIN_ROLES, type AdminRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Audit log — Admin' }
@@ -221,23 +222,15 @@ function Header({
   const since7d = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
 
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div>
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Settings · Audit Log
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Audit log
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Every privileged action on the platform — partner activation, product
-          approvals, tier changes, manual overrides. Filter by entity, action,
-          actor, or window.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Settings · Audit Log"
+        title="Audit log"
+        description="Every privileged action on the platform — partner activation, product approvals, tier changes, manual overrides. Filter by entity, action, actor, or window."
+      />
 
       {/* KPI strip */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/audit"
           label="Total events"
@@ -275,7 +268,7 @@ function Header({
           subline="Last 7 days"
         />
       </div>
-    </div>
+    </>
   )
 }
 

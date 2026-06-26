@@ -9,6 +9,7 @@ import { requireCapability } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { RotateCcw } from 'lucide-react'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { CancellationActions } from './CancellationActions'
 
 export const dynamic = 'force-dynamic'
@@ -83,23 +84,21 @@ export default async function CancellationsQueuePage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          <RotateCcw className="h-3 w-3" /> Inbox · Cancellation requests
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Cancellation requests
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Partners request these mid-production when they can&apos;t complete an order. Approving
-          cancels the order, may strike the partner, and runs any refund. Denying means the partner
-          must fulfill. Policy lives in{' '}
-          <Link href="/order-settings/cancellations" className="text-pink-700 hover:underline">
-            Order settings
-          </Link>
-          .
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Inbox · Cancellation requests"
+        title="Cancellation requests"
+        description={
+          <>
+            Partners request these mid-production when they can&apos;t complete an order. Approving
+            cancels the order, may strike the partner, and runs any refund. Denying means the partner
+            must fulfill. Policy lives in{' '}
+            <Link href="/order-settings/cancellations" className="text-pink-700 hover:underline">
+              Order settings
+            </Link>
+            .
+          </>
+        }
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

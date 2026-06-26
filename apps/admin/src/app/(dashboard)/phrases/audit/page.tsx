@@ -36,6 +36,7 @@ import {
   type PhrasesAuditDir,
   type PhrasesAuditRow,
 } from './phrases-audit-data'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Phrase audit — Admin' }
@@ -239,29 +240,20 @@ function Header({
   currentParams: Record<string, string | undefined>
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Marketplace · Label-phrase assignment audit
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Phrase assignment audit
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            How mandatory + recommended label phrases are being assigned across
-            the marketplace — auto-suggest hits, manufacturer edits, admin
-            overrides. Filter by source, phrase, window, and product to tune the
-            rule engine.
-          </p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Live · {RANGE_LABEL[range]}
-        </span>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Label-phrase assignment audit"
+        title="Phrase assignment audit"
+        description="How mandatory + recommended label phrases are being assigned across the marketplace — auto-suggest hits, manufacturer edits, admin overrides. Filter by source, phrase, window, and product to tune the rule engine."
+        actions={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Live · {RANGE_LABEL[range]}
+          </span>
+        }
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href={buildHref(currentParams, { source: undefined })}
           label="Rows in range"
@@ -301,7 +293,7 @@ function Header({
           tone="amber"
         />
       </div>
-    </div>
+    </>
   )
 }
 

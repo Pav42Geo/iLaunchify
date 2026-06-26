@@ -11,7 +11,6 @@
 import Link from 'next/link'
 import {
   ArrowLeft,
-  LineChart,
   Inbox,
   Flame,
   Timer,
@@ -23,6 +22,7 @@ import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Support analytics — Admin' }
@@ -131,25 +131,20 @@ export default async function SupportAnalyticsPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to tickets
       </Link>
 
-      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="bg-[var(--bg-hero)] px-5 py-4">
-          <h1 className="flex items-center gap-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            <LineChart className="h-5 w-5 text-pink-600" aria-hidden="true" />
-            Support analytics
-          </h1>
-          <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">
-            How the support queue is performing — response speed, SLA adherence, and where volume
-            concentrates. Time metrics use the most recent 1,000 tickets.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-5">
+      <AdminPageHeader
+        title="Support analytics"
+        description="How the support queue is performing — response speed, SLA adherence, and where volume concentrates. Time metrics use the most recent 1,000 tickets."
+      />
+
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="grid grid-cols-2 divide-x divide-ink-100 sm:grid-cols-5">
           <Kpi icon={Inbox} label="Open" value={openCount.toLocaleString()} tone="pink" />
           <Kpi icon={Flame} label="SLA breach rate" value={`${breachRate.toFixed(0)}%`} tone="danger" sub={`${breachedCount} total`} />
           <Kpi icon={Timer} label="Avg first response" value={fmtDuration(avgResponse)} tone="info" />
           <Kpi icon={Clock} label="Median resolution" value={fmtDuration(medianResolve)} tone="ink" />
           <Kpi icon={CheckCircle2} label="Resolved · 7d" value={resolved7d.toLocaleString()} tone="success" />
         </div>
-      </header>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel title="By status">

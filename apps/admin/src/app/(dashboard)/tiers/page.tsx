@@ -18,7 +18,6 @@
 
 import Link from 'next/link'
 import {
-  Crown,
   Users,
   Building2,
   Sliders,
@@ -31,6 +30,7 @@ import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { CreatorsTab } from './CreatorsTab'
 import { PartnersTab } from './PartnersTab'
 import { PlansTab } from './PlansTab'
@@ -114,7 +114,21 @@ export default async function TiersPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <Header
+      <AdminPageHeader
+        eyebrow="Settings · Tiers & Plans"
+        title="Tier & plan management"
+        description="Manage creator and partner subscription tiers, per-account fee overrides, and the platform-wide feature matrix."
+        actions={
+          <Link
+            href="/tiers?tab=plans"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-ink-900 px-5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            <Sliders className="h-4 w-4" /> Edit plans
+          </Link>
+        }
+      />
+
+      <TiersKpiStrip
         activeTab={activeTab}
         totalAccounts={totalAccounts}
         paidCreatorCount={paidCreatorCount}
@@ -147,7 +161,7 @@ export default async function TiersPage({ searchParams }: PageProps) {
 // Header — cream band + 5-card KPI strip
 // -----------------------------------------------------------------------------
 
-function Header({
+function TiersKpiStrip({
   activeTab,
   totalAccounts,
   paidCreatorCount,
@@ -167,30 +181,7 @@ function Header({
   partnerCount: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            <Crown className="h-3 w-3" /> Settings · Tiers &amp; Plans
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Tier &amp; plan management
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Manage creator and partner subscription tiers, per-account fee overrides,
-            and the platform-wide feature matrix.
-          </p>
-        </div>
-
-        <Link
-          href="/tiers?tab=plans"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-ink-900 px-5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <Sliders className="h-4 w-4" /> Edit plans
-        </Link>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/tiers"
           label="Total accounts"
@@ -232,7 +223,6 @@ function Header({
           subline="Creator + partner"
           active={activeTab === 'plans'}
         />
-      </div>
     </div>
   )
 }

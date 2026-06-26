@@ -16,13 +16,13 @@ import {
   CheckCircle2,
   Lock,
   Sparkles,
-  Layers,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import type { NicheRuleConditionKind } from '@ilaunchify/marketplace'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RuleFormDialog, type OptionEntry } from './RuleFormDialog'
 import { DeleteRuleButton, RuleActiveToggle } from './RuleRowControls'
 
@@ -331,26 +331,20 @@ function Header({
   conditionKindCounts: Record<NicheRuleConditionKind, number>
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-2">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Marketplace · Niches · Auto-suggest rules
-        </p>
-        <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Niche auto-assignment rules
-        </h1>
-        <p className="max-w-3xl text-[13px] text-ink-600">
-          These rules run at product submission to pre-suggest niche assignments. Manufacturer can confirm or edit; admin can override during review.
-        </p>
-      </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Marketplace · Niches · Auto-suggest rules"
+        title="Niche auto-assignment rules"
+        description="These rules run at product submission to pre-suggest niche assignments. Manufacturer can confirm or edit; admin can override during review."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard label="Total rules" value={total} icon={Workflow} tone="sky" />
         <KpiCard label="Active" value={active} icon={CheckCircle2} tone="emerald" />
         <KpiCard label="Locked" value={locked} icon={Lock} tone="amber" />
         <ConditionMixCard counts={conditionKindCounts} />
       </div>
-    </div>
+    </>
   )
 }
 
