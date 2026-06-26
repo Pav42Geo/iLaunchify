@@ -3,6 +3,7 @@ import { Button, HeroBanner } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { Reveal } from '@/components/Reveal'
+import { Parallax } from '@/components/Parallax'
 
 /**
  * /influencers — iLaunchify Influencer Program landing.
@@ -43,7 +44,11 @@ export default function InfluencersPage() {
           </>
         }
         deck="Your audience is exploring CPG, design, or starting a brand of their own. iLaunchify is the platform that turns their idea into a shipped product. Refer them and earn 30% on every subscription — tracked transparently on Impact."
-        graphic={<InfluencerGraphic />}
+        graphic={
+          <Parallax speed={0.1}>
+            <InfluencerGraphic />
+          </Parallax>
+        }
       >
         <Button variant="neon" size="lg" asChild>
           <a href={IMPACT_APPLY_URL} target="_blank" rel="noopener noreferrer">
@@ -54,17 +59,17 @@ export default function InfluencersPage() {
           variant="outline"
           size="lg"
           asChild
-          className="border-ink-700 text-ink-200 hover:bg-ink-800 hover:text-white hover:border-ink-600"
+          className="border-2 border-ink-600 text-white hover:bg-white hover:text-ink-900 hover:border-white"
         >
           <a href="#faq">Read the FAQ</a>
         </Button>
       </HeroBanner>
 
       {/* LIGHT — Quick stats band */}
-      <Reveal><Stats /></Reveal>
+      <Stats />
 
       {/* DARK ISLAND — How it works */}
-      <Reveal><HowItWorks /></Reveal>
+      <HowItWorks />
 
       {/* LIGHT — Why partner */}
       <Reveal><WhyPartner /></Reveal>
@@ -256,10 +261,12 @@ function Stats() {
                   : '')
               }
             >
-              <div className="font-display text-5xl font-extrabold leading-none tracking-[-0.03em] text-pink-500 mb-1.5">
-                {s.value}
-              </div>
-              <div className="text-sm text-ink-600 leading-[1.5]">{s.label}</div>
+              <Reveal delay={i * 90}>
+                <div className="font-display text-5xl font-extrabold leading-none tracking-[-0.03em] text-pink-500 mb-1.5">
+                  {s.value}
+                </div>
+                <div className="text-sm text-ink-600 leading-[1.5]">{s.label}</div>
+              </Reveal>
             </div>
           ))}
         </div>
@@ -274,38 +281,41 @@ function HowItWorks() {
   return (
     <section data-surface="dark" className="bg-ink-900 text-white">
       <div className="max-w-[1400px] mx-auto px-8 py-24">
-        <header className="mb-14 max-w-[60ch]">
-          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-white mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
-            From application to first <em>payout.</em>
-          </h2>
-          <p className="text-ink-400 text-[17px]">
-            Three steps. Run on Impact's network so tracking, payouts, and tax handling
-            are professional from day one.
-          </p>
-        </header>
+        <Reveal>
+          <header className="mb-14 max-w-[60ch]">
+            <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-white mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
+              From application to first <em>payout.</em>
+            </h2>
+            <p className="text-ink-400 text-[17px]">
+              Three steps. Run on Impact's network so tracking, payouts, and tax handling
+              are professional from day one.
+            </p>
+          </header>
+        </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {STEPS.map((s) => (
-            <div
-              key={s.title}
-              className="rounded-lg border border-ink-700 bg-ink-800 p-8"
-            >
-              <div className="font-display text-[72px] font-extrabold text-neon-500 leading-[0.85] tracking-[-0.04em] mb-4">
-                {s.num}
+          {STEPS.map((s, i) => (
+            <Reveal key={s.title} delay={i * 110} className="h-full">
+              <div className="h-full rounded-lg border border-ink-700 bg-ink-800 p-8">
+                <div className="font-display text-[72px] font-extrabold text-neon-500 leading-[0.85] tracking-[-0.04em] mb-4">
+                  {s.num}
+                </div>
+                <div className="text-xl font-bold text-white mb-2.5">{s.title}</div>
+                <div className="text-sm text-ink-400 leading-[1.6] max-w-[38ch]">
+                  {s.text}
+                </div>
               </div>
-              <div className="text-xl font-bold text-white mb-2.5">{s.title}</div>
-              <div className="text-sm text-ink-400 leading-[1.6] max-w-[38ch]">
-                {s.text}
-              </div>
-            </div>
+            </Reveal>
           ))}
         </div>
-        <div className="mt-12">
-          <Button variant="neon" size="lg" asChild>
-            <a href={IMPACT_APPLY_URL} target="_blank" rel="noopener noreferrer">
-              Apply via Impact →
-            </a>
-          </Button>
-        </div>
+        <Reveal delay={120}>
+          <div className="mt-12">
+            <Button variant="neon" size="lg" asChild>
+              <a href={IMPACT_APPLY_URL} target="_blank" rel="noopener noreferrer">
+                Apply via Impact →
+              </a>
+            </Button>
+          </div>
+        </Reveal>
       </div>
     </section>
   )
