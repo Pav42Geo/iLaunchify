@@ -40,7 +40,7 @@ export default async function LoginPage({
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12 pt-2">
         <div className="w-full max-w-[440px]">
-          <h1 className="font-display text-4xl sm:text-5xl font-extrabold leading-[0.95] tracking-[-0.03em] text-ink-900 mb-3">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold leading-[1.0] tracking-[-0.03em] text-ink-900 mb-3">
             Welcome{' '}
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               back.

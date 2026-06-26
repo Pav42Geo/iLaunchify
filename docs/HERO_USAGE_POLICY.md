@@ -56,7 +56,7 @@ This is acquisition. Punchy heroes are correct — but **one per page**, taperin
 | `/business`, `/influencers` | ① Punchy hero (`HeroBanner` page) | Audience-specific value prop + 1 CTA. |
 | `/pricing`, `/how-it-works`, `/contact-sales` | ① **Informational** hero — smaller, headline + value statement, navigational | These are orientation/routing pages; relax to a clear headline (no hard single-CTA rule), step the display size **down** from the home hero. |
 | `/marketplace` | ① Island hero (compact, embedded) | Already correct — keep the `island` variant, not a full-bleed band. |
-| `/academy`, `/business/academy` | ① One hero (`AcademyHero`) | Fine — but **consolidate** `AcademyHero` with `HeroBanner` so there aren't two near-identical hero components to maintain. |
+| `/academy`, `/business/academy` | ① One hero (`AcademyHero`) | Keep `AcademyHero` separate — on inspection it's genuinely different from `HeroBanner` (it has a **light/white** creator variant + academy search/trending content, whereas `HeroBanner` is locked dark). Not a duplicate; do not merge. |
 
 **Rule for marketing:** taper prominence inward. Home = "display large." Category/sub pages = a step smaller. Never two competing heroes on one page.
 
@@ -112,7 +112,7 @@ This is a dense, power-user console used daily. The repeated `rounded-3xl … bg
 1. **Admin band → compact header** across the ~28 list/detail pages (biggest win; reclaims above-the-fold space for tables). Keep one richer header on the admin dashboard.
 2. **Audit subtitles** platform-wide; delete the ones that restate the title.
 3. **Creator/partner inner pages** → compact headers; confirm Studios/checkout stay band-free (they already are).
-4. **Marketing** → confirm one hero per page; taper display size inward; **merge `AcademyHero` into `HeroBanner`** to kill the duplicate hero component.
-5. **Lighten the login** header (keep signup's brand panel).
+4. **Marketing** → confirm one hero per page; taper display size inward. (`AcademyHero` stays separate — it's a distinct light hero, not a duplicate.)
+5. **Lighten the login** header (keep signup's brand panel). — DONE 2026-06-25: login "Welcome back." headline stepped down from text-4xl/5xl → text-3xl/4xl on creator + partner.
 
 None of this is a redesign — it's mostly making one band shorter and deleting redundant subtitles. Happy to implement it surface by surface (starting with the admin header, which is ~80% of the "too much" feeling) whenever you want.
