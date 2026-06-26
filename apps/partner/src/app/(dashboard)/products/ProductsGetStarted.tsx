@@ -30,7 +30,6 @@ import {
   Quote,
   type LucideIcon,
 } from 'lucide-react'
-import { Button } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
 
 // -----------------------------------------------------------------------------
@@ -110,55 +109,79 @@ const FAQ: { q: string; a: string }[] = [
 export function ProductsGetStarted({ companyName }: { companyName: string }) {
   return (
     <div className="pb-2">
-      {/* ===== HERO (full-bleed) ===== */}
-      <Band className="border-b border-ink-100 bg-white">
+      {/* ===== HERO — dark Business-landing outlook, full-bleed, flush to topbar ===== */}
+      <Band flushTop surface="dark" className="border-b border-ink-800 bg-ink-900 text-white">
+        {/* signature pink glow + neon counter-glow */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-28 h-[440px] w-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(255,46,99,0.42), transparent 70%)' }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-32 -left-28 h-[440px] w-[440px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(181,255,61,0.14), transparent 70%)' }}
+        />
+        {/* faint neon dot field */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              'linear-gradient(#FFD0E0 1px, transparent 1px), linear-gradient(90deg, #FFD0E0 1px, transparent 1px)',
-            backgroundSize: '38px 38px',
-            opacity: 0.55,
-            maskImage: 'radial-gradient(115% 90% at 50% -8%, #000 24%, transparent 74%)',
-            WebkitMaskImage: 'radial-gradient(115% 90% at 50% -8%, #000 24%, transparent 74%)',
+            backgroundImage: 'radial-gradient(rgba(181,255,61,0.10) 1px, transparent 1px)',
+            backgroundSize: '26px 26px',
+            maskImage: 'radial-gradient(125% 105% at 50% 0%, #000 32%, transparent 82%)',
+            WebkitMaskImage: 'radial-gradient(125% 105% at 50% 0%, #000 32%, transparent 82%)',
           }}
         />
-        <div className="relative mx-auto max-w-3xl px-6 pb-12 pt-14 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">
-            {companyName} · Become an earning partner
-          </p>
-          <h1 className="mx-auto mt-3 font-display text-4xl font-extrabold leading-[1.03] tracking-[-0.03em] text-ink-900 sm:text-5xl md:text-6xl">
-            Turn your line into{' '}
-            <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">recurring revenue.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-[60ch] text-[15px] leading-relaxed text-ink-700 sm:text-lg">
-            Creators bring the brand and the buyers. You produce, pack, and fulfill — on your terms,
-            with your MOQs and pricing. List your first product and start receiving orders.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild variant="primary" size="lg">
-              <Link href="/products/new">
+
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+          <div>
+            <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-neon-500" aria-hidden="true" />
+              {companyName} · Partner program
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-extrabold leading-[0.98] tracking-[-0.035em] text-white sm:text-5xl md:text-6xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500 [&_em]:tracking-[-0.02em]">
+              Turn your line into <em>recurring revenue.</em>
+            </h1>
+            <p className="mt-5 max-w-[52ch] text-[15px] leading-relaxed text-ink-300 sm:text-lg">
+              Creators bring the brand and the buyers. You produce, pack, and fulfill — on your terms,
+              with your MOQs and pricing. List your first product and start receiving orders.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/products/new"
+                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-neon-500 px-7 text-[14px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
+              >
                 Create your first product <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
               </Link>
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <Link href="#how-it-works">See how it works</Link>
-            </Button>
+              <Link
+                href="#how-it-works"
+                className="inline-flex h-[52px] items-center justify-center rounded-full border border-ink-700 px-7 text-[14px] font-medium text-ink-200 transition hover:border-ink-500 hover:text-white"
+              >
+                See how it works
+              </Link>
+            </div>
+            <p className="mt-6 text-[12.5px] font-medium text-ink-400">
+              No upfront cost · You set MOQ &amp; pricing · Stripe payouts · 3–5 day verification
+            </p>
           </div>
-          <p className="mt-5 text-[12.5px] font-medium text-ink-500">
-            No upfront cost · You set MOQ &amp; pricing · Stripe payouts · 3–5 day verification
-          </p>
+
+          <div className="hidden justify-center lg:flex">
+            <BrandStack />
+          </div>
         </div>
       </Band>
 
-      {/* ===== VALUE STAT STRIP (full-bleed cream) ===== */}
-      <Band className="border-b border-ink-100 bg-cream">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-px overflow-hidden py-2 md:grid-cols-4">
-          {VALUE_STATS.map((s) => (
-            <div key={s.label} className="px-4 py-7 text-center">
-              <div className="font-display text-3xl font-extrabold tracking-[-0.02em] text-ink-900 sm:text-4xl">{s.value}</div>
-              <div className="mx-auto mt-1.5 max-w-[22ch] text-[12.5px] leading-snug text-ink-600">{s.label}</div>
+      {/* ===== VALUE STAT STRIP (full-bleed) ===== */}
+      <Band className="border-b border-ink-200 bg-white">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 md:grid-cols-4">
+          {VALUE_STATS.map((s, i) => (
+            <div
+              key={s.label}
+              className={'px-5 py-9 text-center ' + (i < VALUE_STATS.length - 1 ? 'border-ink-200 md:border-r' : '')}
+            >
+              <div className="font-display text-4xl font-extrabold leading-none tracking-[-0.03em] text-pink-500 sm:text-5xl">{s.value}</div>
+              <div className="mx-auto mt-2 max-w-[22ch] text-[12.5px] leading-snug text-ink-600">{s.label}</div>
             </div>
           ))}
         </div>
@@ -185,55 +208,61 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
             </div>
           ))}
         </div>
-        <div className="mt-7 text-center">
-          <Button asChild variant="primary" size="lg">
-            <Link href="/products/new">
-              Start building <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
-            </Link>
-          </Button>
+        <div className="mt-8 text-center">
+          <Link
+            href="/products/new"
+            className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-ink-900 px-7 text-[14px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            Start building <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
-      {/* ===== PERKS ===== */}
-      <section className="pt-16">
-        <SectionHead eyebrow="Why partners build with us" lead="Your line, your rules —" emphasis="our demand." />
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PERKS.map((p) => (
-            <div key={p.title} className="rounded-2xl border border-ink-200 bg-white p-5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-900 text-neon-500">
-                <p.icon strokeWidth={2} className="h-[18px] w-[18px]" aria-hidden="true" />
-              </span>
-              <h3 className="mt-3.5 font-display text-[16px] font-bold tracking-[-0.01em] text-ink-900">{p.title}</h3>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-600">{p.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== ACADEMY (full-bleed cream) ===== */}
-      <Band className="mt-16 border-y border-ink-100 bg-cream">
-        <div className="mx-auto max-w-5xl py-14">
-          <SectionHead eyebrow="Partner Academy" lead="New to this? We’ll" emphasis="show you." noMargin />
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {ACADEMY.map((c) => (
-              <a
-                key={c.title}
-                href={marketingUrl('/business/academy')}
-                className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.18)]"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-pink-700">
-                  <PlayCircle strokeWidth={2} className="h-5 w-5" aria-hidden="true" />
+      {/* ===== PERKS — dark island (Business outlook) ===== */}
+      <Band surface="dark" className="mt-16 bg-ink-900 text-white">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <header className="mb-10 max-w-[60ch]">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-400">Why partners build with us</p>
+            <h2 className="font-display text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500">
+              Your line, your rules — <em>our demand.</em>
+            </h2>
+          </header>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            {PERKS.map((p) => (
+              <div key={p.title} className="rounded-2xl border border-ink-800 bg-white/[0.03] p-5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-800 text-neon-500 ring-1 ring-ink-700">
+                  <p.icon strokeWidth={2} className="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
-                <h3 className="mt-3.5 font-display text-[15.5px] font-bold tracking-[-0.01em] text-ink-900">{c.title}</h3>
-                <p className="mt-1.5 flex-1 text-[13px] leading-relaxed text-ink-600">{c.blurb}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pink-700 group-hover:gap-1.5">
-                  Watch <ArrowRight strokeWidth={2.5} className="h-3.5 w-3.5" />
-                </span>
-              </a>
+                <h3 className="mt-3.5 font-display text-[16px] font-bold tracking-[-0.01em] text-white">{p.title}</h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-400">{p.body}</p>
+              </div>
             ))}
           </div>
         </div>
       </Band>
+
+      {/* ===== ACADEMY ===== */}
+      <section className="pt-16">
+        <SectionHead eyebrow="Partner Academy" lead="New to this? We’ll" emphasis="show you." />
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-3">
+          {ACADEMY.map((c) => (
+            <a
+              key={c.title}
+              href={marketingUrl('/business/academy')}
+              className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-5 transition-shadow hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.18)]"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-pink-700">
+                <PlayCircle strokeWidth={2} className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-3.5 font-display text-[15.5px] font-bold tracking-[-0.01em] text-ink-900">{c.title}</h3>
+              <p className="mt-1.5 flex-1 text-[13px] leading-relaxed text-ink-600">{c.blurb}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-pink-700 group-hover:gap-1.5">
+                Watch <ArrowRight strokeWidth={2.5} className="h-3.5 w-3.5" />
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
 
       {/* ===== TESTIMONIALS ===== */}
       <section className="pt-16">
@@ -284,15 +313,19 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
           <p className="mx-auto mt-4 max-w-[46ch] text-[15px] text-ink-300">
             Build your first product in minutes, get verified, and let creator demand find you.
           </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild variant="neon" size="lg">
-              <Link href="/products/new">
-                <Plus strokeWidth={2.5} className="h-4 w-4" /> Create your first product
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="lg" className="text-white hover:bg-white/10">
-              <Link href="/help/new">Talk to our team</Link>
-            </Button>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/products/new"
+              className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-neon-500 px-7 text-[14px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
+            >
+              <Plus strokeWidth={2.5} className="h-4 w-4" /> Create your first product
+            </Link>
+            <Link
+              href="/help/new"
+              className="inline-flex h-[52px] items-center justify-center rounded-full border border-ink-700 px-7 text-[14px] font-medium text-ink-200 transition-colors hover:border-ink-500 hover:text-white"
+            >
+              Talk to our team
+            </Link>
           </div>
         </div>
       </Band>
@@ -311,19 +344,90 @@ function Band({
   children,
   className,
   surface,
+  flushTop,
 }: {
   children: React.ReactNode
   className?: string
   surface?: 'dark'
+  /** Cancel the dashboard <main>'s pt-6 so the band sits flush under the topbar. */
+  flushTop?: boolean
 }) {
   return (
     <section
       data-surface={surface}
       className={`relative overflow-hidden ${className ?? ''}`}
-      style={{ marginLeft: 'calc(50% - 50vw)', marginRight: 'calc(50% - 50vw)', width: '100vw' }}
+      style={{
+        marginLeft: 'calc(50% - 50vw)',
+        marginRight: 'calc(50% - 50vw)',
+        width: '100vw',
+        ...(flushTop ? { marginTop: '-1.5rem' } : {}),
+      }}
     >
       {children}
     </section>
+  )
+}
+
+// On-brand hero graphic — an abstract "orchestration" stack built from the
+// iLaunchify rounded-square mark: layered product tiles wired to partner/service
+// nodes, in pink + neon on ink. Pure inline SVG (no raster asset needed).
+function BrandStack() {
+  return (
+    <svg viewBox="0 0 440 360" className="h-auto w-full max-w-[440px]" role="img" aria-label="iLaunchify orchestration">
+      <defs>
+        <radialGradient id="bsGlow" cx="50%" cy="42%" r="55%">
+          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* breathing pink glow */}
+      <rect x="70" y="40" width="300" height="280" fill="url(#bsGlow)">
+        <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
+      </rect>
+
+      {/* wiring — energy flows from the core out to the nodes */}
+      <g stroke="#B5FF3D" strokeWidth="1.5" fill="none" opacity="0.6" strokeDasharray="5 9" strokeLinecap="round">
+        <path d="M220 182 L86 86"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></path>
+        <path d="M220 182 L360 96"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></path>
+        <path d="M220 182 L96 286"><animate attributeName="stroke-dashoffset" values="0;-28" dur="2.2s" repeatCount="indefinite" /></path>
+        <path d="M220 182 L356 276"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></path>
+      </g>
+
+      {/* orbiting service nodes — gentle staggered float */}
+      <rect x="62" y="62" width="44" height="44" rx="12" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.5">
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+      </rect>
+      <rect x="336" y="72" width="44" height="44" rx="12" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.5">
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0.9s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+      </rect>
+      <rect x="72" y="262" width="44" height="44" rx="12" fill="#26262B" stroke="#FF2E63" strokeWidth="1.5">
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+      </rect>
+      <rect x="332" y="252" width="44" height="44" rx="12" fill="#26262B" stroke="#FF2E63" strokeWidth="1.5">
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1.3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+      </rect>
+
+      {/* layered core tiles (depth, static) */}
+      <rect x="150" y="118" width="150" height="128" rx="22" fill="#26262B" transform="rotate(-9 225 182)" />
+      <rect x="156" y="120" width="150" height="128" rx="22" fill="#1F1F24" stroke="#3A3A41" strokeWidth="1.5" transform="rotate(6 231 184)" />
+
+      {/* front brand tile + glyph — floats together as one */}
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 -5;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+        <rect x="158" y="120" width="124" height="124" rx="26" fill="#FF2E63" />
+        <g stroke="#FFFFFF" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
+          <path d="M220 150 L250 165 L220 180 L190 165 Z" />
+          <path d="M190 184 L220 199 L250 184" />
+          <path d="M190 203 L220 218 L250 203" />
+        </g>
+      </g>
+
+      {/* accent dots — pulse */}
+      <circle cx="120" cy="170" r="4" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite" /></circle>
+      <circle cx="322" cy="190" r="4" fill="#B5FF3D"><animate attributeName="opacity" values="0.25;1;0.25" dur="2.4s" repeatCount="indefinite" /></circle>
+      <circle cx="226" cy="300" r="4" fill="#FF2E63"><animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" /></circle>
+    </svg>
   )
 }
 
