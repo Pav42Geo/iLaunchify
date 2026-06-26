@@ -33,6 +33,7 @@ import { ProductRowActions } from './ProductRowActions'
 import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSelection'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
+import { ProductsGetStarted } from './ProductsGetStarted'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -136,6 +137,14 @@ export default async function ProductsListPage({
         orderBy: { updatedAt: 'desc' },
       })
     : []
+
+  // First-run: a partner with zero product templates gets the editorial
+  // "get started" landing instead of the management chrome. The moment they
+  // create their first draft (a DRAFT template row), this list is non-empty
+  // and the regular Products page renders automatically.
+  if (templates.length === 0) {
+    return <ProductsGetStarted companyName={partner.companyName} />
+  }
 
   // Resolve hero thumbnails (Asset id → URL) for the name cell.
   const heroUrls = await resolveCertBadgeUrls(templates.map((r) => r.imageAssetId))
@@ -274,10 +283,8 @@ export default async function ProductsListPage({
         <ViewToggle value={view} defaultMode="cards" />
       </div>
 
-      {/* Table / cards */}
-      {templates.length === 0 ? (
-        <EmptyState />
-      ) : view === 'cards' ? (
+      {/* Table / cards (true-empty is handled by the early-return landing above) */}
+      {view === 'cards' ? (
         <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} heroUrls={heroUrls} ordersByTemplate={ordersByTemplate} />
       ) : (
         <SelectionProvider allIds={visible.map((r) => r.id)} rows={visible.map((r) => ({ id: r.id, name: r.name, status: r.status }))}>
@@ -489,28 +496,6 @@ function SortableTh({
         <ArrowUpDown className={cn('h-3 w-3', isActive ? 'opacity-100' : 'opacity-40')} aria-hidden="true" />
       </Link>
     </th>
-  )
-}
-
-function EmptyState() {
-  return (
-    <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
-        <Package className="h-6 w-6 text-pink-700" aria-hidden="true" />
-      </div>
-      <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No products yet</h2>
-      <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
-        A 4-step stepper walks you through your first product — what it is, what&apos;s in it, how
-        it ships, and what it costs. Save as a draft and refine; admin only reviews when you
-        click Submit.
-      </p>
-      <Link
-        href="/products/new"
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-      >
-        <Plus className="h-4 w-4" aria-hidden="true" /> Create your first
-      </Link>
-    </section>
   )
 }
 

@@ -97,7 +97,7 @@ export default async function PartnerDashboardLayout({ children }: { children: R
             navigation). data-* hooks let it target these without per-route
             layout logic — the shared layout doesn't re-run on client nav. */}
         <PartnerSidebar status={partner.status} restricted={restricted} />
-        <main data-partner-shell-main className="min-w-0 flex-1 overflow-y-auto bg-ink-50 p-6">
+        <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
           <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
