@@ -375,7 +375,7 @@ function Band({
 // nodes, in pink + neon on ink. Pure inline SVG (no raster asset needed).
 function BrandStack() {
   return (
-    <svg viewBox="0 0 420 420" className="h-auto w-full max-w-[400px]" role="img" aria-label="iLaunchify production cycle: formulate, fill, label, pack and ship">
+    <svg viewBox="0 0 480 440" className="h-auto w-full max-w-[440px]" role="img" aria-label="iLaunchify production cycle: formulate, fill, label, pack and ship">
       <defs>
         <radialGradient id="bsGlow" cx="50%" cy="50%" r="55%">
           <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.30" />
@@ -384,33 +384,37 @@ function BrandStack() {
       </defs>
 
       {/* breathing glow */}
-      <rect x="40" y="40" width="340" height="340" fill="url(#bsGlow)">
+      <rect x="80" y="55" width="320" height="320" fill="url(#bsGlow)">
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
       {/* spokes hub → stations */}
       <g stroke="#3A3A41" strokeWidth="2">
-        <line x1="210" y1="210" x2="210" y2="78" />
-        <line x1="210" y1="210" x2="342" y2="210" />
-        <line x1="210" y1="210" x2="210" y2="342" />
-        <line x1="210" y1="210" x2="78" y2="210" />
+        <line x1="240" y1="215" x2="240" y2="95" />
+        <line x1="240" y1="215" x2="360" y2="215" />
+        <line x1="240" y1="215" x2="240" y2="335" />
+        <line x1="240" y1="215" x2="120" y2="215" />
       </g>
 
-      {/* the process circle — base ring + flowing neon current */}
-      <circle cx="210" cy="210" r="132" fill="none" stroke="#3A3A41" strokeWidth="3" />
-      <circle cx="210" cy="210" r="132" fill="none" stroke="#B5FF3D" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.85">
+      {/* the cycle — base ring + flowing neon current */}
+      <circle cx="240" cy="215" r="120" fill="none" stroke="#3A3A41" strokeWidth="3" />
+      <circle cx="240" cy="215" r="120" fill="none" stroke="#B5FF3D" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.85">
         <animate attributeName="stroke-dashoffset" values="0;-32" dur="2s" repeatCount="indefinite" />
       </circle>
 
       {/* the unit travelling around the cycle */}
       <g>
-        <animateTransform attributeName="transform" type="rotate" from="0 210 210" to="360 210 210" dur="7s" repeatCount="indefinite" />
-        <circle cx="210" cy="78" r="6" fill="#FF2E63" />
+        <animateTransform attributeName="transform" type="rotate" from="0 240 215" to="360 240 215" dur="7s" repeatCount="indefinite" />
+        <circle cx="240" cy="95" r="6" fill="#FF2E63" />
       </g>
 
-      {/* ===== process stations on the ring (icons in squares, gentle float) ===== */}
+      {/* pulsing accents on the ring */}
+      <circle cx="325" cy="130" r="3.5" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite" /></circle>
+      <circle cx="155" cy="300" r="3.5" fill="#FF2E63"><animate attributeName="opacity" values="0.25;1;0.25" dur="2.4s" repeatCount="indefinite" /></circle>
+
+      {/* ===== process stations (icons in floating squares + floating labels) ===== */}
       {/* top — Formulate (flask) */}
-      <g transform="translate(182,50)">
+      <g transform="translate(212,67)">
         <g>
           <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
@@ -419,10 +423,11 @@ function BrandStack() {
             <line x1="19" y1="14" x2="37" y2="14" />
             <line x1="20" y1="34" x2="36" y2="34" />
           </g>
+          <text x="28" y="-12" textAnchor="middle" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Formulate</text>
         </g>
       </g>
       {/* right — Fill (droplet) */}
-      <g transform="translate(314,182)">
+      <g transform="translate(332,187)">
         <g>
           <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
@@ -430,10 +435,11 @@ function BrandStack() {
             <path d="M28 14 C 37 26, 37 35, 28 39 C 19 35, 19 26, 28 14 Z" />
             <line x1="16" y1="44" x2="40" y2="44" />
           </g>
+          <text x="66" y="33" textAnchor="start" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Fill</text>
         </g>
       </g>
       {/* bottom — Label (tag) */}
-      <g transform="translate(182,314)">
+      <g transform="translate(212,307)">
         <g>
           <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
@@ -442,10 +448,11 @@ function BrandStack() {
             <line x1="20" y1="26" x2="36" y2="26" />
             <line x1="20" y1="32" x2="30" y2="32" />
           </g>
+          <text x="28" y="74" textAnchor="middle" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Label</text>
         </g>
       </g>
       {/* left — Pack & ship (box) */}
-      <g transform="translate(50,182)">
+      <g transform="translate(92,187)">
         <g>
           <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
@@ -454,17 +461,18 @@ function BrandStack() {
             <path d="M16 22 L28 28 L40 22" />
             <path d="M28 28 L28 44" />
           </g>
+          <text x="-10" y="33" textAnchor="end" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Pack &amp; ship</text>
         </g>
       </g>
 
       {/* central brand tile + layers glyph — the hub */}
       <g>
         <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
-        <rect x="158" y="158" width="104" height="104" rx="24" fill="#FF2E63" />
+        <rect x="188" y="163" width="104" height="104" rx="24" fill="#FF2E63" />
         <g stroke="#FFFFFF" strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
-          <path d="M210 184 L236 198 L210 212 L184 198 Z" />
-          <path d="M184 202 L210 216 L236 202" />
-          <path d="M184 218 L210 232 L236 218" />
+          <path d="M240 189 L266 203 L240 217 L214 203 Z" />
+          <path d="M214 207 L240 221 L266 207" />
+          <path d="M214 223 L240 237 L266 223" />
         </g>
       </g>
     </svg>
