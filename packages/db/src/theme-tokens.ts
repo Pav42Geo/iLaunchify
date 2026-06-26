@@ -170,6 +170,9 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'header-py', label: 'Header height', kind: 'length', group: 'Header', default: '12px', min: 6, max: 24, step: 1, hint: 'Top-bar vertical padding.' },
   { name: 'header-wordmark-fs', label: 'Wordmark size', kind: 'length', group: 'Header', default: '23px', min: 16, max: 32, step: 1, hint: 'Wordmark font size.' },
   { name: 'brand-mark-bg', label: 'Logo mark color', kind: 'color', group: 'Header', default: '#FF2E63', hint: 'The logo square / mark fill (header, footer, business).' },
+  { name: 'brand-sublabel-font', label: 'Sublabel font', kind: 'font', group: 'Header', default: FONT_STACKS.inter!, hint: 'Font for the logo sublabel (“Admin Mode”, “Business”).' },
+  { name: 'brand-sublabel-fs', label: 'Sublabel size', kind: 'length', group: 'Header', default: '13px', min: 9, max: 24, step: 1, hint: 'Logo sublabel font size (independent of the wordmark).' },
+  { name: 'brand-sublabel-color', label: 'Sublabel color', kind: 'color', group: 'Header', default: '#6B6D78', hint: 'Logo sublabel text color.' },
 
   // Footer (marketing LandingFooter — dark)
   { name: 'footer-bg', label: 'Footer background', kind: 'color', group: 'Footer', default: '#18181A', hint: 'Footer surface.' },

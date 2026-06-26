@@ -49,6 +49,7 @@ import {
   Clock,
 } from 'lucide-react'
 import {
+  BrandMark,
   DEFAULT_FRAME_LAYOUT,
   FRAME_SCOPE,
   validateFrameLayout,
@@ -543,11 +544,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
            mark, py-3 pl-7 pr-6, gap-5, bell-driven height) so nothing shifts
            when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
       <header className="flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
-        {/* Brand mark — identical to AppHeaderBrandMark (pink 26px square + iLaunchify wordmark). */}
-        <span className="flex flex-shrink-0 items-center gap-[7px]">
-          <span aria-hidden="true" className="h-[26px] w-[26px] rounded-md bg-pink-500" />
-          <span className="font-display text-[23px] font-extrabold tracking-[-0.04em] text-ink-900">iLaunchify</span>
-        </span>
+        {/* Compact mark only (no wordmark) — reads the uploaded mark via --brand-mark-url. */}
+        <BrandMark size={26} className="flex-shrink-0" />
 
         {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History. */}
         <span className="inline-flex items-center gap-2">

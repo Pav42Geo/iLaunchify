@@ -5,18 +5,24 @@
 // BrandSwitcher, ink-900 avatar.
 
 import type { User } from '@ilaunchify/auth'
-import { AppHeader } from '@ilaunchify/ui'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
+import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { AdminTopbarRight } from './AdminTopbarRight'
 import { AdminCenterNav } from './AdminCenterNav'
 
 export async function AdminTopbar({ user }: { user: User }) {
-  const logos = await getPublicBrandLogos()
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('adminHeader')])
+  const brand =
+    placement.kind === 'mark' ? (
+      <BrandMark imageSrc={logos.markLight} sublabel={placement.sublabel} />
+    ) : (
+      <Brand imageSrc={logos.fullLight} sublabel={placement.sublabel ?? undefined} />
+    )
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
-      logoSrc={logos.fullLight}
+      brand={brand}
       center={
         // Facebook-style center cluster: Home / Marketplace / Design Studio
         // (large graphic-grey icons with active pink underline). Sits inside

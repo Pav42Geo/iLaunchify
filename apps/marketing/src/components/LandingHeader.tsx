@@ -15,10 +15,12 @@ import {
   AppHeader,
   AppHeaderGuestCta,
   AppHeaderIconButton,
+  Brand as BrandLockup,
+  BrandMark,
 } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { Heart, Bell } from 'lucide-react'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { LandingNavDropdown } from './LandingNavDropdown'
@@ -38,11 +40,17 @@ export async function LandingHeader({
   activeBrandId,
 }: LandingHeaderProps = {}) {
   const isGuest = !user
-  const logos = await getPublicBrandLogos()
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('marketingHeader')])
+  const brand =
+    placement.kind === 'mark' ? (
+      <BrandMark imageSrc={logos.markLight} sublabel={placement.sublabel} />
+    ) : (
+      <BrandLockup imageSrc={logos.fullLight} sublabel={placement.sublabel ?? undefined} />
+    )
 
   return (
     <AppHeader
-      logoSrc={logos.fullLight}
+      brand={brand}
       center={
         <nav className="hidden items-center gap-7 md:flex">
           <Link

@@ -72,10 +72,17 @@ export {
   getPublicBrandLogos,
   upsertPlatformLogo,
   deletePlatformLogoRow,
+  LOGO_PLACEMENTS,
+  isLogoPlacementKey,
+  getLogoPlacements,
+  getLogoPlacement,
+  setLogoPlacement,
   type LogoKind,
   type LogoVariant,
   type PlatformLogoRow,
   type PublicBrandLogos,
+  type LogoPlacementKey,
+  type LogoPlacementValue,
 } from './platform-branding'
 
 // Banned-ingredient runtime enforcement helpers (FDA_REGULATORY_POSTURE §5).

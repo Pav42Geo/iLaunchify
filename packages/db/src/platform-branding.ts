@@ -20,6 +20,76 @@ export interface PlatformLogoRow {
 export function isLogoKind(s: string | undefined): s is LogoKind {
   return s === 'full' || s === 'mark'
 }
+
+// --- Per-header logo placement (Phase D2) -----------------------------------
+
+/** Configurable header surfaces + their default logo kind + default sublabel. */
+export const LOGO_PLACEMENTS = [
+  { key: 'creatorHeader', label: 'Creator app header', kind: 'full', sublabel: '' },
+  { key: 'partnerHeader', label: 'Partner app header', kind: 'full', sublabel: '' },
+  { key: 'adminHeader', label: 'Admin app header', kind: 'full', sublabel: 'Admin Mode' },
+  { key: 'marketingHeader', label: 'Marketing header', kind: 'full', sublabel: '' },
+  { key: 'marketplaceHeader', label: 'Marketplace header', kind: 'full', sublabel: '' },
+  { key: 'businessHeader', label: 'Business (partner-landing) header', kind: 'full', sublabel: 'Business' },
+  { key: 'creatorAcademy', label: 'Academy header (creator)', kind: 'full', sublabel: 'Academy' },
+  { key: 'partnerAcademy', label: 'Academy header (partner)', kind: 'full', sublabel: 'Academy' },
+  { key: 'footer', label: 'Marketing footer', kind: 'full', sublabel: '' },
+  // The Design + Packaging Studios always use the compact mark (no wordmark) —
+  // they read the uploaded mark via the --brand-mark-url CSS var, so they're
+  // not listed here as configurable surfaces.
+] as const
+
+export type LogoPlacementKey = (typeof LOGO_PLACEMENTS)[number]['key']
+export interface LogoPlacementValue {
+  kind: LogoKind
+  sublabel: string | null
+}
+
+export function isLogoPlacementKey(s: string | undefined): s is LogoPlacementKey {
+  return LOGO_PLACEMENTS.some((p) => p.key === s)
+}
+
+function defaultPlacement(key: string): LogoPlacementValue {
+  const def = LOGO_PLACEMENTS.find((p) => p.key === key)
+  return { kind: (def?.kind ?? 'full') as LogoKind, sublabel: def?.sublabel || null }
+}
+
+/** All placement configs (DB overrides merged over code defaults). Safe pre-migration. */
+export async function getLogoPlacements(): Promise<Record<string, LogoPlacementValue>> {
+  let rows: Array<{ key: string; kind: string; sublabel: string | null }> = []
+  try {
+    rows = await (prisma as unknown as {
+      logoPlacement: { findMany: (a?: unknown) => Promise<Array<{ key: string; kind: string; sublabel: string | null }>> }
+    }).logoPlacement.findMany()
+  } catch {
+    rows = []
+  }
+  const out: Record<string, LogoPlacementValue> = {}
+  for (const p of LOGO_PLACEMENTS) out[p.key] = defaultPlacement(p.key)
+  for (const r of rows) {
+    if (!isLogoPlacementKey(r.key)) continue
+    out[r.key] = { kind: isLogoKind(r.kind) ? r.kind : 'full', sublabel: r.sublabel || null }
+  }
+  return out
+}
+
+/** One placement (with default fallback). */
+export async function getLogoPlacement(key: LogoPlacementKey): Promise<LogoPlacementValue> {
+  const all = await getLogoPlacements()
+  return all[key] ?? defaultPlacement(key)
+}
+
+/** Upsert one placement's kind + sublabel. */
+export async function setLogoPlacement(key: LogoPlacementKey, kind: LogoKind, sublabel: string | null): Promise<void> {
+  const clean = sublabel && sublabel.trim() ? sublabel.trim() : null
+  await (prisma as unknown as {
+    logoPlacement: { upsert: (a: unknown) => Promise<unknown> }
+  }).logoPlacement.upsert({
+    where: { key },
+    update: { kind, sublabel: clean },
+    create: { key, kind, sublabel: clean },
+  })
+}
 export function isLogoVariant(s: string | undefined): s is LogoVariant {
   return s === 'light' || s === 'dark'
 }

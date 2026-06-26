@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
+  BrandMark,
   DieCutFrame,
   DieCutLegend,
   resolveLayout,
@@ -1340,12 +1341,7 @@ function TopBar({
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-[var(--studio-panel-bg)] px-4">
       <div className="flex items-center gap-2.5">
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500 text-[12px] font-extrabold text-white">
-            iL
-          </div>
-          <span className="font-display text-[18px] font-extrabold tracking-[-0.03em] text-ink-900">
-            iLaunchify
-          </span>
+          <BrandMark size={28} />
         </Link>
         {templateAuthorMode && (
           <span className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-pink-700">

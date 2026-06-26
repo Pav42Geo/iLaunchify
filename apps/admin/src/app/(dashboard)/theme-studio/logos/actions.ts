@@ -11,6 +11,8 @@ import {
   deletePlatformLogoRow,
   isLogoKind,
   isLogoVariant,
+  isLogoPlacementKey,
+  setLogoPlacement,
 } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -101,6 +103,26 @@ export async function deletePlatformLogo(kind: string, variant: string): Promise
     entityId: `${kind}:${variant}`,
     action: 'PLATFORM_LOGO_DELETED',
     payload: { kind, variant },
+  })
+  revalidatePath('/', 'layout')
+  return { ok: true }
+}
+
+/** Set a header's logo kind (full|mark) + optional sublabel text. */
+export async function savePlatformLogoPlacement(key: string, kind: string, sublabel: string): Promise<Result> {
+  const admin = await requireCapability('platform:admin')
+  if (!isLogoPlacementKey(key)) return { ok: false, error: 'Unknown header.' }
+  if (!isLogoKind(kind)) return { ok: false, error: 'Invalid logo kind.' }
+  try {
+    await setLogoPlacement(key, kind, sublabel)
+  } catch (err) {
+    return { ok: false, error: `Could not save: ${(err as Error).message}` }
+  }
+  await logAuditAs(admin, {
+    entityType: 'ThemeTokenOverride',
+    entityId: `placement:${key}`,
+    action: 'PLATFORM_LOGO_PLACEMENT_SET',
+    payload: { key, kind, sublabel },
   })
   revalidatePath('/', 'layout')
   return { ok: true }

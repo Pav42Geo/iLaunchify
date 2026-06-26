@@ -6630,3 +6630,14 @@ model PlatformBrandAsset {
 
   @@unique([kind, variant])
 }
+
+/// Theme Studio per-header logo placement (Phase D2). One row per surface
+/// (key = creatorHeader, adminHeader, designStudio, …). `kind` picks the full
+/// lockup vs the compact mark; `sublabel` is optional text shown next to the
+/// logo (e.g. "Admin Mode", "Business"). Defaults live in code, not the DB.
+model LogoPlacement {
+  key       String   @id
+  kind      String   @default("full")
+  sublabel  String?
+  updatedAt DateTime @updatedAt
+}

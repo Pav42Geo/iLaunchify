@@ -11,9 +11,9 @@
 // misroute).
 
 import { cookies } from 'next/headers'
-import { prisma, getPublicBrandLogos } from '@ilaunchify/db'
+import { prisma, getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import type { User } from '@ilaunchify/auth'
-import { AppHeader } from '@ilaunchify/ui'
+import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
 
 const COOKIE_NAME = 'active_brand_id'
@@ -45,13 +45,19 @@ export async function DashboardTopbar({ user }: { user: User }) {
   const activeBrandId =
     brands.find((b) => b.id === activeBrandIdCookie)?.id ?? brands[0]?.id ?? ''
 
-  const logos = await getPublicBrandLogos()
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('creatorHeader')])
+  const brand =
+    placement.kind === 'mark' ? (
+      <BrandMark imageSrc={logos.markLight} sublabel={placement.sublabel} />
+    ) : (
+      <Brand imageSrc={logos.fullLight} sublabel={placement.sublabel ?? undefined} />
+    )
 
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
-      logoSrc={logos.fullLight}
+      brand={brand}
       right={
         <TopbarRight
           email={user.email}

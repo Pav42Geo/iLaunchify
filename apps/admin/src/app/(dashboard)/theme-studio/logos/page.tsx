@@ -10,9 +10,10 @@
 
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
-import { listPlatformLogos, LOGO_KINDS, LOGO_VARIANTS, type LogoKind, type LogoVariant } from '@ilaunchify/db'
+import { listPlatformLogos, getLogoPlacements, LOGO_KINDS, LOGO_VARIANTS, LOGO_PLACEMENTS, type LogoKind, type LogoVariant } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { LogoSlot } from './LogoUploader'
+import { PlacementEditor } from './PlacementEditor'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Logos — Theme Studio' }
@@ -36,6 +37,14 @@ export default async function ThemeStudioLogosPage() {
     const url = r.publicUrl ?? (await getSignedReadUrl(r.storageKey, { expiresInSeconds: 60 * 60 }).catch(() => null))
     if (url) byKey.set(`${r.kind}:${r.variant}`, { url, mimeType: r.mimeType })
   }
+
+  const placements = await getLogoPlacements()
+  const placementRows = LOGO_PLACEMENTS.map((p) => ({
+    key: p.key,
+    label: p.label,
+    kind: placements[p.key]?.kind ?? 'full',
+    sublabel: placements[p.key]?.sublabel ?? '',
+  }))
 
   return (
     <div className="space-y-6">
@@ -72,6 +81,18 @@ export default async function ThemeStudioLogosPage() {
           </section>
         ))}
       </div>
+
+      {/* Per-header placement */}
+      <section className="rounded-3xl border border-ink-200 bg-white p-6">
+        <h2 className="font-display text-lg font-semibold text-ink-900">Where each logo appears</h2>
+        <p className="mt-0.5 max-w-3xl text-sm text-ink-600">
+          For every header, choose the <strong>full lockup</strong> or the <strong>mark only</strong>, and set an optional
+          sublabel (e.g. “Admin Mode”, “Business”). Leave the sublabel blank to show no text.
+        </p>
+        <div className="mt-4">
+          <PlacementEditor rows={placementRows} />
+        </div>
+      </section>
     </div>
   )
 }

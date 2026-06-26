@@ -316,6 +316,14 @@
   --header-py:          12px;
   --header-wordmark-fs: 23px;
   --brand-mark-bg:      var(--pink-500); /* the logo square / mark fill */
+  /* Logo SUBLABEL (e.g. "Admin Mode", "Business") — its own font / size / color,
+     independent of the wordmark so it can read as a quieter tag. */
+  --brand-sublabel-font:  var(--font-sans);
+  --brand-sublabel-fs:    13px;
+  --brand-sublabel-color: var(--ink-500);
+  /* Uploaded compact-mark image (set per-app by /theme-overrides when present).
+     BrandMark layers this over --brand-mark-bg; empty = the pink square. */
+  --brand-mark-url:     none;
 
   /* Footer (marketing LandingFooter — dark surface). */
   --footer-bg:          var(--ink-900);

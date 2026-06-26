@@ -6,8 +6,8 @@
 // creator's pink), companyName as the dropdown headline.
 
 import type { User } from '@ilaunchify/auth'
-import { AppHeader } from '@ilaunchify/ui'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
+import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { PartnerTopbarRight } from './PartnerTopbarRight'
 
 export async function PartnerTopbar({
@@ -17,12 +17,18 @@ export async function PartnerTopbar({
   user: User
   companyName: string
 }) {
-  const logos = await getPublicBrandLogos()
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('partnerHeader')])
+  const brand =
+    placement.kind === 'mark' ? (
+      <BrandMark imageSrc={logos.markLight} sublabel={placement.sublabel} />
+    ) : (
+      <Brand imageSrc={logos.fullLight} sublabel={placement.sublabel ?? undefined} />
+    )
   return (
     <AppHeader
       brandHref="/dashboard"
       flushLeft
-      logoSrc={logos.fullLight}
+      brand={brand}
       // Empty portal targets the product builder injects its Saved chip + Save
       // Draft (center, next to the logo) and Next button (right, next to the
       // bell) into. Harmless on every other page.

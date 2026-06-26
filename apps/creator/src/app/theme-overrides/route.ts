@@ -3,14 +3,17 @@
 // Cross-app preview works on localhost (cookies ignore port).
 
 import { cookies } from 'next/headers'
-import { getEffectiveThemeCss, isThemeScope } from '@ilaunchify/db'
+import { getEffectiveThemeCss, isThemeScope, getPublicBrandLogos } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const raw = (await cookies()).get('theme-preview')?.value
   const previewScope = isThemeScope(raw) ? raw : null
-  const css = await getEffectiveThemeCss('creator', previewScope)
+  const [base, logos] = await Promise.all([getEffectiveThemeCss('creator', previewScope), getPublicBrandLogos()])
+  // The Design Studio reads the uploaded compact mark via this CSS var.
+  const markCss = logos.markLight ? `:root:root{--brand-mark-url:url("${logos.markLight}")}` : ''
+  const css = base + markCss
   return new Response(css, {
     headers: {
       'Content-Type': 'text/css; charset=utf-8',

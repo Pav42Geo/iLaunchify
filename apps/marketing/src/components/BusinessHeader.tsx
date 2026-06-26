@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Button, Brand } from '@ilaunchify/ui'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { Button, Brand, BrandMark } from '@ilaunchify/ui'
+import { getPublicBrandLogos, getLogoPlacement, type LogoPlacementKey } from '@ilaunchify/db'
 import { partnerUrl } from '@/lib/app-urls'
 
 /**
@@ -15,13 +15,17 @@ import { partnerUrl } from '@/lib/app-urls'
  * which don't exist (those were stub paths). Now they hit the real
  * /signup and /login on port 3002 (apps/partner).
  */
-export async function BusinessHeader() {
-  const logos = await getPublicBrandLogos()
+export async function BusinessHeader({ placementKey = 'businessHeader' }: { placementKey?: LogoPlacementKey } = {}) {
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(placementKey)])
   return (
     <header className="sticky top-0 z-50 bg-ink-900 border-b border-ink-700">
       <div className="max-w-[1400px] mx-auto px-8 py-3.5 flex items-center gap-8">
         <Link href="/business" className="flex items-center flex-shrink-0">
-          <Brand label="iLaunchify" sublabel="Business" imageSrc={logos.fullDark} wordmarkClassName="text-[22px] text-white" sublabelClassName="text-neon-500" />
+          {placement.kind === 'mark' ? (
+            <BrandMark imageSrc={logos.markDark} sublabel={placement.sublabel} sublabelClassName="text-[22px] text-neon-500" />
+          ) : (
+            <Brand label="iLaunchify" sublabel={placement.sublabel ?? undefined} imageSrc={logos.fullDark} wordmarkClassName="text-[22px] text-white" sublabelClassName="text-neon-500" />
+          )}
         </Link>
 
         <nav className="flex gap-7 text-sm font-medium text-ink-400">

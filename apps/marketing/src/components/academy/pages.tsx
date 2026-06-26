@@ -73,10 +73,10 @@ function copy(audience: AcademyAudience) {
 // Resolve the audience header to a concrete element (avoids rendering an async
 // component as a JSX child — marketing is on React 18 types).
 async function buildHeader(audience: AcademyAudience): Promise<React.ReactElement> {
-  if (audience === 'PARTNER') return <BusinessHeader />
+  if (audience === 'PARTNER') return <BusinessHeader placementKey="partnerAcademy" />
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
-  return <MarketplaceHeader user={user} brands={brands} activeBrandId={activeBrandId} hasUnreadNotifications={false} />
+  return <MarketplaceHeader user={user} brands={brands} activeBrandId={activeBrandId} hasUnreadNotifications={false} placementKey="creatorAcademy" />
 }
 
 function Shell({ header, children }: { header: React.ReactElement; children: React.ReactNode }) {

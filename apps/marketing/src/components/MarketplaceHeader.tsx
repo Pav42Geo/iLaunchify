@@ -23,8 +23,10 @@ import {
   AppHeaderGuestCta,
   AppHeaderIconButton,
   AppHeaderSubnavStrip,
+  Brand as BrandLockup,
+  BrandMark,
 } from '@ilaunchify/ui'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { getPublicBrandLogos, getLogoPlacement, type LogoPlacementKey } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
@@ -43,6 +45,9 @@ export interface MarketplaceHeaderNiche {
 }
 
 export interface MarketplaceHeaderProps {
+  /** Which logo-placement config to read (default the marketplace header; the
+   *  Academy passes 'creatorAcademy' for its own logo + sublabel). */
+  placementKey?: LogoPlacementKey
   /** When omitted/null, the header renders the guest variant. */
   user?: UserMenuProps['user'] | null
   /** Notification dot indicator — only meaningful when `user` is set. */
@@ -77,13 +82,20 @@ export async function MarketplaceHeader({
   activeBrandId,
   activeNiche,
   niches = NICHES,
+  placementKey = 'marketplaceHeader',
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
-  const logos = await getPublicBrandLogos()
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(placementKey)])
+  const brand =
+    placement.kind === 'mark' ? (
+      <BrandMark imageSrc={logos.markLight} sublabel={placement.sublabel} />
+    ) : (
+      <BrandLockup imageSrc={logos.fullLight} sublabel={placement.sublabel ?? undefined} />
+    )
 
   return (
     <AppHeader
-      logoSrc={logos.fullLight}
+      brand={brand}
       center={
         // The 'All Categories' button moved out of the header centre into
         // the niche subnav (as a hamburger trigger that opens the mega
