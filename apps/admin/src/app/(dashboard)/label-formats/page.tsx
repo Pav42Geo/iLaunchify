@@ -262,7 +262,7 @@ function Header({
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Compliance · Label-format presets
         </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Facts &amp; label-format templates
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">

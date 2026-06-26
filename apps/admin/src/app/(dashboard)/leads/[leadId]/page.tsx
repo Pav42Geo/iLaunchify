@@ -212,13 +212,13 @@ export default async function LeadDetail({ params }: PageProps) {
       </div>
 
       {/* HEADER */}
-      <header className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <header className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Inbox · Lead
             </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               {partner.companyName}
             </h1>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">

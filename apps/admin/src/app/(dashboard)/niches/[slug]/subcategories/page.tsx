@@ -203,7 +203,7 @@ function Header({
   count: number
 }) {
   return (
-    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
       <div className="flex items-start gap-4">
         <span
           aria-hidden="true"

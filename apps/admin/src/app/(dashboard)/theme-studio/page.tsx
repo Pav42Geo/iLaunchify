@@ -78,7 +78,7 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
         <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
           Editing: {SCOPE_LABELS[scope]} · {mode}
         </span>

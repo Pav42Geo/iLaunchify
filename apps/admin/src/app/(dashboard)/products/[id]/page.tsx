@@ -845,7 +845,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       {/* HEADER — cream rounded-3xl band + 5-card KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <Link
           href="/products"
           className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded"
@@ -859,7 +859,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               Products & Categories · Review
             </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               {template.name}
             </h1>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">

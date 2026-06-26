@@ -57,7 +57,7 @@ export default async function PackingTypesPage() {
   return (
     <div className="space-y-5">
       {/* Cream hero */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-700">
           Asset management · Taxonomy
         </p>

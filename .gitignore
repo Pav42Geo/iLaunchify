@@ -73,3 +73,4 @@ pnpm-debug.log*
 # FOD-reference is a 21 GB read-only quarry of the previous project.
 # Never commit it — it stays local to Pavel's machine for reference only.
 FOD-reference/
+.fuse_hidden*

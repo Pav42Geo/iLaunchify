@@ -9,11 +9,11 @@ export const metadata = { title: 'Bulk import — Asset library — Admin' }
 export default function AssetImportPage() {
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Asset Management · Bulk import
         </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Bulk import
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">

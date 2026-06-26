@@ -29,7 +29,7 @@ export default async function EditLessonPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <Link href={`/academy/courses/${lesson.course.id}/edit`} className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded">
           <ArrowLeft className="h-3.5 w-3.5" /> {lesson.course.title}
         </Link>
@@ -38,7 +38,7 @@ export default async function EditLessonPage({ params }: PageProps) {
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
               {AUDIENCE_LABEL[lesson.course.audience]} Academy · Lesson
             </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">{lesson.title}</h1>
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">{lesson.title}</h1>
             <p className="mt-1 font-mono text-[11.5px] text-ink-500">slug {lesson.slug}</p>
           </div>
           <StatusControl entity="lesson" id={lesson.id} status={lesson.status} />

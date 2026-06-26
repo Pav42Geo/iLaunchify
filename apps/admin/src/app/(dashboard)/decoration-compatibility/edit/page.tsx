@@ -50,7 +50,7 @@ export default async function EditCompatibilityPage({ searchParams }: PageProps)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <Link
           href="/decoration-compatibility"
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-600 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"

@@ -94,7 +94,7 @@ export default async function MandatoryPhrasesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-7">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             Compliance · Phrase library

@@ -50,7 +50,7 @@ export default async function ThemeStudioLogosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-6">
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
         <Link href="/theme-studio" className="text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-500 hover:text-ink-800">
           ← Theme Studio
         </Link>
