@@ -129,6 +129,15 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   // Buttons — radius (pill signature) + per-variant fills/text/border. Each
   // defaults to the brand ramp, so they follow the palette until overridden.
   { name: 'button-radius', label: 'Button corners', kind: 'length', group: 'Buttons', default: '999px', pillable: true, min: 0, max: 32, step: 1, hint: 'Button corner radius. Pill by default.' },
+  // Sizes — height + horizontal padding per size. xl is the big landing-hero CTA.
+  { name: 'button-h-sm', label: 'Height · Small', kind: 'length', group: 'Buttons', default: '36px', min: 28, max: 48, step: 1, hint: 'Height of size="sm" buttons.' },
+  { name: 'button-h-md', label: 'Height · Medium', kind: 'length', group: 'Buttons', default: '44px', min: 32, max: 56, step: 1, hint: 'Height of the default (md) buttons.' },
+  { name: 'button-h-lg', label: 'Height · Large', kind: 'length', group: 'Buttons', default: '52px', min: 40, max: 68, step: 1, hint: 'Height of size="lg" buttons.' },
+  { name: 'button-h-xl', label: 'Height · XL (landing)', kind: 'length', group: 'Buttons', default: '60px', min: 48, max: 84, step: 1, hint: 'Height of size="xl" — the big landing-hero CTAs.' },
+  { name: 'button-px-sm', label: 'Padding · Small', kind: 'length', group: 'Buttons', default: '16px', min: 8, max: 40, step: 1, hint: 'Horizontal padding for sm buttons.' },
+  { name: 'button-px-md', label: 'Padding · Medium', kind: 'length', group: 'Buttons', default: '24px', min: 12, max: 48, step: 1, hint: 'Horizontal padding for md buttons.' },
+  { name: 'button-px-lg', label: 'Padding · Large', kind: 'length', group: 'Buttons', default: '32px', min: 16, max: 56, step: 1, hint: 'Horizontal padding for lg buttons.' },
+  { name: 'button-px-xl', label: 'Padding · XL (landing)', kind: 'length', group: 'Buttons', default: '32px', min: 16, max: 64, step: 1, hint: 'Horizontal padding for xl landing CTAs.' },
   { name: 'button-primary-bg', label: 'Primary fill', kind: 'color', group: 'Buttons', default: '#18181A', hint: 'Primary (black pill) button background.' },
   { name: 'button-primary-fg', label: 'Primary text', kind: 'color', group: 'Buttons', default: '#FFFFFF', hint: 'Primary button label color.' },
   { name: 'button-primary-bg-hover', label: 'Primary fill (hover)', kind: 'color', group: 'Buttons', default: '#000000', hint: 'Primary button hover background.' },

@@ -267,6 +267,13 @@
   --input-radius:  var(--radius-md);
   --chip-radius:   var(--radius-pill);
 
+  /* Button sizing — height + horizontal padding per size (Theme-Studio managed).
+     xl is the large landing-hero CTA. */
+  --button-h-sm: 36px;  --button-px-sm: 16px;
+  --button-h-md: 44px;  --button-px-md: 24px;
+  --button-h-lg: 52px;  --button-px-lg: 32px;
+  --button-h-xl: 60px;  --button-px-xl: 32px;
+
   /* Per-variant BUTTON fills/text/border (each defaults to the brand ramp so
      they follow the palette until an admin overrides a single variant). */
   --button-primary-bg:        var(--ink-900);

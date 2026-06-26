@@ -41,9 +41,11 @@ const buttonVariants = cva(
         ghost:     'bg-transparent text-[var(--button-ghost-fg)] hover:bg-[var(--button-ghost-bg-hover)]',
       },
       size: {
-        sm: 'h-9 px-s-4 text-[length:var(--fs-md)]',   // 36px · pad 16 (s-4)
-        md: 'h-11 px-s-5 text-[length:var(--fs-md)]',  // 44px · pad 24 (s-5, was 20 off-grid)
-        lg: 'h-13 px-s-6 text-[length:var(--fs-lg)]',  // 52px · pad 32 (s-6, was 28 off-grid)
+        // Heights + padding are Theme-Studio tokens (--button-h-* / --button-px-*).
+        sm: 'h-[var(--button-h-sm)] px-[var(--button-px-sm)] text-[length:var(--fs-md)]',
+        md: 'h-[var(--button-h-md)] px-[var(--button-px-md)] text-[length:var(--fs-md)]',
+        lg: 'h-[var(--button-h-lg)] px-[var(--button-px-lg)] text-[length:var(--fs-lg)]',
+        xl: 'h-[var(--button-h-xl)] px-[var(--button-px-xl)] text-[length:var(--fs-lg)]', // big landing CTA
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

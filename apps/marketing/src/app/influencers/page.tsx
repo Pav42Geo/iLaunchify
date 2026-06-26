@@ -52,16 +52,16 @@ export default function InfluencersPage() {
           </Parallax>
         }
       >
-        <Button variant="neon" size="lg" asChild>
+        <Button variant="neon" size="xl" asChild>
           <a href={IMPACT_APPLY_URL} target="_blank" rel="noopener noreferrer">
             Apply via Impact →
           </a>
         </Button>
         <Button
           variant="outline"
-          size="lg"
+          size="xl"
           asChild
-          className="border-2 border-ink-600 text-white hover:bg-white hover:text-ink-900 hover:border-white"
+          className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white"
         >
           <a href="#faq">Read the FAQ</a>
         </Button>

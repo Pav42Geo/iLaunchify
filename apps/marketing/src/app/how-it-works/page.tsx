@@ -299,13 +299,18 @@ export default async function HowItWorksPage({
             your manifest, and your first sample is half-off.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild variant="neon" size="md">
+            <Button asChild variant="neon" size="xl">
               <Link href="/marketplace">
                 Browse the marketplace
                 <ArrowRight strokeWidth={2.5} className="w-4 h-4" />
               </Link>
             </Button>
-            <Button asChild variant="ghost" size="md" className="text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="outline"
+              size="xl"
+              className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white"
+            >
               <Link href="/pricing">See pricing →</Link>
             </Button>
           </div>

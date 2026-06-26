@@ -29,15 +29,17 @@ export default function BusinessLandingPage() {
         }
         deck="Apply once. Run your floor against a queue of pre-qualified creator orders, routed by capability, region, and capacity. Structured workflow. Stripe Connect payouts on a published schedule. No brokers in the middle."
       >
-        <Button variant="neon" size="lg" asChild>
+        <Button variant="neon" size="xl" asChild>
           <a href={partnerUrl('/signup')}>Apply to join →</a>
         </Button>
-        <Link
-          href="#how"
-          className="inline-flex items-center text-sm font-medium text-ink-300 hover:text-white border border-ink-700 hover:border-ink-500 rounded-pill px-[22px] py-2.5 transition-colors"
+        <Button
+          variant="outline"
+          size="xl"
+          asChild
+          className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white"
         >
-          How it works
-        </Link>
+          <a href="#how">How it works</a>
+        </Button>
       </HeroBanner>
 
       {/* LIGHT — Stats */}
