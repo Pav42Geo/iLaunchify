@@ -22,7 +22,7 @@ import {
   ArrowUpDown,
   ArrowRight,
   Tag,
-  LifeBuoy,
+  ShoppingBag,
   Coffee,
   Leaf,
   Truck,
@@ -139,6 +139,27 @@ export default async function ProductsListPage({
 
   // Resolve hero thumbnails (Asset id → URL) for the name cell.
   const heroUrls = await resolveCertBadgeUrls(templates.map((r) => r.imageAssetId))
+
+  // Demand signal — production orders each template has pulled, via the creator
+  // Products derived from it (ProductTemplate → Product[] → OrderItem[]). We
+  // count order line-items and sum per template; mirrors the creator card's
+  // "X orders placed". One extra query, JS-aggregated (Prisma can't _count a
+  // two-hop relation).
+  const templateIds = templates.map((t) => t.id)
+  const derivedProducts = templateIds.length
+    ? await prisma.product.findMany({
+        where: { productTemplateId: { in: templateIds } },
+        select: { productTemplateId: true, _count: { select: { orderItems: true } } },
+      })
+    : []
+  const ordersByTemplate = new Map<string, number>()
+  for (const p of derivedProducts) {
+    if (!p.productTemplateId) continue
+    ordersByTemplate.set(
+      p.productTemplateId,
+      (ordersByTemplate.get(p.productTemplateId) ?? 0) + p._count.orderItems,
+    )
+  }
 
   // KPI + chip counts always reflect the FULL set; only the table obeys the tab.
   const countFor = (t: Exclude<Tab, 'all'>) =>
@@ -257,7 +278,7 @@ export default async function ProductsListPage({
       {templates.length === 0 ? (
         <EmptyState />
       ) : view === 'cards' ? (
-        <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} heroUrls={heroUrls} />
+        <ProductCards rows={visible} tabLabel={TAB_LABEL[tab]} heroUrls={heroUrls} ordersByTemplate={ordersByTemplate} />
       ) : (
         <SelectionProvider allIds={visible.map((r) => r.id)} rows={visible.map((r) => ({ id: r.id, name: r.name, status: r.status }))}>
         <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
@@ -490,10 +511,12 @@ function ProductCards({
   rows,
   tabLabel,
   heroUrls,
+  ordersByTemplate,
 }: {
   rows: Row[]
   tabLabel: string
   heroUrls: Map<string, string>
+  ordersByTemplate: Map<string, number>
 }) {
   if (rows.length === 0) {
     return (
@@ -505,7 +528,7 @@ function ProductCards({
   return (
     <div className="space-y-4">
       {rows.map((r) => (
-        <PartnerProductCard key={r.id} r={r} heroUrls={heroUrls} />
+        <PartnerProductCard key={r.id} r={r} heroUrls={heroUrls} orders={ordersByTemplate.get(r.id) ?? 0} />
       ))}
     </div>
   )
@@ -518,7 +541,7 @@ const AUTHORING_STATUSES = new Set<ProductTemplateStatus>(['DRAFT', 'NEEDS_CHANG
 // "Updated …" + PRD code), a body row with a 72px thumbnail + title + subline +
 // a 4-item icon meta row, and a right-hand action column (black-pill primary +
 // the 3-dot RowActions). No footer rail — actions live in the right column.
-function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, string> }) {
+function PartnerProductCard({ r, heroUrls, orders }: { r: Row; heroUrls: Map<string, string>; orders: number }) {
   const pill = STATUS_PILL[r.status] ?? { label: r.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const authoring = AUTHORING_STATUSES.has(r.status)
   const imageUrl = r.imageAssetId ? heroUrls.get(r.imageAssetId) : undefined
@@ -580,13 +603,10 @@ function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, str
                 {r.leadTimeRepeatDays}-day lead
               </span>
             )}
-            <Link
-              href={`/help/new?productId=${r.id}`}
-              className="inline-flex items-center gap-1.5 text-ink-500 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-            >
-              <LifeBuoy className="h-3.5 w-3.5" aria-hidden="true" />
-              Get support
-            </Link>
+            <span className={cn('inline-flex items-center gap-1.5', orders > 0 ? 'font-medium text-ink-700' : 'text-ink-400')}>
+              <ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />
+              {orders === 0 ? 'Never ordered' : `${orders} order${orders === 1 ? '' : 's'}`}
+            </span>
           </div>
         </div>
 
