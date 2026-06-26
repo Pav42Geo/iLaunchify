@@ -388,12 +388,18 @@ function BrandStack() {
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
-      {/* spokes hub → stations */}
-      <g stroke="#3A3A41" strokeWidth="2">
+      {/* spokes hub → stations: faint rail + flowing neon energy radiating out */}
+      <g stroke="#2E2E34" strokeWidth="2">
         <line x1="240" y1="215" x2="240" y2="95" />
         <line x1="240" y1="215" x2="360" y2="215" />
         <line x1="240" y1="215" x2="240" y2="335" />
         <line x1="240" y1="215" x2="120" y2="215" />
+      </g>
+      <g stroke="#B5FF3D" strokeWidth="2" strokeDasharray="4 10" strokeLinecap="round" fill="none" opacity="0.7">
+        <line x1="240" y1="215" x2="240" y2="95"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="360" y2="215"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="240" y2="335"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="120" y2="215"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.6s" repeatCount="indefinite" /></line>
       </g>
 
       {/* the cycle — base ring + flowing neon current */}
@@ -423,7 +429,7 @@ function BrandStack() {
             <line x1="19" y1="14" x2="37" y2="14" />
             <line x1="20" y1="34" x2="36" y2="34" />
           </g>
-          <text x="28" y="-12" textAnchor="middle" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Formulate</text>
+          <text x="28" y="-12" textAnchor="middle" fontSize="13.5" fontWeight="700" fill="#B5FF3D">Formulate</text>
         </g>
       </g>
       {/* right — Fill (droplet) */}
@@ -435,7 +441,7 @@ function BrandStack() {
             <path d="M28 14 C 37 26, 37 35, 28 39 C 19 35, 19 26, 28 14 Z" />
             <line x1="16" y1="44" x2="40" y2="44" />
           </g>
-          <text x="66" y="33" textAnchor="start" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Fill</text>
+          <text x="66" y="33" textAnchor="start" fontSize="13.5" fontWeight="700" fill="#FF2E63">Fill</text>
         </g>
       </g>
       {/* bottom — Label (tag) */}
@@ -448,7 +454,7 @@ function BrandStack() {
             <line x1="20" y1="26" x2="36" y2="26" />
             <line x1="20" y1="32" x2="30" y2="32" />
           </g>
-          <text x="28" y="74" textAnchor="middle" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Label</text>
+          <text x="28" y="74" textAnchor="middle" fontSize="13.5" fontWeight="700" fill="#B5FF3D">Label</text>
         </g>
       </g>
       {/* left — Pack & ship (box) */}
@@ -461,7 +467,10 @@ function BrandStack() {
             <path d="M16 22 L28 28 L40 22" />
             <path d="M28 28 L28 44" />
           </g>
-          <text x="-10" y="33" textAnchor="end" fontSize="13.5" fontWeight="600" fill="#C4C4CB">Pack &amp; ship</text>
+          <text x="-10" y="26" textAnchor="end" fontSize="13.5" fontWeight="700" fill="#FF2E63">
+            <tspan x="-10">Pack &amp;</tspan>
+            <tspan x="-10" dy="15">ship</tspan>
+          </text>
         </g>
       </g>
 
