@@ -25,6 +25,44 @@ import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
  * The marketplace browse experience (product cards, categories) lives on
  * /marketplace. This page is pure brand identity.
  */
+// Hero spatial graphic (light surface) — a loose constellation of iLaunchify
+// product tiles floating at varied depths with faint connectors. Brand-colored,
+// playful "your products, launching" cluster; enlarges as a right-side bg.
+function LaunchTile({ x, y, s, fill, glyph, dur, begin }: { x: number; y: number; s: number; fill: string; glyph: string; dur: string; begin: string }) {
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur={dur} begin={begin} repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+        <rect x={-s / 2} y={-s / 2} width={s} height={s} rx={s * 0.24} fill={fill} />
+        <g transform={`scale(${s / 110})`} stroke={glyph} strokeWidth="6" fill="none" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M0 -16 L18 -6 L0 4 L-18 -6 Z" />
+          <path d="M-18 2 L0 12 L18 2" />
+          <path d="M-18 10 L0 20 L18 10" />
+        </g>
+      </g>
+    </g>
+  )
+}
+
+function LaunchField() {
+  return (
+    <svg viewBox="0 0 560 480" className="h-auto w-full" role="img" aria-label="iLaunchify product tiles launching">
+      <g stroke="#18181A" strokeWidth="1.5" strokeDasharray="3 7" opacity="0.16" fill="none">
+        <line x1="190" y1="160" x2="370" y2="120" />
+        <line x1="370" y1="120" x2="440" y2="270" />
+        <line x1="190" y1="160" x2="120" y2="340" />
+        <line x1="120" y1="340" x2="300" y2="310" />
+        <line x1="300" y1="310" x2="440" y2="270" />
+      </g>
+      <LaunchTile x={190} y={160} s={96} fill="#FF2E63" glyph="#FFFFFF" dur="5s" begin="0s" />
+      <LaunchTile x={370} y={120} s={74} fill="#B5FF3D" glyph="#18181A" dur="6s" begin="-1.5s" />
+      <LaunchTile x={440} y={270} s={62} fill="#C9B6FF" glyph="#18181A" dur="5.5s" begin="-3s" />
+      <LaunchTile x={120} y={340} s={66} fill="#FFE74C" glyph="#18181A" dur="6.5s" begin="-2s" />
+      <LaunchTile x={300} y={310} s={58} fill="#18181A" glyph="#B5FF3D" dur="5.2s" begin="-4s" />
+    </svg>
+  )
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -71,24 +109,18 @@ export default async function HomePage({
           />
         </div>
 
-        {/* Floating stickers */}
-        <Sticker className="top-[120px] right-[6%] bg-neon-500 text-ink-900" rotation="5deg">
-          4 partner types
-        </Sticker>
-        <Sticker className="top-[280px] right-[18%] bg-pink-500 text-white" rotation="-8deg" delay="-2s">
-          8 niches · locked
-        </Sticker>
-        <Sticker className="bottom-[120px] right-[8%] bg-white border-[1.5px] border-ink-900 text-ink-900" rotation="6deg" delay="-4s">
-          13 categories · live
-        </Sticker>
-        <Sticker
-          className="top-[200px] left-[50%] text-ink-900"
-          rotation="-4deg"
-          delay="-1s"
-          style={{ background: '#FFE74C' }}
+        {/* Spatial product-tile field — right-anchored, faded; enlarges as bg */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[52%] items-center justify-end lg:flex"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent, #000 42%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, #000 42%)',
+          }}
         >
-          Manifest-versioned approvals
-        </Sticker>
+          <LaunchField />
+        </div>
+
 
         {/* Hero content */}
         <div className="relative z-10 max-w-[1400px] mx-auto w-full">
@@ -97,7 +129,7 @@ export default async function HomePage({
             <span>Cohort 1 applications open · US-only</span>
           </div>
 
-          <h1 className="font-display font-extrabold leading-[0.92] tracking-[-0.045em] max-w-[18ch] mb-8 text-[clamp(56px,9vw,144px)]">
+          <h1 className="font-display font-extrabold leading-[0.95] tracking-[-0.04em] max-w-[15ch] mb-7 text-[clamp(40px,5.2vw,80px)]">
             Launch{' '}
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               your
