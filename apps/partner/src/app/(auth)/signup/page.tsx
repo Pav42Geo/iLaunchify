@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Factory, ShieldCheck, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { Brand } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { SignupForm } from './SignupForm'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -24,6 +26,7 @@ export default async function SignupPage({
   searchParams: Promise<{ email?: string; companyName?: string }>
 }) {
   const { email, companyName } = await searchParams
+  const logos = await getPublicBrandLogos()
 
   return (
     <div className="min-h-screen bg-[var(--bg-hero)] grid grid-cols-1 md:grid-cols-[1fr_1fr]">
@@ -44,13 +47,9 @@ export default async function SignupPage({
         <div className="relative">
           <a
             href={marketingUrl('/business')}
-            className="flex items-center gap-[9px] mb-12"
+            className="flex items-center mb-12"
           >
-            <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-            <span className="font-display text-[22px] font-extrabold tracking-[-0.04em] text-white">
-              iLaunchify
-              <span className="text-neon-500 font-bold ml-0.5"> Business</span>
-            </span>
+            <Brand imageSrc={logos.fullDark} sublabel="Business" wordmarkClassName="text-white" sublabelClassName="text-neon-500" />
           </a>
 
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-4">
@@ -82,13 +81,9 @@ export default async function SignupPage({
           {/* Mobile-only logo */}
           <a
             href={marketingUrl('/business')}
-            className="md:hidden flex items-center gap-[8px] mb-7"
+            className="md:hidden flex items-center mb-7"
           >
-            <span className="w-[24px] h-[24px] rounded-md bg-pink-500" />
-            <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-ink-900">
-              iLaunchify
-              <span className="text-pink-700 font-bold ml-0.5"> Business</span>
-            </span>
+            <Brand imageSrc={logos.fullLight} sublabel="Business" sublabelClassName="text-pink-700" />
           </a>
 
           <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-ink-900 mb-2">

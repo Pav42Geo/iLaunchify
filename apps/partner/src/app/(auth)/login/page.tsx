@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { Brand } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { LoginForm } from './LoginForm'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -17,6 +19,7 @@ export default async function LoginPage({
   searchParams: Promise<{ email?: string }>
 }) {
   const { email } = await searchParams
+  const logos = await getPublicBrandLogos()
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-hero)]">
@@ -25,11 +28,7 @@ export default async function LoginPage({
           href={marketingUrl('/business')}
           className="flex items-center gap-[9px] w-fit"
         >
-          <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-          <span className="font-display text-[22px] font-extrabold tracking-[-0.04em] text-ink-900">
-            iLaunchify
-            <span className="text-pink-700 font-bold ml-0.5"> Business</span>
-          </span>
+          <Brand imageSrc={logos.fullLight} sublabel="Business" sublabelClassName="text-pink-700" />
         </a>
       </header>
 

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Sparkles, ShieldCheck, Truck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { Brand } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { SignupForm } from './SignupForm'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -34,6 +36,7 @@ export default async function SignupPage({
   }>
 }) {
   const { email, brandName, plan } = await searchParams
+  const logos = await getPublicBrandLogos()
 
   return (
     <div className="min-h-screen bg-[var(--bg-hero)] grid grid-cols-1 md:grid-cols-[1fr_1fr]">
@@ -53,11 +56,8 @@ export default async function SignupPage({
         />
 
         <div className="relative">
-          <a href={marketingUrl('/')} className="flex items-center gap-[7px] mb-12">
-            <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-            <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-white">
-              iLaunchify
-            </span>
+          <a href={marketingUrl('/')} className="flex items-center mb-12">
+            <Brand imageSrc={logos.fullDark} wordmarkClassName="text-white" />
           </a>
 
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-4">
@@ -88,12 +88,9 @@ export default async function SignupPage({
           {/* Mobile-only logo */}
           <a
             href={marketingUrl('/')}
-            className="md:hidden flex items-center gap-[7px] mb-7"
+            className="md:hidden flex items-center mb-7"
           >
-            <span className="w-[24px] h-[24px] rounded-md bg-pink-500" />
-            <span className="font-display text-[18px] font-extrabold tracking-[-0.04em] text-ink-900">
-              iLaunchify
-            </span>
+            <Brand imageSrc={logos.fullLight} />
           </a>
 
           <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-ink-900 mb-2">

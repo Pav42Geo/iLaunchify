@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { Brand } from '@ilaunchify/ui'
+import { getPublicBrandLogos } from '@ilaunchify/db'
 import { LoginForm } from './LoginForm'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -17,6 +19,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; callbackUrl?: string }>
 }) {
   const { error, callbackUrl } = await searchParams
+  const logos = await getPublicBrandLogos()
 
   const providers = {
     google: !!(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET),
@@ -30,11 +33,8 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen flex flex-col">
       <header className="px-6 py-5">
-        <a href={marketingUrl('/')} className="flex items-center gap-[7px] w-fit">
-          <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
-          <span className="font-display text-[20px] font-extrabold tracking-[-0.04em] text-ink-900">
-            iLaunchify
-          </span>
+        <a href={marketingUrl('/')} className="flex items-center w-fit">
+          <Brand imageSrc={logos.fullLight} />
         </a>
       </header>
 
