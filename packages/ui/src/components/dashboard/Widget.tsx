@@ -4,7 +4,7 @@
 // partner, and creator apps. Matches the v2 admin surface pattern
 // (memory ilaunchify-admin-surface-pattern):
 //   - White body inside `rounded-2xl border border-ink-200 overflow-hidden`.
-//   - Cream `#F3EFE8` header band with title (font-display) + subtitle.
+//   - Header band on the `--bg-hero` surface (white) with title + subtitle.
 //   - Optional tinted icon ball (tone-driven, not a left-edge stripe).
 //   - Optional cream footer band with a small pink-700 chevron link.
 //   - Loading skeleton + error state are first-class.
@@ -166,7 +166,7 @@ export function WidgetHeader({
   return (
     <header
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 bg-[#F3EFE8] px-5 py-3.5',
+        'flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3.5',
         className,
       )}
     >
@@ -224,7 +224,7 @@ export function WidgetFooter({
   return (
     <footer
       className={cn(
-        'flex items-center justify-end border-t border-ink-100 bg-[#F3EFE8] px-5 py-2.5',
+        'flex items-center justify-end border-t border-ink-100 bg-[var(--bg-hero)] px-5 py-2.5',
         className,
       )}
     >
