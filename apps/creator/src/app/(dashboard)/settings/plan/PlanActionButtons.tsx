@@ -18,12 +18,18 @@ import {
   cancelMyTierSubscription,
   resumeMyTierSubscription,
 } from './actions'
+import { marketingUrl } from '@/lib/marketing-url'
 
 type Tier = 'BUILDER' | 'AGENCY'
 
 // =============================================================================
 // UpgradeButton — Maker → Builder/Agency OR Builder → Agency
 // =============================================================================
+//
+// Requires affirmative consent to the Membership Subscription Terms BEFORE the
+// recurring charge (US auto-renewal / "click-to-cancel" best practice — see
+// /policies/membership-subscription-terms). The button stays disabled until the
+// creator checks the box.
 
 export function UpgradeButton({
   targetTier,
@@ -34,12 +40,34 @@ export function UpgradeButton({
 }) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [agreed, setAgreed] = useState(false)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
+      <label className="flex items-start gap-2 text-[11px] leading-snug text-ink-600">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 accent-pink-500"
+          aria-label="Agree to the Membership Subscription Terms"
+        />
+        <span>
+          I agree to the{' '}
+          <a
+            href={marketingUrl('/policies/membership-subscription-terms')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-pink-700 underline hover:text-pink-800"
+          >
+            Membership Subscription Terms
+          </a>
+          , including automatic monthly renewal until I cancel.
+        </span>
+      </label>
       <button
         type="button"
-        disabled={pending}
+        disabled={pending || !agreed}
         onClick={() => {
           setError(null)
           start(async () => {
@@ -52,7 +80,7 @@ export function UpgradeButton({
             window.location.assign(res.url)
           })
         }}
-        className="inline-flex h-10 w-full items-center justify-center rounded-full bg-pink-600 px-5 text-[12.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-10 w-full items-center justify-center rounded-full bg-ink-900 px-5 text-[12.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? 'Opening Stripe…' : label}
       </button>

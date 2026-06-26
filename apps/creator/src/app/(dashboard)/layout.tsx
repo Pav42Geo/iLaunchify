@@ -63,7 +63,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <DashboardTopbar user={user} />
         <div className="flex flex-1">
           <DashboardSidebar />
-          <main className="flex-1 overflow-y-auto bg-ink-50 p-6">
+          {/* overflow-x-clip lets a landing page's hero break full-bleed
+              (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to
+              the content area instead of spilling under the sidebar. Account
+              pages keep their max-w-6xl shape via the wrapper below. */}
+          <main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
             <div className="mx-auto max-w-6xl">{children}</div>
           </main>
         </div>

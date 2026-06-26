@@ -1,47 +1,37 @@
 // iLaunchify Plans — the creator plan-upgrade landing (repurposed from the old
-// /subscriptions recurring-runs list, 2026-06-26). Research-backed conversion
-// page: savings calculator (the hook — higher tiers = lower platform fee), tier
-// cards with a highlighted recommended plan, an expandable full comparison, and
-// an objection-handling FAQ. Upgrade CTAs reuse the real Stripe flow
-// (UpgradeButton → startTierUpgrade). Honest: monthly-only, no fake social proof,
-// and the calculator tells you to stay on Maker below break-even.
+// /subscriptions recurring-runs list, 2026-06-26). Wears the marketing /pricing
+// editorial look (Pavel 2026-06-26 — "escape the boring account look"): big
+// Fraunces-italic hero, premium tier cards with the signature black-pill CTA,
+// section eyebrows, a dark CTA band — inside the account shell. Keeps the unique
+// savings calculator, the REAL Stripe upgrade flow (UpgradeButton) + the
+// Membership Subscription Terms consent checkbox. Pricing is DB-driven (provisional).
 //
 // Plan MANAGEMENT (cancel / resume / billing) stays at /settings/plan.
 
+import * as React from 'react'
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser, TIER_RANK, normalizeTier } from '@ilaunchify/auth'
 import { CREATOR_PLAN_CODES } from '@ilaunchify/plans'
-import {
-  Sparkles,
-  Rocket,
-  Crown,
-  Check,
-  ChevronDown,
-  ArrowRight,
-  TrendingDown,
-  Minus,
-} from 'lucide-react'
+import { Button } from '@ilaunchify/ui'
+import { Sparkles, Crown, Check, X, ArrowRight } from 'lucide-react'
 import { UpgradeButton } from '../settings/plan/PlanActionButtons'
 import { PlansSavingsCalculator, type CalcTier } from './PlansSavingsCalculator'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'iLaunchify Plans — iLaunchify' }
 
 type TierKey = 'maker' | 'builder' | 'agency'
 
-// Editorial tier metadata. Prices come from the DB (admin-editable); fee % are
-// the real take rates from seed-subscription-plans.ts (Maker 15 / Builder 12 /
-// Agency 8). Features lead with the fee — the savings lever — per the research.
 const TIERS: ReadonlyArray<{
   key: TierKey
   planCode: string
   name: string
   tagline: string
   feePct: number
-  Icon: typeof Sparkles
   recommended?: boolean
-  features: string[]
+  highlights: { included: boolean; label: string }[]
 }> = [
   {
     key: 'maker',
@@ -49,13 +39,13 @@ const TIERS: ReadonlyArray<{
     name: 'Maker',
     tagline: 'Test ideas, pay only when you produce.',
     feePct: 0.15,
-    Icon: Sparkles,
-    features: [
-      '15% platform fee on production',
-      'Unlimited products & label drafts',
-      'Marketplace + partner matching',
-      'Standard order routing & tracking',
-      '1 brand kit',
+    highlights: [
+      { included: true, label: '15% platform fee on production' },
+      { included: true, label: 'Unlimited products & label drafts' },
+      { included: true, label: 'Marketplace + partner matching' },
+      { included: true, label: '1 brand kit' },
+      { included: false, label: 'Print-ready Studio export' },
+      { included: false, label: 'Priority support' },
     ],
   },
   {
@@ -64,14 +54,14 @@ const TIERS: ReadonlyArray<{
     name: 'Builder',
     tagline: 'For creators running real production.',
     feePct: 0.12,
-    Icon: Rocket,
     recommended: true,
-    features: [
-      'Everything in Maker, plus:',
-      '12% platform fee — save 3% on every run',
-      'Print-ready Design Studio export',
-      'Priority human support on every order',
-      'Up to 3 brand kits',
+    highlights: [
+      { included: true, label: '12% platform fee — save 3% per run' },
+      { included: true, label: 'Print-ready Design Studio export' },
+      { included: true, label: 'Priority human support' },
+      { included: true, label: 'Up to 3 brand kits' },
+      { included: true, label: 'Volume pricing on production' },
+      { included: false, label: 'Custom domain storefronts' },
     ],
   },
   {
@@ -80,27 +70,39 @@ const TIERS: ReadonlyArray<{
     name: 'Agency',
     tagline: 'Multi-brand teams & influencer agencies.',
     feePct: 0.08,
-    Icon: Crown,
-    features: [
-      'Everything in Builder, plus:',
-      '8% platform fee — our best rate',
-      'Unlimited brand kits & multi-brand workspace',
-      'Custom domain storefronts',
-      'Dedicated launch partner',
+    highlights: [
+      { included: true, label: '8% platform fee — our best rate' },
+      { included: true, label: 'Unlimited brand kits & workspace' },
+      { included: true, label: 'Custom domain storefronts' },
+      { included: true, label: 'Dedicated launch partner' },
+      { included: true, label: 'Everything in Builder' },
     ],
   },
 ] as const
 
-const COMPARISON: Array<{ label: string; cells: [string, string, string] }> = [
-  { label: 'Platform fee on production', cells: ['15%', '12%', '8%'] },
-  { label: 'Products & label drafts', cells: ['Unlimited', 'Unlimited', 'Unlimited'] },
-  { label: 'Brand kits', cells: ['1', '3', 'Unlimited'] },
-  { label: 'Marketplace + partner matching', cells: ['✓', '✓', '✓'] },
-  { label: 'Order routing & tracking', cells: ['Standard', 'Standard', 'Standard'] },
-  { label: 'Print-ready Studio export', cells: ['—', '✓', '✓'] },
-  { label: 'Priority human support', cells: ['—', '✓', 'Dedicated'] },
-  { label: 'Custom domain storefronts', cells: ['—', '—', '✓'] },
-  { label: 'Launch partner & roadmap input', cells: ['—', '—', '✓'] },
+const COMPARISON: Array<{ section: string; rows: Array<{ label: string; cells: [React.ReactNode, React.ReactNode, React.ReactNode] }> }> = [
+  {
+    section: 'Production economics',
+    rows: [
+      { label: 'Platform fee on production', cells: ['15%', '12%', '8%'] },
+      { label: 'Volume pricing on runs', cells: [false, true, true] },
+    ],
+  },
+  {
+    section: 'Catalog & brands',
+    rows: [
+      { label: 'Products & label drafts', cells: ['Unlimited', 'Unlimited', 'Unlimited'] },
+      { label: 'Brand kits', cells: ['1', '3', 'Unlimited'] },
+      { label: 'Custom domain storefronts', cells: [false, false, true] },
+    ],
+  },
+  {
+    section: 'Studio & support',
+    rows: [
+      { label: 'Print-ready Studio export', cells: [false, true, true] },
+      { label: 'Human support', cells: ['Standard', 'Priority', 'Dedicated partner'] },
+    ],
+  },
 ]
 
 const FAQ: Array<{ q: string; a: string }> = [
@@ -120,10 +122,6 @@ const FAQ: Array<{ q: string; a: string }> = [
     q: 'Monthly or annual billing?',
     a: 'Plans are billed monthly through Stripe. You can switch tiers at any time.',
   },
-  {
-    q: 'What if my volume changes month to month?',
-    a: 'Upgrade whenever your production grows and the savings kick in. To move down a tier, cancel your current subscription — you’ll drop to the lower plan at the end of the period.',
-  },
 ]
 
 export default async function PlansPage() {
@@ -135,9 +133,7 @@ export default async function PlansPage() {
       select: { subscriptionTier: true },
     }),
     prisma.subscriptionPlan.findMany({
-      where: {
-        code: { in: [CREATOR_PLAN_CODES.maker, CREATOR_PLAN_CODES.builder, CREATOR_PLAN_CODES.agency] },
-      },
+      where: { code: { in: [CREATOR_PLAN_CODES.maker, CREATOR_PLAN_CODES.builder, CREATOR_PLAN_CODES.agency] } },
       select: { code: true, monthlyPriceCents: true },
     }),
   ])
@@ -153,29 +149,53 @@ export default async function PlansPage() {
   }))
 
   return (
-    <div className="space-y-6">
-      {/* Hero */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">iLaunchify Plans</p>
-        <h1 className="mt-1.5 font-display text-[28px] font-bold leading-[1.08] tracking-[-0.02em] text-ink-900">
-          Plans that pay for themselves
-        </h1>
-        <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">
-          Every plan unlocks a lower platform fee on production. The more you make, the more you save —
-          most creators find a paid plan costs less than it saves. You’re on{' '}
-          <span className="font-semibold capitalize text-ink-900">{currentTier}</span> today.
-        </p>
-        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1 text-[11.5px] font-medium text-ink-600">
-          <TrendingDown className="h-3.5 w-3.5 text-success-600" aria-hidden="true" />
-          Cancel anytime · billed monthly via Stripe · keep your tier till period end
-        </p>
-      </div>
+    <div className="space-y-16 pb-4">
+      {/* HERO — true full-bleed banner: breaks out of the max-w-6xl account
+          wrapper to span the whole content area (margin-left: calc(50% - 50vw)
+          + width: 100vw), clipped by the main's overflow-x-clip so it never
+          spills under the sidebar. Crisp pink grid pattern fading out. */}
+      <section
+        className="relative -mt-6 overflow-hidden border-b border-ink-100 bg-white px-6 pb-14 pt-16 text-center"
+        style={{ marginLeft: 'calc(50% - 50vw)', marginRight: 'calc(50% - 50vw)', width: '100vw' }}
+      >
+        {/* graph-paper grid, pink-tinted, fading radially from the top */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(#FFD0E0 1px, transparent 1px), linear-gradient(90deg, #FFD0E0 1px, transparent 1px)',
+            backgroundSize: '38px 38px',
+            opacity: 0.6,
+            maskImage: 'radial-gradient(110% 92% at 50% -6%, #000 28%, transparent 74%)',
+            WebkitMaskImage: 'radial-gradient(110% 92% at 50% -6%, #000 28%, transparent 74%)',
+          }}
+        />
 
-      {/* Savings calculator — the hook */}
-      <PlansSavingsCalculator tiers={calcTiers} currentTier={currentTier} />
+        <div className="relative">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">iLaunchify Plans</p>
+          <h1 className="mx-auto mt-3 max-w-[18ch] font-display text-4xl font-extrabold leading-[0.98] tracking-[-0.03em] text-ink-900 sm:text-5xl">
+            Plans that{' '}
+            <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">pay for themselves.</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-[56ch] text-[15px] leading-relaxed text-ink-700 sm:text-lg">
+            Every plan unlocks a lower platform fee on production. The more you make, the more you save —
+            most creators find a paid plan costs less than it saves.
+          </p>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium text-ink-600 backdrop-blur-sm">
+            Billed monthly · cancel anytime · you’re on{' '}
+            <span className="font-semibold capitalize text-ink-900">{currentTier}</span> today
+          </div>
+        </div>
+      </section>
 
-      {/* Tier cards */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* SAVINGS CALCULATOR */}
+      <section className="mx-auto max-w-3xl">
+        <PlansSavingsCalculator tiers={calcTiers} currentTier={currentTier} />
+      </section>
+
+      {/* TIER CARDS */}
+      <section className="mx-auto grid max-w-[1080px] grid-cols-1 gap-5 md:grid-cols-3">
         {TIERS.map((t) => {
           const price = priceByCode.get(t.planCode) ?? 0
           const isCurrent = currentTier === t.key
@@ -183,148 +203,189 @@ export default async function PlansPage() {
           return (
             <article
               key={t.key}
-              className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white ${
-                t.recommended ? 'border-pink-300 shadow-[0_10px_30px_-14px_rgba(255,46,99,0.35)]' : 'border-ink-200'
-              }`}
+              className={
+                'relative flex flex-col rounded-2xl border bg-white p-6 ' +
+                (t.recommended
+                  ? 'border-pink-500 shadow-[0_8px_30px_-8px_rgba(255,46,99,0.25)]'
+                  : 'border-ink-200')
+              }
             >
               {t.recommended && (
-                <span className="absolute right-4 top-4 rounded-full bg-pink-500 px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-wider text-white">
-                  Most popular
-                </span>
-              )}
-              <div className="px-5 pt-5">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-ink-50 text-ink-700">
-                  <t.Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                </span>
-                <h3 className="mt-3 font-display text-[19px] font-bold text-ink-900">{t.name}</h3>
-                <p className="mt-0.5 text-[12.5px] text-ink-500">{t.tagline}</p>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="font-display text-3xl font-bold tabular-nums text-ink-900">
-                    {price > 0 ? `$${Math.round(price / 100)}` : 'Free'}
-                  </span>
-                  {price > 0 && <span className="text-[12px] text-ink-500">/ month</span>}
+                <div className="absolute -top-3 left-6 inline-flex items-center gap-1.5 rounded-pill bg-pink-500 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white">
+                  <Sparkles strokeWidth={2.5} className="h-3 w-3" /> Most popular
                 </div>
+              )}
+
+              <div className="mb-1.5 flex items-center gap-2">
+                <h3 className="font-display text-[22px] font-bold tracking-[-0.015em] text-ink-900">{t.name}</h3>
+                {t.key === 'agency' && <Crown strokeWidth={2.25} className="h-4 w-4 text-pink-500" />}
+              </div>
+              <p className="mb-5 min-h-[40px] text-[14px] leading-snug text-ink-600">{t.tagline}</p>
+
+              <div className="mb-1 flex items-baseline gap-2 tabular-nums">
+                <span className="font-display text-5xl font-extrabold tracking-[-0.025em] text-ink-900">
+                  {price > 0 ? `$${Math.round(price / 100)}` : '$0'}
+                </span>
+                <span className="text-[14px] font-medium text-ink-500">{price > 0 ? '/ month' : 'forever'}</span>
+              </div>
+              <div className="mb-6 text-[12px] font-semibold text-pink-700">
+                {Math.round(t.feePct * 100)}% production fee
               </div>
 
-              {/* CTA at the top, by the price */}
-              <div className="px-5 pt-4">
+              {/* CTA */}
+              <div className="mb-6">
                 {isCurrent ? (
-                  <Link
-                    href="/settings/plan"
-                    className="inline-flex h-10 w-full items-center justify-center rounded-full border border-ink-300 bg-white text-[12.5px] font-semibold uppercase tracking-wider text-ink-700 transition hover:bg-ink-100"
-                  >
-                    Current plan · manage
-                  </Link>
+                  <Button asChild variant="secondary" size="md">
+                    <Link href="/settings/plan">
+                      Current plan · manage <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 ) : isUpgrade && t.key !== 'maker' ? (
                   <UpgradeButton targetTier={t.key.toUpperCase() as 'BUILDER' | 'AGENCY'} label={`Upgrade to ${t.name}`} />
                 ) : (
-                  <Link
-                    href="/settings/plan"
-                    className="inline-flex h-10 w-full items-center justify-center rounded-full border border-ink-200 bg-white text-[12.5px] font-semibold uppercase tracking-wider text-ink-500 transition hover:bg-ink-50"
-                  >
-                    {t.key === 'maker' ? 'Included' : 'Manage in settings'}
-                  </Link>
+                  <Button asChild variant="secondary" size="md">
+                    <Link href="/settings/plan">{t.key === 'maker' ? 'Included' : 'Manage in settings'}</Link>
+                  </Button>
                 )}
-                <p className="mt-2 text-center text-[11px] text-ink-400">Cancel anytime</p>
               </div>
 
-              {/* Features */}
-              <ul className="mt-4 space-y-1.5 px-5 pb-5 text-[12.5px] text-ink-700">
-                {t.features.map((f, i) => {
-                  const isHeader = f.endsWith('plus:')
-                  return (
-                    <li key={i} className={`flex items-start gap-2 ${isHeader ? 'font-semibold text-ink-900' : ''}`}>
-                      {!isHeader && (
-                        <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success-600" aria-hidden="true" />
-                      )}
-                      <span>{f}</span>
-                    </li>
-                  )
-                })}
+              <ul className="mt-auto space-y-2.5">
+                {t.highlights.map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[13px]">
+                    {f.included ? (
+                      <Check strokeWidth={3} className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-500" />
+                    ) : (
+                      <X strokeWidth={2.5} className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-300" />
+                    )}
+                    <span className={f.included ? 'text-ink-900' : 'text-ink-400 line-through'}>{f.label}</span>
+                  </li>
+                ))}
               </ul>
             </article>
           )
         })}
-      </div>
+      </section>
 
-      {/* Full comparison — expandable */}
-      <details className="group overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 hover:bg-ink-50/50">
-          <span className="font-display text-[15px] font-semibold text-ink-900">Compare every feature</span>
-          <ChevronDown className="h-4 w-4 text-ink-500 transition-transform group-open:rotate-180" aria-hidden="true" />
-        </summary>
-        <div className="overflow-x-auto border-t border-ink-100">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-ink-100 bg-[var(--bg-hero)] text-[11px] uppercase tracking-wider text-ink-500">
-                <th className="px-5 py-3 font-semibold">Feature</th>
-                {TIERS.map((t) => (
-                  <th key={t.key} className="px-4 py-3 text-center font-semibold text-ink-700">
-                    {t.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON.map((row, i) => (
-                <tr key={i} className="border-b border-ink-50 last:border-0">
-                  <td className="px-5 py-2.5 text-ink-700">{row.label}</td>
-                  {row.cells.map((c, j) => (
-                    <td key={j} className="px-4 py-2.5 text-center tabular-nums text-ink-900">
-                      {c === '—' ? (
-                        <Minus className="mx-auto h-3.5 w-3.5 text-ink-300" aria-hidden="true" />
-                      ) : c === '✓' ? (
-                        <Check className="mx-auto h-4 w-4 text-success-600" aria-hidden="true" />
-                      ) : (
-                        c
-                      )}
-                    </td>
-                  ))}
+      {/* COMPARISON */}
+      <section className="mx-auto max-w-[1080px]">
+        <SectionHead eyebrow="Compare plans" lead="What’s" emphasis="in every plan." />
+        <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead className="bg-cream">
+                <tr className="border-b border-ink-200">
+                  <th className="w-[40%] px-6 py-4 text-left text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">Feature</th>
+                  <th className="px-4 py-4 text-center font-display text-[15px] font-bold text-ink-900">Maker</th>
+                  <th className="bg-pink-50/40 px-4 py-4 text-center font-display text-[15px] font-bold text-pink-700">Builder</th>
+                  <th className="px-4 py-4 text-center font-display text-[15px] font-bold text-ink-900">Agency</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {COMPARISON.map((sec) => (
+                  <React.Fragment key={sec.section}>
+                    <tr>
+                      <td colSpan={4} className="bg-ink-50/40 px-6 pb-3 pt-6 text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
+                        {sec.section}
+                      </td>
+                    </tr>
+                    {sec.rows.map((row) => (
+                      <tr key={row.label} className="border-b border-ink-100 last:border-0">
+                        <td className="px-6 py-3 font-medium text-ink-900">{row.label}</td>
+                        <CompareCell>{row.cells[0]}</CompareCell>
+                        <CompareCell highlight>{row.cells[1]}</CompareCell>
+                        <CompareCell>{row.cells[2]}</CompareCell>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </details>
+      </section>
 
       {/* FAQ */}
-      <section>
-        <h2 className="mb-2 font-display text-[15px] font-semibold text-ink-900">Questions</h2>
-        <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-          {FAQ.map((item, i) => (
-            <details key={i} className={`group ${i > 0 ? 'border-t border-ink-100' : ''}`}>
-              <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 hover:bg-ink-50/50">
-                <span className="text-[13.5px] font-medium text-ink-900">{item.q}</span>
-                <ChevronDown className="h-4 w-4 flex-shrink-0 text-ink-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+      <section className="mx-auto max-w-[820px]">
+        <SectionHead eyebrow="Questions" lead="Common" emphasis="answers." />
+        <div className="flex flex-col gap-3">
+          {FAQ.map((item) => (
+            <details key={item.q} className="group rounded-xl border border-ink-200 bg-white transition-colors open:border-pink-300">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+                <span className="font-display text-[16px] font-bold tracking-[-0.005em] text-ink-900">{item.q}</span>
+                <span
+                  aria-hidden="true"
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-pill border border-ink-300 text-[15px] font-light leading-none text-ink-500 transition-colors group-open:border-pink-500 group-open:bg-pink-500 group-open:text-white"
+                >
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
               </summary>
-              <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-600">{item.a}</p>
+              <div className="px-5 pb-5 text-[14px] leading-[1.6] text-ink-700">{item.a}</div>
             </details>
           ))}
         </div>
       </section>
 
-      {/* Closing CTA */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-ink-900 px-6 py-5">
-        <div>
-          <p className="font-display text-[16px] font-bold text-white">Ready to keep more of every run?</p>
-          <p className="mt-0.5 text-[12.5px] text-white/70">Upgrade in a tap — it’s prorated and cancellable anytime.</p>
+      {/* DARK CTA */}
+      <section data-surface="dark" className="overflow-hidden rounded-3xl bg-ink-900 text-center text-white">
+        <div className="px-6 py-14">
+          <h2 className="mx-auto max-w-[20ch] font-display text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-4xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500">
+            Keep more of <em>every run.</em>
+          </h2>
+          <p className="mx-auto mt-4 max-w-[48ch] text-[15px] text-ink-300">
+            Upgrade in a tap — prorated, cancellable anytime, and it pays for itself the moment your
+            fee savings beat the subscription.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            {currentTier !== 'agency' ? (
+              <Button asChild variant="neon" size="lg">
+                <Link href="/settings/plan">
+                  Manage my plan <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="neon" size="lg">
+                <Link href="/contact-sales">
+                  Talk to our team <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="ghost" size="lg" className="text-white hover:bg-white/10">
+              <a href={marketingUrl('/marketplace')}>Browse the marketplace →</a>
+            </Button>
+          </div>
         </div>
-        {currentTier !== 'agency' ? (
-          <Link
-            href="/settings/plan"
-            className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-100"
-          >
-            Manage my plan <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        ) : (
-          <Link
-            href="/contact-sales"
-            className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-100"
-          >
-            Talk to our team <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        )}
-      </div>
+      </section>
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+function SectionHead({ eyebrow, lead, emphasis }: { eyebrow: string; lead: string; emphasis: string }) {
+  return (
+    <div className="mb-8 text-center">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">{eyebrow}</div>
+      <h2 className="font-display text-3xl font-bold tracking-[-0.025em] text-ink-900 sm:text-4xl">
+        {lead}{' '}
+        <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">{emphasis}</span>
+      </h2>
+    </div>
+  )
+}
+
+function CompareCell({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
+  return (
+    <td className={'px-4 py-3 text-center text-ink-700 ' + (highlight ? 'bg-pink-50/30' : '')}>
+      {children === true ? (
+        <Check strokeWidth={3} className="inline h-4 w-4 text-pink-500" />
+      ) : children === false ? (
+        <X strokeWidth={2.5} className="inline h-4 w-4 text-ink-300" />
+      ) : (
+        <span className="tabular-nums">{children}</span>
+      )}
+    </td>
   )
 }
