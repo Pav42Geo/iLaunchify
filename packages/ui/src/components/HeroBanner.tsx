@@ -31,6 +31,9 @@ export interface HeroBannerProps {
   deck?: React.ReactNode
   /** CTA elements — the caller passes the Button(s) themselves. */
   children?: React.ReactNode
+  /** Optional topical hero graphic (rendered as a right column on lg+, page
+   *  variant only). The reusable slot for the animated landing-hero illustrations. */
+  graphic?: React.ReactNode
   className?: string
 }
 
@@ -40,9 +43,11 @@ export function HeroBanner({
   headline,
   deck,
   children,
+  graphic,
   className,
 }: HeroBannerProps) {
   const isPage = variant === 'page'
+  const withGraphic = isPage && !!graphic
 
   return (
     <section
@@ -68,47 +73,57 @@ export function HeroBanner({
         }}
       />
 
-      <div className={cn('relative z-[1]', isPage && 'max-w-[1400px] mx-auto')}>
-        {eyebrow && (
-          <div
-            className={cn(
-              'inline-block text-[11px] font-semibold uppercase text-pink-400',
-              'tracking-[0.08em] mb-3',
-            )}
-          >
-            {eyebrow}
-          </div>
+      <div
+        className={cn(
+          'relative z-[1]',
+          isPage && 'max-w-[1400px] mx-auto',
+          withGraphic && 'grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]',
         )}
-
-        <h1
-          className={cn(
-            'font-display font-extrabold leading-[0.94] tracking-[-0.045em] text-white',
-            // Inline-em styling — Fraunces italic in neon green
-            // (the locked dark-surface emphasis rule)
-            '[&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500 ' +
-              '[&_em]:tracking-[-0.025em]',
-            isPage
-              ? 'text-4xl sm:text-6xl md:text-7xl max-w-[18ch] mb-7'
-              : 'text-3xl sm:text-4xl max-w-[20ch] mb-3',
+      >
+        <div>
+          {eyebrow && (
+            <div
+              className={cn(
+                'inline-block text-[11px] font-semibold uppercase text-pink-400',
+                'tracking-[0.08em] mb-3',
+              )}
+            >
+              {eyebrow}
+            </div>
           )}
-        >
-          {headline}
-        </h1>
 
-        {deck && (
-          <p
+          <h1
             className={cn(
-              'text-ink-300 leading-[1.55]',
-              isPage ? 'text-lg max-w-[56ch] mb-10' : 'text-[15px] max-w-[52ch] mb-5',
+              'font-display font-extrabold leading-[0.94] tracking-[-0.045em] text-white',
+              // Inline-em styling — Fraunces italic in neon green
+              // (the locked dark-surface emphasis rule)
+              '[&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500 ' +
+                '[&_em]:tracking-[-0.025em]',
+              isPage
+                ? 'text-4xl sm:text-6xl md:text-7xl max-w-[18ch] mb-7'
+                : 'text-3xl sm:text-4xl max-w-[20ch] mb-3',
             )}
           >
-            {deck}
-          </p>
-        )}
+            {headline}
+          </h1>
 
-        {children && (
-          <div className="flex flex-wrap items-center gap-3 relative">{children}</div>
-        )}
+          {deck && (
+            <p
+              className={cn(
+                'text-ink-300 leading-[1.55]',
+                isPage ? 'text-lg max-w-[56ch] mb-10' : 'text-[15px] max-w-[52ch] mb-5',
+              )}
+            >
+              {deck}
+            </p>
+          )}
+
+          {children && (
+            <div className="flex flex-wrap items-center gap-3 relative">{children}</div>
+          )}
+        </div>
+
+        {withGraphic && <div className="hidden lg:block">{graphic}</div>}
       </div>
     </section>
   )
