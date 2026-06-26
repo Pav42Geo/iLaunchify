@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
-import { Home, Store, Package, ShoppingBag, Repeat, Settings, LifeBuoy } from 'lucide-react'
+import { Home, Store, Package, ShoppingBag, Sparkles, Settings, LifeBuoy } from 'lucide-react'
 import { LaunchChecklistTrigger } from '@/components/checklist/LaunchChecklistTrigger'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -23,7 +23,7 @@ const NAV: Array<{
   { href: '/orders',                       label: 'Orders',      icon: ShoppingBag },
   // G6.f — recurring production subscriptions land here. Future V1.5
   // (#554) creator tier upgrade flow likely sits next to this entry.
-  { href: '/subscriptions',                label: 'Subscriptions', icon: Repeat },
+  { href: '/subscriptions',                label: 'Plans',       icon: Sparkles },
   { href: '/settings',                     label: 'Settings',    icon: Settings },
   { href: '/help',                         label: 'Help',        icon: LifeBuoy },
 ]

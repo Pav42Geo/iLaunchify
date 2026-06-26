@@ -1,307 +1,330 @@
-// Phase G6.f — creator-side subscriptions list.
+// iLaunchify Plans — the creator plan-upgrade landing (repurposed from the old
+// /subscriptions recurring-runs list, 2026-06-26). Research-backed conversion
+// page: savings calculator (the hook — higher tiers = lower platform fee), tier
+// cards with a highlighted recommended plan, an expandable full comparison, and
+// an objection-handling FAQ. Upgrade CTAs reuse the real Stripe flow
+// (UpgradeButton → startTierUpgrade). Honest: monthly-only, no fake social proof,
+// and the calculator tells you to stay on Maker below break-even.
 //
-// Before G6.f, the only evidence a creator's Subscribe & save acceptance
-// even worked was a Stripe email receipt. This page lists their
-// production-run subscriptions with cadence, runs progress, next charge
-// date, and a per-row cancel CTA.
-//
-// Layout mirrors /orders (R10) — a cream header band, then either a
-// wide-card list or an empty-state illustration. Per-row right rail
-// summarises money + next run; left side surfaces the brand + product.
-//
-// V1.5: pair with task #554 (Creator self-serve tier upgrade flow) and
-// fold both this page + the future /account/billing/upgrade flow under
-// a single /account/ tree.
+// Plan MANAGEMENT (cancel / resume / billing) stays at /settings/plan.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, TIER_RANK, normalizeTier } from '@ilaunchify/auth'
+import { CREATOR_PLAN_CODES } from '@ilaunchify/plans'
 import {
-  Repeat,
-  ShieldCheck,
   Sparkles,
-  AlertOctagon,
-  CalendarClock,
-  Package,
+  Rocket,
+  Crown,
+  Check,
+  ChevronDown,
   ArrowRight,
+  TrendingDown,
+  Minus,
 } from 'lucide-react'
-import { EmptyState } from '@ilaunchify/ui'
-import { CancelSubscriptionButton } from './CancelSubscriptionButton'
+import { UpgradeButton } from '../settings/plan/PlanActionButtons'
+import { PlansSavingsCalculator, type CalcTier } from './PlansSavingsCalculator'
 
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'iLaunchify Plans — iLaunchify' }
 
-type SubStatus = 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED'
-type Cadence = 'MONTHLY' | 'QUARTERLY'
+type TierKey = 'maker' | 'builder' | 'agency'
 
-const STATUS_PILL: Record<
-  SubStatus,
-  { label: string; bg: string; fg: string; border: string; dot: string }
-> = {
-  ACTIVE:    { label: 'Active',    bg: '#E1F5EE', fg: '#085041', border: '#9FE1CB', dot: '#1D9E75' },
-  PAUSED:    { label: 'Paused',    bg: '#FAEEDA', fg: '#854F0B', border: '#FAC775', dot: '#BA7517' },
-  CANCELLED: { label: 'Cancelled', bg: '#FCEBEB', fg: '#791F1F', border: '#F7C1C1', dot: '#E24B4A' },
-  COMPLETED: { label: 'Completed', bg: '#EAF3DE', fg: '#27500A', border: '#C0DD97', dot: '#3B6D11' },
-}
+// Editorial tier metadata. Prices come from the DB (admin-editable); fee % are
+// the real take rates from seed-subscription-plans.ts (Maker 15 / Builder 12 /
+// Agency 8). Features lead with the fee — the savings lever — per the research.
+const TIERS: ReadonlyArray<{
+  key: TierKey
+  planCode: string
+  name: string
+  tagline: string
+  feePct: number
+  Icon: typeof Sparkles
+  recommended?: boolean
+  features: string[]
+}> = [
+  {
+    key: 'maker',
+    planCode: CREATOR_PLAN_CODES.maker,
+    name: 'Maker',
+    tagline: 'Test ideas, pay only when you produce.',
+    feePct: 0.15,
+    Icon: Sparkles,
+    features: [
+      '15% platform fee on production',
+      'Unlimited products & label drafts',
+      'Marketplace + partner matching',
+      'Standard order routing & tracking',
+      '1 brand kit',
+    ],
+  },
+  {
+    key: 'builder',
+    planCode: CREATOR_PLAN_CODES.builder,
+    name: 'Builder',
+    tagline: 'For creators running real production.',
+    feePct: 0.12,
+    Icon: Rocket,
+    recommended: true,
+    features: [
+      'Everything in Maker, plus:',
+      '12% platform fee — save 3% on every run',
+      'Print-ready Design Studio export',
+      'Priority human support on every order',
+      'Up to 3 brand kits',
+    ],
+  },
+  {
+    key: 'agency',
+    planCode: CREATOR_PLAN_CODES.agency,
+    name: 'Agency',
+    tagline: 'Multi-brand teams & influencer agencies.',
+    feePct: 0.08,
+    Icon: Crown,
+    features: [
+      'Everything in Builder, plus:',
+      '8% platform fee — our best rate',
+      'Unlimited brand kits & multi-brand workspace',
+      'Custom domain storefronts',
+      'Dedicated launch partner',
+    ],
+  },
+] as const
 
-export default async function CreatorSubscriptionsPage() {
+const COMPARISON: Array<{ label: string; cells: [string, string, string] }> = [
+  { label: 'Platform fee on production', cells: ['15%', '12%', '8%'] },
+  { label: 'Products & label drafts', cells: ['Unlimited', 'Unlimited', 'Unlimited'] },
+  { label: 'Brand kits', cells: ['1', '3', 'Unlimited'] },
+  { label: 'Marketplace + partner matching', cells: ['✓', '✓', '✓'] },
+  { label: 'Order routing & tracking', cells: ['Standard', 'Standard', 'Standard'] },
+  { label: 'Print-ready Studio export', cells: ['—', '✓', '✓'] },
+  { label: 'Priority human support', cells: ['—', '✓', 'Dedicated'] },
+  { label: 'Custom domain storefronts', cells: ['—', '—', '✓'] },
+  { label: 'Launch partner & roadmap input', cells: ['—', '—', '✓'] },
+]
+
+const FAQ: Array<{ q: string; a: string }> = [
+  {
+    q: 'How does the platform fee work?',
+    a: 'We charge a percentage of each production order’s subtotal — 15% on Maker, 12% on Builder, 8% on Agency. Shipping and taxes are excluded. The calculator above shows what the lower fee nets you at your volume.',
+  },
+  {
+    q: 'When does a paid plan pay for itself?',
+    a: 'As soon as the fee you save each month exceeds the subscription price. The calculator above computes your exact break-even from your monthly production spend — and if you’re below it, it’ll tell you to stay on Maker.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. Cancel from Settings → Plan and you keep your tier’s benefits until the end of the current billing period, then drop back to the free Maker plan. No long-term commitment.',
+  },
+  {
+    q: 'Monthly or annual billing?',
+    a: 'Plans are billed monthly through Stripe. You can switch tiers at any time.',
+  },
+  {
+    q: 'What if my volume changes month to month?',
+    a: 'Upgrade whenever your production grows and the savings kick in. To move down a tier, cancel your current subscription — you’ll drop to the lower plan at the end of the period.',
+  },
+]
+
+export default async function PlansPage() {
   const user = await requireUser()
 
-  const subs = await prisma.productionSubscription.findMany({
-    where: { creatorUserId: user.id },
-    include: {
-      brand: { select: { id: true, name: true } },
-      product: { select: { id: true, name: true } },
-    },
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-  })
+  const [profile, plans] = await Promise.all([
+    prisma.creatorProfile.findUnique({
+      where: { userId: user.id },
+      select: { subscriptionTier: true },
+    }),
+    prisma.subscriptionPlan.findMany({
+      where: {
+        code: { in: [CREATOR_PLAN_CODES.maker, CREATOR_PLAN_CODES.builder, CREATOR_PLAN_CODES.agency] },
+      },
+      select: { code: true, monthlyPriceCents: true },
+    }),
+  ])
+
+  const priceByCode = new Map(plans.map((p) => [p.code, p.monthlyPriceCents]))
+  const currentTier = normalizeTier(profile?.subscriptionTier) as TierKey
+
+  const calcTiers: CalcTier[] = TIERS.map((t) => ({
+    key: t.key,
+    name: t.name,
+    feePct: t.feePct,
+    monthlyCents: priceByCode.get(t.planCode) ?? 0,
+  }))
 
   return (
     <div className="space-y-6">
-      <header className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Creator · Subscribe &amp; save
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Recurring production runs
+      {/* Hero */}
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">iLaunchify Plans</p>
+        <h1 className="mt-1.5 font-display text-[28px] font-bold leading-[1.08] tracking-[-0.02em] text-ink-900">
+          Plans that pay for themselves
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          {subs.length === 0
-            ? 'You haven’t locked in any recurring runs yet. The Subscribe option appears in checkout once you’ve picked a quantity.'
-            : `${subs.length} ${subs.length === 1 ? 'subscription' : 'subscriptions'} — manage cadence, run count, and cancellation here.`}
+        <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">
+          Every plan unlocks a lower platform fee on production. The more you make, the more you save —
+          most creators find a paid plan costs less than it saves. You’re on{' '}
+          <span className="font-semibold capitalize text-ink-900">{currentTier}</span> today.
         </p>
-      </header>
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1 text-[11.5px] font-medium text-ink-600">
+          <TrendingDown className="h-3.5 w-3.5 text-success-600" aria-hidden="true" />
+          Cancel anytime · billed monthly via Stripe · keep your tier till period end
+        </p>
+      </div>
 
-      {subs.length === 0 ? (
-        <SubscriptionsEmpty />
-      ) : (
-        <ul className="space-y-3">
-          {subs.map((s) => (
-            <SubscriptionCard
-              key={s.id}
-              sub={{
-                id: s.id,
-                productId: s.productId,
-                productName: s.product.name,
-                brandName: s.brand.name,
-                cadence: s.cadence as Cadence,
-                totalRuns: s.totalRuns,
-                runsCompleted: s.runsCompleted,
-                nextRunAt: s.nextRunAt,
-                status: s.status as SubStatus,
-                discountBp: s.discountBp,
-                subtotalCentsAtCreation: s.subtotalCentsAtCreation,
-                cancelledAt: s.cancelledAt,
-                cancelledReason: s.cancelledReason,
-              }}
-            />
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
+      {/* Savings calculator — the hook */}
+      <PlansSavingsCalculator tiers={calcTiers} currentTier={currentTier} />
 
-// =============================================================================
-// SubscriptionCard
-// =============================================================================
-
-interface SubView {
-  id: string
-  productId: string
-  productName: string
-  brandName: string
-  cadence: Cadence
-  totalRuns: number | null
-  runsCompleted: number
-  nextRunAt: Date | null
-  status: SubStatus
-  discountBp: number
-  subtotalCentsAtCreation: number
-  cancelledAt: Date | null
-  cancelledReason: string | null
-}
-
-function SubscriptionCard({ sub }: { sub: SubView }) {
-  const palette = STATUS_PILL[sub.status]
-  const cadenceLabel = sub.cadence === 'QUARTERLY' ? 'every 3 months' : 'every month'
-  const runsLabel = sub.totalRuns
-    ? `Run ${sub.runsCompleted + (sub.status === 'ACTIVE' ? 1 : 0)} of ${sub.totalRuns}`
-    : `${sub.runsCompleted} runs completed (open-ended)`
-  const perRunCents = Math.max(
-    0,
-    Math.round(
-      (sub.subtotalCentsAtCreation * (10_000 - sub.discountBp)) / 10_000,
-    ),
-  )
-  const pctOff = (sub.discountBp / 100).toFixed(0)
-
-  return (
-    <li>
-      <article className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        {/* Header band */}
-        <header className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-2.5 text-[12px] text-ink-700">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
-            style={{
-              background: palette.bg,
-              color: palette.fg,
-              borderColor: palette.border,
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: palette.dot }}
-            />
-            {palette.label}
-          </span>
-          <span className="inline-flex items-center gap-1.5 font-medium text-ink-800">
-            <Repeat className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
-            Subscribe &amp; save
-          </span>
-          {sub.discountBp > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-[2px] text-[10.5px] font-semibold text-success-700">
-              <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
-              {pctOff}% off
-            </span>
-          )}
-          <span className="ml-auto font-mono text-[11px] text-ink-400">
-            SUB-{sub.id.slice(-6)}
-          </span>
-        </header>
-
-        {/* Body */}
-        <div className="grid gap-4 px-5 py-4 sm:grid-cols-[1fr,auto] sm:items-start">
-          <div className="min-w-0">
-            <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
-              {sub.brandName}
-            </p>
-            <Link
-              href={`/products/${sub.productId}`}
-              className="mt-0.5 inline-block truncate font-display text-lg font-semibold text-ink-900 hover:text-pink-700"
+      {/* Tier cards */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {TIERS.map((t) => {
+          const price = priceByCode.get(t.planCode) ?? 0
+          const isCurrent = currentTier === t.key
+          const isUpgrade = TIER_RANK[t.key] > TIER_RANK[currentTier]
+          return (
+            <article
+              key={t.key}
+              className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white ${
+                t.recommended ? 'border-pink-300 shadow-[0_10px_30px_-14px_rgba(255,46,99,0.35)]' : 'border-ink-200'
+              }`}
             >
-              {sub.productName}
-            </Link>
-            <dl className="mt-3 grid gap-x-6 gap-y-1.5 text-[12px] sm:grid-cols-3">
-              <Field
-                label="Cadence"
-                value={cadenceLabel}
-                icon={<CalendarClock className="h-3 w-3" />}
-              />
-              <Field
-                label="Progress"
-                value={runsLabel}
-                icon={<Package className="h-3 w-3" />}
-              />
-              <Field
-                label="Next charge"
-                value={
-                  sub.status === 'ACTIVE' && sub.nextRunAt
-                    ? new Date(sub.nextRunAt).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
-                    : sub.status === 'CANCELLED'
-                      ? '—'
-                      : 'Pending'
-                }
-                icon={<ShieldCheck className="h-3 w-3" />}
-              />
-            </dl>
-            {sub.status === 'CANCELLED' && sub.cancelledReason && (
-              <p className="mt-3 inline-flex items-start gap-1.5 rounded-md bg-danger-50/60 px-2.5 py-1.5 text-[11.5px] text-danger-700">
-                <AlertOctagon
-                  className="mt-0.5 h-3 w-3 flex-shrink-0"
-                  aria-hidden="true"
-                />
-                <span>
-                  <span className="font-semibold">Cancelled</span>
-                  {sub.cancelledAt && (
-                    <>
-                      {' '}
-                      on{' '}
-                      {new Date(sub.cancelledAt).toLocaleDateString()}
-                    </>
-                  )}
-                  <span className="ml-1 italic">
-                    &mdash; {sub.cancelledReason}
-                  </span>
+              {t.recommended && (
+                <span className="absolute right-4 top-4 rounded-full bg-pink-500 px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-wider text-white">
+                  Most popular
                 </span>
-              </p>
-            )}
-          </div>
-
-          {/* Right — money + actions */}
-          <div className="flex flex-col items-end gap-2 sm:min-w-[180px]">
-            <div className="text-right">
-              <p className="text-[12px] uppercase tracking-widest text-ink-700">
-                Per run
-              </p>
-              <p className="font-display text-xl font-bold tabular-nums text-ink-900">
-                ${(perRunCents / 100).toFixed(2)}
-              </p>
-              {sub.discountBp > 0 && (
-                <p className="text-[10.5px] text-ink-400 line-through">
-                  ${(sub.subtotalCentsAtCreation / 100).toFixed(2)}
-                </p>
               )}
-            </div>
-            {sub.status === 'ACTIVE' && (
-              <CancelSubscriptionButton subscriptionId={sub.id} />
-            )}
-          </div>
+              <div className="px-5 pt-5">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-ink-50 text-ink-700">
+                  <t.Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                </span>
+                <h3 className="mt-3 font-display text-[19px] font-bold text-ink-900">{t.name}</h3>
+                <p className="mt-0.5 text-[12.5px] text-ink-500">{t.tagline}</p>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="font-display text-3xl font-bold tabular-nums text-ink-900">
+                    {price > 0 ? `$${Math.round(price / 100)}` : 'Free'}
+                  </span>
+                  {price > 0 && <span className="text-[12px] text-ink-500">/ month</span>}
+                </div>
+              </div>
+
+              {/* CTA at the top, by the price */}
+              <div className="px-5 pt-4">
+                {isCurrent ? (
+                  <Link
+                    href="/settings/plan"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-full border border-ink-300 bg-white text-[12.5px] font-semibold uppercase tracking-wider text-ink-700 transition hover:bg-ink-100"
+                  >
+                    Current plan · manage
+                  </Link>
+                ) : isUpgrade && t.key !== 'maker' ? (
+                  <UpgradeButton targetTier={t.key.toUpperCase() as 'BUILDER' | 'AGENCY'} label={`Upgrade to ${t.name}`} />
+                ) : (
+                  <Link
+                    href="/settings/plan"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-full border border-ink-200 bg-white text-[12.5px] font-semibold uppercase tracking-wider text-ink-500 transition hover:bg-ink-50"
+                  >
+                    {t.key === 'maker' ? 'Included' : 'Manage in settings'}
+                  </Link>
+                )}
+                <p className="mt-2 text-center text-[11px] text-ink-400">Cancel anytime</p>
+              </div>
+
+              {/* Features */}
+              <ul className="mt-4 space-y-1.5 px-5 pb-5 text-[12.5px] text-ink-700">
+                {t.features.map((f, i) => {
+                  const isHeader = f.endsWith('plus:')
+                  return (
+                    <li key={i} className={`flex items-start gap-2 ${isHeader ? 'font-semibold text-ink-900' : ''}`}>
+                      {!isHeader && (
+                        <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success-600" aria-hidden="true" />
+                      )}
+                      <span>{f}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </article>
+          )
+        })}
+      </div>
+
+      {/* Full comparison — expandable */}
+      <details className="group overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 hover:bg-ink-50/50">
+          <span className="font-display text-[15px] font-semibold text-ink-900">Compare every feature</span>
+          <ChevronDown className="h-4 w-4 text-ink-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="overflow-x-auto border-t border-ink-100">
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-ink-100 bg-[var(--bg-hero)] text-[11px] uppercase tracking-wider text-ink-500">
+                <th className="px-5 py-3 font-semibold">Feature</th>
+                {TIERS.map((t) => (
+                  <th key={t.key} className="px-4 py-3 text-center font-semibold text-ink-700">
+                    {t.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map((row, i) => (
+                <tr key={i} className="border-b border-ink-50 last:border-0">
+                  <td className="px-5 py-2.5 text-ink-700">{row.label}</td>
+                  {row.cells.map((c, j) => (
+                    <td key={j} className="px-4 py-2.5 text-center tabular-nums text-ink-900">
+                      {c === '—' ? (
+                        <Minus className="mx-auto h-3.5 w-3.5 text-ink-300" aria-hidden="true" />
+                      ) : c === '✓' ? (
+                        <Check className="mx-auto h-4 w-4 text-success-600" aria-hidden="true" />
+                      ) : (
+                        c
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </article>
-    </li>
-  )
-}
+      </details>
 
-function Field({
-  label,
-  value,
-  icon,
-}: {
-  label: string
-  value: string
-  icon?: React.ReactNode
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
-        {label}
-      </dt>
-      <dd className="mt-0.5 inline-flex items-center gap-1 truncate text-ink-900">
-        {icon && <span className="text-ink-400">{icon}</span>}
-        <span className="truncate">{value}</span>
-      </dd>
+      {/* FAQ */}
+      <section>
+        <h2 className="mb-2 font-display text-[15px] font-semibold text-ink-900">Questions</h2>
+        <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+          {FAQ.map((item, i) => (
+            <details key={i} className={`group ${i > 0 ? 'border-t border-ink-100' : ''}`}>
+              <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 hover:bg-ink-50/50">
+                <span className="text-[13.5px] font-medium text-ink-900">{item.q}</span>
+                <ChevronDown className="h-4 w-4 flex-shrink-0 text-ink-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <p className="px-5 pb-4 text-[13px] leading-relaxed text-ink-600">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* Closing CTA */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-200 bg-ink-900 px-6 py-5">
+        <div>
+          <p className="font-display text-[16px] font-bold text-white">Ready to keep more of every run?</p>
+          <p className="mt-0.5 text-[12.5px] text-white/70">Upgrade in a tap — it’s prorated and cancellable anytime.</p>
+        </div>
+        {currentTier !== 'agency' ? (
+          <Link
+            href="/settings/plan"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-100"
+          >
+            Manage my plan <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        ) : (
+          <Link
+            href="/contact-sales"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-100"
+          >
+            Talk to our team <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        )}
+      </div>
     </div>
-  )
-}
-
-// =============================================================================
-// Empty state
-// =============================================================================
-
-function SubscriptionsEmpty() {
-  return (
-    <EmptyState
-      icon={<Repeat className="h-[22px] w-[22px]" aria-hidden="true" />}
-      title="No recurring runs yet"
-      body={
-        <>
-          Subscribe &amp; save locks in a cadence so you never re-spec a production run again — save
-          up to 12% every cycle. The option appears at checkout once you&rsquo;ve picked a quantity.
-        </>
-      }
-      actions={
-        <Link
-          href="/products"
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <Package className="h-4 w-4" aria-hidden="true" /> Pick a product
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </Link>
-      }
-    />
   )
 }

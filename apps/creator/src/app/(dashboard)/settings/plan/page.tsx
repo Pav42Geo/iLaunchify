@@ -204,7 +204,7 @@ export default async function PlanPage({ searchParams }: PageProps) {
             href="/subscriptions"
             className="inline-flex items-center rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-700 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
-            View production subscriptions
+            Compare all plans
           </Link>
         </div>
       </header>
