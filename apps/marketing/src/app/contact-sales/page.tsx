@@ -38,7 +38,7 @@ export default async function ContactSalesPage({
       <div className="bg-white">
         <div className="max-w-[1200px] mx-auto px-6 pt-14 pb-20 sm:pt-16">
           {/* Hero */}
-          <div className="max-w-[36ch] mb-12">
+          <div className="max-w-2xl mb-12">
             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.07em] bg-pink-50 text-pink-700 px-2.5 py-1 rounded-pill mb-4">
               <Crown strokeWidth={2.5} className="w-3 h-3" />
               Agency plan

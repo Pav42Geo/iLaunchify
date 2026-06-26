@@ -57,11 +57,11 @@ export default async function HowItWorksPage({
 
       {/* HERO */}
       <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">
-        <div className="text-center max-w-[20ch] mx-auto">
+        <div className="max-w-2xl">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
             How it works
           </div>
-          <h1 className="font-display text-5xl sm:text-6xl md:text-7xl font-extrabold leading-[0.95] tracking-[-0.035em] mb-5">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1] tracking-[-0.035em] mb-5">
             From idea to{' '}
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               shelf-ready,
@@ -69,7 +69,7 @@ export default async function HowItWorksPage({
             without the supply-chain headache.
           </h1>
         </div>
-        <p className="text-lg sm:text-xl text-ink-700 max-w-[60ch] mx-auto leading-[1.55] text-center mt-6">
+        <p className="text-lg sm:text-xl text-ink-700 max-w-[60ch] leading-[1.55] mt-6">
           You pick a starter template. You customize the label in the Design
           Studio. You approve a sample. We orchestrate every manufacturer, label
           printer, co-packer, and warehouse in the production graph — so you
@@ -81,7 +81,7 @@ export default async function HowItWorksPage({
       <Reveal>
       <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
-          <div className="mb-12 max-w-[40ch]">
+          <div className="mb-12 max-w-xl">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-2">
               Your side
             </div>
@@ -208,7 +208,7 @@ export default async function HowItWorksPage({
       {/* PRODUCTION NETWORK */}
       <Reveal>
       <section className="max-w-[1200px] mx-auto px-6 py-24">
-        <div className="text-center max-w-[28ch] mx-auto mb-12">
+        <div className="text-center max-w-xl mx-auto mb-12">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
             Vetted production network
           </div>
@@ -261,7 +261,7 @@ export default async function HowItWorksPage({
       <Reveal>
       <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
-          <div className="text-center max-w-[32ch] mx-auto mb-12">
+          <div className="text-center max-w-xl mx-auto mb-12">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
               Built-in protections
             </div>
