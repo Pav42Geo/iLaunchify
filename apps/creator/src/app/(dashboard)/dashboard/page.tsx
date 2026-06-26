@@ -16,10 +16,10 @@ import {
   cn,
   KpiWidget,
   QueueWidget,
-  StatusWidget,
   ListWidget,
+  TrendChart,
+  StatusFunnel,
   type QueueWidgetItem,
-  type StatusIndicator,
   type ListWidgetItem,
 } from '@ilaunchify/ui'
 import Link from 'next/link'
@@ -132,9 +132,14 @@ export default async function DashboardHome() {
   const inTransit = oCount(['SHIPPED', 'IN_TRANSIT'])
   const delivered = oCount(['DELIVERED', 'COMPLETED'])
   const awaitingPayment = oCount(['PENDING_PAYMENT'])
+  const sincePrev60 = new Date(now.getTime() - 60 * DAY)
   const spend30 = orders
     .filter((o) => o.paidAt && o.paidAt >= since30)
     .reduce((a, o) => a + o.totalCents, 0)
+  const spendPrev30 = orders
+    .filter((o) => o.paidAt && o.paidAt >= sincePrev60 && o.paidAt < since30)
+    .reduce((a, o) => a + o.totalCents, 0)
+  const spendDeltaPct = spendPrev30 > 0 ? Math.round(((spend30 - spendPrev30) / spendPrev30) * 100) : null
   const spendSpark = weeklyDollarBuckets(orders.filter((o) => o.paidAt))
 
   // ---- Queue: pick up where you left off ----
@@ -175,12 +180,12 @@ export default async function DashboardHome() {
       })),
   ]
 
-  // ---- Order pipeline ----
-  const pipeline: StatusIndicator[] = [
-    { label: 'Awaiting payment', value: String(awaitingPayment), status: awaitingPayment > 0 ? 'amber' : 'green' },
-    { label: 'In production', value: String(inProduction), status: 'green' },
-    { label: 'In transit', value: String(inTransit), status: 'green' },
-    { label: 'Delivered', value: String(delivered), status: 'green' },
+  // ---- Order pipeline (proportional funnel) ----
+  const pipeline = [
+    { label: 'Awaiting payment', value: awaitingPayment, tone: 'muted' as const, href: '/orders' },
+    { label: 'In production', value: inProduction, tone: 'pink' as const, href: '/orders' },
+    { label: 'In transit', value: inTransit, tone: 'ink' as const, href: '/orders' },
+    { label: 'Delivered', value: delivered, tone: 'muted' as const, href: '/orders' },
   ]
 
   // ---- Recent orders + products ----
@@ -203,17 +208,15 @@ export default async function DashboardHome() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Creator · Dashboard
-            </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+      {/* Hero — compact, unified */}
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Creator · Home</p>
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Welcome back{user.name ? `, ${user.name}` : ''}
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ink-600">
+            <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-600">
               {brand ? `Managing ${brand.name}` : 'No brand yet — set one up to get started.'}
               {tier && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-pink-700">
@@ -222,7 +225,7 @@ export default async function DashboardHome() {
               )}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-none flex-wrap items-center gap-2">
             {brand && (
               <Link
                 href={`/brands/${brand.id}/assets`}
@@ -241,7 +244,21 @@ export default async function DashboardHome() {
         </div>
       </div>
 
-      {/* Row 1 — KPI strip */}
+      {/* Needs you now — action-first */}
+      <section className="grid grid-cols-1 lg:grid-cols-12">
+        <QueueWidget
+          title="Needs you now"
+          subtitle="Drafts to finish, compliance to fix, products ready to order"
+          icon={<ShoppingCart className="h-4 w-4" aria-hidden="true" />}
+          tone="pink"
+          items={queue}
+          maxItems={6}
+          emptyLabel="All clear — browse the marketplace for your next product."
+          span={12}
+        />
+      </section>
+
+      {/* KPI strip */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-12">
         <KpiWidget label="Products" value={totalProducts} icon={Package} tone="ink" href="/products" span={2} />
         <KpiWidget label="In progress" value={inProgress} icon={ShoppingCart} tone="pink" href="/products" span={2} />
@@ -251,29 +268,34 @@ export default async function DashboardHome() {
         <KpiWidget label="Resume checkout" value={drafts.length} icon={ShoppingCart} tone={drafts.length > 0 ? 'pink' : 'ink'} href="/products" span={2} />
       </section>
 
-      {/* Row 2 — queue + pipeline */}
+      {/* Trend + pipeline */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <QueueWidget
-          title="Pick up where you left off"
-          subtitle="Drafts to finish, compliance to fix, products ready to order"
-          icon={<ShoppingCart className="h-4 w-4" aria-hidden="true" />}
-          tone="pink"
-          items={queue}
-          maxItems={8}
-          emptyLabel="Nothing waiting on you — browse the marketplace for your next product."
-          span={8}
-        />
-        <StatusWidget
-          title="Order pipeline"
-          subtitle="Your production runs by stage"
-          icon={Factory}
-          tone="ink"
-          indicators={pipeline}
-          span={4}
-        />
+        <div className="lg:col-span-7">
+          <div className="rounded-2xl border border-ink-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-ink-900">Spend over time</span>
+              <span className="text-[11px] text-ink-500">Last 12 weeks</span>
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="font-display text-2xl font-bold tabular-nums text-ink-900">
+                ${(spend30 / 100).toLocaleString()}
+              </span>
+              {spendDeltaPct != null && (
+                <span className={cn('text-[12px] font-semibold', spendDeltaPct >= 0 ? 'text-success-500' : 'text-danger-500')}>
+                  <span aria-hidden>{spendDeltaPct >= 0 ? '↑' : '↓'}</span> {Math.abs(spendDeltaPct)}%
+                  <span className="font-normal text-ink-500"> vs prior 30d</span>
+                </span>
+              )}
+            </div>
+            <TrendChart data={spendSpark} height={72} className="mt-3" ariaLabel="Spend over time" />
+          </div>
+        </div>
+        <div className="lg:col-span-5">
+          <StatusFunnel title="Order pipeline" stages={pipeline} />
+        </div>
       </section>
 
-      {/* Row 3 — recent activity */}
+      {/* Recent activity */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <ListWidget
           title="Recent orders"
