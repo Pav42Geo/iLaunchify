@@ -309,7 +309,7 @@ export default async function HowItWorksPage({
               asChild
               variant="outline"
               size="xl"
-              className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white"
+              className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white hover:bg-ink-800"
             >
               <Link href="/pricing">See pricing →</Link>
             </Button>

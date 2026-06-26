@@ -61,7 +61,7 @@ export default function InfluencersPage() {
           variant="outline"
           size="xl"
           asChild
-          className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white"
+          className="border-ink-700 text-ink-200 hover:border-ink-500 hover:text-white hover:bg-ink-800"
         >
           <a href="#faq">Read the FAQ</a>
         </Button>
