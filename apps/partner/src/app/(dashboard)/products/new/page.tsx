@@ -116,6 +116,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
 
   return (
     <GuidedBuilder
+      initial={initial}
       studioLogo={studioLogo}
       categories={categories}
       subcategories={subcategories}
