@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Button, HeroBanner, PartnerTypeCard, LayersGlyph } from '@ilaunchify/ui'
 import { BusinessHeader } from '@/components/BusinessHeader'
 import { Reveal } from '@/components/Reveal'
+import { Parallax } from '@/components/Parallax'
 import { partnerUrl } from '@/lib/app-urls'
 
 /**
@@ -28,6 +29,11 @@ export default function BusinessLandingPage() {
           </>
         }
         deck="Apply once. Run your floor against a queue of pre-qualified creator orders, routed by capability, region, and capacity. Structured workflow. Stripe Connect payouts on a published schedule. No brokers in the middle."
+        graphic={
+          <Parallax speed={0.1} className="w-full">
+            <BusinessGraphic />
+          </Parallax>
+        }
       >
         <Button variant="neon" size="xl" asChild>
           <a href={partnerUrl('/signup')}>Apply to join →</a>
@@ -63,6 +69,117 @@ export default function BusinessLandingPage() {
       {/* DARK — Footer */}
       <Footer />
     </>
+  )
+}
+
+/* ---------- Hero graphic — production orchestration (animated SVG) ---------- */
+// The iLaunchify orchestrator hub routes creator orders out to the partner
+// network (manufacturer / printer / co-packer / warehouse), then to shipped.
+// Pure inline SVG (SMIL); rendered in the HeroBanner background-graphic slot.
+function BusinessGraphic() {
+  return (
+    <svg viewBox="0 0 600 380" className="h-auto w-full" role="img" aria-label="Creator orders routed across your partner network">
+      <defs>
+        <filter id="bizNeon" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.2" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <radialGradient id="bizGlow" cx="52%" cy="48%" r="50%">
+          <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.30" />
+          <stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="bizMaskGrad" cx="52%" cy="50%" r="60%">
+          <stop offset="0%" stopColor="#fff" /><stop offset="55%" stopColor="#fff" /><stop offset="100%" stopColor="#000" />
+        </radialGradient>
+        <mask id="bizMask"><rect width="600" height="380" fill="url(#bizMaskGrad)" /></mask>
+      </defs>
+
+      <rect x="60" y="30" width="500" height="320" fill="url(#bizGlow)">
+        <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
+      </rect>
+
+      {/* perspective grid floor — masked so it dissolves into the banner */}
+      <g mask="url(#bizMask)">
+        <g stroke="#FF2E63" strokeWidth="1.1" fill="none" opacity="0.38">
+          <path d="M320 150 L40 360" /><path d="M320 150 L130 360" /><path d="M320 150 L220 360" /><path d="M320 150 L320 360" /><path d="M320 150 L420 360" /><path d="M320 150 L510 360" /><path d="M320 150 L600 360" />
+          <path d="M250 200 H390" /><path d="M212 240 H428" /><path d="M162 290 H478" /><path d="M110 340 H530" />
+        </g>
+      </g>
+
+      {/* orchestration links — hub ↔ partner nodes + hub → shipped */}
+      <g stroke="#2DE2E6" strokeWidth="2" strokeDasharray="4 9" fill="none" opacity="0.6" filter="url(#bizNeon)">
+        <path d="M320 195 L230 125"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.8s" repeatCount="indefinite" /></path>
+        <path d="M320 195 L410 125"><animate attributeName="stroke-dashoffset" values="0;-26" dur="2.1s" repeatCount="indefinite" /></path>
+        <path d="M320 195 L418 265"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.9s" repeatCount="indefinite" /></path>
+        <path d="M320 195 L222 265"><animate attributeName="stroke-dashoffset" values="0;-26" dur="2.3s" repeatCount="indefinite" /></path>
+        <path d="M362 195 L502 195"><animate attributeName="stroke-dashoffset" values="0;-26" dur="1.6s" repeatCount="indefinite" /></path>
+      </g>
+
+      {/* order packets routed outward */}
+      <g filter="url(#bizNeon)">
+        <rect x="-3.5" y="-3.5" width="7" height="7" fill="#B5FF3D"><animateMotion path="M320 195 L230 125" dur="2.4s" repeatCount="indefinite" calcMode="linear" /></rect>
+        <rect x="-3.5" y="-3.5" width="7" height="7" fill="#2DE2E6"><animateMotion path="M320 195 L410 125" dur="2.8s" repeatCount="indefinite" calcMode="linear" /></rect>
+        <rect x="-3.5" y="-3.5" width="7" height="7" fill="#FF2E63"><animateMotion path="M320 195 L418 265" dur="2.6s" repeatCount="indefinite" calcMode="linear" /></rect>
+        <rect x="-3.5" y="-3.5" width="7" height="7" fill="#B5FF3D"><animateMotion path="M320 195 L222 265" dur="3s" repeatCount="indefinite" calcMode="linear" /></rect>
+        <rect x="-4" y="-4" width="8" height="8" fill="#B5FF3D"><animateMotion path="M362 195 L502 195" dur="1.8s" repeatCount="indefinite" calcMode="linear" /></rect>
+      </g>
+
+      {/* partner nodes */}
+      {/* Manufacturer (flask) */}
+      <g transform="translate(230,125)" filter="url(#bizNeon)">
+        <g><animateTransform attributeName="transform" type="scale" values="1;1.1;1" dur="2.3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <path d="M-22 0 L-11 -19 L11 -19 L22 0 L11 19 L-11 19 Z" fill="#101013" stroke="#B5FF3D" strokeWidth="2" />
+          <g fill="none" stroke="#B5FF3D" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d="M-4 -9 V-3 L-9 7 a3 3 0 0 0 3 4 H6 a3 3 0 0 0 3 -4 L4 -3 V-9" /><path d="M-7 -9 H7" /></g></g>
+      </g>
+      {/* Printer */}
+      <g transform="translate(410,125)" filter="url(#bizNeon)">
+        <g><animateTransform attributeName="transform" type="scale" values="1;1.1;1" dur="2.7s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <path d="M-22 0 L-11 -19 L11 -19 L22 0 L11 19 L-11 19 Z" fill="#101013" stroke="#2DE2E6" strokeWidth="2" />
+          <g fill="none" stroke="#2DE2E6" strokeWidth="2" strokeLinejoin="round"><rect x="-10" y="-3" width="20" height="9" rx="1.5" /><path d="M-6 -3 V-9 H6 V-3" /><rect x="-6" y="6" width="12" height="6" /></g></g>
+      </g>
+      {/* Co-packer (box) */}
+      <g transform="translate(418,265)" filter="url(#bizNeon)">
+        <g><animateTransform attributeName="transform" type="scale" values="1;1.12;0.98;1.06;1" keyTimes="0;0.14;0.28;0.42;1" dur="1.7s" repeatCount="indefinite" />
+          <path d="M-22 0 L-11 -19 L11 -19 L22 0 L11 19 L-11 19 Z" fill="#101013" stroke="#FF2E63" strokeWidth="2" />
+          <g fill="none" stroke="#FF2E63" strokeWidth="2" strokeLinejoin="round"><path d="M-10 -5 L0 -10 L10 -5 L10 6 L0 11 L-10 6 Z" /><path d="M-10 -5 L0 0 L10 -5 M0 0 V11" /></g></g>
+      </g>
+      {/* Warehouse */}
+      <g transform="translate(222,265)" filter="url(#bizNeon)">
+        <g><animateTransform attributeName="transform" type="translate" values="0 0;0 5;0 0" dur="3.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <path d="M-22 0 L-11 -19 L11 -19 L22 0 L11 19 L-11 19 Z" fill="#101013" stroke="#B5FF3D" strokeWidth="2" />
+          <g fill="none" stroke="#B5FF3D" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d="M-11 -2 L0 -10 L11 -2 V10 H-11 Z" /><rect x="-3.5" y="3" width="7" height="7" /></g></g>
+      </g>
+
+      {/* orchestrator hub — the iLaunchify layers mark */}
+      <g transform="translate(320,195)" filter="url(#bizNeon)">
+        <g>
+          <animateTransform attributeName="transform" type="scale" values="1;1.06;1" dur="2.8s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+          <circle r="40" fill="#FF2E63" />
+          <g stroke="#fff" strokeWidth="3.5" fill="none" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M0 -17 L19 -7 L0 3 L-19 -7 Z" />
+            <path d="M-19 1 L0 11 L19 1" />
+            <path d="M-19 9 L0 19 L19 9" />
+          </g>
+        </g>
+      </g>
+
+      {/* shipped node */}
+      <g transform="translate(525,195)" filter="url(#bizNeon)">
+        <circle r="24" fill="#0E0E12" stroke="#B5FF3D" strokeWidth="2.5" />
+        <path d="M-9 0 L-3 7 L10 -8" fill="none" stroke="#B5FF3D" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle r="24" fill="none" stroke="#B5FF3D" strokeWidth="2"><animate attributeName="r" values="24;36" dur="2.4s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.6;0" dur="2.4s" repeatCount="indefinite" /></circle>
+      </g>
+
+      {/* HUD labels */}
+      <text x="14" y="28" fontSize="11" fontWeight="700" letterSpacing="2" fill="#B5FF3D" opacity="0.8">PARTNER_NET</text>
+      <text x="586" y="28" textAnchor="end" fontSize="11" fontWeight="700" letterSpacing="2" fill="#B5FF3D" opacity="0.8">ROUTED // LIVE</text>
+      <text x="525" y="236" textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="0.6" fill="#B5FF3D" opacity="0.85">SHIPPED</text>
+
+      {/* scanline sweep */}
+      <rect x="0" y="0" width="600" height="2" fill="#2DE2E6" opacity="0.18">
+        <animateTransform attributeName="transform" type="translate" values="0 -6;0 386" dur="6s" repeatCount="indefinite" />
+      </rect>
+    </svg>
   )
 }
 
