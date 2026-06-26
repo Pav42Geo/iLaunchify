@@ -45,6 +45,7 @@ import {
   type QrCornerStyle,
   type QrGradient,
   type Hsv,
+  Switch,
 } from '@ilaunchify/ui'
 
 // Session-level "recently used" color store, shared across every ColorChip (FG/BG
@@ -308,24 +309,13 @@ function QrStyleChip({
                 {brandLogoUrl ? 'Your brand logo, scan-safe' : 'Add a logo in your Brand kit first'}
               </div>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={!!data.iconUrl}
+            <Switch
+              checked={!!data.iconUrl}
               disabled={!brandLogoUrl}
-              onClick={() => onChange({ ...data, iconUrl: data.iconUrl ? null : brandLogoUrl })}
-              className={
-                'relative h-5 w-9 flex-shrink-0 rounded-full transition-colors disabled:opacity-40 ' +
-                (data.iconUrl ? 'bg-pink-600' : 'bg-ink-300')
-              }
-            >
-              <span
-                className={
-                  'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ' +
-                  (data.iconUrl ? 'left-0.5 translate-x-4' : 'left-0.5')
-                }
-              />
-            </button>
+              onChange={() => onChange({ ...data, iconUrl: data.iconUrl ? null : brandLogoUrl })}
+              aria-label="Center logo"
+              className="flex-shrink-0"
+            />
           </div>
         </div>
       )}

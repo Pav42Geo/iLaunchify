@@ -7,7 +7,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { resolveConfiguredSelection, calculateLabel, toPanelData } from '@ilaunchify/nutrition'
-import { NutritionFactsRenderer } from '@ilaunchify/ui'
+import { NutritionFactsRenderer, Checkbox } from '@ilaunchify/ui'
 import { composeQuote, type QuoteValueDelta } from './quote'
 import type { ConfiguratorData, ConfiguratorAxis, ConfiguratorValue } from './configure-data'
 import { issueProductSpecSheet } from './configure-actions'
@@ -269,15 +269,12 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
             />
             <span className="text-[12px] text-ink-500">units · MOQ {quote.moq.toLocaleString()}</span>
           </div>
-          <label className="mt-3 inline-flex items-center gap-2 text-[12.5px] text-ink-700">
-            <input
-              type="checkbox"
-              checked={firstRun}
-              onChange={(e) => setFirstRun(e.target.checked)}
-              className="h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-200"
-            />
-            First production run (new SKU — longer lead time)
-          </label>
+          <Checkbox
+            checked={firstRun}
+            onChange={(e) => setFirstRun(e.target.checked)}
+            label="First production run (new SKU — longer lead time)"
+            className="mt-3 text-[12.5px] text-ink-700"
+          />
         </Section>
       </div>
 

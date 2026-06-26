@@ -200,7 +200,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 checked={state.flavorMode === opt.value}
                 onChange={() => patch('flavorMode', opt.value)}
                 disabled={isPending}
-                className="mt-1"
+                className="mt-1 accent-[var(--control-accent)]"
               />
               <div>
                 <div className="font-medium text-ink-900">{opt.label}</div>
@@ -221,7 +221,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 checked={state.flavorPolicy === opt.value}
                 onChange={() => patch('flavorPolicy', opt.value)}
                 disabled={isPending}
-                className="mt-1"
+                className="mt-1 accent-[var(--control-accent)]"
               />
               <div>
                 <div className="font-medium text-ink-900">{opt.label}</div>

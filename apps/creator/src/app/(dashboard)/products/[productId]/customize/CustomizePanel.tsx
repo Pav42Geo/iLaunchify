@@ -323,7 +323,7 @@ export function CustomizePanel({
                     onChange={(e) =>
                       setOptionalState({ ...optionalState, [opt.ingredientId]: e.target.checked })
                     }
-                    className="mt-1"
+                    className="mt-1 accent-[var(--control-accent)]"
                   />
                   <div className="flex-1">
                     <div className="text-sm font-medium">

@@ -9,6 +9,7 @@ import { createContext, useContext, useMemo, useState, useTransition } from 'rea
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Trash2, X } from 'lucide-react'
+import { Checkbox } from '@ilaunchify/ui'
 import { deleteDraft } from './actions'
 
 interface RowMeta { id: string; name: string; status: string }
@@ -45,13 +46,12 @@ export function SelectAllCheckbox() {
   const all = allIds.length > 0 && selected.size === allIds.length
   const some = selected.size > 0 && !all
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       aria-label="Select all"
       checked={all}
       ref={(el) => { if (el) el.indeterminate = some }}
       onChange={toggleAll}
-      className="h-4 w-4 cursor-pointer accent-pink-600"
+      className="cursor-pointer"
     />
   )
 }
@@ -59,13 +59,12 @@ export function SelectAllCheckbox() {
 export function RowCheckbox({ id }: { id: string }) {
   const { selected, toggle } = useSel()
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       aria-label="Select row"
       checked={selected.has(id)}
       onChange={() => toggle(id)}
       onClick={(e) => e.stopPropagation()}
-      className="h-4 w-4 cursor-pointer accent-pink-600"
+      className="cursor-pointer"
     />
   )
 }

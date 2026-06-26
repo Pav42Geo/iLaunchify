@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Upload } from 'lucide-react'
-import { Button } from '@ilaunchify/ui'
+import { Button, Checkbox } from '@ilaunchify/ui'
 import { createAccessory } from '../actions'
 
 const CATEGORIES = [
@@ -131,10 +131,11 @@ export function AccessoryForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm text-ink-700">
-            <input type="checkbox" name="isCustomizable" className="h-4 w-4 rounded border-ink-300" />
-            Customizable (engraving text, color, etc.)
-          </label>
+          <Checkbox
+            name="isCustomizable"
+            label="Customizable (engraving text, color, etc.)"
+            className="text-sm text-ink-700"
+          />
         </div>
 
         {packagingSystems.length > 0 && (
@@ -142,13 +143,13 @@ export function AccessoryForm({
             <label className={label}>Applies to packaging (optional)</label>
             <div className="flex flex-wrap gap-2">
               {packagingSystems.map((p) => (
-                <label
+                <Checkbox
                   key={p.id}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1 text-sm"
-                >
-                  <input type="checkbox" name="applicableOfferingIds" value={p.id} className="h-3.5 w-3.5" />
-                  {p.name}
-                </label>
+                  name="applicableOfferingIds"
+                  value={p.id}
+                  label={p.name}
+                  className="rounded-md border border-ink-300 px-2.5 py-1 text-sm"
+                />
               ))}
             </div>
           </div>
