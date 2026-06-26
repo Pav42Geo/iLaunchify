@@ -30,9 +30,9 @@ const FIELD_LABEL: Record<string, string> = {
 export function ChangeRequestCard({ changeRequest, status }: Props) {
   if (!changeRequest || status !== 'CHANGES_REQUESTED') return null
   return (
-    <Card className="border-amber-200 bg-amber-50/40">
+    <Card className="border-warning-200 bg-warning-50/40">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base text-amber-900">
+        <CardTitle className="flex items-center gap-2 text-base text-warning-900">
           <AlertOctagon className="h-4 w-4" />
           Awaiting creator adjustment
         </CardTitle>
@@ -44,14 +44,14 @@ export function ChangeRequestCard({ changeRequest, status }: Props) {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div>
-          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-widest text-amber-700">
+          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-widest text-warning-700">
             Flagged fields
           </p>
           <div className="flex flex-wrap gap-1.5">
             {changeRequest.flaggedFields.map((f) => (
               <span
                 key={f}
-                className="inline-flex rounded-full bg-amber-200 px-2 py-0.5 text-[10.5px] font-semibold text-amber-900"
+                className="inline-flex rounded-full bg-warning-200 px-2 py-0.5 text-[10.5px] font-semibold text-warning-900"
               >
                 {FIELD_LABEL[f] ?? f}
               </span>
@@ -59,16 +59,16 @@ export function ChangeRequestCard({ changeRequest, status }: Props) {
           </div>
         </div>
         <div>
-          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-widest text-amber-700">
+          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-widest text-warning-700">
             Your note
           </p>
-          <p className="rounded border border-amber-200 bg-white p-2 text-[13px] leading-snug text-ink-700">
+          <p className="rounded border border-warning-200 bg-white p-2 text-[13px] leading-snug text-ink-700">
             {changeRequest.partnerNote}
           </p>
         </div>
         {Object.keys(changeRequest.suggestedAlternatives ?? {}).length > 0 && (
           <div>
-            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-widest text-amber-700">
+            <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-widest text-warning-700">
               Suggested alternatives
             </p>
             <ul className="space-y-0.5 text-[12.5px]">

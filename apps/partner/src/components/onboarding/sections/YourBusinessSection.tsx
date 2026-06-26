@@ -131,7 +131,7 @@ export function YourBusinessSection({
                 key={m.id}
                 className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                   checked
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-success-500 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -164,7 +164,7 @@ export function YourBusinessSection({
         <select
           value={state.primaryRegionId ?? ''}
           onChange={(e) => update({ primaryRegionId: e.target.value || null })}
-          className="block w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="block w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm focus:border-success-500 focus:outline-none focus:ring-1 focus:ring-success-500"
         >
           <option value="">Select a state…</option>
           {regions.map((r) => (
@@ -188,7 +188,7 @@ export function YourBusinessSection({
                 key={opt.value}
                 className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                   checked
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-success-500 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -250,8 +250,8 @@ function SaveIndicator({
   }[display]
   const cls = {
     saving: 'text-ink-500',
-    saved: 'text-emerald-600',
-    error: 'text-red-600',
+    saved: 'text-success-600',
+    error: 'text-danger-600',
     idle: '',
   }[display]
   return <span className={`text-xs ${cls}`}>{text}</span>

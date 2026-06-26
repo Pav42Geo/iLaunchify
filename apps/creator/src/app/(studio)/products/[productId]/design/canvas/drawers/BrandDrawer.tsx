@@ -512,7 +512,7 @@ function BrandKitEditor({ brandId }: { brandId: string }) {
   }, [brandId])
 
   if (!data) return <p className="text-[12px] text-ink-500">Loading your brand kit…</p>
-  if (!data.ok) return <p className="text-[12px] text-red-600">{data.error}</p>
+  if (!data.ok) return <p className="text-[12px] text-danger-600">{data.error}</p>
 
   const logoCount = [data.logos.primary, data.logos.icon, data.logos.horizontal].filter(Boolean).length
   const colorCount = [data.colors.colorPrimary, data.colors.colorSecondary, data.colors.colorAccent, ...data.colors.brandSwatches].filter(Boolean).length

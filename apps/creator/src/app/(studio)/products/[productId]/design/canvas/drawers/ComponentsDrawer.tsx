@@ -81,7 +81,7 @@ export function ComponentsDrawer({ productId }: { productId: string }) {
                   {row.fdaLocked && (
                     <span
                       title="FDA-required tamper-evident seal (21 CFR 211.132)"
-                      className="inline-flex items-center gap-0.5 text-[10px] text-amber-700"
+                      className="inline-flex items-center gap-0.5 text-[10px] text-warning-700"
                     >
                       <Lock className="h-3 w-3" /> required
                     </span>

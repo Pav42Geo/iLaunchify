@@ -25,9 +25,9 @@ const FALLBACK_KIND_TONE = { bg: 'bg-ink-100 text-ink-700', label: 'Region' } as
 
 const KIND_TONE: Record<string, { bg: string; label: string }> = {
   COUNTRY: { bg: 'bg-pink-100 text-pink-700', label: 'Country' },
-  SUBNATIONAL_GROUP: { bg: 'bg-blue-100 text-blue-700', label: 'Region group' },
-  STATE_PROVINCE: { bg: 'bg-emerald-100 text-emerald-700', label: 'State / Province' },
-  METRO: { bg: 'bg-amber-100 text-amber-700', label: 'Metro' },
+  SUBNATIONAL_GROUP: { bg: 'bg-info-100 text-info-700', label: 'Region group' },
+  STATE_PROVINCE: { bg: 'bg-success-100 text-success-700', label: 'State / Province' },
+  METRO: { bg: 'bg-warning-100 text-warning-700', label: 'Metro' },
 }
 
 export default async function RegionsPage() {
@@ -99,7 +99,7 @@ export default async function RegionsPage() {
             </span>
           </header>
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/60 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/60 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <Th>Region</Th>
                 <Th>Kind</Th>
@@ -259,7 +259,7 @@ function NumCell({
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span
         aria-hidden="true"
         className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"

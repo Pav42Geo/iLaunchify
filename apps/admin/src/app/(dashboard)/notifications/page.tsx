@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-ink-500">
             {unread} unread of last {notifications.length}
           </p>
         </div>
@@ -56,15 +56,15 @@ export default async function NotificationsPage() {
             const isUnread = !n.readAt
             const inner = (
               <Card
-                className={`transition-colors ${isUnread ? 'border-blue-200 bg-blue-50/30' : ''} ${n.link ? 'hover:bg-zinc-50' : ''}`}
+                className={`transition-colors ${isUnread ? 'border-info-200 bg-info-50/30' : ''} ${n.link ? 'hover:bg-ink-50' : ''}`}
               >
                 <CardHeader className="flex-row items-start justify-between space-y-0">
                   <div className="flex min-w-0 gap-3">
                     <div className="mt-1 shrink-0">
                       {isUnread ? (
-                        <Mail className="h-4 w-4 text-blue-600" />
+                        <Mail className="h-4 w-4 text-info-600" />
                       ) : (
-                        <Inbox className="h-4 w-4 text-zinc-300" />
+                        <Inbox className="h-4 w-4 text-ink-300" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -74,7 +74,7 @@ export default async function NotificationsPage() {
                       {n.body && (
                         <CardDescription className="mt-1">{n.body}</CardDescription>
                       )}
-                      <div className="mt-2 text-xs text-zinc-400">
+                      <div className="mt-2 text-xs text-ink-400">
                         {new Date(n.createdAt).toLocaleString()} · {n.event.replace(/_/g, ' ').toLowerCase()}
                       </div>
                     </div>

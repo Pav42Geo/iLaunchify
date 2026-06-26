@@ -75,21 +75,21 @@ const PARTNER_STATUS_TONE: Record<
   PartnerStatus,
   { bg: string; dot: string; label: string }
 > = {
-  LEAD: { bg: 'bg-violet-50 text-violet-800 border-violet-200', dot: 'bg-violet-500', label: 'Lead' },
-  IDENTITY_PENDING_REVIEW: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Identity — pending' },
-  IDENTITY_VERIFIED: { bg: 'bg-sky-50 text-sky-800 border-sky-200', dot: 'bg-sky-500', label: 'Identity verified' },
-  OPS_PENDING_REVIEW: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Ops — pending' },
-  OPERATIONALLY_CONFIGURED: { bg: 'bg-sky-50 text-sky-800 border-sky-200', dot: 'bg-sky-500', label: 'Ops configured' },
-  ACTIVE: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
-  INTEGRATION_ENHANCED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Active + integrations' },
-  PAUSED: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Paused' },
-  SUSPENDED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Suspended' },
+  LEAD: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Lead' },
+  IDENTITY_PENDING_REVIEW: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Identity — pending' },
+  IDENTITY_VERIFIED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Identity verified' },
+  OPS_PENDING_REVIEW: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Ops — pending' },
+  OPERATIONALLY_CONFIGURED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Ops configured' },
+  ACTIVE: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Active' },
+  INTEGRATION_ENHANCED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Active + integrations' },
+  PAUSED: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Paused' },
+  SUSPENDED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Suspended' },
   TERMINATED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Terminated' },
   // Legacy
   DRAFT: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Draft' },
-  INVITED: { bg: 'bg-violet-50 text-violet-800 border-violet-200', dot: 'bg-violet-500', label: 'Invited' },
-  IN_PROGRESS: { bg: 'bg-sky-50 text-sky-800 border-sky-200', dot: 'bg-sky-500', label: 'Onboarding' },
-  UNDER_REVIEW: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Under review' },
+  INVITED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Invited' },
+  IN_PROGRESS: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Onboarding' },
+  UNDER_REVIEW: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Under review' },
 }
 
 const SECTION_TONE: Record<
@@ -97,9 +97,9 @@ const SECTION_TONE: Record<
   { bg: string; label: string }
 > = {
   PENDING: { bg: 'bg-ink-100 text-ink-700 border-ink-200', label: 'Pending' },
-  VERIFIED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Verified' },
-  NEEDS_CHANGES: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Needs changes' },
-  REJECTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Rejected' },
+  VERIFIED: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Verified' },
+  NEEDS_CHANGES: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Needs changes' },
+  REJECTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Rejected' },
 }
 
 const SERVICE_STATUS_TONE: Record<
@@ -107,8 +107,8 @@ const SERVICE_STATUS_TONE: Record<
   { bg: string; label: string }
 > = {
   DRAFT: { bg: 'bg-ink-100 text-ink-700 border-ink-200', label: 'Draft' },
-  ACTIVE: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Active' },
-  PAUSED: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Paused' },
+  ACTIVE: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Active' },
+  PAUSED: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Paused' },
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -129,28 +129,28 @@ const MARKET_STATUS_TONE: Record<
   PartnerMarketStatus,
   { bg: string; label: string }
 > = {
-  ACTIVE: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Active' },
-  LAPSED: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Lapsed' },
-  REVOKED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Revoked' },
+  ACTIVE: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Active' },
+  LAPSED: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Lapsed' },
+  REVOKED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Revoked' },
 }
 
 const DISPATCH_STATUS_TONE: Record<
   string,
   { bg: string; dot: string; label: string }
 > = {
-  PENDING_ACCEPT: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Pending accept' },
-  ACCEPTED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Accepted' },
-  CHANGES_REQUESTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Changes requested' },
+  PENDING_ACCEPT: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Pending accept' },
+  ACCEPTED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Accepted' },
+  CHANGES_REQUESTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Changes requested' },
   PRODUCING: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'Producing' },
   QUALITY_CHECK: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'QC' },
-  FAILED_QC: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Failed QC' },
-  READY: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Ready' },
-  SHIPPED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Shipped' },
-  IN_TRANSIT: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In transit' },
-  DELIVERED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Delivered' },
-  DECLINED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Declined' },
+  FAILED_QC: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Failed QC' },
+  READY: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Ready' },
+  SHIPPED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Shipped' },
+  IN_TRANSIT: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'In transit' },
+  DELIVERED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Delivered' },
+  DECLINED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Declined' },
   TIMED_OUT: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Timed out' },
-  WITHDRAWN: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Withdrawn' },
+  WITHDRAWN: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Withdrawn' },
 }
 
 // -----------------------------------------------------------------------------
@@ -348,7 +348,7 @@ export default async function PartnerDetail({ params }: PageProps) {
             {activeStrikes > 0 && (
               <span
                 title="Active cancellation strikes (OrderSettings.partnerStrikeOnCancel)"
-                className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[12.5px] font-semibold uppercase tracking-wider text-rose-700"
+                className="inline-flex items-center gap-1.5 rounded-full border border-danger-200 bg-danger-50 px-3 py-1.5 text-[12.5px] font-semibold uppercase tracking-wider text-danger-700"
               >
                 {activeStrikes} active {activeStrikes === 1 ? 'strike' : 'strikes'}
               </span>
@@ -434,8 +434,8 @@ export default async function PartnerDetail({ params }: PageProps) {
                     className={cn(
                       'flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-[11.5px]',
                       f.tone === 'rose'
-                        ? 'border-rose-200 bg-rose-50/60 text-rose-800'
-                        : 'border-amber-200 bg-amber-50/60 text-amber-900',
+                        ? 'border-danger-200 bg-danger-50/60 text-danger-800'
+                        : 'border-warning-200 bg-warning-50/60 text-warning-900',
                     )}
                   >
                     <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
@@ -565,8 +565,8 @@ function OverviewCard({ partner }: { partner: PartnerWithIncludes }) {
         <Row label="Stripe Connect">
           {partner.user.stripeAccountId ? (
             <span className="inline-flex items-center gap-1.5">
-              <CreditCard className="h-3 w-3 text-emerald-700" aria-hidden="true" />
-              <span className="text-emerald-700">
+              <CreditCard className="h-3 w-3 text-success-700" aria-hidden="true" />
+              <span className="text-success-700">
                 {partner.user.stripeAccountStatus ?? 'Connected'}
               </span>
               <span className="font-mono text-[10.5px] text-ink-500">
@@ -841,7 +841,7 @@ function OrderActivityCard({
       ) : (
         <div className="overflow-hidden rounded-xl border border-ink-100">
           <table className="w-full text-[12px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Order</th>
                 <th className="px-3 py-2 text-left font-semibold">Product</th>

@@ -20,7 +20,7 @@ const LEVELS: { value: AcademyLevel; label: string }[] = [
 ]
 
 const STATUS_DOT: Record<AcademyStatus, string> = {
-  DRAFT: 'bg-zinc-400', IN_REVIEW: 'bg-amber-500', PUBLISHED: 'bg-emerald-500', ARCHIVED: 'bg-rose-500',
+  DRAFT: 'bg-ink-400', IN_REVIEW: 'bg-warning-500', PUBLISHED: 'bg-success-500', ARCHIVED: 'bg-danger-500',
 }
 
 interface LessonRow {

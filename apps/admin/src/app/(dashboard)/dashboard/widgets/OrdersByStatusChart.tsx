@@ -15,20 +15,20 @@ import type { OrdersByStatusBucket } from '../dashboard-data'
 
 const TONE_BAR: Record<OrdersByStatusBucket['tone'], string> = {
   pink: 'bg-pink-500',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  info: 'bg-blue-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  info: 'bg-info-500',
   ink: 'bg-ink-700',
-  danger: 'bg-rose-500',
+  danger: 'bg-danger-500',
 }
 
 const TONE_LABEL: Record<OrdersByStatusBucket['tone'], string> = {
   pink: 'text-pink-700',
-  success: 'text-emerald-700',
-  warning: 'text-amber-700',
-  info: 'text-blue-700',
+  success: 'text-success-700',
+  warning: 'text-warning-700',
+  info: 'text-info-700',
   ink: 'text-ink-700',
-  danger: 'text-rose-700',
+  danger: 'text-danger-700',
 }
 
 export function OrdersByStatusChart({

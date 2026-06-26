@@ -82,7 +82,7 @@ export function CompatForm({
             onChange={(e) => setCategory(e.target.value as ContainerCategory)}
             className={cn(
               'mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200',
-              locked && 'cursor-not-allowed bg-zinc-50 text-ink-500',
+              locked && 'cursor-not-allowed bg-ink-50 text-ink-500',
             )}
           >
             {CONTAINER_CATEGORY_ORDER.map((c) => (
@@ -105,7 +105,7 @@ export function CompatForm({
             onChange={(e) => setMethod(e.target.value as DecorationMethod)}
             className={cn(
               'mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200',
-              locked && 'cursor-not-allowed bg-zinc-50 text-ink-500',
+              locked && 'cursor-not-allowed bg-ink-50 text-ink-500',
             )}
           >
             {DECORATION_METHOD_ORDER.map((m) => (

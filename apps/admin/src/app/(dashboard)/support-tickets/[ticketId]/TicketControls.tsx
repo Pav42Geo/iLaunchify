@@ -152,7 +152,7 @@ export function TicketControls({
                 onChange={(e) => setInternal(e.target.checked)}
                 className="h-3.5 w-3.5 accent-pink-600"
               />
-              <StickyNote className="h-3.5 w-3.5 text-amber-600" />
+              <StickyNote className="h-3.5 w-3.5 text-warning-600" />
               Internal note
             </label>
           </div>
@@ -168,7 +168,7 @@ export function TicketControls({
           }
           className={
             'mt-2 w-full rounded-lg border px-3 py-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
-            (internal ? 'border-amber-200 bg-amber-50/40' : 'border-ink-200')
+            (internal ? 'border-warning-200 bg-warning-50/40' : 'border-ink-200')
           }
         />
 
@@ -178,7 +178,7 @@ export function TicketControls({
               <li key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11.5px] text-ink-700">
                 <Paperclip className="h-3 w-3 text-ink-400" />
                 <span className="max-w-[160px] truncate">{f.name}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-ink-400 hover:text-rose-600">
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-ink-400 hover:text-danger-600">
                   <X className="h-3 w-3" />
                 </button>
               </li>

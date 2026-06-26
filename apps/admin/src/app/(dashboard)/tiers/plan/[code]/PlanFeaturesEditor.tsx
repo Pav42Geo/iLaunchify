@@ -22,22 +22,22 @@ interface Props {
 
 export function PlanFeaturesEditor({ features }: Props) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white">
-      <header className="border-b border-zinc-100 px-5 py-3">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+    <section className="rounded-xl border border-ink-200 bg-white">
+      <header className="border-b border-ink-100 px-5 py-3">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           Features
         </h2>
-        <p className="mt-0.5 text-[12px] text-zinc-500">
-          Each row maps to a <code className="rounded bg-zinc-100 px-1 font-mono text-[11px]">PlanFeature.code</code>
-          {' '}referenced at the call site (e.g. <code className="rounded bg-zinc-100 px-1 font-mono text-[11px]">hasFeature(tier, 'subscribe_and_save')</code>).
+        <p className="mt-0.5 text-[12px] text-ink-500">
+          Each row maps to a <code className="rounded bg-ink-100 px-1 font-mono text-[11px]">PlanFeature.code</code>
+          {' '}referenced at the call site (e.g. <code className="rounded bg-ink-100 px-1 font-mono text-[11px]">hasFeature(tier, 'subscribe_and_save')</code>).
         </p>
       </header>
-      <div className="divide-y divide-zinc-100">
+      <div className="divide-y divide-ink-100">
         {features.map((f) => (
           <FeatureRowEditor key={f.id} feature={f} />
         ))}
         {features.length === 0 && (
-          <p className="p-5 text-[13px] text-zinc-500">
+          <p className="p-5 text-[13px] text-ink-500">
             No features configured.
           </p>
         )}
@@ -88,10 +88,10 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-medium text-zinc-900">{feature.label}</div>
-        <div className="font-mono text-[11px] text-zinc-500">{feature.code}</div>
+        <div className="text-[13px] font-medium text-ink-900">{feature.label}</div>
+        <div className="font-mono text-[11px] text-ink-500">{feature.code}</div>
         {feature.description && (
-          <p className="mt-0.5 text-[11.5px] text-zinc-500">{feature.description}</p>
+          <p className="mt-0.5 text-[11.5px] text-ink-500">{feature.description}</p>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
             value={intVal}
             onChange={(e) => setIntVal(e.target.value)}
             placeholder="null = ∞"
-            className="w-28 rounded-md border border-zinc-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="w-28 rounded-md border border-ink-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         )}
         {kind === 'string' && (
@@ -109,17 +109,17 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
             type="text"
             value={strVal}
             onChange={(e) => setStrVal(e.target.value)}
-            className="w-40 rounded-md border border-zinc-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="w-40 rounded-md border border-ink-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         )}
         {kind === 'bool' && (
-          <div className="flex overflow-hidden rounded-full border border-zinc-200">
+          <div className="flex overflow-hidden rounded-full border border-ink-200">
             <button
               type="button"
               onClick={() => setBoolVal(false)}
               className={
                 'inline-flex h-7 w-9 items-center justify-center text-xs ' +
-                (!boolVal ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-500')
+                (!boolVal ? 'bg-ink-900 text-white' : 'bg-white text-ink-500')
               }
               aria-label="No"
             >
@@ -130,7 +130,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
               onClick={() => setBoolVal(true)}
               className={
                 'inline-flex h-7 w-9 items-center justify-center text-xs ' +
-                (boolVal ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-500')
+                (boolVal ? 'bg-success-600 text-white' : 'bg-white text-ink-500')
               }
               aria-label="Yes"
             >
@@ -142,7 +142,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
           type="button"
           onClick={commit}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
         >
           {saving && <Loader2 className="h-3 w-3 animate-spin" />}
           Save

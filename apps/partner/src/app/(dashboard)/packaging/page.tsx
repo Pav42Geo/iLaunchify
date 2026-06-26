@@ -22,16 +22,16 @@ export const metadata = { title: 'Packaging — iLaunchify Partners' }
 
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  ACTIVE: { label: 'Active', cls: 'border-success-200 bg-success-50 text-success-800' },
   DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
-  RETIRED: { label: 'Retired', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  RETIRED: { label: 'Retired', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
 }
 
 // Catalog-review lifecycle pills (docs/PACKAGING_REVIEW.md).
 const REVIEW_PILL: Record<string, { label: string; cls: string }> = {
-  SUBMITTED: { label: 'In review', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  APPROVED: { label: 'In catalog', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  REJECTED: { label: 'Changes requested', cls: 'border-rose-200 bg-rose-50 text-rose-700' },
+  SUBMITTED: { label: 'In review', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  APPROVED: { label: 'In catalog', cls: 'border-success-200 bg-success-50 text-success-800' },
+  REJECTED: { label: 'Changes requested', cls: 'border-danger-200 bg-danger-50 text-danger-700' },
 }
 
 export default async function PackagingListPage() {
@@ -123,7 +123,7 @@ export default async function PackagingListPage() {
           <p className="mt-0.5 text-[12.5px] text-ink-600">Custom packaging you submitted for the iLaunchify team to prep mockups and add to the shared Library.</p>
           <ul className="mt-3 space-y-2">
             {submissions.map((s) => {
-              const pill = REVIEW_PILL[s.reviewStatus ?? ''] ?? { label: 'In review', cls: 'border-amber-200 bg-amber-50 text-amber-800' }
+              const pill = REVIEW_PILL[s.reviewStatus ?? ''] ?? { label: 'In review', cls: 'border-warning-200 bg-warning-50 text-warning-800' }
               const phase = s.reviewStatus === 'APPROVED' ? 'In catalog' : s.reviewStatus === 'REJECTED' ? 'Changes requested' : 'Pending review'
               return (
                 <li key={s.id} className="rounded-2xl border border-ink-200 px-4 py-3">
@@ -135,7 +135,7 @@ export default async function PackagingListPage() {
                     Submitted{s.submittedForReviewAt ? ` ${new Date(s.submittedForReviewAt).toLocaleDateString()}` : ''} → admin review → {phase}
                   </div>
                   {s.reviewStatus === 'REJECTED' && s.reviewNotes && (
-                    <p className="mt-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11.5px] leading-snug text-rose-700">{s.reviewNotes}</p>
+                    <p className="mt-1.5 rounded-lg border border-danger-200 bg-danger-50 px-2.5 py-1.5 text-[11.5px] leading-snug text-danger-700">{s.reviewNotes}</p>
                   )}
                 </li>
               )
@@ -197,8 +197,8 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-success-100 text-success-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">

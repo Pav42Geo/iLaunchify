@@ -94,9 +94,9 @@ export function BillingDetailsForm({ initial, action }: BillingDetailsFormProps)
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {status === 'saved' && (
-            <span className="text-xs font-medium text-emerald-600">✓ Saved</span>
+            <span className="text-xs font-medium text-success-600">✓ Saved</span>
           )}
-          {status === 'error' && <span className="text-xs font-medium text-red-600">⚠ Not saved</span>}
+          {status === 'error' && <span className="text-xs font-medium text-danger-600">⚠ Not saved</span>}
           <Button size="sm" onClick={save} disabled={isPending}>
             {isPending ? 'Saving…' : 'Save changes'}
           </Button>
@@ -104,7 +104,7 @@ export function BillingDetailsForm({ initial, action }: BillingDetailsFormProps)
       </div>
 
       {errorMsg && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700">{errorMsg}</p>
+        <p className="rounded-lg bg-danger-50 px-3 py-2 text-[12px] text-danger-700">{errorMsg}</p>
       )}
 
       {/* Billing contact name */}

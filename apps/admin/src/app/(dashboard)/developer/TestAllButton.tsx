@@ -34,7 +34,7 @@ export function TestAllButton() {
         </button>
         {summary && (
           <span
-            className={`text-[12px] font-semibold ${summary.allPassed ? 'text-emerald-700' : 'text-rose-700'}`}
+            className={`text-[12px] font-semibold ${summary.allPassed ? 'text-success-700' : 'text-danger-700'}`}
           >
             {summary.passed}/{summary.total} connected
             {summary.failed > 0 && ` · ${summary.failedNames.join(', ')} failed`}
@@ -47,9 +47,9 @@ export function TestAllButton() {
           {results.map((r) => (
             <li key={r.key} className="inline-flex items-center gap-1 text-[11.5px]">
               {r.result.ok ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-success-600" />
               ) : (
-                <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                <XCircle className="h-3.5 w-3.5 text-danger-600" />
               )}
               <span className="font-medium text-ink-700">{r.name}</span>
               <span className="text-ink-400">

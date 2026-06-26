@@ -60,27 +60,68 @@ export const ink = {
   900: '#18181A',
 } as const
 
-/** Semantic colors. Same on light and dark surfaces (background variants flip). */
+/**
+ * Semantic colors — full 50→900 ramps (2026-06-25 retune).
+ *
+ * Replaces the 50/500-only set. Every raw Tailwind color carrying semantic
+ * meaning (emerald/green→success, amber/orange→warning, rose/red→danger,
+ * sky/blue/indigo/violet→info, zinc/gray→ink) now maps shade-for-shade onto a
+ * token. `warning` was retuned OFF the muddy mustard/tan (the "brown" above
+ * tables) toward a cleaner amber. Stops 500–900 hold WCAG AA as text on white.
+ * Channel vars in theme.css are the live source; these mirror them for Tailwind.
+ */
 export const semantic = {
   success: {
-    50: '#E5F2EC',
+    50: '#E7F4EC',
+    100: '#C9E7D5',
+    200: '#A3D6B8',
+    300: '#6FBE90',
+    400: '#3E9E6A',
     /** 4.71:1 on white — AA. */
     500: '#1E7C4A',
+    600: '#176A3E',
+    700: '#135733',
+    800: '#0E4127',
+    900: '#0A2E1B',
   },
   warning: {
-    50: '#FBEFD3',
-    /** 4.55:1 on white — AA. */
-    500: '#B07A0A',
+    50: '#FFF4E2',
+    100: '#FCE3BE',
+    200: '#F5C887',
+    300: '#EAA64C',
+    400: '#D17F1E',
+    /** Retuned off mustard. ~4.8:1 on white — AA. */
+    500: '#B45309',
+    600: '#984309',
+    700: '#7C360A',
+    800: '#5E2909',
+    900: '#401C06',
   },
   danger: {
-    50: '#F8E1E1',
-    /** 5.13:1 on white — AA. */
-    500: '#B33636',
+    50: '#FBE8E7',
+    100: '#F6C9C7',
+    200: '#EDA09C',
+    300: '#E0716B',
+    400: '#D14B43',
+    /** ~4.6:1 on white — AA. */
+    500: '#C2362F',
+    600: '#A62A26',
+    700: '#87211E',
+    800: '#661917',
+    900: '#45100F',
   },
   info: {
-    50: '#E1ECF8',
-    /** 8.34:1 on white — AAA. */
-    500: '#1F4D8F',
+    50: '#E8F1FB',
+    100: '#C7DDF4',
+    200: '#9CC0E9',
+    300: '#6499D6',
+    400: '#3576C0',
+    /** ~5.6:1 on white — AA. */
+    500: '#1F5BA8',
+    600: '#1A4C8C',
+    700: '#163E72',
+    800: '#112F57',
+    900: '#0C213D',
   },
 } as const
 

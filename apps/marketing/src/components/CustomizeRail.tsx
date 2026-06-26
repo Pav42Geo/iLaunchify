@@ -197,7 +197,7 @@ export function CustomizeRail({
                                   'flex-shrink-0 text-[11px] font-semibold tabular-nums ' +
                                   (opt.priceDelta > 0
                                     ? 'text-ink-700'
-                                    : 'text-emerald-700')
+                                    : 'text-success-700')
                                 }
                               >
                                 {opt.priceDelta > 0 ? '+' : ''}$
@@ -277,7 +277,7 @@ export function CustomizeRail({
                         <span
                           className={
                             'flex-shrink-0 text-[11.5px] font-semibold tabular-nums ' +
-                            (ao.priceDelta > 0 ? 'text-ink-700' : 'text-emerald-700')
+                            (ao.priceDelta > 0 ? 'text-ink-700' : 'text-success-700')
                           }
                         >
                           {ao.priceDelta > 0 ? '+' : ''}${Math.abs(ao.priceDelta).toFixed(2)}
@@ -299,7 +299,7 @@ export function CustomizeRail({
             <span
               className={
                 'text-[12.5px] font-semibold tabular-nums ' +
-                (totalDelta >= 0 ? 'text-pink-700' : 'text-emerald-700')
+                (totalDelta >= 0 ? 'text-pink-700' : 'text-success-700')
               }
             >
               {totalDelta >= 0 ? '+' : ''}

@@ -247,9 +247,9 @@ function ReviewRow({
       className={
         'rounded-md border p-2.5 ' +
         (banned
-          ? 'border-red-200 bg-red-50/50'
+          ? 'border-danger-200 bg-danger-50/50'
           : line.needsReview
-            ? 'border-amber-200 bg-amber-50/40'
+            ? 'border-warning-200 bg-warning-50/40'
             : 'border-ink-200 bg-white')
       }
     >
@@ -264,9 +264,9 @@ function ReviewRow({
           className={
             'mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border ' +
             (line.accepted
-              ? 'border-emerald-500 bg-emerald-500 text-white'
+              ? 'border-success-500 bg-success-500 text-white'
               : 'border-ink-300 bg-white text-transparent') +
-            (noMatch || banned ? ' cursor-not-allowed opacity-40' : ' hover:border-emerald-400')
+            (noMatch || banned ? ' cursor-not-allowed opacity-40' : ' hover:border-success-400')
           }
         >
           <Check className="h-3.5 w-3.5" />
@@ -286,13 +286,13 @@ function ReviewRow({
               <ConfidenceBadge value={line.match.confidence} />
             </div>
           ) : (
-            <div className="mt-1 text-[12px] font-medium text-amber-700">
+            <div className="mt-1 text-[12px] font-medium text-warning-700">
               No confident match — skip, or switch to Search &amp; build.
             </div>
           )}
 
           {line.needsReview && line.reviewReason && (
-            <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-amber-700">
+            <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-warning-700">
               {banned ? <Ban className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
               {REVIEW_REASON_LABEL[line.reviewReason]}
             </div>
@@ -324,9 +324,9 @@ function SourcePill({ source }: { source: string }) {
   const label = source === 'USDA' ? 'USDA' : source === 'LIBRARY' ? 'Library' : 'Private'
   const cls =
     source === 'USDA'
-      ? 'bg-blue-50 text-blue-700 border-blue-200'
+      ? 'bg-info-50 text-info-700 border-info-200'
       : source === 'LIBRARY'
-        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        ? 'bg-success-50 text-success-700 border-success-200'
         : 'bg-ink-100 text-ink-700 border-ink-200'
   return (
     <span
@@ -341,9 +341,9 @@ function ConfidenceBadge({ value }: { value: number }) {
   const pct = Math.round(value * 100)
   const cls =
     value >= 0.85
-      ? 'bg-emerald-100 text-emerald-800'
+      ? 'bg-success-100 text-success-800'
       : value >= 0.7
-        ? 'bg-amber-100 text-amber-800'
+        ? 'bg-warning-100 text-warning-800'
         : 'bg-ink-200 text-ink-700'
   return (
     <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${cls}`}>{pct}%</span>

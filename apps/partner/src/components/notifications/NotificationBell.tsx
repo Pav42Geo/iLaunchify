@@ -92,7 +92,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5" />
         {data.unread > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+          <span className="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold text-white">
             {data.unread > 99 ? '99+' : data.unread}
           </span>
         )}
@@ -124,10 +124,10 @@ export function NotificationBell() {
                 {data.notifications.slice(0, 8).map((n) => {
                   const isUnread = !n.readAt
                   const content = (
-                    <div className={`group flex gap-3 px-4 py-3 hover:bg-ink-50 ${isUnread ? 'bg-blue-50/50' : ''}`}>
+                    <div className={`group flex gap-3 px-4 py-3 hover:bg-ink-50 ${isUnread ? 'bg-info-50/50' : ''}`}>
                       <div className="mt-1 shrink-0">
                         {isUnread ? (
-                          <span className="block h-2 w-2 rounded-full bg-blue-600" />
+                          <span className="block h-2 w-2 rounded-full bg-info-600" />
                         ) : (
                           <Check className="h-3 w-3 text-ink-300" />
                         )}

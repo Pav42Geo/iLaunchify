@@ -58,13 +58,13 @@ export default async function NotificationsPage() {
             const isUnread = !n.readAt
             const inner = (
               <Card
-                className={`transition-colors ${isUnread ? 'border-blue-200 bg-blue-50/30' : ''} ${n.link ? 'hover:bg-ink-50' : ''}`}
+                className={`transition-colors ${isUnread ? 'border-info-200 bg-info-50/30' : ''} ${n.link ? 'hover:bg-ink-50' : ''}`}
               >
                 <CardHeader className="flex-row items-start justify-between space-y-0">
                   <div className="flex min-w-0 gap-3">
                     <div className="mt-1 shrink-0">
                       {isUnread ? (
-                        <Mail className="h-4 w-4 text-blue-600" />
+                        <Mail className="h-4 w-4 text-info-600" />
                       ) : (
                         <Inbox className="h-4 w-4 text-ink-300" />
                       )}

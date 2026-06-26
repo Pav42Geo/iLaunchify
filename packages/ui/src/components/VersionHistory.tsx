@@ -78,7 +78,7 @@ export function SavedIndicator({
 
   let StatusIcon = Check
   let tip = savedAt ? `Saved ${relativeTime(savedAt)}` : 'All changes saved automatically'
-  let tone = 'text-emerald-600'
+  let tone = 'text-success-600'
   let spin = false
   if (status === 'saving') {
     StatusIcon = Loader2
@@ -88,7 +88,7 @@ export function SavedIndicator({
   } else if (status === 'error') {
     StatusIcon = X
     tip = 'Save failed — retrying'
-    tone = 'text-rose-600'
+    tone = 'text-danger-600'
   } else if (status === 'dirty') {
     StatusIcon = Clock
     tip = 'Unsaved changes…'
@@ -131,7 +131,7 @@ export function SavedIndicator({
 function KindBadge({ item }: { item: SnapshotItem }) {
   if (item.kind === 'MILESTONE') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-amber-800">
+      <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-warning-800">
         <Pin className="h-2.5 w-2.5" /> Milestone
       </span>
     )

@@ -86,8 +86,8 @@ export function SampleOrderCard({ options, flavorNames, isMultiFlavor, dielineRe
       )}
 
       {brandedLocked ? (
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
-          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2.5 text-[12.5px] text-warning-900">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" />
           <span>A branded sample needs the product&rsquo;s packaging die-line approved first. It unlocks once the die-line passes compliance.</span>
         </div>
       ) : (
@@ -127,14 +127,14 @@ export function SampleOrderCard({ options, flavorNames, isMultiFlavor, dielineRe
               <span className="font-bold text-ink-900">{formatCents(quote.subtotalCents)}</span>
             </div>
             {quote.creditEnabled && quote.subtotalCents > 0 && (
-              <div className="mt-1 flex items-center gap-1.5 text-[12px] text-emerald-700">
+              <div className="mt-1 flex items-center gap-1.5 text-[12px] text-success-700">
                 <Check className="h-3.5 w-3.5" />
                 {formatCents(quote.creditableCents)} credited toward your first production order
               </div>
             )}
             {quote.errors.length > 0 && (
               <ul className="mt-2 space-y-0.5">
-                {quote.errors.map((e, i) => <li key={i} className="text-[11.5px] text-amber-700">{e}</li>)}
+                {quote.errors.map((e, i) => <li key={i} className="text-[11.5px] text-warning-700">{e}</li>)}
               </ul>
             )}
           </div>

@@ -51,7 +51,7 @@ export default async function NotificationsPage() {
       </div>
 
       {notifications.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-14 text-center">
+        <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-14 text-center">
           <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700">
             <Inbox className="h-5 w-5" />
           </span>

@@ -62,7 +62,7 @@ export function WhatYouCanDoSection({
 
   if (selectedTypes.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="rounded-md border border-dashed border-warning-300 bg-warning-50 p-4 text-sm text-warning-900">
         Pick at least one partner type in <strong>Your business</strong> above. This section
         will then show one tab per type so you can fill in your capabilities.
       </div>
@@ -82,7 +82,7 @@ export function WhatYouCanDoSection({
             onClick={() => setActiveTab(t)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === t
-                ? 'border-emerald-500 text-emerald-700'
+                ? 'border-success-500 text-success-700'
                 : 'border-transparent text-ink-500 hover:text-ink-900'
             }`}
           >

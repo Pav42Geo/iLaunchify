@@ -185,7 +185,7 @@ export function SubcategoryPickerDialog({
                                   </span>
                                 </span>
                                 {wasOriginallyIn && (
-                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700">
+                                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-success-700">
                                     <Check className="h-2.5 w-2.5" /> In
                                   </span>
                                 )}
@@ -202,7 +202,7 @@ export function SubcategoryPickerDialog({
 
             {error && (
               <div className="px-5 pb-2">
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">
+                <p className="rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12px] text-danger-900">
                   {error}
                 </p>
               </div>

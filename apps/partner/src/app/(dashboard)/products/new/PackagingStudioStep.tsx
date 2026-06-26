@@ -125,11 +125,11 @@ const VIEW_PRESETS: [CameraPreset, string][] = [
 ]
 
 const SCOPE_COLOR: Record<FrameScope, { stroke: string; fill: string; chip: string }> = {
-  RECIPE: { stroke: '#059669', fill: 'rgba(5,150,105,0.08)', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  MATERIAL: { stroke: '#0284c7', fill: 'rgba(2,132,199,0.08)', chip: 'bg-sky-50 text-sky-700 border-sky-200' },
-  PRODUCT: { stroke: '#7c3aed', fill: 'rgba(124,58,237,0.08)', chip: 'bg-violet-50 text-violet-700 border-violet-200' },
-  IDENTITY: { stroke: '#d97706', fill: 'rgba(217,119,6,0.08)', chip: 'bg-amber-50 text-amber-800 border-amber-200' },
-  CREATIVE: { stroke: '#52525b', fill: 'rgba(82,82,91,0.06)', chip: 'bg-zinc-50 text-zinc-600 border-zinc-200' },
+  RECIPE: { stroke: '#059669', fill: 'rgba(5,150,105,0.08)', chip: 'bg-success-50 text-success-700 border-success-200' },
+  MATERIAL: { stroke: '#0284c7', fill: 'rgba(2,132,199,0.08)', chip: 'bg-info-50 text-info-700 border-info-200' },
+  PRODUCT: { stroke: '#7c3aed', fill: 'rgba(124,58,237,0.08)', chip: 'bg-info-50 text-info-700 border-info-200' },
+  IDENTITY: { stroke: '#d97706', fill: 'rgba(217,119,6,0.08)', chip: 'bg-warning-50 text-warning-800 border-warning-200' },
+  CREATIVE: { stroke: '#52525b', fill: 'rgba(82,82,91,0.06)', chip: 'bg-ink-50 text-ink-600 border-ink-200' },
 }
 
 const KIND_LABEL: Record<FrameKind, string> = {
@@ -540,7 +540,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // portal. Same chrome as the creator Design Studio.
   // ---------------------------------------------------------------------------
   const shell = (
-    <div className="flex h-full min-h-0 w-full flex-col bg-zinc-100 font-sans text-ink-900">
+    <div className="flex h-full min-h-0 w-full flex-col bg-ink-100 font-sans text-ink-900">
       {/* ---- Top bar — pixel-matches the standard AppHeader topbar (same brand
            mark, py-3 pl-7 pr-6, gap-5, bell-driven height) so nothing shifts
            when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
@@ -932,7 +932,7 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={f.url} alt={f.name} className="h-full w-full object-contain p-1" />
                         : <span className="text-[10px] font-semibold uppercase text-ink-400">{f.name.split('.').pop() ?? 'file'}</span>}
-                      <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[8.5px] font-bold uppercase ${f.role === 'DIELINE' ? 'bg-sky-100 text-sky-700' : 'bg-pink-100 text-pink-700'}`}>{f.role === 'DIELINE' ? (f.panel ?? 'Die') : (f.label || 'Mockup')}</span>
+                      <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[8.5px] font-bold uppercase ${f.role === 'DIELINE' ? 'bg-info-100 text-info-700' : 'bg-pink-100 text-pink-700'}`}>{f.role === 'DIELINE' ? (f.panel ?? 'Die') : (f.label || 'Mockup')}</span>
                       <button type="button" aria-label="Remove" onClick={() => void remove(f.id)} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-ink-500 hover:bg-white hover:text-pink-600"><Trash2 className="h-3 w-3" /></button>
                     </div>
                     <div className="truncate px-1.5 py-1 text-[10px] text-ink-600" title={f.name}>{f.name}</div>
@@ -1042,7 +1042,7 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {!draftId && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-snug text-amber-800">
+            <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[11.5px] leading-snug text-warning-800">
               Save your product draft first — finish Basics or hit <b>Save draft</b> (☰ menu). Custom packaging attaches to a saved product.
             </div>
           )}
@@ -1554,15 +1554,15 @@ function LibraryDrawer({
                       <>
                         <div className="mt-2 flex items-center gap-2">
                           <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
-                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
+                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-success-200 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
                         </div>
                         {/* Custom (non-catalog) packaging: submit to admin to join the Library.
                             Submission STATUS lives on the partner profile, not here. */}
                         {att && !att.packagingTypeId && (
                           att.reviewStatus === 'SUBMITTED' ? (
-                            <div className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5">
-                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800"><Check className="h-3 w-3" /> Awaiting admin approval</div>
-                              <p className="mt-0.5 text-[10px] leading-snug text-amber-700">This packaging + die-line need admin sign-off, and the product itself goes through admin review before it can go live. Track status on your Packaging page.</p>
+                            <div className="mt-1.5 rounded-lg border border-warning-200 bg-warning-50 px-2 py-1.5">
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-warning-800"><Check className="h-3 w-3" /> Awaiting admin approval</div>
+                              <p className="mt-0.5 text-[10px] leading-snug text-warning-700">This packaging + die-line need admin sign-off, and the product itself goes through admin review before it can go live. Track status on your Packaging page.</p>
                             </div>
                           ) : (
                             <>
@@ -1649,14 +1649,14 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
       <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." />
 
       {/* Preflight + Confirm — die-line workflow lives here (out of the top bar). */}
-      <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/60'}`}>
+      <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-success-50/40' : 'border-warning-100 bg-warning-50/60'}`}>
         <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Preflight</p>
         {issues.length === 0 ? (
-          <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
+          <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-success-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
         ) : (
           <ul className="mt-1 space-y-0.5">
             {issues.map((iss, i) => (
-              <li key={i} className="text-[11.5px] text-amber-800">⚠️ {iss.message}</li>
+              <li key={i} className="text-[11.5px] text-warning-800">⚠️ {iss.message}</li>
             ))}
           </ul>
         )}
@@ -1672,10 +1672,10 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 
       {/* selected frame editor */}
       {selected && (
-        <div className="border-b border-ink-100 bg-zinc-50/60 px-4 py-3">
+        <div className="border-b border-ink-100 bg-ink-50/60 px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-[12.5px] font-semibold">{KIND_LABEL[selected.kind]}</span>
-            <button onClick={() => onRemove(selected.id)} className="text-ink-400 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => onRemove(selected.id)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
           <ScopeChip scope={FRAME_SCOPE[selected.kind]} />
           <label className="mt-2 flex items-center gap-2 text-[12px]">
@@ -1766,7 +1766,7 @@ function LayersDrawer({ layout, selectedId, onSelect, onRemove }: { layout: Fram
               <span className="h-2 w-2 rounded-full" style={{ background: SCOPE_COLOR[FRAME_SCOPE[f.kind]].stroke }} />
               <span className="flex-1 truncate">{KIND_LABEL[f.kind]}</span>
             </button>
-            <button onClick={() => onRemove(f.id)} className="text-ink-400 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => onRemove(f.id)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-3.5 w-3.5" /></button>
           </li>
         ))}
       </ul>

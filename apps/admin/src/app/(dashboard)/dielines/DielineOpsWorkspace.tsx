@@ -246,9 +246,9 @@ function Kpi({
   onClick: () => void
 }) {
   const iconBg = {
-    violet: 'bg-violet-50 text-violet-700',
-    amber: 'bg-amber-50 text-amber-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
+    violet: 'bg-info-50 text-info-700',
+    amber: 'bg-warning-50 text-warning-700',
+    emerald: 'bg-success-50 text-success-700',
     ink: 'bg-ink-100 text-ink-700',
   }[tone]
   return (
@@ -286,7 +286,7 @@ function GroupSection({ name, count, awaiting, children, bar }: { name: string; 
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 border-b border-ink-100 bg-zinc-50/60 px-4 py-2.5 text-left"
+        className="flex w-full items-center justify-between gap-3 border-b border-ink-100 bg-ink-50/60 px-4 py-2.5 text-left"
       >
         <span className="flex items-center gap-2">
           <ChevronDown className={`h-4 w-4 text-ink-400 transition-transform ${open ? '' : '-rotate-90'}`} />
@@ -294,7 +294,7 @@ function GroupSection({ name, count, awaiting, children, bar }: { name: string; 
           <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-600">{count}</span>
         </span>
         {awaiting > 0 && (
-          <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+          <span className="rounded-full border border-info-200 bg-info-50 px-2 py-0.5 text-[11px] font-semibold text-info-700">
             {awaiting} awaiting
           </span>
         )}
@@ -386,7 +386,7 @@ function RowCard({ r, hideContextName }: { r: OpsRow; hideContextName?: Lens }) 
 function Thumb({ url }: { url: string | null }) {
   if (url) {
     return (
-      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-ink-100 bg-zinc-50">
+      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt="" className="h-full w-full object-contain" />
       </div>
@@ -418,11 +418,11 @@ function StatusBadges({ r }: { r: OpsRow }) {
 
 function Badge({ tone, icon: Icon, children }: { tone: 'violet' | 'blue' | 'sky' | 'amber' | 'emerald'; icon?: typeof Clock; children: React.ReactNode }) {
   const cls = {
-    violet: 'border-violet-200 bg-violet-50 text-violet-700',
-    blue: 'border-blue-200 bg-blue-50 text-blue-700',
-    sky: 'border-sky-200 bg-sky-50 text-sky-700',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    violet: 'border-info-200 bg-info-50 text-info-700',
+    blue: 'border-info-200 bg-info-50 text-info-700',
+    sky: 'border-info-200 bg-info-50 text-info-700',
+    amber: 'border-warning-200 bg-warning-50 text-warning-800',
+    emerald: 'border-success-200 bg-success-50 text-success-700',
   }[tone]
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${cls}`}>

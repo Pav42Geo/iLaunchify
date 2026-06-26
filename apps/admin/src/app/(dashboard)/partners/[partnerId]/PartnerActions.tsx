@@ -71,13 +71,13 @@ export function PartnerActions({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Current status + when */}
-        <div className="rounded-md bg-zinc-50 px-3 py-2 text-sm">
-          <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <div className="rounded-md bg-ink-50 px-3 py-2 text-sm">
+          <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
             Current
           </div>
-          <div className="mt-0.5 font-medium text-zinc-900">{STATUS_LABEL[currentStatus]}</div>
+          <div className="mt-0.5 font-medium text-ink-900">{STATUS_LABEL[currentStatus]}</div>
           {statusChangedAt && (
-            <div className="mt-0.5 text-xs text-zinc-500">
+            <div className="mt-0.5 text-xs text-ink-500">
               since {new Date(statusChangedAt).toLocaleString()}
             </div>
           )}
@@ -85,7 +85,7 @@ export function PartnerActions({
 
         {/* ACTIVE-gate explainer */}
         {transitions.includes('ACTIVE') && currentStatus !== 'PAUSED' && currentStatus !== 'SUSPENDED' && overall !== 'VERIFIED' && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <div className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-900">
             All 5 verification sections must be VERIFIED before Activate is unlocked.
             Overall currently <strong>{overall.replace('_', ' ')}</strong>.
           </div>
@@ -96,7 +96,7 @@ export function PartnerActions({
           <div className="space-y-1">
             <label
               htmlFor="reason"
-              className="text-xs uppercase tracking-wider text-zinc-500"
+              className="text-xs uppercase tracking-wider text-ink-500"
             >
               Reason (optional, stamped on Partner + AuditLog)
             </label>
@@ -107,14 +107,14 @@ export function PartnerActions({
               disabled={isPending}
               rows={2}
               placeholder='e.g. "FDA cert expired — partner needs to re-upload."'
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
             />
           </div>
         )}
 
         {/* Buttons */}
         {transitions.length === 0 ? (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-ink-500">
             No admin transitions available from <strong>{STATUS_LABEL[currentStatus]}</strong>.
           </p>
         ) : (
@@ -132,10 +132,10 @@ export function PartnerActions({
 
               const classes =
                 variant === 'destructive'
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  ? 'bg-danger-600 hover:bg-danger-700 text-white'
                   : variant === 'secondary'
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    ? 'bg-warning-500 hover:bg-warning-600 text-white'
+                    : 'bg-success-600 hover:bg-success-700 text-white'
 
               return (
                 <Button

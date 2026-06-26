@@ -287,7 +287,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
           </div>
         )}
 
-        {error && <p className="mt-2 text-xs font-medium text-red-600">{error}</p>}
+        {error && <p className="mt-2 text-xs font-medium text-danger-600">{error}</p>}
         <button
           type="button"
           onClick={create}
@@ -350,7 +350,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
                     <button
                       type="button"
                       onClick={() => remove(t.id)}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold text-red-600 hover:bg-red-50"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold text-danger-600 hover:bg-danger-50"
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </button>

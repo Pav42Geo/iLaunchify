@@ -15,10 +15,10 @@ export const metadata = { title: 'Ticket — Help' }
 
 const STATUS_TONE: Record<TicketStatus, { bg: string; label: string }> = {
   NEW: { bg: 'bg-pink-50 text-pink-700 border-pink-200', label: 'Open' },
-  TRIAGED: { bg: 'bg-blue-50 text-blue-700 border-blue-200', label: 'In review' },
-  IN_PROGRESS: { bg: 'bg-blue-50 text-blue-700 border-blue-200', label: 'In progress' },
-  WAITING_ON_REQUESTER: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Needs your reply' },
-  RESOLVED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Resolved' },
+  TRIAGED: { bg: 'bg-info-50 text-info-700 border-info-200', label: 'In review' },
+  IN_PROGRESS: { bg: 'bg-info-50 text-info-700 border-info-200', label: 'In progress' },
+  WAITING_ON_REQUESTER: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Needs your reply' },
+  RESOLVED: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Resolved' },
   CLOSED: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Closed' },
 }
 
@@ -83,7 +83,7 @@ export default async function CreatorTicketDetailPage({ params }: PageProps) {
       </div>
 
       {closed ? (
-        <p className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/50 px-4 py-3 text-center text-[12.5px] text-ink-500">
+        <p className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/50 px-4 py-3 text-center text-[12.5px] text-ink-500">
           This ticket is closed. Need more help?{' '}
           <Link href="/help/new" className="font-semibold text-pink-700 hover:text-pink-800">
             Open a new ticket

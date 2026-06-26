@@ -34,21 +34,21 @@ export interface StatusWidgetProps extends WidgetBaseProps {
 }
 
 const STATUS_DOT: Record<StatusIndicatorState, string> = {
-  green: 'bg-emerald-500',
-  amber: 'bg-amber-500',
-  red: 'bg-rose-500',
+  green: 'bg-success-500',
+  amber: 'bg-warning-500',
+  red: 'bg-danger-500',
 }
 
 const STATUS_RING: Record<StatusIndicatorState, string> = {
-  green: 'ring-emerald-200',
-  amber: 'ring-amber-200',
-  red: 'ring-rose-200',
+  green: 'ring-success-200',
+  amber: 'ring-warning-200',
+  red: 'ring-danger-200',
 }
 
 const STATUS_VALUE: Record<StatusIndicatorState, string> = {
-  green: 'text-emerald-700',
-  amber: 'text-amber-700',
-  red: 'text-rose-700',
+  green: 'text-success-700',
+  amber: 'text-warning-700',
+  red: 'text-danger-700',
 }
 
 const SPARK_TONE: Record<StatusIndicatorState, 'success' | 'warning' | 'danger'> = {

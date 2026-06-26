@@ -247,7 +247,7 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
                 return (
                   <span
                     key={ax.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-zinc-50 px-3 py-1 text-[12px] text-ink-600"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-[12px] text-ink-600"
                   >
                     <span className="font-medium text-ink-800">{ax.label}:</span> {d?.label ?? '—'}
                   </span>
@@ -317,8 +317,8 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
                   key={i}
                   className={`rounded-md px-2 py-1 text-[11.5px] ${
                     iss.tone === 'block'
-                      ? 'bg-rose-50 text-rose-700'
-                      : 'bg-amber-50 text-amber-800'
+                      ? 'bg-danger-50 text-danger-700'
+                      : 'bg-warning-50 text-warning-800'
                   }`}
                 >
                   {iss.tone === 'block' ? '❌ ' : '⚠️ '}
@@ -342,7 +342,7 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
             <div className="mb-2 flex items-center justify-between">
               <h3 className="font-display text-[14px] font-semibold text-ink-900">Nutrition Facts</h3>
               {labelChanged && (
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+                <span className="rounded-full border border-success-200 bg-success-50 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-success-800">
                   Updated for your picks
                 </span>
               )}
@@ -369,7 +369,7 @@ function Section({
       <div className="mb-2.5 flex items-center gap-2">
         <h2 className="font-display text-[14px] font-semibold text-ink-900">{title}</h2>
         {affectsLabel && (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+          <span className="rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
             Changes label
           </span>
         )}

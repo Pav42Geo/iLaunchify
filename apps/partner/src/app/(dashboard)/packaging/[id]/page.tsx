@@ -15,9 +15,9 @@ import { PackagingStatusToggle } from './PackagingStatusToggle'
 
 // v2 status pill — semantic tones
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  ACTIVE: { label: 'Active', cls: 'border-success-200 bg-success-50 text-success-800' },
   DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
-  RETIRED: { label: 'Retired', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  RETIRED: { label: 'Retired', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
 }
 
 export const dynamic = 'force-dynamic'

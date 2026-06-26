@@ -136,7 +136,7 @@ export default async function DielineCuratorPage({
               {dl.status.toLowerCase().replace(/_/g, ' ')}
             </span>
             {curatedBefore && (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="rounded-full border border-success-200 bg-success-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-success-700">
                 normalized {new Date(dl.adminVerifiedAt as Date).toLocaleDateString()}
               </span>
             )}

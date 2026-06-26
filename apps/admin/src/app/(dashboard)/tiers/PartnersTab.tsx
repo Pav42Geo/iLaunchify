@@ -130,7 +130,7 @@ function FilterBar({
     <form className="flex flex-wrap items-center gap-3" action="/tiers" method="get">
       <input type="hidden" name="tab" value="partners" />
       <div className="relative min-w-[240px] flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
         <Input
           name="q"
           defaultValue={q}
@@ -150,8 +150,8 @@ function FilterBar({
               className={
                 'inline-flex items-center rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors ' +
                 (isActive
-                  ? 'bg-zinc-900 text-white'
-                  : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')
+                  ? 'bg-ink-900 text-white'
+                  : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
               }
             >
               {TIER_LABEL[t]}
@@ -159,7 +159,7 @@ function FilterBar({
           )
         })}
       </div>
-      <div className="flex flex-wrap gap-1.5 border-l border-zinc-200 pl-3">
+      <div className="flex flex-wrap gap-1.5 border-l border-ink-200 pl-3">
         {/* The hidden tier input keeps the active tier when the type
             pill is clicked — otherwise tier resets every type click. */}
         <input type="hidden" name="tier" value={activeTier} />
@@ -174,8 +174,8 @@ function FilterBar({
               className={
                 'inline-flex items-center rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors ' +
                 (isActive
-                  ? 'bg-zinc-900 text-white'
-                  : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')
+                  ? 'bg-ink-900 text-white'
+                  : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
               }
             >
               {TYPE_LABEL[t]}
@@ -189,7 +189,7 @@ function FilterBar({
 
 function EmptyHint() {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 p-6 text-center text-[13px] text-zinc-500">
+    <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-6 text-center text-[13px] text-ink-500">
       No partners match this filter.
     </div>
   )

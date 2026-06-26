@@ -53,8 +53,8 @@ export interface KpiWidgetProps {
 }
 
 const DELTA_TONE: Record<KpiDelta['direction'], string> = {
-  up: 'bg-emerald-50 text-emerald-700',
-  down: 'bg-rose-50 text-rose-700',
+  up: 'bg-success-50 text-success-700',
+  down: 'bg-danger-50 text-danger-700',
   flat: 'bg-ink-100 text-ink-600',
 }
 

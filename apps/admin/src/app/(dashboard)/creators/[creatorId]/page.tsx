@@ -46,7 +46,7 @@ type TierKey = 'MAKER' | 'BUILDER' | 'AGENCY'
 const TIER_TONE: Record<TierKey, { bg: string; label: string }> = {
   MAKER: { bg: 'bg-ink-100 text-ink-700', label: 'Maker' },
   BUILDER: { bg: 'bg-pink-100 text-pink-700', label: 'Builder' },
-  AGENCY: { bg: 'bg-emerald-100 text-emerald-700', label: 'Agency' },
+  AGENCY: { bg: 'bg-success-100 text-success-700', label: 'Agency' },
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -170,7 +170,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
               {tierTone.label}
             </Link>
             {creator.feeRateOverrideBp !== null && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-[3px] text-[11.5px] font-semibold text-amber-800 border border-amber-200">
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2.5 py-[3px] text-[11.5px] font-semibold text-warning-800 border border-warning-200">
                 <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                 Fee override · {creator.feeRateOverrideBp}bp
               </span>
@@ -397,7 +397,7 @@ function AccountMetaCard({
             <span
               className={
                 creator.tierCancelAtPeriodEnd
-                  ? 'text-rose-700'
+                  ? 'text-danger-700'
                   : 'text-ink-700'
               }
             >
@@ -411,7 +411,7 @@ function AccountMetaCard({
         )}
         {creator.feeRateOverrideReason && (
           <Row label="Fee override note">
-            <span className="text-amber-800">
+            <span className="text-warning-800">
               {creator.feeRateOverrideReason}
             </span>
           </Row>
@@ -666,17 +666,17 @@ function Row({
 
 function OrderStatusDot({ status }: { status: string }) {
   const tone: Record<string, string> = {
-    PENDING_PAYMENT: 'bg-amber-500',
+    PENDING_PAYMENT: 'bg-warning-500',
     PAID: 'bg-pink-500',
-    ROUTING: 'bg-blue-500',
+    ROUTING: 'bg-info-500',
     IN_FULFILLMENT: 'bg-pink-500',
-    READY_TO_SHIP: 'bg-blue-500',
-    SHIPPED: 'bg-blue-500',
-    IN_TRANSIT: 'bg-blue-500',
-    DELIVERED: 'bg-emerald-500',
-    COMPLETED: 'bg-emerald-500',
+    READY_TO_SHIP: 'bg-info-500',
+    SHIPPED: 'bg-info-500',
+    IN_TRANSIT: 'bg-info-500',
+    DELIVERED: 'bg-success-500',
+    COMPLETED: 'bg-success-500',
     CANCELLED: 'bg-ink-400',
-    REFUNDED: 'bg-rose-500',
+    REFUNDED: 'bg-danger-500',
   }
   return (
     <span
@@ -691,8 +691,8 @@ function OrderStatusDot({ status }: { status: string }) {
 
 function SubStatusPill({ status }: { status: string }) {
   const tone: Record<string, string> = {
-    ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    PAUSED: 'bg-amber-50 text-amber-700 border-amber-200',
+    ACTIVE: 'bg-success-50 text-success-700 border-success-200',
+    PAUSED: 'bg-warning-50 text-warning-700 border-warning-200',
     CANCELLED: 'bg-ink-100 text-ink-700 border-ink-200',
     COMPLETED: 'bg-pink-50 text-pink-700 border-pink-200',
   }

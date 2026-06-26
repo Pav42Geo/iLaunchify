@@ -114,7 +114,7 @@ export default async function PackagingSymbolsPage({ searchParams }: PageProps) 
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold">Name</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Family</th>
@@ -131,7 +131,7 @@ export default async function PackagingSymbolsPage({ searchParams }: PageProps) 
                     <Link href={`/assets/packaging-symbols/${r.id}`} className="font-semibold text-ink-900 hover:text-pink-700">
                       {r.name}
                     </Link>
-                    <code className="ml-2 rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
+                    <code className="ml-2 rounded border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
                       {r.slug}
                     </code>
                   </td>
@@ -143,16 +143,16 @@ export default async function PackagingSymbolsPage({ searchParams }: PageProps) 
                       className={cn(
                         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
                         r.status === 'ACTIVE'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                          : 'border-zinc-200 bg-zinc-50 text-ink-600',
+                          ? 'border-success-200 bg-success-50 text-success-900'
+                          : 'border-ink-200 bg-ink-50 text-ink-600',
                       )}
                     >
-                      <span className={cn('h-1.5 w-1.5 rounded-full', r.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400')} />
+                      <span className={cn('h-1.5 w-1.5 rounded-full', r.status === 'ACTIVE' ? 'bg-success-500' : 'bg-ink-400')} />
                       {r.status === 'ACTIVE' ? 'Active' : 'Deprecated'}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right">
-                    <Link href={`/assets/packaging-symbols/${r.id}`} className="text-[12px] font-medium text-emerald-700 hover:underline">
+                    <Link href={`/assets/packaging-symbols/${r.id}`} className="text-[12px] font-medium text-success-700 hover:underline">
                       Edit →
                     </Link>
                   </td>
@@ -205,10 +205,10 @@ function Kpi({
   active?: boolean
 }) {
   const iconTone: Record<'emerald' | 'rose' | 'sky' | 'violet', string> = {
-    emerald: 'bg-emerald-100 text-emerald-700',
-    rose: 'bg-rose-100 text-rose-700',
-    sky: 'bg-sky-100 text-sky-700',
-    violet: 'bg-violet-100 text-violet-700',
+    emerald: 'bg-success-100 text-success-700',
+    rose: 'bg-danger-100 text-danger-700',
+    sky: 'bg-info-100 text-info-700',
+    violet: 'bg-info-100 text-info-700',
   }
   return (
     <div className={cn('rounded-2xl border border-ink-200 bg-white px-4 py-3.5 ring-1 ring-transparent', active && 'ring-pink-300/40')}>

@@ -168,7 +168,7 @@ export function TemplateAuthorSaveDialog({ open, canvas, domain, container, aspe
         <p className="mt-3 text-[11px] text-ink-400">
           Targets {container ?? 'any container'} · {aspectBucket ?? 'any shape'} · {domain}.
         </p>
-        {error && <p className="mt-1 text-xs font-medium text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-xs font-medium text-danger-600">{error}</p>}
 
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md border border-ink-300 px-3 py-2 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50">

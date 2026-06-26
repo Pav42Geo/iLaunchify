@@ -28,18 +28,18 @@ export function certExpiryTone(expiry: Date | string, now: Date = new Date()): C
 
 /** Tailwind classes for a small pill, keyed by tone. */
 export const CERT_EXPIRY_TONE_CLASS: Record<CertExpiryTone, string> = {
-  ok: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  soon: 'bg-amber-50 text-amber-800 border-amber-200',
-  urgent: 'bg-rose-50 text-rose-700 border-rose-200',
-  expired: 'bg-zinc-100 text-zinc-500 border-zinc-200',
+  ok: 'bg-success-50 text-success-700 border-success-200',
+  soon: 'bg-warning-50 text-warning-800 border-warning-200',
+  urgent: 'bg-danger-50 text-danger-700 border-danger-200',
+  expired: 'bg-ink-100 text-ink-500 border-ink-200',
 }
 
 /** A dot color per tone (for chips that show a status dot rather than a pill). */
 export const CERT_EXPIRY_DOT_CLASS: Record<CertExpiryTone, string> = {
-  ok: 'bg-emerald-500',
-  soon: 'bg-amber-500',
-  urgent: 'bg-rose-500',
-  expired: 'bg-zinc-400',
+  ok: 'bg-success-500',
+  soon: 'bg-warning-500',
+  urgent: 'bg-danger-500',
+  expired: 'bg-ink-400',
 }
 
 /** Short human label, e.g. "Expires in 45d", "Expires today", "Expired 3d ago". */

@@ -132,7 +132,7 @@ export function OnboardingAccordion({
           </div>
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-ink-200">
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
+              className="h-full rounded-full bg-success-500 transition-all"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -208,10 +208,10 @@ export function OnboardingAccordion({
 
       <footer className="mt-10 space-y-3">
         {submitError && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-900">
             <p className="font-medium">{submitError}</p>
             {missingItems.length > 0 && (
-              <ul className="mt-1 ml-5 list-disc text-amber-800">
+              <ul className="mt-1 ml-5 list-disc text-warning-800">
                 {missingItems.map((item) => (
                   <li key={item}>{item}</li>
                 ))}

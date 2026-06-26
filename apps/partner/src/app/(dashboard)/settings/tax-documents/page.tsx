@@ -21,9 +21,9 @@ const TYPE_LABEL: Record<string, string> = {
   FORM_1099NEC: '1099-NEC',
 }
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: 'Pending', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  AVAILABLE: { label: 'Available', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  DELIVERED: { label: 'Delivered', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  PENDING: { label: 'Pending', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  AVAILABLE: { label: 'Available', cls: 'border-success-200 bg-success-50 text-success-800' },
+  DELIVERED: { label: 'Delivered', cls: 'border-success-200 bg-success-50 text-success-800' },
   CORRECTED: { label: 'Corrected', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
   VOID: { label: 'Void', cls: 'border-ink-200 bg-ink-100 text-ink-500' },
 }
@@ -68,7 +68,7 @@ export default async function TaxDocumentsPage({
       </div>
 
       {dashboardError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+        <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-[13px] text-warning-800">
           We couldn’t open your Stripe dashboard. Finish connecting payouts first, then try again.
         </div>
       )}

@@ -139,8 +139,8 @@ export function AccountTierEditor({
   return (
     <div className="space-y-6">
       {/* TIER */}
-      <section className="rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <section className="rounded-xl border border-ink-200 bg-white p-5">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           Tier
         </h2>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -172,7 +172,7 @@ export function AccountTierEditor({
         </div>
 
         <div className="mt-4">
-          <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             Reason <span className="text-pink-600">*</span>
           </label>
           <textarea
@@ -184,9 +184,9 @@ export function AccountTierEditor({
                 ? 'e.g. Promoted after agency contract signed 2026-04-02.'
                 : 'e.g. Promoted to Trusted — 25 orders + 92% on-time.'
             }
-            className="mt-1 block w-full rounded-md border border-zinc-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
-          <p className="mt-1 text-[11px] text-zinc-500">
+          <p className="mt-1 text-[11px] text-ink-500">
             Required. Shown on the AuditLog row alongside the before/after tier.
           </p>
         </div>
@@ -196,7 +196,7 @@ export function AccountTierEditor({
             type="button"
             onClick={commitTier}
             disabled={savingTier || selectedTier === currentTier}
-            className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
           >
             {savingTier && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {savingTier ? 'Saving…' : 'Save tier · audit log'}
@@ -205,11 +205,11 @@ export function AccountTierEditor({
       </section>
 
       {/* FEE OVERRIDE */}
-      <section className="rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <section className="rounded-xl border border-ink-200 bg-white p-5">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           Fee override
         </h2>
-        <p className="mt-1 text-[12.5px] text-zinc-600">
+        <p className="mt-1 text-[12.5px] text-ink-600">
           {audience === 'CREATOR'
             ? "Overrides the platform-fee % on this creator's production orders. Leave blank to use the plan-level rate."
             : "Overrides the commission % iLaunchify keeps on this partner's orders."}
@@ -217,7 +217,7 @@ export function AccountTierEditor({
 
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
               Rate (%)
             </label>
             <input
@@ -228,16 +228,16 @@ export function AccountTierEditor({
               value={overridePercent}
               onChange={(e) => setOverridePercent(e.target.value)}
               placeholder="e.g. 9.50"
-              className="mt-1 block w-32 rounded-md border border-zinc-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+              className="mt-1 block w-32 rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
             />
           </div>
-          <p className="pb-2 text-[12px] text-zinc-500">
+          <p className="pb-2 text-[12px] text-ink-500">
             Applied to production order subtotal.
           </p>
         </div>
 
         <div className="mt-4">
-          <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             Reason <span className="text-pink-600">*</span>
           </label>
           <textarea
@@ -245,7 +245,7 @@ export function AccountTierEditor({
             onChange={(e) => setOverrideReason(e.target.value)}
             rows={2}
             placeholder="Why this override? Will appear in the audit log."
-            className="mt-1 block w-full rounded-md border border-zinc-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </div>
 
@@ -255,7 +255,7 @@ export function AccountTierEditor({
               type="button"
               onClick={() => commitOverride(true)}
               disabled={savingOverride}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-4 py-2 text-[12px] font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50"
             >
               Clear override
             </button>
@@ -264,7 +264,7 @@ export function AccountTierEditor({
             type="button"
             onClick={() => commitOverride(false)}
             disabled={savingOverride || !overridePercent.trim()}
-            className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
           >
             {savingOverride && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {savingOverride ? 'Saving…' : 'Save override · audit log'}

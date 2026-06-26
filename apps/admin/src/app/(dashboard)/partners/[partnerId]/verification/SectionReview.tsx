@@ -40,25 +40,25 @@ const STATUS_OPTIONS: Array<{
     value: 'VERIFIED',
     label: 'Verify',
     icon: Check,
-    buttonClass: 'bg-green-600 hover:bg-green-700 text-white',
+    buttonClass: 'bg-success-600 hover:bg-success-700 text-white',
   },
   {
     value: 'NEEDS_CHANGES',
     label: 'Request changes',
     icon: AlertCircle,
-    buttonClass: 'bg-amber-500 hover:bg-amber-600 text-white',
+    buttonClass: 'bg-warning-500 hover:bg-warning-600 text-white',
   },
   {
     value: 'REJECTED',
     label: 'Reject',
     icon: XCircle,
-    buttonClass: 'bg-red-600 hover:bg-red-700 text-white',
+    buttonClass: 'bg-danger-600 hover:bg-danger-700 text-white',
   },
   {
     value: 'PENDING',
     label: 'Reset to pending',
     icon: RotateCcw,
-    buttonClass: 'bg-zinc-200 hover:bg-zinc-300 text-zinc-700',
+    buttonClass: 'bg-ink-200 hover:bg-ink-300 text-ink-700',
   },
 ]
 
@@ -99,7 +99,7 @@ export function SectionReview({
       <CardHeader className="flex-row items-start justify-between space-y-0">
         <div>
           <CardTitle className="text-base">{label}</CardTitle>
-          <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+          <p className="mt-0.5 text-xs text-ink-500">{description}</p>
         </div>
         <span
           className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium uppercase ${statusBadgeClass(
@@ -115,12 +115,12 @@ export function SectionReview({
             {files.map((file) => (
               <li
                 key={file.id}
-                className="flex items-center gap-2 rounded border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+                className="flex items-center gap-2 rounded border border-ink-100 bg-ink-50 px-3 py-2 text-sm"
               >
-                <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
+                <FileText className="h-4 w-4 shrink-0 text-ink-400" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{file.originalFilename}</div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-ink-500">
                     {file.kind} · {formatBytes(file.sizeBytes)} ·{' '}
                     {new Date(file.uploadedAt).toLocaleDateString()}
                   </div>
@@ -129,13 +129,13 @@ export function SectionReview({
             ))}
           </ul>
         ) : (
-          <p className="rounded border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-500">
+          <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
             No files uploaded by partner yet.
           </p>
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor={`notes-${sectionType}`} className="text-xs uppercase tracking-wide text-zinc-500">
+          <Label htmlFor={`notes-${sectionType}`} className="text-xs uppercase tracking-wide text-ink-500">
             Admin notes (shown to partner)
           </Label>
           <textarea
@@ -145,7 +145,7 @@ export function SectionReview({
             disabled={isPending}
             placeholder='e.g. "Insurance COI is expired — please upload current policy."'
             rows={3}
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           />
         </div>
 
@@ -171,7 +171,7 @@ export function SectionReview({
         </div>
 
         {current.verifiedAt && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-ink-500">
             Last set {new Date(current.verifiedAt).toLocaleString()}
             {current.verifierName ? ` by ${current.verifierName}` : ''}
           </p>

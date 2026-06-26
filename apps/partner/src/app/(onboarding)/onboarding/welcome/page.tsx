@@ -40,7 +40,7 @@ export default async function WelcomePage() {
       <div className="mt-12 space-y-8">
         <section className="rounded-lg border border-ink-200 bg-white p-6">
           <div className="flex items-start gap-4">
-            <CalendarClock className="mt-1 h-6 w-6 flex-shrink-0 text-emerald-600" />
+            <CalendarClock className="mt-1 h-6 w-6 flex-shrink-0 text-success-600" />
             <div>
               <h2 className="font-semibold text-ink-900">Here&apos;s what to expect</h2>
               <p className="mt-2 text-sm text-ink-600">
@@ -55,7 +55,7 @@ export default async function WelcomePage() {
 
         <section className="rounded-lg border border-ink-200 bg-white p-6">
           <div className="flex items-start gap-4">
-            <ClipboardList className="mt-1 h-6 w-6 flex-shrink-0 text-emerald-600" />
+            <ClipboardList className="mt-1 h-6 w-6 flex-shrink-0 text-success-600" />
             <div className="flex-1">
               <h2 className="font-semibold text-ink-900">Have these ready before you start</h2>
               <ul className="mt-3 space-y-2 text-sm text-ink-600">
@@ -70,7 +70,7 @@ export default async function WelcomePage() {
                 </PackingItem>
                 <PackingItem>Bank account for production payouts</PackingItem>
               </ul>
-              <p className="mt-4 flex items-start gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+              <p className="mt-4 flex items-start gap-2 rounded-md bg-success-50 px-3 py-2 text-xs text-success-900">
                 <FileText className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>
                   We review your documents <strong>privately</strong>. Only iLaunchify admins

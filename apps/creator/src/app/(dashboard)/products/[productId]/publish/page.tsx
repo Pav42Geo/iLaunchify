@@ -132,7 +132,7 @@ export default async function PublishStubPage({
                   </div>
                   <div className="flex items-center gap-2">
                     {isLinked && (
-                      <CheckCircle2 className="h-5 w-5 text-green-600" aria-label="Listed" />
+                      <CheckCircle2 className="h-5 w-5 text-success-600" aria-label="Listed" />
                     )}
                     <Button
                       variant="outline"

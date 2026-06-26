@@ -47,15 +47,15 @@ const LT_LABEL: Record<string, string> = {
   COSMETIC: 'Cosmetic',
 }
 const CAT_BADGE: Record<string, string> = {
-  ALLERGEN: 'bg-orange-100 text-orange-800',
-  DISCLAIMER: 'bg-sky-100 text-sky-800',
-  WARNING: 'bg-rose-100 text-rose-800',
-  IDENTITY: 'bg-violet-100 text-violet-800',
-  DIRECTIONS: 'bg-emerald-100 text-emerald-800',
-  CLAIM: 'bg-indigo-100 text-indigo-800',
-  SUSTAINABILITY: 'bg-teal-100 text-teal-800',
+  ALLERGEN: 'bg-warning-100 text-warning-800',
+  DISCLAIMER: 'bg-info-100 text-info-800',
+  WARNING: 'bg-danger-100 text-danger-800',
+  IDENTITY: 'bg-info-100 text-info-800',
+  DIRECTIONS: 'bg-success-100 text-success-800',
+  CLAIM: 'bg-info-100 text-info-800',
+  SUSTAINABILITY: 'bg-info-100 text-info-800',
   MARKETING: 'bg-pink-100 text-pink-800',
-  OTHER: 'bg-zinc-100 text-zinc-600',
+  OTHER: 'bg-ink-100 text-ink-600',
 }
 
 function chipHref(params: Record<string, string | undefined>): string {
@@ -106,7 +106,7 @@ export default async function MandatoryPhrasesPage({
           </>
         }
         actions={
-          <Button asChild className="bg-zinc-900 hover:bg-black">
+          <Button asChild className="bg-ink-900 hover:bg-black">
             <Link href="/mandatory-phrases/new">
               <Plus className="mr-1.5 h-4 w-4" /> Add phrase
             </Link>
@@ -148,10 +148,10 @@ export default async function MandatoryPhrasesPage({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200">
+      <div className="overflow-x-auto rounded-xl border border-ink-200">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-500">
+            <tr className="border-b border-ink-200 bg-ink-50 text-left text-xs uppercase tracking-wider text-ink-500">
               <th className="px-4 py-2.5 font-semibold">Phrase</th>
               <th className="px-4 py-2.5 font-semibold">Requirement</th>
               <th className="px-4 py-2.5 font-semibold">Category</th>
@@ -164,26 +164,26 @@ export default async function MandatoryPhrasesPage({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-400">
                   No phrases match this filter.
                 </td>
               </tr>
             ) : (
               rows.map((p) => (
-                <tr key={p.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/60">
+                <tr key={p.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/60">
                   <td className="px-4 py-2.5">
-                    <Link href={`/mandatory-phrases/${p.id}`} className="font-medium text-zinc-900 hover:text-pink-700">
+                    <Link href={`/mandatory-phrases/${p.id}`} className="font-medium text-ink-900 hover:text-pink-700">
                       {p.title}
                     </Link>
-                    <p className="mt-0.5 max-w-md truncate text-[12px] text-zinc-500">{p.body}</p>
+                    <p className="mt-0.5 max-w-md truncate text-[12px] text-ink-500">{p.body}</p>
                   </td>
                   <td className="px-4 py-2.5">
                     <span
                       className={
                         'rounded-full px-2 py-0.5 text-[11px] font-semibold ' +
                         (p.requirement === 'MANDATORY'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-sky-100 text-sky-800')
+                          ? 'bg-danger-100 text-danger-800'
+                          : 'bg-info-100 text-info-800')
                       }
                     >
                       {p.requirement === 'MANDATORY' ? 'Mandatory' : 'Recommended'}
@@ -194,15 +194,15 @@ export default async function MandatoryPhrasesPage({
                       {CAT_LABEL[p.category] ?? p.category}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-[12px] text-zinc-600">
+                  <td className="px-4 py-2.5 text-[12px] text-ink-600">
                     {p.labelingTypes.map((t) => LT_LABEL[t] ?? t).join(', ')}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-[11px] text-zinc-500">{p.cfrCitation ?? '—'}</td>
+                  <td className="px-4 py-2.5 font-mono text-[11px] text-ink-500">{p.cfrCitation ?? '—'}</td>
                   <td className="px-4 py-2.5">
                     <span
                       className={
                         'rounded-full px-2 py-0.5 text-[11px] font-semibold ' +
-                        (p.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-500')
+                        (p.isActive ? 'bg-success-100 text-success-800' : 'bg-ink-100 text-ink-500')
                       }
                     >
                       {p.isActive ? 'Active' : 'Archived'}
@@ -234,7 +234,7 @@ function ChipRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{label}</span>
+      <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-ink-400">{label}</span>
       {options.map((o) => {
         const isActive = (o.v ?? undefined) === (active ?? undefined)
         return (
@@ -243,7 +243,7 @@ function ChipRow({
             href={build(o.v)}
             className={
               'rounded-full px-2.5 py-1 text-[12px] font-medium ' +
-              (isActive ? 'bg-zinc-900 text-white' : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-100')
+              (isActive ? 'bg-ink-900 text-white' : 'border border-ink-200 text-ink-600 hover:bg-ink-100')
             }
           >
             {o.t}

@@ -65,10 +65,10 @@ const BUCKET_PILL: Record<
   PartnerStatusBucket,
   { bg: string; text: string; border: string; dot: string }
 > = {
-  PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500' },
-  ACTIVE: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  SUSPENDED: { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400' },
-  REJECTED: { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
+  PENDING: { bg: 'bg-warning-100', text: 'text-warning-800', border: 'border-warning-200', dot: 'bg-warning-500' },
+  ACTIVE: { bg: 'bg-success-100', text: 'text-success-800', border: 'border-success-200', dot: 'bg-success-500' },
+  SUSPENDED: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400' },
+  REJECTED: { bg: 'bg-danger-100', text: 'text-danger-700', border: 'border-danger-200', dot: 'bg-danger-500' },
 }
 
 const KIND_ICON: Record<PartnerKind, LucideIcon> = {
@@ -130,16 +130,16 @@ export default async function PartnersPage({ searchParams }: PageProps) {
       {data.kpis.atRisk > 0 && (
         <Link
           href="/partners?status=ACTIVE&sort=lastOrderAt&dir=asc"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          className="flex items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-3 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <AlertTriangle className="h-[18px] w-[18px]" />
           </span>
           <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
+            <p className="text-[13.5px] font-semibold text-danger-900">
               {data.kpis.atRisk} active partner{data.kpis.atRisk === 1 ? '' : 's'} at risk
             </p>
-            <p className="text-[11.5px] text-rose-700">
+            <p className="text-[11.5px] text-danger-700">
               No production order in the last 60 days. Sort by last order to chase them down.
             </p>
           </div>
@@ -240,17 +240,17 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
     pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -455,7 +455,7 @@ function PartnersTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh sortKey="legalName" filters={filters}>
               Partner
@@ -515,7 +515,7 @@ function PartnersTable({
                         return (
                           <span
                             key={k}
-                            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700"
+                            className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700"
                           >
                             <Icon className="h-3 w-3" />
                             {PARTNER_KIND_LABEL[k]!}
@@ -523,7 +523,7 @@ function PartnersTable({
                         )
                       })}
                       {overflow > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
+                        <span className="inline-flex items-center rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
                           +{overflow} more
                         </span>
                       )}

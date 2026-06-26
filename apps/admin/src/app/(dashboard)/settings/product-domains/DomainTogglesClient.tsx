@@ -39,7 +39,7 @@ export function DomainTogglesClient({ rows }: { rows: DomainRow[] }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      {error && <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-[13px] text-rose-700">{error}</div>}
+      {error && <div className="border-b border-danger-200 bg-danger-50 px-4 py-2 text-[13px] text-danger-700">{error}</div>}
       <ul className="divide-y divide-ink-100">
         {rows.map((r) => {
           const on = state[r.key]
@@ -49,7 +49,7 @@ export function DomainTogglesClient({ rows }: { rows: DomainRow[] }) {
                 <div className="flex items-center gap-2">
                   <span className="text-[14px] font-semibold text-ink-900">{r.label}</span>
                   {!r.flowLive && (
-                    <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-px text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                    <span className="rounded-full border border-warning-300 bg-warning-50 px-2 py-px text-[10px] font-semibold uppercase tracking-wider text-warning-700">
                       builder flow not live
                     </span>
                   )}

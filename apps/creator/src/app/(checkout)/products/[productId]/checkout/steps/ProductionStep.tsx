@@ -461,7 +461,7 @@ function SpecRow({
           <>
             <span className="truncate font-medium">{value}</span>
             {eco && (
-              <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-success-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-success-700">
                 <Leaf className="h-2.5 w-2.5" />
                 {eco}
               </span>

@@ -319,7 +319,7 @@ function ComponentSlotRow({
             {row.fdaLocked && (
               <span
                 title="FDA-required tamper-evident seal (21 CFR 211.132)"
-                className="inline-flex items-center gap-0.5 text-[10px] text-amber-700"
+                className="inline-flex items-center gap-0.5 text-[10px] text-warning-700"
               >
                 <Lock className="h-3 w-3" /> required
               </span>
@@ -376,7 +376,7 @@ function ComponentSlotRow({
             onClick={remove}
             disabled={pending}
             title="Remove component"
-            className="shrink-0 rounded p-1 text-ink-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"
+            className="shrink-0 rounded p-1 text-ink-400 hover:bg-danger-50 hover:text-danger-600 disabled:opacity-40"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

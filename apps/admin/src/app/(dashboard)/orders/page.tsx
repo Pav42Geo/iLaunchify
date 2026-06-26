@@ -96,26 +96,26 @@ const SHIPPED_STATUSES: OrderStatus[] = ['SHIPPED', 'IN_TRANSIT', 'DELIVERED', '
 const URGENT_STATUSES: OrderStatus[] = ['ON_HOLD', 'DISPUTED', 'ROUTING']
 
 const STATUS_TONE: Record<OrderStatus, { bg: string; dot: string; label: string }> = {
-  PENDING_PAYMENT: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Pending payment' },
+  PENDING_PAYMENT: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Pending payment' },
   PAID: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'Paid' },
-  ROUTING: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Routing' },
+  ROUTING: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Routing' },
   IN_FULFILLMENT: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'In fulfillment' },
-  READY_TO_SHIP: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Ready to ship' },
-  SHIPPED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Shipped' },
-  IN_TRANSIT: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In transit' },
-  DELIVERED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Delivered' },
-  COMPLETED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Completed' },
+  READY_TO_SHIP: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Ready to ship' },
+  SHIPPED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Shipped' },
+  IN_TRANSIT: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'In transit' },
+  DELIVERED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Delivered' },
+  COMPLETED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Completed' },
   CANCELLED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Cancelled' },
-  REFUNDED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Refunded' },
-  ON_HOLD: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'On hold' },
-  DISPUTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Disputed' },
+  REFUNDED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Refunded' },
+  ON_HOLD: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'On hold' },
+  DISPUTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', label: 'Disputed' },
 }
 
 const APPROVAL_TONE: Record<string, { bg: string; label: string }> = {
-  AWAITING_PARTNERS: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Awaiting' },
-  PARTIALLY_ACCEPTED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Partial' },
-  CHANGES_REQUESTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Changes' },
-  FULLY_ACCEPTED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Accepted' },
+  AWAITING_PARTNERS: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Awaiting' },
+  PARTIALLY_ACCEPTED: { bg: 'bg-info-50 text-info-800 border-info-200', label: 'Partial' },
+  CHANGES_REQUESTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Changes' },
+  FULLY_ACCEPTED: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Accepted' },
 }
 
 // -----------------------------------------------------------------------------
@@ -198,20 +198,20 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
       {urgentCount > 0 && (
         <Link
           href="/orders?status=ON_HOLD"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          className="flex items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-3 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <AlertTriangle className="h-[18px] w-[18px]" />
           </span>
           <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
+            <p className="text-[13.5px] font-semibold text-danger-900">
               {urgentCount} order{urgentCount === 1 ? '' : 's'} need attention
             </p>
-            <p className="text-[11.5px] text-rose-700">
+            <p className="text-[11.5px] text-danger-700">
               ON_HOLD, DISPUTED, or stuck in ROUTING — review and resolve.
             </p>
           </div>
-          <ArrowRight className="h-4 w-4 text-rose-700" />
+          <ArrowRight className="h-4 w-4 text-danger-700" />
         </Link>
       )}
 
@@ -293,8 +293,8 @@ function Kpi({
   const numeralTone = {
     ink: 'text-ink-900',
     pink: 'text-pink-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
+    info: 'text-info-700',
+    success: 'text-success-700',
   }[tone]
   return (
     <div className="px-5 py-3.5">
@@ -488,7 +488,7 @@ function OrdersTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Order</Th>
             <Th>Brand</Th>
@@ -516,7 +516,7 @@ function OrdersTable({
                     #{o.id.slice(-8)}
                   </Link>
                   {(o as { orderType?: string }).orderType === 'SAMPLE' && (
-                    <span className="mt-1 inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-violet-700">
+                    <span className="mt-1 inline-flex items-center rounded-full border border-info-200 bg-info-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-info-700">
                       Sample{(o as { sampleKind?: string | null }).sampleKind ? ` · ${String((o as { sampleKind?: string | null }).sampleKind).toLowerCase()}` : ''}
                     </span>
                   )}
@@ -594,7 +594,7 @@ function OrdersTable({
         </tbody>
       </table>
       {rows.length === 200 && (
-        <div className="border-t border-ink-100 bg-zinc-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
+        <div className="border-t border-ink-100 bg-ink-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
           Showing first 200 results. Use status filter to narrow further.
         </div>
       )}
@@ -624,7 +624,7 @@ function NumCell({ n }: { n: number }) {
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span
         aria-hidden="true"
         className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"

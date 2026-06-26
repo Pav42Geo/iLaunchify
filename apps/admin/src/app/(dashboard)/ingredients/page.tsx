@@ -56,9 +56,9 @@ const STATUS_TONE: Record<
   VerificationStatus,
   { dot: string; bg: string; text: string; border: string }
 > = {
-  SELF_ATTESTED: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  ADMIN_VERIFIED: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  LIBRARY_PROMOTED: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+  SELF_ATTESTED: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  ADMIN_VERIFIED: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  LIBRARY_PROMOTED: { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
 }
 
 const SOURCE_ORDER: IngredientSource[] = ['USDA', 'LIBRARY', 'PARTNER_PRIVATE', 'DSLD', 'INCI', 'AAFCO']
@@ -76,12 +76,12 @@ const SOURCE_TONE: Record<
   IngredientSource,
   { dot: string; bg: string; text: string; border: string }
 > = {
-  USDA: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+  USDA: { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
   LIBRARY: { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  PARTNER_PRIVATE: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  DSLD: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  INCI: { dot: 'bg-violet-500', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200' },
-  AAFCO: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-900', border: 'border-orange-200' },
+  PARTNER_PRIVATE: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  DSLD: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  INCI: { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
+  AAFCO: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
 }
 
 const PAGE_SIZE = 50
@@ -244,20 +244,20 @@ export default async function IngredientsPage({ searchParams }: PageProps) {
       {urgentCondition && (
         <Link
           href="/ingredients?status=SELF_ATTESTED&source=PARTNER_PRIVATE&sort=oldest"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          className="flex items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-3 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <AlertTriangle className="h-[18px] w-[18px]" />
           </span>
           <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
+            <p className="text-[13.5px] font-semibold text-danger-900">
               Self-attested ingredient stuck {oldestStuckDays} days · already in {oldestStuckUsage} recipes
             </p>
-            <p className="text-[11.5px] text-rose-700">
+            <p className="text-[11.5px] text-danger-700">
               Triage the partner-private queue oldest-first to keep cross-partner repeats from piling up.
             </p>
           </div>
-          <Sparkles className="h-4 w-4 text-rose-700" />
+          <Sparkles className="h-4 w-4 text-danger-700" />
         </Link>
       )}
 
@@ -366,16 +366,16 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -621,7 +621,7 @@ function IngredientsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Ingredient</Th>
             <Th>Source</Th>
@@ -704,19 +704,19 @@ function IngredientsTable({
                 <td className="px-3 py-3 align-top">
                   <div className="flex flex-wrap gap-1">
                     {banned && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-rose-800">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-danger-800">
                         <Ban className="h-2.5 w-2.5" />
                         Banned
                       </span>
                     )}
                     {hasBio && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                         <AlertTriangle className="h-2.5 w-2.5" />
                         BE
                       </span>
                     )}
                     {hasAllergen && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                         Allergen
                       </span>
                     )}
@@ -752,7 +752,7 @@ function IngredientsTable({
         </tbody>
       </table>
       {sort === 'used' && (
-        <p className="border-t border-ink-100 bg-zinc-50/40 px-4 py-2 text-[11px] italic text-ink-500">
+        <p className="border-t border-ink-100 bg-ink-50/40 px-4 py-2 text-[11px] italic text-ink-500">
           Sort by Most used ranks rows within the current page only. Across pages the underlying order is newest-first.
         </p>
       )}

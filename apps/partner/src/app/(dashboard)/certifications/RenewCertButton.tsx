@@ -32,7 +32,7 @@ export function RenewCertButton({
 
   if (renewalPending) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-warning-700">
         <RefreshCw className="h-3 w-3" /> Renewal pending review
       </span>
     )
@@ -43,7 +43,7 @@ export function RenewCertButton({
       <Button
         type="button"
         variant="outline"
-        className="h-7 border-emerald-300 px-2.5 text-[11px] text-emerald-700 hover:bg-emerald-50"
+        className="h-7 border-success-300 px-2.5 text-[11px] text-success-700 hover:bg-success-50"
         onClick={() => setOpen(true)}
       >
         <RefreshCw className="mr-1 h-3 w-3" /> Renew
@@ -108,7 +108,7 @@ function RenewForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 space-y-4 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4"
+      className="mt-3 space-y-4 rounded-lg border border-success-200 bg-success-50/40 p-4"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -176,17 +176,17 @@ function RenewForm({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-ink-300 bg-white p-3 text-left hover:border-emerald-300"
+          className="flex w-full items-center gap-3 rounded-md border-2 border-dashed border-ink-300 bg-white p-3 text-left hover:border-success-300"
           disabled={isPending}
         >
           {file ? (
             <>
-              <FileText className="h-5 w-5 text-emerald-600" />
+              <FileText className="h-5 w-5 text-success-600" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink-900">{file.name}</div>
                 <div className="text-xs text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
               </div>
-              <span className="text-xs text-emerald-700">Change</span>
+              <span className="text-xs text-success-700">Change</span>
             </>
           ) : (
             <>
@@ -206,13 +206,13 @@ function RenewForm({
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
           disabled={isPending}
-          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-emerald-600 focus:ring-emerald-500"
+          className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-success-600 focus:ring-success-500"
         />
         <span>{CERT_UPLOAD_CONSENT_TEXT}</span>
       </label>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
           {error}
         </div>
       )}
@@ -247,7 +247,7 @@ function Field({
       <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
-          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
+          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">
             Required
           </span>
         )}

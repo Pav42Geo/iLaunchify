@@ -15,15 +15,15 @@ export function RestrictedProductNotice({ restrictions }: { restrictions: Restri
   return (
     <div
       role="alert"
-      className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm"
+      className="rounded-xl border border-warning-300 bg-warning-50 p-4 text-warning-900 shadow-sm"
     >
       <div className="flex items-start gap-3">
-        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
         <div className="space-y-2">
           <p className="text-[13px] font-semibold">
             This product can&rsquo;t be ordered yet
           </p>
-          <p className="text-[12px] leading-relaxed text-amber-800">
+          <p className="text-[12px] leading-relaxed text-warning-800">
             It falls into a category that requires licensing or permitting
             iLaunchify doesn&rsquo;t support yet. Ordering is disabled.
           </p>
@@ -31,14 +31,14 @@ export function RestrictedProductNotice({ restrictions }: { restrictions: Restri
             {restrictions.map((r) => (
               <li key={r.code} className="text-[12px] leading-relaxed">
                 <span className="font-semibold">{r.label}.</span>{' '}
-                <span className="text-amber-800">{r.detail}</span>
+                <span className="text-warning-800">{r.detail}</span>
                 {r.citation ? (
-                  <span className="block text-[10.5px] text-amber-700/80">{r.citation}</span>
+                  <span className="block text-[10.5px] text-warning-700/80">{r.citation}</span>
                 ) : null}
               </li>
             ))}
           </ul>
-          <p className="text-[10.5px] italic text-amber-700/80">
+          <p className="text-[10.5px] italic text-warning-700/80">
             This is not legal advice. iLaunchify&rsquo;s compliance tooling is
             assistive and does not replace your own regulatory review.
           </p>

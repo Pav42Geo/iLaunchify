@@ -255,7 +255,7 @@ function TierCardView({
       <ul className="mb-5 space-y-1.5">
         {tier.perks.map((p) => (
           <li key={p} className="flex items-start gap-2 text-[12.5px] text-ink-700">
-            <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
+            <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success-600" />
             <span>{p}</span>
           </li>
         ))}

@@ -117,7 +117,7 @@ export default async function NicheSubcategoriesPage({ params }: PageProps) {
           </div>
         ) : (
           <table className="w-full text-left text-[13px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th scope="col" className="px-3 py-3 w-10" aria-label="Reorder" />
                 <th scope="col" className="px-4 py-3">Subcategory</th>

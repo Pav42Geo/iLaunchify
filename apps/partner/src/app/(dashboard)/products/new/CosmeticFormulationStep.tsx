@@ -148,7 +148,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
                     <td className="py-1.5 px-1"><input className={`${INPUT} w-16 text-right`} type="number" min={0} max={100} step={0.01} value={r.pct} onChange={(e) => patch(r.uid, { pct: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })} /></td>
                     <td className="py-1.5 px-1 text-center"><input type="checkbox" checked={r.isColorAdditive} onChange={(e) => patch(r.uid, { isColorAdditive: e.target.checked })} /></td>
                     <td className="py-1.5 px-1 text-center"><input type="checkbox" checked={r.isFragrance} onChange={(e) => patch(r.uid, { isFragrance: e.target.checked })} /></td>
-                    <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
+                    <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button></td>
                   </tr>
                 ))}
                 {rows.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-[12px] text-ink-400">No ingredients yet — add the first below.</td></tr>}
@@ -157,7 +157,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
                 <tfoot>
                   <tr className="text-[12px] font-semibold text-ink-600">
                     <td className="py-1.5">Total</td>
-                    <td className={`py-1.5 px-1 text-right ${Math.abs(totalPct - 100) > 0.5 ? 'text-amber-600' : 'text-emerald-700'}`}>{totalPct.toFixed(2)}%</td>
+                    <td className={`py-1.5 px-1 text-right ${Math.abs(totalPct - 100) > 0.5 ? 'text-warning-600' : 'text-success-700'}`}>{totalPct.toFixed(2)}%</td>
                     <td colSpan={3} />
                   </tr>
                 </tfoot>
@@ -165,7 +165,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
             </table>
           </div>
           <button type="button" onClick={addRow} className="mt-3 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Ingredient</button>
-          {rows.length > 0 && Math.abs(totalPct - 100) > 0.5 && <p className="mt-2 text-[11px] text-amber-600">Concentrations total {totalPct.toFixed(2)}% — they should add up to ~100% w/w.</p>}
+          {rows.length > 0 && Math.abs(totalPct - 100) > 0.5 && <p className="mt-2 text-[11px] text-warning-600">Concentrations total {totalPct.toFixed(2)}% — they should add up to ~100% w/w.</p>}
         </div>
 
         {/* Net contents + MoCRA */}

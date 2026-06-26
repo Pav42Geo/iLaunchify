@@ -39,7 +39,7 @@ export function CancelOrderButton({ orderId }: { orderId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-ink-700 hover:bg-rose-50 hover:text-rose-700"
+        className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-ink-700 hover:bg-danger-50 hover:text-danger-700"
       >
         <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
         Cancel order
@@ -48,7 +48,7 @@ export function CancelOrderButton({ orderId }: { orderId: string }) {
   }
 
   return (
-    <div className="rounded-md border border-rose-200 bg-rose-50/40 p-2.5">
+    <div className="rounded-md border border-danger-200 bg-danger-50/40 p-2.5">
       <p className="text-[11.5px] text-ink-700">
         Cancel this order? If it&apos;s already paid, we&apos;ll submit it for review and any
         applicable fees apply to your refund.
@@ -58,14 +58,14 @@ export function CancelOrderButton({ orderId }: { orderId: string }) {
         onChange={(e) => setReason(e.target.value)}
         placeholder="Reason (optional)"
         rows={2}
-        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-200"
+        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-danger-400 focus:outline-none focus:ring-2 focus:ring-danger-200"
       />
       <div className="mt-2 flex gap-2">
         <button
           type="button"
           onClick={submit}
           disabled={pending}
-          className="inline-flex items-center rounded-full bg-rose-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+          className="inline-flex items-center rounded-full bg-danger-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-danger-700 disabled:opacity-50"
         >
           {pending ? 'Submitting…' : 'Confirm cancel'}
         </button>

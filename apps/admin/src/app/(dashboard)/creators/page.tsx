@@ -44,9 +44,9 @@ const TIER_LABELS: Record<TierKey, string> = {
 }
 
 const TIER_TONE: Record<TierKey, { dot: string; bg: string; text: string; border: string }> = {
-  MAKER: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  MAKER: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
   BUILDER: { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  AGENCY: { dot: 'bg-emerald-500', bg: 'bg-emerald-700', text: 'text-emerald-900', border: 'border-emerald-200' },
+  AGENCY: { dot: 'bg-success-500', bg: 'bg-success-700', text: 'text-success-900', border: 'border-success-200' },
 }
 
 // Cast through `unknown` then to `never` at the call site keeps Prisma's
@@ -309,18 +309,18 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
     pink: 'group-hover:ring-pink-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    rose: 'bg-rose-100 text-rose-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -542,7 +542,7 @@ function CreatorsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Creator</Th>
             <Th>Tier</Th>
@@ -596,7 +596,7 @@ function CreatorsTable({
                     {TIER_LABELS[tier]}
                   </span>
                   {c.feeRateOverrideBp !== null && (
-                    <p className="mt-1 text-[10px] text-amber-700">
+                    <p className="mt-1 text-[10px] text-warning-700">
                       fee override · {c.feeRateOverrideBp}bp
                     </p>
                   )}
@@ -638,7 +638,7 @@ function CreatorsTable({
         </tbody>
       </table>
       {sort === 'revenue' || sort === 'orders' ? (
-        <div className="border-t border-ink-100 bg-zinc-50/40 px-4 py-2 text-[10.5px] italic text-ink-500">
+        <div className="border-t border-ink-100 bg-ink-50/40 px-4 py-2 text-[10.5px] italic text-ink-500">
           Sorted across this page only — switch to “Newest joined” for global order.
         </div>
       ) : null}

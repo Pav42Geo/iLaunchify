@@ -60,8 +60,8 @@ const STATUS_TONE: Record<
   LeadStatus,
   { dot: string; bg: string; text: string; border: string }
 > = {
-  DRAFT: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  INVITED: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
+  DRAFT: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  INVITED: { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -196,20 +196,20 @@ export default async function LeadsPage({ searchParams }: PageProps) {
       {oldestStuckDays != null && oldestStuckDays >= STUCK_LEAD_DAYS && (
         <Link
           href="/leads?sort=stuck"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          className="flex items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-3 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <AlertTriangle className="h-[18px] w-[18px]" />
           </span>
           <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
+            <p className="text-[13.5px] font-semibold text-danger-900">
               Lead stuck {oldestStuckDays} days in the inbox
             </p>
-            <p className="text-[11.5px] text-rose-700">
+            <p className="text-[11.5px] text-danger-700">
               Sort by oldest stuck to triage the leads that have been waiting the longest.
             </p>
           </div>
-          <ArrowUpDown className="h-4 w-4 text-rose-700" />
+          <ArrowUpDown className="h-4 w-4 text-danger-700" />
         </Link>
       )}
 
@@ -330,16 +330,16 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -573,7 +573,7 @@ function LeadsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Company</Th>
             <Th>Source</Th>
@@ -661,7 +661,7 @@ function LeadsTable({
                         return (
                           <span
                             key={s.type}
-                            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700"
+                            className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700"
                           >
                             <Icon className="h-3 w-3" />
                             {SERVICE_LABELS[s.type]}
@@ -686,8 +686,8 @@ function LeadsTable({
                 </td>
                 <td className="px-3 py-3 align-top">
                   {stripeConnected ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="inline-flex items-center gap-1 text-[11px] text-success-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
                       {lead.user.stripeAccountStatus ?? 'Connected'}
                     </span>
                   ) : (
@@ -698,7 +698,7 @@ function LeadsTable({
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 text-[11.5px]',
-                      isStuck ? 'font-semibold text-rose-700' : 'text-ink-600',
+                      isStuck ? 'font-semibold text-danger-700' : 'text-ink-600',
                     )}
                   >
                     {isStuck && <Clock className="h-3 w-3" />}

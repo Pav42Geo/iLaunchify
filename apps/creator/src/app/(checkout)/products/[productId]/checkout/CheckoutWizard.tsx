@@ -250,10 +250,10 @@ export function CheckoutWizard({
     <div className="min-h-screen bg-ink-50">
       {/* H3.1 — adjust-mode banner stays */}
       {isAdjustment && (
-        <div className="border-b border-amber-300 bg-amber-50 px-6 py-2.5">
+        <div className="border-b border-warning-300 bg-warning-50 px-6 py-2.5">
           <div className="mx-auto flex max-w-6xl items-start gap-2.5">
-            <RefreshCcw className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-800" />
-            <div className="flex-1 text-[12.5px] text-amber-900">
+            <RefreshCcw className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-800" />
+            <div className="flex-1 text-[12.5px] text-warning-900">
               <span className="font-semibold">
                 Adjusting order #{state.isAdjustmentForOrderId?.slice(-8)}
               </span>{' '}
@@ -262,7 +262,7 @@ export function CheckoutWizard({
             </div>
             <Link
               href={`/orders/${state.isAdjustmentForOrderId}`}
-              className="text-[11px] font-medium text-amber-900 underline hover:text-amber-700"
+              className="text-[11px] font-medium text-warning-900 underline hover:text-warning-700"
             >
               Cancel adjustment
             </Link>
@@ -353,7 +353,7 @@ export function CheckoutWizard({
                           (isCurrent
                             ? 'bg-pink-500 text-white'
                             : isComplete
-                              ? 'bg-emerald-600 text-white'
+                              ? 'bg-success-600 text-white'
                               : 'bg-ink-100 text-ink-500')
                         }
                       >
@@ -618,7 +618,7 @@ function PreStepChip({ href, label }: { href: string; label: string }) {
         aria-label={`${label} (completed) — open to edit`}
         className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[12.5px] font-medium text-ink-600 transition-colors hover:text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
       >
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-success-600 text-white">
           <Check className="h-3 w-3" aria-hidden="true" />
         </span>
         {label}

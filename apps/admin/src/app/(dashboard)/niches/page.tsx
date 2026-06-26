@@ -94,7 +94,7 @@ export default async function NichesPage() {
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <table className="w-full text-left text-[13px]">
-          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
             <tr>
               <th scope="col" className="px-3 py-3 w-10" aria-label="Reorder" />
               <th scope="col" className="px-4 py-3">Niche</th>
@@ -259,9 +259,9 @@ function KpiCard({
 }) {
   const iconTone: Record<'pink' | 'amber' | 'emerald' | 'sky', string> = {
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
   }
   return (
     <Link

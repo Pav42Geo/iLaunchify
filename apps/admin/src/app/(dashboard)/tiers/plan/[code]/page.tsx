@@ -42,19 +42,19 @@ export default async function PlanEditorPage({ params }: PageProps) {
     <div className="space-y-6">
       <Link
         href="/tiers?tab=plans"
-        className="inline-flex items-center gap-1 text-[12px] text-zinc-500 hover:text-zinc-800"
+        className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-800"
       >
         <ArrowLeft className="h-3 w-3" aria-hidden="true" /> All plans
       </Link>
 
-      <header className="rounded-xl border border-zinc-200 bg-white p-5">
-        <div className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <header className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           {plan.audience === 'CREATOR' ? 'Creator plan' : 'Partner plan'}
         </div>
-        <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-zinc-900">
+        <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-ink-900">
           {plan.tierName}
         </h1>
-        <p className="mt-0.5 font-mono text-[11px] text-zinc-400">{plan.code}</p>
+        <p className="mt-0.5 font-mono text-[11px] text-ink-400">{plan.code}</p>
       </header>
 
       <PlanPricingForm

@@ -20,10 +20,10 @@ import {
 } from '../lib/nutrientClaims'
 
 const STRENGTH_BADGE: Record<ClaimStrength, string> = {
-  free: 'bg-emerald-100 text-emerald-800',
-  excellent: 'bg-emerald-100 text-emerald-800',
-  low: 'bg-teal-100 text-teal-800',
-  good: 'bg-amber-100 text-amber-800',
+  free: 'bg-success-100 text-success-800',
+  excellent: 'bg-success-100 text-success-800',
+  low: 'bg-info-100 text-info-800',
+  good: 'bg-warning-100 text-warning-800',
   none: 'bg-ink-100 text-ink-600',
 }
 

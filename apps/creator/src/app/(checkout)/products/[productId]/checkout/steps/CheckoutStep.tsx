@@ -363,7 +363,7 @@ function ShippingMethodCard() {
           <span className="text-[13px] font-semibold text-ink-900">
             Standard production
           </span>
-          <span className="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-emerald-700">
+          <span className="rounded-full bg-success-100 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-success-700">
             Included
           </span>
         </div>
@@ -419,7 +419,7 @@ function ClosestWarehouseBlock({ options }: { options: FulfillmentOptions | null
   return (
     <div className="space-y-1 text-sm">
       <div className="flex items-center gap-2">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
+        <CheckCircle2 className="h-3.5 w-3.5 text-success-700" />
         <span className="text-ink-800">
           Routing to <strong>{first.partnerName}</strong>
           {first.city && ` in ${first.city}${first.state ? `, ${first.state}` : ''}`}
@@ -561,7 +561,7 @@ function SavedAddressCard({
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-ink-900">{address.label}</span>
           {address.isDefault && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-amber-800">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-warning-800">
               <Star className="h-2.5 w-2.5" /> Default
             </span>
           )}
@@ -809,7 +809,7 @@ function BlockingAckPanel({
       className={
         'rounded-xl border p-4 ' +
         (acknowledged
-          ? 'border-amber-300 bg-amber-50/60'
+          ? 'border-warning-300 bg-warning-50/60'
           : 'border-pink-500 bg-pink-50')
       }
     >
@@ -818,7 +818,7 @@ function BlockingAckPanel({
           aria-hidden="true"
           className={
             'mt-0.5 h-4 w-4 flex-shrink-0 ' +
-            (acknowledged ? 'text-amber-700' : 'text-pink-700')
+            (acknowledged ? 'text-warning-700' : 'text-pink-700')
           }
         />
         <div className="flex-1">
@@ -850,7 +850,7 @@ function BlockingAckPanel({
               className={
                 'relative mt-0.5 h-4 w-4 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
                 (acknowledged
-                  ? 'border-amber-500 bg-amber-500'
+                  ? 'border-warning-500 bg-warning-500'
                   : 'border-pink-500 bg-white')
               }
             >

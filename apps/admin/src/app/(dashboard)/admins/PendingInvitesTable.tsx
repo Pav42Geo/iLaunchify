@@ -66,7 +66,7 @@ export function PendingInvitesTable({ invites }: { invites: InviteRow[] }) {
                     type="button"
                     onClick={() => revoke(i.id, i.email)}
                     disabled={pending}
-                    className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 text-[12px] font-medium text-ink-600 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 text-[12px] font-medium text-ink-600 hover:bg-danger-50 hover:text-danger-700 disabled:opacity-50"
                   >
                     <X className="h-3.5 w-3.5" /> Revoke
                   </button>

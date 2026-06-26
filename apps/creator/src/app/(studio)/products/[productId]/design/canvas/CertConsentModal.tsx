@@ -49,7 +49,7 @@ export function CertConsentModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-600" />
+            <ShieldCheck className="h-5 w-5 text-success-600" />
             Add {cert?.certTypeName ?? 'certification'} to your label
           </DialogTitle>
           <DialogDescription>
@@ -84,7 +84,7 @@ export function CertConsentModal({
                     className={
                       'rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ' +
                       (v.variantId === variantId
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                        ? 'border-success-500 bg-success-50 text-success-800'
                         : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
                     }
                   >

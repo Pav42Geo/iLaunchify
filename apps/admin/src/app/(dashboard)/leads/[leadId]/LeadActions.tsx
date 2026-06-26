@@ -124,20 +124,20 @@ export function StatusCard({
     switch (currentStatus) {
       case 'DRAFT':
       case 'LEAD':
-        return { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', label: 'Pending review' }
+        return { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200', label: 'Pending review' }
       case 'INVITED':
-        return { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', label: 'Invited' }
+        return { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', label: 'Invited' }
       case 'IN_PROGRESS':
-        return { dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-900', border: 'border-blue-200', label: 'Onboarding' }
+        return { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', label: 'Onboarding' }
       case 'UNDER_REVIEW':
       case 'IDENTITY_PENDING_REVIEW':
       case 'OPS_PENDING_REVIEW':
         return { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-900', border: 'border-pink-200', label: 'Under review' }
       case 'ACTIVE':
-        return { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', label: 'Active partner' }
+        return { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200', label: 'Active partner' }
       case 'SUSPENDED':
       case 'TERMINATED':
-        return { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', label: currentStatus }
+        return { dot: 'bg-danger-500', bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200', label: currentStatus }
       default:
         return { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-800', border: 'border-ink-200', label: currentStatus }
     }
@@ -185,7 +185,7 @@ export function StatusCard({
               type="button"
               onClick={onDisqualify}
               disabled={pending}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-900 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-900 transition-colors hover:border-danger-300 hover:bg-danger-50 hover:text-danger-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
             >
               <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
               {showDisqualifyReason ? 'Confirm disqualify' : 'Disqualify'}

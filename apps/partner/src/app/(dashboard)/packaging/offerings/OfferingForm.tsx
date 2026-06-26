@@ -203,7 +203,7 @@ export function OfferingForm({
 
   if (services.length === 0) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+      <div className="rounded-lg border border-warning-200 bg-warning-50 p-6 text-sm text-warning-800">
         Add a service first — packaging offerings attach to one of your services.
       </div>
     )
@@ -294,7 +294,7 @@ export function OfferingForm({
             </select>
           )}
           {mode === 'create' && packagingTypeId && decorationOptions.length === 0 && (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-warning-700">
               No decoration methods are configured for this container yet.
             </p>
           )}
@@ -472,7 +472,7 @@ export function OfferingForm({
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
           {error}
         </div>
       )}

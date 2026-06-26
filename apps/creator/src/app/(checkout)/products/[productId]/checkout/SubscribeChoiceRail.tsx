@@ -255,7 +255,7 @@ export function SubscribeChoiceRail({
               </p>
               {unlocked
                 ? perRunTotalCents > 0 && savingsCents > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                    <span className="inline-flex items-center rounded-full bg-success-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-success-700">
                       −{pctOff}%
                     </span>
                   )
@@ -346,7 +346,7 @@ export function SubscribeChoiceRail({
                 <Zap className="h-3.5 w-3.5 text-pink-700" aria-hidden="true" />
               </span>
               <span className="text-[13px] font-bold text-ink-900">Builder</span>
-              <span className="ml-auto rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="ml-auto rounded-full bg-success-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-success-700">
                 Recommended
               </span>
             </div>
@@ -364,28 +364,28 @@ export function SubscribeChoiceRail({
             <ul className="mt-3 space-y-1 text-[11px] text-ink-700">
               <li className="flex items-start gap-1.5">
                 <Check
-                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                   aria-hidden="true"
                 />
                 <span>Subscribe &amp; Save (up to {MAX_DISCOUNT_PCT}% off every run)</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
-                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                   aria-hidden="true"
                 />
                 <span>Print-ready PDF + PNG export</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
-                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                   aria-hidden="true"
                 />
                 <span>Multi-channel push (Shopify, Etsy…)</span>
               </li>
               <li className="flex items-start gap-1.5">
                 <Check
-                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                  className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                   aria-hidden="true"
                 />
                 <span>Volume pricing (~{MAX_DISCOUNT_PCT}% off catalog)</span>
@@ -406,14 +406,14 @@ export function SubscribeChoiceRail({
               <ul className="space-y-1 text-[11.5px] text-ink-700">
                 <li className="flex items-center gap-1.5">
                   <Check
-                    className="h-3 w-3 flex-shrink-0 text-emerald-700"
+                    className="h-3 w-3 flex-shrink-0 text-success-700"
                     aria-hidden="true"
                   />
                   Low fees
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check
-                    className="h-3 w-3 flex-shrink-0 text-emerald-700"
+                    className="h-3 w-3 flex-shrink-0 text-success-700"
                     aria-hidden="true"
                   />
                   Cancel anytime
@@ -625,7 +625,7 @@ function _BuilderLockBadgeWithHoverCard_DEPRECATED() {
               <Zap className="h-3.5 w-3.5 text-pink-700" aria-hidden="true" />
             </span>
             <span className="text-[13px] font-bold text-ink-900">Builder</span>
-            <span className="ml-auto rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
+            <span className="ml-auto rounded-full bg-success-100 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-success-700">
               Recommended
             </span>
           </div>
@@ -646,28 +646,28 @@ function _BuilderLockBadgeWithHoverCard_DEPRECATED() {
           <ul className="mt-3 space-y-1 text-[11px] text-ink-700">
             <li className="flex items-start gap-1.5">
               <Check
-                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                 aria-hidden="true"
               />
               <span>Subscribe &amp; Save (up to {MAX_DISCOUNT_PCT}% off every run)</span>
             </li>
             <li className="flex items-start gap-1.5">
               <Check
-                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                 aria-hidden="true"
               />
               <span>Print-ready PDF + PNG export</span>
             </li>
             <li className="flex items-start gap-1.5">
               <Check
-                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                 aria-hidden="true"
               />
               <span>Multi-channel push (Shopify, Etsy…)</span>
             </li>
             <li className="flex items-start gap-1.5">
               <Check
-                className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-700"
+                className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-700"
                 aria-hidden="true"
               />
               <span>Volume pricing (~{MAX_DISCOUNT_PCT}% off catalog)</span>

@@ -99,12 +99,12 @@ export function RetailIdentityCard({ productId, initial }: Props) {
             <div className="font-semibold text-sm text-ink-900">
               Retail identity
               {initial.gtin && (
-                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-success-100 text-success-700 px-1.5 py-0.5 rounded">
                   UPC set
                 </span>
               )}
               {!initial.gtin && initial.barcodeMode === 'INTERNAL_SKU' && (
-                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-wider bg-warning-100 text-warning-700 px-1.5 py-0.5 rounded">
                   Internal
                 </span>
               )}
@@ -136,7 +136,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               className="w-full h-10 px-3 text-sm font-mono tabular-nums border border-ink-300 rounded-md focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15"
             />
             {gtinClient.ok && gtinClient.normalized && gtinClient.format && (
-              <p className="mt-1.5 text-[11.5px] text-emerald-700 flex items-center gap-1.5">
+              <p className="mt-1.5 text-[11.5px] text-success-700 flex items-center gap-1.5">
                 <CheckCircle2 className="h-3 w-3" />
                 Valid {GTIN_FORMAT_LABEL[gtinClient.format]} ·{' '}
                 <span className="font-mono">
@@ -148,7 +148,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               <p className="mt-1.5 text-[11.5px] text-pink-700">{gtinError.message}</p>
             )}
             {gtinWarning && (
-              <p className="mt-1.5 text-[11.5px] text-amber-700 flex items-start gap-1.5">
+              <p className="mt-1.5 text-[11.5px] text-warning-700 flex items-start gap-1.5">
                 <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 {gtinWarning.message}
               </p>
@@ -237,7 +237,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
               {saving ? 'Saving…' : 'Save identity'}
             </button>
             {savedAt && (
-              <span className="text-[11.5px] text-emerald-700">
+              <span className="text-[11.5px] text-success-700">
                 Saved {savedAt.toLocaleTimeString()}
               </span>
             )}

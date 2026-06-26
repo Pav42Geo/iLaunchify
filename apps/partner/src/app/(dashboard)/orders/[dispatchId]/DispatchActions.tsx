@@ -278,14 +278,14 @@ function QualityCheckPanel({ dispatchId }: { dispatchId: string }) {
         {!failExpanded ? (
           <Button
             variant="ghost"
-            className="w-full text-red-700 hover:text-red-800"
+            className="w-full text-danger-700 hover:text-danger-800"
             onClick={() => setFailExpanded(true)}
             disabled={busy}
           >
             QC failed
           </Button>
         ) : (
-          <div className="space-y-2 rounded-md border border-red-200 bg-red-50/40 p-3">
+          <div className="space-y-2 rounded-md border border-danger-200 bg-danger-50/40 p-3">
             <Label htmlFor="qc-notes">Failure notes (required)</Label>
             <textarea
               id="qc-notes"
@@ -309,7 +309,7 @@ function QualityCheckPanel({ dispatchId }: { dispatchId: string }) {
                 Cancel
               </Button>
               <Button
-                className="flex-1 bg-red-700 hover:bg-red-800"
+                className="flex-1 bg-danger-700 hover:bg-danger-800"
                 onClick={fail}
                 disabled={busy || !notes.trim()}
               >
@@ -430,7 +430,7 @@ function AcceptDeclinePanel({
             </Button>
             <Button
               variant="ghost"
-              className="w-full text-red-600 hover:text-red-700"
+              className="w-full text-danger-600 hover:text-danger-700"
               onClick={() => setMode('decline')}
               disabled={busy}
             >
@@ -492,7 +492,7 @@ function AcceptDeclinePanel({
                 Cancel
               </Button>
               <Button
-                className="flex-1 bg-red-600 hover:bg-red-700"
+                className="flex-1 bg-danger-600 hover:bg-danger-700"
                 onClick={handleDecline}
                 disabled={busy}
               >
@@ -681,7 +681,7 @@ function RequestCancellationPanel({
         {!expanded ? (
           <Button
             variant="ghost"
-            className="w-full text-rose-700 hover:text-rose-800"
+            className="w-full text-danger-700 hover:text-danger-800"
             onClick={() => setExpanded(true)}
             disabled={busy}
           >
@@ -706,7 +706,7 @@ function RequestCancellationPanel({
                 Back
               </Button>
               <Button
-                className="flex-1 bg-rose-600 hover:bg-rose-700"
+                className="flex-1 bg-danger-600 hover:bg-danger-700"
                 onClick={submit}
                 disabled={busy}
               >
@@ -770,7 +770,7 @@ function WithdrawPanel({
         {!expanded ? (
           <Button
             variant="ghost"
-            className="w-full text-amber-700 hover:text-amber-800"
+            className="w-full text-warning-700 hover:text-warning-800"
             onClick={() => setExpanded(true)}
             disabled={busy}
           >
@@ -795,7 +795,7 @@ function WithdrawPanel({
                 Cancel
               </Button>
               <Button
-                className="flex-1 bg-amber-600 hover:bg-amber-700"
+                className="flex-1 bg-warning-600 hover:bg-warning-700"
                 onClick={submit}
                 disabled={busy}
               >

@@ -217,7 +217,7 @@ export function PalettesSection({
                   type="button"
                   onClick={() => removePalette(pl.id)}
                   aria-label="Delete palette"
-                  className="rounded p-1 text-ink-400 hover:bg-red-50 hover:text-red-600"
+                  className="rounded p-1 text-ink-400 hover:bg-danger-50 hover:text-danger-600"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -436,7 +436,7 @@ function SwatchEditor({
         <button
           type="button"
           onClick={onDelete}
-          className="inline-flex items-center gap-1 text-[12px] font-semibold text-red-600 hover:text-red-700"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-danger-600 hover:text-danger-700"
         >
           <Trash2 className="h-3.5 w-3.5" /> Remove color
         </button>

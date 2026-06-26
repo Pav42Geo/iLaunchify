@@ -31,7 +31,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[11.5px] font-medium text-ink-700 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[11.5px] font-medium text-ink-700 transition-colors hover:border-danger-300 hover:bg-danger-50 hover:text-danger-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger-400 focus-visible:ring-offset-2"
       >
         Cancel subscription
       </button>
@@ -39,11 +39,11 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
   }
 
   return (
-    <div className="w-full max-w-[260px] rounded-md border border-red-200 bg-red-50/40 p-3">
-      <p className="text-[11.5px] font-semibold text-red-900">
+    <div className="w-full max-w-[260px] rounded-md border border-danger-200 bg-danger-50/40 p-3">
+      <p className="text-[11.5px] font-semibold text-danger-900">
         Cancel this subscription?
       </p>
-      <p className="mt-0.5 text-[10.5px] leading-snug text-red-700">
+      <p className="mt-0.5 text-[10.5px] leading-snug text-danger-700">
         Recurring billing stops immediately. Already-spawned orders aren&rsquo;t
         affected — only future cycles.
       </p>
@@ -57,7 +57,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
         rows={2}
         placeholder="Reason (optional, helps us improve)"
         disabled={pending}
-        className="mt-2 block w-full rounded-md border border-ink-200 bg-white px-2 py-1.5 text-[11.5px] focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
+        className="mt-2 block w-full rounded-md border border-ink-200 bg-white px-2 py-1.5 text-[11.5px] focus:border-danger-400 focus:outline-none focus:ring-1 focus:ring-danger-400"
       />
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
         <button
@@ -92,7 +92,7 @@ export function CancelSubscriptionButton({ subscriptionId }: Props) {
             })
           }
           disabled={pending}
-          className="inline-flex h-7 items-center gap-1 rounded-full bg-red-600 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-white hover:bg-red-700 disabled:opacity-50"
+          className="inline-flex h-7 items-center gap-1 rounded-full bg-danger-600 px-3 text-[10.5px] font-semibold uppercase tracking-wider text-white hover:bg-danger-700 disabled:opacity-50"
         >
           {pending && <Loader2 className="h-3 w-3 animate-spin" />}
           {pending ? 'Cancelling…' : 'Yes, cancel'}

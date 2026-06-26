@@ -51,11 +51,11 @@ type SortKey = 'date' | 'amount'
 
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   PENDING_ACCEPT: { label: 'Awaiting', cls: 'border-pink-200 bg-pink-50 text-pink-800' },
-  ACCEPTED: { label: 'Accepted', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  PRODUCING: { label: 'Producing', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  READY: { label: 'Ready', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  SHIPPED: { label: 'Shipped', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  IN_TRANSIT: { label: 'In transit', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
+  ACCEPTED: { label: 'Accepted', cls: 'border-info-200 bg-info-50 text-info-800' },
+  PRODUCING: { label: 'Producing', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  READY: { label: 'Ready', cls: 'border-success-200 bg-success-50 text-success-800' },
+  SHIPPED: { label: 'Shipped', cls: 'border-info-200 bg-info-50 text-info-800' },
+  IN_TRANSIT: { label: 'In transit', cls: 'border-info-200 bg-info-50 text-info-800' },
   DELIVERED: { label: 'Delivered', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
 }
 
@@ -474,9 +474,9 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <Link

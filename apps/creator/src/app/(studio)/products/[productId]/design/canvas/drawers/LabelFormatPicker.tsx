@@ -110,7 +110,7 @@ export function LabelFormatPicker({
           {current && (
             <div className="rounded-md border border-ink-200 bg-ink-50/50 px-2.5 py-2 text-[11px] text-ink-600">
               {data?.recommended?.format === current.format && (
-                <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-emerald-800">
+                <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-success-800">
                   <Sparkles className="h-2.5 w-2.5" /> Recommended
                 </span>
               )}

@@ -100,7 +100,7 @@ export function ProductionManifestView({
             value={
               manifest.designVersionId ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success-500" />
                   Version {manifest.designVersion} locked
                   <span className="text-ink-400">· print render V1.5</span>
                 </span>
@@ -117,7 +117,7 @@ export function ProductionManifestView({
             <Row label="Code" value={<code className="text-[12px]">{manifest.substrate.slug}</code>} />
             <Row label="Category" value={humanCategory(manifest.substrate.category)} />
             {manifest.substrate.sustainabilityTier !== 'STANDARD' && (
-              <Row label="Sustainability" value={<span className="text-emerald-700">{manifest.substrate.sustainabilityTier}</span>} />
+              <Row label="Sustainability" value={<span className="text-success-700">{manifest.substrate.sustainabilityTier}</span>} />
             )}
           </Block>
         )}
@@ -219,7 +219,7 @@ export function ProductionManifestView({
           )}
           <span
             title="Print-ready PDF + die-line SVG render lands in V1.5 (headless-browser worker)."
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink-200 bg-zinc-50 px-3 py-1.5 text-[12px] font-medium text-ink-400"
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink-200 bg-ink-50 px-3 py-1.5 text-[12px] font-medium text-ink-400"
           >
             Print bundle — generating (V1.5)
           </span>

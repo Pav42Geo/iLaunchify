@@ -47,17 +47,17 @@ const PRIORITY_LIST: TicketPriority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
 
 const STATUS_TONE: Record<TicketStatus, { bg: string; dot: string; label: string }> = {
   NEW: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'New' },
-  TRIAGED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Triaged' },
-  IN_PROGRESS: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In progress' },
-  WAITING_ON_REQUESTER: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Waiting' },
-  RESOLVED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Resolved' },
+  TRIAGED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Triaged' },
+  IN_PROGRESS: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'In progress' },
+  WAITING_ON_REQUESTER: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Waiting' },
+  RESOLVED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Resolved' },
   CLOSED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Closed' },
 }
 
 const PRIORITY_TONE: Record<TicketPriority, { bg: string; label: string }> = {
-  URGENT: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Urgent' },
-  HIGH: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'High' },
-  MEDIUM: { bg: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Medium' },
+  URGENT: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Urgent' },
+  HIGH: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'High' },
+  MEDIUM: { bg: 'bg-info-50 text-info-800 border-info-200', label: 'Medium' },
   LOW: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Low' },
 }
 
@@ -162,16 +162,16 @@ export default async function AdminSupportTicketsPage({ searchParams }: PageProp
       {slaBreachedCount > 0 && (
         <Link
           href="/support-tickets?status=NEW"
-          className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-3 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          className="flex items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-3 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <Flame className="h-[18px] w-[18px]" />
           </span>
           <div className="flex-1">
-            <p className="text-[13.5px] font-semibold text-rose-900">
+            <p className="text-[13.5px] font-semibold text-danger-900">
               {slaBreachedCount} ticket{slaBreachedCount === 1 ? '' : 's'} past SLA
             </p>
-            <p className="text-[11.5px] text-rose-700">
+            <p className="text-[11.5px] text-danger-700">
               These open tickets passed their first-response window. Respond to clear the breach.
             </p>
           </div>
@@ -273,9 +273,9 @@ function Kpi({
   const numeralTone = {
     ink: 'text-ink-900',
     pink: 'text-pink-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
-    danger: 'text-rose-700',
+    info: 'text-info-700',
+    success: 'text-success-700',
+    danger: 'text-danger-700',
   }[tone]
   return (
     <div className="px-5 py-3.5">
@@ -507,7 +507,7 @@ function TicketsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Subject</Th>
             <Th>Requester</Th>
@@ -535,7 +535,7 @@ function TicketsTable({
                   <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-wider text-ink-700">
                     #{t.id.slice(-8)}
                     {breached && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-[1px] text-[9px] font-semibold tracking-wider text-rose-700">
+                      <span className="inline-flex items-center gap-0.5 rounded-full border border-danger-200 bg-danger-50 px-1.5 py-[1px] text-[9px] font-semibold tracking-wider text-danger-700">
                         <Flame className="h-2.5 w-2.5" /> SLA
                       </span>
                     )}
@@ -591,7 +591,7 @@ function TicketsTable({
         </tbody>
       </table>
       {rows.length === 100 && (
-        <div className="border-t border-ink-100 bg-zinc-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
+        <div className="border-t border-ink-100 bg-ink-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
           Showing first 100 tickets. Filter by status, priority, or category to narrow.
         </div>
       )}
@@ -610,11 +610,11 @@ export function TierBadge({ tier }: { tier: string | null }) {
   if (!tier) return null
   const TONE: Record<string, string> = {
     MAKER: 'border-ink-200 bg-ink-50 text-ink-600',
-    BUILDER: 'border-blue-200 bg-blue-50 text-blue-700',
+    BUILDER: 'border-info-200 bg-info-50 text-info-700',
     AGENCY: 'border-pink-200 bg-pink-50 text-pink-700',
     VERIFIED: 'border-ink-200 bg-ink-50 text-ink-600',
-    TRUSTED: 'border-blue-200 bg-blue-50 text-blue-700',
-    PREMIER: 'border-violet-200 bg-violet-50 text-violet-700',
+    TRUSTED: 'border-info-200 bg-info-50 text-info-700',
+    PREMIER: 'border-info-200 bg-info-50 text-info-700',
   }
   return (
     <span
@@ -630,7 +630,7 @@ export function TierBadge({ tier }: { tier: string | null }) {
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span aria-hidden="true" className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700">
         {filtered ? <Inbox className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
       </span>

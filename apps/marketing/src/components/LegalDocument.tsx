@@ -30,7 +30,7 @@ export function LegalDocument({ slug }: { slug: string }) {
 
       <article className="mx-auto max-w-3xl px-6 py-12">
         {/* Unmissable DRAFT badge above the title, even to a fast scroller. */}
-        <span className="inline-flex items-center rounded-pill border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-800">
+        <span className="inline-flex items-center rounded-pill border border-warning-300 bg-warning-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-warning-800">
           Draft
         </span>
 
@@ -41,7 +41,7 @@ export function LegalDocument({ slug }: { slug: string }) {
 
         <div
           role="note"
-          className="mt-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] leading-[1.55] text-amber-900"
+          className="mt-5 rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-[13px] leading-[1.55] text-warning-900"
         >
           <strong>Draft — pending legal review.</strong> This document is an initial draft and
           has not been reviewed by a licensed attorney. It is not legally binding. Final terms

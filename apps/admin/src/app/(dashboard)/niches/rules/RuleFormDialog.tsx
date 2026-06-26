@@ -311,7 +311,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-ink-200 bg-zinc-50/40">
+              <div className="rounded-xl border border-ink-200 bg-ink-50/40">
                 <div className="flex items-center justify-between border-b border-ink-100 px-3 py-2">
                   <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
                     Conditions ({conditions.length})
@@ -345,7 +345,7 @@ export function RuleFormDialog(props: RuleFormDialogProps) {
               </div>
 
               {error && (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">
+                <p className="rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12px] text-danger-900">
                   {error}
                 </p>
               )}
@@ -429,13 +429,13 @@ function ConditionRow({
           type="button"
           onClick={onRemove}
           aria-label="Remove condition"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-danger-600 hover:bg-danger-50"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-ink-100 bg-zinc-50/40 p-2">
+      <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-ink-100 bg-ink-50/40 p-2">
         {grouped ? (
           <div className="space-y-2">
             {grouped.map(([groupLabel, items]) => (

@@ -66,7 +66,7 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
             <li key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11.5px] text-ink-700">
               <Paperclip className="h-3 w-3 text-ink-400" />
               <span className="max-w-[160px] truncate">{f.name}</span>
-              <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-ink-400 hover:text-rose-600">
+              <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((p) => p.filter((_, j) => j !== i))} className="text-ink-400 hover:text-danger-600">
                 <X className="h-3 w-3" />
               </button>
             </li>

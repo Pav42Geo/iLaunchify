@@ -224,7 +224,7 @@ export function ProductReviewer({
         </CardHeader>
         <CardContent className="space-y-2">
           {!canApprove && !isPendingStatus && !canPause && !canResume && (
-            <p className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+            <p className="rounded-md border border-dashed border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
               {currentStatus === 'DRAFT'
                 ? 'Nothing to approve yet — this product is still a draft. Once the partner finishes the builder and submits, it moves to “Pending review” and the Approve / Request changes / Reject actions appear here.'
                 : currentStatus === 'REJECTED'
@@ -238,7 +238,7 @@ export function ProductReviewer({
             <Button
               onClick={handleApprove}
               disabled={isPending}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-success-600 hover:bg-success-700"
             >
               <CheckCircle2 className="mr-1.5 h-4 w-4" />
               {currentStatus === 'PAUSED' ? 'Resume + publish' : 'Approve + publish'}
@@ -247,7 +247,7 @@ export function ProductReviewer({
           {isPendingStatus && (
             <Button
               variant="outline"
-              className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+              className="w-full border-warning-300 text-warning-700 hover:bg-warning-50"
               onClick={() => setShowChecklist(!showChecklist)}
               disabled={isPending}
             >
@@ -258,7 +258,7 @@ export function ProductReviewer({
           {(isPendingStatus || currentStatus === 'NEEDS_CHANGES') && (
             <Button
               variant="outline"
-              className="w-full border-red-300 text-red-700 hover:bg-red-50"
+              className="w-full border-danger-300 text-danger-700 hover:bg-danger-50"
               onClick={() => setShowRejectForm(!showRejectForm)}
               disabled={isPending}
             >
@@ -280,7 +280,7 @@ export function ProductReviewer({
             <Button
               onClick={() => handlePause('PUBLISHED')}
               disabled={isPending}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-success-600 hover:bg-success-700"
             >
               <Play className="mr-1.5 h-4 w-4" /> Resume
             </Button>
@@ -288,8 +288,8 @@ export function ProductReviewer({
 
           {/* Inline reject form */}
           {showRejectForm && (
-            <div className="mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 p-3">
-              <Label className="text-xs font-medium uppercase tracking-wider text-red-800">
+            <div className="mt-3 space-y-2 rounded-md border border-danger-200 bg-danger-50 p-3">
+              <Label className="text-xs font-medium uppercase tracking-wider text-danger-800">
                 Rejection reason (shown to partner)
               </Label>
               <textarea
@@ -297,14 +297,14 @@ export function ProductReviewer({
                 onChange={(e) => setRejectReason(e.target.value)}
                 rows={2}
                 placeholder='e.g. "Product category is not currently supported on iLaunchify."'
-                className="w-full rounded border border-red-200 bg-white px-2 py-1.5 text-sm focus:border-red-400 focus:outline-none"
+                className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-sm focus:border-danger-400 focus:outline-none"
                 disabled={isPending}
               />
               <Button
                 size="sm"
                 onClick={handleReject}
                 disabled={isPending || !rejectReason.trim()}
-                className="w-full bg-red-600 hover:bg-red-700"
+                className="w-full bg-danger-600 hover:bg-danger-700"
               >
                 Confirm rejection
               </Button>
@@ -313,8 +313,8 @@ export function ProductReviewer({
 
           {/* Inline request-changes composer */}
           {showChecklist && (
-            <div className="mt-3 space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3">
-              <div className="text-xs font-medium uppercase tracking-wider text-amber-800">
+            <div className="mt-3 space-y-3 rounded-md border border-warning-200 bg-warning-50 p-3">
+              <div className="text-xs font-medium uppercase tracking-wider text-warning-800">
                 Checklist of changes
               </div>
 
@@ -326,7 +326,7 @@ export function ProductReviewer({
                       className="flex items-start justify-between gap-2 rounded bg-white px-2 py-1.5 text-sm"
                     >
                       <span>
-                        <span className="text-xs font-semibold uppercase text-amber-700">
+                        <span className="text-xs font-semibold uppercase text-warning-700">
                           {item.category}:
                         </span>{' '}
                         {item.description}
@@ -336,7 +336,7 @@ export function ProductReviewer({
                         onClick={() =>
                           setPendingItems(pendingItems.filter((_, idx) => idx !== i))
                         }
-                        className="text-zinc-400 hover:text-red-600"
+                        className="text-ink-400 hover:text-danger-600"
                         aria-label="Remove"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -351,7 +351,7 @@ export function ProductReviewer({
                   <select
                     value={newItemCategory}
                     onChange={(e) => setNewItemCategory(e.target.value)}
-                    className="rounded border border-amber-200 bg-white px-2 py-1.5 text-sm focus:border-amber-400 focus:outline-none"
+                    className="rounded border border-warning-200 bg-white px-2 py-1.5 text-sm focus:border-warning-400 focus:outline-none"
                     disabled={isPending}
                   >
                     {CATEGORIES.map((c) => (
@@ -385,7 +385,7 @@ export function ProductReviewer({
               </div>
 
               <div>
-                <Label className="text-xs font-medium uppercase tracking-wider text-amber-800">
+                <Label className="text-xs font-medium uppercase tracking-wider text-warning-800">
                   General note (optional)
                 </Label>
                 <textarea
@@ -393,7 +393,7 @@ export function ProductReviewer({
                   onChange={(e) => setGeneralNote(e.target.value)}
                   rows={2}
                   placeholder="Anything else the partner should know…"
-                  className="mt-1 w-full rounded border border-amber-200 bg-white px-2 py-1.5 text-sm focus:border-amber-400 focus:outline-none"
+                  className="mt-1 w-full rounded border border-warning-200 bg-white px-2 py-1.5 text-sm focus:border-warning-400 focus:outline-none"
                   disabled={isPending}
                 />
               </div>
@@ -402,7 +402,7 @@ export function ProductReviewer({
                 size="sm"
                 onClick={handleRequestChanges}
                 disabled={isPending}
-                className="w-full bg-amber-500 hover:bg-amber-600"
+                className="w-full bg-warning-500 hover:bg-warning-600"
               >
                 {isPending ? 'Sending…' : 'Send to partner'}
               </Button>
@@ -421,8 +421,8 @@ export function ProductReviewer({
           <CardContent>
             <ul className="space-y-1.5">
               {openReviewItems.map((item) => (
-                <li key={item.id} className="rounded bg-amber-50 px-2 py-1.5 text-sm">
-                  <span className="text-xs font-semibold uppercase text-amber-700">
+                <li key={item.id} className="rounded bg-warning-50 px-2 py-1.5 text-sm">
+                  <span className="text-xs font-semibold uppercase text-warning-700">
                     {item.category}:
                   </span>{' '}
                   {item.description}
@@ -437,15 +437,15 @@ export function ProductReviewer({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <MessageCircle className="h-4 w-4 text-zinc-500" />
+            <MessageCircle className="h-4 w-4 text-ink-500" />
             Notes
-            <span className="text-sm font-normal text-zinc-500">{notes.length}</span>
+            <span className="text-sm font-normal text-ink-500">{notes.length}</span>
           </CardTitle>
           <CardDescription>Visible to the partner on their /edit page.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {notes.length === 0 ? (
-            <p className="rounded border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-500">
+            <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
               No notes yet. Post the first message below.
             </p>
           ) : (
@@ -455,31 +455,31 @@ export function ProductReviewer({
                   key={n.id}
                   className={`rounded-md border px-3 py-2 text-sm ${
                     n.authorType === 'ADMIN'
-                      ? 'border-emerald-200 bg-emerald-50/50'
-                      : 'border-zinc-200 bg-zinc-50'
+                      ? 'border-success-200 bg-success-50/50'
+                      : 'border-ink-200 bg-ink-50'
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
                       {n.authorType} · {n.authorName}
                     </span>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-ink-400">
                       {new Date(n.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-zinc-800">{n.body}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-ink-800">{n.body}</p>
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="space-y-2 border-t border-zinc-100 pt-3">
+          <div className="space-y-2 border-t border-ink-100 pt-3">
             <textarea
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
               rows={2}
               placeholder="Post a note to the partner…"
-              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+              className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
               disabled={isPending}
             />
             <Button

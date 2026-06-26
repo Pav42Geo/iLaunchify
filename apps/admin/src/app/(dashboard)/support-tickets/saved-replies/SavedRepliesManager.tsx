@@ -92,13 +92,13 @@ export function SavedRepliesManager({
       )}
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center text-[13px] text-ink-600">
+        <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center text-[13px] text-ink-600">
           No saved replies yet. Create one to speed up common responses.
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <Th>Title</Th>
                 <Th>Preview</Th>
@@ -116,7 +116,7 @@ export function SavedRepliesManager({
                     <span className="line-clamp-2">{r.body}</span>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <span className={cn('inline-flex rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', r.categoryId ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-ink-200 bg-ink-50 text-ink-600')}>
+                    <span className={cn('inline-flex rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', r.categoryId ? 'border-info-200 bg-info-50 text-info-700' : 'border-ink-200 bg-ink-50 text-ink-600')}>
                       {catName(r.categoryId)}
                     </span>
                   </td>
@@ -144,7 +144,7 @@ export function SavedRepliesManager({
                         onClick={() => remove(r)}
                         disabled={busyId === r.id}
                         aria-label={`Delete ${r.title}`}
-                        className="inline-flex items-center rounded-lg border border-ink-200 px-2 py-1 text-ink-400 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                        className="inline-flex items-center rounded-lg border border-ink-200 px-2 py-1 text-ink-400 hover:border-danger-300 hover:bg-danger-50 hover:text-danger-600 disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

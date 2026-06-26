@@ -93,7 +93,7 @@ export default async function ProductReadinessPage() {
         }
       />
 
-      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+      <div className="inline-flex items-center gap-2 rounded-full border border-success-200 bg-success-50 px-3 py-1 text-[12px] font-semibold text-success-700">
         {readyCount} of {rows.length} products ready
       </div>
 
@@ -106,7 +106,7 @@ export default async function ProductReadinessPage() {
         <div className="space-y-3">
           {rows.map((r) => (
             <section key={r.id} className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-              <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-zinc-50/60 px-4 py-2.5">
+              <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-ink-50/60 px-4 py-2.5">
                 <span className="flex items-center gap-2">
                   <span className="text-[13px] font-semibold text-ink-900">{r.name}</span>
                   <span className="rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">
@@ -114,11 +114,11 @@ export default async function ProductReadinessPage() {
                   </span>
                 </span>
                 {r.complete ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-success-200 bg-success-50 px-2.5 py-0.5 text-[11px] font-semibold text-success-700">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Packaging ready
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2.5 py-0.5 text-[11px] font-semibold text-warning-800">
                     <AlertTriangle className="h-3.5 w-3.5" /> {r.ready}/{r.needs} die-lines verified
                   </span>
                 )}
@@ -138,10 +138,10 @@ export default async function ProductReadinessPage() {
                       <span
                         className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${
                           c.ready
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            ? 'border-success-200 bg-success-50 text-success-700'
                             : c.missing
                               ? 'border-ink-200 bg-ink-50 text-ink-500'
-                              : 'border-amber-200 bg-amber-50 text-amber-800'
+                              : 'border-warning-200 bg-warning-50 text-warning-800'
                         }`}
                       >
                         {c.ready ? 'ready' : c.missing ? 'no die-line' : 'needs review'}

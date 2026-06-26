@@ -370,7 +370,7 @@ export function CustomizePanel({
         </Card>
 
         {liveAllergens.length > 0 && (
-          <Card className="border-amber-200">
+          <Card className="border-warning-200">
             <CardHeader>
               <CardTitle className="text-sm">Contains: {liveAllergens.join(', ')}</CardTitle>
               <CardDescription className="text-xs">

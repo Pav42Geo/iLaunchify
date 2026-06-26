@@ -214,14 +214,14 @@ export default async function ProductDetailPage({
         {restrictionLabels.length > 0 && (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-900"
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-warning-300 bg-warning-50 px-5 py-4 text-warning-900"
           >
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
             <div className="space-y-1">
               <p className="text-[13px] font-semibold">
                 Not available for production yet — {restrictionLabels.join(', ')}
               </p>
-              <p className="text-[12px] leading-relaxed text-amber-800">
+              <p className="text-[12px] leading-relaxed text-warning-800">
                 This category requires licensing or permitting iLaunchify
                 doesn&rsquo;t support yet, so it can&rsquo;t be ordered. This is
                 not legal advice.

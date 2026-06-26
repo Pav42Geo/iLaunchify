@@ -44,7 +44,7 @@ export default function Error({
       {isDev && (
         <div className="mt-8 w-full max-w-2xl text-left">
           <p className="mb-1 text-[12px] font-bold uppercase tracking-wider text-ink-700">Dev error detail</p>
-          <pre className="overflow-x-auto rounded-xl border border-ink-200 bg-zinc-50 p-4 text-[12px] leading-relaxed text-ink-800">
+          <pre className="overflow-x-auto rounded-xl border border-ink-200 bg-ink-50 p-4 text-[12px] leading-relaxed text-ink-800">
             {error.message}
             {error.digest ? `\n\ndigest: ${error.digest}` : ''}
             {error.stack ? `\n\n${error.stack}` : ''}

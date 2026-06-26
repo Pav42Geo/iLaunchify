@@ -155,8 +155,8 @@ export function FontsSection({
       </div>
 
       {selected.length > 0 && (
-        <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+        <div className="mb-4 rounded-md border border-success-200 bg-success-50/50 p-3">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-success-700">
             Selected ({selected.length} / {MAX_FONTS})
           </Label>
           <ul className="mt-2 space-y-1">
@@ -178,7 +178,7 @@ export function FontsSection({
                     type="button"
                     onClick={() => toggle(id)}
                     disabled={isPending}
-                    className="text-xs text-ink-500 hover:text-red-600"
+                    className="text-xs text-ink-500 hover:text-danger-600"
                   >
                     Remove
                   </button>
@@ -211,7 +211,7 @@ export function FontsSection({
                     disabled={isPending}
                     className="flex min-w-0 items-center gap-2 text-left"
                   >
-                    {isSelected && <Check className="h-4 w-4 flex-shrink-0 text-emerald-600" />}
+                    {isSelected && <Check className="h-4 w-4 flex-shrink-0 text-success-600" />}
                     <span
                       className="truncate text-base text-ink-900"
                       style={{ fontFamily: f.webUrl ? `'${f.family}', system-ui` : 'system-ui' }}
@@ -225,7 +225,7 @@ export function FontsSection({
                     onClick={() => onDeleteCustom(f.id, f.ref)}
                     disabled={isPending}
                     aria-label={`Delete ${f.family}`}
-                    className="text-ink-400 hover:text-red-600"
+                    className="text-ink-400 hover:text-danger-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -310,8 +310,8 @@ export function FontsSection({
                 disabled={isPending}
                 className={`flex w-full items-center justify-between gap-2 rounded-md border p-3 text-left transition-colors ${
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-50'
-                    : 'border-ink-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+                    ? 'border-success-500 bg-success-50'
+                    : 'border-ink-200 bg-white hover:border-success-200 hover:bg-success-50/30'
                 }`}
               >
                 <div className="min-w-0">
@@ -327,7 +327,7 @@ export function FontsSection({
                     {font.weight} · {font.style}
                   </div>
                 </div>
-                {isSelected && <Check className="h-4 w-4 flex-shrink-0 text-emerald-600" />}
+                {isSelected && <Check className="h-4 w-4 flex-shrink-0 text-success-600" />}
               </button>
             </li>
           )
@@ -341,7 +341,7 @@ export function FontsSection({
       )}
 
       {catalog.length === 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="rounded-md border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900">
           <strong>No fonts seeded.</strong> Run the seed script
           (<code className="font-mono text-xs">pnpm --filter @ilaunchify/db seed</code>) to
           populate the curated font catalog.
@@ -360,6 +360,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-success-600' : status === 'error' ? 'text-danger-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

@@ -81,14 +81,14 @@ export function BulkTierActions<TierValue extends string>({
         <span className="rounded-full bg-pink-100 px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-wider text-pink-700">
           {selectedCount}
         </span>
-        <span className="text-[12.5px] font-medium text-zinc-700">
+        <span className="text-[12.5px] font-medium text-ink-700">
           {subject}
           {selectedCount === 1 ? '' : 's'} selected
         </span>
       </div>
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        <ArrowRight className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
+        <ArrowRight className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
         <label className="sr-only" htmlFor="bulk-tier-pick">
           Target tier
         </label>
@@ -97,7 +97,7 @@ export function BulkTierActions<TierValue extends string>({
           value={newTier}
           onChange={(e) => setNewTier(e.target.value as TierValue | '')}
           disabled={pending}
-          className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-[12.5px] text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 disabled:opacity-50"
+          className="h-8 rounded-md border border-ink-300 bg-white px-2 text-[12.5px] text-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 disabled:opacity-50"
         >
           <option value="">Promote / demote to…</option>
           {tierOptions.map((o) => (
@@ -134,7 +134,7 @@ export function BulkTierActions<TierValue extends string>({
           type="button"
           onClick={onClear}
           disabled={pending}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-500 hover:bg-ink-100 hover:text-ink-900 disabled:opacity-50"
           aria-label="Clear selection"
           title="Clear selection"
         >

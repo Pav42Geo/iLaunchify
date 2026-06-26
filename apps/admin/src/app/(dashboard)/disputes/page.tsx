@@ -30,10 +30,10 @@ interface DisputeRow {
 }
 
 const STATUS_PILL: Record<DisputeStatus, string> = {
-  OPEN: 'border-amber-200 bg-amber-50 text-amber-800',
-  UNDER_REVIEW: 'border-sky-200 bg-sky-50 text-sky-800',
-  RESOLVED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-800',
+  OPEN: 'border-warning-200 bg-warning-50 text-warning-800',
+  UNDER_REVIEW: 'border-info-200 bg-info-50 text-info-800',
+  RESOLVED: 'border-success-200 bg-success-50 text-success-800',
+  REJECTED: 'border-danger-200 bg-danger-50 text-danger-800',
 }
 
 const CATEGORY_LABEL: Record<DisputeCategory, string> = {
@@ -114,9 +114,9 @@ export default async function DisputesPage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Total', value: all.length, tone: 'text-ink-900' },
-          { label: 'Needs review', value: openCount, tone: openCount > 0 ? 'text-amber-700' : 'text-ink-900' },
-          { label: 'Resolved', value: resolved, tone: 'text-emerald-700' },
-          { label: 'Rejected', value: rejected, tone: 'text-rose-700' },
+          { label: 'Needs review', value: openCount, tone: openCount > 0 ? 'text-warning-700' : 'text-ink-900' },
+          { label: 'Resolved', value: resolved, tone: 'text-success-700' },
+          { label: 'Rejected', value: rejected, tone: 'text-danger-700' },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
             <div className={`font-display text-[26px] font-bold tabular-nums ${k.tone}`}>{k.value}</div>

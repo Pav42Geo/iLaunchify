@@ -87,7 +87,7 @@ export function PartnerTierPill({ partnerId, currentTier, tierChangedAt }: Props
       </p>
 
       {open && (
-        <div className="space-y-3 rounded-lg border border-ink-200 bg-zinc-50 p-3">
+        <div className="space-y-3 rounded-lg border border-ink-200 bg-ink-50 p-3">
           <div className="flex flex-wrap gap-1.5">
             {TIERS.map((t) => {
               const p = PARTNER_TIER_STYLE[t]

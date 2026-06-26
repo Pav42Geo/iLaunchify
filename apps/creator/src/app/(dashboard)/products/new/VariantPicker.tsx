@@ -116,12 +116,12 @@ export function VariantPicker({
                       </span>
                     )}
                     {v.customerPicksCount && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                      <span className="rounded-full bg-info-50 px-2 py-0.5 text-xs text-info-700">
                         Consumer picks {v.customerPicksCount}
                       </span>
                     )}
                     {v.subscriptionInterval && (
-                      <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs text-purple-700">
+                      <span className="rounded-full bg-info-50 px-2 py-0.5 text-xs text-info-700">
                         {v.subscriptionInterval}
                       </span>
                     )}

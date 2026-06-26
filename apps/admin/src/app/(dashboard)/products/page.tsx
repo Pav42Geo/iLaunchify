@@ -67,78 +67,78 @@ const STATUS_TONE: Record<
   { bg: string; text: string; border: string; dot: string; label: string }
 > = {
   DRAFT: {
-    bg: 'bg-zinc-100',
-    text: 'text-zinc-700',
-    border: 'border-zinc-200',
-    dot: 'bg-zinc-400',
+    bg: 'bg-ink-100',
+    text: 'text-ink-700',
+    border: 'border-ink-200',
+    dot: 'bg-ink-400',
     label: 'Draft',
   },
   PENDING_REVIEW: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-800',
-    border: 'border-amber-200',
-    dot: 'bg-amber-500',
+    bg: 'bg-warning-100',
+    text: 'text-warning-800',
+    border: 'border-warning-200',
+    dot: 'bg-warning-500',
     label: 'Pending review',
   },
   PENDING_EDIT_REVIEW: {
-    bg: 'bg-sky-100',
-    text: 'text-sky-800',
-    border: 'border-sky-200',
-    dot: 'bg-sky-500',
+    bg: 'bg-info-100',
+    text: 'text-info-800',
+    border: 'border-info-200',
+    dot: 'bg-info-500',
     label: 'Edits in review',
   },
   NEEDS_CHANGES: {
-    bg: 'bg-rose-100',
-    text: 'text-rose-700',
-    border: 'border-rose-200',
-    dot: 'bg-rose-500',
+    bg: 'bg-danger-100',
+    text: 'text-danger-700',
+    border: 'border-danger-200',
+    dot: 'bg-danger-500',
     label: 'Needs changes',
   },
   PUBLISHED: {
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-800',
-    border: 'border-emerald-200',
-    dot: 'bg-emerald-500',
+    bg: 'bg-success-100',
+    text: 'text-success-800',
+    border: 'border-success-200',
+    dot: 'bg-success-500',
     label: 'Live',
   },
   PAUSED: {
-    bg: 'bg-zinc-100',
-    text: 'text-zinc-700',
-    border: 'border-zinc-200',
-    dot: 'bg-zinc-400',
+    bg: 'bg-ink-100',
+    text: 'text-ink-700',
+    border: 'border-ink-200',
+    dot: 'bg-ink-400',
     label: 'Paused',
   },
   REJECTED: {
-    bg: 'bg-rose-100',
-    text: 'text-rose-700',
-    border: 'border-rose-200',
-    dot: 'bg-rose-500',
+    bg: 'bg-danger-100',
+    text: 'text-danger-700',
+    border: 'border-danger-200',
+    dot: 'bg-danger-500',
     label: 'Rejected',
   },
   UNDER_REVIEW: {
-    bg: 'bg-amber-100',
-    text: 'text-amber-800',
-    border: 'border-amber-200',
-    dot: 'bg-amber-500',
+    bg: 'bg-warning-100',
+    text: 'text-warning-800',
+    border: 'border-warning-200',
+    dot: 'bg-warning-500',
     label: 'Under review',
   },
   ARCHIVED: {
-    bg: 'bg-zinc-100',
-    text: 'text-zinc-700',
-    border: 'border-zinc-200',
-    dot: 'bg-zinc-400',
+    bg: 'bg-ink-100',
+    text: 'text-ink-700',
+    border: 'border-ink-200',
+    dot: 'bg-ink-400',
     label: 'Archived',
   },
 }
 
 const TAB_TONE: Record<ProductsTab, { dot: string; bg: string; text: string; border: string }> = {
-  new: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  'pending-edit': { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
-  'needs-changes': { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
-  published: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  all: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  new: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  'pending-edit': { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
+  'needs-changes': { dot: 'bg-danger-500', bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200' },
+  published: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  all: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
   // Dashed/violet so the read-only ops tab reads as separate from the queue.
-  drafts: { dot: 'bg-violet-400', bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200' },
+  drafts: { dot: 'bg-info-400', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
 }
 
 const DRAFT_STEP_LABEL: Record<
@@ -307,17 +307,17 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
     pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -557,7 +557,7 @@ function ProductsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh sortKey="name" filters={filters}>
               Product
@@ -601,7 +601,7 @@ function ProductsTable({
                       className={cn(
                         'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-ink-200',
                         p.imageAssetId
-                          ? 'bg-zinc-50 text-pink-600'
+                          ? 'bg-ink-50 text-pink-600'
                           : 'bg-pink-50 text-pink-500',
                       )}
                     >
@@ -625,7 +625,7 @@ function ProductsTable({
                   {p.manufacturer ? (
                     <Link
                       href={`/partners/${p.manufacturer.partnerId}`}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-ink-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
                     >
                       <Building2 className="h-3 w-3 text-ink-400" />
                       <span className="truncate max-w-[140px]">
@@ -660,7 +660,7 @@ function ProductsTable({
                             'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium',
                             n.isPrimary
                               ? 'border-pink-200 bg-pink-50 text-pink-700'
-                              : 'border-ink-100 bg-zinc-50 text-ink-700',
+                              : 'border-ink-100 bg-ink-50 text-ink-700',
                           )}
                         >
                           {n.iconEmoji && (
@@ -672,7 +672,7 @@ function ProductsTable({
                         </span>
                       ))}
                       {overflow > 0 && (
-                        <span className="inline-flex items-center rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
+                        <span className="inline-flex items-center rounded-full border border-ink-100 bg-ink-50 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
                           +{overflow}
                         </span>
                       )}
@@ -747,9 +747,9 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
   return (
     <div className="space-y-3">
       {/* Read-only ops banner — visually separate from the action queue. */}
-      <div className="flex items-start gap-2.5 rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 px-4 py-3">
-        <PencilRuler className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" aria-hidden="true" />
-        <p className="text-[12px] leading-relaxed text-violet-900">
+      <div className="flex items-start gap-2.5 rounded-2xl border border-dashed border-info-200 bg-info-50/60 px-4 py-3">
+        <PencilRuler className="mt-0.5 h-4 w-4 shrink-0 text-info-600" aria-hidden="true" />
+        <p className="text-[12px] leading-relaxed text-info-900">
           <span className="font-semibold">In-progress builds — read-only.</span> Partners
           haven&rsquo;t submitted these yet, so there&rsquo;s nothing to approve. Use this to spot
           where builds stall — the <span className="font-medium">Stalled at</span> chip marks the
@@ -759,7 +759,7 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
             <tr>
               <Th>Product</Th>
               <Th>Manufacturer</Th>
@@ -772,7 +772,7 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
             {rows.map((p) => {
               const prog = p.progress
               return (
-                <tr key={p.id} className="transition-colors hover:bg-violet-50/20">
+                <tr key={p.id} className="transition-colors hover:bg-info-50/20">
                   {/* Product — links to the read-only review snapshot */}
                   <td className="px-3 py-3 align-top">
                     <Link
@@ -784,8 +784,8 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
                         className={cn(
                           'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-ink-200',
                           p.imageAssetId
-                            ? 'bg-zinc-50 text-violet-600'
-                            : 'bg-violet-50 text-violet-500',
+                            ? 'bg-ink-50 text-info-600'
+                            : 'bg-info-50 text-info-500',
                         )}
                       >
                         {p.imageAssetId ? (
@@ -795,7 +795,7 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
                         )}
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-ink-900 group-hover/cell:text-violet-700 group-focus-visible/cell:underline">
+                        <p className="truncate font-semibold text-ink-900 group-hover/cell:text-info-700 group-focus-visible/cell:underline">
                           {p.name}
                         </p>
                         <p className="mt-0.5 truncate text-[10.5px] text-ink-500">{p.slug}</p>
@@ -808,7 +808,7 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
                     {p.manufacturer ? (
                       <Link
                         href={`/partners/${p.manufacturer.partnerId}`}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-ink-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-info-200 hover:bg-info-50 hover:text-info-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
                       >
                         <Building2 className="h-3 w-3 text-ink-400" />
                         <span className="truncate max-w-[140px]">{p.manufacturer.companyName}</span>
@@ -829,8 +829,8 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
                               className={cn(
                                 'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
                                 prog[k]
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                                  : 'border-ink-200 bg-zinc-50 text-ink-400',
+                                  ? 'border-success-200 bg-success-50 text-success-800'
+                                  : 'border-ink-200 bg-ink-50 text-ink-400',
                               )}
                             >
                               {prog[k] ? (
@@ -847,11 +847,11 @@ function DraftsTable({ rows }: { rows: ProductRow[] }) {
                             {prog.done}/{prog.total} sections
                           </span>
                           {prog.stalledAt ? (
-                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                            <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                               Stalled at {DRAFT_STEP_LABEL[prog.stalledAt]}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+                            <span className="inline-flex items-center rounded-full border border-success-200 bg-success-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-success-800">
                               All filled · not submitted
                             </span>
                           )}

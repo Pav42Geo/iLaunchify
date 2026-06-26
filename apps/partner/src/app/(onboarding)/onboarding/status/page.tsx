@@ -98,7 +98,7 @@ export default async function ApplicationStatusPage() {
         <div className="text-sm text-ink-700">
           {isActive ? (
             <>
-              <span className="font-semibold text-emerald-700">✓ You&apos;re live.</span> Head
+              <span className="font-semibold text-success-700">✓ You&apos;re live.</span> Head
               over to your dashboard to start receiving production orders.
             </>
           ) : needsChanges ? (
@@ -138,12 +138,12 @@ function OverallStatusBanner({
   // 3 visual states: UNDER_REVIEW (default), NEEDS_CHANGES, ACTIVE.
   if (needsChanges) {
     return (
-      <Card className="border-amber-300 bg-amber-50">
+      <Card className="border-warning-300 bg-warning-50">
         <CardHeader className="flex-row items-start gap-3 space-y-0">
-          <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-700" />
+          <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-700" />
           <div className="flex-1">
-            <CardTitle className="text-amber-900">Changes requested</CardTitle>
-            <p className="mt-1 text-sm text-amber-800">
+            <CardTitle className="text-warning-900">Changes requested</CardTitle>
+            <p className="mt-1 text-sm text-warning-800">
               Our team reviewed your application and needs a few updates. See the sections
               below — fix the items, save, and we&apos;ll re-review.
             </p>
@@ -155,12 +155,12 @@ function OverallStatusBanner({
 
   if (status === 'ACTIVE' || status === 'INTEGRATION_ENHANCED') {
     return (
-      <Card className="border-emerald-300 bg-emerald-50">
+      <Card className="border-success-300 bg-success-50">
         <CardHeader className="flex-row items-start gap-3 space-y-0">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-700" />
+          <CheckCircle2 className="mt-0.5 h-5 w-5 text-success-700" />
           <div className="flex-1">
-            <CardTitle className="text-emerald-900">You&apos;re fully verified</CardTitle>
-            <p className="mt-1 text-sm text-emerald-800">
+            <CardTitle className="text-success-900">You&apos;re fully verified</CardTitle>
+            <p className="mt-1 text-sm text-success-800">
               Your partner profile is live. Creators can now route production orders to you.
             </p>
           </div>
@@ -171,9 +171,9 @@ function OverallStatusBanner({
 
   // Default: under review
   return (
-    <Card className="border-emerald-200 bg-emerald-50/40">
+    <Card className="border-success-200 bg-success-50/40">
       <CardHeader className="flex-row items-start gap-3 space-y-0">
-        <Clock className="mt-0.5 h-5 w-5 text-emerald-700" />
+        <Clock className="mt-0.5 h-5 w-5 text-success-700" />
         <div className="flex-1">
           <CardTitle className="text-ink-900">Under review</CardTitle>
           <p className="mt-1 text-sm text-ink-600">
@@ -224,7 +224,7 @@ function SectionRow({
             <span className={`text-xs font-medium ${color}`}>{label}</span>
           </div>
           {adminNotes && (
-            <div className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="mt-2 rounded bg-warning-50 px-3 py-2 text-xs text-warning-900">
               <span className="font-semibold">Reviewer note: </span>
               {adminNotes}
             </div>
@@ -248,11 +248,11 @@ function SectionRow({
 function statusVisual(status: VerificationSectionStatus) {
   switch (status) {
     case 'VERIFIED':
-      return { Icon: CheckCircle2, color: 'text-emerald-600', label: 'VERIFIED' }
+      return { Icon: CheckCircle2, color: 'text-success-600', label: 'VERIFIED' }
     case 'NEEDS_CHANGES':
-      return { Icon: AlertTriangle, color: 'text-amber-700', label: 'NEEDS CHANGES' }
+      return { Icon: AlertTriangle, color: 'text-warning-700', label: 'NEEDS CHANGES' }
     case 'REJECTED':
-      return { Icon: AlertTriangle, color: 'text-red-600', label: 'REJECTED' }
+      return { Icon: AlertTriangle, color: 'text-danger-600', label: 'REJECTED' }
     case 'PENDING':
     default:
       return { Icon: FileText, color: 'text-ink-500', label: 'PENDING REVIEW' }

@@ -25,7 +25,7 @@ export default async function PayoutsSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {isActive ? (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-900">
+            <div className="rounded-md bg-success-50 p-3 text-sm text-success-900">
               ✓ Payouts enabled.
             </div>
           ) : (

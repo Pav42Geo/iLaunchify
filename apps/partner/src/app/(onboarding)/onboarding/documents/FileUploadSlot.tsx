@@ -83,7 +83,7 @@ export function FileUploadSlot({
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-ink-900">{label}</h3>
             {required && (
-              <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-red-700">
+              <span className="rounded bg-danger-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-danger-700">
                 Required
               </span>
             )}

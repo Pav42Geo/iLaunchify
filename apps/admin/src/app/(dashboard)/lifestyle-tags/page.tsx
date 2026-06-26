@@ -45,8 +45,8 @@ const GROUP_LABEL: Record<LifestyleTagGroup, string> = {
 
 const GROUP_TONE: Record<LifestyleTagGroup, string> = {
   LIFESTYLE: 'bg-pink-50 text-pink-700 border-pink-200',
-  AUDIENCE: 'bg-sky-50 text-sky-700 border-sky-200',
-  TREND: 'bg-amber-50 text-amber-800 border-amber-200',
+  AUDIENCE: 'bg-info-50 text-info-700 border-info-200',
+  TREND: 'bg-warning-50 text-warning-800 border-warning-200',
 }
 
 function tabToGroup(t: Tab): LifestyleTagGroup | null {
@@ -287,9 +287,9 @@ function KpiCard({
 }) {
   const iconTone: Record<'pink' | 'amber' | 'emerald' | 'sky', string> = {
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
   }
   return (
     <Link

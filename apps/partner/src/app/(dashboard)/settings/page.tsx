@@ -15,8 +15,8 @@ export const dynamic = 'force-dynamic'
 type PillTone = 'good' | 'warn' | 'neutral' | 'brand'
 
 const PILL_TONE: Record<PillTone, string> = {
-  good: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  warn: 'border-amber-200 bg-amber-50 text-amber-800',
+  good: 'border-success-200 bg-success-50 text-success-800',
+  warn: 'border-warning-200 bg-warning-50 text-warning-800',
   neutral: 'border-ink-200 bg-ink-100 text-ink-700',
   brand: 'border-pink-200 bg-pink-50 text-pink-700',
 }

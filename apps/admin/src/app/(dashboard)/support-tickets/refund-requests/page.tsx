@@ -24,9 +24,9 @@ type Row = {
 }
 
 const PILL: Record<Row['status'], string> = {
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-800',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-800',
+  PENDING: 'border-warning-200 bg-warning-50 text-warning-800',
+  APPROVED: 'border-success-200 bg-success-50 text-success-800',
+  REJECTED: 'border-danger-200 bg-danger-50 text-danger-800',
 }
 
 export default async function RefundRequestsPage() {

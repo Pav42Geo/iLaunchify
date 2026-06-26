@@ -28,21 +28,21 @@ export const AUDIENCE_LABEL: Record<AcademyAudience, string> = {
 export type Tone = { bg: string; text: string; border: string; dot: string; label: string }
 
 export const STATUS_TONE: Record<AcademyStatus, Tone> = {
-  DRAFT: { bg: 'bg-zinc-50', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400', label: 'Draft' },
-  IN_REVIEW: { bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', dot: 'bg-amber-500', label: 'In review' },
-  PUBLISHED: { bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Published' },
-  ARCHIVED: { bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', dot: 'bg-rose-500', label: 'Archived' },
+  DRAFT: { bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Draft' },
+  IN_REVIEW: { bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200', dot: 'bg-warning-500', label: 'In review' },
+  PUBLISHED: { bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200', dot: 'bg-success-500', label: 'Published' },
+  ARCHIVED: { bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200', dot: 'bg-danger-500', label: 'Archived' },
 }
 
 export const AUDIENCE_TONE: Record<AcademyAudience, Tone> = {
   CREATOR: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-200', dot: 'bg-pink-500', label: 'Creator' },
-  PARTNER: { bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', dot: 'bg-sky-500', label: 'Partner' },
+  PARTNER: { bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', dot: 'bg-info-500', label: 'Partner' },
 }
 
 export const LESSON_TYPE_TONE: Record<AcademyLessonType, Tone> = {
-  VIDEO: { bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200', dot: 'bg-indigo-500', label: 'Video' },
-  ARTICLE: { bg: 'bg-zinc-50', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400', label: 'Article' },
-  INTERACTIVE: { bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', dot: 'bg-violet-500', label: 'Interactive' },
+  VIDEO: { bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', dot: 'bg-info-500', label: 'Video' },
+  ARTICLE: { bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Article' },
+  INTERACTIVE: { bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', dot: 'bg-info-500', label: 'Interactive' },
 }
 
 // — parse helpers ————————————————————————————————————————————————————————————

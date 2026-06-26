@@ -19,7 +19,7 @@ export function LaunchChecklistTrigger() {
       <Rocket className="h-4 w-4" />
       <span className="flex-1 text-left">Launch Checklist</span>
       {pending > 0 && (
-        <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+        <span className="rounded-full bg-success-500 px-2 py-0.5 text-[11px] font-semibold text-white">
           {pending}
         </span>
       )}

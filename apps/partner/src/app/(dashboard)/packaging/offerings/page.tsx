@@ -17,9 +17,9 @@ import { OfferingRowActions } from './OfferingRowActions'
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const OFFERING_STATUS_PILL: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
-  PENDING_REVIEW: { label: 'Pending review', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  ARCHIVED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
+  PENDING_REVIEW: { label: 'Pending review', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  ACTIVE: { label: 'Active', cls: 'border-success-200 bg-success-50 text-success-800' },
+  ARCHIVED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
 }
 
 export const dynamic = 'force-dynamic'

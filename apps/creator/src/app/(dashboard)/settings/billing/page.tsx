@@ -57,9 +57,9 @@ export default async function CreatorBillingPage({
         <div
           className={`rounded-xl border px-4 py-3 text-[13px] ${
             banner.tone === 'good'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              ? 'border-success-200 bg-success-50 text-success-800'
               : banner.tone === 'error'
-                ? 'border-red-200 bg-red-50 text-red-700'
+                ? 'border-danger-200 bg-danger-50 text-danger-700'
                 : 'border-ink-200 bg-ink-50 text-ink-700'
           }`}
         >

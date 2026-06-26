@@ -38,7 +38,7 @@ export default async function AcademyOverviewPage() {
             <div key={aud} className="rounded-2xl border border-ink-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={cn('h-2 w-2 rounded-full', aud === 'CREATOR' ? 'bg-pink-500' : 'bg-sky-500')} />
+                  <span className={cn('h-2 w-2 rounded-full', aud === 'CREATOR' ? 'bg-pink-500' : 'bg-info-500')} />
                   <h2 className="font-display text-[16px] font-bold text-ink-900">{AUDIENCE_LABEL[aud]} Academy</h2>
                 </div>
                 <Link
@@ -49,10 +49,10 @@ export default async function AcademyOverviewPage() {
                 </Link>
               </div>
               <div className="mt-4 grid grid-cols-4 gap-3">
-                <Stat label="Published" value={b.PUBLISHED} tone="text-emerald-700" />
-                <Stat label="In review" value={b.IN_REVIEW} tone="text-amber-700" />
-                <Stat label="Drafts" value={b.DRAFT} tone="text-sky-700" />
-                <Stat label="Archived" value={b.ARCHIVED} tone="text-rose-700" />
+                <Stat label="Published" value={b.PUBLISHED} tone="text-success-700" />
+                <Stat label="In review" value={b.IN_REVIEW} tone="text-warning-700" />
+                <Stat label="Drafts" value={b.DRAFT} tone="text-info-700" />
+                <Stat label="Archived" value={b.ARCHIVED} tone="text-danger-700" />
               </div>
             </div>
           )

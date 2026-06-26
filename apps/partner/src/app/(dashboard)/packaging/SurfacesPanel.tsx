@@ -304,14 +304,14 @@ function SurfaceRow({
             size="sm"
             onClick={handleRemove}
             disabled={isPending}
-            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="text-danger-600 hover:bg-danger-50 hover:text-danger-700"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
       {surface.dieLineFilename && (
-        <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
+        <div className="mt-2 rounded-md border border-success-200 bg-success-50 px-2 py-1 text-xs text-success-800">
           ✓ {surface.dieLineFilename}
         </div>
       )}

@@ -271,16 +271,16 @@ function KpiCard({
   active?: boolean
 }) {
   const iconTone: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   const ring: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   return (
     <Link
@@ -546,7 +546,7 @@ function MainCategoryGroup({
       open
       className="group overflow-hidden rounded-2xl border border-ink-200 bg-white"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 bg-zinc-50/70 px-5 py-3 transition-colors hover:bg-zinc-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-inset">
+      <summary className="flex cursor-pointer list-none items-center gap-3 bg-ink-50/70 px-5 py-3 transition-colors hover:bg-ink-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-inset">
         <ChevronRight className="h-4 w-4 text-ink-500 transition-transform group-open:rotate-90" />
         <span className="font-display text-[14px] font-semibold text-ink-900">
           {mainCategory}
@@ -596,7 +596,7 @@ function CategoryCard({
               {DOMAIN_SHORT[category.labelingType] ?? category.labelingType}
             </span>
             {!category.isActive && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-amber-700">
+              <span className="inline-flex items-center rounded-full bg-warning-100 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-warning-700">
                 Hidden
               </span>
             )}
@@ -644,7 +644,7 @@ function CategoryCard({
               return (
                 <li
                   key={s.id}
-                  className="flex items-start gap-2 rounded-xl border border-ink-100 bg-zinc-50/40 px-2.5 py-2"
+                  className="flex items-start gap-2 rounded-xl border border-ink-100 bg-ink-50/40 px-2.5 py-2"
                 >
                   <span className="mt-0.5 inline-flex h-4 w-4 cursor-grab items-center justify-center text-ink-300">
                     <GripVertical className="h-3 w-3" />
@@ -656,8 +656,8 @@ function CategoryCard({
                         {s.name}
                       </p>
                       {!s.isActive && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[9.5px] font-medium text-rose-900">
-                          <span className="h-1 w-1 rounded-full bg-rose-500" />
+                        <span className="inline-flex items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-1.5 py-0.5 text-[9.5px] font-medium text-danger-900">
+                          <span className="h-1 w-1 rounded-full bg-danger-500" />
                           Inactive
                         </span>
                       )}

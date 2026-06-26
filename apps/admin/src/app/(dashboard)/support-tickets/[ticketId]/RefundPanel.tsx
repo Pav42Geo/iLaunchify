@@ -18,9 +18,9 @@ export type RefundRequestView = {
 }
 
 const PILL: Record<RefundRequestView['status'], string> = {
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-800',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-800',
+  PENDING: 'border-warning-200 bg-warning-50 text-warning-800',
+  APPROVED: 'border-success-200 bg-success-50 text-success-800',
+  REJECTED: 'border-danger-200 bg-danger-50 text-danger-800',
 }
 
 export function RefundPanel({
@@ -106,7 +106,7 @@ export function RefundPanel({
               </div>
               {canApprove && r.status === 'PENDING' && (
                 <div className="flex flex-none gap-1.5">
-                  <button type="button" disabled={pending} onClick={() => decide(r.id, 'approve')} className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <button type="button" disabled={pending} onClick={() => decide(r.id, 'approve')} className="inline-flex items-center gap-1 rounded-full bg-success-600 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-success-700 disabled:opacity-50">
                     <Check className="h-3 w-3" /> Approve
                   </button>
                   <button type="button" disabled={pending} onClick={() => decide(r.id, 'reject')} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-50">

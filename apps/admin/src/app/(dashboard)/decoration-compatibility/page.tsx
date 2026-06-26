@@ -62,24 +62,24 @@ export const metadata = { title: 'Decoration compatibility — Admin' }
 
 const KIND_TONE: Record<DecorationKind, { bg: string; text: string; border: string; label: string }> = {
   PRIMARY: { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200', label: 'Primary' },
-  ACCENT: { bg: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-200', label: 'Accent' },
-  NONE: { bg: 'bg-zinc-100', text: 'text-ink-600', border: 'border-zinc-200', label: 'None' },
+  ACCENT: { bg: 'bg-info-100', text: 'text-info-700', border: 'border-info-200', label: 'Accent' },
+  NONE: { bg: 'bg-ink-100', text: 'text-ink-600', border: 'border-ink-200', label: 'None' },
 }
 
 const STATUS_PILL_TONE: Record<
   StatusBucket,
   { bg: string; text: string; border: string; dot: string }
 > = {
-  ACTIVE: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  INACTIVE: { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400' },
+  ACTIVE: { bg: 'bg-success-100', text: 'text-success-800', border: 'border-success-200', dot: 'bg-success-500' },
+  INACTIVE: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400' },
 }
 
 const STATUS_CHIP_TONE: Record<
   StatusBucket,
   { bg: string; text: string; border: string; dot: string }
 > = {
-  ACTIVE: { bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  INACTIVE: { bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200', dot: 'bg-ink-400' },
+  ACTIVE: { bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200', dot: 'bg-success-500' },
+  INACTIVE: { bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400' },
 }
 
 // -----------------------------------------------------------------------------
@@ -210,17 +210,17 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
     pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -416,7 +416,7 @@ function CompatTable({ rows, filters }: { rows: CompatRow[]; filters: ParsedFilt
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh sortKey="category" filters={filters}>
               Category

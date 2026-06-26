@@ -99,7 +99,7 @@ export function LabelingSymbolForm({ initial }: { initial?: SymbolFormInitial })
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5 rounded-lg border border-zinc-200 bg-white p-6">
+    <form onSubmit={submit} className="space-y-5 rounded-lg border border-ink-200 bg-white p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name" required>
           <Input value={name} onChange={(e) => onName(e.target.value)} placeholder="e.g. Distributed by" required disabled={isPending} />
@@ -114,7 +114,7 @@ export function LabelingSymbolForm({ initial }: { initial?: SymbolFormInitial })
             required
             pattern={SLUG_REGEX.source}
             disabled={isPending || mode === 'edit'}
-            className={mode === 'edit' ? 'bg-zinc-50' : ''}
+            className={mode === 'edit' ? 'bg-ink-50' : ''}
           />
         </Field>
         <Field label="Family" required>
@@ -130,7 +130,7 @@ export function LabelingSymbolForm({ initial }: { initial?: SymbolFormInitial })
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
@@ -153,13 +153,13 @@ export function LabelingSymbolForm({ initial }: { initial?: SymbolFormInitial })
         </Field>
       </div>
 
-      {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</div>}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => router.push('/assets/labeling-symbols')} disabled={isPending}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isPending || !name.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={isPending || !name.trim()} className="bg-success-600 hover:bg-success-700">
           {isPending ? 'Saving…' : mode === 'create' ? 'Create symbol' : 'Save changes'}
         </Button>
       </div>
@@ -183,7 +183,7 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+      className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -207,11 +207,11 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-zinc-900">
+      <Label className="text-sm font-medium text-ink-900">
         {label}
-        {required && <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">Required</span>}
+        {required && <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">Required</span>}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

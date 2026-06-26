@@ -294,12 +294,12 @@ function EntityBrowser({
 function DeflectionPanel({ tickets }: { tickets: OpenTicket[] }) {
   if (tickets.length === 0) return null
   return (
-    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-900">
+    <div className="mt-3 rounded-lg border border-warning-200 bg-warning-50/70 p-3">
+      <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-warning-900">
         <AlertCircle className="h-3.5 w-3.5" />
         You already have {tickets.length === 1 ? 'an open ticket' : `${tickets.length} open tickets`} on this
       </p>
-      <p className="mt-0.5 text-[11.5px] text-amber-800">
+      <p className="mt-0.5 text-[11.5px] text-warning-800">
         Adding to the existing thread is usually faster than opening a new one.
       </p>
       <ul className="mt-2 space-y-1">
@@ -307,7 +307,7 @@ function DeflectionPanel({ tickets }: { tickets: OpenTicket[] }) {
           <li key={t.id}>
             <Link
               href={`/help/${t.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+              className="inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-warning-900 ring-1 ring-warning-200 hover:bg-warning-100"
             >
               <span className="max-w-[280px] truncate">{t.subject}</span>
               <ArrowRight className="h-3.5 w-3.5 flex-none" />

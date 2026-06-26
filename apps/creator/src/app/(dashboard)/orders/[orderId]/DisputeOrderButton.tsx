@@ -49,7 +49,7 @@ export function DisputeOrderButton({ orderId }: { orderId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-ink-700 hover:bg-amber-50 hover:text-amber-800"
+        className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-ink-700 hover:bg-warning-50 hover:text-warning-800"
       >
         <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
         Report an issue
@@ -58,14 +58,14 @@ export function DisputeOrderButton({ orderId }: { orderId: string }) {
   }
 
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50/40 p-2.5">
+    <div className="rounded-md border border-warning-200 bg-warning-50/40 p-2.5">
       <p className="text-[11.5px] text-ink-700">
         Tell us what went wrong with this delivered order. Our team will review and follow up.
       </p>
       <select
         value={category}
         onChange={(e) => setCategory(e.target.value as DisputeCategory)}
-        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-warning-400 focus:outline-none focus:ring-2 focus:ring-warning-200"
       >
         <option value="">Choose a reason…</option>
         {CATEGORIES.map((c) => (
@@ -79,14 +79,14 @@ export function DisputeOrderButton({ orderId }: { orderId: string }) {
         onChange={(e) => setDescription(e.target.value)}
         placeholder="What happened?"
         rows={2}
-        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        className="mt-2 w-full rounded-md border border-ink-200 px-2 py-1.5 text-[12px] focus:border-warning-400 focus:outline-none focus:ring-2 focus:ring-warning-200"
       />
       <div className="mt-2 flex gap-2">
         <button
           type="button"
           onClick={submit}
           disabled={pending}
-          className="inline-flex items-center rounded-full bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+          className="inline-flex items-center rounded-full bg-warning-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-warning-700 disabled:opacity-50"
         >
           {pending ? 'Submitting…' : 'Submit report'}
         </button>

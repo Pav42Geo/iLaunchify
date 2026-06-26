@@ -8,7 +8,7 @@ export default function CheckEmailPage() {
         <CardDescription>We sent you a sign-in link.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-ink-500">
           The link expires in 24 hours.
         </p>
       </CardContent>

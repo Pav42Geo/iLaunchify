@@ -92,7 +92,7 @@ export default async function AcademyLessonsPage({ searchParams }: PageProps) {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <SortableTh sortKey="title" activeSort={filters.sort} dir={filters.dir} hrefFor={hrefForSort}>Lesson</SortableTh>
                 <Th>Course</Th>

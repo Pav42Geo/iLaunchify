@@ -31,7 +31,7 @@ export function DielineReviewActions({ dielineId }: { dielineId: string }) {
       <button
         onClick={() => run(() => verifyDieline(dielineId), 'Verified & activated')}
         disabled={pending}
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full bg-success-600 px-3.5 py-1 text-[11.5px] font-semibold text-white hover:bg-success-700 disabled:opacity-50"
       >
         <CheckCircle2 className="h-3.5 w-3.5" /> Verify &amp; activate
       </button>

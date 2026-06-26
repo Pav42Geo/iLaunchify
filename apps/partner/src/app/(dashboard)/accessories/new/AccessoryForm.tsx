@@ -47,7 +47,7 @@ export function AccessoryForm({
     })
   }
 
-  const field = 'w-full rounded-md border border-ink-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200'
+  const field = 'w-full rounded-md border border-ink-300 px-3 py-2 text-sm focus:border-success-500 focus:outline-none focus:ring-2 focus:ring-success-200'
   const label = 'block text-xs font-semibold uppercase tracking-wide text-ink-500 mb-1'
 
   return (

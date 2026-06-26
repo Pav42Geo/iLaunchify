@@ -102,7 +102,7 @@ function BulkActionsBar() {
           onClick={discard}
           disabled={pending || draftIds.length === 0}
           title={draftIds.length === 0 ? 'No drafts in selection' : `Discard ${draftIds.length} draft(s)`}
-          className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-danger-600 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-danger-700 disabled:opacity-50"
         >
           <Trash2 className="h-3.5 w-3.5" /> Discard{draftIds.length ? ` (${draftIds.length})` : ''}
         </button>

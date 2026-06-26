@@ -74,7 +74,7 @@ export function RequestReviewActions({
             Cancel
           </Button>
           <Button
-            className="h-7 bg-rose-600 px-2.5 text-[11px] hover:bg-rose-700"
+            className="h-7 bg-danger-600 px-2.5 text-[11px] hover:bg-danger-700"
             onClick={reject}
             disabled={isPending || !reason.trim()}
           >
@@ -89,14 +89,14 @@ export function RequestReviewActions({
     <div className="flex items-center justify-end gap-1.5">
       <Button
         variant="outline"
-        className="h-7 border-rose-200 px-2.5 text-[11px] text-rose-700 hover:bg-rose-50"
+        className="h-7 border-danger-200 px-2.5 text-[11px] text-danger-700 hover:bg-danger-50"
         onClick={() => setRejecting(true)}
         disabled={isPending}
       >
         <X className="mr-1 h-3 w-3" /> Reject
       </Button>
       <Button
-        className="h-7 bg-emerald-600 px-2.5 text-[11px] hover:bg-emerald-700"
+        className="h-7 bg-success-600 px-2.5 text-[11px] hover:bg-success-700"
         onClick={approve}
         disabled={isPending}
         title={`Will create slug "${suggestedSlug}"`}

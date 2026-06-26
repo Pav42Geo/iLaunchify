@@ -136,7 +136,7 @@ export default async function FinanceTaxFormsPage({
                       {r.outlook === '—' ? (
                         <span className="text-ink-400">—</span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                        <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                           {r.outlook}
                         </span>
                       )}
@@ -160,7 +160,7 @@ export default async function FinanceTaxFormsPage({
 }
 
 function Kpi({ label, value, tone = 'ink' }: { label: string; value: string; tone?: 'ink' | 'pink' | 'amber' | 'red' }) {
-  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-amber-700', red: 'text-red-700' }[tone]
+  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-warning-700', red: 'text-danger-700' }[tone]
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
       <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{label}</div>

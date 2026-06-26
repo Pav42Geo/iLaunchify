@@ -563,7 +563,7 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
   }
 
   const Icon = accepted ? CircleCheck : Circle
-  const iconCls = accepted ? 'text-emerald-700' : 'text-ink-400'
+  const iconCls = accepted ? 'text-success-700' : 'text-ink-400'
 
   return (
     <div className="flex items-center gap-3 rounded-lg bg-[var(--bg-hero)] px-3 py-2 text-[12.5px]">
@@ -596,13 +596,13 @@ function DispatchRowView({ d, orderId }: { d: DispatchRow; orderId: string }) {
 function DispatchStatusLabel({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     PENDING_ACCEPT: { label: 'Awaiting', cls: 'text-ink-500' },
-    ACCEPTED: { label: 'Approved', cls: 'text-emerald-700 font-medium' },
-    PRODUCING: { label: 'Producing', cls: 'text-blue-700 font-medium' },
-    QUALITY_CHECK: { label: 'QC', cls: 'text-blue-700 font-medium' },
-    READY: { label: 'Ready', cls: 'text-emerald-700 font-medium' },
-    SHIPPED: { label: 'Shipped', cls: 'text-emerald-700 font-medium' },
-    IN_TRANSIT: { label: 'In transit', cls: 'text-emerald-700 font-medium' },
-    DELIVERED: { label: 'Delivered', cls: 'text-emerald-800 font-medium' },
+    ACCEPTED: { label: 'Approved', cls: 'text-success-700 font-medium' },
+    PRODUCING: { label: 'Producing', cls: 'text-info-700 font-medium' },
+    QUALITY_CHECK: { label: 'QC', cls: 'text-info-700 font-medium' },
+    READY: { label: 'Ready', cls: 'text-success-700 font-medium' },
+    SHIPPED: { label: 'Shipped', cls: 'text-success-700 font-medium' },
+    IN_TRANSIT: { label: 'In transit', cls: 'text-success-700 font-medium' },
+    DELIVERED: { label: 'Delivered', cls: 'text-success-800 font-medium' },
     DECLINED: { label: 'Declined', cls: 'text-pink-700 font-medium' },
     TIMED_OUT: { label: 'Timed out', cls: 'text-pink-700 font-medium' },
     WITHDRAWN: { label: 'Withdrew', cls: 'text-pink-700 font-medium' },

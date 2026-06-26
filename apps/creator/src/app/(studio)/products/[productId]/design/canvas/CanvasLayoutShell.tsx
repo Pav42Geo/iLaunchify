@@ -960,9 +960,9 @@ export function CanvasLayoutShell({
       {restrictionLabels.length > 0 && (
         <div
           role="alert"
-          className="flex items-start gap-2.5 border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-900"
+          className="flex items-start gap-2.5 border-b border-warning-300 bg-warning-50 px-4 py-2.5 text-warning-900"
         >
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
           <p className="text-[12px] leading-relaxed">
             <span className="font-semibold">
               This product can&rsquo;t be ordered: {restrictionLabels.join(', ')}.
@@ -1878,11 +1878,11 @@ function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
       <div className="rounded-md border border-ink-200 bg-ink-50/60 p-4 flex items-center justify-center">
         <div className="relative">
           {/* Bleed */}
-          <div className="border border-dashed border-red-500/80 rounded-md p-2">
+          <div className="border border-dashed border-danger-500/80 rounded-md p-2">
             {/* Trim */}
             <div className="bg-white rounded-sm w-[120px] h-[68px] flex items-center justify-center relative">
               {/* Safe */}
-              <div className="absolute inset-1.5 border border-dotted border-blue-500/70 rounded-sm flex items-center justify-center">
+              <div className="absolute inset-1.5 border border-dotted border-info-500/70 rounded-sm flex items-center justify-center">
                 <span className="text-[8px] uppercase tracking-wider text-ink-700">
                   Safe area
                 </span>
@@ -1971,9 +1971,9 @@ function SpecRow({
 }) {
   const dotClass =
     color === 'red'
-      ? 'bg-red-500'
+      ? 'bg-danger-500'
       : color === 'blue'
-        ? 'bg-blue-500'
+        ? 'bg-info-500'
         : 'bg-ink-700'
   return (
     <tr className="border-b border-ink-50 last:border-0">

@@ -85,10 +85,10 @@ export interface WidgetProps extends WidgetBaseProps {
 const TONE_ICON_BALL: Record<WidgetTone, string> = {
   pink: 'bg-pink-100 text-pink-700',
   ink: 'bg-ink-100 text-ink-700',
-  success: 'bg-emerald-100 text-emerald-700',
-  warning: 'bg-amber-100 text-amber-700',
-  info: 'bg-sky-100 text-sky-700',
-  danger: 'bg-rose-100 text-rose-700',
+  success: 'bg-success-100 text-success-700',
+  warning: 'bg-warning-100 text-warning-700',
+  info: 'bg-info-100 text-info-700',
+  danger: 'bg-danger-100 text-danger-700',
   // Neon on light — neon-500 ball with ink-900 text (the only readable
   // combination, mirrors the locked Button neon variant).
   neon: 'bg-neon-500 text-ink-900',
@@ -97,10 +97,10 @@ const TONE_ICON_BALL: Record<WidgetTone, string> = {
 const TONE_FOOTER_LINK: Record<WidgetTone, string> = {
   pink: 'text-pink-700 hover:text-pink-800',
   ink: 'text-ink-700 hover:text-ink-900',
-  success: 'text-emerald-700 hover:text-emerald-800',
-  warning: 'text-amber-700 hover:text-amber-800',
-  info: 'text-sky-700 hover:text-sky-800',
-  danger: 'text-rose-700 hover:text-rose-800',
+  success: 'text-success-700 hover:text-success-800',
+  warning: 'text-warning-700 hover:text-warning-800',
+  info: 'text-info-700 hover:text-info-800',
+  danger: 'text-danger-700 hover:text-danger-800',
   neon: 'text-ink-900 hover:text-black',
 }
 
@@ -267,23 +267,23 @@ function WidgetError({
   return (
     <div
       role="alert"
-      className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50/60 p-3 text-[12.5px] text-rose-900"
+      className="flex items-start gap-2.5 rounded-lg border border-danger-200 bg-danger-50/60 p-3 text-[12.5px] text-danger-900"
     >
       <AlertCircle
-        className="mt-[1px] h-4 w-4 shrink-0 text-rose-600"
+        className="mt-[1px] h-4 w-4 shrink-0 text-danger-600"
         aria-hidden="true"
       />
       <div className="min-w-0 flex-1">
         <p className="font-semibold">Something went wrong</p>
-        <p className="mt-0.5 text-rose-800">{message}</p>
+        <p className="mt-0.5 text-danger-800">{message}</p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
             className={cn(
-              'mt-2 inline-flex items-center gap-1 rounded-full border border-rose-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-rose-700',
-              'transition-colors hover:bg-rose-100',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1',
+              'mt-2 inline-flex items-center gap-1 rounded-full border border-danger-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-danger-700',
+              'transition-colors hover:bg-danger-100',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:ring-offset-1',
             )}
           >
             Retry

@@ -59,16 +59,16 @@ const STATUS_TONE: Record<
   OfferingStatus,
   { bg: string; text: string; border: string; dot: string; label: string }
 > = {
-  DRAFT: { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400', label: 'Draft' },
-  PENDING_REVIEW: { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500', label: 'Pending review' },
-  ACTIVE: { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
-  ARCHIVED: { bg: 'bg-zinc-100', text: 'text-zinc-700', border: 'border-zinc-200', dot: 'bg-zinc-400', label: 'Archived' },
+  DRAFT: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Draft' },
+  PENDING_REVIEW: { bg: 'bg-warning-100', text: 'text-warning-800', border: 'border-warning-200', dot: 'bg-warning-500', label: 'Pending review' },
+  ACTIVE: { bg: 'bg-success-100', text: 'text-success-800', border: 'border-success-200', dot: 'bg-success-500', label: 'Active' },
+  ARCHIVED: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Archived' },
 }
 
 const STATUS_CHIP_TONE: Record<AccessoryStatusBucket, { bg: string; text: string; border: string; dot: string }> = {
-  PENDING_REVIEW: { bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', dot: 'bg-amber-500' },
-  ACTIVE: { bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  ARCHIVED: { bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200', dot: 'bg-ink-400' },
+  PENDING_REVIEW: { bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200', dot: 'bg-warning-500' },
+  ACTIVE: { bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200', dot: 'bg-success-500' },
+  ARCHIVED: { bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400' },
 }
 
 // -----------------------------------------------------------------------------
@@ -182,17 +182,17 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
     pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -389,7 +389,7 @@ function AccessoriesTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh sortKey="name" filters={filters}>
               Accessory
@@ -430,7 +430,7 @@ function AccessoriesTable({
                     ) : (
                       <span
                         aria-hidden="true"
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ink-200 bg-zinc-50 text-ink-400"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ink-200 bg-ink-50 text-ink-400"
                       >
                         <ImageOff className="h-4 w-4" />
                       </span>
@@ -446,7 +446,7 @@ function AccessoriesTable({
                   {a.partnerId ? (
                     <Link
                       href={`/partners/${a.partnerId}`}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-ink-50 px-2 py-0.5 text-[11px] font-medium text-ink-700 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
                     >
                       <Building2 className="h-3 w-3 text-ink-400" />
                       <span className="max-w-[140px] truncate">{a.partnerName}</span>
@@ -458,7 +458,7 @@ function AccessoriesTable({
 
                 {/* Category */}
                 <td className="px-3 py-3 align-top">
-                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
+                  <span className="inline-flex items-center rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-medium text-ink-700">
                     {ACCESSORY_CATEGORY_LABEL[a.category]}
                   </span>
                 </td>

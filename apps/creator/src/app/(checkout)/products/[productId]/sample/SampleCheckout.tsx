@@ -130,8 +130,8 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
         <div className="rounded-2xl border border-ink-200 bg-white p-5">
           <h2 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">What to sample</h2>
           {brandedLocked ? (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="flex items-start gap-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2.5 text-[12.5px] text-warning-900">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" />
               <span>A branded sample unlocks once the product&rsquo;s die-line passes compliance.</span>
             </div>
           ) : (
@@ -162,7 +162,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
               )}
               {quote.errors.length > 0 && (
                 <ul className="mt-2 space-y-0.5">
-                  {quote.errors.map((e, i) => <li key={i} className="text-[11.5px] text-amber-700">{e}</li>)}
+                  {quote.errors.map((e, i) => <li key={i} className="text-[11.5px] text-warning-700">{e}</li>)}
                 </ul>
               )}
             </>
@@ -219,7 +219,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
           </dl>
 
           {quote.creditEnabled && quote.subtotalCents > 0 && (
-            <div className="mt-3 flex items-start gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
+            <div className="mt-3 flex items-start gap-1.5 rounded-lg bg-success-50 px-3 py-2 text-[12px] text-success-800">
               <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>{formatCents(quote.creditableCents)} credited toward your first production order</span>
             </div>

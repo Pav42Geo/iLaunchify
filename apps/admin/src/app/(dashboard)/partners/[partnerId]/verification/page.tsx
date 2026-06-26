@@ -130,14 +130,14 @@ export default async function VerificationPage({ params }: PageProps) {
       <div>
         <Link
           href={`/partners/${partnerId}`}
-          className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to partner
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           Verify {partner.companyName}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           {partner.user.email} · Partner status:{' '}
           <span className="font-medium">{partner.status}</span>
         </p>
@@ -160,7 +160,7 @@ export default async function VerificationPage({ params }: PageProps) {
         </CardHeader>
         <CardContent>
           {overall === 'VERIFIED' && partner.status !== 'ACTIVE' && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
+            <div className="rounded-md bg-success-50 p-3 text-sm text-success-800">
               All sections verified. You can now{' '}
               <Link href={`/partners/${partnerId}`} className="underline">
                 activate this partner
@@ -169,13 +169,13 @@ export default async function VerificationPage({ params }: PageProps) {
             </div>
           )}
           {overall === 'REJECTED' && partner.status === 'ACTIVE' && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+            <div className="rounded-md bg-danger-50 p-3 text-sm text-danger-800">
               At least one section is REJECTED but the partner is ACTIVE — consider suspending
               from the partner detail page.
             </div>
           )}
           {overall === 'NEEDS_CHANGES' && (
-            <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="rounded-md bg-warning-50 p-3 text-sm text-warning-800">
               Partner has been asked to make changes. They&apos;ll see your notes on{' '}
               /onboarding/status and can resubmit by editing the relevant accordion section.
             </div>

@@ -68,7 +68,7 @@ export function NotesCard({ draftId }: { draftId: string | null }) {
       <style>{`
         .gb .notelist{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:280px;overflow:auto}
         .gb .note-msg{border:1px solid var(--ink-200);border-radius:12px;padding:9px 12px;background:#fff}
-        .gb .note-msg.admin{background:var(--sky-50,#E6F1FB);border-color:#B5D4F4}
+        .gb .note-msg.admin{background:var(--info-50,#E6F1FB);border-color:#B5D4F4}
         .gb .note-msg.partner{background:var(--ink-50)}
       `}</style>
     </div>

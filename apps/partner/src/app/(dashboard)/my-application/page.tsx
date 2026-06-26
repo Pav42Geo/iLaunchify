@@ -49,11 +49,11 @@ const ALL_SECTIONS: VerificationSectionType[] = [
 function statusBadgeClass(status: VerificationSectionStatus): string {
   switch (status) {
     case 'VERIFIED':
-      return 'bg-green-50 text-green-700 ring-1 ring-green-200'
+      return 'bg-success-50 text-success-700 ring-1 ring-success-200'
     case 'NEEDS_CHANGES':
-      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+      return 'bg-warning-50 text-warning-700 ring-1 ring-warning-200'
     case 'REJECTED':
-      return 'bg-red-50 text-red-700 ring-1 ring-red-200'
+      return 'bg-danger-50 text-danger-700 ring-1 ring-danger-200'
     case 'PENDING':
     default:
       return 'bg-ink-100 text-ink-700 ring-1 ring-ink-200'
@@ -116,10 +116,10 @@ export default async function MyApplicationPage() {
       </div>
 
       {partner.status === 'IN_PROGRESS' && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-warning-200 bg-warning-50">
           <CardHeader>
             <CardTitle className="text-base">Action required</CardTitle>
-            <CardDescription className="text-amber-800">
+            <CardDescription className="text-warning-800">
               An admin has reviewed your application and requested changes. See the section
               notes below, make updates, and resubmit. The admin will be notified.
             </CardDescription>
@@ -128,10 +128,10 @@ export default async function MyApplicationPage() {
       )}
 
       {partner.status === 'UNDER_REVIEW' && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-info-200 bg-info-50">
           <CardHeader>
             <CardTitle className="text-base">Under review</CardTitle>
-            <CardDescription className="text-blue-800">
+            <CardDescription className="text-info-800">
               Your application is queued for admin review. We aim to respond within 2 business
               days. You&apos;ll get an email when each section is reviewed.
             </CardDescription>
@@ -140,10 +140,10 @@ export default async function MyApplicationPage() {
       )}
 
       {partner.status === 'SUSPENDED' && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-danger-200 bg-danger-50">
           <CardHeader>
             <CardTitle className="text-base">Account suspended</CardTitle>
-            <CardDescription className="text-red-800">
+            <CardDescription className="text-danger-800">
               Your partner account has been suspended. Email partners@ilaunchify.com to
               discuss reactivation.
             </CardDescription>
@@ -222,11 +222,11 @@ export default async function MyApplicationPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {section?.adminNotes && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
-                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    <div className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-warning-700">
                         Admin notes
                       </div>
-                      <p className="whitespace-pre-wrap text-amber-900">{section.adminNotes}</p>
+                      <p className="whitespace-pre-wrap text-warning-900">{section.adminNotes}</p>
                     </div>
                   )}
                   {showEdit && (

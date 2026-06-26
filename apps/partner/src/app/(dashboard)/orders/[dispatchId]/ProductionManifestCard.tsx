@@ -56,7 +56,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
               label="Design"
               value={
                 <span className="inline-flex items-center gap-1">
-                  <Lock className="h-3 w-3 text-emerald-600" />
+                  <Lock className="h-3 w-3 text-success-600" />
                   Version {manifest.designVersion} locked
                 </span>
               }
@@ -74,7 +74,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
               <Row
                 label="Sustainability"
                 value={
-                  <span className="inline-flex items-center gap-1 text-emerald-700">
+                  <span className="inline-flex items-center gap-1 text-success-700">
                     <Leaf className="h-3 w-3" />
                     {manifest.substrate.sustainabilityTier}
                   </span>

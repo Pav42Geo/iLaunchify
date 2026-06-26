@@ -136,7 +136,7 @@ export function RoleMatrix({
                   </td>
                 )
               })}
-              <td className="px-3 py-2.5 text-center text-emerald-600" title="Super admin always has every capability">
+              <td className="px-3 py-2.5 text-center text-success-600" title="Super admin always has every capability">
                 <Check className="mx-auto h-4 w-4" aria-label="always on" />
               </td>
             </tr>

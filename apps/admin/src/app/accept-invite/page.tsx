@@ -73,7 +73,7 @@ export default async function AcceptInvitePage({
       {emailMatches ? (
         <AcceptInvitePanel token={token} />
       ) : (
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12.5px] text-amber-800">
+        <div className="mt-5 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[12.5px] text-warning-800">
           This invite was sent to <span className="font-medium">{invite.email}</span>, but
           you&apos;re signed in as <span className="font-medium">{user.email}</span>. Sign out and
           sign back in with the invited email to accept.

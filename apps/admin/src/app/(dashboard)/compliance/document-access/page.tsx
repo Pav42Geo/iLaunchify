@@ -37,12 +37,12 @@ const REASONS: DocumentAccessReason[] = [
 ]
 
 const REASON_TONE: Record<DocumentAccessReason, { bg: string; text: string; border: string; dot: string }> = {
-  VERIFICATION: { bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  ADMIN_REVIEW: { bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200', dot: 'bg-sky-500' },
-  SUPPORT: { bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200', dot: 'bg-amber-500' },
-  AUDIT: { bg: 'bg-violet-50', text: 'text-violet-900', border: 'border-violet-200', dot: 'bg-violet-500' },
-  PARTNER_DOWNLOAD: { bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200', dot: 'bg-zinc-400' },
-  LEGAL_HOLD: { bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200', dot: 'bg-rose-500' },
+  VERIFICATION: { bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200', dot: 'bg-success-500' },
+  ADMIN_REVIEW: { bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', dot: 'bg-info-500' },
+  SUPPORT: { bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200', dot: 'bg-warning-500' },
+  AUDIT: { bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200', dot: 'bg-info-500' },
+  PARTNER_DOWNLOAD: { bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400' },
+  LEGAL_HOLD: { bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200', dot: 'bg-danger-500' },
 }
 
 function isReason(s: string | undefined): s is DocumentAccessReason {
@@ -148,7 +148,7 @@ export default async function DocumentAccessLogPage({ searchParams }: PageProps)
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold">When</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Viewer</th>
@@ -204,7 +204,7 @@ export default async function DocumentAccessLogPage({ searchParams }: PageProps)
             </tbody>
           </table>
           {rows.length === 200 && (
-            <div className="border-t border-ink-100 bg-zinc-50/60 px-3 py-2 text-[11px] text-ink-500">
+            <div className="border-t border-ink-100 bg-ink-50/60 px-3 py-2 text-[11px] text-ink-500">
               Showing the 200 most recent reads{reason ? ` for ${humanReason(reason)}` : ''}. Narrow
               by reason to see older entries.
             </div>
@@ -264,10 +264,10 @@ function Kpi({
   active?: boolean
 }) {
   const iconTone: Record<'amber' | 'emerald' | 'sky' | 'violet', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    violet: 'bg-violet-100 text-violet-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    violet: 'bg-info-100 text-info-700',
   }
   return (
     <div

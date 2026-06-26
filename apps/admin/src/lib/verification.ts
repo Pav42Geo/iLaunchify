@@ -75,13 +75,13 @@ export function computeOverallStatus(
 export function statusBadgeClass(status: VerificationSectionStatus | OverallStatus): string {
   switch (status) {
     case 'VERIFIED':
-      return 'bg-green-50 text-green-700 ring-1 ring-green-200'
+      return 'bg-success-50 text-success-700 ring-1 ring-success-200'
     case 'NEEDS_CHANGES':
-      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+      return 'bg-warning-50 text-warning-700 ring-1 ring-warning-200'
     case 'REJECTED':
-      return 'bg-red-50 text-red-700 ring-1 ring-red-200'
+      return 'bg-danger-50 text-danger-700 ring-1 ring-danger-200'
     case 'PENDING':
     default:
-      return 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'
+      return 'bg-ink-100 text-ink-700 ring-1 ring-ink-200'
   }
 }

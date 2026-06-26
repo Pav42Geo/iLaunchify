@@ -86,7 +86,7 @@ export function DielineStudioShell({ dieline }: { dieline: DielineEditorData }) 
           </Link>
           <span className="h-5 w-px bg-ink-200" />
           <span className="font-display text-[15px] font-bold tracking-tight">Die-line Studio</span>
-          <span className="rounded-full border border-ink-200 bg-zinc-50 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-600">
+          <span className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-600">
             {dieline.status.replace(/_/g, ' ').toLowerCase()}
           </span>
         </>
@@ -94,13 +94,13 @@ export function DielineStudioShell({ dieline }: { dieline: DielineEditorData }) 
       topBarRight={({ issues, saveStatus }: { issues: LayoutIssue[]; saveStatus: DielineSaveStatus }) => (
         <>
           <span className="flex items-center gap-1 text-[11.5px] text-ink-500">
-            {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-emerald-600" /> Saved</>)}
+            {saveStatus === 'saving' ? 'Saving…' : (<><Check className="h-3.5 w-3.5 text-success-600" /> Saved</>)}
           </span>
           <span
             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
               issues.length === 0
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-amber-200 bg-amber-50 text-amber-800'
+                ? 'border-success-200 bg-success-50 text-success-700'
+                : 'border-warning-200 bg-warning-50 text-warning-800'
             }`}
             title={issues.map((i) => i.message).join('\n')}
           >

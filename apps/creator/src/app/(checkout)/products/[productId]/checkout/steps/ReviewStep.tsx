@@ -141,7 +141,7 @@ export function ReviewStep({ productId, state, onChange, snapshot }: Props) {
               </p>
             ) : snapshot.compliance.blockingFindingCount > 0 ? (
               <p className="text-[12px] text-ink-700">
-                <strong className="font-semibold text-amber-800">
+                <strong className="font-semibold text-warning-800">
                   {snapshot.compliance.blockingFindingCount} blocking{' '}
                   {snapshot.compliance.blockingFindingCount === 1
                     ? 'issue'
@@ -153,7 +153,7 @@ export function ReviewStep({ productId, state, onChange, snapshot }: Props) {
                   : ' — open the Studio compliance panel to address them.'}
               </p>
             ) : (
-              <p className="text-[12px] text-emerald-700">
+              <p className="text-[12px] text-success-700">
                 No blocking issues on the last scan
                 {snapshot.compliance.lastAckAt
                   ? ` (verified ${formatRelative(snapshot.compliance.lastAckAt)})`
@@ -183,7 +183,7 @@ export function ReviewStep({ productId, state, onChange, snapshot }: Props) {
                   className={
                     'flex items-center justify-between ' +
                     (snapshot.text.emptyOrPlaceholderCount > 0
-                      ? 'text-amber-800'
+                      ? 'text-warning-800'
                       : '')
                   }
                 >
@@ -193,7 +193,7 @@ export function ReviewStep({ productId, state, onChange, snapshot }: Props) {
                   </span>
                 </li>
                 {findings.some((f) => f.severity === 'blocking' && f.id === 'placeholder-text') && (
-                  <li className="pt-1 text-[11.5px] leading-snug text-amber-800">
+                  <li className="pt-1 text-[11.5px] leading-snug text-warning-800">
                     Resolve placeholder text in the Studio before production runs.
                   </li>
                 )}
@@ -202,7 +202,7 @@ export function ReviewStep({ productId, state, onChange, snapshot }: Props) {
           </ReportCard>
 
           {blockingCount > 0 && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-[12px] text-amber-900">
+            <div className="flex items-start gap-2 rounded-lg border border-warning-300 bg-warning-50 p-3 text-[12px] text-warning-900">
               <AlertOctagon className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
                 You can still continue, but partners may push back during their
@@ -303,9 +303,9 @@ function ReportCard({
     <div className="rounded-2xl border border-ink-200 bg-white p-4">
       <header className="mb-2 flex items-center gap-2">
         {status === 'ok' ? (
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-success-700" />
         ) : (
-          <FileWarning className="h-3.5 w-3.5 text-amber-700" />
+          <FileWarning className="h-3.5 w-3.5 text-warning-700" />
         )}
         <h3 className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
           {title}
@@ -364,7 +364,7 @@ function ApprovalCard({
       className={
         'group flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ' +
         (approved
-          ? 'border-emerald-300 bg-emerald-50/60'
+          ? 'border-success-300 bg-success-50/60'
           : 'border-pink-200 bg-pink-50/40 hover:border-pink-300')
       }
     >
@@ -373,7 +373,7 @@ function ApprovalCard({
         className={
           'relative mt-0.5 h-5 w-5 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
           (approved
-            ? 'border-emerald-500 bg-emerald-500'
+            ? 'border-success-500 bg-success-500'
             : 'border-ink-400 bg-white group-hover:border-pink-500')
         }
       >

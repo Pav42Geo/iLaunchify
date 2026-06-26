@@ -40,7 +40,7 @@ const fixture: DielineTarget[] = [
 export default function AiCreateDemoPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+      <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12px] text-warning-800">
         P2 demo harness — fixture die-line set, placeholder art. Real loader + Studio-rail mount pending (Code).
       </div>
       <AiCreatePanel

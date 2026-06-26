@@ -127,7 +127,7 @@ export const RowActionItem = React.forwardRef<HTMLDivElement, RowActionItemProps
       'data-[highlighted]:bg-ink-50',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       danger
-        ? 'text-rose-700 data-[highlighted]:bg-rose-50 data-[highlighted]:text-rose-800'
+        ? 'text-danger-700 data-[highlighted]:bg-danger-50 data-[highlighted]:text-danger-800'
         : 'text-ink-700 data-[highlighted]:text-ink-900',
     )
 
@@ -137,7 +137,7 @@ export const RowActionItem = React.forwardRef<HTMLDivElement, RowActionItemProps
           <Icon
             className={cn(
               'h-3.5 w-3.5 shrink-0',
-              danger ? 'text-rose-500' : 'text-ink-400 group-data-[highlighted]:text-ink-700',
+              danger ? 'text-danger-500' : 'text-ink-400 group-data-[highlighted]:text-ink-700',
             )}
             aria-hidden="true"
           />

@@ -469,13 +469,13 @@ export function ExportModal({
           </section>
 
           {/* CMYK disclosure */}
-          <section className="rounded-md border border-amber-200 bg-amber-50/60 p-3 flex gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
+          <section className="rounded-md border border-warning-200 bg-warning-50/60 p-3 flex gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-warning-700 flex-shrink-0 mt-0.5" />
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                 RGB output · printer converts to CMYK
               </div>
-              <p className="mt-1 text-[11px] text-amber-900 leading-[1.45]">
+              <p className="mt-1 text-[11px] text-warning-900 leading-[1.45]">
                 V1 exports embed RGB. Your print partner's RIP handles
                 CMYK conversion. Solid neons (pink #FF2E63, neon
                 green) shift slightly under standard CMYK — review the
@@ -555,7 +555,7 @@ function BlockingWarning({
       className={
         'rounded-md border p-3.5 ' +
         (acknowledged
-          ? 'border-amber-300 bg-amber-50/60'
+          ? 'border-warning-300 bg-warning-50/60'
           : 'border-pink-500 bg-pink-50')
       }
       role="alert"
@@ -564,7 +564,7 @@ function BlockingWarning({
         <AlertOctagon
           className={
             'h-4 w-4 flex-shrink-0 mt-0.5 ' +
-            (acknowledged ? 'text-amber-700' : 'text-pink-700')
+            (acknowledged ? 'text-warning-700' : 'text-pink-700')
           }
         />
         <div className="flex-1">
@@ -621,7 +621,7 @@ function BlockingWarning({
               className={
                 'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
                 (acknowledged
-                  ? 'bg-amber-500 border-amber-500'
+                  ? 'bg-warning-500 border-warning-500'
                   : 'border-pink-500 bg-white hover:border-pink-700')
               }
             >
@@ -667,12 +667,12 @@ function BioengineeredAck({
     <section
       className={
         'rounded-md border p-3.5 ' +
-        (acknowledged ? 'border-amber-300 bg-amber-50/60' : 'border-amber-400 bg-amber-50')
+        (acknowledged ? 'border-warning-300 bg-warning-50/60' : 'border-warning-400 bg-warning-50')
       }
       role="alert"
     >
       <div className="flex items-start gap-2.5">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-700" />
+        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-warning-700" />
         <div className="flex-1">
           <div className="text-[12.5px] font-bold text-ink-900">{finding.title}</div>
           <p className="mt-1 text-[11.5px] text-ink-700 leading-[1.5]">
@@ -692,8 +692,8 @@ function BioengineeredAck({
               className={
                 'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
                 (acknowledged
-                  ? 'bg-amber-500 border-amber-500'
-                  : 'border-amber-500 bg-white hover:border-amber-700')
+                  ? 'bg-warning-500 border-warning-500'
+                  : 'border-warning-500 bg-white hover:border-warning-700')
               }
             >
               {acknowledged && (
@@ -745,9 +745,9 @@ function PreflightWarning({
       className={
         'rounded-md border p-3.5 ' +
         (!hasErrors
-          ? 'border-amber-300 bg-amber-50/60'
+          ? 'border-warning-300 bg-warning-50/60'
           : acknowledged
-            ? 'border-amber-300 bg-amber-50/60'
+            ? 'border-warning-300 bg-warning-50/60'
             : 'border-pink-500 bg-pink-50')
       }
       role="alert"
@@ -757,11 +757,11 @@ function PreflightWarning({
           <AlertOctagon
             className={
               'h-4 w-4 flex-shrink-0 mt-0.5 ' +
-              (acknowledged ? 'text-amber-700' : 'text-pink-700')
+              (acknowledged ? 'text-warning-700' : 'text-pink-700')
             }
           />
         ) : (
-          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-700" />
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-warning-700" />
         )}
         <div className="flex-1">
           <div className="text-[12.5px] font-bold text-ink-900">
@@ -786,7 +786,7 @@ function PreflightWarning({
                 <span
                   className={
                     'font-bold ' +
-                    (f.severity === 'ERROR' ? 'text-pink-700' : 'text-amber-600')
+                    (f.severity === 'ERROR' ? 'text-pink-700' : 'text-warning-600')
                   }
                 >
                   •
@@ -814,7 +814,7 @@ function PreflightWarning({
                 className={
                   'mt-0.5 w-4 h-4 border-[1.5px] rounded relative flex-shrink-0 transition-colors ' +
                   (acknowledged
-                    ? 'bg-amber-500 border-amber-500'
+                    ? 'bg-warning-500 border-warning-500'
                     : 'border-pink-500 bg-white hover:border-pink-700')
                 }
               >

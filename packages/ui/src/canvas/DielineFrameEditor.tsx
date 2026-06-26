@@ -193,7 +193,7 @@ export function DielineFrameEditor({
   const issues = useMemo(() => validateFrameLayout(layout, { safeArea: safe }), [layout, safe])
 
   return (
-    <div className="flex h-full w-full flex-col bg-zinc-100 text-ink-900">
+    <div className="flex h-full w-full flex-col bg-ink-100 text-ink-900">
       {/* ---- Top bar (parent-supplied slots) ---- */}
       <header className="flex h-[57px] shrink-0 items-center justify-between border-b border-ink-200 bg-white px-4">
         <div className="flex items-center gap-3">{topBarLeft}</div>
@@ -406,14 +406,14 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
       <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." />
 
       {/* Preflight — must clear before the die-line can be confirmed. */}
-      <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/60'}`}>
+      <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-success-50/40' : 'border-warning-100 bg-warning-50/60'}`}>
         <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Preflight</p>
         {issues.length === 0 ? (
-          <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
+          <p className="mt-0.5 flex items-center gap-1 text-[12px] font-medium text-success-700"><Check className="h-3.5 w-3.5" /> All required slots placed + in safe area.</p>
         ) : (
           <ul className="mt-1 space-y-0.5">
             {issues.map((iss, i) => (
-              <li key={i} className="text-[11.5px] text-amber-800">⚠️ {iss.message}</li>
+              <li key={i} className="text-[11.5px] text-warning-800">⚠️ {iss.message}</li>
             ))}
           </ul>
         )}
@@ -421,10 +421,10 @@ function FramesDrawer({ layout, selected, issues, onAdd, onRemove, onPatch, onSe
 
       {/* selected frame editor */}
       {selected && (
-        <div className="border-b border-ink-100 bg-zinc-50/60 px-4 py-3">
+        <div className="border-b border-ink-100 bg-ink-50/60 px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-[12.5px] font-semibold">{KIND_LABEL[selected.kind]}</span>
-            <button onClick={() => onRemove(selected.id)} className="text-ink-400 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => onRemove(selected.id)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
           <ScopeChip scope={FRAME_SCOPE[selected.kind]} />
           <label className="mt-2 flex items-center gap-2 text-[12px]">
@@ -525,7 +525,7 @@ function LayersDrawer({ layout, selectedId, onSelect, onRemove }: { layout: Fram
               <span className="h-2 w-2 rounded-full" style={{ background: SCOPE_COLOR[FRAME_SCOPE[f.kind]].stroke }} />
               <span className="flex-1 truncate">{KIND_LABEL[f.kind]}</span>
             </button>
-            <button onClick={() => onRemove(f.id)} className="text-ink-400 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => onRemove(f.id)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-3.5 w-3.5" /></button>
           </li>
         ))}
       </ul>

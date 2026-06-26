@@ -182,12 +182,12 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
         >
           {logo ? (
             <>
-              <FileImage className="h-5 w-5 text-emerald-600" />
+              <FileImage className="h-5 w-5 text-success-600" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink-900">{logo.name}</div>
                 <div className="text-xs text-ink-500">{(logo.size / 1024).toFixed(1)} KB</div>
               </div>
-              <span className="text-xs text-emerald-700">Click to change</span>
+              <span className="text-xs text-success-700">Click to change</span>
             </>
           ) : (
             <>
@@ -205,7 +205,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
           {error}
         </div>
       )}
@@ -221,7 +221,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
 
 function RequiredBadge() {
   return (
-    <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
+    <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">
       Required
     </span>
   )

@@ -157,7 +157,7 @@ function SubscriptionCard({ sub }: { sub: SubView }) {
             Subscribe &amp; save
           </span>
           {sub.discountBp > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-[2px] text-[10.5px] font-semibold text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-[2px] text-[10.5px] font-semibold text-success-700">
               <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
               {pctOff}% off
             </span>
@@ -207,7 +207,7 @@ function SubscriptionCard({ sub }: { sub: SubView }) {
               />
             </dl>
             {sub.status === 'CANCELLED' && sub.cancelledReason && (
-              <p className="mt-3 inline-flex items-start gap-1.5 rounded-md bg-red-50/60 px-2.5 py-1.5 text-[11.5px] text-red-700">
+              <p className="mt-3 inline-flex items-start gap-1.5 rounded-md bg-danger-50/60 px-2.5 py-1.5 text-[11.5px] text-danger-700">
                 <AlertOctagon
                   className="mt-0.5 h-3 w-3 flex-shrink-0"
                   aria-hidden="true"

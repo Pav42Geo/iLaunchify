@@ -18,9 +18,9 @@ export const metadata = { title: 'Cancellation requests — Admin' }
 type CancStatus = 'PENDING_REVIEW' | 'APPROVED' | 'DENIED'
 
 const STATUS_PILL: Record<CancStatus, string> = {
-  PENDING_REVIEW: 'border-amber-200 bg-amber-50 text-amber-800',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  DENIED: 'border-rose-200 bg-rose-50 text-rose-800',
+  PENDING_REVIEW: 'border-warning-200 bg-warning-50 text-warning-800',
+  APPROVED: 'border-success-200 bg-success-50 text-success-800',
+  DENIED: 'border-danger-200 bg-danger-50 text-danger-800',
 }
 
 const STATUS_LABEL: Record<CancStatus, string> = {
@@ -104,9 +104,9 @@ export default async function CancellationsQueuePage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Total', value: all.length, tone: 'text-ink-900' },
-          { label: 'Pending', value: pending, tone: pending > 0 ? 'text-amber-700' : 'text-ink-900' },
-          { label: 'Approved', value: approved, tone: 'text-emerald-700' },
-          { label: 'Denied', value: denied, tone: 'text-rose-700' },
+          { label: 'Pending', value: pending, tone: pending > 0 ? 'text-warning-700' : 'text-ink-900' },
+          { label: 'Approved', value: approved, tone: 'text-success-700' },
+          { label: 'Denied', value: denied, tone: 'text-danger-700' },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
             <div className={`font-display text-[26px] font-bold tabular-nums ${k.tone}`}>{k.value}</div>

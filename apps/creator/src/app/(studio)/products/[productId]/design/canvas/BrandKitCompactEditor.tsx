@@ -99,7 +99,7 @@ export function BuildFromWebsite({ brandId, onDone }: { brandId: string; onDone:
         </div>
       )}
       {msg && (
-        <p className={`mt-2 text-[10.5px] ${msg.kind === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</p>
+        <p className={`mt-2 text-[10.5px] ${msg.kind === 'ok' ? 'text-success-700' : 'text-danger-600'}`}>{msg.text}</p>
       )}
     </div>
   )
@@ -169,13 +169,13 @@ export function LogosCompact({
                       type="button"
                       onClick={() => remove(key)}
                       aria-label={`Remove ${label}`}
-                      className="absolute right-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded-full bg-white/90 text-ink-500 shadow-sm hover:text-red-600 group-hover:flex"
+                      className="absolute right-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded-full bg-white/90 text-ink-500 shadow-sm hover:text-danger-600 group-hover:flex"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </>
                 ) : asset ? (
-                  <span className="absolute inset-0 flex items-center justify-center text-emerald-600"><Check className="h-4 w-4" /></span>
+                  <span className="absolute inset-0 flex items-center justify-center text-success-600"><Check className="h-4 w-4" /></span>
                 ) : (
                   <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center text-ink-400 hover:text-pink-600">
                     <Upload className="h-4 w-4" />
@@ -198,7 +198,7 @@ export function LogosCompact({
           )
         })}
       </div>
-      {err && <p className="text-[10.5px] text-red-600">{err}</p>}
+      {err && <p className="text-[10.5px] text-danger-600">{err}</p>}
     </div>
   )
 }
@@ -253,7 +253,7 @@ function ColorPopover({
           Apply
         </button>
         {onRemove && (
-          <button type="button" onClick={onRemove} aria-label="Remove color" className="rounded border border-ink-200 px-2 text-ink-500 hover:text-red-600">
+          <button type="button" onClick={onRemove} aria-label="Remove color" className="rounded border border-ink-200 px-2 text-ink-500 hover:text-danger-600">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
@@ -366,7 +366,7 @@ export function ColorsCompact({
           )}
         </div>
       </div>
-      {err && <p className="text-[10.5px] text-red-600">{err}</p>}
+      {err && <p className="text-[10.5px] text-danger-600">{err}</p>}
     </div>
   )
 }
@@ -476,7 +476,7 @@ export function FontsCompact({
             return (
               <span key={id} className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white py-0.5 pl-2 pr-1 text-[12px] text-ink-800" style={f ? { fontFamily: f.family } : undefined}>
                 {f?.family ?? id}
-                <button type="button" onClick={() => remove(id)} aria-label="Remove font" className="text-ink-400 hover:text-red-600"><X className="h-3 w-3" /></button>
+                <button type="button" onClick={() => remove(id)} aria-label="Remove font" className="text-ink-400 hover:text-danger-600"><X className="h-3 w-3" /></button>
               </span>
             )
           })}
@@ -499,7 +499,7 @@ export function FontsCompact({
                     onClick={() => (isSel ? remove(c.ref) : add(c.ref))}
                     className="flex min-w-0 items-center gap-1 text-left"
                   >
-                    {isSel && <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />}
+                    {isSel && <Check className="h-3 w-3 flex-shrink-0 text-success-600" />}
                     <span className="truncate text-[12px] text-ink-800" style={{ fontFamily: c.family }}>
                       {c.family}
                     </span>
@@ -508,7 +508,7 @@ export function FontsCompact({
                     type="button"
                     onClick={() => deleteCustom(c)}
                     aria-label={`Delete ${c.family}`}
-                    className="text-ink-400 hover:text-red-600"
+                    className="text-ink-400 hover:text-danger-600"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -586,7 +586,7 @@ export function FontsCompact({
       ) : (
         <p className="text-[10.5px] text-ink-400">Up to 3 brand fonts. Remove one to add another.</p>
       )}
-      {err && <p className="text-[10.5px] text-red-600">{err}</p>}
+      {err && <p className="text-[10.5px] text-danger-600">{err}</p>}
     </div>
   )
 }
@@ -611,7 +611,7 @@ export function TaglineCompact({ brandId, initial }: { brandId: string; initial:
         className="w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
       />
       <div className="text-right text-[10px] text-ink-400">{tagline.length} / 120</div>
-      {err && <p className="text-[10.5px] text-red-600">{err}</p>}
+      {err && <p className="text-[10.5px] text-danger-600">{err}</p>}
     </div>
   )
 }

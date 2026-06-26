@@ -121,7 +121,7 @@ export default async function CertificationsPage({
               title="Verified"
               count={verified.length}
               icon={CheckCircle2}
-              iconClass="text-emerald-600"
+              iconClass="text-success-600"
             >
               {verified.map((inst) => (
                 <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
@@ -133,7 +133,7 @@ export default async function CertificationsPage({
               title="Pending review"
               count={pending.length}
               icon={Clock}
-              iconClass="text-amber-600"
+              iconClass="text-warning-600"
             >
               {pending.map((inst) => (
                 <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
@@ -145,7 +145,7 @@ export default async function CertificationsPage({
               title="Needs attention"
               count={issues.length}
               icon={AlertTriangle}
-              iconClass="text-red-600"
+              iconClass="text-danger-600"
             >
               {issues.map((inst) => (
                 <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
@@ -216,7 +216,7 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -318,7 +318,7 @@ function CertRow({
             <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>
           </div>
           {inst.status === 'REJECTED' && inst.rejectionReason && (
-            <div className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-800">
+            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-xs text-danger-800">
               <span className="font-semibold">Reviewer note: </span>
               {inst.rejectionReason}
             </div>

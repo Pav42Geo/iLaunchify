@@ -11,11 +11,11 @@ import { DashboardCard, EmptyState } from './OrdersByStatusChart'
 import type { InboxRow } from '../dashboard-data'
 
 const QUEUE_TONE: Record<InboxRow['queue'], string> = {
-  leads: 'bg-amber-500',
-  partners: 'bg-blue-500',
+  leads: 'bg-warning-500',
+  partners: 'bg-info-500',
   products: 'bg-pink-500',
-  ingredients: 'bg-emerald-500',
-  certs: 'bg-purple-500',
+  ingredients: 'bg-success-500',
+  certs: 'bg-info-500',
 }
 
 const QUEUE_LABEL: Record<InboxRow['queue'], string> = {

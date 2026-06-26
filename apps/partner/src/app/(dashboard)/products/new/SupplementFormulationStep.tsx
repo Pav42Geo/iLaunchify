@@ -302,7 +302,7 @@ export function SupplementFormulationStep({
                       <span className="font-medium text-ink-900">{c.name}</span>
                       {(c.form || c.altName) && <span className="ml-1 text-[11px] text-ink-500">as {c.form || c.altName}</span>}
                     </span>
-                    <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">{c.category}</span>
+                    <span className="rounded border border-success-200 bg-success-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success-700">{c.category}</span>
                   </button>
                 ))}
                 {dsldResults.length === 0 && dsldNote && <div className="px-3 py-2 text-[12px] text-ink-500">{dsldNote}</div>}
@@ -352,7 +352,7 @@ export function SupplementFormulationStep({
                         {blends.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </td>
-                    <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
+                    <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button></td>
                   </tr>
                 ))}
                 {dietRows.length === 0 && <tr><td colSpan={7} className="py-4 text-center text-[12px] text-ink-400">No dietary ingredients yet — add the first below.</td></tr>}
@@ -388,7 +388,7 @@ export function SupplementFormulationStep({
                     <input className={`${INPUT} w-20 text-right`} type="number" min={0} value={b.total} onChange={(e) => patchBlend(b.id, { total: Math.max(0, parseFloat(e.target.value) || 0) })} />
                     <select className={`${INPUT} w-24`} value={b.unit} onChange={(e) => patchBlend(b.id, { unit: e.target.value })}>{UNITS.map((u) => <option key={u} value={u}>{u}</option>)}</select>
                     <span className="text-[11px] text-ink-500">{members} member{members === 1 ? '' : 's'}</span>
-                    <button type="button" aria-label="Remove blend" onClick={() => removeBlend(b.id)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                    <button type="button" aria-label="Remove blend" onClick={() => removeBlend(b.id)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 )
               })}
@@ -414,7 +414,7 @@ export function SupplementFormulationStep({
               {otherRows.map((r) => (
                 <div key={r.uid} className="flex items-center gap-2">
                   <input className={`${INPUT} flex-1`} value={r.name} placeholder="e.g. Gelatin, Rice flour, Magnesium stearate" onChange={(e) => patch(r.uid, { name: e.target.value })} />
-                  <button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
             </div>

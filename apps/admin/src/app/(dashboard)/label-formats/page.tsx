@@ -72,22 +72,22 @@ const LABELING_TYPE_META: Record<
   FOOD: {
     label: 'Food',
     chip: 'Nutrition Facts',
-    badge: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    badge: { bg: 'bg-success-50', text: 'text-success-700', border: 'border-success-200' },
   },
   DIETARY_SUPPLEMENT: {
     label: 'Supplement',
     chip: 'Supplement Facts',
-    badge: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+    badge: { bg: 'bg-info-50', text: 'text-info-700', border: 'border-info-200' },
   },
   PET_PRODUCT: {
     label: 'Pet',
     chip: 'AAFCO',
-    badge: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    badge: { bg: 'bg-warning-50', text: 'text-warning-700', border: 'border-warning-200' },
   },
   OTC: {
     label: 'OTC',
     chip: 'Drug Facts',
-    badge: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    badge: { bg: 'bg-info-50', text: 'text-info-700', border: 'border-info-200' },
   },
   COSMETIC: {
     label: 'Cosmetic',
@@ -322,16 +322,16 @@ function KpiCard({
   active?: boolean
 }) {
   const ring: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -523,7 +523,7 @@ function LabelFormatsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh col="format" label="Format" sort={sort} dir={dir} active={sortActive} />
             <SortableTh col="type" label="Labeling type" sort={sort} dir={dir} active={sortActive} />
@@ -549,7 +549,7 @@ function LabelFormatsTable({
                   >
                     {r.formatLabel}
                   </Link>
-                  <code className="mt-0.5 inline-block rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
+                  <code className="mt-0.5 inline-block rounded border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
                     {r.format}
                   </code>
                 </td>
@@ -611,7 +611,7 @@ function LabelFormatsTable({
 
 function CapBadge({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-ink-200 bg-zinc-50 px-1.5 py-[1px] text-[10px] font-medium text-ink-600">
+    <span className="inline-flex items-center gap-1 rounded-md border border-ink-200 bg-ink-50 px-1.5 py-[1px] text-[10px] font-medium text-ink-600">
       <Icon className="h-3 w-3 text-ink-400" />
       {label}
     </span>

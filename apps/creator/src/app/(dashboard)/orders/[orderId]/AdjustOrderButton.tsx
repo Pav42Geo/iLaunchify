@@ -40,8 +40,8 @@ export function AdjustOrderButton({ productId, orderId }: Props) {
       >
         {isPending ? 'Loading order…' : 'Adjust order'}
       </button>
-      {error && <p className="text-[11px] text-red-700">{error}</p>}
-      <p className="text-[10.5px] text-red-700">
+      {error && <p className="text-[11px] text-danger-700">{error}</p>}
+      <p className="text-[10.5px] text-danger-700">
         Resubmitting only re-asks the partner gates affected by your changes.
       </p>
     </div>

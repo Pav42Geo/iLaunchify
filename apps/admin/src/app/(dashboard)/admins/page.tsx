@@ -102,7 +102,7 @@ export default async function AdminsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {unassigned ? (
-                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-[3px] text-[11px] font-medium text-amber-700">
+                        <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-2.5 py-[3px] text-[11px] font-medium text-warning-700">
                           Unassigned
                         </span>
                       ) : (

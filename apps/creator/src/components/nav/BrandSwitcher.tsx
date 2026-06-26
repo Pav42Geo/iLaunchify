@@ -68,7 +68,7 @@ export function BrandSwitcher({ brands, activeBrandId }: BrandSwitcherProps) {
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded bg-emerald-100 text-[11px] font-bold text-emerald-700">
+        <span className="flex h-6 w-6 items-center justify-center rounded bg-success-100 text-[11px] font-bold text-success-700">
           {active.name.slice(0, 1).toUpperCase()}
         </span>
         <span className="hidden max-w-[160px] truncate sm:inline">{active.name}</span>
@@ -102,7 +102,7 @@ export function BrandSwitcher({ brands, activeBrandId }: BrandSwitcherProps) {
                       <div className="truncate text-xs text-ink-500">/{b.handle}</div>
                     </span>
                   </span>
-                  {b.id === active.id && <Check className="h-4 w-4 text-emerald-600" />}
+                  {b.id === active.id && <Check className="h-4 w-4 text-success-600" />}
                 </button>
               </li>
             ))}
@@ -112,7 +112,7 @@ export function BrandSwitcher({ brands, activeBrandId }: BrandSwitcherProps) {
             onClick={() => setIsOpen(false)}
             className="flex items-center gap-2 border-t border-ink-100 px-3 py-2 text-sm text-ink-700 transition-colors hover:bg-ink-50"
           >
-            <Sparkles className="h-4 w-4 text-emerald-500" />
+            <Sparkles className="h-4 w-4 text-success-500" />
             Edit {active.name}&apos;s assets
           </Link>
           <Link

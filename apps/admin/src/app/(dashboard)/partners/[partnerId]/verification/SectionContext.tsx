@@ -39,23 +39,23 @@ export function BusinessContext({
   ].filter(Boolean)
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+    <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
       <Row label="DBA" value={partner.companyName} />
       <Row label="Legal name" value={partner.legalName} />
       <Row label="Website" value={partner.websiteUrl} />
       <Row label="Phone" value={partner.contactPhone} />
-      <div className="mt-2 border-t border-zinc-200 pt-2">
-        <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+      <div className="mt-2 border-t border-ink-200 pt-2">
+        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
           Primary facility address
         </div>
         {addressLines.length > 0 ? (
-          <div className="mt-1 text-zinc-700">
+          <div className="mt-1 text-ink-700">
             {addressLines.map((line, i) => (
               <div key={i}>{line}</div>
             ))}
           </div>
         ) : (
-          <div className="mt-1 text-zinc-400">Not provided</div>
+          <div className="mt-1 text-ink-400">Not provided</div>
         )}
       </div>
     </div>
@@ -80,7 +80,7 @@ export function CapabilitiesContext({
 }) {
   if (services.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-zinc-200 px-4 py-3 text-sm text-zinc-500">
+      <div className="rounded-md border border-dashed border-ink-200 px-4 py-3 text-sm text-ink-500">
         Partner hasn&apos;t selected any service types yet.
       </div>
     )
@@ -89,9 +89,9 @@ export function CapabilitiesContext({
   return (
     <div className="space-y-2">
       {services.map((s) => (
-        <div key={s.id} className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+        <div key={s.id} className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
           <div className="mb-2 flex items-center gap-2">
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+            <span className="rounded-full bg-success-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-success-800">
               {SERVICE_LABEL[s.type]}
             </span>
           </div>
@@ -104,7 +104,7 @@ export function CapabilitiesContext({
 
 function CapabilityFields({ capabilities }: { capabilities: Record<string, unknown> | null }) {
   if (!capabilities || Object.keys(capabilities).length === 0) {
-    return <div className="text-zinc-400">No capability details filled in yet.</div>
+    return <div className="text-ink-400">No capability details filled in yet.</div>
   }
 
   // The partner accordion writes shapes like:
@@ -116,15 +116,15 @@ function CapabilityFields({ capabilities }: { capabilities: Record<string, unkno
   )
 
   if (entries.length === 0) {
-    return <div className="text-zinc-400">No capability details filled in yet.</div>
+    return <div className="text-ink-400">No capability details filled in yet.</div>
   }
 
   return (
     <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
       {entries.map(([k, v]) => (
         <div key={k} className="flex flex-col">
-          <dt className="text-xs uppercase tracking-wider text-zinc-500">{humanizeKey(k)}</dt>
-          <dd className="text-zinc-800">{formatValue(v)}</dd>
+          <dt className="text-xs uppercase tracking-wider text-ink-500">{humanizeKey(k)}</dt>
+          <dd className="text-ink-800">{formatValue(v)}</dd>
         </div>
       ))}
     </dl>
@@ -175,8 +175,8 @@ export function CommercialContext({
 }: CommercialContextProps) {
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
-        <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
+        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
           Partner agreement
         </div>
         {contract && signedAt ? (
@@ -187,8 +187,8 @@ export function CommercialContext({
               badge={contract.status === 'ACTIVE' ? 'ACTIVE' : contract.status}
               badgeClass={
                 contract.status === 'ACTIVE'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
+                  ? 'bg-success-100 text-success-800'
+                  : 'bg-warning-100 text-warning-800'
               }
             />
             <Row label="Signed at" value={new Date(signedAt).toLocaleString()} />
@@ -202,12 +202,12 @@ export function CommercialContext({
             />
           </div>
         ) : (
-          <div className="mt-1 text-zinc-400">Partner has not signed the contract yet.</div>
+          <div className="mt-1 text-ink-400">Partner has not signed the contract yet.</div>
         )}
       </div>
 
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
-        <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
+        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
           Stripe Connect (payouts)
         </div>
         <div className="mt-2 space-y-1">
@@ -224,7 +224,7 @@ export function CommercialContext({
           />
         </div>
         {stripeAccountStatus !== 'ACTIVE' && (
-          <p className="mt-2 text-xs text-amber-700">
+          <p className="mt-2 text-xs text-warning-700">
             Payouts won&apos;t flow until this is ACTIVE. Partner must complete Stripe Connect Express
             onboarding from their /onboarding accordion.
           </p>
@@ -237,14 +237,14 @@ export function CommercialContext({
 function stripeBadgeClass(status: string): string {
   switch (status) {
     case 'ACTIVE':
-      return 'bg-emerald-100 text-emerald-800'
+      return 'bg-success-100 text-success-800'
     case 'PENDING':
     case 'RESTRICTED':
-      return 'bg-amber-100 text-amber-800'
+      return 'bg-warning-100 text-warning-800'
     case 'REJECTED':
-      return 'bg-red-100 text-red-800'
+      return 'bg-danger-100 text-danger-800'
     default:
-      return 'bg-zinc-100 text-zinc-700'
+      return 'bg-ink-100 text-ink-700'
   }
 }
 
@@ -267,11 +267,11 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-xs uppercase tracking-wider text-ink-500">{label}</span>
       <span className="flex min-w-0 items-center gap-2 text-right">
         {value && (
           <span
-            className={`truncate text-zinc-800 ${mono ? 'font-mono text-xs' : ''}`}
+            className={`truncate text-ink-800 ${mono ? 'font-mono text-xs' : ''}`}
             title={value}
           >
             {value}
@@ -280,7 +280,7 @@ function Row({
         {badge && (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-              badgeClass ?? 'bg-zinc-100 text-zinc-700'
+              badgeClass ?? 'bg-ink-100 text-ink-700'
             }`}
           >
             {badge}

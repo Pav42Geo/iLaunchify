@@ -12,12 +12,12 @@ import { DielineRowActions } from './DielineRowActions'
 
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const DIELINE_STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  UPLOADED: { label: 'Uploaded', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  PARSED: { label: 'Parsed', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  PARTNER_CONFIRMED: { label: 'Confirmed', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ADMIN_VERIFIED: { label: 'Admin verified', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ACTIVE: { label: 'Active', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  ARCHIVED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
+  UPLOADED: { label: 'Uploaded', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  PARSED: { label: 'Parsed', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  PARTNER_CONFIRMED: { label: 'Confirmed', cls: 'border-info-200 bg-info-50 text-info-800' },
+  ADMIN_VERIFIED: { label: 'Admin verified', cls: 'border-info-200 bg-info-50 text-info-800' },
+  ACTIVE: { label: 'Active', cls: 'border-success-200 bg-success-50 text-success-800' },
+  ARCHIVED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
 }
 
 export const dynamic = 'force-dynamic'

@@ -178,7 +178,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
                 <tr key={r.uid} className="border-b border-ink-50">
                   <td className="py-1.5 pr-2"><input className={`${INPUT} w-full`} value={r.name} placeholder="e.g. Chicken, Brown Rice, Chicken Fat" onChange={(e) => patch(r.uid, { name: e.target.value })} /></td>
                   <td className="py-1.5 px-1"><input className={`${INPUT} w-20 text-right`} type="number" min={0} value={r.weight} onChange={(e) => patch(r.uid, { weight: Math.max(0, parseFloat(e.target.value) || 0) })} /></td>
-                  <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
+                  <td className="py-1.5 pl-1 text-right"><button type="button" aria-label="Remove" onClick={() => remove(r.uid)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button></td>
                 </tr>
               ))}
               {rows.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-[12px] text-ink-400">No ingredients yet — add the first below.</td></tr>}
@@ -202,7 +202,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
               <select className={INPUT} value={o.bound} onChange={(e) => patchOther(i, { bound: e.target.value as 'min' | 'max' })}><option value="min">min</option><option value="max">max</option></select>
               <input className={`${INPUT} w-20 text-right`} type="number" min={0} value={o.value} onChange={(e) => patchOther(i, { value: Math.max(0, parseFloat(e.target.value) || 0) })} />
               <input className={`${INPUT} w-16`} value={o.unit} onChange={(e) => patchOther(i, { unit: e.target.value })} />
-              <button type="button" aria-label="Remove" onClick={() => removeOther(i)} className="text-ink-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+              <button type="button" aria-label="Remove" onClick={() => removeOther(i)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button>
             </div>
           ))}
           <button type="button" onClick={addOther} className="mt-2 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Extra guarantee</button>
@@ -212,7 +212,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
         <div className="rounded-2xl border border-ink-200 bg-white p-4">
           <h2 className="mb-2 text-[14px] font-bold text-ink-900">Feeding directions</h2>
           <textarea className={`${INPUT} w-full`} rows={3} value={feedingDirections} placeholder="e.g. Feed 1 cup per 20 lbs of body weight daily, divided into two meals. Adjust to maintain ideal body condition. Provide fresh water." onChange={(e) => setFeeding(e.target.value)} />
-          {method !== 'intermittent' && !feedingDirections.trim() && <p className="mt-1 text-[11px] text-amber-600">Feeding directions are required for complete &amp; balanced products.</p>}
+          {method !== 'intermittent' && !feedingDirections.trim() && <p className="mt-1 text-[11px] text-warning-600">Feeding directions are required for complete &amp; balanced products.</p>}
         </div>
 
         <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} AAFCO search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>

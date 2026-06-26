@@ -113,27 +113,27 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
   }
 
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3">
+    <div className="rounded-md border border-ink-200 bg-white p-3">
       <div className="flex items-start gap-3">
         {inst.badgeUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={inst.badgeUrl}
             alt=""
-            className="mt-0.5 h-9 w-9 flex-shrink-0 rounded-md border border-zinc-200 bg-white object-contain p-1"
+            className="mt-0.5 h-9 w-9 flex-shrink-0 rounded-md border border-ink-200 bg-white object-contain p-1"
           />
         ) : (
-          <div className="mt-0.5 rounded-md bg-zinc-100 p-2">
-            <FileText className="h-4 w-4 text-zinc-500" />
+          <div className="mt-0.5 rounded-md bg-ink-100 p-2">
+            <FileText className="h-4 w-4 text-ink-500" />
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-zinc-900">{inst.certificateType.name}</span>
+            <span className="font-medium text-ink-900">{inst.certificateType.name}</span>
             <StatusPill status={inst.status} />
             <CertExpiryBadge expiryDate={inst.expiryDate} />
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}
             {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
             {inst.issueDate && (
@@ -146,7 +146,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
                 onClick={viewPdf}
                 disabled={isPending}
                 title={`View ${inst.pdfFileName} (logged)`}
-                className="inline-flex max-w-[240px] items-center gap-1 truncate rounded text-zinc-600 underline-offset-2 hover:text-emerald-700 hover:underline disabled:opacity-50"
+                className="inline-flex max-w-[240px] items-center gap-1 truncate rounded text-ink-600 underline-offset-2 hover:text-success-700 hover:underline disabled:opacity-50"
               >
                 📎 <span className="truncate">{inst.pdfFileName}</span>
               </button>
@@ -154,22 +154,22 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
           </div>
           {inst.certificateType.verificationNotes && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-700">
+              <summary className="cursor-pointer text-xs text-ink-500 hover:text-ink-700">
                 Verification notes
               </summary>
-              <p className="mt-1 rounded bg-zinc-50 px-2 py-1.5 text-xs text-zinc-700">
+              <p className="mt-1 rounded bg-ink-50 px-2 py-1.5 text-xs text-ink-700">
                 {inst.certificateType.verificationNotes}
               </p>
             </details>
           )}
           {inst.status === 'REJECTED' && inst.rejectionReason && (
-            <div className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-800">
+            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-xs text-danger-800">
               <span className="font-semibold">Rejection reason: </span>
               {inst.rejectionReason}
             </div>
           )}
           {inst.reviewedAt && (
-            <div className="mt-1 text-xs text-zinc-400">
+            <div className="mt-1 text-xs text-ink-400">
               Reviewed {new Date(inst.reviewedAt).toLocaleString()}
             </div>
           )}
@@ -178,8 +178,8 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
 
       {/* Reject form (revealed by Reject click) */}
       {showRejectForm && (
-        <div className="mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 p-3">
-          <label className="text-xs font-medium uppercase tracking-wider text-red-800">
+        <div className="mt-3 space-y-2 rounded-md border border-danger-200 bg-danger-50 p-3">
+          <label className="text-xs font-medium uppercase tracking-wider text-danger-800">
             Rejection reason (shown to partner)
           </label>
           <textarea
@@ -187,7 +187,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
             onChange={(e) => setRejectionReason(e.target.value)}
             rows={2}
             placeholder="e.g. PDF expired in 2023. Upload a current certificate."
-            className="w-full rounded border border-red-200 bg-white px-2 py-1.5 text-sm focus:border-red-400 focus:outline-none"
+            className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-sm focus:border-danger-400 focus:outline-none"
             disabled={isPending}
           />
           <div className="flex justify-end gap-2">
@@ -208,7 +208,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
               size="sm"
               onClick={() => decide('REJECTED')}
               disabled={isPending || !rejectionReason.trim()}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-danger-600 hover:bg-danger-700"
             >
               {isPending ? 'Rejecting…' : 'Confirm rejection'}
             </Button>
@@ -218,13 +218,13 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
 
       {/* Action buttons */}
       {!showRejectForm && (inst.status === 'PENDING_REVIEW' || inst.status === 'VERIFIED' || inst.status === 'REJECTED') && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
           {inst.status !== 'VERIFIED' && (
             <Button
               size="sm"
               onClick={() => decide('VERIFIED')}
               disabled={isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-success-600 hover:bg-success-700"
             >
               <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Verify
             </Button>
@@ -235,7 +235,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
               variant="outline"
               onClick={() => setShowRejectForm(true)}
               disabled={isPending}
-              className="border-red-300 text-red-700 hover:bg-red-50"
+              className="border-danger-300 text-danger-700 hover:bg-danger-50"
             >
               <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject
             </Button>
@@ -258,13 +258,13 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
 
 function StatusPill({ status }: { status: PartnerCertInstanceStatus }) {
   const cfg = ({
-    PENDING_REVIEW: { label: 'Pending', cls: 'bg-amber-100 text-amber-800' },
-    VERIFIED: { label: 'Verified', cls: 'bg-emerald-100 text-emerald-800' },
-    EXPIRED: { label: 'Expired', cls: 'bg-zinc-200 text-zinc-700' },
-    REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-800' },
+    PENDING_REVIEW: { label: 'Pending', cls: 'bg-warning-100 text-warning-800' },
+    VERIFIED: { label: 'Verified', cls: 'bg-success-100 text-success-800' },
+    EXPIRED: { label: 'Expired', cls: 'bg-ink-200 text-ink-700' },
+    REJECTED: { label: 'Rejected', cls: 'bg-danger-100 text-danger-800' },
   } as Record<PartnerCertInstanceStatus, { label: string; cls: string }>)[status] ?? {
     label: status,
-    cls: 'bg-zinc-200 text-zinc-700',
+    cls: 'bg-ink-200 text-ink-700',
   }
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${cfg.cls}`}>

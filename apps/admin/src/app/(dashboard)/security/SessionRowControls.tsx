@@ -47,7 +47,7 @@ export function SessionRowControls({
         type="button"
         onClick={() => run('one')}
         disabled={pending}
-        className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-medium text-ink-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-medium text-ink-700 transition-colors hover:border-danger-300 hover:bg-danger-50 hover:text-danger-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50"
         title={`Sign out this session for ${email}`}
       >
         {pending && confirming !== 'all' ? (
@@ -61,7 +61,7 @@ export function SessionRowControls({
         type="button"
         onClick={() => run('all')}
         disabled={pending}
-        className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50"
+        className="inline-flex items-center rounded-full border border-danger-200 bg-danger-50 px-2.5 py-1 text-[11px] font-semibold text-danger-700 transition-colors hover:bg-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50"
         title={`Sign ${email} out of ALL devices`}
       >
         {confirming === 'all' ? 'Confirm: all devices' : 'Revoke all'}

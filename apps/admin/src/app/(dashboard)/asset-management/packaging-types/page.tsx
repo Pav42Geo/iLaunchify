@@ -124,13 +124,13 @@ export default async function PackingTypesPage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {r.isSubscription && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Subscription</span>}
-                        {r.isCustomizable && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Pick-N</span>}
+                        {r.isSubscription && <span className="rounded bg-info-50 px-1.5 py-0.5 text-[10px] font-medium text-info-700">Subscription</span>}
+                        {r.isCustomizable && <span className="rounded bg-warning-50 px-1.5 py-0.5 text-[10px] font-medium text-warning-700">Pick-N</span>}
                         {!r.isSubscription && !r.isCustomizable && <span className="text-[11px] text-ink-400">—</span>}
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${r.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${r.isActive ? 'bg-success-100 text-success-700' : 'bg-ink-100 text-ink-500'}`}>
                         {r.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>

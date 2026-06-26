@@ -35,20 +35,20 @@ export default async function CreatorTierEditPage({ params }: PageProps) {
     <div className="space-y-6">
       <Link
         href="/tiers"
-        className="inline-flex items-center gap-1 text-[12px] text-zinc-500 hover:text-zinc-800"
+        className="inline-flex items-center gap-1 text-[12px] text-ink-500 hover:text-ink-800"
       >
         <ArrowLeft className="h-3 w-3" aria-hidden="true" /> All creators
       </Link>
 
-      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-5">
+      <header className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-ink-200 bg-white p-5">
         <div className="min-w-0">
-          <div className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <div className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             Creator
           </div>
-          <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="mt-1 font-display text-xl font-semibold tracking-tight text-ink-900">
             {profile.displayName}
           </h1>
-          <p className="mt-0.5 text-[12.5px] text-zinc-500">
+          <p className="mt-0.5 text-[12.5px] text-ink-500">
             @{profile.handle} · {profile.user.email} · {profile._count.brands} brand
             {profile._count.brands === 1 ? '' : 's'}
           </p>
@@ -85,31 +85,31 @@ function HistoryCard({
   history: Awaited<ReturnType<typeof listEntityHistory>>
 }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white">
-      <header className="border-b border-zinc-100 px-5 py-3">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+    <section className="rounded-xl border border-ink-200 bg-white">
+      <header className="border-b border-ink-100 px-5 py-3">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           Audit history
         </h2>
       </header>
       {history.length === 0 ? (
-        <p className="p-5 text-[13px] text-zinc-500">
+        <p className="p-5 text-[13px] text-ink-500">
           No prior tier or fee-override changes for this creator.
         </p>
       ) : (
-        <ol className="divide-y divide-zinc-100 text-[12.5px]">
+        <ol className="divide-y divide-ink-100 text-[12.5px]">
           {history.map((h) => (
             <li key={h.id} className="px-5 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-mono text-[11px] text-zinc-500">
+                <span className="font-mono text-[11px] text-ink-500">
                   {h.action}
                 </span>
-                <span className="text-[11px] text-zinc-500">
+                <span className="text-[11px] text-ink-500">
                   {new Date(h.at).toLocaleString()}
                 </span>
               </div>
               {(h.fromValue || h.toValue) && (
-                <div className="mt-0.5 text-zinc-700">
-                  <span className="font-mono text-zinc-500">{h.fromValue ?? '∅'}</span>
+                <div className="mt-0.5 text-ink-700">
+                  <span className="font-mono text-ink-500">{h.fromValue ?? '∅'}</span>
                   {' → '}
                   <span className="font-mono">{h.toValue ?? '∅'}</span>
                 </div>
@@ -117,7 +117,7 @@ function HistoryCard({
               {h.payload &&
                 typeof h.payload === 'object' &&
                 'reason' in (h.payload as Record<string, unknown>) && (
-                  <p className="mt-1 text-[12px] italic text-zinc-600">
+                  <p className="mt-1 text-[12px] italic text-ink-600">
                     &ldquo;{String((h.payload as Record<string, unknown>).reason)}&rdquo;
                   </p>
                 )}

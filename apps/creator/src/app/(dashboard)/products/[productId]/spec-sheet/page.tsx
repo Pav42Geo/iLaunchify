@@ -121,7 +121,7 @@ function SpecSheetView({
                 <span className="inline-flex items-center gap-1.5">
                   {o.valueLabel}
                   {o.affectsLabel && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-amber-800">
+                    <span className="rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-warning-800">
                       label
                     </span>
                   )}
@@ -175,7 +175,7 @@ function SpecSheetView({
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="border-b border-ink-100 bg-zinc-50/60 px-5 py-3">
+      <header className="border-b border-ink-100 bg-ink-50/60 px-5 py-3">
         <h2 className="font-display text-[14px] font-semibold text-ink-900">{title}</h2>
       </header>
       <div className="p-4">{children}</div>

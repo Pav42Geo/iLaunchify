@@ -189,7 +189,7 @@ function Row({
 }) {
   const colorClass =
     tone === 'savings'
-      ? 'text-emerald-700 font-semibold'
+      ? 'text-success-700 font-semibold'
       : dimmed
         ? 'text-ink-400'
         : 'text-ink-700'

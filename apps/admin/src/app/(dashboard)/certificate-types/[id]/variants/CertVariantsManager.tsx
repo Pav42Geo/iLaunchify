@@ -61,7 +61,7 @@ export function CertVariantsManager({
   return (
     <div className="space-y-4">
       {variants.length === 0 && !adding && (
-        <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
           No variants yet. Add the approved color / B&amp;W / outline marks for this certification.
         </div>
       )}
@@ -93,7 +93,7 @@ export function CertVariantsManager({
         <Button
           variant="outline"
           onClick={() => setAdding(true)}
-          className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+          className="border-success-300 text-success-700 hover:bg-success-50"
         >
           <Plus className="mr-1.5 h-4 w-4" /> Add variant
         </Button>
@@ -137,7 +137,7 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4">
+    <div className="rounded-lg border border-ink-200 bg-white p-4">
       <div className="flex items-start gap-4">
         {/* Preview */}
         <div className="flex gap-2">
@@ -147,12 +147,12 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-zinc-900">{v.label}</span>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+            <span className="font-semibold text-ink-900">{v.label}</span>
+            <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-600">
               {KIND_LABEL[v.kind]}
             </span>
           </div>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-600 sm:grid-cols-3">
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-600 sm:grid-cols-3">
             {(v.minWidthMm != null || v.maxWidthMm != null) && (
               <Spec label="Size">
                 {v.minWidthMm ?? '?'}–{v.maxWidthMm ?? '?'} mm
@@ -167,14 +167,14 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
                   href={v.brandGuidelinesUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-success-700 hover:underline"
                 >
                   Link <ExternalLink className="h-3 w-3" />
                 </a>
               </Spec>
             )}
           </dl>
-          {v.notes && <p className="mt-2 text-xs text-zinc-500">{v.notes}</p>}
+          {v.notes && <p className="mt-2 text-xs text-ink-500">{v.notes}</p>}
 
           {/* Upload + edit controls */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -212,7 +212,7 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
               size="sm"
               onClick={remove}
               disabled={isPending}
-              className="text-red-600 hover:bg-red-50"
+              className="text-danger-600 hover:bg-danger-50"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -231,14 +231,14 @@ function AssetThumb({ url, label }: { url: string | null; label: string }) {
         <img
           src={url}
           alt={`${label} preview`}
-          className="h-12 w-12 rounded-md border border-zinc-200 bg-white object-contain p-1"
+          className="h-12 w-12 rounded-md border border-ink-200 bg-white object-contain p-1"
         />
       ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-[9px] text-zinc-400">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-ink-300 bg-ink-50 text-[9px] text-ink-400">
           {label}
         </div>
       )}
-      <span className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</span>
+      <span className="text-[9px] uppercase tracking-wide text-ink-400">{label}</span>
     </div>
   )
 }
@@ -246,8 +246,8 @@ function AssetThumb({ url, label }: { url: string | null; label: string }) {
 function Spec({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{label}</dt>
-      <dd className="text-zinc-700">{children}</dd>
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">{label}</dt>
+      <dd className="text-ink-700">{children}</dd>
     </div>
   )
 }
@@ -313,14 +313,14 @@ function VariantForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50/40 p-5">
+    <form onSubmit={submit} className="space-y-4 rounded-lg border border-success-200 bg-success-50/40 p-5">
       <div className="flex items-start justify-between">
-        <h3 className="font-semibold text-zinc-900">{initial ? 'Edit variant' : 'New variant'}</h3>
+        <h3 className="font-semibold text-ink-900">{initial ? 'Edit variant' : 'New variant'}</h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="rounded-md p-1 text-zinc-400 hover:bg-white hover:text-zinc-700"
+          className="rounded-md p-1 text-ink-400 hover:bg-white hover:text-ink-700"
           disabled={isPending}
         >
           <X className="h-4 w-4" />
@@ -333,7 +333,7 @@ function VariantForm({
             value={kind}
             onChange={(e) => setKind(e.target.value as CertAssetVariantKind)}
             disabled={isPending}
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
@@ -370,20 +370,20 @@ function VariantForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-zinc-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</div>
       )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isPending || !label.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button type="submit" disabled={isPending || !label.trim()} className="bg-success-600 hover:bg-success-700">
           {isPending ? 'Saving…' : initial ? 'Save variant' : 'Add variant'}
         </Button>
       </div>
@@ -404,13 +404,13 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-zinc-900">
+      <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
-          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">Required</span>
+          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">Required</span>
         )}
       </Label>
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-500">{hint}</p>}
       {children}
     </div>
   )

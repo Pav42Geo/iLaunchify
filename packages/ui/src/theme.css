@@ -80,23 +80,51 @@
   /* Cream — warm canvas for landing-page light bands */
   --cream: #FBFAF7;
 
-  /* Semantic */
-  --success-500-rgb: 30 124 74;
-  --success-500: rgb(var(--success-500-rgb));
-  --success-50-rgb: 229 242 236;
-  --success-50: rgb(var(--success-50-rgb));
-  --warning-500-rgb: 176 122 10;
-  --warning-500: rgb(var(--warning-500-rgb));
-  --warning-50-rgb: 251 239 211;
-  --warning-50: rgb(var(--warning-50-rgb));
-  --danger-500-rgb: 179 54 54;
-  --danger-500: rgb(var(--danger-500-rgb));
-  --danger-50-rgb: 248 225 225;
-  --danger-50: rgb(var(--danger-50-rgb));
-  --info-500-rgb: 31 77 143;
-  --info-500: rgb(var(--info-500-rgb));
-  --info-50-rgb: 225 236 248;
-  --info-50: rgb(var(--info-50-rgb));
+  /* Semantic — full 50→900 ramps (2026-06-25). Retuned so warning sheds the
+     muddy mustard/tan (the "brown" above tables) and the set harmonizes with
+     pink/neon/ink. Every stop is a channel var so utilities (bg/text/border-…)
+     AND Theme Studio runtime overrides resolve. Text-used stops (500–900) hold
+     WCAG AA on white. */
+  --success-50-rgb: 231 244 236;   --success-50: rgb(var(--success-50-rgb));
+  --success-100-rgb: 201 231 213;  --success-100: rgb(var(--success-100-rgb));
+  --success-200-rgb: 163 214 184;  --success-200: rgb(var(--success-200-rgb));
+  --success-300-rgb: 111 190 144;  --success-300: rgb(var(--success-300-rgb));
+  --success-400-rgb: 62 158 106;   --success-400: rgb(var(--success-400-rgb));
+  --success-500-rgb: 30 124 74;    --success-500: rgb(var(--success-500-rgb));
+  --success-600-rgb: 23 106 62;    --success-600: rgb(var(--success-600-rgb));
+  --success-700-rgb: 19 87 51;     --success-700: rgb(var(--success-700-rgb));
+  --success-800-rgb: 14 65 39;     --success-800: rgb(var(--success-800-rgb));
+  --success-900-rgb: 10 46 27;     --success-900: rgb(var(--success-900-rgb));
+  --warning-50-rgb: 255 244 226;   --warning-50: rgb(var(--warning-50-rgb));
+  --warning-100-rgb: 252 227 190;  --warning-100: rgb(var(--warning-100-rgb));
+  --warning-200-rgb: 245 200 135;  --warning-200: rgb(var(--warning-200-rgb));
+  --warning-300-rgb: 234 166 76;   --warning-300: rgb(var(--warning-300-rgb));
+  --warning-400-rgb: 209 127 30;   --warning-400: rgb(var(--warning-400-rgb));
+  --warning-500-rgb: 180 83 9;     --warning-500: rgb(var(--warning-500-rgb));
+  --warning-600-rgb: 152 67 9;     --warning-600: rgb(var(--warning-600-rgb));
+  --warning-700-rgb: 124 54 10;    --warning-700: rgb(var(--warning-700-rgb));
+  --warning-800-rgb: 94 41 9;      --warning-800: rgb(var(--warning-800-rgb));
+  --warning-900-rgb: 64 28 6;      --warning-900: rgb(var(--warning-900-rgb));
+  --danger-50-rgb: 251 232 231;    --danger-50: rgb(var(--danger-50-rgb));
+  --danger-100-rgb: 246 201 199;   --danger-100: rgb(var(--danger-100-rgb));
+  --danger-200-rgb: 237 160 156;   --danger-200: rgb(var(--danger-200-rgb));
+  --danger-300-rgb: 224 113 107;   --danger-300: rgb(var(--danger-300-rgb));
+  --danger-400-rgb: 209 75 67;     --danger-400: rgb(var(--danger-400-rgb));
+  --danger-500-rgb: 194 54 47;     --danger-500: rgb(var(--danger-500-rgb));
+  --danger-600-rgb: 166 42 38;     --danger-600: rgb(var(--danger-600-rgb));
+  --danger-700-rgb: 135 33 30;     --danger-700: rgb(var(--danger-700-rgb));
+  --danger-800-rgb: 102 25 23;     --danger-800: rgb(var(--danger-800-rgb));
+  --danger-900-rgb: 69 16 15;      --danger-900: rgb(var(--danger-900-rgb));
+  --info-50-rgb: 232 241 251;      --info-50: rgb(var(--info-50-rgb));
+  --info-100-rgb: 199 221 244;     --info-100: rgb(var(--info-100-rgb));
+  --info-200-rgb: 156 192 233;     --info-200: rgb(var(--info-200-rgb));
+  --info-300-rgb: 100 153 214;     --info-300: rgb(var(--info-300-rgb));
+  --info-400-rgb: 53 118 192;      --info-400: rgb(var(--info-400-rgb));
+  --info-500-rgb: 31 91 168;       --info-500: rgb(var(--info-500-rgb));
+  --info-600-rgb: 26 76 140;       --info-600: rgb(var(--info-600-rgb));
+  --info-700-rgb: 22 62 114;       --info-700: rgb(var(--info-700-rgb));
+  --info-800-rgb: 17 47 87;        --info-800: rgb(var(--info-800-rgb));
+  --info-900-rgb: 12 33 61;        --info-900: rgb(var(--info-900-rgb));
 
   /* Spacing — 8pt grid */
   /* 8pt grid (4pt sub). --space-scale (Theme Studio) multiplies the whole

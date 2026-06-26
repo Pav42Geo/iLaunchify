@@ -96,12 +96,12 @@ export default async function LabelFormatDetailPage({ params }: PageProps) {
           <h1 className="font-display text-[26px] font-bold tracking-[-0.02em] text-ink-900">
             {formatLabel}
           </h1>
-          <span className="inline-flex items-center rounded-full border border-ink-200 bg-zinc-50 px-2.5 py-0.5 text-[11px] font-medium text-ink-600">
+          <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2.5 py-0.5 text-[11px] font-medium text-ink-600">
             {LABELING_TYPE_LABEL[rule.labelingType] ?? rule.labelingType}
           </span>
         </div>
         <p className="mt-1 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-500">
-          <code className="rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[11px] text-ink-600">
+          <code className="rounded border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[11px] text-ink-600">
             {rule.format}
           </code>
           <span>·</span>
@@ -199,13 +199,13 @@ function CapRow({
       className={cn(
         'flex items-center gap-2 rounded-xl border px-3 py-2.5 text-[12.5px] font-medium',
         enabled
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-          : 'border-ink-200 bg-zinc-50 text-ink-400',
+          ? 'border-success-200 bg-success-50 text-success-800'
+          : 'border-ink-200 bg-ink-50 text-ink-400',
       )}
     >
-      <Icon className={cn('h-4 w-4', enabled ? 'text-emerald-600' : 'text-ink-300')} />
+      <Icon className={cn('h-4 w-4', enabled ? 'text-success-600' : 'text-ink-300')} />
       <span className="flex-1">{label}</span>
-      {enabled ? <Check className="h-4 w-4 text-emerald-600" /> : <Minus className="h-4 w-4 text-ink-300" />}
+      {enabled ? <Check className="h-4 w-4 text-success-600" /> : <Minus className="h-4 w-4 text-ink-300" />}
     </div>
   )
 }

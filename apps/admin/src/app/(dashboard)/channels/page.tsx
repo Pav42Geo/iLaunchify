@@ -21,15 +21,15 @@ export default async function ChannelsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Channels</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-ink-500">
           {channels.length} registered · {enabledCount} enabled · {oauthReadyCount} with OAuth credentials configured
         </p>
       </div>
 
-      <Card className="border-amber-200 bg-amber-50/40">
+      <Card className="border-warning-200 bg-warning-50/40">
         <CardHeader>
           <CardTitle className="text-base">V1 shell — real OAuth lands in V1.1</CardTitle>
-          <CardDescription className="text-amber-900">
+          <CardDescription className="text-warning-900">
             Enabling a channel here exposes it in the creator UI. Creators can't actually connect
             until each channel's OAuth app credentials are configured in env (Client ID/Secret for
             Shopify, SP-API keys for Amazon, etc.). For V1, channels can be toggled visible/hidden
@@ -56,8 +56,8 @@ export default async function ChannelsPage() {
                 <span
                   className={`rounded px-2 py-0.5 text-xs font-medium uppercase ${
                     c.oauthConfigured
-                      ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
-                      : 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200'
+                      ? 'bg-success-50 text-success-700 ring-1 ring-success-200'
+                      : 'bg-ink-100 text-ink-600 ring-1 ring-ink-200'
                   }`}
                 >
                   {c.oauthConfigured ? 'OAuth ready' : 'OAuth not configured'}
@@ -66,7 +66,7 @@ export default async function ChannelsPage() {
               </div>
             </CardHeader>
             {c.notes && (
-              <CardContent className="text-sm text-zinc-600">{c.notes}</CardContent>
+              <CardContent className="text-sm text-ink-600">{c.notes}</CardContent>
             )}
           </Card>
         ))}

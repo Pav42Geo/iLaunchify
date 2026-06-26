@@ -119,9 +119,9 @@ export default async function PaymentsPage({
       </div>
 
       {!stripeActive && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+        <div className="rounded-2xl border border-warning-200 bg-warning-50 px-4 py-3 text-[13px] text-warning-900">
           <p className="font-semibold">Stripe Connect not active</p>
-          <p className="mt-0.5 text-amber-800">
+          <p className="mt-0.5 text-warning-800">
             You won&apos;t receive payouts until your Stripe Connect account is fully onboarded.
             Status: <span className="font-medium">{stripeConnected?.stripeAccountStatus ?? 'NONE'}</span>.
             Finish onboarding in Settings.
@@ -222,7 +222,7 @@ export default async function PaymentsPage({
                     <td className="whitespace-nowrap px-4 py-2.5 text-ink-600">{new Date(c.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-2.5 text-ink-700">{c.reason}</td>
                     <td className="px-4 py-2.5 text-[11.5px] uppercase text-ink-600">{c.status}</td>
-                    <td className="px-4 py-2.5 text-right font-medium tabular-nums text-rose-700">−{fmtCents(c.amountCents)}</td>
+                    <td className="px-4 py-2.5 text-right font-medium tabular-nums text-danger-700">−{fmtCents(c.amountCents)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -249,9 +249,9 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
@@ -304,11 +304,11 @@ function SortTh({
 }
 
 const TRANSFER_PILL: Record<string, string> = {
-  PAID: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-800',
-  IN_TRANSIT: 'border-sky-200 bg-sky-50 text-sky-800',
-  FAILED: 'border-rose-200 bg-rose-50 text-rose-800',
-  CANCELED: 'border-rose-200 bg-rose-50 text-rose-800',
+  PAID: 'border-success-200 bg-success-50 text-success-800',
+  PENDING: 'border-warning-200 bg-warning-50 text-warning-800',
+  IN_TRANSIT: 'border-info-200 bg-info-50 text-info-800',
+  FAILED: 'border-danger-200 bg-danger-50 text-danger-800',
+  CANCELED: 'border-danger-200 bg-danger-50 text-danger-800',
 }
 
 function TransferStatusBadge({ status }: { status: string }) {

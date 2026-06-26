@@ -137,7 +137,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             <Sparkles className="h-4 w-4 text-pink-600" /> AI Create
           </h2>
           {typeof props.creditsRemaining === 'number' && (
-            <span className="rounded-full border border-ink-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-700">
+            <span className="rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-700">
               {props.creditsRemaining} credits
             </span>
           )}
@@ -249,7 +249,7 @@ function ChipGroup({ title, options, selected, onToggle }: { title: string; opti
 
 function ComplianceChip({ complete, summary, missing }: { complete: boolean; summary: string; missing: string[] }) {
   return (
-    <div className={`flex items-start gap-2 rounded-xl border p-3 text-[12.5px] ${complete ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+    <div className={`flex items-start gap-2 rounded-xl border p-3 text-[12.5px] ${complete ? 'border-success-200 bg-success-50 text-success-800' : 'border-warning-200 bg-warning-50 text-warning-800'}`}>
       {complete ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
       <div>
         <p className="font-semibold">{complete ? `Compliance-ready — ${summary}` : `${summary} — add before export`}</p>

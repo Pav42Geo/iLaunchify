@@ -193,7 +193,7 @@ export default async function NicheRulesPage() {
               key={n.id}
               className="overflow-hidden rounded-2xl border border-ink-200 bg-white"
             >
-              <div className="flex items-center gap-3 bg-zinc-50/70 px-5 py-3">
+              <div className="flex items-center gap-3 bg-ink-50/70 px-5 py-3">
                 <span
                   aria-hidden="true"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-[16px]"
@@ -271,7 +271,7 @@ export default async function NicheRulesPage() {
                             <div className="flex items-center gap-2">
                               <RuleActiveToggle ruleId={r.id} isActive={r.isActive} />
                               {r.isLocked && (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-1.5 py-0.5 text-[10px] font-semibold text-warning-900">
                                   <Lock className="h-2.5 w-2.5" /> Locked
                                 </span>
                               )}
@@ -361,9 +361,9 @@ function KpiCard({
 }) {
   const iconTone: Record<'pink' | 'amber' | 'emerald' | 'sky', string> = {
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
   }
   return (
     <div

@@ -266,7 +266,7 @@ export function IngredientPicker({
                     <span className="truncate font-medium text-ink-900">{ing.internalName}</span>
                     <SourceChip source={ing.source} verificationStatus={ing.verificationStatus} />
                     {ing.recentlyUsed && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-warning-800">
                         <Sparkles className="h-2.5 w-2.5" /> used {ing.useCount}×
                       </span>
                     )}
@@ -278,13 +278,13 @@ export function IngredientPicker({
                       </span>
                     )}
                     {ing.allergenFlags.length > 0 && (
-                      <span className="text-amber-700">⚠ {ing.allergenFlags.join(', ')}</span>
+                      <span className="text-warning-700">⚠ {ing.allergenFlags.join(', ')}</span>
                     )}
                     {ing.bioengineeredStatus === 'BIOENGINEERED' && (
-                      <span className="text-emerald-700">BE</span>
+                      <span className="text-success-700">BE</span>
                     )}
                     {ing.bioengineeredStatus === 'DERIVED_FROM_BIOENGINEERED' && (
-                      <span className="text-emerald-700">BE-derived</span>
+                      <span className="text-success-700">BE-derived</span>
                     )}
                   </div>
                 </div>
@@ -371,9 +371,9 @@ function SourceChip({
   const isPriv = source === 'PARTNER_PRIVATE'
   const label = isUsda ? 'USDA' : isLib ? 'Library' : isPriv ? 'Private' : '—'
   const classes = isUsda
-    ? 'bg-blue-50 text-blue-700 border-blue-200'
+    ? 'bg-info-50 text-info-700 border-info-200'
     : isLib
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      ? 'bg-success-50 text-success-700 border-success-200'
       : 'bg-ink-100 text-ink-700 border-ink-200'
   return (
     <span

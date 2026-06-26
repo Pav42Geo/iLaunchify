@@ -91,11 +91,11 @@ function SourcePill({
   const map = {
     AUTO_RULE: {
       label: 'AUTO',
-      cls: 'border-ink-200 bg-zinc-100 text-ink-700',
+      cls: 'border-ink-200 bg-ink-100 text-ink-700',
     },
     MANUFACTURER: {
       label: 'MFG',
-      cls: 'border-sky-200 bg-sky-50 text-sky-800',
+      cls: 'border-info-200 bg-info-50 text-info-800',
     },
     ADMIN: {
       label: 'ADMIN',
@@ -158,7 +158,7 @@ function ToggleChip({
         active
           ? 'border-ink-900 bg-ink-900 text-white'
           : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
-        locked && 'ring-1 ring-rose-300 ring-offset-1 cursor-not-allowed',
+        locked && 'ring-1 ring-danger-300 ring-offset-1 cursor-not-allowed',
         !isInteractive && !locked && 'cursor-wait opacity-60',
       )}
     >
@@ -355,7 +355,7 @@ export function MarketplacePlacementPanel(props: Props) {
 
       {/* Sub-section 3 — Why these niches? disclosure */}
       <details className="group">
-        <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-[12px] text-ink-700 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-inset">
+        <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-[12px] text-ink-700 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-inset">
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Workflow className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
             Auto-suggest analysis
@@ -381,13 +381,13 @@ export function MarketplacePlacementPanel(props: Props) {
                   className={cn(
                     'flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-[11.5px]',
                     r.matched
-                      ? 'border-emerald-200 bg-emerald-50/40'
-                      : 'border-ink-100 bg-zinc-50/60',
+                      ? 'border-success-200 bg-success-50/40'
+                      : 'border-ink-100 bg-ink-50/60',
                   )}
                 >
                   <span className="mt-0.5 shrink-0">
                     {r.matched ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success-700" aria-hidden="true" />
                     ) : (
                       <XCircle className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
                     )}
@@ -399,7 +399,7 @@ export function MarketplacePlacementPanel(props: Props) {
                       </span>
                       <span className="font-medium text-ink-900">{r.ruleSlug}</span>
                       {r.isLocked && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-rose-800">
+                        <span className="inline-flex items-center gap-0.5 rounded-full border border-danger-200 bg-danger-50 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-danger-800">
                           <Lock className="h-2.5 w-2.5" aria-hidden="true" />
                           Locked
                         </span>
@@ -414,8 +414,8 @@ export function MarketplacePlacementPanel(props: Props) {
                     className={cn(
                       'shrink-0 self-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider',
                       r.matched
-                        ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
-                        : 'border-ink-200 bg-zinc-100 text-ink-600',
+                        ? 'border-success-200 bg-success-100 text-success-800'
+                        : 'border-ink-200 bg-ink-100 text-ink-600',
                     )}
                   >
                     {r.matched ? 'Matched' : 'Missed'}

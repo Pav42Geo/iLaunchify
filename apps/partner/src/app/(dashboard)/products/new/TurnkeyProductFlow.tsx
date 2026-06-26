@@ -192,7 +192,7 @@ export function TurnkeyProductFlow({
           </button>
           <div className="flex items-center gap-3">
             {!canAdvance && gates[activeStep].reason && (
-              <p className="text-xs text-amber-700">{gates[activeStep].reason}</p>
+              <p className="text-xs text-warning-700">{gates[activeStep].reason}</p>
             )}
             {activeStep < 4 ? (
               <button
@@ -217,7 +217,7 @@ export function TurnkeyProductFlow({
         </div>
 
         {error && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-3 rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
             {error}
           </div>
         )}
@@ -303,7 +303,7 @@ function Step1({
 // -----------------------------------------------------------------------------
 
 const SOURCE_CHIP: Record<string, { label: string; cls: string }> = {
-  USDA: { label: 'USDA', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
+  USDA: { label: 'USDA', cls: 'bg-info-50 text-info-700 ring-info-200' },
   LIBRARY: { label: 'Library', cls: 'bg-pink-50 text-pink-700 ring-pink-200' },
   PARTNER_PRIVATE: { label: 'Private', cls: 'bg-ink-100 text-ink-600 ring-ink-200' },
 }
@@ -385,7 +385,7 @@ function Step2({
                 <button
                   type="button"
                   onClick={() => removeRow(i)}
-                  className="rounded-md p-1.5 text-ink-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                  className="rounded-md p-1.5 text-ink-400 transition-colors hover:bg-danger-50 hover:text-danger-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
                   aria-label={`Remove ${ing.name}`}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />

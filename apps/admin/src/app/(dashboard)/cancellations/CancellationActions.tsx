@@ -49,7 +49,7 @@ export function CancellationActions({ requestId }: { requestId: string }) {
         type="button"
         onClick={approve}
         disabled={pending}
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full bg-success-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-success-700 disabled:opacity-50"
       >
         <Check className="h-3.5 w-3.5" /> Approve
       </button>

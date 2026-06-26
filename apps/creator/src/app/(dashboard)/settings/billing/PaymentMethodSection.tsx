@@ -93,7 +93,7 @@ export function PaymentMethodSection({
         )}
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-50 px-3 py-2 text-[12px] text-danger-700">{error}</p>}
 
       {!configured && (
         <p className="rounded-lg bg-ink-50 px-3 py-2 text-[12px] text-ink-600">
@@ -131,7 +131,7 @@ export function PaymentMethodSection({
                 </div>
 
                 {c.isDefault ? (
-                  <span className="ml-auto inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+                  <span className="ml-auto inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-success-800">
                     Default
                   </span>
                 ) : (
@@ -148,7 +148,7 @@ export function PaymentMethodSection({
                   type="button"
                   onClick={() => remove(c.stripePaymentMethodId)}
                   disabled={rowBusy}
-                  className="text-[12px] font-medium text-ink-500 hover:text-red-600 disabled:opacity-50"
+                  className="text-[12px] font-medium text-ink-500 hover:text-danger-600 disabled:opacity-50"
                 >
                   Remove
                 </button>

@@ -105,9 +105,9 @@ function KpiCard({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
@@ -133,8 +133,8 @@ function KpiCard({
 
 const ROLE_TONE: Record<string, string> = {
   ADMIN: 'border-pink-200 bg-pink-50 text-pink-800',
-  PARTNER: 'border-sky-200 bg-sky-50 text-sky-800',
-  CREATOR: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  PARTNER: 'border-info-200 bg-info-50 text-info-800',
+  CREATOR: 'border-success-200 bg-success-50 text-success-800',
 }
 
 function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
@@ -159,7 +159,7 @@ function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
           </thead>
           <tbody>
             {sessions.map((s) => (
-              <tr key={s.id} className="border-b border-ink-50 last:border-0 hover:bg-zinc-50/60">
+              <tr key={s.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
                 <td className="px-4 py-2.5">
                   <p className="font-medium text-ink-900">{s.user.name ?? '—'}</p>
                   <p className="text-[11px] text-ink-500">{s.user.email}</p>
@@ -168,7 +168,7 @@ function SessionsPanel({ sessions }: { sessions: SecurityData['sessions'] }) {
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',
-                      ROLE_TONE[s.user.role] ?? 'border-ink-200 bg-zinc-100 text-ink-700',
+                      ROLE_TONE[s.user.role] ?? 'border-ink-200 bg-ink-100 text-ink-700',
                     )}
                   >
                     {s.user.role}
@@ -222,7 +222,7 @@ function EventsPanel({ events }: { events: SecurityData['events'] }) {
                 {e.at.toLocaleDateString()}{' '}
                 {e.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <span className="rounded-full border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-700">
+              <span className="rounded-full border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-700">
                 {e.action}
               </span>
               <span className="text-[11.5px] text-ink-600">
@@ -289,7 +289,7 @@ function AdminsPanel({
             key={r.role}
             className={cn(
               'inline-flex items-center gap-1 rounded-full border px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider',
-              ROLE_TONE[r.role] ?? 'border-ink-200 bg-zinc-100 text-ink-700',
+              ROLE_TONE[r.role] ?? 'border-ink-200 bg-ink-100 text-ink-700',
             )}
           >
             {r.role}

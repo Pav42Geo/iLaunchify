@@ -88,7 +88,7 @@ function FilterBar({ q, activeTier }: { q: string; activeTier: string }) {
     <form className="flex flex-wrap items-center gap-3" action="/tiers" method="get">
       <input type="hidden" name="tab" value="creators" />
       <div className="relative flex-1 min-w-[240px]">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
         <Input
           name="q"
           defaultValue={q}
@@ -108,8 +108,8 @@ function FilterBar({ q, activeTier }: { q: string; activeTier: string }) {
               className={
                 'inline-flex items-center rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors ' +
                 (isActive
-                  ? 'bg-zinc-900 text-white'
-                  : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50')
+                  ? 'bg-ink-900 text-white'
+                  : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
               }
             >
               {TIER_LABEL[t]}
@@ -123,7 +123,7 @@ function FilterBar({ q, activeTier }: { q: string; activeTier: string }) {
 
 function EmptyHint() {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/40 p-6 text-center text-[13px] text-zinc-500">
+    <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-6 text-center text-[13px] text-ink-500">
       No creators match this filter.
     </div>
   )

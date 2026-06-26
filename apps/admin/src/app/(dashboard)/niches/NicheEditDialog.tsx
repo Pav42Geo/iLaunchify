@@ -141,7 +141,7 @@ export function NicheEditDialog({
               />
 
               {error && (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">
+                <p className="rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12px] text-danger-900">
                   {error}
                 </p>
               )}

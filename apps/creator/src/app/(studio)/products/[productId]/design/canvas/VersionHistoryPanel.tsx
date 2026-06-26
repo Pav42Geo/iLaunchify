@@ -13,7 +13,7 @@ import { relativeTime, type SnapshotItem } from '@ilaunchify/ui'
 function KindBadge({ item }: { item: SnapshotItem }) {
   if (item.kind === 'MILESTONE')
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+      <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-warning-800">
         <Pin className="h-2.5 w-2.5" /> Milestone
       </span>
     )

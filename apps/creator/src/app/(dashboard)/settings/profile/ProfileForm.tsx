@@ -160,8 +160,8 @@ function SaveIndicator({
   const text = { saving: 'Saving…', saved: '✓ Saved', error: '⚠ Save failed', idle: '' }[display]
   const cls = {
     saving: 'text-ink-500',
-    saved: 'text-emerald-600',
-    error: 'text-red-600',
+    saved: 'text-success-600',
+    error: 'text-danger-600',
     idle: '',
   }[display]
   return <span className={`text-xs ${cls}`}>{text}</span>

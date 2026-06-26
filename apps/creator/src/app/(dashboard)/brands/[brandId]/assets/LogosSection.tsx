@@ -150,7 +150,7 @@ function LogoSlot({
             onClick={onRemove}
             disabled={isPending}
             aria-label={`Remove ${variant.label}`}
-            className="text-ink-500 hover:text-red-600"
+            className="text-ink-500 hover:text-danger-600"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

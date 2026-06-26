@@ -68,7 +68,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
       </div>
 
       {isActive ? (
-        <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <div className="rounded-md bg-success-50 px-3 py-2 text-sm text-success-800">
           ✓ Payouts enabled. Stripe deposits transferred amounts to your linked bank account
           within 2 business days of each shipment confirmation.
         </div>
@@ -84,7 +84,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
           </div>
           <ConnectButton accountStatus={status} />
           {isPending && (
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-warning-700">
               Stripe is still verifying your account. Refresh in a few minutes.
             </p>
           )}
@@ -104,10 +104,10 @@ function StatusBadge({ status }: { status: StripeStatus }) {
   }[status]
   const cls = {
     NONE: 'bg-ink-100 text-ink-700',
-    PENDING: 'bg-amber-100 text-amber-800',
-    ACTIVE: 'bg-emerald-100 text-emerald-800',
-    RESTRICTED: 'bg-amber-100 text-amber-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    PENDING: 'bg-warning-100 text-warning-800',
+    ACTIVE: 'bg-success-100 text-success-800',
+    RESTRICTED: 'bg-warning-100 text-warning-800',
+    REJECTED: 'bg-danger-100 text-danger-800',
   }[status]
   return (
     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>
@@ -136,10 +136,10 @@ function ContractCard({
 
   if (state.contract === null) {
     return (
-      <section className="rounded-md border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <section className="rounded-md border border-dashed border-warning-300 bg-warning-50 p-4 text-sm text-warning-900">
         The platform standard contract hasn&apos;t been published yet — admin needs to seed{' '}
-        <code className="rounded bg-amber-100 px-1">STANDARD_V1.0</code> via{' '}
-        <code className="rounded bg-amber-100 px-1">pnpm seed:partner-onboarding</code>.
+        <code className="rounded bg-warning-100 px-1">STANDARD_V1.0</code> via{' '}
+        <code className="rounded bg-warning-100 px-1">pnpm seed:partner-onboarding</code>.
       </section>
     )
   }
@@ -178,7 +178,7 @@ function ContractCard({
           </p>
         </div>
         {alreadySigned ? (
-          <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+          <span className="shrink-0 rounded-full bg-success-100 px-2.5 py-0.5 text-xs font-medium text-success-800">
             ✓ Signed
           </span>
         ) : (
@@ -189,12 +189,12 @@ function ContractCard({
       </div>
 
       {alreadySigned ? (
-        <div className="rounded-md bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+        <div className="rounded-md bg-success-50 px-3 py-3 text-sm text-success-900">
           <div>
             ✓ Signed by <strong>{state.signerName || 'partner'}</strong> on{' '}
             {state.signedAt?.toLocaleDateString()}
           </div>
-          <div className="mt-1 text-xs text-emerald-700">
+          <div className="mt-1 text-xs text-success-700">
             To re-sign with a different signer, contact support.
           </div>
         </div>
@@ -254,7 +254,7 @@ function ContractCard({
               </span>
             </label>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-danger-600">{error}</p>}
 
             <div className="pt-1">
               <Button

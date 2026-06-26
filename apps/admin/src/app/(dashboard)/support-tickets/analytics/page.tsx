@@ -201,7 +201,7 @@ export default async function SupportAnalyticsPage() {
                     <tr key={c.id}>
                       <td className="py-1.5 text-ink-800">{catName.get(c.id) ?? c.name}</td>
                       <td className="py-1.5 text-right tabular-nums text-ink-700">{tot}</td>
-                      <td className={cn('py-1.5 text-right tabular-nums', br > 0 ? 'font-semibold text-rose-700' : 'text-ink-400')}>{br}</td>
+                      <td className={cn('py-1.5 text-right tabular-nums', br > 0 ? 'font-semibold text-danger-700' : 'text-ink-400')}>{br}</td>
                     </tr>
                   )
                 })}
@@ -230,9 +230,9 @@ function Kpi({
   const numeralTone = {
     ink: 'text-ink-900',
     pink: 'text-pink-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
-    danger: 'text-rose-700',
+    info: 'text-info-700',
+    success: 'text-success-700',
+    danger: 'text-danger-700',
   }[tone]
   return (
     <div className="px-5 py-3.5">
@@ -266,7 +266,7 @@ function BarList({
   total: number
   tone: 'blue' | 'amber' | 'pink'
 }) {
-  const barTone = { blue: 'bg-blue-500', amber: 'bg-amber-500', pink: 'bg-pink-500' }[tone]
+  const barTone = { blue: 'bg-info-500', amber: 'bg-warning-500', pink: 'bg-pink-500' }[tone]
   const max = Math.max(1, ...rows.map((r) => r.value))
   return (
     <ul className="space-y-2">

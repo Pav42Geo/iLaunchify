@@ -103,9 +103,9 @@ export function ImportPanel() {
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-6">
+    <div className="space-y-4 rounded-lg border border-ink-200 bg-white p-6">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-zinc-700">Asset family:</span>
+        <span className="text-sm font-medium text-ink-700">Asset family:</span>
         {(['packaging', 'labeling', 'certificate'] as Family[]).map((f) => (
           <button
             key={f}
@@ -115,7 +115,7 @@ export function ImportPanel() {
               setResult(null)
             }}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              family === f ? 'border-ink-900 bg-ink-900 text-white' : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+              family === f ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
             }`}
           >
             {FAMILY_LABEL[f]}
@@ -133,7 +133,7 @@ export function ImportPanel() {
         </Button>
       </div>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-ink-500">
         Upsert by {family === 'certificate' ? 'certificateTypeSlug (variants appended by label)' : 'slug'}. Existing rows are
         updated; variants are appended when their label is new. Bad rows are skipped and reported — good rows still import.
       </p>
@@ -144,19 +144,19 @@ export function ImportPanel() {
         rows={16}
         spellCheck={false}
         placeholder={`Paste a JSON array for ${FAMILY_LABEL[family]}…`}
-        className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-800 focus:border-zinc-400 focus:outline-none"
+        className="w-full rounded-md border border-ink-200 bg-ink-50 px-3 py-2 font-mono text-xs text-ink-800 focus:border-ink-400 focus:outline-none"
         disabled={isPending}
       />
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-400">{json.length.toLocaleString()} chars</span>
-        <Button onClick={run} disabled={isPending || !json.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+        <span className="text-xs text-ink-400">{json.length.toLocaleString()} chars</span>
+        <Button onClick={run} disabled={isPending || !json.trim()} className="bg-success-600 hover:bg-success-700">
           {isPending ? 'Importing…' : `Import ${FAMILY_LABEL[family]}`}
         </Button>
       </div>
 
       {result && (
-        <div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-4">
+        <div className="space-y-2 rounded-md border border-ink-200 bg-ink-50 p-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <Stat label="Created" value={result.created} />
             <Stat label="Updated" value={result.updated} />
@@ -165,17 +165,17 @@ export function ImportPanel() {
           </div>
           {result.errors.length > 0 ? (
             <div className="space-y-1">
-              <p className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+              <p className="flex items-center gap-1 text-xs font-semibold text-warning-700">
                 <AlertTriangle className="h-3.5 w-3.5" /> {result.errors.length} issue(s):
               </p>
-              <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs text-amber-800">
+              <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs text-warning-800">
                 {result.errors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
             </div>
           ) : (
-            <p className="flex items-center gap-1 text-xs font-medium text-emerald-700">
+            <p className="flex items-center gap-1 text-xs font-medium text-success-700">
               <CheckCircle2 className="h-3.5 w-3.5" /> No errors.
             </p>
           )}
@@ -188,8 +188,8 @@ export function ImportPanel() {
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'warn' }) {
   return (
     <span className="inline-flex items-baseline gap-1">
-      <span className={`font-display text-lg font-bold ${tone === 'warn' ? 'text-amber-700' : 'text-ink-900'}`}>{value}</span>
-      <span className="text-xs text-zinc-500">{label}</span>
+      <span className={`font-display text-lg font-bold ${tone === 'warn' ? 'text-warning-700' : 'text-ink-900'}`}>{value}</span>
+      <span className="text-xs text-ink-500">{label}</span>
     </span>
   )
 }

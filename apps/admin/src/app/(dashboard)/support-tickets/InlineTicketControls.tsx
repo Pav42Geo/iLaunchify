@@ -16,10 +16,10 @@ import { transitionTicketAction, setPriorityAction, assignTicketAction } from '.
 
 const STATUS_TONE: Record<TicketStatus, { bg: string; dot: string; label: string }> = {
   NEW: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'New' },
-  TRIAGED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Triaged' },
-  IN_PROGRESS: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In progress' },
-  WAITING_ON_REQUESTER: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Waiting' },
-  RESOLVED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Resolved' },
+  TRIAGED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Triaged' },
+  IN_PROGRESS: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'In progress' },
+  WAITING_ON_REQUESTER: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Waiting' },
+  RESOLVED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Resolved' },
   CLOSED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Closed' },
 }
 const STATUS_LABEL = Object.fromEntries(
@@ -27,9 +27,9 @@ const STATUS_LABEL = Object.fromEntries(
 ) as Record<TicketStatus, string>
 
 const PRIORITY_TONE: Record<TicketPriority, { bg: string; label: string }> = {
-  URGENT: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Urgent' },
-  HIGH: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'High' },
-  MEDIUM: { bg: 'bg-blue-50 text-blue-700 border-blue-200', label: 'Medium' },
+  URGENT: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Urgent' },
+  HIGH: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'High' },
+  MEDIUM: { bg: 'bg-info-50 text-info-700 border-info-200', label: 'Medium' },
   LOW: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Low' },
 }
 const PRIORITIES: TicketPriority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']

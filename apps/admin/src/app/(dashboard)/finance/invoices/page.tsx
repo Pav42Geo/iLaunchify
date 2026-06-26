@@ -25,9 +25,9 @@ const TABS: { key: StatusTab; label: string }[] = [
 // Order status → billing bucket + pill.
 function billingBucket(status: string): { tab: Exclude<StatusTab, 'all'>; label: string; cls: string } {
   if (status === 'REFUNDED') return { tab: 'refunded', label: 'Refunded', cls: 'border-ink-200 bg-ink-100 text-ink-600' }
-  if (status === 'PENDING_PAYMENT') return { tab: 'unpaid', label: 'Unpaid', cls: 'border-amber-200 bg-amber-50 text-amber-800' }
+  if (status === 'PENDING_PAYMENT') return { tab: 'unpaid', label: 'Unpaid', cls: 'border-warning-200 bg-warning-50 text-warning-800' }
   if (status === 'CANCELLED') return { tab: 'unpaid', label: 'Cancelled', cls: 'border-ink-200 bg-ink-100 text-ink-500' }
-  return { tab: 'paid', label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' }
+  return { tab: 'paid', label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' }
 }
 
 function fmtCents(cents: number): string {
@@ -200,7 +200,7 @@ export default async function FinanceInvoicesPage({
 }
 
 function Kpi({ label, value, tone = 'ink' }: { label: string; value: string; tone?: 'ink' | 'pink' | 'amber' | 'red' }) {
-  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-amber-700', red: 'text-red-700' }[tone]
+  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-warning-700', red: 'text-danger-700' }[tone]
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
       <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{label}</div>

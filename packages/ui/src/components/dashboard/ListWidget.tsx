@@ -43,20 +43,20 @@ export interface ListWidgetProps extends WidgetBaseProps {
 const DOT_TONE: Record<WidgetTone, string> = {
   pink: 'bg-pink-500',
   ink: 'bg-ink-700',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  info: 'bg-sky-500',
-  danger: 'bg-rose-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  info: 'bg-info-500',
+  danger: 'bg-danger-500',
   neon: 'bg-neon-500',
 }
 
 const ICON_BALL_TONE: Record<WidgetTone, string> = {
   pink: 'bg-pink-100 text-pink-700',
   ink: 'bg-ink-100 text-ink-700',
-  success: 'bg-emerald-100 text-emerald-700',
-  warning: 'bg-amber-100 text-amber-700',
-  info: 'bg-sky-100 text-sky-700',
-  danger: 'bg-rose-100 text-rose-700',
+  success: 'bg-success-100 text-success-700',
+  warning: 'bg-warning-100 text-warning-700',
+  info: 'bg-info-100 text-info-700',
+  danger: 'bg-danger-100 text-danger-700',
   neon: 'bg-neon-500 text-ink-900',
 }
 

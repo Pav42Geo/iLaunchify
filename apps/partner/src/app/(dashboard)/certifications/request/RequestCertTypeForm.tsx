@@ -40,8 +40,8 @@ export function RequestCertTypeForm() {
 
   if (done) {
     return (
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-6 text-center">
-        <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
+      <div className="rounded-lg border border-success-200 bg-success-50/40 p-6 text-center">
+        <CheckCircle2 className="mx-auto h-8 w-8 text-success-600" />
         <h3 className="mt-2 font-semibold text-ink-900">Request submitted</h3>
         <p className="mt-1 text-sm text-ink-600">
           An admin will review <span className="font-medium">{name.trim()}</span> and add it to the
@@ -101,7 +101,7 @@ export function RequestCertTypeForm() {
       </Field>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
           {error}
         </div>
       )}
@@ -143,7 +143,7 @@ function Field({
       <Label className="text-sm font-medium text-ink-900">
         {label}
         {required && (
-          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-red-600">
+          <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">
             Required
           </span>
         )}

@@ -39,7 +39,7 @@ export function OnboardingNav({
           </Link>
         )
       })}
-      <div className="ml-auto rounded-md bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+      <div className="ml-auto rounded-md bg-warning-50 px-3 py-1.5 text-xs font-semibold text-warning-900">
         {partnerStatus}
       </div>
     </nav>

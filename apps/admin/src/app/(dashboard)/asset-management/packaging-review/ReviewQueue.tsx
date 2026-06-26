@@ -152,7 +152,7 @@ function FileTile({ f }: { f: ReviewFile }) {
         ) : (
           <span className="text-[11px] font-semibold uppercase text-ink-400">{f.name.split('.').pop() ?? 'file'}</span>
         )}
-        <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${f.role === 'DIELINE' ? 'bg-sky-100 text-sky-700' : 'bg-pink-100 text-pink-700'}`}>{chip}</span>
+        <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${f.role === 'DIELINE' ? 'bg-info-100 text-info-700' : 'bg-pink-100 text-pink-700'}`}>{chip}</span>
       </div>
       <div className="truncate px-1.5 py-1 text-[10.5px] text-ink-600" title={f.name}>{f.name}</div>
     </>

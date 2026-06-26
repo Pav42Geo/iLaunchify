@@ -28,7 +28,7 @@ export function TestConnectionButton({ integrationKey }: { integrationKey: strin
       </button>
       {result && (
         <span
-          className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${result.ok ? 'text-emerald-700' : 'text-rose-700'}`}
+          className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${result.ok ? 'text-success-700' : 'text-danger-700'}`}
         >
           {result.ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
           {result.message}

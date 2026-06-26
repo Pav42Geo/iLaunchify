@@ -57,31 +57,31 @@ const STATUS_TONE: Record<
   { dot: string; bg: string; text: string; border: string; label: string }
 > = {
   DRAFT: {
-    dot: 'bg-amber-500',
-    bg: 'bg-amber-50',
-    text: 'text-amber-900',
-    border: 'border-amber-200',
+    dot: 'bg-warning-500',
+    bg: 'bg-warning-50',
+    text: 'text-warning-900',
+    border: 'border-warning-200',
     label: 'Pending review',
   },
   LEAD: {
-    dot: 'bg-amber-500',
-    bg: 'bg-amber-50',
-    text: 'text-amber-900',
-    border: 'border-amber-200',
+    dot: 'bg-warning-500',
+    bg: 'bg-warning-50',
+    text: 'text-warning-900',
+    border: 'border-warning-200',
     label: 'Lead',
   },
   INVITED: {
-    dot: 'bg-sky-500',
-    bg: 'bg-sky-50',
-    text: 'text-sky-900',
-    border: 'border-sky-200',
+    dot: 'bg-info-500',
+    bg: 'bg-info-50',
+    text: 'text-info-900',
+    border: 'border-info-200',
     label: 'Invited',
   },
   IN_PROGRESS: {
-    dot: 'bg-blue-500',
-    bg: 'bg-blue-50',
-    text: 'text-blue-900',
-    border: 'border-blue-200',
+    dot: 'bg-info-500',
+    bg: 'bg-info-50',
+    text: 'text-info-900',
+    border: 'border-info-200',
     label: 'Onboarding',
   },
   UNDER_REVIEW: {
@@ -92,10 +92,10 @@ const STATUS_TONE: Record<
     label: 'Under review',
   },
   ACTIVE: {
-    dot: 'bg-emerald-500',
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-900',
-    border: 'border-emerald-200',
+    dot: 'bg-success-500',
+    bg: 'bg-success-50',
+    text: 'text-success-900',
+    border: 'border-success-200',
     label: 'Active partner',
   },
 }
@@ -379,8 +379,8 @@ function SnapshotCard({
           label="Stripe Connect"
           value={
             stripeConnected ? (
-              <span className="inline-flex items-center gap-1.5 text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 text-success-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-success-500" aria-hidden="true" />
                 {partner.user.stripeAccountStatus ?? 'Connected'}
               </span>
             ) : (

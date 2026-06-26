@@ -86,9 +86,9 @@ export function CreatorsBulkTable({ rows }: Props) {
         }
       />
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
         <table className="w-full text-[13px]">
-          <thead className="bg-zinc-50 text-left text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+          <thead className="bg-ink-50 text-left text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
             <tr>
               <th className="px-3 py-2.5 w-[34px]">
                 <Checkbox
@@ -110,7 +110,7 @@ export function CreatorsBulkTable({ rows }: Props) {
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-ink-100">
             {rows.map((r) => {
               const palette = CREATOR_TIER_STYLE[r.subscriptionTier]
               const isSelected = selected.has(r.id)
@@ -118,7 +118,7 @@ export function CreatorsBulkTable({ rows }: Props) {
                 <tr
                   key={r.id}
                   className={
-                    'hover:bg-zinc-50/60 ' + (isSelected ? 'bg-pink-50/40' : '')
+                    'hover:bg-ink-50/60 ' + (isSelected ? 'bg-pink-50/40' : '')
                   }
                 >
                   <td className="px-3 py-2.5">
@@ -129,10 +129,10 @@ export function CreatorsBulkTable({ rows }: Props) {
                     />
                   </td>
                   <td className="px-4 py-2.5">
-                    <div className="font-medium text-zinc-900">{r.displayName}</div>
-                    <div className="text-[11.5px] text-zinc-500">@{r.handle}</div>
+                    <div className="font-medium text-ink-900">{r.displayName}</div>
+                    <div className="text-[11.5px] text-ink-500">@{r.handle}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-zinc-700">{r.email}</td>
+                  <td className="px-4 py-2.5 text-ink-700">{r.email}</td>
                   <td className="px-4 py-2.5">
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]"
@@ -148,18 +148,18 @@ export function CreatorsBulkTable({ rows }: Props) {
                   <td className="px-4 py-2.5">
                     {r.feeRateOverrideBp != null ? (
                       <span
-                        className="inline-flex items-center gap-1 text-[12px] text-amber-800"
+                        className="inline-flex items-center gap-1 text-[12px] text-warning-800"
                         title={r.feeRateOverrideReason ?? ''}
                       >
                         <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                         {(r.feeRateOverrideBp / 100).toFixed(2)}%
                       </span>
                     ) : (
-                      <span className="text-zinc-400">—</span>
+                      <span className="text-ink-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-zinc-700">{r.brandCount}</td>
-                  <td className="px-4 py-2.5 text-[11.5px] text-zinc-500">
+                  <td className="px-4 py-2.5 text-ink-700">{r.brandCount}</td>
+                  <td className="px-4 py-2.5 text-[11.5px] text-ink-500">
                     {r.tierChangedAt
                       ? new Date(r.tierChangedAt).toLocaleDateString()
                       : 'Never changed'}

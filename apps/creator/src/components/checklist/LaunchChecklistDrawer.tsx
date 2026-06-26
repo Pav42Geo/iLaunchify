@@ -126,7 +126,7 @@ export function LaunchChecklistDrawer() {
                 <span
                   key={item.id}
                   className={`h-1.5 flex-1 rounded-full ${
-                    completion[item.id] ? 'bg-emerald-500' : 'bg-ink-200'
+                    completion[item.id] ? 'bg-success-500' : 'bg-ink-200'
                   }`}
                   aria-hidden
                 />
@@ -187,15 +187,15 @@ function ChecklistRow({
 
   const rowClassName = `flex items-start gap-3 rounded-lg border p-3 transition-colors ${
     isDone
-      ? 'border-emerald-200 bg-emerald-50/50'
-      : 'border-ink-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+      ? 'border-success-200 bg-success-50/50'
+      : 'border-ink-200 bg-white hover:border-success-200 hover:bg-success-50/30'
   }`
 
   const body = (
     <>
       <span
         className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-          isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-600'
+          isDone ? 'bg-success-100 text-success-700' : 'bg-ink-100 text-ink-600'
         }`}
       >
         {isDone ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}

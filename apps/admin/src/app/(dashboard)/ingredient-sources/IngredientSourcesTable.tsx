@@ -114,8 +114,8 @@ function SourceCard({ cfg }: { cfg: IngredientSourceConfigValues }) {
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Syncing…' : 'Sync now'}
           </button>
         )}
-        {status && <span className={`text-[13px] ${status.ok ? 'text-emerald-700' : 'text-red-600'}`}>{status.msg}</span>}
-        {syncMsg && <span className="text-[13px] text-emerald-700">{syncMsg}</span>}
+        {status && <span className={`text-[13px] ${status.ok ? 'text-success-700' : 'text-danger-600'}`}>{status.msg}</span>}
+        {syncMsg && <span className="text-[13px] text-success-700">{syncMsg}</span>}
         {cfg.lastSyncedAt && <span className="text-[11.5px] text-ink-500">Last synced {new Date(cfg.lastSyncedAt).toLocaleString()} · {cfg.rowCount.toLocaleString()} rows</span>}
       </div>
     </div>

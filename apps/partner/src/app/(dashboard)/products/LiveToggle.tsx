@@ -55,7 +55,7 @@ export function LiveToggle({
       className={cn(
         'inline-flex items-center gap-2 rounded-full border px-2 py-[3px] text-[10px] font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-50',
         isLive
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300'
+          ? 'border-success-200 bg-success-50 text-success-800 hover:border-success-300'
           : 'border-ink-200 bg-ink-100 text-ink-600 hover:border-ink-300',
       )}
     >
@@ -63,7 +63,7 @@ export function LiveToggle({
         aria-hidden="true"
         className={cn(
           'relative h-3.5 w-6 flex-shrink-0 rounded-full transition-colors',
-          isLive ? 'bg-emerald-500' : 'bg-ink-300',
+          isLive ? 'bg-success-500' : 'bg-ink-300',
         )}
       >
         <span

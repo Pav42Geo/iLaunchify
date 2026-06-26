@@ -35,16 +35,16 @@ export const dynamic = 'force-dynamic'
 
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   PENDING_ACCEPT: { label: 'Awaiting your acceptance', cls: 'border-pink-200 bg-pink-50 text-pink-800' },
-  CHANGES_REQUESTED: { label: 'Changes requested', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  ACCEPTED: { label: 'Accepted', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  PRODUCING: { label: 'In production', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  QUALITY_CHECK: { label: 'Quality check', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  READY: { label: 'Ready to ship', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  SHIPPED: { label: 'Shipped', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  IN_TRANSIT: { label: 'In transit', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  DELIVERED: { label: 'Delivered', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  DECLINED: { label: 'Declined · rerouted', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
-  TIMED_OUT: { label: 'Auto-declined · timed out', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
+  CHANGES_REQUESTED: { label: 'Changes requested', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  ACCEPTED: { label: 'Accepted', cls: 'border-info-200 bg-info-50 text-info-800' },
+  PRODUCING: { label: 'In production', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  QUALITY_CHECK: { label: 'Quality check', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  READY: { label: 'Ready to ship', cls: 'border-success-200 bg-success-50 text-success-800' },
+  SHIPPED: { label: 'Shipped', cls: 'border-info-200 bg-info-50 text-info-800' },
+  IN_TRANSIT: { label: 'In transit', cls: 'border-info-200 bg-info-50 text-info-800' },
+  DELIVERED: { label: 'Delivered', cls: 'border-success-200 bg-success-50 text-success-800' },
+  DECLINED: { label: 'Declined · rerouted', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
+  TIMED_OUT: { label: 'Auto-declined · timed out', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
   CANCELLED: { label: 'Cancelled', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
 }
 
@@ -157,9 +157,9 @@ export default async function DispatchDetailPage({
           <div
             className={`mt-4 flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-[12.5px] font-medium ${
               overdue
-                ? 'border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border-danger-200 bg-danger-50 text-danger-800'
                 : hrsLeft <= 6
-                  ? 'border-amber-200 bg-amber-50 text-amber-800'
+                  ? 'border-warning-200 bg-warning-50 text-warning-800'
                   : 'border-ink-200 bg-white text-ink-700'
             }`}
           >
@@ -239,7 +239,7 @@ export default async function DispatchDetailPage({
               Manifest v{dispatch.manifestVersion}
               {dispatch.acceptedManifestVersion != null &&
                 dispatch.acceptedManifestVersion !== dispatch.manifestVersion && (
-                  <span className="font-medium text-amber-700">
+                  <span className="font-medium text-warning-700">
                     · you accepted v{dispatch.acceptedManifestVersion} — re-review the changes
                   </span>
                 )}
@@ -326,11 +326,11 @@ function ProductionTracker({
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       {halted && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5">
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-700" aria-hidden="true" />
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-danger-200 bg-danger-50 px-3.5 py-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-danger-700" aria-hidden="true" />
           <div className="text-[12.5px]">
-            <p className="font-semibold text-rose-800">{haltLabel}</p>
-            {haltNotes && <p className="mt-0.5 text-rose-700">{haltNotes}</p>}
+            <p className="font-semibold text-danger-800">{haltLabel}</p>
+            {haltNotes && <p className="mt-0.5 text-danger-700">{haltNotes}</p>}
           </div>
         </div>
       )}
@@ -347,7 +347,7 @@ function ProductionTracker({
                 <span
                   aria-hidden="true"
                   className={`absolute right-1/2 top-5 h-[2px] w-full ${
-                    done && !skipped ? 'bg-emerald-300' : done ? 'bg-emerald-200' : 'bg-ink-200'
+                    done && !skipped ? 'bg-success-300' : done ? 'bg-success-200' : 'bg-ink-200'
                   }`}
                 />
               )}
@@ -357,8 +357,8 @@ function ProductionTracker({
                     ? 'border-pink-500 bg-pink-50 text-pink-700'
                     : done
                       ? skipped
-                        ? 'border-emerald-200 bg-white text-emerald-500'
-                        : 'border-emerald-500 bg-emerald-500 text-white'
+                        ? 'border-success-200 bg-white text-success-500'
+                        : 'border-success-500 bg-success-500 text-white'
                       : 'border-ink-200 bg-white text-ink-400'
                 } ${current ? 'ring-4 ring-pink-100' : ''}`}
               >
@@ -405,11 +405,11 @@ function Timeline({
           )}
           <span
             className={`relative z-10 mt-1 h-3 w-3 flex-shrink-0 rounded-full ring-2 ring-white ${
-              e.tone === 'bad' ? 'bg-rose-500' : 'bg-emerald-500'
+              e.tone === 'bad' ? 'bg-danger-500' : 'bg-success-500'
             }`}
           />
           <div className="flex flex-1 flex-wrap items-baseline justify-between gap-x-3">
-            <span className={`text-[13px] font-medium ${e.tone === 'bad' ? 'text-rose-800' : 'text-ink-800'}`}>
+            <span className={`text-[13px] font-medium ${e.tone === 'bad' ? 'text-danger-800' : 'text-ink-800'}`}>
               {e.label}
             </span>
             <span className="text-[11.5px] tabular-nums text-ink-500">{fmtDate(e.at)}</span>

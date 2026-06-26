@@ -30,8 +30,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING_REVIEW: 'bg-amber-100 text-amber-800',
-  ACTIVE: 'bg-emerald-100 text-emerald-800',
+  PENDING_REVIEW: 'bg-warning-100 text-warning-800',
+  ACTIVE: 'bg-success-100 text-success-800',
   ARCHIVED: 'bg-ink-100 text-ink-500',
   DRAFT: 'bg-ink-100 text-ink-600',
 }

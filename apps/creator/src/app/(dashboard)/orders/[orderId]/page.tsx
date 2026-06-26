@@ -531,7 +531,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
             />
           ) : isPending ? (
             <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-ink-600">
-              <Clock className="h-3 w-3 text-amber-700" aria-hidden="true" />
+              <Clock className="h-3 w-3 text-warning-700" aria-hidden="true" />
               Decision needed by{' '}
               {new Date(d.acceptDeadlineAt).toLocaleString(undefined, {
                 weekday: 'short',
@@ -544,7 +544,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           ) : null}
           {isAccepted && <DispatchTimeline dispatch={d} />}
           {isFailure && (
-            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-red-700">
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-danger-700">
               <AlertOctagon className="h-3 w-3" aria-hidden="true" />
               {palette.label} — re-routing kicked in automatically
             </p>
@@ -552,7 +552,7 @@ function DispatchCard({ dispatch: d }: { dispatch: DispatchView }) {
           {/* B6 — surface QC failure notes even when status is FAILED_QC
               so the creator knows what went wrong without DMing admin. */}
           {d.status === 'FAILED_QC' && d.qualityCheckFailureNotes && (
-            <p className="mt-2 rounded-md bg-red-50/60 px-2.5 py-1.5 text-[11.5px] text-red-700">
+            <p className="mt-2 rounded-md bg-danger-50/60 px-2.5 py-1.5 text-[11.5px] text-danger-700">
               <span className="font-semibold">Failure note:</span>{' '}
               <span className="italic">{d.qualityCheckFailureNotes}</span>
             </p>
@@ -670,8 +670,8 @@ function DispatchTimeline({ dispatch: d }: { dispatch: DispatchView }) {
               className={
                 'absolute -left-[15px] top-1.5 h-1.5 w-1.5 rounded-full ' +
                 (isLast
-                  ? 'bg-emerald-500 ring-2 ring-emerald-100'
-                  : 'bg-emerald-300')
+                  ? 'bg-success-500 ring-2 ring-success-100'
+                  : 'bg-success-300')
               }
               aria-hidden="true"
             />
@@ -834,7 +834,7 @@ function ActionsCard({
         )}
         {isDisputed && (
           <li>
-            <span className="inline-flex w-full items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-[12px] font-medium text-amber-800">
+            <span className="inline-flex w-full items-center gap-2 rounded-md bg-warning-50 px-2 py-1.5 text-[12px] font-medium text-warning-800">
               <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
               Dispute under review
             </span>

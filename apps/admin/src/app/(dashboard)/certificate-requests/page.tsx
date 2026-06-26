@@ -28,9 +28,9 @@ type ReqStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 const STATUS_ORDER: ReqStatus[] = ['PENDING', 'APPROVED', 'REJECTED']
 
 const STATUS_TONE: Record<ReqStatus, { dot: string; bg: string; text: string; border: string }> = {
-  PENDING: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  APPROVED: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  REJECTED: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
+  PENDING: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  APPROVED: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  REJECTED: { dot: 'bg-danger-500', bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200' },
 }
 
 function slugify(name: string): string {
@@ -119,7 +119,7 @@ export default async function CertificateRequestsPage({ searchParams }: PageProp
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold">Requested cert</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Partner</th>
@@ -141,7 +141,7 @@ export default async function CertificateRequestsPage({ searchParams }: PageProp
                     {r.description && (
                       <p className="mt-1 max-w-md text-[11.5px] text-ink-600">{r.description}</p>
                     )}
-                    <code className="mt-1 inline-block rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
+                    <code className="mt-1 inline-block rounded border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[10px] text-ink-500">
                       → {slugify(r.name)}
                     </code>
                   </td>
@@ -232,9 +232,9 @@ function Kpi({
   active?: boolean
 }) {
   const iconTone: Record<'amber' | 'emerald' | 'rose', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <div

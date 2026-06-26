@@ -43,13 +43,13 @@ interface PartnerSidebarProps {
 function statusBadge(status: PartnerStatus): { label: string; className: string } {
   switch (status) {
     case 'ACTIVE':
-      return { label: 'Active', className: 'bg-green-50 text-green-700 ring-green-200' }
+      return { label: 'Active', className: 'bg-success-50 text-success-700 ring-success-200' }
     case 'UNDER_REVIEW':
-      return { label: 'Under review', className: 'bg-blue-50 text-blue-700 ring-blue-200' }
+      return { label: 'Under review', className: 'bg-info-50 text-info-700 ring-info-200' }
     case 'IN_PROGRESS':
-      return { label: 'Action needed', className: 'bg-amber-50 text-amber-700 ring-amber-200' }
+      return { label: 'Action needed', className: 'bg-warning-50 text-warning-700 ring-warning-200' }
     case 'SUSPENDED':
-      return { label: 'Suspended', className: 'bg-red-50 text-red-700 ring-red-200' }
+      return { label: 'Suspended', className: 'bg-danger-50 text-danger-700 ring-danger-200' }
     case 'DRAFT':
     case 'INVITED':
     default:

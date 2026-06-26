@@ -406,7 +406,7 @@ export function TextFontDrawer({
               <Star
                 className={
                   'h-4 w-4 flex-shrink-0 ' +
-                  (favorites.includes(menuFamily) ? 'fill-amber-400 text-amber-400' : 'text-ink-400')
+                  (favorites.includes(menuFamily) ? 'fill-warning-400 text-warning-400' : 'text-ink-400')
                 }
               />
               {favorites.includes(menuFamily) ? 'Unpin from favorites' : 'Pin font'}
@@ -512,7 +512,7 @@ function FontRow({
         {selected ? (
           <Check className="h-3.5 w-3.5 text-ink-700 flex-shrink-0" />
         ) : starred ? (
-          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
+          <Star className="h-3 w-3 fill-warning-400 text-warning-400 flex-shrink-0" />
         ) : pinned ? (
           <Pin className="h-3 w-3 text-pink-500 flex-shrink-0" />
         ) : (

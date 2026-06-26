@@ -28,10 +28,10 @@ const LABEL: Record<AcademyStatus, string> = {
 }
 
 const PILL: Record<AcademyStatus, string> = {
-  DRAFT: 'bg-zinc-100 text-zinc-700 border-zinc-200',
-  IN_REVIEW: 'bg-amber-50 text-amber-900 border-amber-200',
-  PUBLISHED: 'bg-emerald-50 text-emerald-900 border-emerald-200',
-  ARCHIVED: 'bg-rose-50 text-rose-900 border-rose-200',
+  DRAFT: 'bg-ink-100 text-ink-700 border-ink-200',
+  IN_REVIEW: 'bg-warning-50 text-warning-900 border-warning-200',
+  PUBLISHED: 'bg-success-50 text-success-900 border-success-200',
+  ARCHIVED: 'bg-danger-50 text-danger-900 border-danger-200',
 }
 
 // Verb shown on the action button per target status.
@@ -85,9 +85,9 @@ export function StatusControl({
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-50',
             to === 'PUBLISHED'
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              ? 'bg-success-600 text-white hover:bg-success-700'
               : to === 'ARCHIVED'
-                ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                ? 'border border-danger-200 bg-danger-50 text-danger-700 hover:bg-danger-100'
                 : 'bg-ink-900 text-white hover:bg-ink-800',
           )}
         >

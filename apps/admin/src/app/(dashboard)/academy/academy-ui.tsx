@@ -40,12 +40,12 @@ export function AcademyHero({
 type KpiTone = 'amber' | 'emerald' | 'sky' | 'rose' | 'pink' | 'indigo'
 
 const KPI_ICON_TONE: Record<KpiTone, string> = {
-  amber: 'bg-amber-100 text-amber-700',
-  emerald: 'bg-emerald-100 text-emerald-700',
-  sky: 'bg-sky-100 text-sky-700',
-  rose: 'bg-rose-100 text-rose-700',
+  amber: 'bg-warning-100 text-warning-700',
+  emerald: 'bg-success-100 text-success-700',
+  sky: 'bg-info-100 text-info-700',
+  rose: 'bg-danger-100 text-danger-700',
   pink: 'bg-pink-100 text-pink-700',
-  indigo: 'bg-indigo-100 text-indigo-700',
+  indigo: 'bg-info-100 text-info-700',
 }
 
 export function KpiCard({

@@ -167,8 +167,8 @@ export default async function PlanPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       {graceUntil && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-          <p className="text-[12.5px] leading-relaxed text-rose-900">
+        <div className="rounded-2xl border border-danger-200 bg-danger-50 px-4 py-3">
+          <p className="text-[12.5px] leading-relaxed text-danger-900">
             <span className="font-semibold">Your last subscription payment failed.</span>{' '}
             Update your card by{' '}
             <span className="font-semibold">{graceUntil.toLocaleDateString()}</span> or your account
@@ -347,7 +347,7 @@ function TierCard({
         {meta.features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             <Check
-              className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-600"
+              className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success-600"
               aria-hidden="true"
             />
             <span>{f}</span>

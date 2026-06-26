@@ -29,9 +29,9 @@ export interface CategoryRow {
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
 const PRIORITY_TONE: Record<string, string> = {
-  URGENT: 'bg-rose-50 text-rose-700 border-rose-200',
-  HIGH: 'bg-amber-50 text-amber-800 border-amber-200',
-  MEDIUM: 'bg-blue-50 text-blue-700 border-blue-200',
+  URGENT: 'bg-danger-50 text-danger-700 border-danger-200',
+  HIGH: 'bg-warning-50 text-warning-800 border-warning-200',
+  MEDIUM: 'bg-info-50 text-info-700 border-info-200',
   LOW: 'bg-ink-100 text-ink-600 border-ink-200',
 }
 
@@ -90,7 +90,7 @@ export function CategoriesManager({
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
             <tr>
               <Th>Category</Th>
               <Th>Priority</Th>

@@ -41,7 +41,7 @@ export function DelayApprovalPrompt({
         Proposed delivery: <b>{dateLabel}</b>
         {delayReason ? <> · “{delayReason}”</> : null}
       </p>
-      {error && <p className="mt-1.5 text-[11.5px] text-red-700">{error}</p>}
+      {error && <p className="mt-1.5 text-[11.5px] text-danger-700">{error}</p>}
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"

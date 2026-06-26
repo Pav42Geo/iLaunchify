@@ -48,15 +48,15 @@ import { SaveAsTemplateButton } from './SaveAsTemplateButton'
 export const dynamic = 'force-dynamic'
 
 const STATUS_PILL: Partial<Record<ProductTemplateStatus, { label: string; cls: string }>> = {
-  PUBLISHED: { label: 'Live', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  PENDING_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  UNDER_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  NEEDS_CHANGES: { label: 'Needs changes', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  PUBLISHED: { label: 'Live', cls: 'border-success-200 bg-success-50 text-success-800' },
+  PENDING_REVIEW: { label: 'In review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  UNDER_REVIEW: { label: 'In review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  NEEDS_CHANGES: { label: 'Needs changes', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
   DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
   PAUSED: { label: 'Paused', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
-  REJECTED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
-  ARCHIVED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
+  REJECTED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
+  ARCHIVED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
 }
 
 const LABELING_LABEL: Record<string, string> = {
@@ -453,7 +453,7 @@ export default async function ProductPreviewPage({
                         <td className="py-1.5">
                           <span
                             className={`inline-flex items-center rounded-full border px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide ${
-                              b.bulk ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-ink-200 bg-ink-100 text-ink-600'
+                              b.bulk ? 'border-info-200 bg-info-50 text-info-800' : 'border-ink-200 bg-ink-100 text-ink-600'
                             }`}
                           >
                             {b.bulk ? 'Bulk' : 'On-demand'}
@@ -479,7 +479,7 @@ export default async function ProductPreviewPage({
           {/* Compliance & certs */}
           <Section icon={ShieldCheck} title="Compliance & certs" desc="Label regime and the certificates backing your marketplace badges." meta={`${LABELING_LABEL[tpl.labelingType] ?? tpl.labelingType} label`}>
             {certNeedsRefresh && (
-              <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] text-rose-800">
+              <div className="mb-3 flex items-start gap-2 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-[12.5px] text-danger-800">
                 <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
                 A certificate expired — renew it to restore the badge on your listing.
               </div>
@@ -494,7 +494,7 @@ export default async function ProductPreviewPage({
                   return (
                     <li key={i} className="flex items-baseline justify-between gap-3 py-2 text-[13px]">
                       <span className="text-ink-800">{c.instance.certificateType.name}</span>
-                      <span className={`flex-shrink-0 text-[11.5px] ${soon ? 'text-amber-700' : 'text-ink-500'}`}>
+                      <span className={`flex-shrink-0 text-[11.5px] ${soon ? 'text-warning-700' : 'text-ink-500'}`}>
                         {c.instance.status} · {soon ? `expires in ${days}d` : `valid to ${new Date(c.instance.expiryDate).toLocaleDateString()}`}
                       </span>
                     </li>
@@ -556,7 +556,7 @@ export default async function ProductPreviewPage({
                   {allergenOverrides.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {allergenOverrides.map((a) => (
-                        <span key={a} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11.5px] font-medium text-amber-800">{a}</span>
+                        <span key={a} className="rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[11.5px] font-medium text-warning-800">{a}</span>
                       ))}
                     </div>
                   ) : (
@@ -591,7 +591,7 @@ export default async function ProductPreviewPage({
                       {tpl.optionalIngredients.map((o) => (
                         <li key={o.id} className="flex items-baseline justify-between gap-3 py-1.5 text-[13px]">
                           <span className="text-ink-700">
-                            <span className="mr-1.5 rounded bg-sky-50 px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-sky-700">optional</span>
+                            <span className="mr-1.5 rounded bg-info-50 px-1 py-px text-[9.5px] font-medium uppercase tracking-wide text-info-700">optional</span>
                             {o.ingredient.internalName || o.ingredient.name}
                             {o.calloutText && <span className="ml-1.5 text-[11px] text-ink-400">{o.calloutText}</span>}
                           </span>
@@ -881,7 +881,7 @@ function Metric({ label, value, hint, tone }: { label: string; value: string; hi
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
       <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-      <p className={`mt-0.5 font-display text-[20px] font-bold tabular-nums leading-none ${tone === 'good' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-700' : 'text-ink-900'}`}>{value}</p>
+      <p className={`mt-0.5 font-display text-[20px] font-bold tabular-nums leading-none ${tone === 'good' ? 'text-success-700' : tone === 'warn' ? 'text-warning-700' : 'text-ink-900'}`}>{value}</p>
       {hint && <p className="mt-1 text-[10px] text-ink-400">{hint}</p>}
     </div>
   )

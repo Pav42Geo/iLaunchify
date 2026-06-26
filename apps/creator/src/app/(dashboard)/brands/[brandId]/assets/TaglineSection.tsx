@@ -71,6 +71,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-success-600' : status === 'error' ? 'text-danger-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

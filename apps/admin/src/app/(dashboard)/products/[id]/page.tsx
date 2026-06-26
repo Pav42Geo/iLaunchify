@@ -117,15 +117,15 @@ const STATUS_TONE: Record<
   ProductTemplateStatus,
   { dot: string; bg: string; text: string; border: string }
 > = {
-  DRAFT: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
-  PENDING_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  NEEDS_CHANGES: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
-  PUBLISHED: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  PENDING_EDIT_REVIEW: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-900', border: 'border-sky-200' },
-  PAUSED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
-  REJECTED: { dot: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-900', border: 'border-rose-200' },
-  UNDER_REVIEW: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-900', border: 'border-amber-200' },
-  ARCHIVED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  DRAFT: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
+  PENDING_REVIEW: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  NEEDS_CHANGES: { dot: 'bg-danger-500', bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200' },
+  PUBLISHED: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  PENDING_EDIT_REVIEW: { dot: 'bg-info-500', bg: 'bg-info-50', text: 'text-info-900', border: 'border-info-200' },
+  PAUSED: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
+  REJECTED: { dot: 'bg-danger-500', bg: 'bg-danger-50', text: 'text-danger-900', border: 'border-danger-200' },
+  UNDER_REVIEW: { dot: 'bg-warning-500', bg: 'bg-warning-50', text: 'text-warning-900', border: 'border-warning-200' },
+  ARCHIVED: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
 }
 
 // -----------------------------------------------------------------------------
@@ -877,9 +877,9 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             {restrictionHits.length > 0 && (
               <span
                 title={restrictionHits.map((r) => r.label).join(', ')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider text-red-700"
+                className="inline-flex items-center gap-1.5 rounded-full border border-danger-300 bg-danger-50 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider text-danger-700"
               >
-                <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                <span className="inline-block h-2 w-2 rounded-full bg-danger-500" />
                 Restricted · {restrictionHits.map((r) => r.label).join(', ')}
               </span>
             )}
@@ -1081,7 +1081,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               )}
             </dl>
             {hasBioengineered && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-warning-200 bg-warning-50 px-2.5 py-1 text-[11px] font-semibold text-warning-900">
                 <FlaskConical className="h-3 w-3" aria-hidden="true" />
                 Contains bioengineered ingredients — disclosure required on label
               </div>
@@ -1105,8 +1105,8 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                     className={cn(
                       'flex items-start justify-between rounded-lg border px-3 py-2 text-[12.5px]',
                       risk === 'HIGH_RISK'
-                        ? 'border-rose-200 bg-rose-50/40'
-                        : 'border-ink-100 bg-zinc-50/60',
+                        ? 'border-danger-200 bg-danger-50/40'
+                        : 'border-ink-100 bg-ink-50/60',
                     )}
                   >
                     <div className="min-w-0 flex-1">
@@ -1126,7 +1126,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                       </div>
                     </div>
                     {s.baseIngredient.allergenFlags.length > 0 && (
-                      <span className="ml-2 shrink-0 text-[11px] font-medium text-amber-700">
+                      <span className="ml-2 shrink-0 text-[11px] font-medium text-warning-700">
                         {s.baseIngredient.allergenFlags.join(', ')}
                       </span>
                     )}
@@ -1159,7 +1159,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 {template.packagingSystems.map((p) => (
                   <li
                     key={p.packagingSystemId}
-                    className="flex items-start justify-between rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px]"
+                    className="flex items-start justify-between rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px]"
                   >
                     <div className="min-w-0">
                       <div className="font-medium text-ink-900">
@@ -1201,7 +1201,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 {template.variants.map((v) => (
                   <li
                     key={v.id}
-                    className="rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px]"
+                    className="rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px]"
                   >
                     <div className="font-medium text-ink-900">{v.containerFormat}</div>
                     <div className="mt-0.5 text-[11px] text-ink-500">
@@ -1240,7 +1240,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                   return (
                     <li
                       key={f.id}
-                      className="flex items-start justify-between gap-3 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px]"
+                      className="flex items-start justify-between gap-3 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px]"
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-2.5">
                         <span
@@ -1253,12 +1253,12 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                             <span className="font-medium text-ink-900">{f.name}</span>
                             <FlavorStatusPill status={f.status} />
                             {extras.length > 0 && (
-                              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-sky-800">
+                              <span className="inline-flex items-center rounded-full border border-info-200 bg-info-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-info-800">
                                 Has extras
                               </span>
                             )}
                             {overrides.length > 0 && (
-                              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                              <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800">
                                 Nutrient override
                               </span>
                             )}
@@ -1313,10 +1313,10 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                       className={cn(
                         'inline-flex items-center rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
                         partner.tier === 'PREMIER'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                          ? 'border-success-200 bg-success-50 text-success-900'
                           : partner.tier === 'TRUSTED'
-                            ? 'border-sky-200 bg-sky-50 text-sky-900'
-                            : 'border-ink-200 bg-zinc-50 text-ink-700',
+                            ? 'border-info-200 bg-info-50 text-info-900'
+                            : 'border-ink-200 bg-ink-50 text-ink-700',
                       )}
                     >
                       {partner.tier}
@@ -1374,7 +1374,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 </table>
               </div>
             ) : null}
-            <p className="mt-3 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[11.5px] text-ink-600">
+            <p className="mt-3 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[11.5px] text-ink-600">
               Subscribe-and-save discount caps per tier (Maker / Builder / Agency) — full
               integration is a forward pointer; see{' '}
               <Link href="/tiers" className="font-medium text-pink-700 hover:text-pink-800">
@@ -1468,7 +1468,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               }`}
             >
               {labelAffectingAxes.length > 0 && (
-                <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-[11.5px] text-amber-900">
+                <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50/70 px-3 py-2 text-[11.5px] text-warning-900">
                   <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {labelAffectingAxes.length} axis
@@ -1482,7 +1482,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 {optionAxes.map((axis) => (
                   <li
                     key={axis.id}
-                    className="rounded-xl border border-ink-100 bg-zinc-50/50 px-3 py-2.5"
+                    className="rounded-xl border border-ink-100 bg-ink-50/50 px-3 py-2.5"
                   >
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[12.5px] font-semibold text-ink-900">
@@ -1629,9 +1629,9 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 {template.certificates.map((c) => (
                   <li
                     key={c.instanceId}
-                    className="flex items-center gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px] text-ink-900"
+                    className="flex items-center gap-2 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px] text-ink-900"
                   >
-                    <Award className="h-3.5 w-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+                    <Award className="h-3.5 w-3.5 shrink-0 text-success-700" aria-hidden="true" />
                     {c.instance.certificateType.name}
                   </li>
                 ))}
@@ -1695,7 +1695,7 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 Open in partner builder
               </a>
-              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-1.5">
+              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-1.5">
                 <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
                   <Hash className="mr-0.5 inline h-3 w-3" aria-hidden="true" />
                   Product ID
@@ -2025,13 +2025,13 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                   className="flex items-center justify-between gap-3 px-4 py-2 text-[12px]"
                 >
                   <span className="text-ink-700">{label}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-zinc-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-ink-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-600">
                     Not yet integrated
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="border-t border-ink-100 bg-zinc-50/60 px-4 py-2 text-[11px] text-ink-500">
+            <p className="border-t border-ink-100 bg-ink-50/60 px-4 py-2 text-[11px] text-ink-500">
               These run automatically before admin sees the row once the compliance service
               is wired (§8.2).
             </p>
@@ -2065,17 +2065,17 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
     pink: 'group-hover:ring-pink-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -2149,16 +2149,16 @@ function PendingEditsDiff({
   if (changed.length === 0) return null
 
   return (
-    <section className="rounded-2xl border border-sky-200 bg-sky-50/40 p-5">
+    <section className="rounded-2xl border border-info-200 bg-info-50/40 p-5">
       <div className="flex items-start gap-2.5">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-info-100 text-info-700">
           <FileText className="h-4 w-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[15px] font-semibold text-sky-900">
+          <h2 className="font-display text-[15px] font-semibold text-info-900">
             Proposed edits to live product
           </h2>
-          <p className="mt-0.5 text-[12px] text-sky-800">
+          <p className="mt-0.5 text-[12px] text-info-800">
             Live version keeps serving until you approve or send back.
           </p>
         </div>
@@ -2179,7 +2179,7 @@ function PendingEditsDiff({
               <div className="rounded-lg border border-ink-100 bg-white px-2.5 py-1.5 text-ink-600 line-through">
                 {f.liveVal}
               </div>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 font-medium text-emerald-900">
+              <div className="rounded-lg border border-success-200 bg-success-50 px-2.5 py-1.5 font-medium text-success-900">
                 {proposedDisplay}
               </div>
             </div>
@@ -2214,7 +2214,7 @@ function SnapshotCard({
       id={id}
       className="overflow-hidden rounded-2xl border border-ink-200 bg-white scroll-mt-6"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-ink-100 bg-zinc-50/60 px-5 py-3">
+      <header className="flex items-center justify-between gap-3 border-b border-ink-100 bg-ink-50/60 px-5 py-3">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-ink-100 text-ink-700">
             <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2295,14 +2295,14 @@ function MediaAssetRow({
   assetId: string
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-zinc-50/60 px-3 py-2 text-[12.5px] text-ink-900">
+    <div className="flex items-center gap-2 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px] text-ink-900">
       <ImageIcon
         className={cn(
           'h-3.5 w-3.5 shrink-0',
           kind === 'hero'
             ? 'text-pink-600'
             : kind === 'video'
-              ? 'text-sky-600'
+              ? 'text-info-600'
               : 'text-ink-500',
         )}
         aria-hidden="true"
@@ -2322,10 +2322,10 @@ type OptionTagTone = 'pink' | 'amber' | 'sky' | 'emerald' | 'neutral'
 function OptionTag({ tone, label }: { tone: OptionTagTone; label: string }) {
   const cls: Record<OptionTagTone, string> = {
     pink: 'border-pink-200 bg-pink-50 text-pink-700',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800',
-    sky: 'border-sky-200 bg-sky-50 text-sky-800',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    neutral: 'border-ink-200 bg-zinc-50 text-ink-600',
+    amber: 'border-warning-200 bg-warning-50 text-warning-800',
+    sky: 'border-info-200 bg-info-50 text-info-800',
+    emerald: 'border-success-200 bg-success-50 text-success-800',
+    neutral: 'border-ink-200 bg-ink-50 text-ink-600',
   }
   return (
     <span
@@ -2367,19 +2367,19 @@ function IngredientRiskBanner({
     return (
       <section
         role="alert"
-        className="rounded-2xl border border-rose-200 bg-rose-50/60 px-5 py-4"
+        className="rounded-2xl border border-danger-200 bg-danger-50/60 px-5 py-4"
       >
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-danger-100 text-danger-700">
             <AlertTriangle className="h-[18px] w-[18px]" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-[15px] font-semibold text-rose-900">
+            <h2 className="font-display text-[15px] font-semibold text-danger-900">
               {highRisk.length === 1
                 ? '1 high-weight SELF_ATTESTED ingredient'
                 : `${highRisk.length} high-weight SELF_ATTESTED ingredients`}
             </h2>
-            <p className="mt-0.5 text-[12px] text-rose-800">
+            <p className="mt-0.5 text-[12px] text-danger-800">
               Each is above the {HIGH_WEIGHT_THRESHOLD_PCT}% recipe-weight threshold and
               hasn&rsquo;t been admin-verified — their nutrient + allergen data carries the
               FDA-printed label. Review the ingredient in{' '}
@@ -2388,7 +2388,7 @@ function IngredientRiskBanner({
               </Link>{' '}
               before approving this product.
             </p>
-            <ul className="mt-2 space-y-1 text-[12px] text-rose-900">
+            <ul className="mt-2 space-y-1 text-[12px] text-danger-900">
               {highRisk.map((i) => (
                 <li key={i.name} className="flex items-center gap-2">
                   <span className="font-mono text-[11px] tabular-nums">
@@ -2399,7 +2399,7 @@ function IngredientRiskBanner({
               ))}
             </ul>
             {lowRiskCount > 0 && (
-              <p className="mt-2 text-[11px] text-rose-700/80">
+              <p className="mt-2 text-[11px] text-danger-700/80">
                 Plus {lowRiskCount} additional SELF_ATTESTED ingredient
                 {lowRiskCount === 1 ? '' : 's'} under the threshold (lower risk, still
                 attestation-only).
@@ -2416,12 +2416,12 @@ function IngredientRiskBanner({
     return (
       <section
         role="status"
-        className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-5 py-3.5"
+        className="flex items-start gap-3 rounded-2xl border border-warning-200 bg-warning-50/60 px-5 py-3.5"
       >
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-warning-100 text-warning-700">
           <FlaskConical className="h-4 w-4" aria-hidden="true" />
         </span>
-        <div className="min-w-0 flex-1 text-[12.5px] text-amber-900">
+        <div className="min-w-0 flex-1 text-[12.5px] text-warning-900">
           <span className="font-semibold">
             {lowRiskCount} SELF_ATTESTED ingredient
             {lowRiskCount === 1 ? '' : 's'} in this recipe.
@@ -2450,7 +2450,7 @@ function IngredientRiskPill({
   if (risk === 'HIGH_RISK') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-rose-800"
+        className="inline-flex items-center gap-1 rounded-full border border-danger-200 bg-danger-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-danger-800"
         title="Above 5% of recipe weight + only partner attestation. Verify before approving."
       >
         <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" />
@@ -2461,7 +2461,7 @@ function IngredientRiskPill({
   if (risk === 'LOW_RISK') {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-amber-800"
+        className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-warning-800"
         title="Partner self-attested. Under the 5% threshold so lower-risk, but unverified."
       >
         Self-attested
@@ -2469,7 +2469,7 @@ function IngredientRiskPill({
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+    <span className="inline-flex items-center gap-1 rounded-full border border-success-200 bg-success-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-success-800">
       {status === 'ADMIN_VERIFIED' ? 'Verified' : 'Library'}
     </span>
   )
@@ -2483,10 +2483,10 @@ function FlavorStatusPill({ status }: { status: FlavorPresetStatus }) {
   const map: Record<FlavorPresetStatus, { label: string; cls: string }> = {
     ACTIVE: {
       label: 'Active',
-      cls: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+      cls: 'border-success-200 bg-success-50 text-success-900',
     },
-    DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-zinc-50 text-ink-700' },
-    RETIRED: { label: 'Retired', cls: 'border-ink-200 bg-zinc-100 text-ink-500' },
+    DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-50 text-ink-700' },
+    RETIRED: { label: 'Retired', cls: 'border-ink-200 bg-ink-100 text-ink-500' },
   }
   const tone = map[status]!
   return (
@@ -2525,29 +2525,29 @@ function ConstraintRow({
     { ring: string; iconBg: string; iconColor: string; titleColor: string; StatusIcon: LucideIcon }
   > = {
     pass: {
-      ring: 'border-emerald-100',
-      iconBg: 'bg-emerald-50',
-      iconColor: 'text-emerald-700',
-      titleColor: 'text-emerald-900',
+      ring: 'border-success-100',
+      iconBg: 'bg-success-50',
+      iconColor: 'text-success-700',
+      titleColor: 'text-success-900',
       StatusIcon: CheckCircle2,
     },
     warn: {
-      ring: 'border-amber-100',
-      iconBg: 'bg-amber-50',
-      iconColor: 'text-amber-700',
-      titleColor: 'text-amber-900',
+      ring: 'border-warning-100',
+      iconBg: 'bg-warning-50',
+      iconColor: 'text-warning-700',
+      titleColor: 'text-warning-900',
       StatusIcon: AlertTriangle,
     },
     block: {
-      ring: 'border-rose-100',
-      iconBg: 'bg-rose-50',
-      iconColor: 'text-rose-700',
-      titleColor: 'text-rose-900',
+      ring: 'border-danger-100',
+      iconBg: 'bg-danger-50',
+      iconColor: 'text-danger-700',
+      titleColor: 'text-danger-900',
       StatusIcon: XCircle,
     },
     info: {
       ring: 'border-ink-100',
-      iconBg: 'bg-zinc-50',
+      iconBg: 'bg-ink-50',
       iconColor: 'text-ink-600',
       titleColor: 'text-ink-900',
       StatusIcon: Eye,
@@ -2570,7 +2570,7 @@ function ConstraintRow({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className={cn('text-[12.5px] font-semibold', p.titleColor)}>{title}</span>
           {chip && (
-            <span className="inline-flex items-center rounded-full border border-ink-200 bg-zinc-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-ink-700">
+            <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-ink-700">
               {chip}
             </span>
           )}

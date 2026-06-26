@@ -21,7 +21,7 @@ export function CopyEnvButton({ name }: { name: string }) {
       title={`Copy ${name}`}
       className="inline-flex items-center text-ink-400 hover:text-ink-700"
     >
-      {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+      {copied ? <Check className="h-3 w-3 text-success-600" /> : <Copy className="h-3 w-3" />}
     </button>
   )
 }

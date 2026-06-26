@@ -160,14 +160,14 @@ export function PackBuilder({
       <div className="mt-3 flex items-center justify-between border-t border-ink-100 pt-3 text-[12.5px]">
         <span className="text-ink-500">
           {chosenIds.size} flavor{chosenIds.size === 1 ? '' : 's'} ·{' '}
-          <span className={cn('tabular-nums', result.totalUnits === capacity ? 'text-emerald-700' : 'text-ink-700')}>
+          <span className={cn('tabular-nums', result.totalUnits === capacity ? 'text-success-700' : 'text-ink-700')}>
             {result.totalUnits.toLocaleString()}
           </span>{' '}
           / {capacity.toLocaleString()} units
         </span>
         {result.ok ? (
-          <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Ready
+          <span className="inline-flex items-center gap-1.5 font-semibold text-success-700">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success-500" /> Ready
           </span>
         ) : (
           <span className="font-semibold text-pink-700">Needs adjusting</span>

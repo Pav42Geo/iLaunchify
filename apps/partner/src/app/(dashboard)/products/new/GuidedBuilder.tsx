@@ -633,15 +633,15 @@ function NavBtns(_props: { onBack?: () => void; onNext?: () => void; onSaveDraft
 
 // Scoped CSS ported from the prototype, on the locked mood-board tokens.
 const CSS = `
-.gb{--font-scale:1.15;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--green-50:#E1F5EE;--amber-50:#FAEEDA;--sky-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
+.gb{--font-scale:1.15;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--success-50:#E1F5EE;--warning-50:#FAEEDA;--info-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
 .gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-xs)} .gb .tiny{font-size:var(--fs-2xs)}
 .gb .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--ink-200);background:#fff}
-.gb .pill.green{background:var(--green-50);color:#085041;border-color:#9FE1CB}
-.gb .pill.amber{background:var(--amber-50);color:#633806;border-color:#FAC775}
-.gb .pill.sky{background:var(--sky-50);color:#0C447C;border-color:#B5D4F4}
+.gb .pill.green{background:var(--success-50);color:#085041;border-color:#9FE1CB}
+.gb .pill.amber{background:var(--warning-50);color:#633806;border-color:#FAC775}
+.gb .pill.sky{background:var(--info-50);color:#0C447C;border-color:#B5D4F4}
 .gb .pill.pink{background:var(--pink-50);color:var(--pink-700);border-color:var(--pink-100)}
 .gb .btn{display:inline-flex;align-items:center;gap:8px;border-radius:var(--button-radius);padding:9px 16px;font-size:var(--fs-base);font-weight:600;cursor:pointer;border:1px solid var(--ink-200);background:#fff;color:var(--ink-800);transition:.15s}
 .gb .btn:hover{border-color:var(--ink-400)} .gb .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -730,7 +730,7 @@ const CSS = `
 .gb .kpi{border:1px solid var(--ink-200);border-radius:14px;padding:11px 13px;background:#fff}
 .gb .kpi .l{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-500)}
 .gb .kpi .v{font-family:"Bricolage Grotesque",Inter;font-weight:800;font-size:var(--fs-xl)}
-.gb .banner{display:flex;gap:10px;align-items:center;border:1px solid #B5D4F4;background:var(--sky-50);color:#0C447C;border-radius:14px;padding:10px 14px;font-size:var(--fs-sm);margin-bottom:16px}
+.gb .banner{display:flex;gap:10px;align-items:center;border:1px solid #B5D4F4;background:var(--info-50);color:#0C447C;border-radius:14px;padding:10px 14px;font-size:var(--fs-sm);margin-bottom:16px}
 @media(max-width:900px){.gb-shell{grid-template-columns:1fr}.gb .rail{border-right:0;border-bottom:1px solid var(--ink-200)}.gb .two,.gb .studio,.gb .pacshell{grid-template-columns:1fr}}
 /* Builder-active chrome overrides (global, mount-scoped via body.gb-active). The
    dashboard sidebar hides and the shell padding/width are neutralized so the

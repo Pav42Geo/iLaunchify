@@ -43,8 +43,8 @@ export function PlanPricingForm({
   }
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-5">
-      <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+    <section className="rounded-xl border border-ink-200 bg-white p-5">
+      <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
         Pricing
       </h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-3">
@@ -55,7 +55,7 @@ export function PlanPricingForm({
             min="0"
             value={monthly}
             onChange={(e) => setMonthly(e.target.value)}
-            className="block w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Annual ($)">
@@ -65,7 +65,7 @@ export function PlanPricingForm({
             min="0"
             value={annual}
             onChange={(e) => setAnnual(e.target.value)}
-            className="block w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Description (admin)">
@@ -73,7 +73,7 @@ export function PlanPricingForm({
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            className="block w-full rounded-md border border-zinc-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
       </div>
@@ -82,7 +82,7 @@ export function PlanPricingForm({
           type="button"
           onClick={commit}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white hover:bg-black disabled:opacity-50"
         >
           {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           {saving ? 'Saving…' : 'Save pricing'}
@@ -95,7 +95,7 @@ export function PlanPricingForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <label className="block text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
         {label}
       </label>
       <div className="mt-1">{children}</div>

@@ -47,10 +47,10 @@ export function DisputeResponsePanel({
   }
 
   return (
-    <Card className="border-amber-200">
+    <Card className="border-warning-200">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base text-amber-900">
-          <Scale className="h-4 w-4 text-amber-700" /> A creator disputed this order
+        <CardTitle className="flex items-center gap-2 text-base text-warning-900">
+          <Scale className="h-4 w-4 text-warning-700" /> A creator disputed this order
         </CardTitle>
         <CardDescription>
           {CATEGORY_LABEL[category] ?? category} — an admin is reviewing it. Add your side so they
@@ -63,7 +63,7 @@ export function DisputeResponsePanel({
         </div>
 
         {existingResponse ? (
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-900">
+          <div className="rounded-md border border-success-200 bg-success-50 px-3 py-2 text-[12.5px] text-success-900">
             <span className="font-semibold">Your response (sent):</span> {existingResponse}
           </div>
         ) : (
@@ -81,7 +81,7 @@ export function DisputeResponsePanel({
               />
               <p className="text-[10.5px] text-ink-500">{response.length}/2000 · you can respond once</p>
             </div>
-            <Button onClick={submit} disabled={busy} className="bg-amber-600 hover:bg-amber-700">
+            <Button onClick={submit} disabled={busy} className="bg-warning-600 hover:bg-warning-700">
               Send response to admin
             </Button>
           </div>

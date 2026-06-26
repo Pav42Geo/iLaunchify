@@ -40,18 +40,18 @@ const TONE_NUMERAL: Record<KpiCardData['tone'], string> = {
   // neon would fail contrast on white; for kpi tiles fall back to ink with a
   // neon icon dot. Pavel's rule: never neon text on light surfaces.
   neon: 'text-ink-900',
-  success: 'text-emerald-700',
-  warning: 'text-amber-700',
-  info: 'text-blue-700',
+  success: 'text-success-700',
+  warning: 'text-warning-700',
+  info: 'text-info-700',
 }
 
 const TONE_ICON_BG: Record<KpiCardData['tone'], string> = {
   ink: 'bg-ink-100 text-ink-700',
   pink: 'bg-pink-100 text-pink-700',
   neon: 'bg-neon-500 text-ink-900',
-  success: 'bg-emerald-50 text-emerald-700',
-  warning: 'bg-amber-50 text-amber-700',
-  info: 'bg-blue-50 text-blue-700',
+  success: 'bg-success-50 text-success-700',
+  warning: 'bg-warning-50 text-warning-700',
+  info: 'bg-info-50 text-info-700',
 }
 
 export function KpiCard({ data }: { data: KpiCardData }) {
@@ -125,9 +125,9 @@ function DeltaChip({
         : Minus
   const cls =
     delta.direction === 'up'
-      ? 'bg-emerald-50 text-emerald-700'
+      ? 'bg-success-50 text-success-700'
       : delta.direction === 'down'
-        ? 'bg-rose-50 text-rose-700'
+        ? 'bg-danger-50 text-danger-700'
         : 'bg-ink-100 text-ink-600'
   const sign =
     delta.direction === 'flat' ? '0%' : `${Math.abs(delta.pct)}%`

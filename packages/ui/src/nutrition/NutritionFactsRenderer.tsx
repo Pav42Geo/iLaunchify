@@ -83,7 +83,7 @@ export function NutritionFactsRenderer({
       )}
 
       {declaredByManufacturer && (
-        <p className="mt-1 text-[8px] italic leading-tight text-gray-500">
+        <p className="mt-1 text-[8px] italic leading-tight text-[#6B6D78]">
           Declared by manufacturer
         </p>
       )}
@@ -121,7 +121,7 @@ function SupplementTable({ rows }: { rows: NutrientRow[] }) {
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={`${row.id}-${i}`} className="border-b border-zinc-400">
+          <tr key={`${row.id}-${i}`} className="border-b border-[#9A9CA6]">
             <td
               className={cn('py-0.5 pr-1', SUPPLEMENT_BOLD_IDS.has(row.id) && 'font-bold')}
               style={{ paddingLeft: indentPad(row.indent) }}
@@ -161,7 +161,7 @@ function NutrientRowRender({ row }: { row: NutrientRow }) {
   return (
     <div
       className={cn(
-        'flex justify-between border-b border-zinc-400 py-0.5 text-sm leading-tight',
+        'flex justify-between border-b border-[#9A9CA6] py-0.5 text-sm leading-tight',
         isMajorRow && 'font-semibold',
         indentClass,
       )}

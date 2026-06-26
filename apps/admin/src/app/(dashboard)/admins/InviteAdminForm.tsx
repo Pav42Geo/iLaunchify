@@ -96,8 +96,8 @@ export function InviteAdminForm({ roles }: { roles: RoleOption[] }) {
       </div>
 
       {link && (
-        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-          <p className="text-[11px] font-medium text-emerald-800">
+        <div className="mt-3 rounded-xl border border-success-200 bg-success-50/60 p-3">
+          <p className="text-[11px] font-medium text-success-800">
             {emailed
               ? 'Emailed to them — here’s the same link to copy if you want a backup'
               : 'Invite link — send this to them'}
@@ -107,12 +107,12 @@ export function InviteAdminForm({ roles }: { roles: RoleOption[] }) {
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 truncate rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 font-mono text-[11.5px] text-ink-700"
+              className="min-w-0 flex-1 truncate rounded-lg border border-success-200 bg-white px-2.5 py-1.5 font-mono text-[11.5px] text-ink-700"
             />
             <button
               type="button"
               onClick={copy}
-              className="inline-flex flex-none items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-700"
+              className="inline-flex flex-none items-center gap-1 rounded-full bg-success-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-success-700"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? 'Copied' : 'Copy'}

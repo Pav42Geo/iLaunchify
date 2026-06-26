@@ -48,8 +48,8 @@ const STATUS_TONE: Record<
   CertStatus,
   { dot: string; bg: string; text: string; border: string }
 > = {
-  ACTIVE: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-900', border: 'border-emerald-200' },
-  DEPRECATED: { dot: 'bg-ink-400', bg: 'bg-zinc-50', text: 'text-ink-700', border: 'border-zinc-200' },
+  ACTIVE: { dot: 'bg-success-500', bg: 'bg-success-50', text: 'text-success-900', border: 'border-success-200' },
+  DEPRECATED: { dot: 'bg-ink-400', bg: 'bg-ink-50', text: 'text-ink-700', border: 'border-ink-200' },
 }
 
 // -----------------------------------------------------------------------------
@@ -242,16 +242,16 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<'amber' | 'emerald' | 'sky' | 'rose', string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -461,7 +461,7 @@ function CertificateTypesTable({ rows }: { rows: CertTypeRow[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>Name</Th>
             <Th>Status</Th>
@@ -484,11 +484,11 @@ function CertificateTypesTable({ rows }: { rows: CertTypeRow[] }) {
                   >
                     {t.name}
                   </Link>
-                  <code className="mt-0.5 inline-block rounded border border-ink-200 bg-zinc-50 px-1.5 py-[1px] font-mono text-[10.5px] text-ink-600">
+                  <code className="mt-0.5 inline-block rounded border border-ink-200 bg-ink-50 px-1.5 py-[1px] font-mono text-[10.5px] text-ink-600">
                     {t.slug}
                   </code>
                   {(!t.thumbnailFileId || !t.badgeSvgFileId) && (
-                    <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-amber-700">
+                    <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-warning-700">
                       <ShieldAlert className="h-2.5 w-2.5" />
                       {!t.thumbnailFileId && !t.badgeSvgFileId
                         ? 'Missing PNG + SVG badge'

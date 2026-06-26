@@ -63,7 +63,7 @@ export function SampleSettingsForm({ initial }: { initial: SampleSettingsValues 
         <button type="button" onClick={save} disabled={pending} className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50">
           {pending ? 'Saving…' : 'Save settings'}
         </button>
-        {status && <span className={`text-[13px] ${status.ok ? 'text-emerald-700' : 'text-red-600'}`}>{status.msg}</span>}
+        {status && <span className={`text-[13px] ${status.ok ? 'text-success-700' : 'text-danger-600'}`}>{status.msg}</span>}
       </div>
     </div>
   )

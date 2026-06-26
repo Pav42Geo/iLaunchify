@@ -42,15 +42,15 @@ export const metadata = { title: 'Products — iLaunchify Partners' }
 // -----------------------------------------------------------------------------
 
 const STATUS_PILL: Partial<Record<ProductTemplateStatus, { label: string; cls: string }>> = {
-  PUBLISHED: { label: 'Live', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  PENDING_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  NEEDS_CHANGES: { label: 'Needs changes', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  PUBLISHED: { label: 'Live', cls: 'border-success-200 bg-success-50 text-success-800' },
+  PENDING_REVIEW: { label: 'In review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  PENDING_EDIT_REVIEW: { label: 'Edits in review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  NEEDS_CHANGES: { label: 'Needs changes', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
   DRAFT: { label: 'Draft', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
   PAUSED: { label: 'Paused', cls: 'border-ink-200 bg-ink-100 text-ink-700' },
-  REJECTED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
-  UNDER_REVIEW: { label: 'In review', cls: 'border-sky-200 bg-sky-50 text-sky-800' },
-  ARCHIVED: { label: 'Archived', cls: 'border-rose-200 bg-rose-50 text-rose-800' },
+  REJECTED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
+  UNDER_REVIEW: { label: 'In review', cls: 'border-info-200 bg-info-50 text-info-800' },
+  ARCHIVED: { label: 'Archived', cls: 'border-danger-200 bg-danger-50 text-danger-800' },
 }
 
 type Tab = 'all' | 'needs-changes' | 'drafts' | 'in-review' | 'live' | 'paused' | 'archived'
@@ -316,7 +316,7 @@ export default async function ProductsListPage({
                                 <Link
                                   href="/certifications"
                                   title="A certificate attached to this product expired — renew it to restore the badge."
-                                  className="inline-flex flex-none items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+                                  className="inline-flex flex-none items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger-700 hover:bg-danger-100"
                                 >
                                   <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
                                 </Link>
@@ -395,9 +395,9 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <Link
@@ -551,7 +551,7 @@ function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, str
           {r.certRefreshNeededAt && (
             <Link
               href="/certifications"
-              className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 hover:bg-rose-100"
+              className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger-700 hover:bg-danger-100"
             >
               <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
             </Link>

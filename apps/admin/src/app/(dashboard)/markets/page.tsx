@@ -37,9 +37,9 @@ const STATUS_TONE: Record<string, StatusTone> = {
 }
 
 const TONE_PILL: Record<StatusTone, string> = {
-  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200',
-  danger: 'bg-rose-50 text-rose-700 border-rose-200',
+  success: 'bg-success-50 text-success-700 border-success-200',
+  warning: 'bg-warning-50 text-warning-700 border-warning-200',
+  danger: 'bg-danger-50 text-danger-700 border-danger-200',
 }
 
 const STATUS_ICON: Record<StatusTone, typeof CheckCircle2> = {
@@ -95,7 +95,7 @@ export default async function MarketsPage() {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <Th>Market</Th>
                 <Th>Regulator</Th>
@@ -273,7 +273,7 @@ function NumCell({
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span
         aria-hidden="true"
         className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"

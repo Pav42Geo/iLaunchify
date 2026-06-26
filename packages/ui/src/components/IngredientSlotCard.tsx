@@ -193,7 +193,7 @@ export function IngredientSlotCard({
                     <span
                       className={cn(
                         'flex-shrink-0 text-[11.5px] font-semibold tabular-nums',
-                        opt.priceDelta > 0 ? 'text-ink-700' : 'text-emerald-700',
+                        opt.priceDelta > 0 ? 'text-ink-700' : 'text-success-700',
                       )}
                     >
                       {opt.priceDelta > 0 ? '+' : ''}${Math.abs(opt.priceDelta).toFixed(2)}

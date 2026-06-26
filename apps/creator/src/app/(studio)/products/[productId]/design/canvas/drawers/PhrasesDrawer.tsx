@@ -43,13 +43,13 @@ const CAT_LABEL: Record<string, string> = {
   OTHER: 'Other',
 }
 const CAT_BADGE: Record<string, string> = {
-  ALLERGEN: 'bg-orange-100 text-orange-700',
-  WARNING: 'bg-rose-100 text-rose-700',
-  DISCLAIMER: 'bg-sky-100 text-sky-700',
-  IDENTITY: 'bg-violet-100 text-violet-700',
-  DIRECTIONS: 'bg-emerald-100 text-emerald-700',
-  CLAIM: 'bg-indigo-100 text-indigo-700',
-  SUSTAINABILITY: 'bg-teal-100 text-teal-700',
+  ALLERGEN: 'bg-warning-100 text-warning-700',
+  WARNING: 'bg-danger-100 text-danger-700',
+  DISCLAIMER: 'bg-info-100 text-info-700',
+  IDENTITY: 'bg-info-100 text-info-700',
+  DIRECTIONS: 'bg-success-100 text-success-700',
+  CLAIM: 'bg-info-100 text-info-700',
+  SUSTAINABILITY: 'bg-info-100 text-info-700',
   MARKETING: 'bg-pink-100 text-pink-700',
   OTHER: 'bg-ink-100 text-ink-600',
 }
@@ -172,8 +172,8 @@ export function PhrasesDrawer({
                 className={
                   'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
                   (rg.requirement === 'MANDATORY'
-                    ? 'bg-rose-100 text-rose-700'
-                    : 'bg-sky-100 text-sky-700')
+                    ? 'bg-danger-100 text-danger-700'
+                    : 'bg-info-100 text-info-700')
                 }
               >
                 {REQ_LABEL[rg.requirement]}
@@ -195,7 +195,7 @@ export function PhrasesDrawer({
                       key={p.id}
                       className={
                         'flex items-start gap-2 rounded-md border bg-white px-2.5 py-2 ' +
-                        (p.locked ? 'border-rose-200 ring-1 ring-rose-100' : 'border-ink-200')
+                        (p.locked ? 'border-danger-200 ring-1 ring-danger-100' : 'border-ink-200')
                       }
                     >
                       <div className="min-w-0 flex-1">
@@ -203,7 +203,7 @@ export function PhrasesDrawer({
                           {p.locked && (
                             <span
                               title="Required for this product — auto-attached by a compliance rule. The Studio will flag it if it's not on the label."
-                              className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-rose-700"
+                              className="inline-flex items-center gap-0.5 rounded-full bg-danger-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-danger-700"
                             >
                               <Lock className="h-2.5 w-2.5" />
                               Required
@@ -218,7 +218,7 @@ export function PhrasesDrawer({
                           {isHighRisk(p) && (
                             <span
                               title="FTC enforcement-magnet claim — only use with documentation on file (substantiation, certificate, or test data)."
-                              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-amber-800"
+                              className="inline-flex items-center gap-1 rounded-full bg-warning-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-warning-800"
                             >
                               <ShieldAlert className="h-3 w-3" />
                               Substantiation required

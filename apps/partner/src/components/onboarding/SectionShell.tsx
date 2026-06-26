@@ -31,7 +31,7 @@ export function SectionShell({
   return (
     <section
       className={`rounded-lg border bg-white transition-colors ${
-        isStartHere && !isOpen ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-ink-200'
+        isStartHere && !isOpen ? 'border-success-300 ring-1 ring-success-200' : 'border-ink-200'
       }`}
     >
       <button
@@ -46,7 +46,7 @@ export function SectionShell({
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-ink-900">{title}</h2>
             {isStartHere && status === 'NOT_STARTED' && (
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="rounded-full bg-success-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-success-700">
                 Start here
               </span>
             )}
@@ -88,12 +88,12 @@ function StatusPills({ status }: { status: SectionStatus }) {
 
   const color =
     status === 'COMPLETE'
-      ? 'bg-emerald-500'
+      ? 'bg-success-500'
       : status === 'NEEDS_CHANGES'
-        ? 'bg-red-500'
+        ? 'bg-danger-500'
         : 'bg-ink-400'
 
-  const emptyColor = status === 'NEEDS_CHANGES' ? 'border-red-300' : 'border-ink-300'
+  const emptyColor = status === 'NEEDS_CHANGES' ? 'border-danger-300' : 'border-ink-300'
 
   return (
     <div className="flex flex-shrink-0 gap-1" aria-hidden>
@@ -112,9 +112,9 @@ function StatusPills({ status }: { status: SectionStatus }) {
 function StatusLabel({ status }: { status: SectionStatus }) {
   const labels: Record<SectionStatus, { text: string; cls: string }> = {
     NOT_STARTED: { text: 'NOT STARTED', cls: 'text-ink-400' },
-    IN_PROGRESS: { text: 'IN PROGRESS', cls: 'text-amber-600' },
-    COMPLETE: { text: 'COMPLETE', cls: 'text-emerald-600' },
-    NEEDS_CHANGES: { text: 'NEEDS CHANGES', cls: 'text-red-600' },
+    IN_PROGRESS: { text: 'IN PROGRESS', cls: 'text-warning-600' },
+    COMPLETE: { text: 'COMPLETE', cls: 'text-success-600' },
+    NEEDS_CHANGES: { text: 'NEEDS CHANGES', cls: 'text-danger-600' },
   }
   const { text, cls } = labels[status]
   return (

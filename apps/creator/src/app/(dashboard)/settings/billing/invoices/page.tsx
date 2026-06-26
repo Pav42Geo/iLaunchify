@@ -23,17 +23,17 @@ function fmtDate(d: Date): string {
 
 // Map order status → a friendly label + pill tone for the billing lens.
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  PENDING_PAYMENT: { label: 'Unpaid', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  PAID: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  ROUTING: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  IN_FULFILLMENT: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  READY_TO_SHIP: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  SHIPPED: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  IN_TRANSIT: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  DELIVERED: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  COMPLETED: { label: 'Paid', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  ON_HOLD: { label: 'On hold', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
-  DISPUTED: { label: 'Disputed', cls: 'border-amber-200 bg-amber-50 text-amber-800' },
+  PENDING_PAYMENT: { label: 'Unpaid', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  PAID: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  ROUTING: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  IN_FULFILLMENT: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  READY_TO_SHIP: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  SHIPPED: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  IN_TRANSIT: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  DELIVERED: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  COMPLETED: { label: 'Paid', cls: 'border-success-200 bg-success-50 text-success-800' },
+  ON_HOLD: { label: 'On hold', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
+  DISPUTED: { label: 'Disputed', cls: 'border-warning-200 bg-warning-50 text-warning-800' },
   CANCELLED: { label: 'Cancelled', cls: 'border-ink-200 bg-ink-100 text-ink-600' },
   REFUNDED: { label: 'Refunded', cls: 'border-ink-200 bg-ink-100 text-ink-600' },
 }
@@ -98,7 +98,7 @@ export default async function OrdersInvoicesPage({
       </div>
 
       {receiptError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+        <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-[13px] text-warning-800">
           That receipt isn’t available yet. Receipts appear once the payment has settled.
         </div>
       )}

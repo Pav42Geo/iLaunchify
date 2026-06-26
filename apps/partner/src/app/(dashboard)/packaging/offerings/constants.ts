@@ -49,8 +49,8 @@ export const STATUS_OPTIONS: Array<{ value: OfferingStatus; label: string; hint:
 
 export const STATUS_LABELS: Record<OfferingStatus, { label: string; cls: string }> = {
   DRAFT: { label: 'Draft', cls: 'bg-ink-100 text-ink-700 ring-ink-200' },
-  PENDING_REVIEW: { label: 'Pending review', cls: 'bg-amber-100 text-amber-800 ring-amber-200' },
-  ACTIVE: { label: 'Active', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-200' },
+  PENDING_REVIEW: { label: 'Pending review', cls: 'bg-warning-100 text-warning-800 ring-warning-200' },
+  ACTIVE: { label: 'Active', cls: 'bg-success-100 text-success-800 ring-success-200' },
   ARCHIVED: { label: 'Archived', cls: 'bg-ink-100 text-ink-500 ring-ink-200' },
 }
 

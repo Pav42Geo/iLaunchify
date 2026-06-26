@@ -134,7 +134,7 @@ export function ColorsSection({ brandId, initial }: Props) {
                   onClick={() => removeExtra(i)}
                   disabled={isPending}
                   aria-label="Remove swatch"
-                  className="rounded p-1 text-ink-400 hover:text-red-600"
+                  className="rounded p-1 text-ink-400 hover:text-danger-600"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -208,6 +208,6 @@ function SaveIndicator({
 }) {
   if (status === 'idle' && !pending) return null
   const text = pending ? 'Saving…' : status === 'saved' ? '✓ Saved' : status === 'error' ? '⚠ Save failed' : ''
-  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-emerald-600' : status === 'error' ? 'text-red-600' : ''
+  const cls = pending ? 'text-ink-500' : status === 'saved' ? 'text-success-600' : status === 'error' ? 'text-danger-600' : ''
   return <span className={`text-xs ${cls}`}>{text}</span>
 }

@@ -53,9 +53,9 @@ const STATUS_TONE: Record<
   { bg: string; dot: string; label: string; bar: string }
 > = {
   PENDING_PAYMENT: {
-    bg: 'bg-amber-50 text-amber-800 border-amber-200',
-    dot: 'bg-amber-500',
-    bar: 'bg-amber-500',
+    bg: 'bg-warning-50 text-warning-800 border-warning-200',
+    dot: 'bg-warning-500',
+    bar: 'bg-warning-500',
     label: 'Pending payment',
   },
   PAID: {
@@ -65,9 +65,9 @@ const STATUS_TONE: Record<
     label: 'Paid',
   },
   ROUTING: {
-    bg: 'bg-blue-50 text-blue-800 border-blue-200',
-    dot: 'bg-blue-500',
-    bar: 'bg-blue-500',
+    bg: 'bg-info-50 text-info-800 border-info-200',
+    dot: 'bg-info-500',
+    bar: 'bg-info-500',
     label: 'Routing',
   },
   IN_FULFILLMENT: {
@@ -77,33 +77,33 @@ const STATUS_TONE: Record<
     label: 'In fulfillment',
   },
   READY_TO_SHIP: {
-    bg: 'bg-blue-50 text-blue-800 border-blue-200',
-    dot: 'bg-blue-500',
-    bar: 'bg-blue-500',
+    bg: 'bg-info-50 text-info-800 border-info-200',
+    dot: 'bg-info-500',
+    bar: 'bg-info-500',
     label: 'Ready to ship',
   },
   SHIPPED: {
-    bg: 'bg-blue-50 text-blue-800 border-blue-200',
-    dot: 'bg-blue-500',
-    bar: 'bg-blue-500',
+    bg: 'bg-info-50 text-info-800 border-info-200',
+    dot: 'bg-info-500',
+    bar: 'bg-info-500',
     label: 'Shipped',
   },
   IN_TRANSIT: {
-    bg: 'bg-blue-50 text-blue-800 border-blue-200',
-    dot: 'bg-blue-500',
-    bar: 'bg-blue-500',
+    bg: 'bg-info-50 text-info-800 border-info-200',
+    dot: 'bg-info-500',
+    bar: 'bg-info-500',
     label: 'In transit',
   },
   DELIVERED: {
-    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dot: 'bg-emerald-500',
-    bar: 'bg-emerald-500',
+    bg: 'bg-success-50 text-success-700 border-success-200',
+    dot: 'bg-success-500',
+    bar: 'bg-success-500',
     label: 'Delivered',
   },
   COMPLETED: {
-    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dot: 'bg-emerald-500',
-    bar: 'bg-emerald-500',
+    bg: 'bg-success-50 text-success-700 border-success-200',
+    dot: 'bg-success-500',
+    bar: 'bg-success-500',
     label: 'Completed',
   },
   CANCELLED: {
@@ -113,21 +113,21 @@ const STATUS_TONE: Record<
     label: 'Cancelled',
   },
   REFUNDED: {
-    bg: 'bg-rose-50 text-rose-700 border-rose-200',
-    dot: 'bg-rose-500',
-    bar: 'bg-rose-500',
+    bg: 'bg-danger-50 text-danger-700 border-danger-200',
+    dot: 'bg-danger-500',
+    bar: 'bg-danger-500',
     label: 'Refunded',
   },
   ON_HOLD: {
-    bg: 'bg-amber-50 text-amber-800 border-amber-200',
-    dot: 'bg-amber-500',
-    bar: 'bg-amber-500',
+    bg: 'bg-warning-50 text-warning-800 border-warning-200',
+    dot: 'bg-warning-500',
+    bar: 'bg-warning-500',
     label: 'On hold',
   },
   DISPUTED: {
-    bg: 'bg-rose-50 text-rose-700 border-rose-200',
-    dot: 'bg-rose-500',
-    bar: 'bg-rose-500',
+    bg: 'bg-danger-50 text-danger-700 border-danger-200',
+    dot: 'bg-danger-500',
+    bar: 'bg-danger-500',
     label: 'Disputed',
   },
 }
@@ -136,26 +136,26 @@ const DISPATCH_TONE: Record<
   string,
   { bg: string; dot: string; bar: string; label: string }
 > = {
-  PENDING_ACCEPT: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', bar: 'bg-amber-500', label: 'Pending accept' },
-  ACCEPTED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'Accepted' },
-  CHANGES_REQUESTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', bar: 'bg-rose-500', label: 'Changes requested' },
+  PENDING_ACCEPT: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', bar: 'bg-warning-500', label: 'Pending accept' },
+  ACCEPTED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', bar: 'bg-info-500', label: 'Accepted' },
+  CHANGES_REQUESTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', bar: 'bg-danger-500', label: 'Changes requested' },
   PRODUCING: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', bar: 'bg-pink-500', label: 'Producing' },
   QUALITY_CHECK: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', bar: 'bg-pink-500', label: 'Quality check' },
-  FAILED_QC: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', bar: 'bg-rose-500', label: 'Failed QC' },
-  READY: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'Ready' },
-  SHIPPED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'Shipped' },
-  IN_TRANSIT: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'In transit' },
-  DELIVERED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', bar: 'bg-emerald-500', label: 'Delivered' },
-  DECLINED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', bar: 'bg-rose-500', label: 'Declined' },
+  FAILED_QC: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', bar: 'bg-danger-500', label: 'Failed QC' },
+  READY: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', bar: 'bg-info-500', label: 'Ready' },
+  SHIPPED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', bar: 'bg-info-500', label: 'Shipped' },
+  IN_TRANSIT: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', bar: 'bg-info-500', label: 'In transit' },
+  DELIVERED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', bar: 'bg-success-500', label: 'Delivered' },
+  DECLINED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', bar: 'bg-danger-500', label: 'Declined' },
   TIMED_OUT: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', bar: 'bg-ink-400', label: 'Timed out' },
-  WITHDRAWN: { bg: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', bar: 'bg-rose-500', label: 'Withdrawn' },
+  WITHDRAWN: { bg: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500', bar: 'bg-danger-500', label: 'Withdrawn' },
 }
 
 const APPROVAL_TONE: Record<string, { bg: string; label: string }> = {
-  AWAITING_PARTNERS: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'Awaiting partners' },
-  PARTIALLY_ACCEPTED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Partially accepted' },
-  CHANGES_REQUESTED: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Changes requested' },
-  FULLY_ACCEPTED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Fully accepted' },
+  AWAITING_PARTNERS: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Awaiting partners' },
+  PARTIALLY_ACCEPTED: { bg: 'bg-info-50 text-info-800 border-info-200', label: 'Partially accepted' },
+  CHANGES_REQUESTED: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Changes requested' },
+  FULLY_ACCEPTED: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Fully accepted' },
   CANCELLED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', label: 'Cancelled' },
 }
 
@@ -249,12 +249,12 @@ export default async function AdminOrderDetail({ params }: PageProps) {
     <div className="space-y-6">
       {/* OPEN DISPUTE — creator-reported issue awaiting resolution */}
       {openDispute && (
-        <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4">
+        <section className="rounded-2xl border border-warning-300 bg-warning-50/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[13px] font-semibold text-amber-900">
+            <p className="text-[13px] font-semibold text-warning-900">
               Open dispute · {String(openDispute.category).replace(/_/g, ' ').toLowerCase()}
             </p>
-            <span className="text-[11px] text-amber-700">
+            <span className="text-[11px] text-warning-700">
               {openDispute.openedBy?.email ?? 'creator'} ·{' '}
               {new Date(openDispute.createdAt).toLocaleDateString()}
             </span>
@@ -266,7 +266,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
               {openDispute.partnerResponse}
             </div>
           ) : (
-            <p className="mt-2 text-[11.5px] italic text-amber-700">
+            <p className="mt-2 text-[11.5px] italic text-warning-700">
               Awaiting the partner&apos;s response — they&apos;ve been notified.
             </p>
           )}
@@ -417,7 +417,7 @@ function ItemsCard({
       ) : (
         <div className="overflow-hidden rounded-xl border border-ink-100">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Product</th>
                 <th className="px-3 py-2 text-right font-semibold">Qty</th>
@@ -451,7 +451,7 @@ function ItemsCard({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-zinc-50/70">
+            <tfoot className="bg-ink-50/70">
               <tr>
                 <td className="px-3 py-2.5 text-[12px] font-bold uppercase tracking-wider text-ink-700" colSpan={3}>
                   Order total
@@ -550,7 +550,7 @@ function DispatchesCard({
                       </span>
                     </div>
                     {reReview && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-warning-200 bg-warning-50 px-2 py-1 text-[11px] font-medium text-warning-800">
                         <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                         Manifest v{d.manifestVersion} — partner accepted v{d.acceptedManifestVersion}, re-review pending
                       </div>
@@ -623,7 +623,7 @@ function DispatchRow({
       <dd
         className={cn(
           'mt-0.5 text-[12px]',
-          tone === 'rose' ? 'text-rose-700' : 'text-ink-900',
+          tone === 'rose' ? 'text-danger-700' : 'text-ink-900',
         )}
       >
         {value}
@@ -657,7 +657,7 @@ function ChargeCard({
           <span className="tabular-nums">{formatCurrency(charge.amountCents)}</span>
         </Row>
         <Row label="Application fee">
-          <span className="tabular-nums text-emerald-700">
+          <span className="tabular-nums text-success-700">
             {formatCurrency(charge.applicationFeeCents)}
           </span>
         </Row>
@@ -738,10 +738,10 @@ function RefundsCard({
         {refunds.map((r) => (
           <li
             key={r.id}
-            className="flex items-start justify-between gap-3 rounded-lg border border-rose-100 bg-rose-50/40 p-3"
+            className="flex items-start justify-between gap-3 rounded-lg border border-danger-100 bg-danger-50/40 p-3"
           >
             <p className="truncate font-mono text-[11px] text-ink-600">{r.stripeRefundId}</p>
-            <span className="font-mono text-[12.5px] font-semibold tabular-nums text-rose-700">
+            <span className="font-mono text-[12.5px] font-semibold tabular-nums text-danger-700">
               −{formatCurrency(r.amountCents)}
             </span>
           </li>
@@ -808,7 +808,7 @@ function ShipToCard({
 function NotesCard({ notes }: { notes: string }) {
   return (
     <Card icon={StickyNote} title="Internal notes" subtitle="Admin-only">
-      <p className="whitespace-pre-wrap rounded-lg border border-amber-100 bg-amber-50/60 p-3 text-[12.5px] text-ink-800">
+      <p className="whitespace-pre-wrap rounded-lg border border-warning-100 bg-warning-50/60 p-3 text-[12.5px] text-ink-800">
         {notes}
       </p>
     </Card>
@@ -1069,8 +1069,8 @@ function Kpi({
   const numeralTone = {
     ink: 'text-ink-900',
     pink: 'text-pink-700',
-    info: 'text-blue-700',
-    success: 'text-emerald-700',
+    info: 'text-info-700',
+    success: 'text-success-700',
   }[tone]
   return (
     <div className="px-5 py-3.5">

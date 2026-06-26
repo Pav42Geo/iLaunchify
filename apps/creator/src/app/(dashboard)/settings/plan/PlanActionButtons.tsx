@@ -57,7 +57,7 @@ export function UpgradeButton({
         {pending ? 'Opening Stripe…' : label}
       </button>
       {error && (
-        <p className="text-[11.5px] text-red-700" role="alert">
+        <p className="text-[11.5px] text-danger-700" role="alert">
           {error}
         </p>
       )}
@@ -108,7 +108,7 @@ export function CancelButton() {
         {pending ? 'Scheduling…' : 'Cancel subscription'}
       </button>
       {error && (
-        <p className="text-[11.5px] text-red-700" role="alert">
+        <p className="text-[11.5px] text-danger-700" role="alert">
           {error}
         </p>
       )}
@@ -138,12 +138,12 @@ export function ResumeButton() {
             }
           })
         }}
-        className="inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 text-[12px] font-semibold uppercase tracking-wider text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-9 items-center justify-center rounded-full bg-success-600 px-4 text-[12px] font-semibold uppercase tracking-wider text-white transition hover:bg-success-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? 'Resuming…' : 'Resume subscription'}
       </button>
       {error && (
-        <p className="text-[11.5px] text-red-700" role="alert">
+        <p className="text-[11.5px] text-danger-700" role="alert">
           {error}
         </p>
       )}

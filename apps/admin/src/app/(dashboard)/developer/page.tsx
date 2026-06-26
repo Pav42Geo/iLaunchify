@@ -26,9 +26,9 @@ function RotationBadge({ r }: { r: RotationStatus }) {
     return <span className="text-[11px] text-ink-400">Rotation not recorded</span>
   }
   const tone = {
-    ok: 'text-emerald-700',
-    'due-soon': 'text-amber-700',
-    overdue: 'text-rose-700',
+    ok: 'text-success-700',
+    'due-soon': 'text-warning-700',
+    overdue: 'text-danger-700',
   }[r.state]
   const d = r.daysUntilDue ?? 0
   const label = r.state === 'overdue' ? `Overdue by ${Math.abs(d)}d` : r.state === 'due-soon' ? `Due in ${d}d` : `Healthy — due in ${d}d`
@@ -39,15 +39,15 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Developer & API keys — Admin' }
 
 const KIND_CHIP: Record<EnvVarKind, string> = {
-  secret: 'bg-rose-50 text-rose-700 border-rose-200',
-  config: 'bg-sky-50 text-sky-700 border-sky-200',
+  secret: 'bg-danger-50 text-danger-700 border-danger-200',
+  config: 'bg-info-50 text-info-700 border-info-200',
   public: 'bg-ink-50 text-ink-500 border-ink-200',
 }
 
 function StatePill({ state }: { state: IntegrationStatus['state'] }) {
   const map = {
-    configured: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    partial: 'border-amber-200 bg-amber-50 text-amber-800',
+    configured: 'border-success-200 bg-success-50 text-success-700',
+    partial: 'border-warning-200 bg-warning-50 text-warning-800',
     missing: 'border-ink-200 bg-ink-50 text-ink-500',
   } as const
   const label = { configured: 'Configured', partial: 'Partial', missing: 'Not set' }[state]
@@ -84,9 +84,9 @@ export default async function IntegrationsPage() {
       />
 
       {/* Security banner — the whole point of the design */}
-      <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
-        <ShieldCheck className="mt-0.5 h-4.5 w-4.5 flex-none text-emerald-600" />
-        <p className="text-[12.5px] leading-relaxed text-emerald-900">
+      <div className="flex items-start gap-2.5 rounded-2xl border border-success-200 bg-success-50/60 px-4 py-3">
+        <ShieldCheck className="mt-0.5 h-4.5 w-4.5 flex-none text-success-600" />
+        <p className="text-[12.5px] leading-relaxed text-success-900">
           <span className="font-semibold">Secret values are never shown or stored here.</span> This
           page only reports whether each variable is <em>set</em> in the running environment — the
           actual keys live in your host&apos;s env / secrets store, never in the database. To change a
@@ -98,8 +98,8 @@ export default async function IntegrationsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Live integrations', value: live.length, tone: 'text-ink-900' },
-          { label: 'Configured', value: configured, tone: 'text-emerald-700' },
-          { label: 'Partial / Not set', value: partial + missing, tone: (partial + missing) > 0 ? 'text-amber-700' : 'text-ink-900' },
+          { label: 'Configured', value: configured, tone: 'text-success-700' },
+          { label: 'Partial / Not set', value: partial + missing, tone: (partial + missing) > 0 ? 'text-warning-700' : 'text-ink-900' },
           { label: 'Planned slots', value: planned, tone: 'text-ink-500' },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
@@ -132,7 +132,7 @@ export default async function IntegrationsPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-display text-[15px] font-semibold text-ink-900">{s.def.name}</h3>
                       {s.environment && (
-                        <span className={`rounded-full border px-1.5 py-[1px] text-[10px] font-semibold uppercase ${s.environment === 'live' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
+                        <span className={`rounded-full border px-1.5 py-[1px] text-[10px] font-semibold uppercase ${s.environment === 'live' ? 'border-danger-200 bg-danger-50 text-danger-700' : 'border-info-200 bg-info-50 text-info-700'}`}>
                           {s.environment}
                         </span>
                       )}
@@ -155,7 +155,7 @@ export default async function IntegrationsPage() {
                     <li key={v.name} className="flex items-center gap-2 text-[12px]">
                       <span
                         className={`inline-flex h-4 w-4 flex-none items-center justify-center rounded-full text-[10px] font-bold ${
-                          v.present ? 'bg-emerald-100 text-emerald-700' : v.required ? 'bg-rose-100 text-rose-700' : 'bg-ink-100 text-ink-400'
+                          v.present ? 'bg-success-100 text-success-700' : v.required ? 'bg-danger-100 text-danger-700' : 'bg-ink-100 text-ink-400'
                         }`}
                         title={v.present ? 'Set' : v.required ? 'Required — not set' : 'Optional — not set'}
                       >

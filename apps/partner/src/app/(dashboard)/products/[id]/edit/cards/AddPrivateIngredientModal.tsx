@@ -163,7 +163,7 @@ export function AddPrivateIngredientModal({
                     disabled={isPending}
                     className={`rounded-full border px-2.5 py-1 text-xs ${
                       active
-                        ? 'border-amber-300 bg-amber-100 text-amber-900'
+                        ? 'border-warning-300 bg-warning-100 text-warning-900'
                         : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'
                     }`}
                   >

@@ -56,7 +56,7 @@ export function PackagingStatusToggle({
         onClick={() => go('RETIRED')}
         disabled={isPending}
         variant="outline"
-        className="border-amber-300 text-amber-700 hover:bg-amber-50"
+        className="border-warning-300 text-warning-700 hover:bg-warning-50"
       >
         {isPending ? 'Retiring…' : 'Retire'}
       </Button>

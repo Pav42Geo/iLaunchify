@@ -59,7 +59,7 @@ export function PackingProfileControls({ row }: { row: ProfileRow }) {
         disabled={pending}
         className={
           'rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
-          (r.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500')
+          (r.isActive ? 'bg-success-100 text-success-700' : 'bg-ink-100 text-ink-500')
         }
       >
         {r.isActive ? '● Active' : '○ Inactive'}

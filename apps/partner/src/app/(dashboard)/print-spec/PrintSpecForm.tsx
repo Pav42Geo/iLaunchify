@@ -497,7 +497,7 @@ export function PrintSpecForm({ serviceId, substrates, initial }: PrintSpecFormP
       </Section>
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-[13px] text-danger-700">
           {error}
         </div>
       )}

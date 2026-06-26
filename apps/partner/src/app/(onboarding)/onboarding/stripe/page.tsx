@@ -24,7 +24,7 @@ export default async function StripeStep() {
       </CardHeader>
       <CardContent className="space-y-4">
         {isConnected ? (
-          <div className="rounded-md bg-green-50 p-3 text-sm text-green-900">
+          <div className="rounded-md bg-success-50 p-3 text-sm text-success-900">
             ✓ Payouts enabled. Stripe will deposit transferred amounts to your linked bank account
             within 2 business days after each shipment confirmation.
           </div>
@@ -40,7 +40,7 @@ export default async function StripeStep() {
             </ul>
             <ConnectButton accountStatus={dbUser?.stripeAccountStatus ?? 'NONE'} />
             {isPending && (
-              <p className="text-sm text-amber-700">
+              <p className="text-sm text-warning-700">
                 Stripe is still verifying your account. Refresh in a few minutes.
               </p>
             )}

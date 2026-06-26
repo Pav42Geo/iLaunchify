@@ -95,8 +95,8 @@ const RECIPE_BADGE: Record<ComplianceOutcome | 'NONE', {
   cls: string
 }> = {
   NONE: { label: 'No recipe yet', icon: Circle, cls: 'text-ink-400' },
-  PASSED: { label: 'Recipe compliant', icon: CircleCheck, cls: 'text-emerald-700' },
-  PASSED_WITH_WARNINGS: { label: 'Compliant with warnings', icon: CircleAlert, cls: 'text-amber-700' },
+  PASSED: { label: 'Recipe compliant', icon: CircleCheck, cls: 'text-success-700' },
+  PASSED_WITH_WARNINGS: { label: 'Compliant with warnings', icon: CircleAlert, cls: 'text-warning-700' },
   FAILED: { label: 'Compliance failed', icon: CircleAlert, cls: 'text-pink-700' },
 }
 
@@ -440,9 +440,9 @@ function Kpi({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <Link
@@ -504,7 +504,7 @@ function RestrictedChip({ labels }: { labels: string[] }) {
   return (
     <span
       title={`Restricted: ${labels.join(', ')} — requires licensing iLaunchify doesn't support yet. Can't be ordered.`}
-      className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-red-700"
+      className="inline-flex items-center gap-1 rounded-full border border-danger-300 bg-danger-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-danger-700"
     >
       <ShieldAlert className="h-3 w-3" aria-hidden="true" />
       Restricted

@@ -56,7 +56,7 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
       {/* Existing overrides */}
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
             <tr>
               <th className="px-4 py-2.5 text-left font-semibold">Scope</th>
               <th className="px-4 py-2.5 text-left font-semibold">Key</th>
@@ -78,7 +78,7 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
                 <td className="px-4 py-3 tabular-nums text-ink-700">{usd(o.flatShippingBaseCents)} / {usd(o.flatShippingPerUnitCents)} / {usd(o.freeShippingThresholdCents)}</td>
                 <td className="px-4 py-3 text-ink-600">{o.note ?? '—'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button type="button" onClick={() => remove(o)} disabled={pending} className="text-ink-400 hover:text-red-600 disabled:opacity-40" aria-label="Delete override">
+                  <button type="button" onClick={() => remove(o)} disabled={pending} className="text-ink-400 hover:text-danger-600 disabled:opacity-40" aria-label="Delete override">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </td>
@@ -134,7 +134,7 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
           <button type="button" onClick={add} disabled={pending || !draft.scopeKey.trim()} className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50">
             <Plus className="h-4 w-4" /> {pending ? 'Saving…' : 'Save override'}
           </button>
-          {status && <span className={`text-[13px] ${status.ok ? 'text-emerald-700' : 'text-red-600'}`}>{status.msg}</span>}
+          {status && <span className={`text-[13px] ${status.ok ? 'text-success-700' : 'text-danger-600'}`}>{status.msg}</span>}
         </div>
       </div>
     </div>

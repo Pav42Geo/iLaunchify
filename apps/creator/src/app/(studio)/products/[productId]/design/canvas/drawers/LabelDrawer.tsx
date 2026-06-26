@@ -361,7 +361,7 @@ export function LabelDrawer({
           type="button"
           onClick={handleRemovePanel}
           disabled={!canvas}
-          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-rose-300 bg-rose-50 text-rose-700 rounded-md hover:bg-rose-100 disabled:opacity-40 transition-colors"
+          className="w-full h-10 inline-flex items-center justify-center gap-1.5 text-sm font-semibold border border-danger-300 bg-danger-50 text-danger-700 rounded-md hover:bg-danger-100 disabled:opacity-40 transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
           Remove {panelLabel}
@@ -452,25 +452,25 @@ export function LabelDrawer({
                 className={
                   'w-full flex items-center justify-between gap-2 text-left rounded-md border px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ' +
                   (present
-                    ? 'border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50'
+                    ? 'border-success-300 bg-success-50/50 hover:bg-success-50'
                     : 'border-ink-200 hover:border-pink-500 hover:bg-pink-50/40')
                 }
               >
                 <span className="flex items-center gap-1.5">
                   {present && (
-                    <Check className="h-3 w-3 text-emerald-700 flex-shrink-0" />
+                    <Check className="h-3 w-3 text-success-700 flex-shrink-0" />
                   )}
                   <span
                     className={
                       'text-[12.5px] font-semibold ' +
-                      (present ? 'text-emerald-900' : 'text-ink-900')
+                      (present ? 'text-success-900' : 'text-ink-900')
                     }
                   >
                     {LABEL_SECTION_LABELS[role]}
                   </span>
                 </span>
                 {present ? (
-                  <Target className="h-3.5 w-3.5 text-emerald-700" />
+                  <Target className="h-3.5 w-3.5 text-success-700" />
                 ) : (
                   <Plus className="h-3.5 w-3.5 text-ink-500" />
                 )}
@@ -518,7 +518,7 @@ export function LabelDrawer({
                   className={
                     'w-full flex items-center justify-between gap-2 text-left rounded-md border px-2.5 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ' +
                     (present
-                      ? 'border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50'
+                      ? 'border-success-300 bg-success-50/50 hover:bg-success-50'
                       : 'border-ink-200 hover:border-pink-500 hover:bg-pink-50/40')
                   }
                 >
@@ -538,14 +538,14 @@ export function LabelDrawer({
                     <span
                       className={
                         'text-[12.5px] font-semibold truncate ' +
-                        (present ? 'text-emerald-900' : 'text-ink-900')
+                        (present ? 'text-success-900' : 'text-ink-900')
                       }
                     >
                       {badge.certTypeName}
                     </span>
                   </span>
                   {present ? (
-                    <Target className="h-3.5 w-3.5 flex-shrink-0 text-emerald-700" />
+                    <Target className="h-3.5 w-3.5 flex-shrink-0 text-success-700" />
                   ) : (
                     <Plus className="h-3.5 w-3.5 flex-shrink-0 text-ink-500" />
                   )}

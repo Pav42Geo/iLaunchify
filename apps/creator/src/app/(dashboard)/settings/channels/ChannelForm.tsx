@@ -95,13 +95,13 @@ export function ChannelForm({
                 onClick={() => pickChannel(opt.value)}
                 className={`flex items-start gap-3 rounded-md border p-3 text-left transition-colors ${
                   selected
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-success-500 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
                 <span
                   className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md ${
-                    selected ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-600'
+                    selected ? 'bg-success-100 text-success-700' : 'bg-ink-100 text-ink-600'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -154,8 +154,8 @@ function SaveIndicator({
   const text = { saving: 'Saving…', saved: '✓ Saved', error: '⚠ Save failed', idle: '' }[display]
   const cls = {
     saving: 'text-ink-500',
-    saved: 'text-emerald-600',
-    error: 'text-red-600',
+    saved: 'text-success-600',
+    error: 'text-danger-600',
     idle: '',
   }[display]
   return <span className={`text-xs ${cls}`}>{text}</span>

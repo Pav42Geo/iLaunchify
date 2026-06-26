@@ -34,8 +34,8 @@ export const FLAVOR_POLICY_OPTIONS: Array<{ value: FlavorPolicy; label: string; 
 
 export const STATUS_LABELS: Record<PackagingStatus, { label: string; cls: string }> = {
   DRAFT: { label: 'Draft', cls: 'bg-ink-100 text-ink-700 ring-ink-200' },
-  ACTIVE: { label: 'Active', cls: 'bg-emerald-100 text-emerald-800 ring-emerald-200' },
-  RETIRED: { label: 'Retired', cls: 'bg-amber-100 text-amber-800 ring-amber-200' },
+  ACTIVE: { label: 'Active', cls: 'bg-success-100 text-success-800 ring-success-200' },
+  RETIRED: { label: 'Retired', cls: 'bg-warning-100 text-warning-800 ring-warning-200' },
 }
 
 // Quick lookup for the topology pill on the list page

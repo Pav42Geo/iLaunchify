@@ -21,9 +21,9 @@ const SERVICE_LABEL: Record<string, string> = {
 }
 
 const SERVICE_STATUS_PILL: Record<string, string> = {
-  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  ACTIVE: 'border-success-200 bg-success-50 text-success-800',
   DRAFT: 'border-ink-200 bg-ink-100 text-ink-700',
-  PAUSED: 'border-amber-200 bg-amber-50 text-amber-800',
+  PAUSED: 'border-warning-200 bg-warning-50 text-warning-800',
 }
 
 export default async function ServicesPage() {

@@ -30,11 +30,11 @@ export function PromotionCriteriaCard({ result }: Props) {
   // because it confirms the page is intentionally minimal here.
   if (result.nextTier == null) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500">
+      <section className="rounded-xl border border-ink-200 bg-white p-5">
+        <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
           Promotion criteria
         </h2>
-        <p className="mt-2 text-[13px] text-zinc-600">
+        <p className="mt-2 text-[13px] text-ink-600">
           This partner is already at the top tier. No promotion criteria to
           evaluate.
         </p>
@@ -47,18 +47,18 @@ export function PromotionCriteriaCard({ result }: Props) {
 
   return (
     <section
-      className="rounded-xl border border-zinc-200 bg-white"
+      className="rounded-xl border border-ink-200 bg-white"
       aria-labelledby="promotion-criteria-heading"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-5 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 px-5 py-3">
         <div>
           <h2
             id="promotion-criteria-heading"
-            className="text-[10.5px] font-semibold uppercase tracking-widest text-zinc-500"
+            className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500"
           >
             Promotion criteria → {NEXT_TIER_LABEL[result.nextTier]}
           </h2>
-          <p className="mt-0.5 text-[11.5px] text-zinc-500">
+          <p className="mt-0.5 text-[11.5px] text-ink-500">
             Decision support only — promotion remains a human call.
           </p>
         </div>
@@ -66,39 +66,39 @@ export function PromotionCriteriaCard({ result }: Props) {
           className={
             'inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[10.5px] font-semibold uppercase tracking-[0.04em] ' +
             (allMet
-              ? 'bg-emerald-100 text-emerald-800'
-              : 'bg-zinc-100 text-zinc-700')
+              ? 'bg-success-100 text-success-800'
+              : 'bg-ink-100 text-ink-700')
           }
         >
           {result.metCount} / {result.trackedCount} tracked met
         </span>
       </header>
 
-      <ul className="divide-y divide-zinc-100">
+      <ul className="divide-y divide-ink-100">
         {result.criteria.map((c, i) => (
           <li key={`${c.label}-${i}`} className="flex items-start gap-3 px-5 py-3">
             <StatusGlyph status={c.status} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[13px] font-medium text-zinc-800">{c.label}</p>
+                <p className="text-[13px] font-medium text-ink-800">{c.label}</p>
                 <p
                   className={
                     'text-[12px] tabular-nums ' +
                     (c.status === 'met'
-                      ? 'text-emerald-700'
+                      ? 'text-success-700'
                       : c.status === 'far'
-                        ? 'text-zinc-500'
+                        ? 'text-ink-500'
                         : c.status === 'unknown'
-                          ? 'text-zinc-400'
-                          : 'text-amber-700')
+                          ? 'text-ink-400'
+                          : 'text-warning-700')
                   }
                 >
                   <span className="font-semibold">{c.currentDisplay}</span>
-                  <span className="ml-2 text-zinc-400">target {c.targetDisplay}</span>
+                  <span className="ml-2 text-ink-400">target {c.targetDisplay}</span>
                 </p>
               </div>
               {c.caveat && (
-                <p className="mt-1 text-[11.5px] italic text-zinc-500">
+                <p className="mt-1 text-[11.5px] italic text-ink-500">
                   {c.caveat}
                 </p>
               )}
@@ -114,7 +114,7 @@ function StatusGlyph({ status }: { status: CriterionStatus }) {
   if (status === 'met') {
     return (
       <CheckCircle2
-        className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600"
+        className="mt-0.5 h-4 w-4 flex-shrink-0 text-success-600"
         aria-label="Met"
       />
     )
@@ -122,7 +122,7 @@ function StatusGlyph({ status }: { status: CriterionStatus }) {
   if (status === 'almost') {
     return (
       <AlertCircle
-        className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600"
+        className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-600"
         aria-label="Almost met"
       />
     )
@@ -130,14 +130,14 @@ function StatusGlyph({ status }: { status: CriterionStatus }) {
   if (status === 'unknown') {
     return (
       <HelpCircle
-        className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-400"
+        className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-400"
         aria-label="Not tracked yet"
       />
     )
   }
   return (
     <Circle
-      className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-300"
+      className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-300"
       aria-label="Not met"
     />
   )

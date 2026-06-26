@@ -165,7 +165,7 @@ export function BasicsStep({ categories, subcategories }: BasicsStepProps) {
 
         <div className="mt-6 flex items-center justify-end gap-3 border-t border-ink-100 pt-4">
           {!canContinue && (
-            <p className="text-xs text-amber-700">Add a name + category to continue.</p>
+            <p className="text-xs text-warning-700">Add a name + category to continue.</p>
           )}
           <button
             type="button"

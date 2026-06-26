@@ -82,7 +82,7 @@ export default async function ClaimConsentsPage({ searchParams }: PageProps) {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full text-[12.5px]">
-            <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+            <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
               <tr>
                 <th className="px-3 py-2.5 text-left font-semibold">When</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Creator</th>
@@ -124,11 +124,11 @@ export default async function ClaimConsentsPage({ searchParams }: PageProps) {
                         className={cn(
                           'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
                           revoked
-                            ? 'border-rose-200 bg-rose-50 text-rose-900'
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-900',
+                            ? 'border-danger-200 bg-danger-50 text-danger-900'
+                            : 'border-success-200 bg-success-50 text-success-900',
                         )}
                       >
-                        <span className={cn('h-1.5 w-1.5 rounded-full', revoked ? 'bg-rose-500' : 'bg-emerald-500')} />
+                        <span className={cn('h-1.5 w-1.5 rounded-full', revoked ? 'bg-danger-500' : 'bg-success-500')} />
                         {revoked ? `Revoked ${new Date(r.revokedAt!).toLocaleDateString()}` : 'Active'}
                       </span>
                     </td>
@@ -173,10 +173,10 @@ function Kpi({
   active?: boolean
 }) {
   const iconTone: Record<'emerald' | 'rose' | 'sky' | 'violet', string> = {
-    emerald: 'bg-emerald-100 text-emerald-700',
-    rose: 'bg-rose-100 text-rose-700',
-    sky: 'bg-sky-100 text-sky-700',
-    violet: 'bg-violet-100 text-violet-700',
+    emerald: 'bg-success-100 text-success-700',
+    rose: 'bg-danger-100 text-danger-700',
+    sky: 'bg-info-100 text-info-700',
+    violet: 'bg-info-100 text-info-700',
   }
   return (
     <div className={cn('rounded-2xl border border-ink-200 bg-white px-4 py-3.5 ring-1 ring-transparent', active && 'ring-pink-300/40')}>

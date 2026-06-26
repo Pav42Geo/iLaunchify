@@ -25,9 +25,9 @@ const TAB_LABEL: Record<StatusTab, string> = {
   FAILED: 'Failed',
 }
 const STATUS_PILL: Record<string, string> = {
-  SUCCEEDED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-800',
-  FAILED: 'border-red-200 bg-red-50 text-red-700',
+  SUCCEEDED: 'border-success-200 bg-success-50 text-success-800',
+  PENDING: 'border-warning-200 bg-warning-50 text-warning-800',
+  FAILED: 'border-danger-200 bg-danger-50 text-danger-700',
 }
 
 function fmtCents(cents: number): string {
@@ -202,7 +202,7 @@ export default async function FinanceRefundsPage({
 }
 
 function Kpi({ label, value, tone = 'ink' }: { label: string; value: string; tone?: 'ink' | 'pink' | 'amber' | 'red' }) {
-  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-amber-700', red: 'text-red-700' }[tone]
+  const toneCls = { ink: 'text-ink-900', pink: 'text-pink-700', amber: 'text-warning-700', red: 'text-danger-700' }[tone]
   return (
     <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3">
       <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">{label}</div>

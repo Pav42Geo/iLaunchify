@@ -62,7 +62,7 @@ const SOURCE_TONE: Record<
     icon: Bot,
   },
   MANUFACTURER: {
-    bg: 'bg-sky-100 text-sky-700 border-sky-200',
+    bg: 'bg-info-100 text-info-700 border-info-200',
     label: 'Manufacturer',
     icon: Building2,
   },
@@ -251,8 +251,8 @@ function Header({
         title="Niche assignment audit"
         description="How niches are being assigned across the marketplace — auto-suggest hits, manufacturer edits, admin overrides. Filter by source, niche, window, and product to tune the rule engine."
         actions={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-success-200 bg-success-50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-success-700">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success-500" />
             Live · {RANGE_LABEL[range]}
           </span>
         }
@@ -319,9 +319,9 @@ function KpiCard({
 }) {
   const iconTone: Record<typeof tone, string> = {
     ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-sky-100 text-sky-700',
+    sky: 'bg-info-100 text-info-700',
     pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-amber-100 text-amber-700',
+    amber: 'bg-warning-100 text-warning-700',
   }
   return (
     <Link
@@ -616,7 +616,7 @@ function AuditTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <SortableTh
               href={sortHref('createdAt')}
@@ -747,7 +747,7 @@ function Row({ row }: { row: NichesAuditRow }) {
         {row.source === 'AUTO_RULE' && row.rule ? (
           <span
             title={row.rule.description}
-            className="inline-flex items-center gap-1 rounded-md border border-ink-200 bg-zinc-50 px-1.5 py-[2px] font-mono text-[10.5px] font-semibold text-ink-800"
+            className="inline-flex items-center gap-1 rounded-md border border-ink-200 bg-ink-50 px-1.5 py-[2px] font-mono text-[10.5px] font-semibold text-ink-800"
           >
             <Sparkles className="h-3 w-3 text-ink-400" />
             {row.rule.slug}
@@ -782,8 +782,8 @@ function AppliedPill({ applied }: { applied: boolean }) {
       className={cn(
         'inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
         applied
-          ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
-          : 'border-rose-200 bg-rose-100 text-rose-700',
+          ? 'border-success-200 bg-success-100 text-success-700'
+          : 'border-danger-200 bg-danger-100 text-danger-700',
       )}
     >
       {applied ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
@@ -875,7 +875,7 @@ function Paginator({
       </p>
       <div className="flex items-center gap-2">
         <PageNav href={prevHref} disabled={!canPrev} dir="prev" />
-        <span className="inline-flex items-center rounded-full border border-ink-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-ink-700">
+        <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-ink-700">
           Page {page} of {pageCount}
         </span>
         <PageNav href={nextHref} disabled={!canNext} dir="next" />
@@ -899,7 +899,7 @@ function PageNav({
     return (
       <span
         aria-disabled="true"
-        className="inline-flex h-7 items-center gap-1 rounded-full border border-ink-200 bg-zinc-50 px-2.5 text-[11px] font-semibold text-ink-400"
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-ink-200 bg-ink-50 px-2.5 text-[11px] font-semibold text-ink-400"
       >
         {dir === 'prev' && <Icon className="h-3 w-3" />}
         {label}
@@ -925,7 +925,7 @@ function PageNav({
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span
         aria-hidden="true"
         className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"

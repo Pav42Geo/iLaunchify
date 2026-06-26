@@ -250,8 +250,8 @@ export function DeclaredPanelPanel({
                   className={
                     'rounded-pill border px-2.5 py-0.5 text-[11px] font-medium transition-colors ' +
                     (allergens.includes(a)
-                      ? 'border-amber-300 bg-amber-100 text-amber-900'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-amber-300')
+                      ? 'border-warning-300 bg-warning-100 text-warning-900'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-warning-300')
                   }
                 >
                   {a}
@@ -265,7 +265,7 @@ export function DeclaredPanelPanel({
                     type="button"
                     onClick={() => toggleAllergen(a)}
                     disabled={isSaving}
-                    className="inline-flex items-center gap-1 rounded-pill border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-900"
+                    className="inline-flex items-center gap-1 rounded-pill border border-warning-300 bg-warning-100 px-2.5 py-0.5 text-[11px] font-medium text-warning-900"
                   >
                     {a} <X className="h-2.5 w-2.5" />
                   </button>

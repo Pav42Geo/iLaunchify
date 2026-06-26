@@ -66,7 +66,7 @@ export default async function OrderSuccessPage({
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex-row items-center gap-3 space-y-0">
-          <CheckCircle2 className="h-10 w-10 shrink-0 text-green-600" />
+          <CheckCircle2 className="h-10 w-10 shrink-0 text-success-600" />
           <div>
             <CardTitle>Production order placed</CardTitle>
             <CardDescription>

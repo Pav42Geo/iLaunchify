@@ -77,7 +77,7 @@ export function SupportPolicyForm({ initial }: { initial: SupportSettingsValues 
       {/* Per-tier policy table */}
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <table className="w-full text-[13px]">
-          <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+          <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
             <tr>
               <th className="px-5 py-2.5 text-left font-semibold">Creator tier</th>
               <th className="px-5 py-2.5 text-left font-semibold">First-response SLA</th>

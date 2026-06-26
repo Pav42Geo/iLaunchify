@@ -88,7 +88,7 @@ export function YourCompanySection({
   return (
     <div className="space-y-8">
       <div className="-mt-3 flex items-center justify-end gap-2">
-        {error && <span className="text-xs text-red-600">{error}</span>}
+        {error && <span className="text-xs text-danger-600">{error}</span>}
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>
 
@@ -260,7 +260,7 @@ function Field({
           {label}
         </Label>
         {required && (
-          <span className="text-[10px] font-medium uppercase tracking-wider text-red-600">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-danger-600">
             Required
           </span>
         )}
@@ -283,8 +283,8 @@ function SaveIndicator({
   const text = { saving: 'Saving…', saved: '✓ Saved', error: '⚠ Save failed', idle: '' }[display]
   const cls = {
     saving: 'text-ink-500',
-    saved: 'text-emerald-600',
-    error: 'text-red-600',
+    saved: 'text-success-600',
+    error: 'text-danger-600',
     idle: '',
   }[display]
   return <span className={`text-xs ${cls}`}>{text}</span>

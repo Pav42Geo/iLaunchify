@@ -163,7 +163,7 @@ function Field({
       <Label htmlFor={id}>{label}</Label>
       {children}
       {hint && <p className="text-xs text-ink-500">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger-600">{error}</p>}
     </div>
   )
 }

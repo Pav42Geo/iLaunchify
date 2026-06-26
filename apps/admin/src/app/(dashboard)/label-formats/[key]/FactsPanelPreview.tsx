@@ -53,7 +53,7 @@ export function FactsPanelPreview({
         </span>
       )}
       {status === 'error' && (
-        <span className="absolute inset-0 flex items-center justify-center text-[12px] text-rose-500">
+        <span className="absolute inset-0 flex items-center justify-center text-[12px] text-danger-500">
           Couldn’t render this format.
         </span>
       )}

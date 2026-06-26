@@ -63,7 +63,7 @@ export function LoginForm({
   if (devOnly) {
     return (
       <div className="space-y-4">
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+        <div className="rounded-md border border-warning-200 bg-warning-50 p-3 text-xs text-warning-900">
           <strong>Dev mode.</strong> No Google or Resend credentials configured. Sign in by typing
           the email of any seeded user — no password needed.
         </div>

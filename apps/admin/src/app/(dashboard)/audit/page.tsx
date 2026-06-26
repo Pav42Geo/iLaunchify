@@ -63,8 +63,8 @@ const FEATURED_ENTITIES = [
 
 const ROLE_TONE: Record<ActorRole, { bg: string; label: string; icon: typeof User }> = {
   ADMIN: { bg: 'bg-pink-100 text-pink-700 border-pink-200', label: 'Admin', icon: Shield },
-  CREATOR: { bg: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Creator', icon: User },
-  PARTNER: { bg: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Partner', icon: Building2 },
+  CREATOR: { bg: 'bg-info-100 text-info-700 border-info-200', label: 'Creator', icon: User },
+  PARTNER: { bg: 'bg-success-100 text-success-700 border-success-200', label: 'Partner', icon: Building2 },
   SYSTEM: { bg: 'bg-ink-100 text-ink-700 border-ink-200', label: 'System', icon: Server },
 }
 
@@ -290,16 +290,16 @@ function KpiCard({
   subline?: string
 }) {
   const ring: Record<NonNullable<typeof tone>, string> = {
-    amber: 'group-hover:ring-amber-300/60',
-    emerald: 'group-hover:ring-emerald-300/60',
-    sky: 'group-hover:ring-sky-300/60',
-    rose: 'group-hover:ring-rose-300/60',
+    amber: 'group-hover:ring-warning-300/60',
+    emerald: 'group-hover:ring-success-300/60',
+    sky: 'group-hover:ring-info-300/60',
+    rose: 'group-hover:ring-danger-300/60',
   }
   const iconTone: Record<NonNullable<typeof tone>, string> = {
-    amber: 'bg-amber-100 text-amber-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    sky: 'bg-sky-100 text-sky-700',
-    rose: 'bg-rose-100 text-rose-700',
+    amber: 'bg-warning-100 text-warning-700',
+    emerald: 'bg-success-100 text-success-700',
+    sky: 'bg-info-100 text-info-700',
+    rose: 'bg-danger-100 text-danger-700',
   }
   return (
     <Link
@@ -547,7 +547,7 @@ function AdvancedFilters({
       </summary>
       <form
         method="GET"
-        className="flex flex-wrap items-end gap-3 border-t border-ink-100 bg-zinc-50/40 px-4 py-3"
+        className="flex flex-wrap items-end gap-3 border-t border-ink-100 bg-ink-50/40 px-4 py-3"
       >
         {filters.entityType && (
           <input type="hidden" name="entityType" value={filters.entityType} />
@@ -656,7 +656,7 @@ function LogsTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-[12.5px]">
-        <thead className="bg-zinc-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+        <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
           <tr>
             <Th>When</Th>
             <Th>Actor</Th>
@@ -720,7 +720,7 @@ function LogsTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <span className="inline-flex rounded-md border border-ink-200 bg-zinc-50 px-1.5 py-[2px] font-mono text-[10.5px] font-semibold text-ink-800">
+                  <span className="inline-flex rounded-md border border-ink-200 bg-ink-50 px-1.5 py-[2px] font-mono text-[10.5px] font-semibold text-ink-800">
                     {log.action}
                   </span>
                 </td>
@@ -776,7 +776,7 @@ function LogsTable({
         </tbody>
       </table>
       {logs.length === 200 && (
-        <div className="border-t border-ink-100 bg-zinc-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
+        <div className="border-t border-ink-100 bg-ink-50/60 px-4 py-2.5 text-center text-[11.5px] text-ink-500">
           Showing first 200 results. Use filters to narrow further.
         </div>
       )}
@@ -798,7 +798,7 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-200 bg-zinc-50/40 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-12 text-center">
       <span
         aria-hidden="true"
         className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-pink-700"

@@ -36,17 +36,17 @@ export const metadata = { title: 'Ticket — Admin' }
 
 const STATUS_TONE: Record<TicketStatus, { bg: string; dot: string; label: string }> = {
   NEW: { bg: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', label: 'New' },
-  TRIAGED: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Triaged' },
-  IN_PROGRESS: { bg: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'In progress' },
-  WAITING_ON_REQUESTER: { bg: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Waiting on requester' },
-  RESOLVED: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Resolved' },
+  TRIAGED: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Triaged' },
+  IN_PROGRESS: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'In progress' },
+  WAITING_ON_REQUESTER: { bg: 'bg-warning-50 text-warning-800 border-warning-200', dot: 'bg-warning-500', label: 'Waiting on requester' },
+  RESOLVED: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Resolved' },
   CLOSED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Closed' },
 }
 
 const PRIORITY_TONE: Record<TicketPriority, { bg: string; label: string }> = {
-  URGENT: { bg: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Urgent' },
-  HIGH: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'High' },
-  MEDIUM: { bg: 'bg-blue-50 text-blue-800 border-blue-200', label: 'Medium' },
+  URGENT: { bg: 'bg-danger-50 text-danger-700 border-danger-200', label: 'Urgent' },
+  HIGH: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'High' },
+  MEDIUM: { bg: 'bg-info-50 text-info-800 border-info-200', label: 'Medium' },
   LOW: { bg: 'bg-ink-100 text-ink-600 border-ink-200', label: 'Low' },
 }
 
@@ -111,7 +111,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
               {prio.label}
             </span>
             {breached && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider text-rose-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider text-danger-700">
                 <Flame className="h-3 w-3" /> SLA breached
               </span>
             )}
@@ -158,13 +158,13 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
               key={r.id}
               className={cn(
                 'rounded-2xl border p-4',
-                r.isInternalNote ? 'border-amber-200 bg-amber-50/50' : 'border-ink-200 bg-white',
+                r.isInternalNote ? 'border-warning-200 bg-warning-50/50' : 'border-ink-200 bg-white',
               )}
             >
               <div className="flex items-center justify-between">
                 <Author name={r.author?.name ?? 'Admin'} role={r.authorRole} when={r.createdAt} />
                 {r.isInternalNote && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-[2px] text-[9.5px] font-semibold uppercase tracking-wider text-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-warning-300 bg-warning-100 px-2 py-[2px] text-[9.5px] font-semibold uppercase tracking-wider text-warning-800">
                     <StickyNote className="h-2.5 w-2.5" /> Internal note
                   </span>
                 )}
