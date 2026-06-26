@@ -34,9 +34,8 @@ export const LOGO_PLACEMENTS = [
   { key: 'creatorAcademy', label: 'Academy header (creator)', kind: 'full', sublabel: 'Academy' },
   { key: 'partnerAcademy', label: 'Academy header (partner)', kind: 'full', sublabel: 'Academy' },
   { key: 'footer', label: 'Marketing footer', kind: 'full', sublabel: '' },
-  // The Design + Packaging Studios always use the compact mark (no wordmark) —
-  // they read the uploaded mark via the --brand-mark-url CSS var, so they're
-  // not listed here as configurable surfaces.
+  { key: 'creatorCanvas', label: 'Creator Design Studio (canvas)', kind: 'mark', sublabel: '' },
+  { key: 'partnerPackaging', label: 'Partner Packaging Studio', kind: 'mark', sublabel: '' },
 ] as const
 
 export type LogoPlacementKey = (typeof LOGO_PLACEMENTS)[number]['key']
@@ -77,6 +76,28 @@ export async function getLogoPlacements(): Promise<Record<string, LogoPlacementV
 export async function getLogoPlacement(key: LogoPlacementKey): Promise<LogoPlacementValue> {
   const all = await getLogoPlacements()
   return all[key] ?? defaultPlacement(key)
+}
+
+export interface ResolvedLogo {
+  kind: LogoKind
+  src: string | null
+  sublabel: string | null
+}
+
+/** Resolve a placement to a concrete { kind, image url, sublabel } for rendering
+ *  in a header/studio. variant picks the light vs dark logo asset. */
+export async function resolveLogoForPlacement(key: LogoPlacementKey, variant: LogoVariant = 'light'): Promise<ResolvedLogo> {
+  const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(key)])
+  const dark = variant === 'dark'
+  const src =
+    placement.kind === 'mark'
+      ? dark
+        ? logos.markDark
+        : logos.markLight
+      : dark
+        ? logos.fullDark
+        : logos.fullLight
+  return { kind: placement.kind, src, sublabel: placement.sublabel }
 }
 
 /** Upsert one placement's kind + sublabel. */

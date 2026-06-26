@@ -5,7 +5,7 @@
 // (docs/prototypes/recipe-builder-demo.html). Step 1 persists a DRAFT via
 // createDraftShell; later steps wire slice-by-slice.
 
-import { prisma, getEnabledDomains } from '@ilaunchify/db'
+import { prisma, getEnabledDomains, resolveLogoForPlacement } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { GuidedBuilder } from './GuidedBuilder'
@@ -112,8 +112,11 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
     .filter((t) => partner.services.some((s) => s.type === t))
     .map((t) => SERVICE_SCOPE[t]!)
 
+  const studioLogo = await resolveLogoForPlacement('partnerPackaging')
+
   return (
     <GuidedBuilder
+      studioLogo={studioLogo}
       categories={categories}
       subcategories={subcategories}
       packagingSystems={packagingSystems}

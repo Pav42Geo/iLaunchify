@@ -49,6 +49,7 @@ import {
   Clock,
 } from 'lucide-react'
 import {
+  Brand,
   BrandMark,
   DEFAULT_FRAME_LAYOUT,
   FRAME_SCOPE,
@@ -170,7 +171,7 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 let _id = 0
 const newFrameId = (k: string) => `f_${k}_${Date.now()}_${_id++}`
 
-export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →', headerRight }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string; headerRight?: ReactNode }) {
+export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →', headerRight, studioLogo }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string; headerRight?: ReactNode; studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null } }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
@@ -545,7 +546,11 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
            when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
       <header className="flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
         {/* Compact mark only (no wordmark) — reads the uploaded mark via --brand-mark-url. */}
-        <BrandMark size={26} className="flex-shrink-0" />
+        {studioLogo?.kind === 'full' ? (
+          <Brand imageSrc={studioLogo.src} sublabel={studioLogo.sublabel ?? undefined} className="flex-shrink-0" />
+        ) : (
+          <BrandMark imageSrc={studioLogo?.src ?? undefined} sublabel={studioLogo?.sublabel} size={26} className="flex-shrink-0" />
+        )}
 
         {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History. */}
         <span className="inline-flex items-center gap-2">

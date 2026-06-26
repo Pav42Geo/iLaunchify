@@ -76,6 +76,8 @@ interface GuidedBuilderProps {
   /** App-topbar right cluster (notification bell + account menu). The fullscreen
    *  Packaging Studio covers the real topbar, so it re-renders this to match. */
   topbarRight?: ReactNode
+  /** Resolved Packaging-Studio logo (admin-configurable: kind + sublabel). */
+  studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
 }
 
 const STEPS = [
@@ -103,6 +105,7 @@ export function GuidedBuilder({
   currencies = ['USD'],
   enabledDomains = ['FOOD', 'DIETARY_SUPPLEMENT', 'COSMETIC', 'PET_PRODUCT'],
   topbarRight,
+  studioLogo,
 }: GuidedBuilderProps) {
   const router = useRouter()
   // Admin domain on/off — only show domain tiles the admin has enabled.
@@ -518,7 +521,7 @@ export function GuidedBuilder({
           {cur === 3 && (
             <section>
               <PackagingPicker draftId={draftId} systems={packagingSystems} />
-              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} headerRight={topbarRight} />
+              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} headerRight={topbarRight} studioLogo={studioLogo} />
               {profile && packUiKindForProfile(profile) === 'pack' && (
                 <PerFlavorLabelsCard draftId={draftId} />
               )}

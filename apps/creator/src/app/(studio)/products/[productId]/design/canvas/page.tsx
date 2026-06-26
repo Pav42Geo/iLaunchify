@@ -10,7 +10,7 @@
 // when admin packaging curation (#135) is built.
 
 import { notFound, redirect } from 'next/navigation'
-import { prisma } from '@ilaunchify/db'
+import { prisma, resolveLogoForPlacement } from '@ilaunchify/db'
 import type { LabelingType } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
@@ -259,8 +259,11 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // Empty → MockupModal keeps its stylized CSS variants (graceful fallback).
   const mockups = await loadActiveMockups(product.variant?.packagingTypeId ?? null)
 
+  const studioLogo = await resolveLogoForPlacement('creatorCanvas')
+
   return (
     <CanvasLayoutShell
+      studioLogo={studioLogo}
       productId={product.id}
       productName={product.name}
       dieCut={dieCut}

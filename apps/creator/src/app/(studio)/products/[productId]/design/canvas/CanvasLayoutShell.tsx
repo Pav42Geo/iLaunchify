@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
+  Brand,
   BrandMark,
   DieCutFrame,
   DieCutLegend,
@@ -152,6 +153,7 @@ const Stage = dynamic(() => import('@ilaunchify/ui').then((m) => ({ default: m.S
 })
 
 interface Props {
+  studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
   productId: string
   productName: string
   dieCut: DieCutSpec
@@ -308,6 +310,7 @@ const TOOLS: Array<{
 ]
 
 export function CanvasLayoutShell({
+  studioLogo,
   productId,
   productName,
   dieCut,
@@ -918,6 +921,7 @@ export function CanvasLayoutShell({
     <div className="fixed inset-0 flex flex-col bg-[var(--studio-canvas-bg)]">
       {/* Top bar */}
       <TopBar
+        studioLogo={studioLogo}
         productName={productName}
         productId={productId}
         flavors={flavors}
@@ -1307,9 +1311,11 @@ function TopBar({
   onSaveDraft,
   onSaveAsTemplate,
   templateAuthorMode,
+  studioLogo,
 }: {
   productName: string
   productId: string
+  studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   activeFlavorPresetId: string | null
   canUndo: boolean
@@ -1341,7 +1347,11 @@ function TopBar({
     <header className="flex h-[73px] items-center justify-between border-b border-ink-200 bg-[var(--studio-panel-bg)] px-4">
       <div className="flex items-center gap-2.5">
         <Link href={`/products/${productId}`} className="flex items-center gap-2">
-          <BrandMark size={28} />
+          {studioLogo?.kind === 'full' ? (
+            <Brand imageSrc={studioLogo.src} sublabel={studioLogo.sublabel ?? undefined} />
+          ) : (
+            <BrandMark imageSrc={studioLogo?.src ?? undefined} sublabel={studioLogo?.sublabel} size={28} />
+          )}
         </Link>
         {templateAuthorMode && (
           <span className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-pink-700">
