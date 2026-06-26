@@ -40,12 +40,14 @@ export default function InfluencersPage() {
         eyebrow="● Founding influencer cohort · Applications open · 14-day review"
         headline={
           <>
-            Promote iLaunchify. <em>Earn as creators ship.</em>
+            <span className="block whitespace-nowrap">Promote iLaunchify.</span>
+            <em className="block whitespace-nowrap">Earn as creators ship.</em>
           </>
         }
+        headlineClassName="max-w-none"
         deck="Your audience is exploring CPG, design, or starting a brand of their own. iLaunchify is the platform that turns their idea into a shipped product. Refer them and earn 30% on every subscription — tracked transparently on Impact."
         graphic={
-          <Parallax speed={0.1}>
+          <Parallax speed={0.1} className="w-full">
             <InfluencerGraphic />
           </Parallax>
         }

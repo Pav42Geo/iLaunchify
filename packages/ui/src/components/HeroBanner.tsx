@@ -31,9 +31,13 @@ export interface HeroBannerProps {
   deck?: React.ReactNode
   /** CTA elements — the caller passes the Button(s) themselves. */
   children?: React.ReactNode
-  /** Optional topical hero graphic (rendered as a right column on lg+, page
-   *  variant only). The reusable slot for the animated landing-hero illustrations. */
+  /** Optional topical hero graphic. Rendered as a right-anchored BACKGROUND
+   *  layer on lg+ (page variant only), faded on its left edge so it never
+   *  squeezes the headline. The reusable slot for animated landing-hero art. */
   graphic?: React.ReactNode
+  /** Extra classes for the <h1> — e.g. override the max-width when the caller
+   *  controls line breaks explicitly. */
+  headlineClassName?: string
   className?: string
 }
 
@@ -44,6 +48,7 @@ export function HeroBanner({
   deck,
   children,
   graphic,
+  headlineClassName,
   className,
 }: HeroBannerProps) {
   const isPage = variant === 'page'
@@ -73,13 +78,22 @@ export function HeroBanner({
         }}
       />
 
-      <div
-        className={cn(
-          'relative z-[1]',
-          isPage && 'max-w-[1400px] mx-auto',
-          withGraphic && 'grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]',
-        )}
-      >
+      {/* Topical graphic — right-anchored BACKGROUND layer (lg+), faded on its
+          left so it sits behind the copy without squeezing the headline. */}
+      {withGraphic && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[58%] items-center justify-end lg:flex"
+          style={{
+            WebkitMaskImage: 'linear-gradient(to right, transparent, #000 44%)',
+            maskImage: 'linear-gradient(to right, transparent, #000 44%)',
+          }}
+        >
+          {graphic}
+        </div>
+      )}
+
+      <div className={cn('relative z-[1]', isPage && 'max-w-[1400px] mx-auto')}>
         <div>
           {eyebrow && (
             <div
@@ -102,6 +116,7 @@ export function HeroBanner({
               isPage
                 ? 'text-4xl sm:text-6xl md:text-7xl max-w-[18ch] mb-7'
                 : 'text-3xl sm:text-4xl max-w-[20ch] mb-3',
+              headlineClassName,
             )}
           >
             {headline}
@@ -111,7 +126,7 @@ export function HeroBanner({
             <p
               className={cn(
                 'text-ink-300 leading-[1.55]',
-                isPage ? 'text-lg max-w-[56ch] mb-10' : 'text-[15px] max-w-[52ch] mb-5',
+                isPage ? 'text-lg max-w-[50ch] mb-10' : 'text-[15px] max-w-[52ch] mb-5',
               )}
             >
               {deck}
@@ -122,8 +137,6 @@ export function HeroBanner({
             <div className="flex flex-wrap items-center gap-3 relative">{children}</div>
           )}
         </div>
-
-        {withGraphic && <div className="hidden lg:block">{graphic}</div>}
       </div>
     </section>
   )

@@ -150,13 +150,13 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/products/new"
-                className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-neon-500 px-7 text-[14px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
+                className="inline-flex h-[60px] items-center justify-center gap-2 rounded-full bg-neon-500 px-8 text-[15px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
               >
                 Create your first product <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
               </Link>
               <Link
                 href="#how-it-works"
-                className="inline-flex h-[52px] items-center justify-center rounded-full border border-ink-700 px-7 text-[14px] font-medium text-ink-200 transition hover:border-ink-500 hover:text-white"
+                className="inline-flex h-[60px] items-center justify-center rounded-full border border-ink-700 px-8 text-[15px] font-medium text-ink-200 transition hover:border-ink-500 hover:text-white"
               >
                 See how it works
               </Link>
@@ -211,7 +211,7 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
         <div className="mt-8 text-center">
           <Link
             href="/products/new"
-            className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-ink-900 px-7 text-[14px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            className="inline-flex h-[60px] items-center justify-center gap-2 rounded-full bg-ink-900 px-8 text-[15px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
             Start building <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
           </Link>
@@ -318,13 +318,13 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/products/new"
-              className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-neon-500 px-7 text-[14px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
+              className="inline-flex h-[60px] items-center justify-center gap-2 rounded-full bg-neon-500 px-8 text-[15px] font-semibold text-ink-900 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
             >
               <Plus strokeWidth={2.5} className="h-4 w-4" /> Create your first product
             </Link>
             <Link
               href="/help/new"
-              className="inline-flex h-[52px] items-center justify-center rounded-full border border-ink-700 px-7 text-[14px] font-medium text-ink-200 transition-colors hover:border-ink-500 hover:text-white"
+              className="inline-flex h-[60px] items-center justify-center rounded-full border border-ink-700 px-8 text-[15px] font-medium text-ink-200 transition-colors hover:border-ink-500 hover:text-white"
             >
               Talk to our team
             </Link>

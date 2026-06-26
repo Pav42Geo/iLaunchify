@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { Button, HeroBanner, PartnerTypeCard } from '@ilaunchify/ui'
+import { Button, HeroBanner, PartnerTypeCard, LayersGlyph } from '@ilaunchify/ui'
 import { BusinessHeader } from '@/components/BusinessHeader'
+import { Reveal } from '@/components/Reveal'
 import { partnerUrl } from '@/lib/app-urls'
 
 /**
@@ -40,22 +41,22 @@ export default function BusinessLandingPage() {
       </HeroBanner>
 
       {/* LIGHT — Stats */}
-      <Stats />
+      <Reveal><Stats /></Reveal>
 
       {/* DARK ISLAND — Partner types */}
-      <PartnerTypes />
+      <Reveal><PartnerTypes /></Reveal>
 
       {/* LIGHT — Why join */}
-      <WhyJoin />
+      <Reveal><WhyJoin /></Reveal>
 
       {/* LIGHT — How it works */}
-      <HowItWorks />
+      <Reveal><HowItWorks /></Reveal>
 
       {/* LIGHT — Testimonial */}
-      <Testimonial />
+      <Reveal><Testimonial /></Reveal>
 
       {/* DARK — Final CTA */}
-      <FinalCta />
+      <Reveal><FinalCta /></Reveal>
 
       {/* DARK — Footer */}
       <Footer />
@@ -255,7 +256,7 @@ function Footer() {
     >
       <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-4">
         <Link href="/business" className="flex items-center gap-[9px]">
-          <span className="w-[26px] h-[26px] rounded-md bg-pink-500" />
+          <LayersGlyph className="h-[26px] w-[26px]" />
           <span className="font-display text-lg font-extrabold tracking-[-0.04em] text-white">
             iLaunchify<span className="text-neon-500 font-bold ml-0.5"> Business</span>
           </span>

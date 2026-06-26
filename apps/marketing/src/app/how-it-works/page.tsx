@@ -16,6 +16,7 @@ import {
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { Reveal } from '@/components/Reveal'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
@@ -77,6 +78,7 @@ export default async function HowItWorksPage({
       </section>
 
       {/* 4-STEP JOURNEY */}
+      <Reveal>
       <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
           <div className="mb-12 max-w-[40ch]">
@@ -120,8 +122,10 @@ export default async function HowItWorksPage({
           </ol>
         </div>
       </section>
+      </Reveal>
 
       {/* HIDDEN ORCHESTRATION */}
+      <Reveal>
       <section className="bg-ink-900 text-white" data-surface="dark">
         <div className="max-w-[1200px] mx-auto px-6 py-24">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-16 items-center">
@@ -189,8 +193,10 @@ export default async function HowItWorksPage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       {/* PRODUCTION NETWORK */}
+      <Reveal>
       <section className="max-w-[1200px] mx-auto px-6 py-24">
         <div className="text-center max-w-[28ch] mx-auto mb-12">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
@@ -239,8 +245,10 @@ export default async function HowItWorksPage({
           before they touch a single creator order.
         </div>
       </section>
+      </Reveal>
 
       {/* COMPLIANCE + TRUST GRID */}
+      <Reveal>
       <section className="bg-white border-y border-ink-200">
         <div className="max-w-[1200px] mx-auto px-6 py-20">
           <div className="text-center max-w-[32ch] mx-auto mb-12">
@@ -275,8 +283,10 @@ export default async function HowItWorksPage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       {/* FINAL DARK CTA */}
+      <Reveal>
       <section data-surface="dark" className="bg-ink-900 text-white">
         <div className="max-w-[1200px] mx-auto px-6 py-24 text-center">
           <h2 className="font-display text-4xl sm:text-6xl font-extrabold leading-[0.95] tracking-[-0.035em] mb-5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
@@ -301,6 +311,7 @@ export default async function HowItWorksPage({
           </div>
         </div>
       </section>
+      </Reveal>
 
       <LandingFooter />
     </>
