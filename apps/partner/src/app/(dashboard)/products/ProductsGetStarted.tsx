@@ -384,92 +384,96 @@ function BrandStack() {
       </defs>
 
       {/* breathing glow */}
-      <rect x="80" y="55" width="320" height="320" fill="url(#bsGlow)">
+      <rect x="50" y="40" width="380" height="360" fill="url(#bsGlow)">
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
-      {/* spokes hub → stations: faint rail + flowing neon energy radiating out */}
+      {/* spokes hub → stations: faint rail + flowing neon energy out to the spread corners */}
       <g stroke="#2E2E34" strokeWidth="2">
-        <line x1="240" y1="215" x2="240" y2="95" />
-        <line x1="240" y1="215" x2="360" y2="215" />
-        <line x1="240" y1="215" x2="240" y2="335" />
-        <line x1="240" y1="215" x2="120" y2="215" />
+        <line x1="240" y1="215" x2="128" y2="116" />
+        <line x1="240" y1="215" x2="352" y2="124" />
+        <line x1="240" y1="215" x2="348" y2="322" />
+        <line x1="240" y1="215" x2="132" y2="316" />
       </g>
       <g stroke="#B5FF3D" strokeWidth="2" strokeDasharray="4 10" strokeLinecap="round" fill="none" opacity="0.7">
-        <line x1="240" y1="215" x2="240" y2="95"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="360" y2="215"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="240" y2="335"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></line>
-        <line x1="240" y1="215" x2="120" y2="215"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.6s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="128" y2="116"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.5s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="352" y2="124"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.7s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="348" y2="322"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.9s" repeatCount="indefinite" /></line>
+        <line x1="240" y1="215" x2="132" y2="316"><animate attributeName="stroke-dashoffset" values="0;-28" dur="1.6s" repeatCount="indefinite" /></line>
       </g>
 
-      {/* the cycle — base ring + flowing neon current */}
-      <circle cx="240" cy="215" r="120" fill="none" stroke="#3A3A41" strokeWidth="3" />
-      <circle cx="240" cy="215" r="120" fill="none" stroke="#B5FF3D" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.85">
-        <animate attributeName="stroke-dashoffset" values="0;-32" dur="2s" repeatCount="indefinite" />
+      {/* the cycle — gray arcs curving from one station to the next (subtitle gray),
+          with the unit travelling around the loop */}
+      <path d="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" fill="none" stroke="#3A3A41" strokeWidth="3" strokeLinecap="round" />
+      <path d="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" fill="none" stroke="#CBCCD3" strokeWidth="2.5" strokeDasharray="3 13" strokeLinecap="round" opacity="0.7">
+        <animate attributeName="stroke-dashoffset" values="0;-32" dur="2.4s" repeatCount="indefinite" />
+      </path>
+      <circle r="6" fill="#FF2E63">
+        <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear" path="M128 116 Q 240 66 352 124 Q 412 223 348 322 Q 240 374 132 316 Q 68 216 128 116 Z" />
       </circle>
 
-      {/* the unit travelling around the cycle */}
-      <g>
-        <animateTransform attributeName="transform" type="rotate" from="0 240 215" to="360 240 215" dur="7s" repeatCount="indefinite" />
-        <circle cx="240" cy="95" r="6" fill="#FF2E63" />
-      </g>
-
-      {/* pulsing accents on the ring */}
-      <circle cx="325" cy="130" r="3.5" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite" /></circle>
-      <circle cx="155" cy="300" r="3.5" fill="#FF2E63"><animate attributeName="opacity" values="0.25;1;0.25" dur="2.4s" repeatCount="indefinite" /></circle>
-
-      {/* ===== process stations (icons in floating squares + floating labels) ===== */}
-      {/* top — Formulate (flask) */}
-      <g transform="translate(212,67)">
+      {/* ===== process stations — floating icon-squares at the spread corners + labels ===== */}
+      {/* upper-left — Formulate (flask) */}
+      <g transform="translate(100,88)">
         <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="3.6s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
           <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
             <path d="M22 14 L22 24 L14 40 Q13 44 17 44 L39 44 Q43 44 42 40 L34 24 L34 14" />
             <line x1="19" y1="14" x2="37" y2="14" />
             <line x1="20" y1="34" x2="36" y2="34" />
           </g>
-          <text x="28" y="-12" textAnchor="middle" fontSize="13.5" fontWeight="700" fill="#B5FF3D">Formulate</text>
+          <text x="28" y="-19" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#B5FF3D">
+            FORMULATE
+            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="0s" repeatCount="indefinite" />
+          </text>
         </g>
       </g>
-      {/* right — Fill (droplet) */}
-      <g transform="translate(332,187)">
+      {/* upper-right — Fill (droplet) */}
+      <g transform="translate(324,96)">
         <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.6s" begin="0.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="3.9s" begin="0.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
           <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
             <path d="M28 14 C 37 26, 37 35, 28 39 C 19 35, 19 26, 28 14 Z" />
             <line x1="16" y1="44" x2="40" y2="44" />
           </g>
-          <text x="66" y="33" textAnchor="start" fontSize="13.5" fontWeight="700" fill="#FF2E63">Fill</text>
+          <text x="28" y="-19" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#FF2E63">
+            FILL
+            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="0.8s" repeatCount="indefinite" />
+          </text>
         </g>
       </g>
-      {/* bottom — Label (tag) */}
-      <g transform="translate(212,307)">
+      {/* lower-right — Label (tag) */}
+      <g transform="translate(320,294)">
         <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 7;0 0" dur="4.2s" begin="1s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#B5FF3D" strokeWidth="1.75" />
           <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
             <rect x="14" y="20" width="28" height="18" rx="4" />
             <line x1="20" y1="26" x2="36" y2="26" />
             <line x1="20" y1="32" x2="30" y2="32" />
           </g>
-          <text x="28" y="74" textAnchor="middle" fontSize="13.5" fontWeight="700" fill="#B5FF3D">Label</text>
+          <text x="28" y="82" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#B5FF3D">
+            LABEL
+            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="1.6s" repeatCount="indefinite" />
+          </text>
         </g>
       </g>
-      {/* left — Pack & ship (box) */}
-      <g transform="translate(92,187)">
+      {/* lower-left — Pack & ship (box) */}
+      <g transform="translate(104,288)">
         <g>
-          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="4s" begin="1.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="3.7s" begin="1.5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
           <rect width="56" height="56" rx="16" fill="#26262B" stroke="#FF2E63" strokeWidth="1.75" />
           <g stroke="#FFFFFF" strokeWidth="3.25" fill="none" strokeLinejoin="round" strokeLinecap="round">
             <path d="M16 22 L28 16 L40 22 L40 38 L28 44 L16 38 Z" />
             <path d="M16 22 L28 28 L40 22" />
             <path d="M28 28 L28 44" />
           </g>
-          <text x="-10" y="26" textAnchor="end" fontSize="13.5" fontWeight="700" fill="#FF2E63">
-            <tspan x="-10">Pack &amp;</tspan>
-            <tspan x="-10" dy="15">ship</tspan>
+          <text x="28" y="74" textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.8" fill="#FF2E63">
+            <tspan x="28">PACK &amp;</tspan>
+            <tspan x="28" dy="15">SHIP</tspan>
+            <animate attributeName="opacity" values="0.6;1;0.6" dur="3.4s" begin="2.4s" repeatCount="indefinite" />
           </text>
         </g>
       </g>
