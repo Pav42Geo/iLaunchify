@@ -106,12 +106,22 @@ function InfluencerGraphic() {
           <stop offset="0%" stopColor="#FF2E63" stopOpacity="0.34" />
           <stop offset="100%" stopColor="#FF2E63" stopOpacity="0" />
         </linearGradient>
+        {/* edge-fade mask so the grid dissolves into the dark banner (no framed-screen edge) */}
+        <radialGradient id="infMaskGrad" cx="50%" cy="56%" r="62%">
+          <stop offset="0%" stopColor="#fff" />
+          <stop offset="52%" stopColor="#fff" />
+          <stop offset="100%" stopColor="#000" />
+        </radialGradient>
+        <mask id="infMask">
+          <rect width="600" height="380" fill="url(#infMaskGrad)" />
+        </mask>
       </defs>
 
       <rect x="40" y="20" width="520" height="340" fill="url(#infGlow)">
         <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
       </rect>
 
+      <g mask="url(#infMask)">
       {/* === wide perspective tunnel — ceiling + floor converge to the VP behind the head === */}
       {/* ceiling plane (fainter) */}
       <g stroke="#FF2E63" strokeWidth="1" opacity="0.16" fill="none">
@@ -129,11 +139,12 @@ function InfluencerGraphic() {
         <animate attributeName="opacity" values="0.1;0.6;0.1" dur="2.6s" repeatCount="indefinite" />
       </path>
 
-      {/* broadcast rings filling the space (from behind the head) */}
+      {/* broadcast ripples — flat ellipses that spread across the perspective space */}
       <g fill="none" stroke="#B5FF3D" strokeWidth="2" filter="url(#infNeon)">
-        <circle cx="300" cy="200" r="50"><animate attributeName="r" values="50;230" dur="4.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.55;0" dur="4.5s" repeatCount="indefinite" /></circle>
-        <circle cx="300" cy="200" r="50"><animate attributeName="r" values="50;230" dur="4.5s" begin="1.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.55;0" dur="4.5s" begin="1.5s" repeatCount="indefinite" /></circle>
-        <circle cx="300" cy="200" r="50"><animate attributeName="r" values="50;230" dur="4.5s" begin="3s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.55;0" dur="4.5s" begin="3s" repeatCount="indefinite" /></circle>
+        <ellipse cx="300" cy="216" rx="46" ry="17"><animate attributeName="rx" values="46;310" dur="4.5s" repeatCount="indefinite" /><animate attributeName="ry" values="17;118" dur="4.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.5;0" dur="4.5s" repeatCount="indefinite" /></ellipse>
+        <ellipse cx="300" cy="216" rx="46" ry="17"><animate attributeName="rx" values="46;310" dur="4.5s" begin="1.5s" repeatCount="indefinite" /><animate attributeName="ry" values="17;118" dur="4.5s" begin="1.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.5;0" dur="4.5s" begin="1.5s" repeatCount="indefinite" /></ellipse>
+        <ellipse cx="300" cy="216" rx="46" ry="17"><animate attributeName="rx" values="46;310" dur="4.5s" begin="3s" repeatCount="indefinite" /><animate attributeName="ry" values="17;118" dur="4.5s" begin="3s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.5;0" dur="4.5s" begin="3s" repeatCount="indefinite" /></ellipse>
+      </g>
       </g>
 
       {/* signal flowing from the audience back toward the earnings node */}
@@ -177,24 +188,30 @@ function InfluencerGraphic() {
         <text x="525" y="250" textAnchor="middle" fontSize="10" fontWeight="700" letterSpacing="0.6" fill="#B5FF3D" opacity="0.85">+30%/MO</text>
       </g>
 
-      {/* === the talking cyber head (creator) — foreground, occludes the tunnel mouth === */}
+      {/* === the cyber head (creator) — angular, foreground, occludes the tunnel mouth === */}
       <g filter="url(#infNeon)">
-        <path d="M222 162 Q300 100 378 162" fill="none" stroke="#FF2E63" strokeWidth="5" strokeLinecap="round" />
-        <rect x="212" y="172" width="22" height="48" rx="9" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" />
-        <rect x="366" y="172" width="22" height="48" rx="9" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" />
-        <line x1="300" y1="118" x2="300" y2="94" stroke="#B5FF3D" strokeWidth="2.4" strokeLinecap="round" />
-        <circle cx="300" cy="89" r="4" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite" /></circle>
-        <path d="M236 150 Q236 121 265 118 L335 118 Q364 121 364 150 L364 224 Q364 252 340 264 L330 276 Q300 290 270 276 L260 264 Q236 252 236 224 Z" fill="#0E0E12" stroke="#2DE2E6" strokeWidth="2.5" />
-        <rect x="256" y="158" width="88" height="20" rx="10" fill="#0A1518" stroke="#2DE2E6" strokeWidth="1.5" />
-        <rect x="260" y="161" width="16" height="14" rx="4" fill="#2DE2E6"><animate attributeName="x" values="260;324;260" dur="2.4s" repeatCount="indefinite" /></rect>
-        <path d="M260 266 H340" stroke="#2DE2E6" strokeWidth="1.4" opacity="0.5" />
-        <circle cx="262" cy="208" r="3" fill="#2DE2E6" /><circle cx="338" cy="208" r="3" fill="#2DE2E6" />
-        <g stroke="#B5FF3D" strokeWidth="4" strokeLinecap="round">
-          <line x1="276" y1="252" x2="276" y2="240"><animate attributeName="y2" values="240;230;242;240" dur="0.5s" repeatCount="indefinite" /></line>
-          <line x1="288" y1="252" x2="288" y2="234"><animate attributeName="y2" values="234;222;236;234" dur="0.66s" repeatCount="indefinite" /></line>
-          <line x1="300" y1="252" x2="300" y2="228"><animate attributeName="y2" values="228;214;230;228" dur="0.8s" repeatCount="indefinite" /></line>
-          <line x1="312" y1="252" x2="312" y2="234"><animate attributeName="y2" values="234;223;236;234" dur="0.6s" repeatCount="indefinite" /></line>
-          <line x1="324" y1="252" x2="324" y2="240"><animate attributeName="y2" values="240;231;242;240" dur="0.72s" repeatCount="indefinite" /></line>
+        {/* angular side comms modules (not round cups) */}
+        <path d="M238 176 L223 183 L223 214 L238 221 Z" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M362 176 L377 183 L377 214 L362 221 Z" fill="#15151A" stroke="#FF2E63" strokeWidth="2.5" strokeLinejoin="round" />
+        {/* thin crest sensor (diamond, not a toy ball) */}
+        <line x1="300" y1="130" x2="300" y2="113" stroke="#B5FF3D" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M300 104 L306 111 L300 118 L294 111 Z" fill="#B5FF3D"><animate attributeName="opacity" values="1;0.35;1" dur="1.7s" repeatCount="indefinite" /></path>
+        {/* faceted helmet */}
+        <path d="M258 134 L342 134 L362 158 L362 206 L336 248 L300 272 L264 248 L238 206 L238 158 Z" fill="#0E0E12" stroke="#2DE2E6" strokeWidth="2.5" strokeLinejoin="round" />
+        {/* brow seam */}
+        <path d="M252 150 L348 150" stroke="#2DE2E6" strokeWidth="1.2" opacity="0.35" />
+        {/* slit visor + horizontal scan */}
+        <path d="M252 164 L348 159 L348 178 L252 183 Z" fill="#0A1518" stroke="#2DE2E6" strokeWidth="1.5" strokeLinejoin="round" />
+        <rect x="256" y="167" width="15" height="9" rx="2" fill="#2DE2E6"><animate attributeName="x" values="256;328;256" dur="2.6s" repeatCount="indefinite" /></rect>
+        {/* jaw seam */}
+        <path d="M262 246 L300 262 L338 246" fill="none" stroke="#2DE2E6" strokeWidth="1.4" opacity="0.5" strokeLinejoin="round" />
+        {/* talking mouth — equaliser */}
+        <g stroke="#B5FF3D" strokeWidth="3.5" strokeLinecap="round">
+          <line x1="282" y1="236" x2="282" y2="224"><animate attributeName="y2" values="224;216;226;224" dur="0.5s" repeatCount="indefinite" /></line>
+          <line x1="291" y1="236" x2="291" y2="218"><animate attributeName="y2" values="218;208;220;218" dur="0.66s" repeatCount="indefinite" /></line>
+          <line x1="300" y1="236" x2="300" y2="212"><animate attributeName="y2" values="212;200;214;212" dur="0.8s" repeatCount="indefinite" /></line>
+          <line x1="309" y1="236" x2="309" y2="218"><animate attributeName="y2" values="218;209;220;218" dur="0.6s" repeatCount="indefinite" /></line>
+          <line x1="318" y1="236" x2="318" y2="224"><animate attributeName="y2" values="224;217;226;224" dur="0.72s" repeatCount="indefinite" /></line>
         </g>
       </g>
 
