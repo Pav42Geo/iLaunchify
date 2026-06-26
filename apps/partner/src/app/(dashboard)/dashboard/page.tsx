@@ -16,10 +16,10 @@ import {
   cn,
   KpiWidget,
   QueueWidget,
-  StatusWidget,
   ListWidget,
+  TrendChart,
+  StatusFunnel,
   type QueueWidgetItem,
-  type StatusIndicator,
   type ListWidgetItem,
 } from '@ilaunchify/ui'
 import Link from 'next/link'
@@ -34,7 +34,6 @@ import {
   AlertTriangle,
   Pencil,
   ShieldCheck,
-  Truck,
 } from 'lucide-react'
 import { ActiveWelcomeModal } from './ActiveWelcomeModal'
 
@@ -49,6 +48,16 @@ function weeklyBuckets(dates: Date[], weeks = 12): number[] {
   for (const d of dates) {
     const idx = weeks - 1 - Math.floor((now - d.getTime()) / (7 * DAY))
     if (idx >= 0 && idx < weeks) out[idx] = (out[idx] ?? 0) + 1
+  }
+  return out
+}
+
+function weeklyDollarBuckets(rows: { createdAt: Date; amountCents: number }[], weeks = 12): number[] {
+  const now = Date.now()
+  const out = new Array<number>(weeks).fill(0)
+  for (const r of rows) {
+    const idx = weeks - 1 - Math.floor((now - r.createdAt.getTime()) / (7 * DAY))
+    if (idx >= 0 && idx < weeks) out[idx] = (out[idx] ?? 0) + r.amountCents / 100
   }
   return out
 }
@@ -144,6 +153,12 @@ export default async function ProviderDashboardHome() {
     .filter((t) => t.status === 'PENDING' || t.status === 'READY' || t.status === 'EXECUTING')
     .reduce((a, t) => a + t.amountCents, 0)
   const earnSpark = weeklyBuckets(completed.map((t) => t.createdAt))
+  const sincePrev60 = new Date(now.getTime() - 60 * DAY)
+  const earnedPrev30 = completed
+    .filter((t) => t.createdAt >= sincePrev60 && t.createdAt < since30)
+    .reduce((a, t) => a + t.amountCents, 0)
+  const earnDeltaPct = earnedPrev30 > 0 ? Math.round(((earned30 - earnedPrev30) / earnedPrev30) * 100) : null
+  const earnDollarSpark = weeklyDollarBuckets(completed)
 
   // ---- "Needs your attention" queue ----
   const queue: QueueWidgetItem[] = [
@@ -194,13 +209,12 @@ export default async function ProviderDashboardHome() {
     })),
   ]
 
-  // ---- Production pipeline ----
-  const pipeline: StatusIndicator[] = [
-    { label: 'Awaiting acceptance', value: String(awaiting.length), status: awaiting.length > 0 ? 'amber' : 'green' },
-    { label: 'In production', value: String(inProduction), status: 'green' },
-    { label: 'Ready to ship', value: String(ready), status: ready > 0 ? 'amber' : 'green' },
-    { label: 'In transit', value: String(shipped), status: 'green' },
-    { label: 'QC failed', value: String(failedQc.length), status: failedQc.length > 0 ? 'red' : 'green' },
+  // ---- Production pipeline (proportional funnel) ----
+  const pipeline = [
+    { label: 'Awaiting acceptance', value: awaiting.length, tone: (awaiting.length > 0 ? 'pink' : 'muted') as 'pink' | 'muted', href: '/orders?tab=awaiting' },
+    { label: 'In production', value: inProduction, tone: 'ink' as const, href: '/orders?tab=production' },
+    { label: 'Ready to ship', value: ready, tone: (ready > 0 ? 'pink' : 'muted') as 'pink' | 'muted', href: '/orders?tab=ready' },
+    { label: 'In transit', value: shipped, tone: 'muted' as const, href: '/orders' },
   ]
 
   // ---- Recent dispatches + payouts ----
@@ -224,24 +238,22 @@ export default async function ProviderDashboardHome() {
     <div className="space-y-6">
       {partner.status === 'ACTIVE' && <ActiveWelcomeModal companyName={partner.companyName} />}
 
-      {/* Hero */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Dashboard
-            </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+      {/* Hero — compact, unified */}
+      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Manufacturing · Home</p>
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Welcome back
             </h1>
-            <p className="mt-1 text-[13px] text-ink-600">
+            <p className="mt-1.5 text-[13px] text-ink-600">
               {partner.companyName} ·{' '}
               {queue.length > 0
                 ? `${queue.length} item${queue.length === 1 ? '' : 's'} need your attention`
                 : 'You’re all caught up'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-none flex-wrap items-center gap-2">
             <Link
               href="/products/new"
               className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
@@ -258,7 +270,21 @@ export default async function ProviderDashboardHome() {
         </div>
       </div>
 
-      {/* Row 1 — KPI strip */}
+      {/* Needs you now — action-first */}
+      <section className="grid grid-cols-1 lg:grid-cols-12">
+        <QueueWidget
+          title="Needs you now"
+          subtitle="Time-sensitive tasks across orders, products & certifications"
+          icon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
+          tone="warning"
+          items={queue}
+          maxItems={6}
+          emptyLabel="Nothing needs action right now — nice work."
+          span={12}
+        />
+      </section>
+
+      {/* KPI strip */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-12">
         <KpiWidget label="Awaiting acceptance" value={awaiting.length} icon={Inbox} tone={awaiting.length > 0 ? 'warning' : 'ink'} href="/orders?tab=awaiting" span={2} />
         <KpiWidget label="In production" value={inProduction} icon={Factory} tone="ink" href="/orders?tab=production" span={2} />
@@ -268,26 +294,31 @@ export default async function ProviderDashboardHome() {
         <KpiWidget label="Certs expiring" value={expiringCerts.length} icon={ShieldAlert} tone={expiringCerts.length > 0 ? 'danger' : 'ink'} href="/certifications" span={2} />
       </section>
 
-      {/* Row 2 — attention queue + pipeline */}
+      {/* Earnings trend + production funnel */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <QueueWidget
-          title="Needs your attention"
-          subtitle="Time-sensitive tasks across orders, products & certifications"
-          icon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
-          tone="warning"
-          items={queue}
-          maxItems={8}
-          emptyLabel="Nothing needs action right now — nice work."
-          span={8}
-        />
-        <StatusWidget
-          title="Production pipeline"
-          subtitle="Dispatches by stage"
-          icon={Truck}
-          tone="ink"
-          indicators={pipeline}
-          span={4}
-        />
+        <div className="lg:col-span-7">
+          <div className="rounded-2xl border border-ink-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-ink-900">Earnings over time</span>
+              <span className="text-[11px] text-ink-500">Last 12 weeks</span>
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="font-display text-2xl font-bold tabular-nums text-ink-900">
+                ${(earned30 / 100).toLocaleString()}
+              </span>
+              {earnDeltaPct != null && (
+                <span className={cn('text-[12px] font-semibold', earnDeltaPct >= 0 ? 'text-success-500' : 'text-danger-500')}>
+                  <span aria-hidden>{earnDeltaPct >= 0 ? '↑' : '↓'}</span> {Math.abs(earnDeltaPct)}%
+                  <span className="font-normal text-ink-500"> vs prior 30d</span>
+                </span>
+              )}
+            </div>
+            <TrendChart data={earnDollarSpark} height={72} className="mt-3" ariaLabel="Earnings over time" />
+          </div>
+        </div>
+        <div className="lg:col-span-5">
+          <StatusFunnel title="Production pipeline" stages={pipeline} />
+        </div>
       </section>
 
       {/* Row 3 — recent activity */}

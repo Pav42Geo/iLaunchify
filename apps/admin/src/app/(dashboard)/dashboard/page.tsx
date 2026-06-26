@@ -12,7 +12,7 @@
 // `@ilaunchify/ui` — page stays a server component, charts inside widgets
 // are `'use client'`.
 
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, getViewerCapabilities, type Capability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import {
   KpiWidget,
@@ -27,6 +27,7 @@ import {
   type QueueWidgetItem,
   type StatusIndicator,
   type TimelineItem,
+  type WidgetSpan,
 } from '@ilaunchify/ui'
 import {
   Users,
@@ -95,108 +96,129 @@ const ORDER_STATUS_CHART_TONE: Record<
 export default async function AdminDashboardPage() {
   await requireRole(['ADMIN'])
 
+  // Role-aware: SUPER_ADMIN resolves to ALL capabilities, so the canonical
+  // admin view is unchanged. Subaccounts (support agent / lead / billing) see
+  // exactly the widgets their role can act on — every tile is capability-gated.
+  const caps = await getViewerCapabilities()
+  const can = (c: Capability) => caps.includes(c)
+
+  // Each persona scopes which signals matter. Compute visibility up front so we
+  // can both gate the tiles AND skip the matching data loads for subaccounts.
+  const showCreators = can('creators:read')
+  const showPartners = can('partners:read')
+  const showOrders = can('orders:read')
+  const showRevenue = can('billing:read') || can('orders:read')
+  const showPlatform = can('platform:admin') || can('security:admin')
+  const showSecurity = can('security:admin')
+  const showInbox = can('partners:read')
+  const showTickets = can('tickets:read')
+  const showOrdersChart = can('orders:read')
+  const showCompliance = can('compliance:read')
+  const showWebhooks = can('billing:read')
+  const showCron = can('platform:admin')
+  const showModeration = can('reviews:write') || can('partners:approve')
+  const showActivity = can('audit:read')
+
   const [kpis, inbox, ticketsByCategory, ordersByStatus, system, moderation, activity] =
     await Promise.all([
       loadReachKpis(),
-      loadInboxQueue(),
-      loadTicketsByCategory(),
-      loadOrdersByStatus(),
+      showInbox ? loadInboxQueue() : Promise.resolve([]),
+      showTickets ? loadTicketsByCategory() : Promise.resolve({ available: false, buckets: [] } as TicketsByCategoryResult),
+      showOrdersChart ? loadOrdersByStatus() : Promise.resolve([] as OrdersByStatusBucket[]),
       loadSystemHealth(),
-      loadModerationQueue(),
-      loadRecentActivity(10),
+      showModeration ? loadModerationQueue() : Promise.resolve([] as ModerationQueueItem[]),
+      showActivity ? loadRecentActivity(10) : Promise.resolve([] as ActivityRow[]),
     ])
+
+  // Anything in the "needs you now" band? Drives whether we render that row.
+  const hasActionRow = showModeration || showInbox
+  const hasAnyKpi = showCreators || showPartners || showPartners || showOrders || showRevenue || showPlatform
+  const hasOpsRow = showTickets || showOrdersChart
+  const hasSystemRow = showCompliance || showWebhooks || showCron
+  const nothingVisible =
+    !hasActionRow && !hasAnyKpi && !showSecurity && !hasOpsRow && !hasSystemRow && !showActivity
 
   return (
     <div className="space-y-6">
       <Hero />
 
-      {/* Row 1 — Reach KPIs (6 cards) */}
-      <section
-        aria-label="Reach metrics"
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6"
-      >
-        <KpiWidget
-          label="Total creators"
-          value={kpis.totalCreators}
-          icon={Users}
-          tone="pink"
-          href="/creators"
-          span={1}
-        />
-        <KpiWidget
-          label="Total partners"
-          value={kpis.totalPartners}
-          icon={Building2}
-          tone="ink"
-          href="/partners"
-          span={1}
-        />
-        <KpiWidget
-          label="Live products"
-          value={kpis.productsLive}
-          icon={Package}
-          tone="ink"
-          href="/products"
-          span={1}
-        />
-        <KpiWidget
-          label="Orders today"
-          value={kpis.ordersToday}
-          icon={ShoppingBag}
-          tone="pink"
-          href="/orders"
-          span={1}
-        />
-        <KpiWidget
-          label="Revenue · 30d"
-          value={`$${Math.round(kpis.revenue30dCents / 100).toLocaleString()}`}
-          icon={DollarSign}
-          tone="success"
-          href="/orders"
-          span={1}
-        />
-        <KpiWidget
-          label="Active sessions"
-          value={kpis.activeSessionsNow}
-          icon={Activity}
-          tone="neon"
-          sublabel="last 15 min"
-          span={1}
-        />
-      </section>
+      {nothingVisible && (
+        <div className="rounded-2xl border border-dashed border-ink-200 bg-ink-50/40 px-6 py-10 text-center text-[13px] text-ink-500">
+          Your admin role doesn’t have any dashboard widgets assigned yet. Ask a
+          super admin to grant capabilities in Roles &amp; Permissions.
+        </div>
+      )}
 
-      {/* Row 1b — Security snapshot (Pavel 2026-06-05) — deep-links /security */}
-      <SecuritySnapshot />
+      {/* Needs you now — action-first: queues that need a human decision */}
+      {hasActionRow && (
+        <section
+          aria-label="Needs you now"
+          className="grid grid-cols-1 gap-4 lg:grid-cols-12"
+        >
+          {showModeration && <ModerationQueueTile items={moderation} span={showInbox ? 8 : 12} />}
+          {showInbox && <InboxQueueTile rows={inbox} span={showModeration ? 4 : 12} />}
+        </section>
+      )}
 
-      {/* Row 2 — Operations health (3 widgets across 12-col grid) */}
-      <section
-        aria-label="Operations health"
-        className="grid grid-cols-1 gap-4 lg:grid-cols-12"
-      >
-        <InboxQueueTile rows={inbox} />
-        <TicketsByCategoryTile data={ticketsByCategory} />
-        <OrdersByStatusTile buckets={ordersByStatus} />
-      </section>
+      {/* Reach KPIs (capability-filtered) */}
+      {hasAnyKpi && (
+        <section
+          aria-label="Reach metrics"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6"
+        >
+          {showCreators && (
+            <KpiWidget label="Total creators" value={kpis.totalCreators} icon={Users} tone="pink" href="/creators" span={1} />
+          )}
+          {showPartners && (
+            <KpiWidget label="Total partners" value={kpis.totalPartners} icon={Building2} tone="ink" href="/partners" span={1} />
+          )}
+          {showPartners && (
+            <KpiWidget label="Live products" value={kpis.productsLive} icon={Package} tone="ink" href="/products" span={1} />
+          )}
+          {showOrders && (
+            <KpiWidget label="Orders today" value={kpis.ordersToday} icon={ShoppingBag} tone="pink" href="/orders" span={1} />
+          )}
+          {showRevenue && (
+            <KpiWidget label="Revenue · 30d" value={`$${Math.round(kpis.revenue30dCents / 100).toLocaleString()}`} icon={DollarSign} tone="success" href="/orders" span={1} />
+          )}
+          {showPlatform && (
+            <KpiWidget label="Active sessions" value={kpis.activeSessionsNow} icon={Activity} tone="neon" sublabel="last 15 min" span={1} />
+          )}
+        </section>
+      )}
 
-      {/* Row 3 — System health (3 StatusWidgets) */}
-      <section
-        aria-label="System health"
-        className="grid grid-cols-1 gap-4 lg:grid-cols-12"
-      >
-        <ComplianceStatusTile data={system.compliance} />
-        <StripeWebhookStatusTile data={system.stripeWebhooks} />
-        <CronStatusTile data={system.cronJobs} />
-      </section>
+      {/* Security snapshot (Pavel 2026-06-05) — deep-links /security */}
+      {showSecurity && <SecuritySnapshot />}
 
-      {/* Row 4 — Moderation queue (full width) */}
-      <section aria-label="Moderation queue">
-        <ModerationQueueTile items={moderation} />
-      </section>
+      {/* Operations health — charts */}
+      {hasOpsRow && (
+        <section
+          aria-label="Operations health"
+          className="grid grid-cols-1 gap-4 lg:grid-cols-12"
+        >
+          {showTickets && <TicketsByCategoryTile data={ticketsByCategory} span={showOrdersChart ? 6 : 12} />}
+          {showOrdersChart && <OrdersByStatusTile buckets={ordersByStatus} span={showTickets ? 6 : 12} />}
+        </section>
+      )}
 
-      {/* Row 5 — Recent activity (full width) */}
-      <section aria-label="Recent activity">
-        <RecentActivityTile items={activity} />
-      </section>
+      {/* System health (3 StatusWidgets) */}
+      {hasSystemRow && (
+        <section
+          aria-label="System health"
+          className="grid grid-cols-1 gap-4 lg:grid-cols-12"
+        >
+          {showCompliance && <ComplianceStatusTile data={system.compliance} />}
+          {showWebhooks && <StripeWebhookStatusTile data={system.stripeWebhooks} />}
+          {showCron && <CronStatusTile data={system.cronJobs} />}
+        </section>
+      )}
+
+      {/* Recent activity (full width) */}
+      {showActivity && (
+        <section aria-label="Recent activity">
+          <RecentActivityTile items={activity} />
+        </section>
+      )}
     </div>
   )
 }
@@ -219,7 +241,7 @@ function Hero() {
 // Row 2 — InboxQueueTile
 // =============================================================================
 
-function InboxQueueTile({ rows }: { rows: InboxQueueListRow[] }) {
+function InboxQueueTile({ rows, span = 4 }: { rows: InboxQueueListRow[]; span?: WidgetSpan }) {
   const items: ListWidgetItem[] = rows.map((r) => ({
     id: r.id,
     label: r.label,
@@ -235,7 +257,7 @@ function InboxQueueTile({ rows }: { rows: InboxQueueListRow[] }) {
       icon={Inbox}
       tone="pink"
       items={items}
-      span={4}
+      span={span}
       footerLink={{ href: '/leads', label: 'Open inbox' }}
       emptyLabel="All queues clear."
     />
@@ -248,8 +270,10 @@ function InboxQueueTile({ rows }: { rows: InboxQueueListRow[] }) {
 
 function TicketsByCategoryTile({
   data,
+  span = 4,
 }: {
   data: TicketsByCategoryResult
+  span?: WidgetSpan
 }) {
   // Graceful "not wired yet" state when the Ticket model isn't migrated
   // locally (or there are simply no rows).
@@ -260,7 +284,7 @@ function TicketsByCategoryTile({
         subtitle="Rolling out soon"
         icon={PieChart}
         tone="warning"
-        span={4}
+        span={span}
       >
         <div className="flex h-[220px] items-center justify-center rounded-lg border border-dashed border-ink-200 bg-ink-50/40 px-4 text-center text-[12.5px] text-ink-500">
           Support tickets are not wired up in this environment yet.
@@ -284,7 +308,7 @@ function TicketsByCategoryTile({
       subtitle="Open tickets, all priorities"
       icon={PieChart}
       tone="warning"
-      span={4}
+      span={span}
     >
       {segments.length === 0 ? (
         <div className="flex h-[220px] items-center justify-center rounded-lg border border-dashed border-ink-200 bg-ink-50/40 px-4 text-center text-[12.5px] text-ink-500">
@@ -315,8 +339,10 @@ function TicketsByCategoryTile({
 
 function OrdersByStatusTile({
   buckets,
+  span = 4,
 }: {
   buckets: OrdersByStatusBucket[]
+  span?: WidgetSpan
 }) {
   const segments: ChartDonutSegment[] = buckets.map((b) => ({
     name: b.status.replace(/_/g, ' '),
@@ -330,7 +356,7 @@ function OrdersByStatusTile({
       subtitle="Funnel snapshot, all-time"
       icon={Donut}
       tone="success"
-      span={4}
+      span={span}
       footerLink={{ href: '/orders', label: 'View all orders' }}
     >
       {segments.length === 0 ? (
@@ -463,7 +489,7 @@ function CronStatusTile({
 // Row 4 — ModerationQueueTile
 // =============================================================================
 
-function ModerationQueueTile({ items }: { items: ModerationQueueItem[] }) {
+function ModerationQueueTile({ items, span = 12 }: { items: ModerationQueueItem[]; span?: WidgetSpan }) {
   const queueItems: QueueWidgetItem[] = items.map((item) => ({
     id: item.id,
     label: item.label,
@@ -484,7 +510,7 @@ function ModerationQueueTile({ items }: { items: ModerationQueueItem[] }) {
       subtitle="Items stuck longer than the SLA — act fast"
       icon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
       tone="danger"
-      span={12}
+      span={span}
       items={queueItems}
       emptyLabel="Nothing waiting. Queue is clear."
     />

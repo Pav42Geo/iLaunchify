@@ -16,6 +16,7 @@
 //   ?page=2                                       — pagination (50 / page)
 
 import Link from 'next/link'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import {
   Gift,
   Clock4,
@@ -119,23 +120,15 @@ export default async function AccessoriesPage({ searchParams }: PageProps) {
 
 function Header({ kpis }: { kpis: AccessoriesKpis }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div>
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Inbox · Accessory verification
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Accessories
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Verify partner-listed brand add-ons — engraved spoons, ribbons, recipe
-          cards, wax seals — before creators can bundle them onto products at
-          checkout. The listing partner is always the fulfillment partner.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Inbox · Accessory verification"
+        title="Accessories"
+        description="Verify partner-listed brand add-ons — engraved spoons, ribbons, recipe cards, wax seals — before creators can bundle them onto products at checkout. The listing partner is always the fulfillment partner."
+      />
 
       {/* KPI strip — 5 cards */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard href="/accessories" label="Total accessories" value={kpis.total} icon={Gift} active />
         <KpiCard
           href="/accessories?status=PENDING_REVIEW"

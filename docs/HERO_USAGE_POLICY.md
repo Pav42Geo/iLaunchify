@@ -110,7 +110,7 @@ This is a dense, power-user console used daily. The repeated `rounded-3xl … bg
 ## What to change, in priority order
 
 1. **Admin band → compact header** across the ~28 list/detail pages (biggest win; reclaims above-the-fold space for tables). Keep one richer header on the admin dashboard.
-2. **Audit subtitles** platform-wide; delete the ones that restate the title.
+2. ~~**Audit subtitles** platform-wide; delete the ones that restate the title.~~ — DONE 2026-06-25: audited all admin hero subtitles. **No cuts warranted** — they're informative scope/instruction lines ("Audit log → Every privileged action…", "Ingredient queue → pending verification; promote good ones to the shared library"), not restatements. Many pages have no subtitle at all. Keep them; the band compaction already reclaimed the space.
 3. **Creator/partner inner pages** → compact headers; confirm Studios/checkout stay band-free (they already are).
 4. **Marketing** → confirm one hero per page; taper display size inward. (`AcademyHero` stays separate — it's a distinct light hero, not a duplicate.)
 5. **Lighten the login** header (keep signup's brand panel). — DONE 2026-06-25: login "Welcome back." headline stepped down from text-4xl/5xl → text-3xl/4xl on creator + partner.
