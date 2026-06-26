@@ -7,21 +7,22 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { Brand, BrandMark } from '@ilaunchify/ui'
 import { savePlatformLogoPlacement } from './actions'
 
 type Row = { key: string; label: string; kind: 'full' | 'mark'; sublabel: string }
 
-export function PlacementEditor({ rows }: { rows: Row[] }) {
+export function PlacementEditor({ rows, fullUrl, markUrl }: { rows: Row[]; fullUrl: string | null; markUrl: string | null }) {
   return (
     <div className="divide-y divide-ink-100">
       {rows.map((r) => (
-        <PlacementRow key={r.key} row={r} />
+        <PlacementRow key={r.key} row={r} fullUrl={fullUrl} markUrl={markUrl} />
       ))}
     </div>
   )
 }
 
-function PlacementRow({ row }: { row: Row }) {
+function PlacementRow({ row, fullUrl, markUrl }: { row: Row; fullUrl: string | null; markUrl: string | null }) {
   const router = useRouter()
   const [kind, setKind] = useState<'full' | 'mark'>(row.kind)
   const [sublabel, setSublabel] = useState(row.sublabel)
@@ -40,7 +41,16 @@ function PlacementRow({ row }: { row: Row }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3 py-3">
-      <span className="min-w-[180px] flex-1 text-[length:var(--fs-sm)] font-medium text-ink-800">{row.label}</span>
+      <span className="min-w-[140px] text-[length:var(--fs-sm)] font-medium text-ink-800">{row.label}</span>
+
+      {/* Live preview — reflects the current kind + sublabel */}
+      <span className="inline-flex min-w-[150px] flex-1 items-center rounded-lg border border-ink-200 bg-white px-3 py-1.5">
+        {kind === 'mark' ? (
+          <BrandMark imageSrc={markUrl} sublabel={sublabel || undefined} />
+        ) : (
+          <Brand imageSrc={fullUrl} sublabel={sublabel || undefined} />
+        )}
+      </span>
 
       {/* Full / Mark segmented toggle */}
       <div className="inline-flex overflow-hidden rounded-pill border border-ink-300">

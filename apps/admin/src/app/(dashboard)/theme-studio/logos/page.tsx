@@ -45,6 +45,8 @@ export default async function ThemeStudioLogosPage() {
     kind: placements[p.key]?.kind ?? 'full',
     sublabel: placements[p.key]?.sublabel ?? '',
   }))
+  const fullUrl = byKey.get('full:light')?.url ?? null
+  const markUrl = byKey.get('mark:light')?.url ?? null
 
   return (
     <div className="space-y-6">
@@ -90,7 +92,7 @@ export default async function ThemeStudioLogosPage() {
           sublabel (e.g. “Admin Mode”, “Business”). Leave the sublabel blank to show no text.
         </p>
         <div className="mt-4">
-          <PlacementEditor rows={placementRows} />
+          <PlacementEditor rows={placementRows} fullUrl={fullUrl} markUrl={markUrl} />
         </div>
       </section>
     </div>
