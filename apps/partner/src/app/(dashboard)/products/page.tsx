@@ -292,6 +292,7 @@ export default async function ProductsListPage({
                   <th className="px-3 py-2.5 font-semibold">Subcategory</th>
                   <th className="px-3 py-2.5 font-semibold">Recipe</th>
                   <SortableTh label="Base price" k="price" sort={sort} dir={dir} tab={tab} />
+                  <th className="px-3 py-2.5 font-semibold">Orders</th>
                   <SortableTh label="Updated" k="updated" sort={sort} dir={dir} tab={tab} />
                   <th className="px-5 py-2.5" />
                 </tr>
@@ -299,7 +300,7 @@ export default async function ProductsListPage({
               <tbody>
                 {visible.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-5 py-8 text-center text-[12px] text-ink-500">
+                    <td colSpan={9} className="px-5 py-8 text-center text-[12px] text-ink-500">
                       Nothing in “{TAB_LABEL[tab]}”.
                     </td>
                   </tr>
@@ -369,6 +370,16 @@ export default async function ProductsListPage({
                       </td>
                       <td className="px-3 py-3 tabular-nums text-ink-700">
                         ${(r.priceFloorCents / 100).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-3 tabular-nums">
+                        {(ordersByTemplate.get(r.id) ?? 0) === 0 ? (
+                          <span className="text-ink-400" title="No production orders yet">—</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 font-medium text-ink-900" title="Production orders pulled by creators">
+                            <ShoppingBag className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+                            {ordersByTemplate.get(r.id)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-[12px] tabular-nums text-ink-500">
                         {new Date(r.updatedAt).toLocaleDateString()}
