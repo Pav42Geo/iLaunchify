@@ -483,9 +483,16 @@ function BrandStack() {
         <animateTransform attributeName="transform" type="translate" values="0 0;0 -4;0 0" dur="5s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
         <rect x="188" y="163" width="104" height="104" rx="24" fill="#FF2E63" />
         <g stroke="#FFFFFF" strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" fill="none" opacity="0.95">
-          <path d="M240 189 L266 203 L240 217 L214 203 Z" />
-          <path d="M214 207 L240 221 L266 207" />
-          <path d="M214 223 L240 237 L266 223" />
+          {/* the three layers gently fan apart + settle — the stack breathes */}
+          <path d="M240 189 L266 203 L240 217 L214 203 Z">
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -2.5;0 0" dur="3s" begin="0s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          </path>
+          <path d="M214 207 L240 221 L266 207">
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 1;0 0" dur="3.4s" begin="0.3s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          </path>
+          <path d="M214 223 L240 237 L266 223">
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 2.5;0 0" dur="3.8s" begin="0.6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+          </path>
         </g>
       </g>
     </svg>
