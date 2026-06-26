@@ -25,7 +25,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  ArrowLeft,
   ArrowRight,
   Building2,
   Mail,
@@ -35,24 +34,17 @@ import {
   CreditCard,
   ShieldCheck,
   Layers,
-  Users,
   Globe2,
   PackageOpen,
   History,
   AlertTriangle,
-  CheckCircle2,
-  Activity,
   Factory,
   Package as PackageIcon,
   Printer,
   Warehouse,
   Sparkles,
-  Hash,
-  Calendar,
-  Clock,
   ExternalLink,
   TrendingUp,
-  DollarSign,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type {
@@ -65,6 +57,7 @@ import type {
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { PartnerActions } from './PartnerActions'
 import { PartnerTierPill } from './PartnerTierPill'
@@ -305,66 +298,53 @@ export default async function PartnerDetail({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Back link */}
-      <div>
-        <Link
-          href="/partners"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          All partners
-        </Link>
-      </div>
-
       {/* HEADER */}
-      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Partners · Detail
-            </p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              {partner.companyName}
-            </h1>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">
-              {partner.legalName && partner.legalName !== partner.companyName && (
-                <>
-                  <span className="inline-flex items-center gap-1">
-                    <Building2 className="h-3 w-3 text-ink-400" aria-hidden="true" />
-                    Legal: {partner.legalName}
-                  </span>
-                  <span className="text-ink-400">·</span>
-                </>
-              )}
-              <a
-                href={`mailto:${partner.user.email}`}
-                className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-              >
-                <Mail className="h-3 w-3" aria-hidden="true" />
-                {partner.user.email}
-              </a>
-              {partner.services.length > 0 && (
-                <>
-                  <span className="text-ink-400">·</span>
-                  <span className="inline-flex items-center gap-1.5">
-                    {partner.services.map((s) => {
-                      const Icon: LucideIcon = SERVICE_ICON[s.type] ?? Factory
-                      return (
-                        <span
-                          key={s.id}
-                          className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10.5px] font-medium text-ink-700 border border-ink-200/60"
-                        >
-                          <Icon className="h-3 w-3" aria-hidden="true" />
-                          {SERVICE_LABELS[s.type]}
-                        </span>
-                      )
-                    })}
-                  </span>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <AdminDetailHeader
+        backHref="/partners"
+        backLabel="All partners"
+        eyebrow="Partners · Detail"
+        title={partner.companyName}
+        meta={
+          <>
+            {partner.legalName && partner.legalName !== partner.companyName && (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="h-3 w-3 text-ink-400" aria-hidden="true" />
+                  Legal: {partner.legalName}
+                </span>
+                <span className="text-ink-400">·</span>
+              </>
+            )}
+            <a
+              href={`mailto:${partner.user.email}`}
+              className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
+            >
+              <Mail className="h-3 w-3" aria-hidden="true" />
+              {partner.user.email}
+            </a>
+            {partner.services.length > 0 && (
+              <>
+                <span className="text-ink-400">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {partner.services.map((s) => {
+                    const Icon: LucideIcon = SERVICE_ICON[s.type] ?? Factory
+                    return (
+                      <span
+                        key={s.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10.5px] font-medium text-ink-700 border border-ink-200/60"
+                      >
+                        <Icon className="h-3 w-3" aria-hidden="true" />
+                        {SERVICE_LABELS[s.type]}
+                      </span>
+                    )
+                  })}
+                </span>
+              </>
+            )}
+          </>
+        }
+        status={
+          <>
             {activeStrikes > 0 && (
               <span
                 title="Active cancellation strikes (OrderSettings.partnerStrikeOnCancel)"
@@ -382,9 +362,9 @@ export default async function PartnerDetail({ params }: PageProps) {
               <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
               {tone.label}
             </span>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* TWO COLUMN GRID */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr,360px]">

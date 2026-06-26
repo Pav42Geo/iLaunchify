@@ -19,7 +19,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  ArrowLeft,
   Crown,
   Building2,
   ShoppingBag,
@@ -34,6 +33,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,64 +134,50 @@ export default async function CreatorDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Back to index */}
-      <div>
-        <Link
-          href="/creators"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          All creators
-        </Link>
-      </div>
-
       {/* HERO HEADER */}
-      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="relative bg-gradient-to-br from-[var(--bg-hero)] via-white to-pink-50/40 px-6 py-5">
-          <div className="flex flex-wrap items-start gap-4">
-            <Avatar name={creator.displayName ?? creator.user.name ?? creator.user.email} size="lg" />
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
-                Creator profile
-              </p>
-              <h1 className="mt-0.5 font-display text-[26px] font-semibold leading-tight tracking-tight text-ink-900">
-                {creator.displayName ?? creator.user.name ?? '—'}
-              </h1>
-              {creator.handle && (
-                <p className="mt-1 inline-flex items-center gap-1 text-[12px] text-pink-700">
-                  <span className="font-semibold">@{creator.handle}</span>
-                </p>
+      <AdminDetailHeader
+        backHref="/creators"
+        backLabel="All creators"
+        eyebrow="Creator profile"
+        title={creator.displayName ?? creator.user.name ?? '—'}
+        avatar={
+          <Avatar name={creator.displayName ?? creator.user.name ?? creator.user.email} size="lg" />
+        }
+        meta={
+          <>
+            {creator.handle && (
+              <span className="inline-flex items-center gap-1 text-pink-700">
+                <span className="font-semibold">@{creator.handle}</span>
+              </span>
+            )}
+            <a
+              href={`mailto:${creator.user.email}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/80 px-2.5 py-[3px] text-[11.5px] text-ink-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+            >
+              <Mail className="h-3 w-3" aria-hidden="true" />
+              {creator.user.email}
+            </a>
+            <Link
+              href={`/tiers#creator-${creator.id}`}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11.5px] font-semibold uppercase tracking-wider',
+                tierTone.bg,
+                'transition-opacity hover:opacity-80',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <a
-                  href={`mailto:${creator.user.email}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/80 px-2.5 py-[3px] text-[11.5px] text-ink-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-                >
-                  <Mail className="h-3 w-3" aria-hidden="true" />
-                  {creator.user.email}
-                </a>
-                <Link
-                  href={`/tiers#creator-${creator.id}`}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11.5px] font-semibold uppercase tracking-wider',
-                    tierTone.bg,
-                    'transition-opacity hover:opacity-80',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-                  )}
-                >
-                  <Crown className="h-3 w-3" aria-hidden="true" />
-                  {tierTone.label}
-                </Link>
-                {creator.feeRateOverrideBp !== null && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-[3px] text-[11.5px] font-semibold text-amber-800 border border-amber-200">
-                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                    Fee override · {creator.feeRateOverrideBp}bp
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+            >
+              <Crown className="h-3 w-3" aria-hidden="true" />
+              {tierTone.label}
+            </Link>
+            {creator.feeRateOverrideBp !== null && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-[3px] text-[11.5px] font-semibold text-amber-800 border border-amber-200">
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                Fee override · {creator.feeRateOverrideBp}bp
+              </span>
+            )}
+          </>
+        }
+      >
         {/* Stat strip */}
         <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-4">
           <Stat icon={Building2} label="Brands" value={creator.brands.length} />
@@ -207,7 +193,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
           />
           <Stat icon={Calendar} label="Member for" value={formatAge(ageDays)} />
         </div>
-      </header>
+      </AdminDetailHeader>
 
       {/* TWO-COLUMN LAYOUT */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">

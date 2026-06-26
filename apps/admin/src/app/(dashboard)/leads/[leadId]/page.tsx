@@ -15,10 +15,8 @@
 //   • memory: ilaunchify-admin-surface-pattern.md
 // =============================================================================
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  ArrowLeft,
   Building2,
   Calendar,
   Globe,
@@ -32,15 +30,13 @@ import {
   Activity,
   StickyNote,
   Info,
-  FileText,
-  History,
   User as UserIcon,
-  Hash,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { listEntityHistory } from '@ilaunchify/audit'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import {
   StatusCard,
   AssignCard,
@@ -200,52 +196,38 @@ export default async function LeadDetail({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      {/* Back link */}
-      <div>
-        <Link
-          href="/leads"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          All leads
-        </Link>
-      </div>
-
       {/* HEADER */}
-      <header className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Inbox · Lead
-            </p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              {partner.companyName}
-            </h1>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">
-              {partner.legalName && partner.legalName !== partner.companyName && (
-                <>
-                  <span className="inline-flex items-center gap-1">
-                    <Building2 className="h-3 w-3 text-ink-400" aria-hidden="true" />
-                    {partner.legalName}
-                  </span>
-                  <span className="text-ink-400">·</span>
-                </>
-              )}
-              <a
-                href={`mailto:${partner.user.email}`}
-                className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-              >
-                <Mail className="h-3 w-3" aria-hidden="true" />
-                {partner.user.email}
-              </a>
-              <span className="text-ink-400">·</span>
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-3 w-3 text-ink-400" aria-hidden="true" />
-                Lead since {formatRelative(partner.createdAt)}
-              </span>
-            </p>
-          </div>
-
+      <AdminDetailHeader
+        backHref="/leads"
+        backLabel="All leads"
+        eyebrow="Inbox · Lead"
+        title={partner.companyName}
+        meta={
+          <>
+            {partner.legalName && partner.legalName !== partner.companyName && (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="h-3 w-3 text-ink-400" aria-hidden="true" />
+                  {partner.legalName}
+                </span>
+                <span className="text-ink-400">·</span>
+              </>
+            )}
+            <a
+              href={`mailto:${partner.user.email}`}
+              className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
+            >
+              <Mail className="h-3 w-3" aria-hidden="true" />
+              {partner.user.email}
+            </a>
+            <span className="text-ink-400">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-ink-400" aria-hidden="true" />
+              Lead since {formatRelative(partner.createdAt)}
+            </span>
+          </>
+        }
+        status={
           <div className="flex flex-col items-end gap-2">
             <span
               className={cn(
@@ -267,8 +249,8 @@ export default async function LeadDetail({ params }: PageProps) {
               )}
             </span>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* TWO COLUMN GRID */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr,340px]">

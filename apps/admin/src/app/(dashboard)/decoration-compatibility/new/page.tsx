@@ -1,8 +1,7 @@
 // C8 — create a new (container × decoration) compatibility combo.
 
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { CompatForm } from '../CompatForm'
 
 export const dynamic = 'force-dynamic'
@@ -12,23 +11,18 @@ export default async function NewCompatibilityPage() {
   await requireRole('ADMIN')
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <Link
-          href="/decoration-compatibility"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-600 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Decoration compatibility
-        </Link>
-        <h1 className="mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Add compatibility combo
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          Mark a decoration method as valid on a container category. Re-saving an
-          existing pair updates it instead of duplicating — the (category, method)
-          pair is unique.
-        </p>
-      </div>
+      <AdminDetailHeader
+        backHref="/decoration-compatibility"
+        backLabel="Decoration compatibility"
+        title="Add compatibility combo"
+        meta={
+          <>
+            Mark a decoration method as valid on a container category. Re-saving an
+            existing pair updates it instead of duplicating — the (category, method)
+            pair is unique.
+          </>
+        }
+      />
 
       <CompatForm mode="new" />
     </div>

@@ -6,11 +6,11 @@
 // Add via SubcategoryPickerDialog (multi-select grouped by Category). Remove
 // + reorder per row. Display order = manual.
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ChevronRight, GripVertical, Layers } from 'lucide-react'
+import { ChevronRight, GripVertical, Layers } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { SubcategoryPickerDialog } from './SubcategoryPickerDialog'
 import {
   RemoveSubcategoryButton,
@@ -93,14 +93,7 @@ export default async function NicheSubcategoriesPage({ params }: PageProps) {
         count={junctions.length}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/niches"
-          className="inline-flex items-center gap-1 text-[12.5px] font-medium text-ink-600 hover:text-ink-900"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to all niches
-        </Link>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <SubcategoryPickerDialog
           nicheId={niche.id}
           nicheName={niche.name}
@@ -203,8 +196,12 @@ function Header({
   count: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex items-start gap-4">
+    <AdminDetailHeader
+      backHref="/niches"
+      backLabel="Back to all niches"
+      eyebrow={`Marketplace · Niches · ${nicheName}`}
+      title={`Subcategories in ${nicheName}`}
+      avatar={
         <span
           aria-hidden="true"
           className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-[28px]"
@@ -215,34 +212,28 @@ function Header({
         >
           {iconEmoji ?? '·'}
         </span>
-        <div className="flex-1">
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Marketplace · Niches · {nicheName}
-          </p>
-          <h1 className="mt-0.5 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Subcategories in {nicheName}
-          </h1>
+      }
+      meta={
+        <>
           {nicheDescription && (
-            <p className="mt-1.5 max-w-3xl text-[13px] text-ink-600">
+            <span className="max-w-3xl text-[13px] text-ink-600">
               {nicheDescription}
-            </p>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold"
-              style={{
-                backgroundColor: `${accentHex}1A`,
-                color: accentHex,
-              }}
-            >
-              {count} surfaced
             </span>
-            <code className="rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[10.5px] text-ink-600">
-              {slug}
-            </code>
-          </div>
-        </div>
-      </div>
-    </div>
+          )}
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold"
+            style={{
+              backgroundColor: `${accentHex}1A`,
+              color: accentHex,
+            }}
+          >
+            {count} surfaced
+          </span>
+          <code className="rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[10.5px] text-ink-600">
+            {slug}
+          </code>
+        </>
+      }
+    />
   )
 }

@@ -1,11 +1,10 @@
 // Admin Academy — course editor (ACADEMY_SPEC §8). Metadata + SEO + hero + level
 // + category, the lesson list (reorder + quick-add), and the publish FSM control.
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { AUDIENCE_LABEL } from '../../../academy-data'
 import { StatusControl } from '../../../StatusControl'
 import { CourseEditor } from './CourseEditor'
@@ -40,21 +39,14 @@ export default async function EditCoursePage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <Link href="/academy/courses" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to courses
-        </Link>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              {AUDIENCE_LABEL[course.audience]} Academy · Course
-            </p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">{course.title}</h1>
-            <p className="mt-1 font-mono text-[11.5px] text-ink-500">slug {course.slug}</p>
-          </div>
-          <StatusControl entity="course" id={course.id} status={course.status} />
-        </div>
-      </div>
+      <AdminDetailHeader
+        backHref="/academy/courses"
+        backLabel="Back to courses"
+        eyebrow={`${AUDIENCE_LABEL[course.audience]} Academy · Course`}
+        title={course.title}
+        meta={<span className="font-mono text-[11.5px] text-ink-500">slug {course.slug}</span>}
+        status={<StatusControl entity="course" id={course.id} status={course.status} />}
+      />
 
       <CourseEditor
         course={{

@@ -9,12 +9,11 @@
 // docs/builds/_V1_DIELINE_NORMALIZATION.md §"Admin verification".
 // =============================================================================
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { prisma, getCanonicalShapeOptions, listDielineCanonicalLinks } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { aspectBucketFor } from '@ilaunchify/ui'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { DielineCurator } from './DielineCurator'
 
 export const dynamic = 'force-dynamic'
@@ -119,36 +118,31 @@ export default async function DielineCuratorPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          href="/dielines"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 hover:text-ink-800"
-        >
-          <ArrowLeft className="h-4 w-4" /> Die-line review
-        </Link>
-      </div>
-
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Packaging · Die-line Curator</p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          {dl.packagingType.displayName}
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          {dl.partnerService.partner.companyName} · {dl.decorationMethod.replace(/_/g, ' ').toLowerCase()} ·{' '}
-          {dl.originalFileFormat ?? 'no file'}
-          {dl.parseAccuracyScore != null ? ` · parse ${Math.round(num(dl.parseAccuracyScore) * 100)}%` : ''}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-ink-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-            {dl.status.toLowerCase().replace(/_/g, ' ')}
+      <AdminDetailHeader
+        backHref="/dielines"
+        backLabel="Die-line review"
+        eyebrow="Packaging · Die-line Curator"
+        title={dl.packagingType.displayName}
+        meta={
+          <span className="text-[13px] text-ink-600">
+            {dl.partnerService.partner.companyName} · {dl.decorationMethod.replace(/_/g, ' ').toLowerCase()} ·{' '}
+            {dl.originalFileFormat ?? 'no file'}
+            {dl.parseAccuracyScore != null ? ` · parse ${Math.round(num(dl.parseAccuracyScore) * 100)}%` : ''}
           </span>
-          {curatedBefore && (
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-              normalized {new Date(dl.adminVerifiedAt as Date).toLocaleDateString()}
+        }
+        status={
+          <>
+            <span className="rounded-full border border-ink-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-ink-600">
+              {dl.status.toLowerCase().replace(/_/g, ' ')}
             </span>
-          )}
-        </div>
-      </div>
+            {curatedBefore && (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                normalized {new Date(dl.adminVerifiedAt as Date).toLocaleDateString()}
+              </span>
+            )}
+          </>
+        }
+      />
 
       <DielineCurator
         dielineId={dl.id}

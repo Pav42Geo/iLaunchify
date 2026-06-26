@@ -2,12 +2,11 @@
 // locked (the composite PK can't be edited in place — delete + re-create to
 // move a combo to a different pair).
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import type { ContainerCategory, DecorationMethod } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { CompatForm } from '../CompatForm'
 import {
   CONTAINER_CATEGORY_ORDER,
@@ -50,23 +49,18 @@ export default async function EditCompatibilityPage({ searchParams }: PageProps)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <Link
-          href="/decoration-compatibility"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-600 hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Decoration compatibility
-        </Link>
-        <h1 className="mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Edit combo
-        </h1>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-          {CONTAINER_CATEGORY_LABEL[category]} · {DECORATION_METHOD_LABEL[method]} — edit
-          the notes or toggle availability. To move this to a different pair,
-          delete it and add a new one.
-        </p>
-      </div>
+      <AdminDetailHeader
+        backHref="/decoration-compatibility"
+        backLabel="Decoration compatibility"
+        title="Edit combo"
+        meta={
+          <>
+            {CONTAINER_CATEGORY_LABEL[category]} · {DECORATION_METHOD_LABEL[method]} — edit
+            the notes or toggle availability. To move this to a different pair,
+            delete it and add a new one.
+          </>
+        }
+      />
 
       <CompatForm
         mode="edit"

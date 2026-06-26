@@ -2,10 +2,8 @@
 // Admin Support Ticket — detail (W2-SUP3 · SUPPORT_TICKETING_PLAN.md §3.2)
 // =============================================================================
 
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  ArrowLeft,
   User as UserIcon,
   Building2,
   Tag,
@@ -28,6 +26,7 @@ import {
 } from '@ilaunchify/support'
 import { getViewerCapabilities } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { TicketControls } from './TicketControls'
 import { RefundPanel, type RefundRequestView } from './RefundPanel'
 import { TierBadge } from '../page'
@@ -96,41 +95,29 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/support-tickets"
-        className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-500 hover:text-ink-800"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> All tickets
-      </Link>
-
       {/* Header */}
-      <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="bg-[var(--bg-hero)] px-5 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="font-mono text-[12px] uppercase tracking-wider text-ink-700">
-                #{ticket.id.slice(-8)}
-              </p>
-              <h1 className="mt-0.5 font-display text-xl font-semibold tracking-tight text-ink-900">
-                {ticket.subject}
-              </h1>
-            </div>
-            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
-              <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', tone.bg)}>
-                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
-                {tone.label}
+      <AdminDetailHeader
+        backHref="/support-tickets"
+        backLabel="All tickets"
+        eyebrow={<span className="font-mono">#{ticket.id.slice(-8)}</span>}
+        title={ticket.subject}
+        status={
+          <>
+            <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', tone.bg)}>
+              <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
+              {tone.label}
+            </span>
+            <span className={cn('inline-flex rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', prio.bg)}>
+              {prio.label}
+            </span>
+            {breached && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider text-rose-700">
+                <Flame className="h-3 w-3" /> SLA breached
               </span>
-              <span className={cn('inline-flex rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', prio.bg)}>
-                {prio.label}
-              </span>
-              {breached && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-[3px] text-[10.5px] font-semibold uppercase tracking-wider text-rose-700">
-                  <Flame className="h-3 w-3" /> SLA breached
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+            )}
+          </>
+        }
+      >
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 border-t border-ink-100 px-5 py-3.5 text-[12px] sm:grid-cols-4">
           <Meta icon={UserIcon} label="Requester">
             {ticket.requester?.name ?? ticket.requester?.email ?? '—'}
@@ -155,7 +142,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
             </Meta>
           )}
         </dl>
-      </header>
+      </AdminDetailHeader>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         {/* Thread */}
