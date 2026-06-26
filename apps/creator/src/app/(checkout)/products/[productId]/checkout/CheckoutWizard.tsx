@@ -55,6 +55,12 @@ import { ProductionStep } from './steps/ProductionStep'
 import { CheckoutStep } from './steps/CheckoutStep'
 import { OrderSummary } from './OrderSummary'
 import { SubscribeChoiceRail } from './SubscribeChoiceRail'
+
+// Subscribe & Save shelved by Pavel 2026-06-26 (the /subscriptions route is now
+// the Plans page). The Step-2 rail still owns "advance", so we keep rendering it
+// but in its disabled form (one-time purchase + Continue only). Flip to true to
+// bring the upsell back.
+const SUBSCRIBE_AND_SAVE_FEATURE_ON = false
 import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
 import { placeOrderFromCheckoutDraft } from './cart-actions'
 import { applyOrderAdjustment } from './adjust-actions'
@@ -505,6 +511,7 @@ export function CheckoutWizard({
                 }
                 onAdvance={goNext}
                 isSaving={isSaving}
+                enabled={SUBSCRIBE_AND_SAVE_FEATURE_ON}
               />
             )}
           <OrderSummary

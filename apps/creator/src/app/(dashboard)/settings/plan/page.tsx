@@ -83,7 +83,7 @@ const TIER_META: readonly TierMeta[] = [
     Icon: Rocket,
     features: [
       'Everything in Maker, plus:',
-      'Subscribe & save — up to 12% off every run',
+      '12% platform fee — save 3% on every run',
       'Print-ready Design Studio export',
       'Priority human support on every order',
       'Volume pricing on production runs',

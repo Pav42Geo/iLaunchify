@@ -64,6 +64,10 @@ interface Props {
   onAdvance: () => void
   /** Wizard's autosave state — disables the button while persisting. */
   isSaving?: boolean
+  /** Global feature switch. When false, the rail shows ONLY the one-time
+   *  purchase + advance button — no Subscribe & Save upsell at all.
+   *  Subscribe & Save was shelved by Pavel 2026-06-26; flip to true to revive. */
+  enabled?: boolean
 }
 
 export function SubscribeChoiceRail({
@@ -73,6 +77,7 @@ export function SubscribeChoiceRail({
   perRunTotalCents,
   onAdvance,
   isSaving,
+  enabled = true,
 }: Props) {
   const subscribeSelected = state.offerAccepted
   // Local "expanded" state for the Subscribe row. Auto-expands when
@@ -85,6 +90,41 @@ export function SubscribeChoiceRail({
   // CTA we used to render in the locked branch). Anchored to the (i)
   // icon next to the "Subscribe & Save" label.
   const [showInfo, setShowInfo] = useState(false)
+
+  // Subscribe & Save shelved (Pavel 2026-06-26): render a clean one-time
+  // purchase + advance button so Step 2 still progresses, with no upsell and
+  // no chance of creating a subscription the creator can no longer view.
+  if (!enabled) {
+    return (
+      <section className="overflow-hidden rounded-xl border border-ink-200 bg-white">
+        <div className="px-4 pt-3.5">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-ink-700" aria-hidden="true" />
+            <p className="text-[13px] font-semibold text-ink-900">One-time purchase</p>
+          </div>
+          <p className="mt-1 font-display text-lg font-bold tabular-nums text-ink-900">
+            {perRunTotalCents > 0 ? formatCents(perRunTotalCents) : '$—.——'}
+          </p>
+          <p className="mt-0.5 text-[10.5px] leading-snug text-ink-500">
+            Pay this batch only. No commitment.
+          </p>
+        </div>
+        <div className="px-4 pb-4 pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              onChange({ offerAccepted: false, cadence: null, runCount: null, discountBp: 0 })
+              onAdvance()
+            }}
+            disabled={isSaving}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
+          >
+            Continue to payment
+          </button>
+        </div>
+      </section>
+    )
+  }
 
   const pickedTier = getTierByRunCount(state.runCount)
   const discountBp = pickedTier.discountBp
