@@ -8,8 +8,8 @@
 //
 // platform:admin gated.
 
-import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { listPlatformLogos, getLogoPlacements, LOGO_KINDS, LOGO_VARIANTS, LOGO_PLACEMENTS, type LogoKind, type LogoVariant } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { LogoSlot } from './LogoUploader'
@@ -50,17 +50,18 @@ export default async function ThemeStudioLogosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <Link href="/theme-studio" className="text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-500 hover:text-ink-800">
-          ← Theme Studio
-        </Link>
-        <h1 className="mt-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Logos</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-600">
-          Upload the platform logo. Provide a <strong>light</strong> version (for light surfaces) and a <strong>dark</strong>{' '}
-          version (for dark headers, the hero, and the CTA band) of each. PNG, JPG, WEBP, or SVG · max 4&nbsp;MB.
-          Transparent PNG or SVG looks best.
-        </p>
-      </div>
+      <AdminDetailHeader
+        backHref="/theme-studio"
+        backLabel="Theme Studio"
+        title="Logos"
+        description={
+          <>
+            Upload the platform logo. Provide a <strong>light</strong> version (for light surfaces) and a <strong>dark</strong>{' '}
+            version (for dark headers, the hero, and the CTA band) of each. PNG, JPG, WEBP, or SVG · max 4&nbsp;MB.
+            Transparent PNG or SVG looks best.
+          </>
+        }
+      />
 
       <div className="grid gap-5 lg:grid-cols-2">
         {LOGO_KINDS.map((kind) => (

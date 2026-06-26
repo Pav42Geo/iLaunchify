@@ -23,7 +23,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  ArrowLeft,
   Box,
   Beaker,
   Award,
@@ -58,6 +57,7 @@ import type {
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { partnerUrl } from '@/lib/partner-url'
 import {
   suggestNiches,
@@ -845,46 +845,35 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       {/* HEADER — cream rounded-3xl band + 5-card KPI strip */}
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <Link
-          href="/products"
-          className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 focus-visible:rounded"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Back to queue
-        </Link>
-
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Products & Categories · Review
-            </p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              {template.name}
-            </h1>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">
-              <span>
-                {template.subcategory.category.name} · {template.subcategory.name}
-              </span>
-              {partnerName && partnerId && (
-                <>
-                  <span className="text-ink-400">·</span>
-                  <Link
-                    href={`/partners/${partnerId}`}
-                    className="font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
-                  >
-                    {partnerName}
-                  </Link>
-                </>
-              )}
-              <span className="text-ink-400">·</span>
-              <span className="font-mono text-[11.5px] text-ink-500">
-                slug {template.slug}
-              </span>
-            </p>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <AdminDetailHeader
+        backHref="/products"
+        backLabel="Back to queue"
+        eyebrow="Products & Categories · Review"
+        title={template.name}
+        meta={
+          <>
+            <span>
+              {template.subcategory.category.name} · {template.subcategory.name}
+            </span>
+            {partnerName && partnerId && (
+              <>
+                <span className="text-ink-400">·</span>
+                <Link
+                  href={`/partners/${partnerId}`}
+                  className="font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
+                >
+                  {partnerName}
+                </Link>
+              </>
+            )}
+            <span className="text-ink-400">·</span>
+            <span className="font-mono text-[11.5px] text-ink-500">
+              slug {template.slug}
+            </span>
+          </>
+        }
+        status={
+          <>
             {restrictionHits.length > 0 && (
               <span
                 title={restrictionHits.map((r) => r.label).join(', ')}
@@ -905,11 +894,12 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               <span className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
               {statusLabel}
             </span>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* 6-card KPI strip */}
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-6">
+      {/* 6-card KPI strip */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
           <KpiCard
             href="#ingredients"
             label="Ingredients"
@@ -957,7 +947,6 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
             }
           />
         </div>
-      </div>
 
       {/* TWO COLUMN GRID */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr,360px]">

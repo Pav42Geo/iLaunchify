@@ -40,6 +40,7 @@ export function AdminDetailHeader({
   title,
   avatar,
   meta,
+  description,
   status,
   actions,
   children,
@@ -50,6 +51,8 @@ export function AdminDetailHeader({
   title: ReactNode
   avatar?: ReactNode
   meta?: ReactNode
+  /** Optional prose description (for back-link'd sub-pages). Renders below meta. */
+  description?: ReactNode
   status?: ReactNode
   actions?: ReactNode
   children?: ReactNode
@@ -80,6 +83,9 @@ export function AdminDetailHeader({
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-ink-600">
                     {meta}
                   </div>
+                )}
+                {description && (
+                  <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-ink-600">{description}</p>
                 )}
               </div>
             </div>

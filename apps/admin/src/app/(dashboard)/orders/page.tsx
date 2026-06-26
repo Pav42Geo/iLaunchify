@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { OrderRowActions } from './OrderRowActions'
 
 export const dynamic = 'force-dynamic'
@@ -254,32 +255,27 @@ function Header({
   revenue30Cents: number
 }) {
   return (
-    <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="bg-[var(--bg-hero)] px-5 py-4">
-        <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
-          Operate
-        </p>
-        <h1 className="mt-0.5 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Orders
-        </h1>
-        <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">
-          Every production order across the platform. Click a row to open the
-          dispatch detail + Stripe transfers.
-        </p>
+    <>
+      <AdminPageHeader
+        eyebrow="Operate"
+        title="Orders"
+        description="Every production order across the platform. Click a row to open the dispatch detail + Stripe transfers."
+      />
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="grid grid-cols-2 divide-x divide-ink-100 sm:grid-cols-5">
+          <Kpi icon={ShoppingBag} label="Total" value={totalCount} tone="ink" />
+          <Kpi icon={DollarSign} label="Paid" value={paidCount} tone="pink" />
+          <Kpi icon={PackageOpen} label="In production" value={productionCount} tone="info" />
+          <Kpi icon={Truck} label="Shipped+" value={shippedCount} tone="success" />
+          <Kpi
+            icon={DollarSign}
+            label="Revenue · 30d"
+            value={formatRevenue(revenue30Cents)}
+            tone="success"
+          />
+        </div>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-5">
-        <Kpi icon={ShoppingBag} label="Total" value={totalCount} tone="ink" />
-        <Kpi icon={DollarSign} label="Paid" value={paidCount} tone="pink" />
-        <Kpi icon={PackageOpen} label="In production" value={productionCount} tone="info" />
-        <Kpi icon={Truck} label="Shipped+" value={shippedCount} tone="success" />
-        <Kpi
-          icon={DollarSign}
-          label="Revenue · 30d"
-          value={formatRevenue(revenue30Cents)}
-          tone="success"
-        />
-      </div>
-    </header>
+    </>
   )
 }
 

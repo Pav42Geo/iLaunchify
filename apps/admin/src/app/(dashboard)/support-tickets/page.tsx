@@ -27,6 +27,7 @@ import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { listTickets, OPEN_STATUSES } from '@ilaunchify/support'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { TicketRowActions } from './TicketRowActions'
 import { InlineStatus, InlinePriority, InlineAssignee } from './InlineTicketControls'
 
@@ -217,20 +218,13 @@ function Header({
   resolved30Count: number
 }) {
   return (
-    <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="bg-[var(--bg-hero)] px-5 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Operate</p>
-            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              Support tickets
-            </h1>
-            <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-ink-600">
-              Every creator + partner support request, in one system of record. Click a row to read
-              the thread, reply, and move it through triage.
-            </p>
-          </div>
-          <div className="flex flex-none items-center gap-2">
+    <>
+      <AdminPageHeader
+        eyebrow="Operate"
+        title="Support tickets"
+        description="Every creator + partner support request, in one system of record. Click a row to read the thread, reply, and move it through triage."
+        actions={
+          <>
             <Link
               href="/support-tickets/analytics"
               className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 hover:border-ink-400 hover:text-ink-900"
@@ -249,17 +243,19 @@ function Header({
             >
               <Tag className="h-3.5 w-3.5" /> Categories
             </Link>
-          </div>
+          </>
+        }
+      />
+      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+        <div className="grid grid-cols-2 divide-x divide-ink-100 sm:grid-cols-5">
+          <Kpi icon={Inbox} label="Total" value={totalCount} tone="ink" />
+          <Kpi icon={LifeBuoy} label="Open" value={openCount} tone="pink" />
+          <Kpi icon={AlarmClock} label="Needs triage" value={newCount} tone="info" />
+          <Kpi icon={Flame} label="SLA breached" value={slaBreachedCount} tone="danger" />
+          <Kpi icon={CheckCircle2} label="Resolved · 30d" value={resolved30Count} tone="success" />
         </div>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-ink-100 border-t border-ink-100 sm:grid-cols-5">
-        <Kpi icon={Inbox} label="Total" value={totalCount} tone="ink" />
-        <Kpi icon={LifeBuoy} label="Open" value={openCount} tone="pink" />
-        <Kpi icon={AlarmClock} label="Needs triage" value={newCount} tone="info" />
-        <Kpi icon={Flame} label="SLA breached" value={slaBreachedCount} tone="danger" />
-        <Kpi icon={CheckCircle2} label="Resolved · 30d" value={resolved30Count} tone="success" />
-      </div>
-    </header>
+    </>
   )
 }
 
