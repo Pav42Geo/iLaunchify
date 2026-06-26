@@ -61,7 +61,7 @@ export default async function EditCompatibilityPage({ searchParams }: PageProps)
         <h1 className="mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Edit combo
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           {CONTAINER_CATEGORY_LABEL[category]} · {DECORATION_METHOD_LABEL[method]} — edit
           the notes or toggle availability. To move this to a different pair,
           delete it and add a new one.

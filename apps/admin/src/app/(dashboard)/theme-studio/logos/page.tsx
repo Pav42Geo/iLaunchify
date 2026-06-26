@@ -54,7 +54,7 @@ export default async function ThemeStudioLogosPage() {
         <Link href="/theme-studio" className="text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-500 hover:text-ink-800">
           ← Theme Studio
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink-900">Logos</h1>
+        <h1 className="mt-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Logos</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink-600">
           Upload the platform logo. Provide a <strong>light</strong> version (for light surfaces) and a <strong>dark</strong>{' '}
           version (for dark headers, the hero, and the CTA band) of each. PNG, JPG, WEBP, or SVG · max 4&nbsp;MB.

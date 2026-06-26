@@ -155,7 +155,7 @@ export function DielineOpsWorkspace({ rows, shapeOptions }: { rows: OpsRow[]; sh
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Die-line Operations
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Triage partner-submitted die-lines, normalize their geometry + mandatory-element frames, and activate them for
           the Design Studio. Originals are never modified.
         </p>

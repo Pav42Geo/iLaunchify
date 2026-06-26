@@ -82,7 +82,7 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
         <span className="rounded-pill border border-ink-300 bg-white px-2.5 py-0.5 text-[length:var(--fs-2xs)] font-semibold uppercase tracking-wide text-ink-600">
           Editing: {SCOPE_LABELS[scope]} · {mode}
         </span>
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink-900">Theme Studio</h1>
+        <h1 className="mt-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">Theme Studio</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink-600">
           The single source of design truth for the platform — colors, type, fonts, components, and chrome. Edit a draft,
           preview it across the apps, and publish (or roll back). Every change is checked against WCAG&nbsp;2.1&nbsp;AA

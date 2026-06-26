@@ -141,7 +141,7 @@ function Header({ kpis }: { kpis: CompatKpis }) {
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Decoration compatibility
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             The admin-curated matrix of which decoration methods are valid on
             each container category. It gates which decorations partners can
             offer per container — only active combos surface in the partner

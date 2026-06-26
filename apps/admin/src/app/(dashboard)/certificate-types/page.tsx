@@ -176,7 +176,7 @@ function Header({
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Certificate types
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Master list of food + supplement certifications partners can attest to. Each row is a CertificateType (e.g. USDA Organic, Non-GMO Project, Gluten-Free Certification Organization).
           </p>
         </div>

@@ -235,7 +235,7 @@ function Header({
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Product approvals
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Review submissions, monitor catalog health, and supervise marketplace placement.
           </p>
         </div>

@@ -80,7 +80,7 @@ export default async function CertificateRequestsPage({ searchParams }: PageProp
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Certificate type requests
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Partners can request a certification that isn&apos;t in the library yet. Approve
             to promote it into a CertificateType, or reject with a reason.
           </p>

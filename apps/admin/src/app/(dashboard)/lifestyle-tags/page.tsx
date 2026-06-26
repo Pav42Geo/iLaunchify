@@ -239,7 +239,7 @@ function Header({
         <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Lifestyle tags
         </h1>
-        <p className="max-w-2xl text-[13px] text-ink-600">
+        <p className="max-w-3xl text-[13px] text-ink-600">
           Discovery + personalization vocabulary. 30 tags across Lifestyle / Audience / Trend groups. Admin-curated to prevent vocabulary drift.
         </p>
       </div>

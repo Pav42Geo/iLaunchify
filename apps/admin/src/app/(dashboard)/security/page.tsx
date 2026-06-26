@@ -67,7 +67,7 @@ function Header({ kpis }: { kpis: SecurityData['kpis'] }) {
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Security &amp; Access
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Live sessions, security-relevant activity, and rate-limit pressure.
             Revoking a session signs that device out on its next request;
             &ldquo;revoke all&rdquo; is the account-compromise response.

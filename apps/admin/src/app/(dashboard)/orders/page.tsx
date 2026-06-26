@@ -259,10 +259,10 @@ function Header({
         <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
           Operate
         </p>
-        <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="mt-0.5 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Orders
         </h1>
-        <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">
           Every production order across the platform. Click a row to open the
           dispatch detail + Stripe transfers.
         </p>

@@ -63,11 +63,11 @@ export default async function TicketCategoriesPage() {
 
       <header className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <div className="bg-[var(--bg-hero)] px-5 py-4">
-          <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
+          <h1 className="flex items-center gap-2 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             <Tag className="h-5 w-5 text-pink-600" aria-hidden="true" />
             Ticket categories
           </h1>
-          <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[12.5px] text-ink-600">
             The buckets creators and partners choose from when filing a ticket. Each sets a default
             priority, optional SLA overrides, and an optional default assignee. Inactive categories
             stay on existing tickets but disappear from the new-ticket picker.

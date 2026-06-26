@@ -13,6 +13,7 @@
 // are `'use client'`.
 
 import { requireRole } from '@ilaunchify/auth'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import {
   KpiWidget,
   ListWidget,
@@ -206,22 +207,11 @@ export default async function AdminDashboardPage() {
 
 function Hero() {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Admin · Dashboard
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Mission control
-          </h1>
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
-            Live signals from across the platform — operations queue, system
-            health, moderation queue, and what just happened.
-          </p>
-        </div>
-      </div>
-    </div>
+    <AdminPageHeader
+      eyebrow="Admin · Dashboard"
+      title="Mission control"
+      description="Live signals from across the platform — operations queue, system health, moderation queue, and what just happened."
+    />
   )
 }
 

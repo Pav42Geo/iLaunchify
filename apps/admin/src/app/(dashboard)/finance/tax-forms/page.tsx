@@ -78,7 +78,7 @@ export default async function FinanceTaxFormsPage({
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Tax forms (1099)
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Per-partner earnings and 1099 outlook for {year}. Forms are issued and filed by Stripe
           Connect Tax Forms — enable that in Stripe to generate the actual documents.
         </p>

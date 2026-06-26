@@ -28,7 +28,7 @@ export function AcademyHero({
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">{groupLabel}</p>
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">{title}</h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">{subtitle}</p>
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">{subtitle}</p>
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>

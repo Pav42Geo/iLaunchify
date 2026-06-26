@@ -127,7 +127,7 @@ function Header({ kpis }: { kpis: AccessoriesKpis }) {
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Accessories
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Verify partner-listed brand add-ons — engraved spoons, ribbons, recipe
           cards, wax seals — before creators can bundle them onto products at
           checkout. The listing partner is always the fulfillment partner.

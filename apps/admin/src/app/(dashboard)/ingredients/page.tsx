@@ -17,6 +17,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import Link from 'next/link'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import {
   FlaskConical,
   ShieldCheck,
@@ -299,22 +300,14 @@ function Header({
   curatedCount: number
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Asset Management · Ingredient verification
-          </p>
-          <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-            Ingredient queue
-          </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-            Partner-private + curated-library ingredients pending verification. Promote good ones to the shared library, flag suspect ones, leave self-attested ones in place.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Asset Management · Ingredient verification"
+        title="Ingredient queue"
+        description="Partner-private + curated-library ingredients pending verification. Promote good ones to the shared library, flag suspect ones, leave self-attested ones in place."
+      />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <KpiCard
           href="/ingredients"
           label="Total in queue"

@@ -23,7 +23,7 @@ export default async function NewCompatibilityPage() {
         <h1 className="mt-2 font-display text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Add compatibility combo
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Mark a decoration method as valid on a container category. Re-saving an
           existing pair updates it instead of duplicating — the (category, method)
           pair is unique.

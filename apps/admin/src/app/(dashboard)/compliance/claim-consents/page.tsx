@@ -59,7 +59,7 @@ export default async function ClaimConsentsPage({ searchParams }: PageProps) {
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Label-claim consents
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Every certification badge a creator places on a label is recorded here — who consented,
             which product + cert, the consent wording version, and the IP/device. Badges never
             auto-stamp; this is the proof.

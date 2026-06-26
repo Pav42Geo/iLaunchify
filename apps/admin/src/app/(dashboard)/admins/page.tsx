@@ -53,7 +53,7 @@ export default async function AdminsPage() {
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Admins
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Assign each teammate the least access they need. A role is a fixed bundle of
           capabilities — Support agents work tickets but never touch money, settings, or the
           admin team. Changes are audited. You can&apos;t change your own role.

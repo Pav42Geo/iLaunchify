@@ -90,7 +90,7 @@ export default async function CancellationsQueuePage({
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Cancellation requests
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Partners request these mid-production when they can&apos;t complete an order. Approving
           cancels the order, may strike the partner, and runs any refund. Denying means the partner
           must fulfill. Policy lives in{' '}

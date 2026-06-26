@@ -1,5 +1,6 @@
 import { requireCapability } from '@ilaunchify/auth'
 import { listAdminLibraryTemplates, getTemplateUsageStats } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { TemplatesManager } from './TemplatesManager'
 
 export const dynamic = 'force-dynamic'
@@ -11,15 +12,17 @@ export default async function LibraryTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-7 py-4">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900">Design templates</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-600">
-          The curated template library creators browse in the Design Studio. Tag each with a product
-          domain, a style category, and a die-line target so it surfaces only on matching products. Save
-          as <strong>Regular</strong> (all creators) or <strong>Premium</strong> (Agency tier only). Use{' '}
-          <strong>Admin Mode</strong> in the sidebar to design one live in the Studio.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Design templates"
+        description={
+          <>
+            The curated template library creators browse in the Design Studio. Tag each with a product
+            domain, a style category, and a die-line target so it surfaces only on matching products. Save
+            as <strong>Regular</strong> (all creators) or <strong>Premium</strong> (Agency tier only). Use{' '}
+            <strong>Admin Mode</strong> in the sidebar to design one live in the Studio.
+          </>
+        }
+      />
 
       {usage.total > 0 && (
         <section className="grid gap-4 sm:grid-cols-2">

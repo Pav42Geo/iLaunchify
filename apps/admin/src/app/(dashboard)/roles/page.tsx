@@ -35,7 +35,7 @@ export default async function RolesPage() {
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Roles &amp; Permissions
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           Grant each role exactly the capabilities it needs. Roles start with nothing — use
           <span className="font-medium text-ink-800"> Apply preset</span> to load a role&apos;s
           suggested bundle, then fine-tune. Suggested-but-not-granted capabilities show a hollow

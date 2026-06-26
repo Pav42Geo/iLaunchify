@@ -221,7 +221,7 @@ function Header({
         <h1 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Category management
         </h1>
-        <p className="max-w-2xl text-[13px] text-ink-600">
+        <p className="max-w-3xl text-[13px] text-ink-600">
           The marketplace taxonomy creators browse. Manufacturers pick one subcategory when submitting a product — keep it clean.
         </p>
       </div>

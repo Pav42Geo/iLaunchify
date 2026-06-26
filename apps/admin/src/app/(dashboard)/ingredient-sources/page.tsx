@@ -26,7 +26,7 @@ export default async function IngredientSourcesPage() {
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Ingredient Data Sources
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Manage how each source is consulted — <b>Mirror</b> (DB copy), <b>Live</b> (external API), or{' '}
             <b>Hybrid</b> (live + snapshot) — with auto-failover to the mirrored copy if a live API is down. The
             ingredient search adapter reads these per product domain.

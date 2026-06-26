@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { requireRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ArrowRight, Scale } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -103,18 +104,11 @@ export default async function DisputesPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Inbox · Quality disputes
-        </p>
-        <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Disputes
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Creators open these within the post-delivery window. Open the order to review the report
-          and resolve or reject it — resolving in the creator&apos;s favor can issue a refund.
-        </p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Inbox · Quality disputes"
+        title="Disputes"
+        description="Creators open these within the post-delivery window. Open the order to review the report and resolve or reject it — resolving in the creator's favor can issue a refund."
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

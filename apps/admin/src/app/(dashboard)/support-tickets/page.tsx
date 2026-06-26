@@ -221,12 +221,11 @@ function Header({
       <div className="bg-[var(--bg-hero)] px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">Operate</p>
-            <h1 className="mt-0.5 flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-ink-900">
-              <LifeBuoy className="h-5 w-5 text-pink-600" aria-hidden="true" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Operate</p>
+            <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Support tickets
             </h1>
-            <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
+            <p className="mt-1.5 max-w-3xl text-[13px] leading-relaxed text-ink-600">
               Every creator + partner support request, in one system of record. Click a row to read
               the thread, reply, and move it through triage.
             </p>

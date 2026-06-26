@@ -103,7 +103,7 @@ export default async function FinanceInvoicesPage({
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Invoices
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           What creators were billed for production — every order and its charge. Read-only;
           receipts are hosted by Stripe.
         </p>

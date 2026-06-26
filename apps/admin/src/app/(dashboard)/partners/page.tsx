@@ -188,7 +188,7 @@ function Header({
           <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
             Partner CRM
           </h1>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
             Manufacturers, printers, co-packers and warehouses on the platform — verification, activation, and ops in one place.
           </p>
         </div>

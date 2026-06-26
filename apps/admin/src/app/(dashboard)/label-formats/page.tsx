@@ -265,7 +265,7 @@ function Header({
         <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Facts &amp; label-format templates
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-600">
           The FDA/AAFCO label-format presets (Nutrition / Supplement / Drug / Pet
           Facts) the Studio offers per product type — CFR citation, size + font
           minimums, and column capabilities for each.
