@@ -68,7 +68,7 @@ const ITEMS: ChecklistItem[] = [
   },
   {
     id: 4,
-    title: 'Brand identity',
+    title: 'Brand kit',
     description: 'Logo, colors, typography — drives your label designs.',
     href: '/brands/new',
     icon: Palette,

@@ -19,7 +19,7 @@ const NAV: Array<{
 }> = [
   { href: '/dashboard',                    label: 'Dashboard',   icon: Home },
   { href: marketingUrl('/marketplace'),    label: 'Marketplace', icon: Store, external: true },
-  { href: '/products',                     label: 'My products', icon: Package },
+  { href: '/products',                     label: 'Products',    icon: Package },
   { href: '/orders',                       label: 'Orders',      icon: ShoppingBag },
   // G6.f — recurring production subscriptions land here. Future V1.5
   // (#554) creator tier upgrade flow likely sits next to this entry.

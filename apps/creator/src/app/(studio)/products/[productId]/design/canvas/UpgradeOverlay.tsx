@@ -61,7 +61,7 @@ const TIERS: TierCard[] = [
     tagline: 'For makers exploring an idea.',
     perks: [
       'Unlimited products',
-      'Brand assets + canvas',
+      'Brand kit + canvas',
       'Auto-compliance scan',
       'No PDF export',
       'iLaunchify watermark on previews',

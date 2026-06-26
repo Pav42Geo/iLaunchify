@@ -154,7 +154,7 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
                 href={`/brands/${brandAssets.brandId}/assets`}
                 className="text-pink-700 font-semibold hover:text-pink-600"
               >
-                Brand assets
+                Brand kit
               </a>{' '}
               and it&apos;ll show up here.
             </p>

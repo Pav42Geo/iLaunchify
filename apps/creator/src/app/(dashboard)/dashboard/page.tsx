@@ -19,11 +19,11 @@ import {
   ListWidget,
   TrendChart,
   StatusFunnel,
-  GettingStartedChecklist,
   HowItWorksStrip,
   type QueueWidgetItem,
   type ListWidgetItem,
 } from '@ilaunchify/ui'
+import { ChecklistProgressCard } from '@/components/checklist/ChecklistProgressCard'
 import Link from 'next/link'
 import {
   Package,
@@ -244,7 +244,7 @@ export default async function DashboardHome() {
                 href={`/brands/${brand.id}/assets`}
                 className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
               >
-                <Palette className="h-3.5 w-3.5" aria-hidden="true" /> Brand assets
+                <Palette className="h-3.5 w-3.5" aria-hidden="true" /> Brand kit
               </Link>
             )}
             <Link
@@ -392,26 +392,9 @@ function GetStartedHub({ userName, brandId }: { userName: string | null; brandId
         </div>
       </div>
 
-      {/* Launch progress — the funnel, with the brand step pre-completed */}
-      <GettingStartedChecklist
-        steps={[
-          { label: 'Account created', state: 'done' },
-          {
-            label: 'Design your first product',
-            state: 'active',
-            action: (
-              <a
-                href={marketplace}
-                className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-              >
-                Start designing
-              </a>
-            ),
-          },
-          { label: 'Make it production-ready', state: 'locked', lockedHint: 'after you design' },
-          { label: 'Place your first order', state: 'locked', lockedHint: 'after it’s ready' },
-        ]}
-      />
+      {/* Real account-setup progress — surfaces the canonical Launch Checklist
+          (no duplicate step list) and opens its drawer. */}
+      <ChecklistProgressCard />
 
       {/* How it works — the mental model */}
       <HowItWorksStrip

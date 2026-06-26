@@ -1,6 +1,6 @@
 'use server'
 
-// Brand Assets server actions.
+// Brand kit server actions.
 // Per docs/DESIGN_STUDIO_REBUILD.md §4 — the corrected scope.
 //
 // Three asset categories, one server action group:

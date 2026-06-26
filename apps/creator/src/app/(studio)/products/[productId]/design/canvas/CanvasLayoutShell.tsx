@@ -1822,10 +1822,10 @@ function ProductDrawer({
         </div>
       </section>
 
-      {/* Brand assets snapshot */}
+      {/* Brand kit snapshot */}
       <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-700">
-          Brand assets loaded
+          Brand kit loaded
         </div>
         <p className="mt-1 text-xs text-ink-700">
           {brandAssets.fonts.length} font{brandAssets.fonts.length === 1 ? '' : 's'} ·{' '}

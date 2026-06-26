@@ -159,7 +159,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
           </div>
         </div>
         <p className="text-xs text-ink-500">
-          Surfaces in the Design Studio canvas color pickers. Add more swatches later in Brand Assets.
+          Surfaces in the Design Studio canvas color pickers. Add more swatches later in Brand kit.
         </p>
       </div>
 
@@ -200,7 +200,7 @@ export function BrandQuickstartForm({ defaultName, defaultHandle }: Props) {
           )}
         </button>
         <p className="text-xs text-ink-500">
-          Add icon and horizontal logo variants later in Brand Assets.
+          Add icon and horizontal logo variants later in Brand kit.
         </p>
       </div>
 

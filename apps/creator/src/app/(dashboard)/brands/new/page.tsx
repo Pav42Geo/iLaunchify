@@ -54,7 +54,7 @@ export default async function NewBrandPage() {
         </h1>
         <p className="mt-1 text-sm text-ink-500">
           Just the basics so we can render your label. You can upload additional logo variants,
-          add more colors, and pick your fonts after creation in <strong>Brand Assets</strong>.
+          add more colors, and pick your fonts after creation in <strong>Brand kit</strong>.
         </p>
       </header>
 

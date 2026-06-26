@@ -79,7 +79,7 @@ export function BackgroundDrawer({ canvas, brandAssets }: Props) {
                 href={`/brands/${brandAssets.brandId}/assets`}
                 className="text-pink-700 font-semibold hover:text-pink-600"
               >
-                Brand assets
+                Brand kit
               </a>{' '}
               to pin them here.
             </p>

@@ -1,4 +1,4 @@
-// Brand Assets page — the corrected scope.
+// Brand kit page — the corrected scope.
 // Per docs/DESIGN_STUDIO_REBUILD.md §4.
 //
 // Three sections on one page (no tabs, no preview panel, no health score):
@@ -154,7 +154,7 @@ export default async function BrandAssetsPage({ params }: PageProps) {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </Link>
         <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
-          Brand Assets
+          Brand kit
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{brand.name}</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-500">

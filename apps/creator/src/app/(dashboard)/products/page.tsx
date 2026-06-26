@@ -53,7 +53,7 @@ function tabHref(key: string, view: ViewMode): string {
 }
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'My Products — iLaunchify' }
+export const metadata = { title: 'Products — iLaunchify' }
 
 const TAB_TONE: Record<TabKey, 'pink' | 'amber' | 'sky' | 'ink'> = {
   in_progress: 'pink',
@@ -331,7 +331,7 @@ export default async function ProductsListPage({
               Creator · Products
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              My products
+              Your products
             </h1>
             <p className="mt-1 max-w-2xl text-[13px] text-ink-600">{tabMeta.blurb}</p>
           </div>
