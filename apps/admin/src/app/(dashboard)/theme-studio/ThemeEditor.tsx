@@ -157,6 +157,15 @@ export function ThemeEditor({
 
   const [tab, setTab] = useState<TabId>('colors')
   const [query, setQuery] = useState('')
+  // Accordion: groups are open by default; clicking a header collapses it.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggleGroup = (g: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(g)) next.delete(g)
+      else next.add(g)
+      return next
+    })
   const q = query.trim().toLowerCase()
   const searchHits = q ? tokens.filter((t) => t.label.toLowerCase().includes(q) || t.name.includes(q)) : []
 
@@ -164,14 +173,32 @@ export function ThemeEditor({
     <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
   )
   const renderGroups = (groupList: EditableThemeToken['group'][]) => (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {groupList.map((g) => {
         const items = tokens.filter((t) => t.group === g)
         if (!items.length) return null
+        const isOpen = !collapsed.has(g)
         return (
-          <div key={g}>
-            <div className="mb-2 text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</div>
-            <div className="space-y-4">{items.map(control)}</div>
+          <div key={g} className="rounded-2xl border border-ink-200">
+            <button
+              type="button"
+              onClick={() => toggleGroup(g)}
+              aria-expanded={isOpen}
+              className="flex w-full items-center justify-between gap-2 rounded-2xl px-4 py-2.5 text-left hover:bg-ink-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              <span className="text-[length:var(--fs-xs)] font-semibold uppercase tracking-wide text-ink-500">{g}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-[length:var(--fs-2xs)] text-ink-400">{items.length}</span>
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  className={`text-ink-400 transition-transform ${isOpen ? '' : '-rotate-90'}`}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+            {isOpen && <div className="space-y-4 px-4 pb-4 pt-1">{items.map(control)}</div>}
           </div>
         )
       })}
