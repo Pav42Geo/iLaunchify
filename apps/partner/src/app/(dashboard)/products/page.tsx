@@ -20,8 +20,8 @@ import {
   Radio,
   ShieldAlert,
   ArrowUpDown,
-  Eye,
-  Pencil,
+  ArrowRight,
+  Tag,
   LifeBuoy,
   Coffee,
   Leaf,
@@ -100,6 +100,7 @@ type Row = {
   status: ProductTemplateStatus
   subcategory: { name: string }
   priceFloorCents: number
+  leadTimeRepeatDays: number | null
   updatedAt: Date
   certRefreshNeededAt: Date | null
   imageAssetId: string | null
@@ -512,77 +513,100 @@ function ProductCards({
 
 const AUTHORING_STATUSES = new Set<ProductTemplateStatus>(['DRAFT', 'NEEDS_CHANGES'])
 
-// Rich product card mirroring the creator card chrome: cream header band
-// (status + price), a body with thumbnail + meta, and a footer action rail with
-// a status-aware primary action and the contextual "Get product support" entry.
+// Rich product card mirroring the creator card chrome 1:1 (apps/creator
+// .../products/page.tsx → ProductCard): a hero-band header (status + category +
+// "Updated …" + PRD code), a body row with a 72px thumbnail + title + subline +
+// a 4-item icon meta row, and a right-hand action column (black-pill primary +
+// the 3-dot RowActions). No footer rail — actions live in the right column.
 function PartnerProductCard({ r, heroUrls }: { r: Row; heroUrls: Map<string, string> }) {
   const pill = STATUS_PILL[r.status] ?? { label: r.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const authoring = AUTHORING_STATUSES.has(r.status)
   const imageUrl = r.imageAssetId ? heroUrls.get(r.imageAssetId) : undefined
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
+    <article className="overflow-hidden rounded-xl border border-ink-200 bg-white">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px] text-ink-700">
         {r.status === 'PUBLISHED' || r.status === 'PAUSED' ? (
           <LiveToggle id={r.id} name={r.name} status={r.status} />
         ) : (
-          <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
+          <span className={cn('inline-flex items-center rounded-full border px-2.5 py-[3px] text-[10.5px] font-medium uppercase tracking-[0.04em]', pill.cls)}>
             {pill.label}
           </span>
         )}
-        <span className="ml-auto font-display text-[15px] font-bold tabular-nums text-ink-900">
-          ${(r.priceFloorCents / 100).toFixed(2)}
+        <span>
+          <span className="text-ink-500">Category</span> &nbsp;{r.subcategory.name}
         </span>
+        <span className="ml-auto text-ink-500">Updated {formatRelative(r.updatedAt)}</span>
+        <span className="font-mono text-[11px] text-ink-400">PRD-{r.id.slice(-6)}</span>
       </header>
 
-      <div className="flex items-start gap-4 px-4 pb-3 pt-4">
+      <div className="flex items-stretch gap-5 px-5 py-4">
         <CardThumb name={r.name} imageUrl={imageUrl} />
+
         <div className="min-w-0 flex-1">
-          <Link
-            href={`/products/${r.id}/preview`}
-            className="block truncate rounded text-[15px] font-medium leading-tight text-ink-900 hover:text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-          >
-            {r.name}
-          </Link>
-          <div className="mt-0.5 text-[12.5px] text-ink-500">{r.subcategory.name}</div>
-          <div className="mt-1 text-[11.5px] tabular-nums text-ink-500">
-            {r._count.ingredientSlots} slots · {r._count.packagingSystems} pkg · {r._count.variants} var
-          </div>
-          {r.certRefreshNeededAt && (
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/certifications"
-              className="mt-2 inline-flex w-fit items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger-700 hover:bg-danger-100"
+              href={`/products/${r.id}/preview`}
+              className="truncate text-[15px] font-medium leading-tight text-ink-900 transition-colors hover:text-pink-700"
+              title="Preview this product"
             >
-              <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
+              {r.name}
             </Link>
-          )}
+            {r.certRefreshNeededAt && (
+              <Link
+                href="/certifications"
+                title="A certificate attached to this product expired — renew it to restore the badge."
+                className="inline-flex flex-none items-center gap-1 rounded-full border border-danger-200 bg-danger-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger-700 hover:bg-danger-100"
+              >
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
+              </Link>
+            )}
+          </div>
+
+          <div className="mt-0.5 text-[12.5px] text-ink-500">{r.subcategory.name}</div>
+
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-ink-700">
+            <span className="inline-flex items-center gap-1.5 text-ink-600">
+              <Package className="h-3.5 w-3.5" aria-hidden="true" />
+              {r._count.ingredientSlots} slots · {r._count.packagingSystems} pkg · {r._count.variants} var
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-ink-600">
+              <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+              ${(r.priceFloorCents / 100).toFixed(2)} base
+            </span>
+            {r.leadTimeRepeatDays != null && (
+              <span className="inline-flex items-center gap-1.5 text-ink-600">
+                <Truck className="h-3.5 w-3.5" aria-hidden="true" />
+                {r.leadTimeRepeatDays}-day lead
+              </span>
+            )}
+            <Link
+              href={`/help/new?productId=${r.id}`}
+              className="inline-flex items-center gap-1.5 text-ink-500 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
+            >
+              <LifeBuoy className="h-3.5 w-3.5" aria-hidden="true" />
+              Get support
+            </Link>
+          </div>
+        </div>
+
+        <div className="flex flex-shrink-0 flex-col items-end justify-center gap-2">
+          <Link
+            href={authoring ? `/products/new?draft=${r.id}` : `/products/${r.id}/preview`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            {authoring ? 'Edit product' : 'Preview'}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+          <ProductRowActions id={r.id} name={r.name} status={r.status} certRefreshNeeded={!!r.certRefreshNeededAt} />
         </div>
       </div>
-
-      <footer className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-ink-200 bg-[var(--bg-hero)] px-4 py-2.5 text-[12px]">
-        {authoring ? (
-          <ProductActionLink href={`/products/new?draft=${r.id}`} icon={Pencil}>
-            Edit product
-          </ProductActionLink>
-        ) : (
-          <ProductActionLink href={`/products/${r.id}/preview`} icon={Eye}>
-            Preview
-          </ProductActionLink>
-        )}
-        <ProductSep />
-        <ProductActionLink href={`/help/new?productId=${r.id}`} icon={LifeBuoy}>
-          Get product support
-        </ProductActionLink>
-        <span className="ml-auto">
-          <ProductRowActions id={r.id} name={r.name} status={r.status} certRefreshNeeded={!!r.certRefreshNeededAt} />
-        </span>
-      </footer>
     </article>
   )
 }
 
 // Real product image when available; otherwise a deterministic gradient + icon
-// (matching the creator card's image-less thumbnail style).
+// (matches the creator card's 72px image-less thumbnail style).
 function CardThumb({ name, imageUrl }: { name: string; imageUrl?: string }) {
   if (imageUrl) {
     return (
@@ -590,7 +614,7 @@ function CardThumb({ name, imageUrl }: { name: string; imageUrl?: string }) {
       <img
         src={imageUrl}
         alt=""
-        className="h-12 w-12 flex-none rounded-xl object-cover ring-1 ring-ink-100"
+        className="h-[72px] w-[72px] flex-none rounded-xl object-cover ring-1 ring-ink-100"
       />
     )
   }
@@ -605,10 +629,10 @@ function CardThumb({ name, imageUrl }: { name: string; imageUrl?: string }) {
   const Icon = icons[h % icons.length]!
   return (
     <div
-      className="flex h-12 w-12 flex-none items-center justify-center rounded-xl"
+      className="flex h-[72px] w-[72px] flex-none items-center justify-center rounded-xl"
       style={{ background: gradients[h % gradients.length] }}
     >
-      <Icon className="h-5 w-5 text-white" aria-hidden="true" />
+      <Icon className="h-7 w-7 text-white" aria-hidden="true" />
     </div>
   )
 }
@@ -619,18 +643,14 @@ function simpleHash(s: string): number {
   return h
 }
 
-function ProductActionLink({ href, icon: Icon, children }: { href: string; icon: LucideIcon; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1.5 font-medium text-ink-600 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1"
-    >
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {children}
-    </Link>
-  )
-}
-
-function ProductSep() {
-  return <span className="text-ink-300">·</span>
+function formatRelative(d: Date): string {
+  const ms = Date.now() - new Date(d).getTime()
+  const mins = Math.round(ms / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs} hr ago`
+  const days = Math.round(hrs / 24)
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
