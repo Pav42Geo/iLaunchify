@@ -2,19 +2,25 @@
 // admin verification is in progress and again after activation (briefly).
 //
 // Per docs/PARTNER_ONBOARDING.md §7 (Application Status surface). Surfaces:
-//   - Overall status badge (Under review / Changes requested / Active)
-//   - Per-section verification state with admin notes (if any)
+//   - Overall status (Under review / Changes requested / Verified)
+//   - Per-section verification state with admin notes (if any), as a timeline
 //   - ETA expectation ("typically 3-5 business days")
 //   - Deep-links back to /onboarding to address any NEEDS_CHANGES sections
+//
+// 2026-06-26 (Pavel): wears the editorial /pricing look — pink eyebrow +
+// Fraunces-italic state-aware headline in a contained grid-pattern banner +
+// a polished vertical verification timeline. Contained (not full-bleed): this
+// route lives in the (onboarding) shell, not the dashboard shell that supports
+// the bleed. See [[ilaunchify-account-landing-pattern]].
 //
 // Authoritative source: PartnerVerificationSection rows (5 sections — see
 // VerificationSectionType enum) + Partner.status (the 10-state FSM).
 
 import Link from 'next/link'
-import { CheckCircle2, Clock, AlertTriangle, FileText } from 'lucide-react'
+import { CheckCircle2, Clock, AlertTriangle, FileText, ArrowRight } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
+import { Button } from '@ilaunchify/ui'
 import type { VerificationSectionType, VerificationSectionStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
@@ -46,215 +52,202 @@ export default async function ApplicationStatusPage() {
     )
   }
 
-  const needsChanges = partner.verificationSections.some((s) => s.status === 'NEEDS_CHANGES')
+  const sections = partner.verificationSections
+  const total = sections.length
+  const verifiedCount = sections.filter((s) => s.status === 'VERIFIED').length
+  const needsChanges = sections.some((s) => s.status === 'NEEDS_CHANGES')
   const isActive = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
 
+  const hero = isActive
+    ? { lead: 'You’re', em: 'in.', sub: `${partner.companyName} is fully verified — creators can route production orders to you now.` }
+    : needsChanges
+      ? { lead: 'Almost there —', em: 'a few tweaks.', sub: `We reviewed ${partner.companyName} and need a couple of updates before you go live.` }
+      : { lead: 'You’re', em: 'almost in.', sub: `${partner.companyName}’s application is in review — we typically respond within 3–5 business days.` }
+
+  const pill = isActive
+    ? { Icon: CheckCircle2, label: 'Fully verified', className: 'bg-success-50 text-success-700 ring-success-200' }
+    : needsChanges
+      ? { Icon: AlertTriangle, label: 'Changes requested', className: 'bg-warning-50 text-warning-700 ring-warning-200' }
+      : { Icon: Clock, label: 'Under review', className: 'bg-info-50 text-info-700 ring-info-200' }
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <header className="mb-8">
-        <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
-          Application status
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{partner.companyName}</h1>
-      </header>
+    <div className="mx-auto max-w-3xl pb-4">
+      {/* Editorial hero — contained grid-pattern banner */}
+      <section className="relative overflow-hidden rounded-3xl border border-ink-100 bg-white px-6 py-12 text-center">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'linear-gradient(#FFD0E0 1px, transparent 1px), linear-gradient(90deg, #FFD0E0 1px, transparent 1px)',
+            backgroundSize: '38px 38px',
+            opacity: 0.55,
+            maskImage: 'radial-gradient(110% 95% at 50% -8%, #000 26%, transparent 76%)',
+            WebkitMaskImage: 'radial-gradient(110% 95% at 50% -8%, #000 26%, transparent 76%)',
+          }}
+        />
+        <div className="relative">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">Application status</p>
+          <h1 className="mx-auto mt-2 font-display text-3xl font-extrabold leading-[1.05] tracking-[-0.03em] text-ink-900 sm:text-4xl">
+            {hero.lead}{' '}
+            <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">{hero.em}</span>
+          </h1>
+          <p className="mx-auto mt-3 max-w-[56ch] text-[15px] leading-relaxed text-ink-700">{hero.sub}</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[12px] font-semibold uppercase tracking-wide ring-1 ${pill.className}`}>
+              <pill.Icon className="h-3.5 w-3.5" aria-hidden="true" /> {pill.label}
+            </span>
+            {total > 0 && !isActive && (
+              <span className="inline-flex items-center gap-1.5 rounded-pill border border-ink-200 bg-white/80 px-3 py-1 text-[12px] font-medium text-ink-600 backdrop-blur-sm">
+                {verifiedCount} of {total} sections verified
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
 
-      {/* Overall banner */}
-      <OverallStatusBanner
-        status={partner.status}
-        needsChanges={needsChanges}
-        submittedAt={partner.statusChangedAt}
-      />
+      {/* Verification timeline */}
+      <section className="mt-10">
+        <div className="mb-5 text-center">
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">Verification</div>
+          <h2 className="font-display text-2xl font-bold tracking-[-0.02em] text-ink-900 sm:text-3xl">
+            Where your{' '}
+            <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">review stands.</span>
+          </h2>
+        </div>
 
-      {/* Per-section breakdown */}
-      <section className="mt-8">
-        <h2 className="mb-3 text-base font-semibold text-ink-900">Section-by-section</h2>
-        <div className="space-y-2">
-          {partner.verificationSections.length === 0 ? (
-            <Card>
-              <CardContent className="py-6 text-sm text-ink-500">
-                No verification sections yet. Go back to{' '}
-                <Link href="/onboarding" className="underline">
-                  /onboarding
-                </Link>{' '}
-                and complete the form.
-              </CardContent>
-            </Card>
-          ) : (
-            partner.verificationSections.map((section) => (
-              <SectionRow
+        {total === 0 ? (
+          <div className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center text-sm text-ink-500">
+            No verification sections yet. Go back to{' '}
+            <Link href="/onboarding" className="font-medium text-pink-700 underline">
+              your application
+            </Link>{' '}
+            and complete the form.
+          </div>
+        ) : (
+          <ol className="rounded-2xl border border-ink-200 bg-white px-5 py-5 sm:px-7">
+            {sections.map((section, i) => (
+              <TimelineRow
                 key={section.id}
                 type={section.type}
                 status={section.status}
                 adminNotes={section.adminNotes}
                 verifiedAt={section.verifiedAt}
+                last={i === sections.length - 1}
               />
-            ))
-          )}
-        </div>
+            ))}
+          </ol>
+        )}
       </section>
 
       {/* Next-steps CTA */}
-      <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 p-5">
-        <div className="text-sm text-ink-700">
-          {isActive ? (
-            <>
-              <span className="font-semibold text-success-700">✓ You&apos;re live.</span> Head
-              over to your dashboard to start receiving production orders.
-            </>
-          ) : needsChanges ? (
-            <>
-              We&apos;ve asked for a few changes — open the items above and resubmit.
-            </>
-          ) : (
-            <>
-              Reviews typically take <strong>3–5 business days</strong>. We&apos;ll email you
-              when there&apos;s news.
-            </>
-          )}
-        </div>
-        <Button asChild className={isActive ? 'bg-ink-900 hover:bg-ink-700' : ''}>
-          <Link href={isActive ? '/dashboard' : '/onboarding'}>
-            {isActive ? 'Go to dashboard →' : 'Edit application'}
-          </Link>
-        </Button>
-      </footer>
-    </main>
-  )
-}
-
-// -----------------------------------------------------------------------------
-// Overall status banner
-// -----------------------------------------------------------------------------
-
-function OverallStatusBanner({
-  status,
-  needsChanges,
-  submittedAt,
-}: {
-  status: string
-  needsChanges: boolean
-  submittedAt: Date | null
-}) {
-  // 3 visual states: UNDER_REVIEW (default), NEEDS_CHANGES, ACTIVE.
-  if (needsChanges) {
-    return (
-      <Card className="border-warning-300 bg-warning-50">
-        <CardHeader className="flex-row items-start gap-3 space-y-0">
-          <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-700" />
-          <div className="flex-1">
-            <CardTitle className="text-warning-900">Changes requested</CardTitle>
-            <p className="mt-1 text-sm text-warning-800">
-              Our team reviewed your application and needs a few updates. See the sections
-              below — fix the items, save, and we&apos;ll re-review.
-            </p>
+      {isActive ? (
+        <section data-surface="dark" className="mt-10 overflow-hidden rounded-3xl bg-ink-900 px-6 py-10 text-center text-white">
+          <h2 className="mx-auto max-w-[22ch] font-display text-2xl font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-3xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500">
+            You’re live — <em>start producing.</em>
+          </h2>
+          <p className="mx-auto mt-3 max-w-[44ch] text-[14px] text-ink-300">
+            Head to your dashboard to accept your first production orders.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button asChild variant="neon" size="lg">
+              <Link href="/dashboard">
+                Go to dashboard <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  if (status === 'ACTIVE' || status === 'INTEGRATION_ENHANCED') {
-    return (
-      <Card className="border-success-300 bg-success-50">
-        <CardHeader className="flex-row items-start gap-3 space-y-0">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 text-success-700" />
-          <div className="flex-1">
-            <CardTitle className="text-success-900">You&apos;re fully verified</CardTitle>
-            <p className="mt-1 text-sm text-success-800">
-              Your partner profile is live. Creators can now route production orders to you.
-            </p>
-          </div>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  // Default: under review
-  return (
-    <Card className="border-success-200 bg-success-50/40">
-      <CardHeader className="flex-row items-start gap-3 space-y-0">
-        <Clock className="mt-0.5 h-5 w-5 text-success-700" />
-        <div className="flex-1">
-          <CardTitle className="text-ink-900">Under review</CardTitle>
-          <p className="mt-1 text-sm text-ink-600">
-            {submittedAt ? (
-              <>
-                Submitted on <strong>{submittedAt.toLocaleDateString()}</strong>. Our team
-                typically responds within <strong>3–5 business days</strong>. You&apos;ll get
-                an email the moment there&apos;s news.
-              </>
+        </section>
+      ) : (
+        <section className="mt-10 flex flex-col items-center justify-between gap-4 rounded-3xl border border-ink-200 bg-cream px-6 py-6 text-center sm:flex-row sm:text-left">
+          <p className="text-[14px] text-ink-700">
+            {needsChanges ? (
+              <>Open the flagged sections above, make the updates, and resubmit — we’ll re-review right away.</>
             ) : (
-              <>Our team is reviewing your application — typically 3–5 business days.</>
+              <>Reviews typically take <strong className="font-semibold text-ink-900">3–5 business days</strong>. We’ll email you the moment there’s news.</>
             )}
           </p>
-        </div>
-      </CardHeader>
-    </Card>
+          <Button asChild variant={needsChanges ? 'primary' : 'secondary'} size="md" className="flex-shrink-0">
+            <Link href="/onboarding">
+              {needsChanges ? 'Edit application' : 'Review application'} <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+            </Link>
+          </Button>
+        </section>
+      )}
+    </div>
   )
 }
 
 // -----------------------------------------------------------------------------
-// Per-section row
+// Timeline row — one verification section as a connected node
 // -----------------------------------------------------------------------------
 
-function SectionRow({
+function TimelineRow({
   type,
   status,
   adminNotes,
   verifiedAt,
+  last,
 }: {
   type: VerificationSectionType
   status: VerificationSectionStatus
   adminNotes: string | null
   verifiedAt: Date | null
+  last: boolean
 }) {
-  // SECTION_LABELS covers every VerificationSectionType enum value, but
-  // tsc's lookup widening can't prove that. Fall back to a label-from-type
-  // for forward-compat when new section types get added.
+  // SECTION_LABELS covers every VerificationSectionType, but tsc's lookup
+  // widening can't prove it — fall back to the raw type for forward-compat.
   const meta = SECTION_LABELS[type] ?? { label: type, jumpTo: '/onboarding' }
-  const { Icon, color, label } = statusVisual(status)
+  const v = statusVisual(status)
 
   return (
-    <Card>
-      <CardContent className="flex items-start gap-3 py-3">
-        <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm font-semibold text-ink-900">{meta.label}</div>
-            <span className={`text-xs font-medium ${color}`}>{label}</span>
-          </div>
-          {adminNotes && (
-            <div className="mt-2 rounded bg-warning-50 px-3 py-2 text-xs text-warning-900">
-              <span className="font-semibold">Reviewer note: </span>
-              {adminNotes}
-            </div>
-          )}
-          {verifiedAt && (
-            <p className="mt-1 text-xs text-ink-500">
-              Verified {verifiedAt.toLocaleDateString()}
-            </p>
-          )}
+    <li className="relative flex gap-4 pb-6 last:pb-0">
+      {/* connector line */}
+      {!last && <span aria-hidden="true" className="absolute left-[15px] top-9 h-[calc(100%-1.75rem)] w-px bg-ink-200" />}
+
+      {/* status node */}
+      <span className={`relative z-10 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ring-1 ${v.nodeClassName}`}>
+        <v.Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+
+      <div className="min-w-0 flex-1 pt-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="text-[14px] font-semibold text-ink-900">{meta.label}</div>
+          <span className={`text-[11px] font-semibold uppercase tracking-wide ${v.textClassName}`}>{v.label}</span>
         </div>
+        {adminNotes && (
+          <div className="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-[12.5px] text-warning-900">
+            <span className="font-semibold">Reviewer note: </span>
+            {adminNotes}
+          </div>
+        )}
+        {verifiedAt && (
+          <p className="mt-1 text-[12px] text-ink-500">Verified {verifiedAt.toLocaleDateString()}</p>
+        )}
         {status === 'NEEDS_CHANGES' && (
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link href={meta.jumpTo}>Edit</Link>
+          <Button asChild variant="outline" size="sm" className="mt-2.5">
+            <Link href={meta.jumpTo}>Fix this section</Link>
           </Button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </li>
   )
 }
 
-function statusVisual(status: VerificationSectionStatus) {
+function statusVisual(status: VerificationSectionStatus): {
+  Icon: typeof CheckCircle2
+  label: string
+  textClassName: string
+  nodeClassName: string
+} {
   switch (status) {
     case 'VERIFIED':
-      return { Icon: CheckCircle2, color: 'text-success-600', label: 'VERIFIED' }
+      return { Icon: CheckCircle2, label: 'Verified', textClassName: 'text-success-700', nodeClassName: 'bg-success-50 text-success-600 ring-success-200' }
     case 'NEEDS_CHANGES':
-      return { Icon: AlertTriangle, color: 'text-warning-700', label: 'NEEDS CHANGES' }
+      return { Icon: AlertTriangle, label: 'Needs changes', textClassName: 'text-warning-700', nodeClassName: 'bg-warning-50 text-warning-700 ring-warning-200' }
     case 'REJECTED':
-      return { Icon: AlertTriangle, color: 'text-danger-600', label: 'REJECTED' }
+      return { Icon: AlertTriangle, label: 'Rejected', textClassName: 'text-danger-700', nodeClassName: 'bg-danger-50 text-danger-600 ring-danger-200' }
     case 'PENDING':
     default:
-      return { Icon: FileText, color: 'text-ink-500', label: 'PENDING REVIEW' }
+      return { Icon: FileText, label: 'Pending review', textClassName: 'text-ink-500', nodeClassName: 'bg-ink-100 text-ink-500 ring-ink-200' }
   }
 }
