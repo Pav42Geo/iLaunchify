@@ -277,69 +277,6 @@ export function BasicsScreen({
   )
 }
 
-// --- dynamic card variants -------------------------------------------------
-
-function SingleProduction({ facilities, baseSku }: { facilities: FacilityOption[]; baseSku: string }) {
-  return (
-    <>
-      <div className="section-title"><span className="ic">▦</span> Production &amp; availability</div>
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 14 }}>
-        <Field label="Fulfillment mode"><select className="sel" defaultValue="Bulk production"><option>Bulk production</option><option>Make-to-order (on-demand)</option><option>Both</option></select></Field>
-        <Field label="MOQ"><input className="input" defaultValue="500" /></Field>
-        <Field label="Order increment"><input className="input" defaultValue="100" /></Field>
-        <Field label="Lead time (days)"><input className="input" defaultValue="21" /></Field>
-        <Field label="Monthly capacity"><input className="input" defaultValue="50,000" /></Field>
-        <Field label="Shelf life (days)"><input className="input" defaultValue="365" /></Field>
-        <Field label="SKU"><input className="input" defaultValue={baseSku} /></Field>
-        <Field label="Lot / batch tracking"><select className="sel"><option>On (recommended)</option><option>Off</option></select></Field>
-        <Field label="Manufactured by">
-          <select className="sel">
-            {facilities.length === 0 && <option>Onboarding address (default)</option>}
-            {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </Field>
-      </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>Net weight, servings &amp; container live in Recipe + Packaging — not here.</p>
-    </>
-  )
-}
-
-function MultiFlavor({ facilities, baseSku }: { facilities: FacilityOption[]; baseSku: string }) {
-  return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="section-title"><span className="ic">❀</span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· one product, flavors = presets</span></div>
-        <button className="btn primary sm">+ Add flavor</button>
-      </div>
-      <table style={{ marginTop: 14 }}>
-        <thead><tr><th>Flavor</th><th>SKU</th><th>Statement of Identity</th><th>Facility</th><th>MOQ</th></tr></thead>
-        <tbody>
-          <tr><td><b>Yuzu</b></td><td>{baseSku}-YUZU</td><td>Sparkling yuzu soda</td><td>{facilities[0]?.name ?? 'Default'}</td><td>500</td></tr>
-        </tbody>
-      </table>
-      <p className="tiny muted" style={{ marginTop: 8 }}>Statement of Identity per flavor (label common name). Facility = "Manufactured by".</p>
-    </>
-  )
-}
-
-function MultiPack() {
-  return (
-    <>
-      <div className="section-title"><span className="ic">▣</span> Pack composition</div>
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12 }}>
-        <Field label="Pack type"><select className="sel"><option>Variety multipack</option><option>Single-flavor multipack</option><option>Sampler</option></select></Field>
-        <Field label="Outer pack"><select className="sel"><option>Paper carton (printed)</option><option>Shrink (no print)</option></select></Field>
-        <Field label="Units per outer"><input className="input" defaultValue="12" /></Field>
-      </div>
-      <div className="compbar">
-        <div className="compcard"><b>PRIMARY · Can</b><div className="muted small">printed · die-line required</div></div>
-        <div className="compcard"><b>SECONDARY · Carton</b><div className="muted small">printed · die-line required</div></div>
-        <div className="compcard" style={{ opacity: .7 }}><b>TERTIARY · Shipper</b><div className="muted small">not decorated</div></div>
-      </div>
-    </>
-  )
-}
-
 // --- helpers ---------------------------------------------------------------
 
 function ChipSelect({ options, selected, onToggle, placeholder }: { options: Opt[]; selected: string[]; onToggle: (id: string) => void; placeholder: string }) {
