@@ -8,6 +8,7 @@ import {
 import { Button } from '@ilaunchify/ui'
 import { Reveal } from '@/components/Reveal'
 import { Parallax } from '@/components/Parallax'
+import { CountUp } from '@/components/CountUp'
 
 /**
  * /proto — NON-DESTRUCTIVE repositioning prototype. The centerpiece is the
@@ -107,7 +108,7 @@ export default function ProtoPage() {
           <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
             {STATS.map((s) => (
               <div key={s.l} className="border-l-2 border-pink-500 pl-5">
-                <div className="font-display text-[clamp(40px,4.5vw,60px)] font-extrabold leading-none tracking-[-0.03em] text-ink-900">{s.n}</div>
+                <CountUp value={s.n} className="block font-display text-[clamp(40px,4.5vw,60px)] font-extrabold leading-none tracking-[-0.03em] text-ink-900" />
                 <div className="mt-1.5 text-[14px] leading-snug text-ink-500">{s.l}</div>
               </div>
             ))}
