@@ -14,6 +14,7 @@ import {
   type FlavorDielineRow,
   type DielineOption,
 } from './perflavor-dieline-actions'
+import { Tags } from 'lucide-react'
 
 export function PerFlavorLabelsCard({ draftId }: { draftId: string | null }) {
   const [flavors, setFlavors] = useState<FlavorDielineRow[]>([])
@@ -48,7 +49,7 @@ export function PerFlavorLabelsCard({ draftId }: { draftId: string | null }) {
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="section-title">
-        <span className="ic">🏷️</span> Per-flavor labels
+        <span className="ic"><Tags size={16} strokeWidth={2} /></span> Per-flavor labels
       </div>
       <p className="muted small" style={{ marginTop: 4, marginBottom: 12 }}>
         Each flavor is its own labeled unit. Pick a die-line per flavor, or keep the

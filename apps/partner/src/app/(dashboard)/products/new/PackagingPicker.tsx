@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
+import { Package } from 'lucide-react'
 
 interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number }
 
@@ -34,7 +35,7 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic">▣</span> Packaging systems <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· attach yours</span></div>
+      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><Package size={16} strokeWidth={2} /></span> Packaging systems <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· attach yours</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>Attach the packaging this product ships in. Manage your systems on the <a href="/packaging" style={{ color: 'var(--pink-700)' }}>Packaging</a> page.</p>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft first to attach packaging.</p>}

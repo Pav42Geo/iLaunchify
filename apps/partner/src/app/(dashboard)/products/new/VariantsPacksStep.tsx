@@ -24,6 +24,7 @@ import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
 import { packUiKindForProfile } from './structuralPackType'
+import { Boxes, Factory, DollarSign, FlaskConical, Sparkles, Package, Repeat, CheckSquare } from 'lucide-react'
 
 interface FacilityOption { id: string; name: string }
 
@@ -127,7 +128,7 @@ export function VariantsPacksStep({
       {/* Product type — space-saving dropdown that opens grouped cards */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
-          <span className="ic">▦</span> Product type
+          <span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product type
           {locked && <span className="pill" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 10 }}>🔒 locked</span>}
         </div>
         <button type="button" className="pt-trigger" data-open={open ? 'on' : undefined} disabled={locked} aria-disabled={locked} onClick={() => { if (!locked) setOpen((v) => !v) }} style={{ marginTop: 10, ...(locked ? { cursor: 'not-allowed', opacity: 0.75 } : null) }}>
@@ -350,7 +351,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
 
   return (
     <>
-      <div className="section-title"><span className="ic">▦</span> Production &amp; availability</div>
+      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Production &amp; availability</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
         <Field label="Fulfillment mode">
           <select className="sel" value={fulfillment} onChange={(e) => setFulfillment(e.target.value as 'bulk' | 'mto' | 'both')}>
@@ -435,7 +436,7 @@ function FeesCard({ draftId, initialFees }: { draftId: string | null; initialFee
 
   return (
     <>
-      <div className="section-title"><span className="ic">$</span> Fees</div>
+      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Fees</div>
       <p className="tiny muted" style={{ marginTop: 4 }}>
         One-time, per-unit, or per-order charges on top of the unit price — tooling, QA batch testing,
         palletization. One-time per-SKU fees can waive above a volume threshold.
@@ -580,7 +581,7 @@ function SamplesCard({ draftId, initialOptions, isMultiFlavor }: { draftId: stri
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic">⚗</span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· let creators de-risk before a full run</span></div>
+        <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· let creators de-risk before a full run</span></div>
         <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
           <input type="checkbox" checked={samplesOn} onChange={(e) => setSamplesOn(e.target.checked)} /> Allow sample orders
         </label>
@@ -629,7 +630,7 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
 
   return (
     <>
-      <div className="section-title"><span className="ic">▦</span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how the single flavor is bundled for sale</span></div>
+      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how the single flavor is bundled for sale</span></div>
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Packs per bundle" hint="you choose">
           <input className="input" type="number" min={1} value={packsPerBundle} onChange={(e) => setPacksPerBundle(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} />
@@ -722,7 +723,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic">❀</span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· you set how many · each becomes its own recipe in the next step · ≤{maxColumns}-column label</span></div>
+        <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· you set how many · each becomes its own recipe in the next step · ≤{maxColumns}-column label</span></div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
             <input type="checkbox" checked={perFlavorCap} onChange={(e) => setPerFlavorCap(e.target.checked)} /> Per-flavor capacity
@@ -876,7 +877,7 @@ function MultiPack({ draftId, packing }: { draftId: string | null; packing: Pack
 
   return (
     <>
-      <div className="section-title"><span className="ic">▣</span> Pack composition <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how units nest inside the sellable outer</span></div>
+      <div className="section-title"><span className="ic"><Package size={16} strokeWidth={2} /></span> Pack composition <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how units nest inside the sellable outer</span></div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
         <Field label="Pack type">
           <select className="sel" value={packType} onChange={(e) => setPackType(e.target.value)}>
@@ -933,7 +934,7 @@ function SubscriptionConfig({ draftId, packing, flavorCount }: { draftId: string
 
   return (
     <div className="addon">
-      <div className="section-title"><span className="ic">↻</span> Subscription &amp; rotation</div>
+      <div className="section-title"><span className="ic"><Repeat size={16} strokeWidth={2} /></span> Subscription &amp; rotation</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12 }}>
         <Field label="Delivery cadence">
           <select className="sel" value={cadence} onChange={(e) => setCadence(e.target.value)}>
@@ -987,7 +988,7 @@ function PickNConfig({ draftId, packing, flavorCount }: { draftId: string | null
 
   return (
     <div className="addon">
-      <div className="section-title"><span className="ic">☑</span> Customer choice (pick-N)</div>
+      <div className="section-title"><span className="ic"><CheckSquare size={16} strokeWidth={2} /></span> Customer choice (pick-N)</div>
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Min picks"><input className="input" type="number" min={1} value={min} onChange={(e) => setMin(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} /></Field>
         <Field label="Max picks"><input className="input" type="number" min={1} value={max} onChange={(e) => setMax(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} /></Field>

@@ -11,6 +11,7 @@
 // Rendered inside GuidedBuilder's `.gb` style scope. Autosaves to the draft.
 
 import type { OptionAxisInput } from './build-actions'
+import { SlidersHorizontal } from 'lucide-react'
 
 export interface OptionValueUI {
   label: string
@@ -105,7 +106,7 @@ export function OptionAxesCard({ axes, onAxes }: { axes: OptionAxisUI[]; onAxes:
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div>
-          <div className="section-title"><span className="ic">⚙</span> Additional creator options</div>
+          <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Additional creator options</div>
           <p className="tiny muted" style={{ marginTop: 4, maxWidth: 560 }}>
             Curated choices beyond flavor — e.g. sweetener, roast strength, caffeine. You define every
             allowed value; the Creator picks one per option in the marketplace, or you lock it to the

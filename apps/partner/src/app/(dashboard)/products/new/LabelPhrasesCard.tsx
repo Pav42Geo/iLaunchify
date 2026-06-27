@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { loadPhraseData, type PhraseData } from './build-actions'
 import { saveProductPhraseFacts, saveProductPhrases } from '../[id]/edit/card-actions'
+import { Type } from 'lucide-react'
 
 export function LabelPhrasesCard({ draftId }: { draftId: string | null }) {
   const [data, setData] = useState<PhraseData | null>(null)
@@ -47,7 +48,7 @@ export function LabelPhrasesCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card" style={{ marginTop: 18 }}>
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic">§</span> Label phrases <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· compliance</span></div>
+      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><Type size={16} strokeWidth={2} /></span> Label phrases <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· compliance</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>
         Answer the product facts; we suggest the mandatory + recommended phrases that must appear on the label.
         Locked phrases are legally required and can&apos;t be removed.

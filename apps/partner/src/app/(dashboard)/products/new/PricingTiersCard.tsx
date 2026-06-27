@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { savePricingTiers, getCreatorFeePercents, type PricingTierInput } from './build-actions'
+import { DollarSign } from 'lucide-react'
 
 type Mode = 'BULK_PRODUCTION' | 'ON_DEMAND'
 interface TierRow { minQty: number; maxQty: number | null; perUnitCents: number; floorCents: number; leadTimeDays: number | null }
@@ -80,7 +81,7 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
 
   return (
     <div className="card">
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic">$</span> Volume price tiers</div>
+      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Volume price tiers</div>
       <p className="tiny muted" style={{ marginTop: 4 }}>
         Your per-unit cost &amp; hard floor per quantity band. The Maker / Builder / Agency columns show the
         creator&apos;s all-in price at each subscription tier (your cost + that tier&apos;s platform fee).

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { loadNotes, type NoteRowData } from './build-actions'
 import { postPartnerProductNote } from '../[id]/edit/card-actions'
+import { MessageSquare } from 'lucide-react'
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
@@ -37,7 +38,7 @@ export function NotesCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card">
-      <div className="section-title"><span className="ic">💬</span> Notes <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· admin ↔ you</span></div>
+      <div className="section-title"><span className="ic"><MessageSquare size={16} strokeWidth={2} /></span> Notes <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· admin ↔ you</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>Messages between your team and the iLaunchify review admins about this product.</p>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft first to start a thread.</p>}

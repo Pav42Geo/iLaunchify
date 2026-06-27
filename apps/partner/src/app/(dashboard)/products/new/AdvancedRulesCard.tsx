@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { saveOptionRules, saveChangeApprovalRules, type OptionRuleInput, type ChangeApprovalRuleInput, type InitialDraft } from './build-actions'
 import type { OptionAxisUI } from './OptionAxesCard'
+import { Settings2, Ban } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // #7 Approval triggers
@@ -60,7 +61,7 @@ export function ApprovalTriggersCard({ draftId, initialRules }: { draftId: strin
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><span className="ic">✓</span> Changes that need re-approval</div>
+      <div className="section-title"><span className="ic"><Settings2 size={16} strokeWidth={2} /></span> Changes that need re-approval</div>
       <p className="tiny muted" style={{ marginTop: 4 }}>
         Which kind of change re-triggers review, and by whom. Defaults are sensible; adjust if your process differs.
       </p>
@@ -123,7 +124,7 @@ export function CompatibilityRulesCard({ draftId, axes, initialRules }: { draftI
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><span className="ic">⊘</span> Compatibility rules <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· advanced</span></div>
+      <div className="section-title"><span className="ic"><Ban size={16} strokeWidth={2} /></span> Compatibility rules <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· advanced</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>
         Restrict which option values can combine — e.g. “Decaf excludes Vanilla.” The marketplace blocks
         incompatible combinations with your message.

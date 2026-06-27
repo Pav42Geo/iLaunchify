@@ -105,7 +105,7 @@ export function CertificatesCard({ draftId, preview = false }: { draftId: string
   if (preview) {
     return (
       <div className="card">
-        <div className="section-title"><span className="ic">🏅</span> Certificates</div>
+        <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Certificates</div>
         {data.attached.length === 0
           ? <p className="tiny muted" style={{ marginTop: 8 }}>No certificates attached.</p>
           : data.attached.map((c) => (

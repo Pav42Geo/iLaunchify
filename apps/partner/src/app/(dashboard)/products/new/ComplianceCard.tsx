@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { loadComplianceChecks, type ComplianceCheck } from './build-actions'
+import { ShieldCheck } from 'lucide-react'
 
 function Mark({ status }: { status: ComplianceCheck['status'] }) {
   if (status === 'ok') return <span style={{ color: '#1D9E75', fontWeight: 700 }}>✓</span>
@@ -22,7 +23,7 @@ export function ComplianceCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card">
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic">⚖</span> Compliance scan
+      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><ShieldCheck size={16} strokeWidth={2} /></span> Compliance scan
         {checks.length > 0 && <span className={`pill ${fails ? 'amber' : 'green'}`} style={{ marginLeft: 8, fontSize: 10 }}>{fails ? `${fails} to fix` : 'structural OK'}</span>}
       </div>
       {!draftId && <p className="tiny muted" style={{ marginTop: 8 }}>Save the draft to run checks.</p>}

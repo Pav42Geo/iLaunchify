@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { loadAllergenData, updateBasics, type AllergenData, type AllergenOverride } from './build-actions'
 import { saveManualAllergens } from '../[id]/edit/card-actions'
+import { TriangleAlert } from 'lucide-react'
 
 const BIG_9 = ['Milk', 'Eggs', 'Fish', 'Crustacean shellfish', 'Tree nuts', 'Peanuts', 'Wheat', 'Soybeans', 'Sesame']
 
@@ -55,7 +56,7 @@ export function AllergensCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card" style={{ marginTop: 18 }}>
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic">⚠</span> Allergens <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· FDA Big-9</span></div>
+      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><TriangleAlert size={16} strokeWidth={2} /></span> Allergens <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· FDA Big-9</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>Auto-detected from your ingredients. Add a missed allergen or remove a false positive (a reason is required).</p>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft + add ingredients to detect allergens.</p>}
