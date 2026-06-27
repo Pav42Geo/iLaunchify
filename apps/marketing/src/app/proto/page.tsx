@@ -52,60 +52,53 @@ export default function ProtoPage() {
       <section className="sp-hero relative overflow-hidden px-6 pt-20 pb-24 sm:px-8">
         <style>{`
           .sp-hero{background:
-            radial-gradient(900px 620px at 16% 4%, rgba(255,46,99,0.26), transparent 60%),
-            radial-gradient(820px 600px at 90% 18%, rgba(110,139,255,0.20), transparent 62%),
-            radial-gradient(900px 680px at 58% 108%, rgba(154,130,224,0.34), transparent 60%),
-            #07070C;}
-          .sp-grid{position:absolute;left:50%;bottom:-12%;width:220%;height:62%;
+            radial-gradient(900px 620px at 16% 0%, rgba(255,46,99,0.10), transparent 58%),
+            radial-gradient(820px 600px at 92% 14%, rgba(110,139,255,0.10), transparent 60%),
+            radial-gradient(900px 720px at 56% 116%, rgba(154,130,224,0.14), transparent 60%),
+            #FFFFFF;}
+          .sp-grid{position:absolute;left:50%;bottom:-12%;width:220%;height:60%;
             transform:translateX(-50%) perspective(440px) rotateX(70deg);transform-origin:50% 100%;
-            background-image:linear-gradient(to right,rgba(154,130,224,0.22) 1px,transparent 1px),
-              linear-gradient(to top,rgba(255,46,99,0.18) 1px,transparent 1px);
+            background-image:linear-gradient(to right,rgba(154,130,224,0.30) 1px,transparent 1px),
+              linear-gradient(to top,rgba(255,46,99,0.22) 1px,transparent 1px);
             background-size:58px 58px;
-            -webkit-mask-image:linear-gradient(to top,#000 0%,transparent 78%);
-            mask-image:linear-gradient(to top,#000 0%,transparent 78%);
+            -webkit-mask-image:linear-gradient(to top,#000 0%,transparent 80%);
+            mask-image:linear-gradient(to top,#000 0%,transparent 80%);
             animation:sp-grid 5s linear infinite;}
           @keyframes sp-grid{from{background-position:0 0}to{background-position:0 58px}}
-          .sp-star{animation:sp-twinkle 3.2s ease-in-out infinite}
-          @keyframes sp-twinkle{0%,100%{opacity:.18}50%{opacity:.95}}
           .sp-float{animation:sp-float 9s ease-in-out infinite}
           @keyframes sp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
           .sp-node{transform-box:fill-box;transform-origin:center;animation:sp-pulse 3.4s ease-in-out infinite}
-          @keyframes sp-pulse{0%,100%{opacity:.8}50%{opacity:1}}
+          @keyframes sp-pulse{0%,100%{opacity:.82}50%{opacity:1}}
           .sp-flow{stroke-dasharray:4 11;animation:sp-dash 1.5s linear infinite}
           @keyframes sp-dash{to{stroke-dashoffset:-30}}
-          @media (prefers-reduced-motion:reduce){.sp-grid,.sp-star,.sp-float,.sp-node,.sp-flow{animation:none!important}}
+          @media (prefers-reduced-motion:reduce){.sp-grid,.sp-float,.sp-node,.sp-flow{animation:none!important}}
         `}</style>
 
         <div aria-hidden className="sp-grid pointer-events-none" />
-        <svg aria-hidden viewBox="0 0 1400 600" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 h-full w-full">
-          {[[90,70],[260,150],[520,60],[760,120],[980,80],[1180,150],[1320,70],[170,240],[640,210],[1080,250],[1290,300],[120,420],[420,360],[900,400],[1230,440],[60,520],[520,520],[760,540],[1160,540]].map(([x, y], i) => (
-            <circle key={i} className="sp-star" cx={x} cy={y} r={i % 4 === 0 ? 1.8 : 1} fill="#ffffff" style={{ animationDelay: `${(i % 7) * 0.4}s` }} />
-          ))}
-        </svg>
 
         <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-pill border border-white/15 bg-white/[0.06] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] backdrop-blur" style={{ color: '#D7CBFF' }}>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 backdrop-blur">
               <ShieldCheck strokeWidth={2.5} className="h-3.5 w-3.5" />
               White &amp; private label · FDA-compliant · Made in the USA
             </div>
-            <h1 className="mb-6 max-w-[15ch] font-display text-[clamp(40px,5.2vw,80px)] font-extrabold leading-[0.95] tracking-[-0.04em] text-white">
+            <h1 className="mb-6 max-w-[15ch] font-display text-[clamp(40px,5.2vw,80px)] font-extrabold leading-[0.95] tracking-[-0.04em] text-ink-900">
               Your brand on{' '}
               <span className="font-serif italic font-medium tracking-[-0.025em]" style={{ backgroundImage: 'linear-gradient(100deg, #FF2E63 0%, #C081FF 60%, #6E8BFF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>proven, shelf-ready products.</span>
             </h1>
-            <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-white/70">
+            <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-ink-900/[0.78]">
               Pick a production-ready product, brand it, design the packaging, pass FDA compliance, and order a real
               run — all in one place. Launch a CPG brand without becoming a CPG operator.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/marketplace" className="inline-flex h-[60px] items-center gap-2 rounded-pill bg-neon-500 px-7 text-[15px] font-semibold text-ink-900 transition-transform hover:scale-[1.02]" style={{ boxShadow: '0 0 34px rgba(181,255,61,0.45)' }}>
-                Browse white-label products <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
-              </Link>
-              <Link href="#how" className="inline-flex h-[60px] items-center rounded-pill border border-white/25 px-7 text-[15px] font-semibold text-white transition-colors hover:bg-white/10">
-                See how it works
-              </Link>
+              <Button variant="primary" size="xl" asChild>
+                <Link href="/marketplace">Browse white-label products <ArrowRight strokeWidth={2.5} className="h-4 w-4" /></Link>
+              </Button>
+              <Button variant="outline" size="xl" asChild className="border-ink-300 text-ink-900 hover:bg-ink-50">
+                <Link href="#how">See how it works</Link>
+              </Button>
             </div>
-            <p className="mt-6 text-[13px] font-medium text-white/45">You own the brand and the customer. We stay invisible in production.</p>
+            <p className="mt-6 text-[13px] font-medium text-ink-500">You own the brand and the customer. We stay invisible in production.</p>
           </div>
 
           <div className="relative hidden lg:block">
@@ -438,9 +431,9 @@ function OrchestrationConstellation() {
         <filter id="oc-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="6" /></filter>
         <filter id="oc-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" /></filter>
       </defs>
-      <g fill="none" stroke="#9A82E0" strokeOpacity="0.2">
+      <g fill="none" stroke="#9A82E0" strokeOpacity="0.34">
         <ellipse cx="280" cy="250" rx="232" ry="96" />
-        <ellipse cx="280" cy="250" rx="168" ry="168" strokeOpacity="0.1" />
+        <ellipse cx="280" cy="250" rx="168" ry="168" strokeOpacity="0.16" />
       </g>
       {nodes.map((n, i) => (
         <g key={`l${i}`}>
@@ -452,19 +445,19 @@ function OrchestrationConstellation() {
         <g key={`n${i}`} className="sp-node" style={{ animationDelay: `${i * 0.5}s` }}>
           <circle cx={n.x} cy={n.y} r="22" fill={n.c} opacity="0.24" filter="url(#oc-glow)" />
           <circle cx={n.x} cy={n.y} r="9" fill={n.c} />
-          <circle cx={n.x} cy={n.y} r="9" fill="none" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="1.2" />
-          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="11" fontWeight="700" letterSpacing="0.5" fill="#ffffff" fillOpacity="0.82">{n.label}</text>
+          <circle cx={n.x} cy={n.y} r="9" fill="none" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="1.4" />
+          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="11" fontWeight="700" letterSpacing="0.5" fill="#18181A" fillOpacity="0.78">{n.label}</text>
         </g>
       ))}
       <circle cx={core.x} cy={core.y} r="70" fill="#FF2E63" opacity="0.22" filter="url(#oc-glow)" />
       <g className="sp-node">
         <circle cx={core.x} cy={core.y} r="38" fill="url(#oc-core)" />
-        <circle cx={core.x} cy={core.y} r="38" fill="none" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1.2" />
+        <circle cx={core.x} cy={core.y} r="38" fill="none" stroke="#ffffff" strokeOpacity="0.6" strokeWidth="1.4" />
         <g transform={`translate(${core.x},${core.y})`} stroke="#ffffff" strokeWidth="3.4" fill="none" strokeLinejoin="round" strokeLinecap="round" opacity="0.95">
           <path d="M0 -15 L17 -5 L0 5 L-17 -5 Z" /><path d="M-17 3 L0 13 L17 3" />
         </g>
       </g>
-      <text x={core.x} y={core.y + 64} textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#ffffff">YOUR PRODUCT</text>
+      <text x={core.x} y={core.y + 64} textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#18181A">YOUR PRODUCT</text>
     </svg>
   )
 }
