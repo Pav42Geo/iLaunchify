@@ -67,14 +67,35 @@ body {
 /* Cyber net — faint grid + soft glow overlay for dark surfaces. Layer over a
    solid dark background-color (e.g. bg-ink-900); the grid + glow paint on top. */
 .cyber-net {
+  position: relative;
+  overflow: hidden;
+  /* soft glows stay flat (kept) */
   background-image:
     radial-gradient(110% 80% at 50% -8%, rgba(255, 46, 99, 0.12), transparent 56%),
-    radial-gradient(90% 70% at 100% 110%, rgba(110, 139, 255, 0.10), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 46px 46px, 46px 46px;
-  background-position: center;
-  background-repeat: no-repeat, no-repeat, repeat, repeat;
+    radial-gradient(90% 70% at 100% 112%, rgba(110, 139, 255, 0.10), transparent 60%);
+  background-repeat: no-repeat;
+}
+/* keep the section's own content above the perspective grid */
+.cyber-net > * { position: relative; z-index: 1; }
+/* the grid as a receding perspective floor — faint, fading into the distance */
+.cyber-net::before {
+  content: '';
+  position: absolute;
+  left: -25%;
+  right: -25%;
+  bottom: -10%;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 58px 58px;
+  background-position: center bottom;
+  transform: perspective(420px) rotateX(66deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 72%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 72%);
 }
 
 /* Legal document prose (Terms / Privacy / Agreements) — punch-list #3 */
