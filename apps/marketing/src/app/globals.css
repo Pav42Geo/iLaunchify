@@ -88,14 +88,14 @@ body {
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
-  background-size: 54px 54px;
+    linear-gradient(rgba(184, 204, 255, 0.3) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(184, 204, 255, 0.3) 2px, transparent 2px);
+  background-size: 64px 64px;
   background-position: 0 0;
-  transform: perspective(360px) rotateX(62deg);
+  transform: perspective(340px) rotateX(55deg);
   transform-origin: 50% 100%;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 8%, transparent 80%);
-  mask-image: linear-gradient(to top, #000 0%, #000 8%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 60%, transparent 96%);
+  mask-image: linear-gradient(to top, #000 0%, #000 60%, transparent 96%);
   animation: cyber-floor 7s linear infinite;
 }
 @keyframes cyber-floor {
