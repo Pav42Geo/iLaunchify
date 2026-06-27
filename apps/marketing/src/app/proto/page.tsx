@@ -302,26 +302,60 @@ function Win({ title, tone = 'light', children }: { title: string; tone?: 'light
 
 /** Flat, front-facing stand-up pouch (clean — no off 3D). */
 function Pouch({ hue = '#FF2E63', dark = false, label = 'GREENS', sub = 'Super Greens', className = 'w-[120px]' }: { hue?: string; dark?: boolean; label?: string; sub?: string; className?: string }) {
-  const fg = dark ? '#101013' : '#ffffff'
+  const id = hue.replace('#', '')
+  const accent = dark ? '#86C42B' : hue
+  const subFill = dark ? '#5f8f22' : '#9a9aa3'
+  const body = 'M22 26 Q22 18 30 18 L130 18 Q138 18 138 26 L132 198 Q132 206 124 206 L36 206 Q28 206 28 198 Z'
   return (
-    <svg viewBox="0 0 160 220" className={`h-auto ${className}`} aria-hidden>
+    <svg viewBox="0 0 160 222" className={`h-auto ${className}`} aria-hidden>
       <defs>
-        <linearGradient id={`pg-${hue.replace('#', '')}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor={hue} stopOpacity="0.82" /><stop offset="0.5" stopColor={hue} /><stop offset="1" stopColor={hue} stopOpacity="0.82" />
+        {/* form shading — light on the left, falls into shadow on the right edge */}
+        <linearGradient id={`pb-${id}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor={hue} stopOpacity="0.78" />
+          <stop offset="0.2" stopColor={hue} />
+          <stop offset="0.62" stopColor={hue} />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.22" />
         </linearGradient>
+        {/* top sheen → bottom settle, gives the film a glossy curve */}
+        <linearGradient id={`ps-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.5" />
+          <stop offset="0.22" stopColor="#ffffff" stopOpacity="0.07" />
+          <stop offset="0.8" stopColor="#000000" stopOpacity="0" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.14" />
+        </linearGradient>
+        <filter id={`pf-${id}`} x="-40%" y="-20%" width="180%" height="140%"><feGaussianBlur stdDeviation="3" /></filter>
+        <filter id={`pl-${id}`} x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.4" floodColor="#000000" floodOpacity="0.2" /></filter>
+        <clipPath id={`pc-${id}`}><path d={body} /></clipPath>
       </defs>
-      <ellipse cx="80" cy="210" rx="52" ry="8" fill="#0B0B0F" opacity="0.14" />
-      <rect x="30" y="6" width="100" height="14" rx="3" fill={hue} opacity="0.55" />
-      <path d="M22 26 Q22 18 30 18 L130 18 Q138 18 138 26 L132 198 Q132 206 124 206 L36 206 Q28 206 28 198 Z" fill={`url(#pg-${hue.replace('#', '')})`} />
-      <rect x="44" y="64" width="72" height="96" rx="8" fill={dark ? '#0E1A0E' : '#ffffff'} opacity="0.95" />
+
+      {/* contact shadow on the surface */}
+      <ellipse cx="80" cy="211" rx="50" ry="7.5" fill="#0B0B0F" opacity="0.16" />
+
+      {/* crimped top seam */}
+      <rect x="26" y="5" width="108" height="15" rx="3" fill={hue} opacity="0.5" />
+      {Array.from({ length: 19 }).map((_, i) => (
+        <line key={i} x1={29 + i * 5.5} y1="7" x2={29 + i * 5.5} y2="19" stroke="#000000" strokeOpacity="0.11" strokeWidth="1" />
+      ))}
+
+      {/* body + glossy overlays */}
+      <path d={body} fill={`url(#pb-${id})`} />
+      <path d={body} fill={`url(#ps-${id})`} />
+      <g clipPath={`url(#pc-${id})`}>
+        <rect x="34" y="22" width="12" height="180" rx="6" fill="#ffffff" opacity="0.5" filter={`url(#pf-${id})`} />
+      </g>
+
+      {/* label panel with soft shadow */}
+      <rect x="44" y="64" width="72" height="98" rx="9" fill={dark ? '#0E1A0E' : '#ffffff'} opacity="0.97" filter={`url(#pl-${id})`} />
       <g transform="translate(80,96)">
-        <g stroke={dark ? '#86C42B' : hue} strokeWidth="4.5" fill="none" strokeLinejoin="round" strokeLinecap="round">
+        <g stroke={accent} strokeWidth="4.5" fill="none" strokeLinejoin="round" strokeLinecap="round">
           <path d="M0 -16 L18 -6 L0 4 L-18 -6 Z" /><path d="M-18 2 L0 12 L18 2" />
         </g>
-        <text x="0" y="34" textAnchor="middle" fontSize="14" fontWeight="800" letterSpacing="1.5" fill={dark ? '#86C42B' : hue}>{label}</text>
-        <text x="0" y="50" textAnchor="middle" fontSize="8" fontWeight="600" letterSpacing="0.5" fill={dark ? '#5f8f22' : '#9a9aa3'}>{sub}</text>
+        <text x="0" y="36" textAnchor="middle" fontSize="14" fontWeight="800" letterSpacing="1.5" fill={accent}>{label}</text>
+        <text x="0" y="52" textAnchor="middle" fontSize="8" fontWeight="600" letterSpacing="0.5" fill={subFill}>{sub}</text>
       </g>
-      <rect x="48" y="173" width="64" height="9" rx="2" fill={fg} opacity="0.3" />
+
+      {/* bottom seal */}
+      <rect x="46" y="190" width="68" height="9" rx="2" fill="#000000" opacity="0.12" />
     </svg>
   )
 }
