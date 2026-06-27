@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { Reveal } from '@/components/Reveal'
+import { Parallax } from '@/components/Parallax'
 
 /**
  * /proto — NON-DESTRUCTIVE repositioning prototype. The centerpiece is the
@@ -23,6 +24,19 @@ const ARCHETYPES = [
   { icon: Dog, name: 'Pet creators', trust: 'pet life & trusted picks', product: 'Functional pet treats', domain: 'Pet Wellness', hue: '#86C42B' },
   { icon: Leaf, name: 'Lifestyle & social', trust: 'taste & recommendations', product: 'Adaptogen blends', domain: 'Social & Lifestyle', hue: '#9A82E0' },
 ] as const
+
+const MARQUEE: [string, string][] = [
+  ['PROTEIN POWDERS', '#FFFFFF'], ['FUNCTIONAL DRINKS', '#FF2E63'], ['ADAPTOGEN BLENDS', '#FFFFFF'],
+  ['COLD-BREW COFFEE', '#B5FF3D'], ['ELECTROLYTE MIXES', '#FFFFFF'], ['HOT SAUCE', '#FF2E63'],
+  ['PET WELLNESS', '#FFFFFF'], ['BEAUTY-FROM-WITHIN', '#B5FF3D'], ['SNACK BARS', '#FFFFFF'], ['COLLAGEN', '#FF2E63'],
+]
+
+const STATS = [
+  { n: '8', l: 'creator niches — locked & curated' },
+  { n: '13', l: 'product categories, all wired' },
+  { n: '4', l: 'partner types orchestrated per order' },
+  { n: 'FDA', l: 'labels rendered to 21 CFR spec' },
+]
 
 const GREEN = '#1FAE5A'
 
@@ -49,7 +63,7 @@ export default function ProtoPage() {
             </div>
             <h1 className="mb-6 max-w-[15ch] font-display text-[clamp(40px,5.2vw,80px)] font-extrabold leading-[0.95] tracking-[-0.04em]">
               Your brand on{' '}
-              <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">proven, shelf-ready products.</span>
+              <span className="font-serif italic font-medium tracking-[-0.025em]" style={{ backgroundImage: 'linear-gradient(100deg, #FF2E63 0%, #FF2E63 38%, #C9B6FF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>proven, shelf-ready products.</span>
             </h1>
             <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-ink-900/[0.78]">
               Pick a production-ready product, brand it, design the packaging, pass FDA compliance, and order a real
@@ -66,17 +80,47 @@ export default function ProtoPage() {
             <p className="mt-6 text-[13px] font-medium text-ink-500">You own the brand and the customer. We stay invisible in production.</p>
           </div>
           <div className="hidden lg:block">
-            <StudioScreen />
+            <Parallax speed={0.06}><StudioScreen /></Parallax>
           </div>
         </div>
       </section>
 
-      {/* ===================== THE PROCESS ===================== */}
-      <section id="how" className="bg-white px-6 py-24 sm:px-8">
+      {/* ===================== MARQUEE ===================== */}
+      <section className="relative overflow-hidden border-y border-white/10 bg-ink-900 py-5">
+        <div className="marquee-track flex items-center gap-7 whitespace-nowrap font-display text-[clamp(20px,2.4vw,38px)] font-extrabold tracking-[-0.02em]">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex flex-shrink-0 items-center gap-7" aria-hidden={copy === 1}>
+              {MARQUEE.map(([t, c], i) => (
+                <span key={`${copy}-${i}`} className="inline-flex items-center gap-7">
+                  <span style={{ color: c }}>{t}</span>
+                  <span className="text-ink-700">•</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================== STATS ===================== */}
+      <Reveal>
+        <section className="bg-white px-6 py-16 sm:px-8">
+          <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
+            {STATS.map((s) => (
+              <div key={s.l} className="border-l-2 border-pink-500 pl-5">
+                <div className="font-display text-[clamp(40px,4.5vw,60px)] font-extrabold leading-none tracking-[-0.03em] text-ink-900">{s.n}</div>
+                <div className="mt-1.5 text-[14px] leading-snug text-ink-500">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      {/* ===================== HOW IT WORKS (banded process) ===================== */}
+      <section id="how" className="bg-white px-6 pt-24 pb-6 sm:px-8">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
-            <div className="mb-16 max-w-2xl">
-              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">From idea to on-shelf</div>
+            <div className="max-w-2xl">
+              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">How it works · from idea to on-shelf</div>
               <h2 className="font-display text-[clamp(34px,4.4vw,60px)] font-bold leading-[1.0] tracking-[-0.035em]">
                 Eight steps you do.{' '}
                 <span className="font-serif italic font-medium text-pink-500">The factory floor we run.</span>
@@ -86,50 +130,64 @@ export default function ProtoPage() {
               </p>
             </div>
           </Reveal>
-
-          <div className="space-y-16 lg:space-y-24">
-            <Step n="01" kicker="Pick the product" title="Start from a proven product." reverse={false}
-              desc="Browse a curated catalog of production-ready, FDA-compliant products across 8 niches — each one already validated by a real manufacturer. No sourcing, no cold emails.">
-              <PickScreen />
-            </Step>
-
-            <Step n="02" kicker="Add your brand identity" title="Make it unmistakably yours." reverse
-              desc="Drop in your logo, brand colors, and fonts once. Your brand kit auto-applies across every product, label, and pack you design.">
-              <BrandScreen />
-            </Step>
-
-            <Step n="03" kicker="Design your packaging" title="Design it like a pro — no designer needed." reverse={false}
-              desc="A real canvas with your brand pre-loaded. Place artwork on the actual product surfaces and preview it print-accurate.">
-              <StudioScreen compact />
-            </Step>
-
-            <Step n="04" kicker="Add your Nutrition Facts label" title="Your label, rendered to FDA spec." reverse
-              desc="Nutrition Facts and Supplement Facts panels render automatically to 21 CFR — right serving sizes, % daily values, allergen and bioengineered disclosures.">
-              <LabelScreen />
-            </Step>
-
-            <Step n="05" kicker="Check your compliance" title="Pass compliance before you print." reverse={false}
-              desc="A live scan flags below-spec font sizes, missing allergens, and net-quantity formatting — so nothing ships mislabeled.">
-              <ComplianceScreen />
-            </Step>
-
-            <Step n="06" kicker="Order a sample" title="Hold it before you commit." reverse
-              desc="Order a real sample — your first one is 50% off. Taste it, shoot it, show your audience. Then green-light the run.">
-              <SampleScreen />
-            </Step>
-
-            <Step n="07" kicker="Place the production order" title="One order. We orchestrate the rest." reverse={false}
-              desc="We decompose your order into a workflow graph across manufacturer, printer, co-packer, and warehouse — and surface one timeline. Card captured only when every partner approves.">
-              <OrchestrationScreen />
-            </Step>
-
-            <Step n="08" kicker="Add it to your channel" title="Sell it where your audience already is." reverse
-              desc="Connect Shopify or TikTok Shop and your product goes live on your store. End buyers buy from you — we never appear in the consumer flow.">
-              <ChannelScreen />
-            </Step>
-          </div>
         </div>
       </section>
+
+      <StepBand bg="bg-white">
+        <Step n="01" kicker="Pick the product" title="Start from a proven product." reverse={false}
+          desc="Browse a curated catalog of production-ready, FDA-compliant products across 8 niches — each one already validated by a real manufacturer. No sourcing, no cold emails.">
+          <PickScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-ink-100">
+        <Step n="02" kicker="Add your brand identity" title="Make it unmistakably yours." reverse
+          desc="Drop in your logo, brand colors, and fonts once. Your brand kit auto-applies across every product, label, and pack you design.">
+          <BrandScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-white">
+        <Step n="03" kicker="Design your packaging" title="Design it like a pro — no designer needed." reverse={false}
+          desc="A real canvas with your brand pre-loaded. Place artwork on the actual product surfaces and preview it print-accurate.">
+          <StudioScreen compact />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-ink-900">
+        <Step n="04" kicker="Add your Nutrition Facts label" title="Your label, rendered to FDA spec." reverse dark
+          desc="Nutrition Facts and Supplement Facts panels render automatically to 21 CFR — right serving sizes, % daily values, allergen and bioengineered disclosures.">
+          <LabelScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-ink-100">
+        <Step n="05" kicker="Check your compliance" title="Pass compliance before you print." reverse={false}
+          desc="A live scan flags below-spec font sizes, missing allergens, and net-quantity formatting — so nothing ships mislabeled.">
+          <ComplianceScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-ink-900">
+        <Step n="06" kicker="Order a sample" title="Hold it before you commit." reverse dark
+          desc="Order a real sample — your first one is 50% off. Taste it, shoot it, show your audience. Then green-light the run.">
+          <SampleScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-white">
+        <Step n="07" kicker="Place the production order" title="One order. We orchestrate the rest." reverse={false}
+          desc="We decompose your order into a workflow graph across manufacturer, printer, co-packer, and warehouse — and surface one timeline. Card captured only when every partner approves.">
+          <OrchestrationScreen />
+        </Step>
+      </StepBand>
+
+      <StepBand bg="bg-ink-100">
+        <Step n="08" kicker="Add it to your channel" title="Sell it where your audience already is." reverse
+          desc="Connect Shopify or TikTok Shop and your product goes live on your store. End buyers buy from you — we never appear in the consumer flow.">
+          <ChannelScreen />
+        </Step>
+      </StepBand>
 
       {/* ===================== ARCHETYPES ===================== */}
       <Reveal>
@@ -198,17 +256,25 @@ export default function ProtoPage() {
 
 /* ============================ layout ============================ */
 
-function Step({ n, kicker, title, desc, reverse, children }: { n: string; kicker: string; title: string; desc: string; reverse: boolean; children: React.ReactNode }) {
+function StepBand({ bg, children }: { bg: string; children: React.ReactNode }) {
+  return (
+    <section className={`px-6 py-16 sm:px-8 lg:py-20 ${bg}`}>
+      <div className="mx-auto max-w-[1400px]">{children}</div>
+    </section>
+  )
+}
+
+function Step({ n, kicker, title, desc, reverse, dark = false, children }: { n: string; kicker: string; title: string; desc: string; reverse: boolean; dark?: boolean; children: React.ReactNode }) {
   return (
     <Reveal>
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
         <div className={reverse ? 'lg:order-2' : ''}>
           <div className="mb-4 flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-pill bg-ink-900 font-display text-[17px] font-extrabold text-neon-500">{n}</span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">{kicker}</span>
+            <span className={`flex h-11 w-11 items-center justify-center rounded-pill font-display text-[17px] font-extrabold ${dark ? 'bg-neon-500 text-ink-900' : 'bg-ink-900 text-neon-500'}`}>{n}</span>
+            <span className={`text-[12px] font-semibold uppercase tracking-[0.08em] ${dark ? 'text-neon-500' : 'text-pink-700'}`}>{kicker}</span>
           </div>
-          <h3 className="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.025em] text-ink-900 sm:text-[34px]">{title}</h3>
-          <p className="mt-3 max-w-[46ch] text-[16px] leading-[1.6] text-ink-600">{desc}</p>
+          <h3 className={`font-display text-[28px] font-bold leading-[1.05] tracking-[-0.025em] sm:text-[34px] ${dark ? 'text-white' : 'text-ink-900'}`}>{title}</h3>
+          <p className={`mt-3 max-w-[46ch] text-[16px] leading-[1.6] ${dark ? 'text-ink-300' : 'text-ink-600'}`}>{desc}</p>
         </div>
         <div className={reverse ? 'lg:order-1' : ''}>{children}</div>
       </div>
