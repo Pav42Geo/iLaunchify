@@ -7,6 +7,7 @@
 // read-only preview (preview prop). Rendered in GuidedBuilder's `.gb` scope.
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
+import { BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { loadCertData, loadCertTypes, type CertData, type CertRow, type CertTypeOption } from './build-actions'
 import { attachCertificate, detachCertificate } from '../[id]/edit/card-actions'
@@ -123,10 +124,9 @@ export function CertificatesCard({ draftId, preview = false }: { draftId: string
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic">🏅</span> Certificates</div>
+        <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Certificates</div>
         <button className="rb-btn-add" disabled={!draftId} onClick={() => setOpen(true)}>+ Add certificates</button>
       </div>
-      <p className="tiny muted" style={{ marginTop: 4 }}>Organic, Kosher, GMP, … — shown on the listing and used in compliance.</p>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft first (name + category) to add certificates.</p>}
 
@@ -148,7 +148,7 @@ export function CertificatesCard({ draftId, preview = false }: { draftId: string
         <div className="cert-modal" onClick={() => setOpen(false)}>
           <div className="cert-panel" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="section-title"><span className="ic">🏅</span> Add certificates</div>
+              <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Add certificates</div>
               <button className="del" style={{ fontSize: 18, color: 'var(--ink-500)' }} onClick={() => setOpen(false)}>✕</button>
             </div>
             <p className="tiny muted" style={{ marginTop: 4 }}>Pick the certificates that apply to this product — add as many as you need, then close.</p>

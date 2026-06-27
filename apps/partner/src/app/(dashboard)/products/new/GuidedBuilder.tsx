@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, type LucideIcon } from 'lucide-react'
+import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, CheckCircle2, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
@@ -73,6 +73,10 @@ interface GuidedBuilderProps {
   /** Admin-enabled product domains (LabelingType keys). Only these appear in the
    *  Step-1 domain picker. Defaults to the four built domains; OTC ships off. */
   enabledDomains?: string[]
+  /** ACTIVE markets (admin Markets & Regions). Drives the Basics → Marketplace
+   *  "Markets" dropdown — new markets appear here automatically when activated.
+   *  Defaults to US-only. */
+  markets?: { value: string; label: string }[]
   /** App-topbar right cluster (notification bell + account menu). The fullscreen
    *  Packaging Studio covers the real topbar, so it re-renders this to match. */
   topbarRight?: ReactNode
@@ -104,6 +108,7 @@ export function GuidedBuilder({
   declareAvailable = false,
   currencies = ['USD'],
   enabledDomains = ['FOOD', 'DIETARY_SUPPLEMENT', 'COSMETIC', 'PET_PRODUCT'],
+  markets = [{ value: 'US', label: 'United States' }],
   topbarRight,
   studioLogo,
 }: GuidedBuilderProps) {
@@ -426,7 +431,7 @@ export function GuidedBuilder({
           {cur === 0 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic">◧</span> Product domain <i className="info" data-tip="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance." tabIndex={0} role="img" aria-label="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.">i</i></div>
+                <div className="section-title"><span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product domain <i className="info" data-tip="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance." tabIndex={0} role="img" aria-label="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.">i</i></div>
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
                   {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
@@ -444,6 +449,7 @@ export function GuidedBuilder({
                 niches={niches}
                 lifestyleTags={lifestyleTags}
                 facilities={facilities}
+                markets={markets}
                 draftId={draftId}
                 onDraftId={setDraftId}
                 onName={setName}
@@ -540,7 +546,7 @@ export function GuidedBuilder({
           {cur === 5 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic">✓</span> Ready to submit <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· {stepDone.filter(Boolean).length}/{STEPS.length} steps complete</span></div>
+                <div className="section-title"><span className="ic"><CheckCircle2 size={16} strokeWidth={2} /></span> Ready to submit <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· {stepDone.filter(Boolean).length}/{STEPS.length} steps complete</span></div>
                 <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
                   {STEPS.map((s, i) => (
                     <button key={s.t} type="button" className="rcheck" onClick={() => go(i)}>
@@ -646,7 +652,7 @@ const CSS = `
 .gb .btn.primary{background:var(--ink-900);color:#fff;border-color:var(--ink-900)} .gb .btn.primary:hover{background:var(--ink-700)}
 .gb .btn.pink{background:var(--pink);color:#fff;border-color:var(--pink)} .gb .btn.sm{padding:6px 12px;font-size:var(--fs-sm)}
 .gb .card{border:var(--card-border-width) solid var(--card-border-color);border-radius:var(--card-radius);background:#fff;padding:18px}
-.gb .field label{display:block;font-size:var(--fs-xs);font-weight:600;color:var(--ink-600);margin-bottom:5px}
+.gb .field label{display:block;font-size:var(--fs-base);font-weight:600;color:var(--ink-800);margin-bottom:7px;letter-spacing:-.005em}
 .gb .input,.gb .sel,.gb textarea{width:100%;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);background:#fff}
 .gb .input:focus,.gb .sel:focus,.gb textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
 .gb input[type=checkbox],.gb input[type=radio]{accent-color:var(--control-accent);cursor:pointer}
@@ -692,13 +698,35 @@ const CSS = `
 .gb .sbead .b{width:20px;height:20px;border-radius:50%;background:var(--ink-100);display:grid;place-items:center;font-size:var(--fs-2xs);font-weight:700;color:var(--ink-500)}
 .gb .sbead.active{color:var(--ink-900);font-weight:600} .gb .sbead.active .b{background:var(--pink);color:#fff}
 .gb .sbead.done .b{background:var(--green);color:#fff} .gb .sline{width:26px;height:1.5px;background:var(--ink-200);display:inline-block;margin:0 2px}
-.gb .section-title{display:flex;align-items:center;gap:9px;font-size:var(--fs-lg);font-weight:600}
-.gb .section-title .ic{width:28px;height:28px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center}
+.gb .section-title{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-lg);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
+.gb .section-title .ic{width:30px;height:30px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.gb .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
 .gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--ink-200);color:var(--ink-600);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
 .gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--ink-300);color:var(--ink-900);outline:none}
 .gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#18181A;color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
 .gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#18181A;z-index:60;pointer-events:none}
-.gb .two{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.gb .two{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+.gb .msel{position:relative}
+.gb .msel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;background:#fff;font:inherit;font-size:var(--fs-base);color:var(--ink-900);cursor:pointer;text-align:left}
+.gb .msel-btn:hover{border-color:var(--ink-400)} .gb .msel-btn:disabled{opacity:.55;cursor:default}
+.gb .msel-btn.empty .msel-sum{color:var(--ink-400)}
+.gb .msel-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gb .msel-btn .chev{color:var(--ink-400);flex:none}
+.gb .msel-panel{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;background:#fff;border:1px solid var(--ink-200);border-radius:12px;box-shadow:0 16px 40px -16px rgba(0,0,0,.28);padding:6px;max-height:264px;overflow:auto}
+.gb .msel-opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:var(--fs-base);color:var(--ink-800);cursor:pointer}
+.gb .msel-opt:hover{background:var(--ink-50)}
+.gb .msel-opt .box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ink-300);display:grid;place-items:center;flex:none;color:#fff;transition:.12s}
+.gb .msel-opt.on .box{background:var(--pink);border-color:var(--pink)}
+.gb .smart-foot{display:flex;justify-content:flex-end;margin-top:5px;font-size:var(--fs-2xs);color:var(--ink-400)} .gb .smart-foot.over{color:var(--pink-700)}
+.gb .rte{border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);background:#fff;overflow:hidden}
+.gb .rte:focus-within{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+.gb .rte-bar{display:flex;align-items:center;gap:2px;padding:6px;border-bottom:1px solid var(--ink-100);background:var(--ink-50)}
+.gb .rte-b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:7px;border:0;background:transparent;color:var(--ink-600);cursor:pointer;transition:.12s}
+.gb .rte-b:hover{background:#fff;color:var(--ink-900)} .gb .rte-b.on{background:var(--pink-50);color:var(--pink-700)}
+.gb .rte-area{padding:10px 12px;min-height:96px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);line-height:1.55;outline:none}
+.gb .rte-area:empty:before{content:attr(data-ph);color:var(--ink-400)}
+.gb .rte-area ul{margin:6px 0;padding-left:20px;list-style:disc} .gb .rte-area ol{margin:6px 0;padding-left:20px;list-style:decimal} .gb .rte-area li{margin:2px 0}
+.gb .rte-foot{display:flex;justify-content:flex-end;padding:5px 10px 8px;font-size:var(--fs-2xs);color:var(--ink-400)} .gb .rte-foot.over{color:var(--pink-700)}
 .gb .imgslot{border:1.5px dashed var(--ink-300);border-radius:12px;aspect-ratio:1;display:grid;place-items:center;color:var(--ink-400);font-size:var(--fs-xs);text-align:center}
 .gb .imgslot.video{border-color:var(--pink-100);color:var(--pink-700)}
 .gb .seg{display:inline-flex;border:1px solid var(--ink-200);border-radius:999px;padding:3px;background:#fff;gap:3px}

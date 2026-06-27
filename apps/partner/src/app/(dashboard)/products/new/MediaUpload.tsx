@@ -6,7 +6,9 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { ImagePlus } from 'lucide-react'
 import { loadMedia, uploadProductMedia, removeProductMedia, type MediaData, type MediaSlot } from './build-actions'
+import { Section } from './_ui'
 
 export function MediaUpload({ draftId }: { draftId: string | null }) {
   const [media, setMedia] = useState<MediaData>({ hero: null, gallery: [], video: null })
@@ -41,17 +43,14 @@ export function MediaUpload({ draftId }: { draftId: string | null }) {
 
   if (!draftId) {
     return (
-      <div className="card">
-        <div className="eyebrow">Media</div>
-        <p className="tiny muted" style={{ marginTop: 8 }}>Save the draft (name + category) to upload media.</p>
-      </div>
+      <Section icon={ImagePlus} title="Media">
+        <p className="tiny muted">Save the draft (name + category) to upload media.</p>
+      </Section>
     )
   }
 
   return (
-    <div className="card">
-      <div className="eyebrow">Media</div>
-
+    <Section icon={ImagePlus} title="Media">
       {/* Hero */}
       <div style={{ position: 'relative', marginTop: 10 }}>
         {media.hero ? (
@@ -101,6 +100,6 @@ export function MediaUpload({ draftId }: { draftId: string | null }) {
         .gb .imgx{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(20,20,26,.6);color:#fff;font-size:11px;cursor:pointer;display:grid;place-items:center}
         .gb .imgx:hover{background:rgba(20,20,26,.85)} .gb .imgx:disabled{opacity:.5}
       `}</style>
-    </div>
+    </Section>
   )
 }

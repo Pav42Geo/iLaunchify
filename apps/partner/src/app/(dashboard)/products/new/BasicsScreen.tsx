@@ -17,6 +17,8 @@ import { saveProductNiches, saveProductLifestyleTags } from '../[id]/edit/card-a
 import { CertificatesCard } from './CertificatesCard'
 import { MarketplaceAttributesCard } from './MarketplaceAttributesCard'
 import { MediaUpload } from './MediaUpload'
+import { Tag, Filter, FileText, ListPlus } from 'lucide-react'
+import { Section, Field, RichTextField, SmartTextInput } from './_ui'
 
 interface Opt { id: string; label: string }
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
@@ -34,6 +36,8 @@ interface BasicsScreenProps {
   niches: Opt[]
   lifestyleTags: Opt[]
   facilities: FacilityOption[]
+  /** ACTIVE markets from admin Markets & Regions (default US-only). */
+  markets?: { value: string; label: string }[]
   draftId: string | null
   onDraftId: (id: string) => void
   onName: (name: string) => void
@@ -47,6 +51,7 @@ interface Meta { key: string; value: string }
 
 export function BasicsScreen({
   domain, categories, subcategories, niches, lifestyleTags, facilities,
+  markets = [{ value: 'US', label: 'United States' }],
   draftId, onDraftId, onName, initial, registerFlush,
 }: BasicsScreenProps) {
   const [name, setName] = useState(initial?.name ?? '')
@@ -187,62 +192,73 @@ export function BasicsScreen({
       )}
 
       <div className="two">
-        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Field full label="Product name">
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sparkling Yuzu Soda" />
-          </Field>
-          <Field full label="Base SKU">
-            <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
-          </Field>
-          <Field label="Category">
-            <select
-              className="sel"
-              value={categoryId}
-              disabled={visibleCategories.length <= 1}
-              onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}
-            >
-              <option value="">{visibleCategories.length ? 'Select…' : 'No category for this domain'}</option>
-              {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Subcategory">
-            <select className="sel" value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} disabled={!categoryId}>
-              <option value="">{categoryId ? 'Select…' : 'Pick a category first'}</option>
-              {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </Field>
+        {/* LEFT — identity · marketplace · descriptions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Section icon={Tag} title="Product identity">
+            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <Field full label="Product name">
+                <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sparkling Yuzu Soda" />
+              </Field>
+              <Field full label="Base SKU">
+                <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
+              </Field>
+              <Field label="Category">
+                <select
+                  className="sel"
+                  value={categoryId}
+                  disabled={visibleCategories.length <= 1}
+                  onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId('') }}
+                >
+                  <option value="">{visibleCategories.length ? 'Select…' : 'No category for this domain'}</option>
+                  {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Subcategory">
+                <select className="sel" value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} disabled={!categoryId}>
+                  <option value="">{categoryId ? 'Select…' : 'Pick a category first'}</option>
+                  {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </Field>
+              <Field full label="Niches">
+                <ChipSelect options={niches} selected={selNiches} onToggle={(id) => toggleChip(selNiches, setSelNiches, id, 3)} placeholder="Add a niche…" />
+              </Field>
+              <Field full label="Lifestyle tags">
+                <ChipSelect options={lifestyleTags} selected={selTags} onToggle={(id) => toggleChip(selTags, setSelTags, id)} placeholder="Add a lifestyle tag…" />
+              </Field>
+            </div>
+          </Section>
 
-          <Field full label="Niches">
-            <ChipSelect options={niches} selected={selNiches} onToggle={(id) => toggleChip(selNiches, setSelNiches, id, 3)} placeholder="Add a niche…" />
-          </Field>
-          <Field full label="Lifestyle tags">
-            <ChipSelect options={lifestyleTags} selected={selTags} onToggle={(id) => toggleChip(selTags, setSelTags, id)} placeholder="Add a lifestyle tag…" />
-          </Field>
-          <MarketplaceAttributesCard
-            draftId={draftId}
-            initial={{
-              format: initial?.manufacturingFormat ?? null,
-              processes: initial?.manufacturingProcesses ?? [],
-              allergenFree: initial?.allergenFreeClaims ?? [],
-              markets: initial?.marketCodes ?? [],
-            }}
-          />
+          <Section icon={Filter} title="Marketplace filters">
+            <MarketplaceAttributesCard
+              draftId={draftId}
+              marketOptions={markets}
+              initial={{
+                format: initial?.manufacturingFormat ?? null,
+                processes: initial?.manufacturingProcesses ?? [],
+                allergenFree: initial?.allergenFreeClaims ?? [],
+                markets: initial?.marketCodes ?? [],
+              }}
+            />
+          </Section>
 
-          <Field full label="Short description">
-            <input className="input" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="Crisp Japanese yuzu, lightly sparkling, zero sugar." />
-          </Field>
-          <Field full label="Detailed description">
-            <textarea rows={3} value={longDesc} onChange={(e) => setLongDesc(e.target.value)} placeholder="A bright, citrus-forward sparkling soda…" />
-          </Field>
+          <Section icon={FileText} title="Descriptions">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Field label="Short description">
+                <SmartTextInput value={shortDesc} onChange={setShortDesc} placeholder="Crisp Japanese yuzu, lightly sparkling, zero sugar." maxLength={140} />
+              </Field>
+              <Field label="Detailed description">
+                <RichTextField value={longDesc} onChange={setLongDesc} placeholder="A bright, citrus-forward sparkling soda…" maxLength={800} />
+              </Field>
+            </div>
+          </Section>
         </div>
 
         {/* RIGHT — media · custom meta · certificates */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <MediaUpload draftId={draftId} />
 
-          <div className="card">
-            <div className="eyebrow">Custom meta fields</div>
-            <div style={{ marginTop: 8 }}>
+          <Section icon={ListPlus} title="Custom meta fields">
+            <div>
               {meta.map((m, i) => (
                 <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
                   <input className="input" style={{ width: '38%' }} value={m.key} placeholder="Key" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} />
@@ -250,9 +266,9 @@ export function BasicsScreen({
                   <button className="btn sm" onClick={() => setMeta(meta.filter((_, j) => j !== i))}>✕</button>
                 </div>
               ))}
-              {meta.length < 10 && <button className="btn sm" onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
+              {meta.length < 10 && <button className="btn sm" style={{ marginTop: 2 }} onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
             </div>
-          </div>
+          </Section>
 
           <CertificatesCard draftId={draftId} />
         </div>
@@ -346,11 +362,4 @@ function ChipSelect({ options, selected, onToggle, placeholder }: { options: Opt
   )
 }
 
-function Field({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="field" style={full ? { gridColumn: '1/3' } : undefined}>
-      <label>{label}</label>
-      {children}
-    </div>
-  )
-}
+// Field, Section + smart inputs now live in ./_ui (shared builder chrome).

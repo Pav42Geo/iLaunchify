@@ -1,12 +1,13 @@
 'use client'
 
 // Partner-authoring counterpart of the admin §7 marketplace-filter editor.
-// Lets the partner set the four catalog-filter attributes on their template so
-// the marketplace sidebar has authoritative data at the source:
+// Sets the four catalog-filter attributes on the template so the marketplace
+// sidebar has authoritative data at the source:
 //   Format (single) · Manufacturing process · Allergen-free claims · Markets.
-// Options come from the shared lists in @ilaunchify/types — the SAME source the
-// marketplace sidebar filters on, so what's set here always matches what buyers
-// can filter by. Autosaves on every change (silent; error/staged toasts only).
+// Options come from the shared lists in @ilaunchify/types (same source the
+// marketplace sidebar filters on) — except Markets, which is driven by the
+// admin's ACTIVE markets (Markets & Regions) so new markets appear here the
+// moment they're activated. Each control is a dropdown; autosaves on change.
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -14,14 +15,14 @@ import {
   FORMAT_OPTIONS,
   MANUFACTURING_PROCESS_OPTIONS,
   ALLERGEN_FREE_OPTIONS,
-  MARKET_FILTER_OPTIONS,
-  type FilterOption,
 } from '@ilaunchify/types'
 import { setMarketplaceAttributes } from './build-actions'
+import { Field, MultiSelect, type SelectOption } from './_ui'
 
 export function MarketplaceAttributesCard({
   draftId,
   initial,
+  marketOptions = [{ value: 'US', label: 'United States' }],
   preview = false,
 }: {
   draftId: string | null
@@ -31,24 +32,26 @@ export function MarketplaceAttributesCard({
     allergenFree: string[]
     markets: string[]
   }
+  /** ACTIVE markets from admin Markets & Regions (default US-only). */
+  marketOptions?: SelectOption[]
   preview?: boolean
 }) {
   const [format, setFormat] = useState<string | null>(initial.format)
-  const [processes, setProcesses] = useState<Set<string>>(new Set(initial.processes))
-  const [allergenFree, setAllergenFree] = useState<Set<string>>(new Set(initial.allergenFree))
-  const [markets, setMarkets] = useState<Set<string>>(new Set(initial.markets.length ? initial.markets : ['US']))
+  const [processes, setProcesses] = useState<string[]>(initial.processes)
+  const [allergenFree, setAllergenFree] = useState<string[]>(initial.allergenFree)
+  const [markets, setMarkets] = useState<string[]>(initial.markets.length ? initial.markets : ['US'])
   const [, start] = useTransition()
 
   // Autosave the whole set. Pass the NEXT value explicitly so we never persist a
   // stale closure value from the just-updated control.
-  function persist(next: { format?: string | null; processes?: Set<string>; allergenFree?: Set<string>; markets?: Set<string> }) {
+  function persist(next: { format?: string | null; processes?: string[]; allergenFree?: string[]; markets?: string[] }) {
     if (!draftId || preview) return
     start(async () => {
       const r = await setMarketplaceAttributes(draftId, {
         manufacturingFormat: next.format !== undefined ? next.format : format,
-        manufacturingProcesses: [...(next.processes ?? processes)],
-        allergenFreeClaims: [...(next.allergenFree ?? allergenFree)],
-        marketCodes: [...(next.markets ?? markets)],
+        manufacturingProcesses: next.processes ?? processes,
+        allergenFreeClaims: next.allergenFree ?? allergenFree,
+        marketCodes: next.markets ?? markets,
       })
       if (!r.ok) toast.error(r.error ?? 'Could not save')
       else if (r.staged) toast('Allergen-free change sent for admin review')
@@ -57,88 +60,69 @@ export function MarketplaceAttributesCard({
 
   const pickFormat = (value: string) => {
     if (preview) return
-    const next = format === value ? null : value // click active → clear
+    const next = value || null
     setFormat(next)
     persist({ format: next })
   }
-  const toggle = (
-    set: React.Dispatch<React.SetStateAction<Set<string>>>,
-    current: Set<string>,
+  const setMulti = (
+    set: (v: string[]) => void,
     key: 'processes' | 'allergenFree' | 'markets',
-    value: string,
+    next: string[],
   ) => {
     if (preview) return
-    const nextSet = new Set(current)
-    if (nextSet.has(value)) nextSet.delete(value)
-    else nextSet.add(value)
-    set(nextSet)
-    persist({ [key]: nextSet }) // side-effect OUTSIDE the state updater
+    set(next)
+    persist({ [key]: next })
   }
 
+  const formatGroups = [...new Set(FORMAT_OPTIONS.filter((o) => o.group).map((o) => o.group))]
+
   return (
-    <div className="field" style={{ gridColumn: '1/3' }}>
-      <label>Marketplace filters</label>
+    <div className="grid" style={{ gap: 16 }}>
+      <Field label="Format">
+        <select className="sel" value={format ?? ''} disabled={preview} onChange={(e) => pickFormat(e.target.value)}>
+          <option value="">Select…</option>
+          {FORMAT_OPTIONS.filter((o) => !o.group).map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+          {formatGroups.map((g) => (
+            <optgroup key={g} label={g!}>
+              {FORMAT_OPTIONS.filter((o) => o.group === g).map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </Field>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 2 }}>
-        {/* Format — single-select */}
-        <Group title="Format" hint="Physical production form (single).">
-          <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
-            {FORMAT_OPTIONS.map((o) => (
-              <Chip key={o.value} on={format === o.value} disabled={preview} onClick={() => pickFormat(o.value)}>{o.label}</Chip>
-            ))}
-          </div>
-        </Group>
+      <Field label="Manufacturing process">
+        <MultiSelect
+          options={MANUFACTURING_PROCESS_OPTIONS}
+          selected={processes}
+          disabled={preview}
+          placeholder="Select processes…"
+          onChange={(next) => setMulti(setProcesses, 'processes', next)}
+        />
+      </Field>
 
-        <Group title="Manufacturing process" hint="How it's produced. Multi-select.">
-          <ChipMulti options={MANUFACTURING_PROCESS_OPTIONS} active={processes} disabled={preview} onToggle={(v) => toggle(setProcesses, processes, 'processes', v)} />
-        </Group>
+      <Field label="Allergen-free claims">
+        <MultiSelect
+          options={ALLERGEN_FREE_OPTIONS}
+          selected={allergenFree}
+          disabled={preview}
+          placeholder="Select claims…"
+          onChange={(next) => setMulti(setAllergenFree, 'allergenFree', next)}
+        />
+      </Field>
 
-        <Group title="Allergen-free claims" hint="An explicit free-from claim — only check what the product is verified to be.">
-          <ChipMulti options={ALLERGEN_FREE_OPTIONS} active={allergenFree} disabled={preview} onToggle={(v) => toggle(setAllergenFree, allergenFree, 'allergenFree', v)} />
-        </Group>
-
-        <Group title="Markets" hint="Markets this template is available in. V1: US only is ACTIVE.">
-          <ChipMulti options={MARKET_FILTER_OPTIONS} active={markets} disabled={preview} onToggle={(v) => toggle(setMarkets, markets, 'markets', v)} />
-        </Group>
-      </div>
+      <Field label="Markets">
+        <MultiSelect
+          options={marketOptions}
+          selected={markets}
+          disabled={preview}
+          placeholder="Select markets…"
+          onChange={(next) => setMulti(setMarkets, 'markets', next)}
+        />
+      </Field>
     </div>
-  )
-}
-
-function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div style={{ marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-800)' }}>{title}</span>
-        {hint && <span className="muted" style={{ fontSize: 11.5, marginLeft: 8 }}>{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function ChipMulti({ options, active, disabled, onToggle }: { options: FilterOption[]; active: Set<string>; disabled?: boolean; onToggle: (value: string) => void }) {
-  return (
-    <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
-      {options.map((o) => (
-        <Chip key={o.value} on={active.has(o.value)} disabled={disabled} onClick={() => onToggle(o.value)}>{o.label}</Chip>
-      ))}
-    </div>
-  )
-}
-
-function Chip({ on, disabled, onClick, children }: { on: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className={'chip' + (on ? ' on' : '')}
-      aria-pressed={on}
-      disabled={disabled}
-      onClick={onClick}
-      style={{ fontFamily: 'inherit', ...(disabled ? { opacity: 0.6, cursor: 'default' } : {}) }}
-    >
-      {on && <span aria-hidden style={{ fontSize: 10, fontWeight: 700 }}>✓</span>}
-      {children}
-    </button>
   )
 }

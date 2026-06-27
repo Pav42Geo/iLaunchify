@@ -47,9 +47,16 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   // US/USD only; auto-expands as CA/EU markets are switched ACTIVE).
   const activeMarkets = await prisma.market.findMany({
     where: { status: 'ACTIVE' },
-    select: { currency: true },
+    select: { code: true, name: true, currency: true },
     orderBy: { code: 'asc' },
   })
+  // Markets the partner can target in Basics → Marketplace filters. Driven by the
+  // admin's ACTIVE markets (Markets & Regions) — a newly activated market shows
+  // up here automatically. Friendly label = the name before its regulator suffix
+  // (e.g. "United States — FDA" → "United States").
+  const marketOptions = activeMarkets.length
+    ? activeMarkets.map((m) => ({ value: m.code, label: (m.name.split('—')[0] ?? m.name).split('(')[0]!.trim() }))
+    : [{ value: 'US', label: 'United States' }]
   const currencies = [...new Set(activeMarkets.map((m) => m.currency))]
   const marketCurrencies = currencies.length ? currencies : ['USD']
 
@@ -130,6 +137,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       declareAvailable={declareAvailable}
       currencies={marketCurrencies}
       enabledDomains={enabledDomains}
+      markets={marketOptions}
       topbarRight={<PartnerTopbarRight email={user.email} name={user.name ?? null} companyName={partner.companyName} />}
     />
   )
