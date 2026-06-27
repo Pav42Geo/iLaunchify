@@ -64,6 +64,19 @@ body {
   }
 }
 
+/* Cyber net — faint grid + soft glow overlay for dark surfaces. Layer over a
+   solid dark background-color (e.g. bg-ink-900); the grid + glow paint on top. */
+.cyber-net {
+  background-image:
+    radial-gradient(110% 80% at 50% -8%, rgba(255, 46, 99, 0.12), transparent 56%),
+    radial-gradient(90% 70% at 100% 110%, rgba(110, 139, 255, 0.10), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 46px 46px, 46px 46px;
+  background-position: center;
+  background-repeat: no-repeat, no-repeat, repeat, repeat;
+}
+
 /* Legal document prose (Terms / Privacy / Agreements) — punch-list #3 */
 .legal-prose { color: #2a2a32; font-size: 14px; line-height: 1.7; }
 .legal-prose h2 { font-size: 18px; font-weight: 700; margin: 2rem 0 0.75rem; color: #16161a; }

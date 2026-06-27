@@ -106,6 +106,7 @@ export async function AcademyHomePage({ audience }: { audience: AcademyAudience 
     <Shell header={header}>
       <AcademyHero audience={audience} title={c.title} accentWord={c.accent} subtitle={c.subtitle} trending={trending} />
 
+      <div className={audience === 'PARTNER' ? 'bg-ink-100 text-ink-900' : ''}>
       <div className="mx-auto max-w-[1100px] space-y-14 px-6 py-14">
         {topics.length > 0 && (
           <section>
@@ -140,6 +141,7 @@ export async function AcademyHomePage({ audience }: { audience: AcademyAudience 
             />
           </section>
         )}
+      </div>
       </div>
 
       <ClosingCta title={c.ctaTitle} subtitle={c.ctaSub} ctaLabel={c.ctaLabel} ctaHref={c.ctaHref} />

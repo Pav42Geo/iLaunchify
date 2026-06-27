@@ -50,7 +50,7 @@ export function AcademyHero({
 }) {
   const partner = isPartner(audience)
   return (
-    <section className={cn('border-b', partner ? 'bg-ink-900 text-white border-ink-700' : 'bg-white text-ink-900 border-ink-100')}>
+    <section className={cn('border-b', partner ? 'cyber-net bg-ink-900 text-white border-ink-700' : 'bg-white text-ink-900 border-ink-100')}>
       <div className="mx-auto max-w-[1100px] px-6 py-16 text-center sm:py-20">
         {partner && (
           <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-ink-800 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-neon-500">
@@ -236,7 +236,7 @@ export function UpdatesTeaser({
 // — Closing CTA band ——————————————————————————————————————————————————————————
 export function ClosingCta({ title, subtitle, ctaLabel, ctaHref }: { title: string; subtitle: string; ctaLabel: string; ctaHref: string }) {
   return (
-    <section className="bg-ink-900 text-white">
+    <section className="cyber-net bg-ink-900 text-white">
       <div className="mx-auto max-w-[900px] px-6 py-16 text-center">
         <h2 className="font-display text-[26px] font-bold tracking-[-0.02em] sm:text-[32px]">{title}</h2>
         <p className="mx-auto mt-3 max-w-lg text-[14px] text-ink-300">{subtitle}</p>
