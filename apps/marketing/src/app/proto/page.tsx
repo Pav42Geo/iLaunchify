@@ -49,32 +49,33 @@ export default function ProtoPage() {
       </div>
 
       {/* ===================== HERO (spatial) ===================== */}
-      <section className="sp-hero relative overflow-hidden px-6 pt-20 pb-24 sm:px-8">
+      <section className="relative overflow-hidden bg-white px-6 pt-20 pb-24 sm:px-8">
         <style>{`
-          .sp-hero{background:
-            radial-gradient(900px 620px at 16% 0%, rgba(255,46,99,0.10), transparent 58%),
-            radial-gradient(820px 600px at 92% 14%, rgba(110,139,255,0.10), transparent 60%),
-            radial-gradient(900px 720px at 56% 116%, rgba(154,130,224,0.14), transparent 60%),
-            #FFFFFF;}
-          .sp-grid{position:absolute;left:50%;bottom:-12%;width:220%;height:60%;
-            transform:translateX(-50%) perspective(440px) rotateX(70deg);transform-origin:50% 100%;
-            background-image:linear-gradient(to right,rgba(154,130,224,0.30) 1px,transparent 1px),
-              linear-gradient(to top,rgba(255,46,99,0.22) 1px,transparent 1px);
-            background-size:58px 58px;
+          .sp-stage{position:relative;overflow:hidden;border-radius:28px;
+            background:
+              radial-gradient(620px 460px at 22% 6%, rgba(255,46,99,0.30), transparent 60%),
+              radial-gradient(560px 440px at 92% 22%, rgba(110,139,255,0.26), transparent 62%),
+              radial-gradient(640px 520px at 54% 116%, rgba(154,130,224,0.42), transparent 60%),
+              #07070C;}
+          .sp-grid{position:absolute;left:50%;bottom:-14%;width:200%;height:58%;
+            transform:translateX(-50%) perspective(420px) rotateX(70deg);transform-origin:50% 100%;
+            background-image:linear-gradient(to right,rgba(154,130,224,0.24) 1px,transparent 1px),
+              linear-gradient(to top,rgba(255,46,99,0.18) 1px,transparent 1px);
+            background-size:54px 54px;
             -webkit-mask-image:linear-gradient(to top,#000 0%,transparent 80%);
             mask-image:linear-gradient(to top,#000 0%,transparent 80%);
             animation:sp-grid 5s linear infinite;}
-          @keyframes sp-grid{from{background-position:0 0}to{background-position:0 58px}}
+          @keyframes sp-grid{from{background-position:0 0}to{background-position:0 54px}}
+          .sp-star{animation:sp-twinkle 3.2s ease-in-out infinite}
+          @keyframes sp-twinkle{0%,100%{opacity:.18}50%{opacity:.95}}
           .sp-float{animation:sp-float 9s ease-in-out infinite}
           @keyframes sp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
           .sp-node{transform-box:fill-box;transform-origin:center;animation:sp-pulse 3.4s ease-in-out infinite}
-          @keyframes sp-pulse{0%,100%{opacity:.82}50%{opacity:1}}
+          @keyframes sp-pulse{0%,100%{opacity:.8}50%{opacity:1}}
           .sp-flow{stroke-dasharray:4 11;animation:sp-dash 1.5s linear infinite}
           @keyframes sp-dash{to{stroke-dashoffset:-30}}
-          @media (prefers-reduced-motion:reduce){.sp-grid,.sp-float,.sp-node,.sp-flow{animation:none!important}}
+          @media (prefers-reduced-motion:reduce){.sp-grid,.sp-star,.sp-float,.sp-node,.sp-flow{animation:none!important}}
         `}</style>
-
-        <div aria-hidden className="sp-grid pointer-events-none" />
 
         <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
           <div>
@@ -102,11 +103,21 @@ export default function ProtoPage() {
           </div>
 
           <div className="relative hidden lg:block">
-            <Parallax speed={0.05}>
-              <div className="sp-float">
-                <OrchestrationConstellation />
+            <div className="sp-stage aspect-[5/4] w-full shadow-[0_40px_90px_-55px_rgba(0,0,0,0.6)]">
+              <div aria-hidden className="sp-grid pointer-events-none" />
+              <svg aria-hidden viewBox="0 0 600 480" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 h-full w-full">
+                {[[40, 60], [140, 120], [260, 50], [360, 100], [470, 70], [560, 130], [90, 210], [300, 180], [520, 230], [70, 340], [230, 320], [430, 360], [560, 330], [150, 430], [400, 440], [540, 420]].map(([x, y], i) => (
+                  <circle key={i} className="sp-star" cx={x} cy={y} r={i % 4 === 0 ? 1.8 : 1} fill="#ffffff" style={{ animationDelay: `${(i % 7) * 0.4}s` }} />
+                ))}
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center px-6">
+                <Parallax speed={0.05}>
+                  <div className="sp-float">
+                    <OrchestrationConstellation />
+                  </div>
+                </Parallax>
               </div>
-            </Parallax>
+            </div>
           </div>
         </div>
       </section>
@@ -158,6 +169,8 @@ export default function ProtoPage() {
           </Reveal>
         </div>
       </section>
+
+      <StepFX />
 
       <StepBand bg="bg-white">
         <Step n="01" kicker="Pick the product" title="Start from a proven product." reverse={false}
@@ -308,6 +321,46 @@ function Step({ n, kicker, title, desc, reverse, dark = false, children }: { n: 
   )
 }
 
+/** Reveal-triggered step animations. Children animate in when their <Reveal> adds `is-revealed`. */
+function StepFX() {
+  return (
+    <style>{`
+      .fx-up,.fx-pop,.fx-down,.fx-fade,.fx-left,.fx-right{opacity:0}
+      .is-revealed .fx-up{animation:fxUp .62s cubic-bezier(.16,1,.3,1) both}
+      .is-revealed .fx-pop{animation:fxPop .55s cubic-bezier(.16,1,.3,1) both}
+      .is-revealed .fx-down{animation:fxDown .6s cubic-bezier(.16,1,.3,1) both}
+      .is-revealed .fx-fade{animation:fxFade .7s ease both}
+      .is-revealed .fx-left{animation:fxLeft .6s cubic-bezier(.16,1,.3,1) both}
+      .is-revealed .fx-right{animation:fxRight .6s cubic-bezier(.16,1,.3,1) both}
+      @keyframes fxUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes fxPop{0%{opacity:0;transform:scale(.55)}65%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:scale(1)}}
+      @keyframes fxDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes fxFade{from{opacity:0}to{opacity:1}}
+      @keyframes fxLeft{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+      @keyframes fxRight{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+      .fx-grow{transform:scaleX(0);transform-origin:left center}
+      .is-revealed .fx-grow{animation:fxGrow .55s ease both}
+      @keyframes fxGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+      .fx-dot{animation:fxDot 1.8s ease-in-out infinite}
+      @keyframes fxDot{0%,100%{opacity:.35}50%{opacity:1}}
+      .fx-cursor{position:absolute;z-index:30;opacity:0;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+      .is-revealed .fx-cursor{animation:fxCur 3s cubic-bezier(.5,0,.2,1) both}
+      @keyframes fxCur{0%{left:74%;top:86%;opacity:0;transform:scale(1)}10%{opacity:1}46%{left:28%;top:44%;transform:scale(1)}53%{transform:scale(.78)}60%{transform:scale(1)}100%{left:28%;top:44%;opacity:1;transform:scale(1)}}
+      .fx-ripple{position:absolute;z-index:29;width:30px;height:30px;border-radius:50%;background:rgba(255,46,99,.4);opacity:0;pointer-events:none}
+      .is-revealed .fx-ripple{animation:fxRip 3s ease-out both}
+      @keyframes fxRip{0%,50%{opacity:0;transform:scale(.2)}55%{opacity:.55;transform:scale(.5)}74%{opacity:0;transform:scale(2.3)}100%{opacity:0}}
+      .fx-scan{position:absolute;left:0;right:0;height:34px;background:linear-gradient(to bottom,rgba(31,174,90,0) 0%,rgba(31,174,90,.22) 50%,rgba(31,174,90,0) 100%);opacity:0;pointer-events:none}
+      .is-revealed .fx-scan{animation:fxScan 2.4s ease-in-out .4s both}
+      @keyframes fxScan{0%{transform:translateY(-130%);opacity:0}14%{opacity:1}86%{opacity:1}100%{transform:translateY(150%);opacity:0}}
+      @media (prefers-reduced-motion:reduce){
+        .fx-up,.fx-pop,.fx-down,.fx-fade,.fx-left,.fx-right,.fx-grow{opacity:1!important;transform:none!important;animation:none!important}
+        .fx-cursor,.fx-ripple,.fx-scan{display:none!important}
+        .fx-dot{animation:none!important;opacity:1!important}
+      }
+    `}</style>
+  )
+}
+
 function Win({ title, tone = 'light', children }: { title: string; tone?: 'light' | 'dark'; children: React.ReactNode }) {
   const dark = tone === 'dark'
   return (
@@ -446,7 +499,7 @@ function OrchestrationConstellation() {
           <circle cx={n.x} cy={n.y} r="22" fill={n.c} opacity="0.24" filter="url(#oc-glow)" />
           <circle cx={n.x} cy={n.y} r="9" fill={n.c} />
           <circle cx={n.x} cy={n.y} r="9" fill="none" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="1.4" />
-          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="11" fontWeight="700" letterSpacing="0.5" fill="#18181A" fillOpacity="0.78">{n.label}</text>
+          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="11" fontWeight="700" letterSpacing="0.5" fill="#ffffff" fillOpacity="0.85">{n.label}</text>
         </g>
       ))}
       <circle cx={core.x} cy={core.y} r="70" fill="#FF2E63" opacity="0.22" filter="url(#oc-glow)" />
@@ -457,7 +510,7 @@ function OrchestrationConstellation() {
           <path d="M0 -15 L17 -5 L0 5 L-17 -5 Z" /><path d="M-17 3 L0 13 L17 3" />
         </g>
       </g>
-      <text x={core.x} y={core.y + 64} textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#18181A">YOUR PRODUCT</text>
+      <text x={core.x} y={core.y + 64} textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#ffffff">YOUR PRODUCT</text>
     </svg>
   )
 }
@@ -471,18 +524,18 @@ function StudioScreen({ compact = false }: { compact?: boolean }) {
       <div className={`grid ${compact ? 'grid-cols-[44px_1fr]' : 'grid-cols-[44px_1fr_150px]'}`}>
         <div className="flex flex-col items-center gap-1.5 border-r border-ink-700 bg-ink-800 py-3">
           {tools.map((T, i) => (
-            <span key={i} className={`flex h-8 w-8 items-center justify-center rounded-lg ${i === 4 ? 'bg-neon-500/15 text-neon-500' : 'text-ink-400'}`}>
+            <span key={i} className={`fx-up flex h-8 w-8 items-center justify-center rounded-lg ${i === 4 ? 'bg-neon-500/15 text-neon-500' : 'text-ink-400'}`} style={{ animationDelay: `${0.3 + i * 0.08}s` }}>
               <T strokeWidth={2} className="h-4 w-4" />
             </span>
           ))}
         </div>
         <div className="relative flex min-h-[230px] items-center justify-center overflow-hidden" style={{ background: 'radial-gradient(120% 90% at 50% 30%, #1A1A20 0%, #0C0C10 82%)' }}>
           <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-          <div className="relative">
+          <div className="fx-pop relative" style={{ animationDelay: '0.5s' }}>
             <Pouch hue="#B5FF3D" dark label="GREENS" className="w-[120px]" />
-            <span className="absolute -left-1 -top-1 h-2 w-2 -translate-x-1/2 -translate-y-1/2" style={{ background: '#2DE2E6', outline: '1px dashed #2DE2E6', outlineOffset: 6 }} />
+            <span className="fx-dot absolute -left-1 -top-1 h-2 w-2 -translate-x-1/2 -translate-y-1/2" style={{ background: '#2DE2E6', outline: '1px dashed #2DE2E6', outlineOffset: 6 }} />
           </div>
-          <span className="absolute left-3 top-3 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500">● FDA panel valid</span>
+          <span className="fx-pop absolute left-3 top-3 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500" style={{ animationDelay: '1.2s' }}>● FDA panel valid</span>
           <span className="absolute bottom-3 left-3 rounded bg-ink-900/70 px-2 py-1 text-[10px] font-medium text-ink-400">100%</span>
         </div>
         {!compact && (
@@ -515,23 +568,36 @@ function PickScreen() {
   ]
   return (
     <Win title="Marketplace · Functional drinks">
-      <div className="p-5">
+      <div className="relative overflow-hidden p-5">
         <div className="mb-4 flex items-center gap-2 rounded-pill border border-ink-200 px-3 py-2 text-[12px] text-ink-400">
           <Search strokeWidth={2} className="h-3.5 w-3.5" /> Search products, recipes, niches…
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {products.map((p) => (
-            <div key={p.n} className={`rounded-xl border p-3 ${p.sel ? 'border-pink-500 ring-2 ring-pink-500/30' : 'border-ink-200'}`}>
+          {products.map((p, idx) => (
+            <div key={p.n} className="relative rounded-xl border border-ink-200 p-3">
+              {idx === 0 && (
+                <>
+                  <span className="fx-fade pointer-events-none absolute inset-0 rounded-xl" style={{ boxShadow: '0 0 0 2px #FF2E63', animationDelay: '1.5s' }} />
+                  <span className="fx-pop absolute right-2.5 top-2.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-pink-500 text-white" style={{ animationDelay: '1.55s' }}><Check strokeWidth={3} className="h-3 w-3" /></span>
+                </>
+              )}
               <div className="mb-2 flex h-20 items-center justify-center rounded-lg" style={{ background: p.hue + '1f' }}>
                 <Pouch hue={p.hue} label="" className="w-[42px]" />
               </div>
-              <div className="flex items-center justify-between">
-                <div className="text-[13px] font-bold text-ink-900">{p.n}</div>
-                {p.sel && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-500 text-white"><Check strokeWidth={3} className="h-3 w-3" /></span>}
-              </div>
+              <div className="text-[13px] font-bold text-ink-900">{p.n}</div>
               <div className="text-[11px] text-ink-500">{p.m}</div>
             </div>
           ))}
+        </div>
+        <span className="pointer-events-none absolute" style={{ left: '28%', top: '46%' }}><span className="fx-ripple" style={{ marginLeft: -15, marginTop: -15 }} /></span>
+        <svg className="fx-cursor" width="20" height="20" viewBox="0 0 20 20" aria-hidden><path d="M3 2 L3 16 L7 12 L10 18 L12 17 L9 11 L15 11 Z" fill="#18181A" stroke="#ffffff" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+        <div className="fx-up absolute inset-x-3 bottom-3 z-20 flex items-center gap-3 rounded-xl border border-ink-200 bg-white p-3 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.35)]" style={{ animationDelay: '1.95s' }}>
+          <div className="flex h-14 w-14 items-center justify-center rounded-lg" style={{ background: '#86C42B1f' }}><Pouch hue="#86C42B" label="" className="w-[30px]" /></div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-ink-900">Powdered Greens</div>
+            <div className="text-[11px] text-ink-500">Gourmet &amp; Culinary · 500 MOQ · from $2.80/unit</div>
+          </div>
+          <span className="flex h-8 items-center rounded-pill bg-ink-900 px-3 text-[11px] font-semibold text-white">Customize →</span>
         </div>
       </div>
     </Win>
@@ -543,7 +609,7 @@ function BrandScreen() {
   return (
     <Win title="Brand kit · Acme Greens">
       <div className="space-y-4 p-5">
-        <div className="flex items-center gap-4 rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-4">
+        <div className="fx-up flex items-center gap-4 rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-4" style={{ animationDelay: '0.3s' }}>
           <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-ink-900">
             <svg viewBox="0 0 96 96" className="h-8 w-8"><path d="M48 22 L74 36 L48 50 L22 36 Z M22 50 L48 64 L74 50 M22 62 L48 76 L74 62" fill="none" stroke="#B5FF3D" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" /></svg>
           </span>
@@ -554,11 +620,11 @@ function BrandScreen() {
         </div>
         <div>
           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-400">Brand colors</div>
-          <div className="flex gap-2">{swatches.map((s) => <span key={s} className="h-9 w-9 rounded-lg ring-1 ring-ink-200" style={{ background: s }} />)}<span className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-ink-300 text-ink-400">+</span></div>
+          <div className="flex gap-2">{swatches.map((s, i) => <span key={s} className="fx-pop h-9 w-9 rounded-lg ring-1 ring-ink-200" style={{ background: s, animationDelay: `${0.45 + i * 0.12}s` }} />)}<span className="fx-pop flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-ink-300 text-ink-400" style={{ animationDelay: '0.95s' }}>+</span></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-ink-200 p-3"><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Display</div><div className="font-display text-[20px] font-extrabold tracking-[-0.02em]">Bricolage</div></div>
-          <div className="rounded-lg border border-ink-200 p-3"><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Body</div><div className="text-[20px] font-semibold">Inter</div></div>
+          <div className="fx-up rounded-lg border border-ink-200 p-3" style={{ animationDelay: '1.05s' }}><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Display</div><div className="font-display text-[20px] font-extrabold tracking-[-0.02em]">Bricolage</div></div>
+          <div className="fx-up rounded-lg border border-ink-200 p-3" style={{ animationDelay: '1.2s' }}><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Body</div><div className="text-[20px] font-semibold">Inter</div></div>
         </div>
       </div>
     </Win>
@@ -569,16 +635,19 @@ function LabelScreen() {
   return (
     <Win title="Label · Supplement Facts">
       <div className="flex items-center gap-5 p-5">
-        <div className="shrink-0"><Pouch hue="#86C42B" dark={false} label="GREENS" className="w-[104px]" /></div>
-        <SuppFacts />
+        <div className="fx-pop shrink-0" style={{ animationDelay: '0.3s' }}><Pouch hue="#86C42B" dark={false} label="GREENS" className="w-[104px]" /></div>
+        <div className="fx-fade relative shrink-0 overflow-hidden rounded" style={{ animationDelay: '0.5s' }}>
+          <SuppFacts />
+          <span className="fx-scan" />
+        </div>
         <div className="hidden flex-1 sm:block">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN }}>
+          <div className="fx-pop mb-2 inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN, animationDelay: '2.6s' }}>
             <CheckCircle2 strokeWidth={2.5} className="h-3.5 w-3.5" /> Auto-rendered to 21 CFR
           </div>
           <ul className="space-y-1.5 text-[12px] text-ink-600">
-            <li>· Serving size + servings per container</li>
-            <li>· % Daily Value calculated for you</li>
-            <li>· Min font sizes enforced on every edit</li>
+            <li className="fx-up" style={{ animationDelay: '1s' }}>· Serving size + servings per container</li>
+            <li className="fx-up" style={{ animationDelay: '1.2s' }}>· % Daily Value calculated for you</li>
+            <li className="fx-up" style={{ animationDelay: '1.4s' }}>· Min font sizes enforced on every edit</li>
           </ul>
         </div>
       </div>
@@ -591,7 +660,7 @@ function ComplianceScreen() {
   return (
     <Win title="Compliance scan · 21 CFR">
       <div className="p-5">
-        <div className="mb-4 flex items-center justify-between rounded-xl p-4" style={{ background: GREEN + '14', border: `1px solid ${GREEN}40` }}>
+        <div className="fx-up mb-4 flex items-center justify-between rounded-xl p-4" style={{ background: GREEN + '14', border: `1px solid ${GREEN}40`, animationDelay: '1.5s' }}>
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-pill" style={{ background: GREEN }}><Check strokeWidth={3} className="h-5 w-5 text-white" /></span>
             <div><div className="font-display text-[16px] font-bold text-ink-900">Compliant</div><div className="text-[12px] text-ink-500">5 of 5 checks passed</div></div>
@@ -599,9 +668,9 @@ function ComplianceScreen() {
           <span className="rounded-pill px-3 py-1 text-[11px] font-bold text-white" style={{ background: GREEN }}>Ready to print</span>
         </div>
         <div className="space-y-2">
-          {checks.map((c) => (
-            <div key={c} className="flex items-center gap-2.5 rounded-lg bg-ink-50/60 px-3 py-2 text-[13px] text-ink-700">
-              <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full" style={{ background: GREEN }}><Check strokeWidth={3} className="h-3 w-3 text-white" /></span>
+          {checks.map((c, i) => (
+            <div key={c} className="fx-up flex items-center gap-2.5 rounded-lg bg-ink-50/60 px-3 py-2 text-[13px] text-ink-700" style={{ animationDelay: `${0.3 + i * 0.2}s` }}>
+              <span className="fx-pop flex h-4.5 w-4.5 items-center justify-center rounded-full" style={{ background: GREEN, animationDelay: `${0.42 + i * 0.2}s` }}><Check strokeWidth={3} className="h-3 w-3 text-white" /></span>
               {c}
             </div>
           ))}
@@ -616,11 +685,11 @@ function SampleScreen() {
     <Win title="Order a sample">
       <div className="p-5">
         <div className="mb-4 flex items-end justify-center gap-3 rounded-xl bg-ink-50/60 py-5">
-          <Pouch hue="#86C42B" label="GREENS" className="w-[62px]" />
-          <Pouch hue="#86C42B" label="GREENS" className="w-[72px]" />
-          <Pouch hue="#86C42B" label="GREENS" className="w-[62px]" />
+          <span className="fx-up" style={{ animationDelay: '0.3s' }}><Pouch hue="#86C42B" label="GREENS" className="w-[62px]" /></span>
+          <span className="fx-up" style={{ animationDelay: '0.5s' }}><Pouch hue="#86C42B" label="GREENS" className="w-[72px]" /></span>
+          <span className="fx-up" style={{ animationDelay: '0.7s' }}><Pouch hue="#86C42B" label="GREENS" className="w-[62px]" /></span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="fx-up flex items-center justify-between" style={{ animationDelay: '0.95s' }}>
           <div>
             <div className="text-[14px] font-bold text-ink-900">Sample · 3 units</div>
             <div className="text-[12px] text-ink-500">Production quality · ships in ~5 days</div>
@@ -631,7 +700,7 @@ function SampleScreen() {
             <div className="text-[11px] font-semibold" style={{ color: GREEN }}>First sample 50% off</div>
           </div>
         </div>
-        <div className="mt-4 flex h-11 items-center justify-center rounded-pill bg-ink-900 text-[13px] font-semibold text-white">Order sample</div>
+        <div className="fx-up mt-4 flex h-11 items-center justify-center rounded-pill bg-ink-900 text-[13px] font-semibold text-white" style={{ animationDelay: '1.15s' }}>Order sample</div>
       </div>
     </Win>
   )
@@ -644,16 +713,16 @@ function OrchestrationScreen() {
       <div className="p-5 text-white">
         <div className="mb-4 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800 px-4 py-3">
           <div><div className="text-[13px] font-bold">1,000 units · Powdered Greens</div><div className="text-[11px] text-ink-400">Acme Greens · pouch + carton</div></div>
-          <div className="text-right"><div className="text-[16px] font-extrabold">$3,420</div><div className="text-[10px] text-neon-500">Card authorized</div></div>
+          <div className="text-right"><div className="text-[16px] font-extrabold">$3,420</div><div className="fx-dot text-[10px] text-neon-500">● Card authorized</div></div>
         </div>
         <div className="mb-2 flex items-center justify-between">
           {nodes.map((n, i) => (
             <div key={n.l} className="flex flex-1 items-center">
-              <div className="flex flex-col items-center gap-1.5">
+              <div className="fx-pop flex flex-col items-center gap-1.5" style={{ animationDelay: `${0.4 + i * 0.45}s` }}>
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-neon-500/40 bg-neon-500/10"><n.i strokeWidth={2} className="h-5 w-5 text-neon-500" /></span>
                 <span className="text-[10px] font-medium text-ink-300">{n.l}</span>
               </div>
-              {i < nodes.length - 1 && <div className="mx-1 mb-5 h-[2px] flex-1 rounded bg-gradient-to-r from-neon-500/60 to-neon-500/20" />}
+              {i < nodes.length - 1 && <div className="fx-grow mx-1 mb-5 h-[2px] flex-1 rounded bg-gradient-to-r from-neon-500/60 to-neon-500/20" style={{ animationDelay: `${0.62 + i * 0.45}s` }} />}
             </div>
           ))}
         </div>
@@ -669,19 +738,19 @@ function ChannelScreen() {
   return (
     <Win title="Channels">
       <div className="space-y-3 p-5">
-        {[{ i: Store, l: 'Shopify', s: 'yourbrand.myshopify.com' }, { i: Music2, l: 'TikTok Shop', s: '@acme.greens' }].map((c) => (
-          <div key={c.l} className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
+        {[{ i: Store, l: 'Shopify', s: 'yourbrand.myshopify.com' }, { i: Music2, l: 'TikTok Shop', s: '@acme.greens' }].map((c, i) => (
+          <div key={c.l} className="fx-up flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3" style={{ animationDelay: `${0.3 + i * 0.25}s` }}>
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-900 text-white"><c.i strokeWidth={2} className="h-5 w-5" /></span>
               <div><div className="text-[13px] font-bold text-ink-900">{c.l}</div><div className="text-[11px] text-ink-500">{c.s}</div></div>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN }}><Check strokeWidth={3} className="h-3 w-3" /> Connected</span>
+            <span className="fx-pop inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN, animationDelay: `${0.75 + i * 0.25}s` }}><Check strokeWidth={3} className="h-3 w-3" /> Connected</span>
           </div>
         ))}
-        <div className="flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 text-white">
+        <div className="fx-up flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 text-white" style={{ animationDelay: '1.45s' }}>
           <div className="flex items-center gap-3">
             <Pouch hue="#86C42B" dark label="" className="w-[34px]" />
-            <div><div className="text-[13px] font-bold">Acme Greens · Super Greens</div><div className="text-[11px] text-neon-500">● Live on your store</div></div>
+            <div><div className="text-[13px] font-bold">Acme Greens · Super Greens</div><div className="text-[11px] text-neon-500"><span className="fx-dot">●</span> Live on your store</div></div>
           </div>
           <div className="text-[16px] font-extrabold">$39</div>
         </div>

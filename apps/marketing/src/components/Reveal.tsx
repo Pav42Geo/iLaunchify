@@ -83,7 +83,7 @@ export function Reveal({
       className={
         'transition-[opacity,transform] duration-700 ease-out-quart will-change-transform ' +
         'motion-reduce:transition-none ' +
-        (shown ? 'opacity-100 translate-x-0 translate-y-0' : `opacity-0 ${hidden}`) +
+        (shown ? 'is-revealed opacity-100 translate-x-0 translate-y-0' : `opacity-0 ${hidden}`) +
         (className ? ' ' + className : '')
       }
     >
