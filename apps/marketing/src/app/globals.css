@@ -77,33 +77,45 @@ body {
 }
 /* keep the section's own content above the perspective grid */
 .cyber-net > * { position: relative; z-index: 1; }
-/* the grid as a receding perspective floor — faint, fading into the distance */
-.cyber-net::before {
+/* perspective grid — a floor + a mirrored ceiling meeting at a centre horizon,
+   swung on a slight diagonal. Faint lines receding into the distance. */
+.cyber-net::before,
+.cyber-net::after {
   content: '';
   position: absolute;
-  left: -30%;
-  right: -30%;
-  bottom: -18%;
-  height: 78%;
+  left: -40%;
+  right: -40%;
+  height: 64%;
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(184, 204, 255, 0.3) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(184, 204, 255, 0.3) 2px, transparent 2px);
+    linear-gradient(rgba(184, 204, 255, 0.28) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(184, 204, 255, 0.28) 2px, transparent 2px);
   background-size: 64px 64px;
   background-position: 0 0;
-  transform: perspective(340px) rotateX(55deg);
+}
+/* floor — rises from the bottom toward the centre */
+.cyber-net::before {
+  bottom: -15%;
+  transform: rotate(-5deg) perspective(340px) rotateX(55deg);
   transform-origin: 50% 100%;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 60%, transparent 96%);
-  mask-image: linear-gradient(to top, #000 0%, #000 60%, transparent 96%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
   animation: cyber-floor 7s linear infinite;
 }
-@keyframes cyber-floor {
-  from { background-position: 0 0; }
-  to   { background-position: 0 56px; }
+/* ceiling — descends from the top toward the centre */
+.cyber-net::after {
+  top: -15%;
+  transform: rotate(-5deg) perspective(340px) rotateX(-55deg);
+  transform-origin: 50% 0%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
+  animation: cyber-ceil 7s linear infinite;
 }
+@keyframes cyber-floor { from { background-position: 0 0; } to { background-position: 0 64px; } }
+@keyframes cyber-ceil { from { background-position: 0 0; } to { background-position: 0 -64px; } }
 @media (prefers-reduced-motion: reduce) {
-  .cyber-net::before { animation: none; }
+  .cyber-net::before, .cyber-net::after { animation: none; }
 }
 
 /* Legal document prose (Terms / Privacy / Agreements) — punch-list #3 */
