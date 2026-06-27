@@ -68,12 +68,12 @@ export default async function HowItWorksPage({
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">
               How it works
             </div>
-            <h1 className="mb-5 font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1] tracking-[-0.035em]">
+            <h1 className="mb-5 font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] md:text-[calc(3.75rem*var(--landing-heading-scale))] font-extrabold leading-[1] tracking-[-0.035em]">
               From idea to{' '}
               <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">shelf-ready,</span>{' '}
               without the supply-chain headache.
             </h1>
-            <p className="max-w-[60ch] text-lg sm:text-xl leading-[1.55] text-ink-700">
+            <p className="max-w-[60ch] text-[calc(1.125rem*var(--landing-deck-scale))] sm:text-[calc(1.25rem*var(--landing-deck-scale))] leading-[1.55] text-ink-700">
               You pick a starter template. You customize the label in the Design Studio. You approve a sample. We orchestrate every manufacturer, label printer, co-packer, and warehouse in the production graph — so you launch a real CPG brand without becoming a CPG operator.
             </p>
           </div>

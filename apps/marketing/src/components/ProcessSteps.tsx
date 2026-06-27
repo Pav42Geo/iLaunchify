@@ -22,8 +22,8 @@ function Step({ n, kicker, title, desc, reverse, dark = false, children }: { n: 
             <span className={`flex h-11 w-11 items-center justify-center rounded-pill font-display text-[17px] font-extrabold ${dark ? 'bg-neon-500 text-ink-900' : 'bg-ink-900 text-neon-500'}`}>{n}</span>
             <span className={`text-[12px] font-semibold uppercase tracking-[0.08em] ${dark ? 'text-neon-500' : 'text-pink-700'}`}>{kicker}</span>
           </div>
-          <h3 className={`font-display text-[28px] font-bold leading-[1.05] tracking-[-0.025em] sm:text-[34px] ${dark ? 'text-white' : 'text-ink-900'}`}>{title}</h3>
-          <p className={`mt-3 max-w-[46ch] text-[16px] leading-[1.6] ${dark ? 'text-ink-300' : 'text-ink-600'}`}>{desc}</p>
+          <h3 className={`font-display text-[calc(28px*var(--landing-heading-scale))] font-bold leading-[1.05] tracking-[-0.025em] sm:text-[calc(34px*var(--landing-heading-scale))] ${dark ? 'text-white' : 'text-ink-900'}`}>{title}</h3>
+          <p className={`mt-3 max-w-[46ch] text-[calc(16px*var(--landing-deck-scale))] leading-[1.6] ${dark ? 'text-ink-300' : 'text-ink-600'}`}>{desc}</p>
         </div>
         <div className={reverse ? 'lg:order-1' : ''}>{children}</div>
       </div>
@@ -532,11 +532,11 @@ export function ProcessSteps() {
           <Reveal>
             <div className="max-w-2xl">
               <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-neon-500">What you do · what we run</div>
-              <h2 className="font-display text-[clamp(34px,4.4vw,60px)] font-bold leading-[1.0] tracking-[-0.035em]">
+              <h2 className="font-display text-[calc(clamp(34px,4.4vw,60px)*var(--landing-heading-scale))] font-bold leading-[1.0] tracking-[-0.035em]">
                 Eight steps you do.{' '}
                 <span className="font-serif italic font-medium text-neon-500">The factory floor we run.</span>
               </h2>
-              <p className="mt-4 text-[17px] leading-[1.6] text-ink-300">
+              <p className="mt-4 text-[calc(17px*var(--landing-deck-scale))] leading-[1.6] text-ink-300">
                 Every step lives on one platform — and your card isn&apos;t charged until every partner confirms they can deliver.
               </p>
             </div>
