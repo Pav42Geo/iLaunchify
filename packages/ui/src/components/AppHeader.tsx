@@ -215,16 +215,21 @@ export function AppHeaderGuestCta({
 export interface AppHeaderSubnavStripProps {
   children: React.ReactNode
   className?: string
+  /** Match AppHeader's flushLeft mode — drop the 1400px centering so the
+   *  strip aligns flush under the edge-aligned logo. */
+  flushLeft?: boolean
 }
 
 export function AppHeaderSubnavStrip({
   children,
   className,
+  flushLeft = false,
 }: AppHeaderSubnavStripProps) {
   return (
     <div
       className={cn(
-        'mx-auto flex max-w-[1400px] gap-1 overflow-x-auto px-6',
+        'flex gap-1 overflow-x-auto',
+        flushLeft ? 'pl-7 pr-6' : 'mx-auto max-w-[1400px] px-6',
         className,
       )}
     >

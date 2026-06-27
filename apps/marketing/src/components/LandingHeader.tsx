@@ -50,6 +50,7 @@ export async function LandingHeader({
 
   return (
     <AppHeader
+      flushLeft
       brand={brand}
       center={
         <nav className="hidden items-center gap-7 md:flex">

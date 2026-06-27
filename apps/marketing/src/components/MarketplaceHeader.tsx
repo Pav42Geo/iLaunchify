@@ -95,6 +95,7 @@ export async function MarketplaceHeader({
 
   return (
     <AppHeader
+      flushLeft
       brand={brand}
       center={
         // The 'All Categories' button moved out of the header centre into
@@ -130,7 +131,7 @@ export async function MarketplaceHeader({
         // Hamburger mega-menu trigger sits flush-left, followed by the
         // niche tab strip. Both share the same horizontal track inside
         // AppHeaderSubnavStrip's scroll container.
-        <AppHeaderSubnavStrip>
+        <AppHeaderSubnavStrip flushLeft>
           <CategoriesMegaMenu />
           {niches.map((n) => {
             const isActive = activeNiche === n.slug
