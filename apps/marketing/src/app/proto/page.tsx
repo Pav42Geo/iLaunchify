@@ -9,6 +9,7 @@ import { Button } from '@ilaunchify/ui'
 import { Reveal } from '@/components/Reveal'
 import { Parallax } from '@/components/Parallax'
 import { CountUp } from '@/components/CountUp'
+import { ProductShot } from '@/components/ProductShot'
 
 /**
  * /proto — NON-DESTRUCTIVE repositioning prototype. The centerpiece is the
@@ -84,6 +85,34 @@ export default function ProtoPage() {
             <Parallax speed={0.06}><StudioScreen /></Parallax>
           </div>
         </div>
+      </section>
+
+      {/* ===================== HERO PHOTO BAND ===================== */}
+      <section className="px-6 pb-6 sm:px-8">
+        <Reveal>
+          <Parallax speed={0.04}>
+            <div className="relative mx-auto aspect-[16/9] max-w-[1400px] overflow-hidden rounded-[28px] border border-ink-200 bg-ink-100 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.45)] sm:aspect-[16/8]">
+              <ProductShot
+                src="/proto/hero-creator.jpg"
+                alt="A creator holding her own branded stand-up pouch"
+                className="absolute inset-0 h-full w-full object-cover object-center"
+              >
+                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF2E63 0%, #C9B6FF 100%)' }}>
+                  <span className="text-[13px] font-semibold text-white/85">Licensed hero photo appears here once downloaded</span>
+                </div>
+              </ProductShot>
+              <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(11,11,15,0.58) 0%, rgba(11,11,15,0) 44%)' }} />
+              <div className="absolute inset-x-5 bottom-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-pill bg-white/95 px-4 py-2 text-[12px] font-semibold text-ink-900 backdrop-blur">
+                  <span className="h-2 w-2 rounded-full bg-neon-500" /> Real creators. Their brand on the shelf.
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-pill bg-ink-900/80 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur">
+                  Made &amp; shipped by vetted partners
+                </div>
+              </div>
+            </div>
+          </Parallax>
+        </Reveal>
       </section>
 
       {/* ===================== MARQUEE ===================== */}
