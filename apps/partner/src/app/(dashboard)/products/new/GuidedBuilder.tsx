@@ -426,9 +426,8 @@ export function GuidedBuilder({
           {cur === 0 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic">◧</span> Product domain</div>
-                <p className="muted small" style={{ margin: '4px 0 12px' }}>What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.</p>
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                <div className="section-title"><span className="ic">◧</span> Product domain <i className="info" data-tip="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance." tabIndex={0} role="img" aria-label="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.">i</i></div>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
                   {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
                       <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.label}</div>
@@ -696,6 +695,10 @@ const CSS = `
 .gb .sbead.done .b{background:var(--green);color:#fff} .gb .sline{width:26px;height:1.5px;background:var(--ink-200);display:inline-block;margin:0 2px}
 .gb .section-title{display:flex;align-items:center;gap:9px;font-size:var(--fs-lg);font-weight:600}
 .gb .section-title .ic{width:28px;height:28px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center}
+.gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--ink-200);color:var(--ink-600);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
+.gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--ink-300);color:var(--ink-900);outline:none}
+.gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#18181A;color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#18181A;z-index:60;pointer-events:none}
 .gb .two{display:grid;grid-template-columns:1fr 320px;gap:18px}
 .gb .imgslot{border:1.5px dashed var(--ink-300);border-radius:12px;aspect-ratio:1;display:grid;place-items:center;color:var(--ink-400);font-size:var(--fs-xs);text-align:center}
 .gb .imgslot.video{border-color:var(--pink-100);color:var(--pink-700)}
