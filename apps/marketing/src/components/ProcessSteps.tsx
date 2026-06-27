@@ -527,16 +527,16 @@ export function ProcessSteps() {
   return (
     <>
       {/* ===================== HOW IT WORKS (banded process) ===================== */}
-      <section id="how" className="bg-white px-6 pt-24 pb-6 sm:px-8">
+      <section id="how" data-surface="dark" className="bg-ink-900 px-6 pt-24 pb-16 text-white sm:px-8">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
             <div className="max-w-2xl">
-              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">How it works · from idea to on-shelf</div>
+              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-neon-500">What you do · what we run</div>
               <h2 className="font-display text-[clamp(34px,4.4vw,60px)] font-bold leading-[1.0] tracking-[-0.035em]">
                 Eight steps you do.{' '}
-                <span className="font-serif italic font-medium text-pink-500">The factory floor we run.</span>
+                <span className="font-serif italic font-medium text-neon-500">The factory floor we run.</span>
               </h2>
-              <p className="mt-4 text-[17px] leading-[1.6] text-ink-600">
+              <p className="mt-4 text-[17px] leading-[1.6] text-ink-300">
                 Every step lives on one platform — and your card isn&apos;t charged until every partner confirms they can deliver.
               </p>
             </div>
