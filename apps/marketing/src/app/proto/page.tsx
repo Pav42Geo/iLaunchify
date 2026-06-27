@@ -48,40 +48,72 @@ export default function ProtoPage() {
         PROTOTYPE · /proto · not linked in nav · copy per docs/LANDING_MESSAGING.md
       </div>
 
-      {/* ===================== HERO ===================== */}
-      <section className="relative overflow-hidden px-6 pt-16 pb-20 sm:px-8 sm:pt-20">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="mesh-blob" style={{ width: 520, height: 520, background: '#FF2E63', top: -170, left: -120 }} />
-          <div className="mesh-blob" style={{ width: 440, height: 440, background: '#B5FF3D', top: 180, right: -150, animationDelay: '-6s' }} />
-          <div className="mesh-blob" style={{ width: 360, height: 360, background: '#C9B6FF', bottom: -150, left: '38%', animationDelay: '-12s' }} />
-        </div>
+      {/* ===================== HERO (spatial) ===================== */}
+      <section className="sp-hero relative overflow-hidden px-6 pt-20 pb-24 sm:px-8">
+        <style>{`
+          .sp-hero{background:
+            radial-gradient(900px 620px at 16% 4%, rgba(255,46,99,0.26), transparent 60%),
+            radial-gradient(820px 600px at 90% 18%, rgba(110,139,255,0.20), transparent 62%),
+            radial-gradient(900px 680px at 58% 108%, rgba(154,130,224,0.34), transparent 60%),
+            #07070C;}
+          .sp-grid{position:absolute;left:50%;bottom:-12%;width:220%;height:62%;
+            transform:translateX(-50%) perspective(440px) rotateX(70deg);transform-origin:50% 100%;
+            background-image:linear-gradient(to right,rgba(154,130,224,0.22) 1px,transparent 1px),
+              linear-gradient(to top,rgba(255,46,99,0.18) 1px,transparent 1px);
+            background-size:58px 58px;
+            -webkit-mask-image:linear-gradient(to top,#000 0%,transparent 78%);
+            mask-image:linear-gradient(to top,#000 0%,transparent 78%);
+            animation:sp-grid 5s linear infinite;}
+          @keyframes sp-grid{from{background-position:0 0}to{background-position:0 58px}}
+          .sp-star{animation:sp-twinkle 3.2s ease-in-out infinite}
+          @keyframes sp-twinkle{0%,100%{opacity:.18}50%{opacity:.95}}
+          .sp-float{animation:sp-float 9s ease-in-out infinite}
+          @keyframes sp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+          .sp-node{transform-box:fill-box;transform-origin:center;animation:sp-pulse 3.4s ease-in-out infinite}
+          @keyframes sp-pulse{0%,100%{opacity:.8}50%{opacity:1}}
+          .sp-flow{stroke-dasharray:4 11;animation:sp-dash 1.5s linear infinite}
+          @keyframes sp-dash{to{stroke-dashoffset:-30}}
+          @media (prefers-reduced-motion:reduce){.sp-grid,.sp-star,.sp-float,.sp-node,.sp-flow{animation:none!important}}
+        `}</style>
 
-        <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.02fr]">
+        <div aria-hidden className="sp-grid pointer-events-none" />
+        <svg aria-hidden viewBox="0 0 1400 600" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 h-full w-full">
+          {[[90,70],[260,150],[520,60],[760,120],[980,80],[1180,150],[1320,70],[170,240],[640,210],[1080,250],[1290,300],[120,420],[420,360],[900,400],[1230,440],[60,520],[520,520],[760,540],[1160,540]].map(([x, y], i) => (
+            <circle key={i} className="sp-star" cx={x} cy={y} r={i % 4 === 0 ? 1.8 : 1} fill="#ffffff" style={{ animationDelay: `${(i % 7) * 0.4}s` }} />
+          ))}
+        </svg>
+
+        <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 backdrop-blur">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-pill border border-white/15 bg-white/[0.06] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] backdrop-blur" style={{ color: '#D7CBFF' }}>
               <ShieldCheck strokeWidth={2.5} className="h-3.5 w-3.5" />
               White &amp; private label · FDA-compliant · Made in the USA
             </div>
-            <h1 className="mb-6 max-w-[15ch] font-display text-[clamp(40px,5.2vw,80px)] font-extrabold leading-[0.95] tracking-[-0.04em]">
+            <h1 className="mb-6 max-w-[15ch] font-display text-[clamp(40px,5.2vw,80px)] font-extrabold leading-[0.95] tracking-[-0.04em] text-white">
               Your brand on{' '}
-              <span className="font-serif italic font-medium tracking-[-0.025em]" style={{ backgroundImage: 'linear-gradient(100deg, #FF2E63 0%, #FF2E63 38%, #C9B6FF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>proven, shelf-ready products.</span>
+              <span className="font-serif italic font-medium tracking-[-0.025em]" style={{ backgroundImage: 'linear-gradient(100deg, #FF2E63 0%, #C081FF 60%, #6E8BFF 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>proven, shelf-ready products.</span>
             </h1>
-            <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-ink-900/[0.78]">
+            <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-white/70">
               Pick a production-ready product, brand it, design the packaging, pass FDA compliance, and order a real
               run — all in one place. Launch a CPG brand without becoming a CPG operator.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="primary" size="xl" asChild>
-                <Link href="/marketplace">Browse white-label products <ArrowRight strokeWidth={2.5} className="h-4 w-4" /></Link>
-              </Button>
-              <Button variant="outline" size="xl" asChild className="border-ink-300 text-ink-900 hover:bg-ink-50">
-                <Link href="#how">See how it works</Link>
-              </Button>
+              <Link href="/marketplace" className="inline-flex h-[60px] items-center gap-2 rounded-pill bg-neon-500 px-7 text-[15px] font-semibold text-ink-900 transition-transform hover:scale-[1.02]" style={{ boxShadow: '0 0 34px rgba(181,255,61,0.45)' }}>
+                Browse white-label products <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+              </Link>
+              <Link href="#how" className="inline-flex h-[60px] items-center rounded-pill border border-white/25 px-7 text-[15px] font-semibold text-white transition-colors hover:bg-white/10">
+                See how it works
+              </Link>
             </div>
-            <p className="mt-6 text-[13px] font-medium text-ink-500">You own the brand and the customer. We stay invisible in production.</p>
+            <p className="mt-6 text-[13px] font-medium text-white/45">You own the brand and the customer. We stay invisible in production.</p>
           </div>
-          <div className="hidden lg:block">
-            <Parallax speed={0.06}><StudioScreen /></Parallax>
+
+          <div className="relative hidden lg:block">
+            <Parallax speed={0.05}>
+              <div className="sp-float">
+                <OrchestrationConstellation />
+              </div>
+            </Parallax>
           </div>
         </div>
       </section>
@@ -384,6 +416,56 @@ function SuppFacts() {
       <div className="mt-0.5 text-[6.5px] leading-tight">* % Daily Value based on a 2,000 calorie diet.</div>
       <div className="text-[6.5px] leading-tight">† Daily Value not established.</div>
     </div>
+  )
+}
+
+/** Spatial orchestration constellation — glowing node network for the hero. */
+function OrchestrationConstellation() {
+  const core = { x: 280, y: 242 }
+  const nodes = [
+    { x: 280, y: 64, c: '#FF2E63', label: 'Your channel' },
+    { x: 92, y: 150, c: '#6E8BFF', label: 'Manufacturer' },
+    { x: 470, y: 150, c: '#9A82E0', label: 'Printer' },
+    { x: 120, y: 392, c: '#2DE2E6', label: 'Co-packer' },
+    { x: 452, y: 392, c: '#B5FF3D', label: 'Warehouse' },
+  ]
+  return (
+    <svg viewBox="0 0 560 480" className="h-auto w-full max-w-[620px]" aria-hidden>
+      <defs>
+        <radialGradient id="oc-core" cx="50%" cy="42%" r="60%">
+          <stop offset="0" stopColor="#FFE3ED" /><stop offset="0.45" stopColor="#FF2E63" /><stop offset="1" stopColor="#6E1330" />
+        </radialGradient>
+        <filter id="oc-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="6" /></filter>
+        <filter id="oc-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" /></filter>
+      </defs>
+      <g fill="none" stroke="#9A82E0" strokeOpacity="0.2">
+        <ellipse cx="280" cy="250" rx="232" ry="96" />
+        <ellipse cx="280" cy="250" rx="168" ry="168" strokeOpacity="0.1" />
+      </g>
+      {nodes.map((n, i) => (
+        <g key={`l${i}`}>
+          <line x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeOpacity="0.16" strokeWidth="6" filter="url(#oc-soft)" />
+          <line className="sp-flow" x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeOpacity="0.9" strokeWidth="1.6" />
+        </g>
+      ))}
+      {nodes.map((n, i) => (
+        <g key={`n${i}`} className="sp-node" style={{ animationDelay: `${i * 0.5}s` }}>
+          <circle cx={n.x} cy={n.y} r="22" fill={n.c} opacity="0.24" filter="url(#oc-glow)" />
+          <circle cx={n.x} cy={n.y} r="9" fill={n.c} />
+          <circle cx={n.x} cy={n.y} r="9" fill="none" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="1.2" />
+          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="11" fontWeight="700" letterSpacing="0.5" fill="#ffffff" fillOpacity="0.82">{n.label}</text>
+        </g>
+      ))}
+      <circle cx={core.x} cy={core.y} r="70" fill="#FF2E63" opacity="0.22" filter="url(#oc-glow)" />
+      <g className="sp-node">
+        <circle cx={core.x} cy={core.y} r="38" fill="url(#oc-core)" />
+        <circle cx={core.x} cy={core.y} r="38" fill="none" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1.2" />
+        <g transform={`translate(${core.x},${core.y})`} stroke="#ffffff" strokeWidth="3.4" fill="none" strokeLinejoin="round" strokeLinecap="round" opacity="0.95">
+          <path d="M0 -15 L17 -5 L0 5 L-17 -5 Z" /><path d="M-17 3 L0 13 L17 3" />
+        </g>
+      </g>
+      <text x={core.x} y={core.y + 64} textAnchor="middle" fontSize="11.5" fontWeight="800" letterSpacing="1" fill="#ffffff">YOUR PRODUCT</text>
+    </svg>
   )
 }
 
