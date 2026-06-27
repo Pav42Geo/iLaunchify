@@ -368,7 +368,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         <Field label="Repeat lead time (days)" hint="re-orders">
           <input className="input" type="number" min={0} value={leadRepeat} onChange={(e) => setLeadRepeat(Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
-        <Field label="New-SKU lead time (days)" hint="first run · incl. stability testing">
+        <Field label="New-SKU lead time (days)" hint="first run">
           <input className="input" type="number" min={0} value={leadFirstRun} onChange={(e) => setLeadFirstRun(Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
         <Field label="Monthly capacity"><input className="input" type="number" min={0} value={capacity} onChange={(e) => setCapacity(Math.max(0, parseInt(e.target.value, 10) || 0))} /></Field>
@@ -380,11 +380,11 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
             <option value="FROZEN">Frozen</option>
           </select>
         </Field>
-        <Field label="Storage temp °F · min"><input className="input" type="number" value={tempMin} onChange={(e) => setTempMin(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
-        <Field label="Storage temp °F · max"><input className="input" type="number" value={tempMax} onChange={(e) => setTempMax(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
+        <Field label="Min storage temp (°F)"><input className="input" type="number" value={tempMin} onChange={(e) => setTempMin(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
+        <Field label="Max storage temp (°F)"><input className="input" type="number" value={tempMax} onChange={(e) => setTempMax(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
         <Field label="Base SKU" hint="manufacturer stock id"><input className="input" value={sku} onChange={(e) => setSku(e.target.value)} /></Field>
         <Field label="Lot / batch tracking"><select className="sel" value={lotTracking ? 'on' : 'off'} onChange={(e) => setLotTracking(e.target.value === 'on')}><option value="on">On (recommended)</option><option value="off">Off</option></select></Field>
-        <Field label="Facility · Manufactured by">
+        <Field label="Manufactured by">
           <select className="sel">
             {facilities.length === 0 && <option>Onboarding address (default)</option>}
             {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -529,7 +529,7 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
             {isMultiFlavor && (
               <Field label="Max units / flavor" hint="optional cap"><input className="input" type="number" min={1} value={row.maxUnitsPerFlavor ?? ''} placeholder="—" onChange={(e) => patch({ maxUnitsPerFlavor: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
             )}
-            <Field label="Max samples / creator" hint="abuse cap · optional"><input className="input" type="number" min={1} value={row.maxPerCreatorPerPeriod ?? ''} placeholder="∞" onChange={(e) => patch({ maxPerCreatorPerPeriod: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
+            <Field label="Max samples / creator" hint="optional"><input className="input" type="number" min={1} value={row.maxPerCreatorPerPeriod ?? ''} placeholder="∞" onChange={(e) => patch({ maxPerCreatorPerPeriod: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
           </div>
           <div className="row" style={{ gap: 16, marginTop: 10, alignItems: 'flex-end' }}>
             <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>

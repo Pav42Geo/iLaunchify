@@ -77,7 +77,7 @@ export function MarketplaceAttributesCard({
 
   return (
     <div className="field" style={{ gridColumn: '1/3' }}>
-      <label>Marketplace filters · how buyers discover this product</label>
+      <label>Marketplace filters</label>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 2 }}>
         {/* Format — single-select */}

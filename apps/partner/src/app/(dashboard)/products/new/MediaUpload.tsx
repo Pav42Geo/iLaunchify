@@ -42,7 +42,7 @@ export function MediaUpload({ draftId }: { draftId: string | null }) {
   if (!draftId) {
     return (
       <div className="card">
-        <div className="eyebrow">Media · hero + 6 images + video</div>
+        <div className="eyebrow">Media</div>
         <p className="tiny muted" style={{ marginTop: 8 }}>Save the draft (name + category) to upload media.</p>
       </div>
     )
@@ -50,7 +50,7 @@ export function MediaUpload({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card">
-      <div className="eyebrow">Media · hero + 6 images + video</div>
+      <div className="eyebrow">Media</div>
 
       {/* Hero */}
       <div style={{ position: 'relative', marginTop: 10 }}>

@@ -188,13 +188,13 @@ export function BasicsScreen({
 
       <div className="two">
         <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <Field full label="Product name · appears in the marketplace">
+          <Field full label="Product name">
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sparkling Yuzu Soda" />
           </Field>
-          <Field full label="Base SKU · seeds variant SKUs (internal)">
+          <Field full label="Base SKU">
             <input className="input" value={baseSku} onChange={(e) => setBaseSku(e.target.value)} placeholder="SODA-YUZU" />
           </Field>
-          <Field label="Category · filtered to your product domain">
+          <Field label="Category">
             <select
               className="sel"
               value={categoryId}
@@ -205,17 +205,17 @@ export function BasicsScreen({
               {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
-          <Field label="Subcategory · sets the FDA rule pack">
+          <Field label="Subcategory">
             <select className="sel" value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} disabled={!categoryId}>
               <option value="">{categoryId ? 'Select…' : 'Pick a category first'}</option>
               {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
 
-          <Field full label="Niches · 1 primary + up to 2 secondary">
+          <Field full label="Niches">
             <ChipSelect options={niches} selected={selNiches} onToggle={(id) => toggleChip(selNiches, setSelNiches, id, 3)} placeholder="Add a niche…" />
           </Field>
-          <Field full label="Lifestyle tags · feed the marketplace filter">
+          <Field full label="Lifestyle tags">
             <ChipSelect options={lifestyleTags} selected={selTags} onToggle={(id) => toggleChip(selTags, setSelTags, id)} placeholder="Add a lifestyle tag…" />
           </Field>
           <MarketplaceAttributesCard
@@ -228,10 +228,10 @@ export function BasicsScreen({
             }}
           />
 
-          <Field full label="Short description · marketplace card">
+          <Field full label="Short description">
             <input className="input" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="Crisp Japanese yuzu, lightly sparkling, zero sugar." />
           </Field>
-          <Field full label="Detailed description · detail page">
+          <Field full label="Detailed description">
             <textarea rows={3} value={longDesc} onChange={(e) => setLongDesc(e.target.value)} placeholder="A bright, citrus-forward sparkling soda…" />
           </Field>
         </div>
@@ -241,7 +241,7 @@ export function BasicsScreen({
           <MediaUpload draftId={draftId} />
 
           <div className="card">
-            <div className="eyebrow">Custom meta fields · max 10</div>
+            <div className="eyebrow">Custom meta fields</div>
             <div style={{ marginTop: 8 }}>
               {meta.map((m, i) => (
                 <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
@@ -276,7 +276,7 @@ function SingleProduction({ facilities, baseSku }: { facilities: FacilityOption[
         <Field label="Shelf life (days)"><input className="input" defaultValue="365" /></Field>
         <Field label="SKU"><input className="input" defaultValue={baseSku} /></Field>
         <Field label="Lot / batch tracking"><select className="sel"><option>On (recommended)</option><option>Off</option></select></Field>
-        <Field label="Facility · Manufactured by">
+        <Field label="Manufactured by">
           <select className="sel">
             {facilities.length === 0 && <option>Onboarding address (default)</option>}
             {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
