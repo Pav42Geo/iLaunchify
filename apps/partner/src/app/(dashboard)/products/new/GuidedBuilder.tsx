@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu } from 'lucide-react'
+import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
@@ -26,11 +26,11 @@ import { setDraftLabelingType, type LabelingTypeValue } from './domain-actions'
 type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'
 const LT_TO_LTYPE: Record<string, Ltype> = { FOOD: 'Recipe', DIETARY_SUPPLEMENT: 'Supplement', COSMETIC: 'Cosmetic', PET_PRODUCT: 'Pet' }
 const LTYPE_TO_LT: Record<Ltype, LabelingTypeValue> = { Recipe: 'FOOD', Supplement: 'DIETARY_SUPPLEMENT', Cosmetic: 'COSMETIC', Pet: 'PET_PRODUCT' }
-const DOMAIN_OPTIONS: { v: Ltype; label: string; desc: string; artifact: string }[] = [
-  { v: 'Recipe', label: 'Food / Beverage', desc: 'Edible food or drink', artifact: 'Nutrition Facts' },
-  { v: 'Supplement', label: 'Supplement', desc: 'Vitamins, minerals, botanicals', artifact: 'Supplement Facts' },
-  { v: 'Cosmetic', label: 'Cosmetic', desc: 'Skincare, haircare, personal care', artifact: 'INCI declaration' },
-  { v: 'Pet', label: 'Pet', desc: 'Pet food, treats, supplements', artifact: 'Guaranteed Analysis' },
+const DOMAIN_OPTIONS: { v: Ltype; label: string; desc: string; artifact: string; Icon: LucideIcon }[] = [
+  { v: 'Recipe', label: 'Food / Beverage', desc: 'Edible food or drink', artifact: 'Nutrition Facts', Icon: UtensilsCrossed },
+  { v: 'Supplement', label: 'Supplement', desc: 'Vitamins, minerals, botanicals', artifact: 'Supplement Facts', Icon: Pill },
+  { v: 'Cosmetic', label: 'Cosmetic', desc: 'Skincare, haircare, personal care', artifact: 'INCI declaration', Icon: Sparkles },
+  { v: 'Pet', label: 'Pet', desc: 'Pet food, treats, supplements', artifact: 'Guaranteed Analysis', Icon: PawPrint },
 ]
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
@@ -430,13 +430,12 @@ export function GuidedBuilder({
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
                   {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
-                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.label}</div>
-                      <div className="tiny muted" style={{ marginTop: 2 }}>{o.desc}</div>
-                      <div className="tiny" style={{ marginTop: 7, fontWeight: 600, color: 'var(--pink-700, #C71350)' }}>{o.artifact}</div>
+                      <span className="domcard-ic"><o.Icon size={22} strokeWidth={1.75} /></span>
+                      <span className="domcard-label">{o.label}</span>
                     </button>
                   ))}
                 </div>
-                <style>{`.gb .domcard{display:block;text-align:left;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 12px;cursor:pointer;transition:.12s}.gb .domcard:hover{border-color:var(--pink-200,#FFB3CC);background:var(--pink-50,#FFE9F0)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FFE9F0);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}`}</style>
+                <style>{`.gb .domcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border:1.5px solid var(--ink-200);border-radius:14px;background:#fff;padding:18px 12px;min-height:108px;cursor:pointer;transition:.14s}.gb .domcard:hover{border-color:var(--pink-200,#FFB3CC);background:var(--pink-50,#FFE9F0)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FFE9F0);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}.gb .domcard-ic{width:44px;height:44px;border-radius:12px;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;transition:.14s}.gb .domcard:hover .domcard-ic{background:#fff;color:var(--pink-700,#C71350)}.gb .domcard.on .domcard-ic{background:var(--pink-500,#FF2E63);color:#fff}.gb .domcard-label{font-weight:650;font-size:16.5px;color:var(--ink-900);line-height:1.2}`}</style>
               </div>
               <BasicsScreen
                 domain={LTYPE_TO_LT[ltype]}
