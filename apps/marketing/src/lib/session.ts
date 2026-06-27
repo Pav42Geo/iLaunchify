@@ -13,6 +13,7 @@
 // components that need to know who's looking. Auth failures are swallowed
 // — the marketing app never blocks rendering on a session error.
 
+import { cookies } from 'next/headers'
 import { auth } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 
@@ -49,6 +50,20 @@ export interface MarketingSession {
 export async function getMarketingSession(): Promise<MarketingSession | null> {
   if (!process.env.AUTH_SECRET) {
     return null
+  }
+  // Public marketing pages are anonymous by default. Skip the auth() / DB
+  // round-trip entirely when there's no session cookie — this keeps guests
+  // off the database and avoids Auth.js logging a noisy decode/lookup error
+  // before our catch can swallow it.
+  try {
+    const jar = await cookies()
+    const hasSessionCookie =
+      jar.has('authjs.session-token') ||
+      jar.has('__Secure-authjs.session-token')
+    if (!hasSessionCookie) return null
+  } catch {
+    // cookies() unavailable (shouldn't happen in a server component) — fall
+    // through to the guarded auth() path below.
   }
   try {
     const session = await auth()
