@@ -1,36 +1,30 @@
 import Link from 'next/link'
 import {
   ChefHat, Globe, Mic, Dumbbell, Sparkles, Dog, Leaf,
-  Wand2, Package, Scissors, ArrowRight, ShieldCheck, Factory,
-  MousePointer2, Type, Image as ImageIcon, Palette, Layers, Box as BoxIcon,
+  ArrowRight, ShieldCheck, Factory, Search, Check, Upload, Type as TypeIcon,
+  MousePointer2, Image as ImageIcon, Palette, Layers, Box as BoxIcon,
+  ShoppingBag, Truck, Store, Printer, Boxes, Warehouse, CheckCircle2, Music2,
 } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { Reveal } from '@/components/Reveal'
 
 /**
- * /proto — NON-DESTRUCTIVE repositioning prototype (white/private-label production
- * marketplace), Packify-inspired: stylish 3D product renders + a "behind the
- * curtain" Studio reveal. Not linked in nav. Copy source: docs/LANDING_MESSAGING.md.
+ * /proto — NON-DESTRUCTIVE repositioning prototype. The centerpiece is the
+ * 8-step "how your brand gets made" walkthrough with believable platform-screen
+ * mockups. Copy source: docs/LANDING_MESSAGING.md. Not linked in nav.
  */
 
-// ---- hue ramps for the vector "product photo" renders --------------------
-const HUES: Record<string, [string, string, string, string]> = {
-  // [shadow/dark edge, base, highlight, deep base]
-  pink: ['#A8164474', '#FF2E63', '#FF9DB8', '#B81A4C'],
-  neon: ['#7FB52A74', '#B5FF3D', '#E4FFB8', '#86C42B'],
-  violet: ['#7E63C974', '#C9B6FF', '#F0E9FF', '#9A82E0'],
-  cyan: ['#1B9AA874', '#2DE2E6', '#C4F8FA', '#1FB3B8'],
-}
-
 const ARCHETYPES = [
-  { icon: ChefHat, name: 'Chefs & culinary', trust: 'recipes, flavor, technique', product: 'Signature hot sauce', domain: 'Gourmet & Culinary', hue: 'pink' },
-  { icon: Globe, name: 'Food nomads', trust: 'global tastes & discovery', product: 'Single-origin coffee', domain: 'Functional drinks', hue: 'neon' },
-  { icon: Mic, name: 'Food podcasters', trust: 'what to eat and buy', product: 'Daily greens + bars', domain: 'Healthy Lifestyle', hue: 'cyan' },
-  { icon: Dumbbell, name: 'Fitness & wellness', trust: 'training & supplementation', product: 'Protein & electrolytes', domain: 'Energy & Performance', hue: 'violet' },
-  { icon: Sparkles, name: 'Beauty & self-care', trust: 'routines & ingredients', product: 'Beauty-from-within', domain: 'Beauty & Self-Care', hue: 'pink' },
-  { icon: Dog, name: 'Pet creators', trust: 'pet life & trusted picks', product: 'Functional pet treats', domain: 'Pet Wellness', hue: 'neon' },
-  { icon: Leaf, name: 'Lifestyle & social', trust: 'taste & recommendations', product: 'Adaptogen blends', domain: 'Social & Lifestyle', hue: 'violet' },
+  { icon: ChefHat, name: 'Chefs & culinary', trust: 'recipes, flavor, technique', product: 'Signature hot sauce', domain: 'Gourmet & Culinary', hue: '#FF2E63' },
+  { icon: Globe, name: 'Food nomads', trust: 'global tastes & discovery', product: 'Single-origin coffee', domain: 'Functional drinks', hue: '#86C42B' },
+  { icon: Mic, name: 'Food podcasters', trust: 'what to eat and buy', product: 'Daily greens + bars', domain: 'Healthy Lifestyle', hue: '#1FB3B8' },
+  { icon: Dumbbell, name: 'Fitness & wellness', trust: 'training & supplementation', product: 'Protein & electrolytes', domain: 'Energy & Performance', hue: '#9A82E0' },
+  { icon: Sparkles, name: 'Beauty & self-care', trust: 'routines & ingredients', product: 'Beauty-from-within', domain: 'Beauty & Self-Care', hue: '#FF2E63' },
+  { icon: Dog, name: 'Pet creators', trust: 'pet life & trusted picks', product: 'Functional pet treats', domain: 'Pet Wellness', hue: '#86C42B' },
+  { icon: Leaf, name: 'Lifestyle & social', trust: 'taste & recommendations', product: 'Adaptogen blends', domain: 'Social & Lifestyle', hue: '#9A82E0' },
 ] as const
+
+const GREEN = '#1FAE5A'
 
 export default function ProtoPage() {
   return (
@@ -42,12 +36,12 @@ export default function ProtoPage() {
       {/* ===================== HERO ===================== */}
       <section className="relative overflow-hidden px-6 pt-16 pb-20 sm:px-8 sm:pt-20">
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="mesh-blob" style={{ width: 520, height: 520, background: '#FF2E63', top: -160, left: -120 }} />
-          <div className="mesh-blob" style={{ width: 440, height: 440, background: '#B5FF3D', top: 180, right: -140, animationDelay: '-6s' }} />
-          <div className="mesh-blob" style={{ width: 380, height: 380, background: '#C9B6FF', bottom: -160, left: '36%', animationDelay: '-12s' }} />
+          <div className="mesh-blob" style={{ width: 520, height: 520, background: '#FF2E63', top: -170, left: -120 }} />
+          <div className="mesh-blob" style={{ width: 440, height: 440, background: '#B5FF3D', top: 180, right: -150, animationDelay: '-6s' }} />
+          <div className="mesh-blob" style={{ width: 360, height: 360, background: '#C9B6FF', bottom: -150, left: '38%', animationDelay: '-12s' }} />
         </div>
 
-        <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-10 lg:grid-cols-[1fr_0.95fr]">
+        <div className="relative z-[1] mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1fr_1.02fr]">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 backdrop-blur">
               <ShieldCheck strokeWidth={2.5} className="h-3.5 w-3.5" />
@@ -57,60 +51,89 @@ export default function ProtoPage() {
               Your brand on{' '}
               <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">proven, shelf-ready products.</span>
             </h1>
-            <p className="mb-9 max-w-[54ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-ink-900/[0.78]">
-              Pick a production-ready product, make it yours in the Design Studio, and we orchestrate the
-              manufacturer, printer, co-packer, and warehouse. A real CPG brand — without becoming a CPG operator.
+            <p className="mb-9 max-w-[52ch] text-[clamp(16px,1.6vw,20px)] leading-[1.55] text-ink-900/[0.78]">
+              Pick a production-ready product, brand it, design the packaging, pass FDA compliance, and order a real
+              run — all in one place. Launch a CPG brand without becoming a CPG operator.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="primary" size="xl" asChild>
                 <Link href="/marketplace">Browse white-label products <ArrowRight strokeWidth={2.5} className="h-4 w-4" /></Link>
               </Button>
               <Button variant="outline" size="xl" asChild className="border-ink-300 text-ink-900 hover:bg-ink-50">
-                <Link href="/business">Sell as a manufacturer</Link>
+                <Link href="#how">See how it works</Link>
               </Button>
             </div>
             <p className="mt-6 text-[13px] font-medium text-ink-500">You own the brand and the customer. We stay invisible in production.</p>
           </div>
-
-          {/* hero product cluster */}
-          <div className="relative hidden h-[460px] lg:block">
-            <div className="absolute left-1/2 top-1/2 w-[230px] -translate-x-1/2 -translate-y-1/2 drop-shadow-2xl">
-              <Can hue="pink" idKey="h1" label="GREENS" floatDur="6s" />
-            </div>
-            <div className="absolute left-[8%] top-[16%] w-[150px] -rotate-6 opacity-95">
-              <Can hue="neon" idKey="h2" label="FOCUS" floatDur="7s" />
-            </div>
-            <div className="absolute right-[4%] bottom-[8%] w-[140px] rotate-6 opacity-95">
-              <Can hue="violet" idKey="h3" label="CALM" floatDur="6.5s" />
-            </div>
-            <span className="absolute left-1/2 top-[20%] -translate-x-1/2 rounded-pill bg-ink-900 px-3 py-1.5 text-[11px] font-bold tracking-[0.4px] text-neon-500 shadow-lg">YOUR LABEL HERE</span>
+          <div className="hidden lg:block">
+            <StudioScreen />
           </div>
         </div>
       </section>
 
-      {/* ============ ONE PLATFORM — Studio reveal (behind the curtain) ============ */}
-      <Reveal>
-        <section data-surface="dark" className="overflow-hidden bg-ink-900 px-6 py-24 text-white sm:px-8">
-          <div className="mx-auto max-w-[1400px]">
-            <div className="mb-12 max-w-2xl">
-              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-neon-500">One platform · infinite design</div>
-              <h2 className="font-display text-4xl font-bold leading-[1.02] tracking-[-0.035em] sm:text-5xl">
-                Design it in 3D.{' '}
-                <span className="font-serif italic font-medium text-neon-500">We print and produce it.</span>
+      {/* ===================== THE PROCESS ===================== */}
+      <section id="how" className="bg-white px-6 py-24 sm:px-8">
+        <div className="mx-auto max-w-[1400px]">
+          <Reveal>
+            <div className="mb-16 max-w-2xl">
+              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">From idea to on-shelf</div>
+              <h2 className="font-display text-[clamp(34px,4.4vw,60px)] font-bold leading-[1.0] tracking-[-0.035em]">
+                Eight steps you do.{' '}
+                <span className="font-serif italic font-medium text-pink-500">The factory floor we run.</span>
               </h2>
-              <p className="mt-4 max-w-[60ch] text-[17px] leading-[1.6] text-ink-300">
-                Drop your brand onto a real product, spin it in 3D, and watch the FDA panel render live — then we route
-                the print-ready files to the factory floor. This is the studio behind your brand.
+              <p className="mt-4 text-[17px] leading-[1.6] text-ink-600">
+                Every step lives on one platform — and your card isn&apos;t charged until every partner confirms they can deliver.
               </p>
             </div>
-            <StudioMock />
-          </div>
-        </section>
-      </Reveal>
+          </Reveal>
 
-      {/* ============ ARCHETYPES ============ */}
+          <div className="space-y-16 lg:space-y-24">
+            <Step n="01" kicker="Pick the product" title="Start from a proven product." reverse={false}
+              desc="Browse a curated catalog of production-ready, FDA-compliant products across 8 niches — each one already validated by a real manufacturer. No sourcing, no cold emails.">
+              <PickScreen />
+            </Step>
+
+            <Step n="02" kicker="Add your brand identity" title="Make it unmistakably yours." reverse
+              desc="Drop in your logo, brand colors, and fonts once. Your brand kit auto-applies across every product, label, and pack you design.">
+              <BrandScreen />
+            </Step>
+
+            <Step n="03" kicker="Design your packaging" title="Design it like a pro — no designer needed." reverse={false}
+              desc="A real canvas with your brand pre-loaded. Place artwork on the actual product surfaces and preview it print-accurate.">
+              <StudioScreen compact />
+            </Step>
+
+            <Step n="04" kicker="Add your Nutrition Facts label" title="Your label, rendered to FDA spec." reverse
+              desc="Nutrition Facts and Supplement Facts panels render automatically to 21 CFR — right serving sizes, % daily values, allergen and bioengineered disclosures.">
+              <LabelScreen />
+            </Step>
+
+            <Step n="05" kicker="Check your compliance" title="Pass compliance before you print." reverse={false}
+              desc="A live scan flags below-spec font sizes, missing allergens, and net-quantity formatting — so nothing ships mislabeled.">
+              <ComplianceScreen />
+            </Step>
+
+            <Step n="06" kicker="Order a sample" title="Hold it before you commit." reverse
+              desc="Order a real sample — your first one is 50% off. Taste it, shoot it, show your audience. Then green-light the run.">
+              <SampleScreen />
+            </Step>
+
+            <Step n="07" kicker="Place the production order" title="One order. We orchestrate the rest." reverse={false}
+              desc="We decompose your order into a workflow graph across manufacturer, printer, co-packer, and warehouse — and surface one timeline. Card captured only when every partner approves.">
+              <OrchestrationScreen />
+            </Step>
+
+            <Step n="08" kicker="Add it to your channel" title="Sell it where your audience already is." reverse
+              desc="Connect Shopify or TikTok Shop and your product goes live on your store. End buyers buy from you — we never appear in the consumer flow.">
+              <ChannelScreen />
+            </Step>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== ARCHETYPES ===================== */}
       <Reveal>
-        <section className="border-b border-ink-200 bg-white px-6 py-24 sm:px-8">
+        <section className="border-y border-ink-200 bg-ink-50/50 px-6 py-24 sm:px-8">
           <div className="mx-auto max-w-[1400px]">
             <div className="mb-14 max-w-2xl">
               <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">Built for creators like you</div>
@@ -119,29 +142,24 @@ export default function ProtoPage() {
                 <span className="font-serif italic font-medium text-pink-500">Put your name on the product.</span>
               </h2>
               <p className="text-[17px] leading-[1.6] text-ink-600">
-                The wedge isn&apos;t follower count — it&apos;s community trust. Whatever your audience trusts you for,
-                there&apos;s a product to brand and a domain to own.
+                The wedge isn&apos;t follower count — it&apos;s community trust. Whatever your audience trusts you for, there&apos;s a product to brand and a domain to own.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {ARCHETYPES.map((a) => {
-                const c = HUES[a.hue]!
-                const dark = a.hue === 'neon'
-                return (
-                  <div key={a.name} className="group flex flex-col rounded-2xl border border-ink-200 bg-white p-6 transition-shadow hover:shadow-[0_16px_40px_rgba(13,7,23,0.08)]">
-                    <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-pill" style={{ background: c[1] + '22', border: `1px solid ${c[1]}66` }}>
-                      <a.icon strokeWidth={2} className="h-5 w-5" style={{ color: dark ? '#18181A' : c[3] }} />
-                    </span>
-                    <div className="font-display text-[18px] font-bold leading-tight tracking-[-0.01em] text-ink-900">{a.name}</div>
-                    <div className="mt-1 text-[13px] text-ink-500">Trusted for {a.trust}</div>
-                    <div className="mt-4 flex items-center gap-2 border-t border-ink-100 pt-4 text-[13.5px]">
-                      <ArrowRight strokeWidth={2.5} className="h-3.5 w-3.5 text-pink-500" />
-                      <span className="font-semibold text-ink-900">{a.product}</span>
-                    </div>
-                    <div className="mt-1 text-[12px] font-medium uppercase tracking-[0.05em] text-ink-400">{a.domain}</div>
+              {ARCHETYPES.map((a) => (
+                <div key={a.name} className="flex flex-col rounded-2xl border border-ink-200 bg-white p-6 transition-shadow hover:shadow-[0_16px_40px_rgba(13,7,23,0.08)]">
+                  <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-pill" style={{ background: a.hue + '22', border: `1px solid ${a.hue}55` }}>
+                    <a.icon strokeWidth={2} className="h-5 w-5" style={{ color: a.hue }} />
+                  </span>
+                  <div className="font-display text-[18px] font-bold leading-tight tracking-[-0.01em] text-ink-900">{a.name}</div>
+                  <div className="mt-1 text-[13px] text-ink-500">Trusted for {a.trust}</div>
+                  <div className="mt-4 flex items-center gap-2 border-t border-ink-100 pt-4 text-[13.5px]">
+                    <ArrowRight strokeWidth={2.5} className="h-3.5 w-3.5 text-pink-500" />
+                    <span className="font-semibold text-ink-900">{a.product}</span>
                   </div>
-                )
-              })}
+                  <div className="mt-1 text-[12px] font-medium uppercase tracking-[0.05em] text-ink-400">{a.domain}</div>
+                </div>
+              ))}
               <div className="flex flex-col justify-center rounded-2xl bg-ink-900 p-6 text-white">
                 <div className="font-display text-[18px] font-bold tracking-[-0.01em]">Your niche, too.</div>
                 <p className="mt-2 text-[13.5px] leading-[1.5] text-ink-300">8 locked niches · 13 product categories — all wired and curated.</p>
@@ -152,42 +170,7 @@ export default function ProtoPage() {
         </section>
       </Reveal>
 
-      {/* ============ TOOLS SHOWCASE ============ */}
-      <Reveal>
-        <section className="bg-ink-50/50 px-6 py-24 sm:px-8">
-          <div className="mx-auto max-w-[1400px]">
-            <div className="mb-12 max-w-2xl">
-              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">The toolkit</div>
-              <h2 className="font-display text-4xl font-bold leading-[1.02] tracking-[-0.035em] sm:text-5xl">
-                Everything from logo to{' '}
-                <span className="font-serif italic font-medium text-pink-500">loading dock.</span>
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              <ToolCard icon={Wand2} name="Design Studio" status={null}
-                blurb="Drop your logo, colors, and copy onto a real product. FDA Nutrition & Supplement Facts panels render live as you design.">
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-ink-100 to-white p-6">
-                  <div className="w-[150px]"><Can hue="pink" idKey="t1" label="GREENS" selected /></div>
-                </div>
-              </ToolCard>
-              <ToolCard icon={Package} name="Packaging Studio" status={null}
-                blurb="Wrap it in retail-ready packaging — cans, cartons, pouches, labels — spun in 3D and built to print.">
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-ink-900 to-ink-800 p-6">
-                  <div className="w-[160px]"><Box /></div>
-                </div>
-              </ToolCard>
-              <ToolCard icon={Scissors} name="Die-line Generator" status="Coming soon"
-                blurb="Auto-generate print-perfect die-lines for any pack format — every fold, bleed, and safe-zone placed for you.">
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-white to-ink-50 p-6">
-                  <Dieline />
-                </div>
-              </ToolCard>
-            </div>
-          </div>
-        </section>
-      </Reveal>
-
-      {/* ============ SELLER STRIP ============ */}
+      {/* ===================== SELLER STRIP ===================== */}
       <Reveal>
         <section className="bg-white px-6 py-20 sm:px-8">
           <div className="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-6 rounded-3xl bg-ink-900 p-10 text-white sm:flex-row sm:items-center">
@@ -200,8 +183,7 @@ export default function ProtoPage() {
                 <span className="font-serif italic font-medium text-neon-500">brands, not brokers.</span>
               </h2>
               <p className="mt-2 text-[15px] leading-[1.55] text-ink-300">
-                List your white-label, FDA-ready catalog. Creators brand it; we route you pre-qualified production
-                orders by capability, region, and capacity. Stripe payouts on a published schedule.
+                List your white-label, FDA-ready catalog. Creators brand it; we route you pre-qualified production orders by capability, region, and capacity. Stripe payouts on a published schedule.
               </p>
             </div>
             <Button variant="neon" size="xl" asChild>
@@ -214,174 +196,321 @@ export default function ProtoPage() {
   )
 }
 
-/* ====================== components ====================== */
+/* ============================ layout ============================ */
 
-function ToolCard({ icon: Icon, name, blurb, status, children }: { icon: typeof Wand2; name: string; blurb: string; status: string | null; children: React.ReactNode }) {
+function Step({ n, kicker, title, desc, reverse, children }: { n: string; kicker: string; title: string; desc: string; reverse: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <div className="relative h-56 border-b border-ink-200">
-        {children}
-        {status && (
-          <span className="absolute right-4 top-4 rounded-pill bg-neon-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-900">{status}</span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-6">
-        <div className="mb-2 flex items-center gap-2">
-          <Icon strokeWidth={2} className="h-5 w-5 text-pink-600" />
-          <div className="font-display text-[19px] font-bold tracking-[-0.01em] text-ink-900">{name}</div>
+    <Reveal>
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className={reverse ? 'lg:order-2' : ''}>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-pill bg-ink-900 font-display text-[17px] font-extrabold text-neon-500">{n}</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-pink-700">{kicker}</span>
+          </div>
+          <h3 className="font-display text-[28px] font-bold leading-[1.05] tracking-[-0.025em] text-ink-900 sm:text-[34px]">{title}</h3>
+          <p className="mt-3 max-w-[46ch] text-[16px] leading-[1.6] text-ink-600">{desc}</p>
         </div>
-        <p className="text-[14px] leading-[1.6] text-ink-600">{blurb}</p>
+        <div className={reverse ? 'lg:order-1' : ''}>{children}</div>
       </div>
+    </Reveal>
+  )
+}
+
+function Win({ title, tone = 'light', children }: { title: string; tone?: 'light' | 'dark'; children: React.ReactNode }) {
+  const dark = tone === 'dark'
+  return (
+    <div className={`overflow-hidden rounded-2xl border shadow-[0_30px_80px_rgba(13,7,23,0.14)] ${dark ? 'border-ink-700 bg-ink-900' : 'border-ink-200 bg-white'}`}>
+      <div className={`flex items-center gap-2.5 border-b px-4 py-2.5 ${dark ? 'border-ink-700 bg-ink-800' : 'border-ink-100 bg-ink-50/70'}`}>
+        <div className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-ink-300" /><span className="h-2.5 w-2.5 rounded-full bg-ink-300" /><span className="h-2.5 w-2.5 rounded-full bg-ink-300" />
+        </div>
+        <span className={`text-[12px] font-semibold ${dark ? 'text-white' : 'text-ink-700'}`}>{title}</span>
+      </div>
+      {children}
     </div>
   )
 }
 
-/** Glossy 3D can render — vector but reads like a product shot. */
-function Can({ hue, idKey, label, selected = false, floatDur }: { hue: keyof typeof HUES; idKey: string; label: string; selected?: boolean; floatDur?: string }) {
-  const c = HUES[hue]
-  const b = `body-${idKey}`
-  const m = `metal-${idKey}`
-  const g = `gloss-${idKey}`
-  const dark = hue === 'neon' || hue === 'cyan'
+/* ============================ shared visuals ============================ */
+
+/** Flat, front-facing stand-up pouch (clean — no off 3D). */
+function Pouch({ hue = '#FF2E63', dark = false, label = 'GREENS', sub = 'Super Greens', className = 'w-[120px]' }: { hue?: string; dark?: boolean; label?: string; sub?: string; className?: string }) {
+  const fg = dark ? '#101013' : '#ffffff'
   return (
-    <svg viewBox="0 0 200 360" className="h-auto w-full" role="img" aria-label={`${label} product`}>
+    <svg viewBox="0 0 160 220" className={`h-auto ${className}`} aria-hidden>
       <defs>
-        <linearGradient id={b} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor={c![3]} /><stop offset="0.16" stopColor={c![1]} /><stop offset="0.42" stopColor={c![2]} />
-          <stop offset="0.52" stopColor={c![2]} /><stop offset="0.66" stopColor={c![1]} /><stop offset="1" stopColor={c![3]} />
-        </linearGradient>
-        <linearGradient id={m} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#8d93a0" /><stop offset="0.3" stopColor="#e8ecf2" /><stop offset="0.5" stopColor="#ffffff" /><stop offset="0.7" stopColor="#c9cfd8" /><stop offset="1" stopColor="#7e8492" />
-        </linearGradient>
-        <linearGradient id={g} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        <linearGradient id={`pg-${hue.replace('#', '')}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor={hue} stopOpacity="0.82" /><stop offset="0.5" stopColor={hue} /><stop offset="1" stopColor={hue} stopOpacity="0.82" />
         </linearGradient>
       </defs>
-      <g>
-        {floatDur && <animateTransform attributeName="transform" type="translate" values="0 0;0 -10;0 0" dur={floatDur} repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />}
-        {/* shadow */}
-        <ellipse cx="100" cy="338" rx="62" ry="11" fill="#0B0B0F" opacity="0.18" />
-        {/* body */}
-        <ellipse cx="100" cy="312" rx="60" ry="15" fill={c![3]} />
-        <rect x="40" y="56" width="120" height="256" fill={`url(#${b})`} />
-        {/* gloss highlight stripe */}
-        <rect x="62" y="56" width="16" height="256" fill={`url(#${g})`} />
-        <rect x="120" y="56" width="6" height="256" fill="#ffffff" opacity="0.12" />
-        {/* accent bands */}
-        <rect x="40" y="120" width="120" height="3" fill="#ffffff" opacity="0.55" />
-        <rect x="40" y="246" width="120" height="3" fill="#ffffff" opacity="0.4" />
-        {/* brand glyph + name */}
-        <g transform="translate(100,186)">
-          <g stroke={dark ? '#101013' : '#ffffff'} strokeWidth="5" fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M0 -22 L26 -8 L0 6 L-26 -8 Z" /><path d="M-26 2 L0 16 L26 2" /><path d="M-26 12 L0 26 L26 12" />
-          </g>
-          <text x="0" y="58" textAnchor="middle" fontSize="17" fontWeight="800" letterSpacing="2" fill={dark ? '#101013' : '#ffffff'}>{label}</text>
+      <ellipse cx="80" cy="210" rx="52" ry="8" fill="#0B0B0F" opacity="0.14" />
+      <rect x="30" y="6" width="100" height="14" rx="3" fill={hue} opacity="0.55" />
+      <path d="M22 26 Q22 18 30 18 L130 18 Q138 18 138 26 L132 198 Q132 206 124 206 L36 206 Q28 206 28 198 Z" fill={`url(#pg-${hue.replace('#', '')})`} />
+      <rect x="44" y="64" width="72" height="96" rx="8" fill={dark ? '#0E1A0E' : '#ffffff'} opacity="0.95" />
+      <g transform="translate(80,96)">
+        <g stroke={dark ? '#86C42B' : hue} strokeWidth="4.5" fill="none" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M0 -16 L18 -6 L0 4 L-18 -6 Z" /><path d="M-18 2 L0 12 L18 2" />
         </g>
-        {/* top rim */}
-        <ellipse cx="100" cy="56" rx="60" ry="15" fill={`url(#${m})`} />
-        <ellipse cx="100" cy="54" rx="50" ry="11" fill="#aeb4bf" />
-        <ellipse cx="100" cy="52" rx="50" ry="10" fill={`url(#${m})`} />
-        {selected && (
-          <g>
-            <rect x="34" y="40" width="132" height="288" fill="none" stroke="#2DE2E6" strokeWidth="1.5" strokeDasharray="5 4" />
-            <g fill="#2DE2E6">{[[34, 40], [166, 40], [34, 328], [166, 328]].map(([x, y]) => <rect key={`${x}-${y}`} x={x! - 3} y={y! - 3} width="6" height="6" />)}</g>
-          </g>
-        )}
+        <text x="0" y="34" textAnchor="middle" fontSize="14" fontWeight="800" letterSpacing="1.5" fill={dark ? '#86C42B' : hue}>{label}</text>
+        <text x="0" y="50" textAnchor="middle" fontSize="8" fontWeight="600" letterSpacing="0.5" fill={dark ? '#5f8f22' : '#9a9aa3'}>{sub}</text>
       </g>
+      <rect x="48" y="173" width="64" height="9" rx="2" fill={fg} opacity="0.3" />
     </svg>
   )
 }
 
-/** Isometric box render with a branded front panel. */
-function Box() {
+/** Realistic FDA Supplement Facts panel (HTML/CSS). */
+function SuppFacts() {
+  const Row = ({ l, v, indent, top = 'thin' }: { l: string; v: string; indent?: boolean; top?: 'thin' | 'thick' }) => (
+    <div className={`flex items-baseline justify-between ${top === 'thick' ? 'border-t-[5px]' : 'border-t'} border-black py-[1px] text-[7.5px] leading-tight`}>
+      <span className={indent ? 'pl-2' : 'font-bold'}>{l}</span><span className="font-bold">{v}</span>
+    </div>
+  )
   return (
-    <svg viewBox="0 0 220 200" className="h-auto w-full" aria-hidden>
-      <g>
-        <animateTransform attributeName="transform" type="translate" values="0 0;0 -6;0 0" dur="4.5s" repeatCount="indefinite" />
-        <ellipse cx="110" cy="186" rx="78" ry="12" fill="#000" opacity="0.22" />
-        <polygon points="110,28 188,64 188,134 110,170 32,134 32,64" fill="#0E0E12" />
-        <polygon points="110,28 188,64 110,100 32,64" fill="#FF9DB8" />
-        <polygon points="110,100 188,64 188,134 110,170" fill="#B81A4C" />
-        <polygon points="110,100 32,64 32,134 110,170" fill="#FF2E63" />
-        {/* branded label on front-left face */}
-        <polygon points="52,82 110,109 110,150 52,123" fill="#FFFFFF" opacity="0.94" />
-        <g stroke="#FF2E63" strokeWidth="2.4" fill="none" strokeLinejoin="round" transform="translate(80,116) scale(0.46)"><path d="M0 -14 L16 -5 L0 4 L-16 -5 Z" /><path d="M-16 0 L0 9 L16 0" /></g>
-        <text x="81" y="138" textAnchor="middle" fontSize="9" fontWeight="800" fill="#FF2E63" transform="skewY(20) translate(0,-9)">ACME</text>
-      </g>
-    </svg>
+    <div className="w-[150px] shrink-0 border-2 border-black bg-white px-1.5 py-1 text-black" style={{ fontFamily: 'Helvetica Neue, Arial, sans-serif' }}>
+      <div className="text-[17px] font-extrabold leading-none tracking-tight">Supplement Facts</div>
+      <div className="text-[7.5px] leading-tight">Serving Size 1 Scoop (8 g)</div>
+      <div className="text-[7.5px] leading-tight">Servings Per Container 30</div>
+      <div className="mt-0.5 flex justify-end border-t-[5px] border-black pt-[1px] text-[7.5px] font-bold">% Daily Value*</div>
+      <Row l="Calories 30" v="" top="thick" />
+      <Row l="Total Carbohydrate 6 g" v="2%" />
+      <Row l="Dietary Fiber 3 g" v="11%" indent />
+      <Row l="Vitamin C 80 mg" v="89%" />
+      <Row l="Iron 4 mg" v="22%" />
+      <Row l="Spirulina 1.5 g" v="†" />
+      <Row l="Organic Greens Blend 4 g" v="†" />
+      <div className="border-t-[5px] border-black" />
+      <div className="mt-0.5 text-[6.5px] leading-tight">* % Daily Value based on a 2,000 calorie diet.</div>
+      <div className="text-[6.5px] leading-tight">† Daily Value not established.</div>
+    </div>
   )
 }
 
-/** Die-line net + cut/fold lines. */
-function Dieline() {
-  return (
-    <svg viewBox="0 0 240 160" className="h-auto w-[86%]" aria-hidden>
-      <g stroke="#18181A" strokeWidth="1.6" fill="none">
-        <rect x="78" y="22" width="52" height="36" /><rect x="78" y="58" width="52" height="52" /><rect x="78" y="110" width="52" height="28" />
-        <rect x="38" y="58" width="40" height="52" /><rect x="130" y="58" width="40" height="52" /><rect x="170" y="58" width="32" height="52" />
-      </g>
-      <g stroke="#FF2E63" strokeWidth="1.4" strokeDasharray="5 4" opacity="0.85">
-        <line x1="78" y1="58" x2="202" y2="58" /><line x1="78" y1="110" x2="202" y2="110" /><line x1="78" y1="22" x2="78" y2="138" /><line x1="130" y1="22" x2="130" y2="138" />
-      </g>
-      <g stroke="#2DE2E6" strokeWidth="1" strokeDasharray="2 3" opacity="0.55" fill="none"><rect x="32" y="16" width="176" height="128" /></g>
-      <circle cx="104" cy="84" r="3" fill="#B5FF3D" />
-    </svg>
-  )
-}
-
-/** "Behind the curtain" Studio app-window mockup (HTML chrome + a 3D product). */
-function StudioMock() {
-  const tools = [MousePointer2, Type, ImageIcon, Palette, BoxIcon, Layers]
+/** Studio app window — design the packaging. */
+function StudioScreen({ compact = false }: { compact?: boolean }) {
+  const tools = [MousePointer2, TypeIcon, ImageIcon, Palette, BoxIcon, Layers]
   const swatches = ['#FF2E63', '#B5FF3D', '#C9B6FF', '#FFD23F', '#2DE2E6']
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_40px_120px_rgba(0,0,0,0.5)]">
-      {/* top bar */}
-      <div className="flex items-center justify-between border-b border-ink-700 bg-ink-800 px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-ink-600" /><span className="h-2.5 w-2.5 rounded-full bg-ink-600" /><span className="h-2.5 w-2.5 rounded-full bg-ink-600" /></div>
-          <span className="text-[12px] font-semibold text-white">Design Studio</span>
-          <span className="text-[11px] text-ink-400">· Acme Greens · v3</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-pill border border-ink-600 p-0.5 text-[10px] font-bold">
-            <span className="rounded-pill bg-neon-500 px-2.5 py-1 text-ink-900">3D</span>
-            <span className="px-2.5 py-1 text-ink-300">Die-line</span>
-          </div>
-          <span className="rounded-pill bg-ink-700 px-2.5 py-1 text-[10px] font-semibold text-ink-200">Saved</span>
-          <span className="rounded-pill bg-white px-3 py-1 text-[10px] font-bold text-ink-900">Export print PDF</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-[52px_1fr_172px]">
-        {/* left tool rail */}
-        <div className="flex flex-col items-center gap-1.5 border-r border-ink-700 bg-ink-800 py-4">
+    <Win title="Design Studio · Acme Greens" tone="dark">
+      <div className={`grid ${compact ? 'grid-cols-[44px_1fr]' : 'grid-cols-[44px_1fr_150px]'}`}>
+        <div className="flex flex-col items-center gap-1.5 border-r border-ink-700 bg-ink-800 py-3">
           {tools.map((T, i) => (
-            <span key={i} className={`flex h-9 w-9 items-center justify-center rounded-xl ${i === 4 ? 'bg-neon-500/15 text-neon-500' : 'text-ink-400'}`}>
-              <T strokeWidth={2} className="h-[18px] w-[18px]" />
+            <span key={i} className={`flex h-8 w-8 items-center justify-center rounded-lg ${i === 4 ? 'bg-neon-500/15 text-neon-500' : 'text-ink-400'}`}>
+              <T strokeWidth={2} className="h-4 w-4" />
             </span>
           ))}
         </div>
-        {/* canvas */}
-        <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden" style={{ background: 'radial-gradient(120% 90% at 50% 35%, #1A1A20 0%, #0C0C10 80%)' }}>
-          <div aria-hidden className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
-          <div className="relative w-[150px]"><Can hue="neon" idKey="studio" label="GREENS" selected /></div>
-          <span className="absolute left-4 top-4 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500">● FDA panel valid</span>
-          <span className="absolute bottom-4 left-4 rounded-md bg-ink-900/70 px-2 py-1 text-[10px] font-medium text-ink-400">100%</span>
-        </div>
-        {/* right panel */}
-        <div className="border-l border-ink-700 bg-ink-800 p-3.5 text-white">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">Brand colors</div>
-          <div className="mb-4 flex gap-1.5">{swatches.map((s) => <span key={s} className="h-6 w-6 rounded-md ring-1 ring-white/15" style={{ background: s }} />)}</div>
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">Layers</div>
-          <div className="space-y-1.5">
-            {['Logo', 'Product name', 'Nutrition panel', 'Background'].map((l, i) => (
-              <div key={l} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[12px] ${i === 0 ? 'bg-neon-500/15 text-white' : 'bg-ink-900/40 text-ink-300'}`}>
-                <span>{l}</span><Layers strokeWidth={2} className="h-3.5 w-3.5 opacity-50" />
-              </div>
-            ))}
+        <div className="relative flex min-h-[230px] items-center justify-center overflow-hidden" style={{ background: 'radial-gradient(120% 90% at 50% 30%, #1A1A20 0%, #0C0C10 82%)' }}>
+          <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="relative">
+            <Pouch hue="#B5FF3D" dark label="GREENS" className="w-[120px]" />
+            <span className="absolute -left-1 -top-1 h-2 w-2 -translate-x-1/2 -translate-y-1/2" style={{ background: '#2DE2E6', outline: '1px dashed #2DE2E6', outlineOffset: 6 }} />
           </div>
-          <div className="mt-4 rounded-lg border border-neon-500/30 bg-neon-500/10 px-3 py-2 text-[11px] font-semibold text-neon-500">✓ Print-ready · 300dpi · CMYK</div>
+          <span className="absolute left-3 top-3 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500">● FDA panel valid</span>
+          <span className="absolute bottom-3 left-3 rounded bg-ink-900/70 px-2 py-1 text-[10px] font-medium text-ink-400">100%</span>
+        </div>
+        {!compact && (
+          <div className="border-l border-ink-700 bg-ink-800 p-3 text-white">
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">Brand colors</div>
+            <div className="mb-3 flex gap-1.5">{swatches.map((s) => <span key={s} className="h-5 w-5 rounded-md ring-1 ring-white/15" style={{ background: s }} />)}</div>
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">Layers</div>
+            <div className="space-y-1">
+              {['Logo', 'Product name', 'Nutrition panel', 'Background'].map((l, i) => (
+                <div key={l} className={`flex items-center justify-between rounded-md px-2 py-1.5 text-[11px] ${i === 0 ? 'bg-neon-500/15 text-white' : 'bg-ink-900/40 text-ink-300'}`}>
+                  <span>{l}</span><Layers strokeWidth={2} className="h-3 w-3 opacity-50" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Win>
+  )
+}
+
+/* ---- step screens ---- */
+
+function PickScreen() {
+  const products = [
+    { n: 'Powdered Greens', m: 'MOQ 500 · $3.10/unit', hue: '#86C42B', sel: true },
+    { n: 'Electrolyte Mix', m: 'MOQ 1,000 · $1.85/unit', hue: '#2DE2E6', sel: false },
+    { n: 'Collagen Peptides', m: 'MOQ 500 · $4.40/unit', hue: '#C9B6FF', sel: false },
+    { n: 'Cold-Brew Concentrate', m: 'MOQ 750 · $2.60/unit', hue: '#FF2E63', sel: false },
+  ]
+  return (
+    <Win title="Marketplace · Functional drinks">
+      <div className="p-5">
+        <div className="mb-4 flex items-center gap-2 rounded-pill border border-ink-200 px-3 py-2 text-[12px] text-ink-400">
+          <Search strokeWidth={2} className="h-3.5 w-3.5" /> Search products, recipes, niches…
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {products.map((p) => (
+            <div key={p.n} className={`rounded-xl border p-3 ${p.sel ? 'border-pink-500 ring-2 ring-pink-500/30' : 'border-ink-200'}`}>
+              <div className="mb-2 flex h-20 items-center justify-center rounded-lg" style={{ background: p.hue + '1f' }}>
+                <Pouch hue={p.hue} label="" className="w-[42px]" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-[13px] font-bold text-ink-900">{p.n}</div>
+                {p.sel && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-500 text-white"><Check strokeWidth={3} className="h-3 w-3" /></span>}
+              </div>
+              <div className="text-[11px] text-ink-500">{p.m}</div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </Win>
+  )
+}
+
+function BrandScreen() {
+  const swatches = ['#0E1A0E', '#86C42B', '#F4F1E8', '#1FB3B8']
+  return (
+    <Win title="Brand kit · Acme Greens">
+      <div className="space-y-4 p-5">
+        <div className="flex items-center gap-4 rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-4">
+          <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-ink-900">
+            <svg viewBox="0 0 96 96" className="h-8 w-8"><path d="M48 22 L74 36 L48 50 L22 36 Z M22 50 L48 64 L74 50 M22 62 L48 76 L74 62" fill="none" stroke="#B5FF3D" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" /></svg>
+          </span>
+          <div>
+            <div className="font-display text-[18px] font-extrabold tracking-[-0.02em] text-ink-900">Acme Greens</div>
+            <div className="mt-1 inline-flex items-center gap-1.5 text-[12px] font-medium text-pink-600"><Upload strokeWidth={2} className="h-3.5 w-3.5" /> Logo uploaded · SVG</div>
+          </div>
+        </div>
+        <div>
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-400">Brand colors</div>
+          <div className="flex gap-2">{swatches.map((s) => <span key={s} className="h-9 w-9 rounded-lg ring-1 ring-ink-200" style={{ background: s }} />)}<span className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-ink-300 text-ink-400">+</span></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-ink-200 p-3"><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Display</div><div className="font-display text-[20px] font-extrabold tracking-[-0.02em]">Bricolage</div></div>
+          <div className="rounded-lg border border-ink-200 p-3"><div className="text-[10px] uppercase tracking-[0.06em] text-ink-400">Body</div><div className="text-[20px] font-semibold">Inter</div></div>
+        </div>
+      </div>
+    </Win>
+  )
+}
+
+function LabelScreen() {
+  return (
+    <Win title="Label · Supplement Facts">
+      <div className="flex items-center gap-5 p-5">
+        <div className="shrink-0"><Pouch hue="#86C42B" dark={false} label="GREENS" className="w-[104px]" /></div>
+        <SuppFacts />
+        <div className="hidden flex-1 sm:block">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN }}>
+            <CheckCircle2 strokeWidth={2.5} className="h-3.5 w-3.5" /> Auto-rendered to 21 CFR
+          </div>
+          <ul className="space-y-1.5 text-[12px] text-ink-600">
+            <li>· Serving size + servings per container</li>
+            <li>· % Daily Value calculated for you</li>
+            <li>· Min font sizes enforced on every edit</li>
+          </ul>
+        </div>
+      </div>
+    </Win>
+  )
+}
+
+function ComplianceScreen() {
+  const checks = ['Min font size on Supplement Facts', 'Allergen Big-9 declared', 'Net quantity format (oz + g)', 'Bioengineered disclosure present', 'Serving size within reference amount']
+  return (
+    <Win title="Compliance scan · 21 CFR">
+      <div className="p-5">
+        <div className="mb-4 flex items-center justify-between rounded-xl p-4" style={{ background: GREEN + '14', border: `1px solid ${GREEN}40` }}>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-pill" style={{ background: GREEN }}><Check strokeWidth={3} className="h-5 w-5 text-white" /></span>
+            <div><div className="font-display text-[16px] font-bold text-ink-900">Compliant</div><div className="text-[12px] text-ink-500">5 of 5 checks passed</div></div>
+          </div>
+          <span className="rounded-pill px-3 py-1 text-[11px] font-bold text-white" style={{ background: GREEN }}>Ready to print</span>
+        </div>
+        <div className="space-y-2">
+          {checks.map((c) => (
+            <div key={c} className="flex items-center gap-2.5 rounded-lg bg-ink-50/60 px-3 py-2 text-[13px] text-ink-700">
+              <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full" style={{ background: GREEN }}><Check strokeWidth={3} className="h-3 w-3 text-white" /></span>
+              {c}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Win>
+  )
+}
+
+function SampleScreen() {
+  return (
+    <Win title="Order a sample">
+      <div className="p-5">
+        <div className="mb-4 flex items-end justify-center gap-3 rounded-xl bg-ink-50/60 py-5">
+          <Pouch hue="#86C42B" label="GREENS" className="w-[62px]" />
+          <Pouch hue="#86C42B" label="GREENS" className="w-[72px]" />
+          <Pouch hue="#86C42B" label="GREENS" className="w-[62px]" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[14px] font-bold text-ink-900">Sample · 3 units</div>
+            <div className="text-[12px] text-ink-500">Production quality · ships in ~5 days</div>
+          </div>
+          <div className="text-right">
+            <span className="text-[12px] text-ink-400 line-through">$24</span>{' '}
+            <span className="text-[18px] font-extrabold text-pink-600">$12</span>
+            <div className="text-[11px] font-semibold" style={{ color: GREEN }}>First sample 50% off</div>
+          </div>
+        </div>
+        <div className="mt-4 flex h-11 items-center justify-center rounded-pill bg-ink-900 text-[13px] font-semibold text-white">Order sample</div>
+      </div>
+    </Win>
+  )
+}
+
+function OrchestrationScreen() {
+  const nodes = [{ i: Factory, l: 'Manufacturer' }, { i: Printer, l: 'Printer' }, { i: Boxes, l: 'Co-packer' }, { i: Warehouse, l: 'Warehouse' }]
+  return (
+    <Win title="Production order · #AG-1042" tone="dark">
+      <div className="p-5 text-white">
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800 px-4 py-3">
+          <div><div className="text-[13px] font-bold">1,000 units · Powdered Greens</div><div className="text-[11px] text-ink-400">Acme Greens · pouch + carton</div></div>
+          <div className="text-right"><div className="text-[16px] font-extrabold">$3,420</div><div className="text-[10px] text-neon-500">Card authorized</div></div>
+        </div>
+        <div className="mb-2 flex items-center justify-between">
+          {nodes.map((n, i) => (
+            <div key={n.l} className="flex flex-1 items-center">
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-neon-500/40 bg-neon-500/10"><n.i strokeWidth={2} className="h-5 w-5 text-neon-500" /></span>
+                <span className="text-[10px] font-medium text-ink-300">{n.l}</span>
+              </div>
+              {i < nodes.length - 1 && <div className="mx-1 mb-5 h-[2px] flex-1 rounded bg-gradient-to-r from-neon-500/60 to-neon-500/20" />}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg border border-ink-700 bg-ink-800 px-3 py-2 text-[11px] text-ink-300">
+          <span className="font-semibold text-white">One timeline.</span> Captured only when every partner approves the manifest.
+        </div>
+      </div>
+    </Win>
+  )
+}
+
+function ChannelScreen() {
+  return (
+    <Win title="Channels">
+      <div className="space-y-3 p-5">
+        {[{ i: Store, l: 'Shopify', s: 'yourbrand.myshopify.com' }, { i: Music2, l: 'TikTok Shop', s: '@acme.greens' }].map((c) => (
+          <div key={c.l} className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-900 text-white"><c.i strokeWidth={2} className="h-5 w-5" /></span>
+              <div><div className="text-[13px] font-bold text-ink-900">{c.l}</div><div className="text-[11px] text-ink-500">{c.s}</div></div>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-bold" style={{ background: GREEN + '1f', color: GREEN }}><Check strokeWidth={3} className="h-3 w-3" /> Connected</span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between rounded-xl bg-ink-900 px-4 py-3 text-white">
+          <div className="flex items-center gap-3">
+            <Pouch hue="#86C42B" dark label="" className="w-[34px]" />
+            <div><div className="text-[13px] font-bold">Acme Greens · Super Greens</div><div className="text-[11px] text-neon-500">● Live on your store</div></div>
+          </div>
+          <div className="text-[16px] font-extrabold">$39</div>
+        </div>
+        <p className="px-1 text-[12px] text-ink-500"><ShoppingBag strokeWidth={2} className="mr-1 inline h-3.5 w-3.5" /> End buyers buy from you. We never appear in the consumer flow.</p>
+      </div>
+    </Win>
   )
 }
