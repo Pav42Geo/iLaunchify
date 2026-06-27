@@ -352,9 +352,15 @@ function StepFX() {
       .fx-scan{position:absolute;left:0;right:0;height:34px;background:linear-gradient(to bottom,rgba(31,174,90,0) 0%,rgba(31,174,90,.22) 50%,rgba(31,174,90,0) 100%);opacity:0;pointer-events:none}
       .is-revealed .fx-scan{animation:fxScan 2.4s ease-in-out .4s both}
       @keyframes fxScan{0%{transform:translateY(-130%);opacity:0}14%{opacity:1}86%{opacity:1}100%{transform:translateY(150%);opacity:0}}
+      .fx-cur2{position:absolute;z-index:30;opacity:0;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+      .is-revealed .fx-cur2{animation:fxCur2 3s cubic-bezier(.5,0,.2,1) both}
+      @keyframes fxCur2{0%{left:72%;top:84%;opacity:0;transform:scale(1)}10%{opacity:1}48%{left:46%;top:47%;transform:scale(1)}55%{transform:scale(.78)}62%{transform:scale(1)}100%{left:46%;top:47%;opacity:1;transform:scale(1)}}
+      .fx-open{opacity:0;transform:scale(.86)}
+      .is-revealed .fx-open{animation:fxOpen .6s cubic-bezier(.16,1,.3,1) both}
+      @keyframes fxOpen{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
       @media (prefers-reduced-motion:reduce){
-        .fx-up,.fx-pop,.fx-down,.fx-fade,.fx-left,.fx-right,.fx-grow{opacity:1!important;transform:none!important;animation:none!important}
-        .fx-cursor,.fx-ripple,.fx-scan{display:none!important}
+        .fx-up,.fx-pop,.fx-down,.fx-fade,.fx-left,.fx-right,.fx-grow,.fx-open{opacity:1!important;transform:none!important;animation:none!important}
+        .fx-cursor,.fx-cur2,.fx-ripple,.fx-scan{display:none!important}
         .fx-dot{animation:none!important;opacity:1!important}
       }
     `}</style>
@@ -515,6 +521,42 @@ function OrchestrationConstellation() {
   )
 }
 
+/** Flat unfolded die-line net for a stand-up pouch (the 2D surface view). */
+function DielineNet() {
+  return (
+    <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid meet" className="h-full w-full" aria-hidden>
+      <defs>
+        <pattern id="dl-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+          <path d="M16 0 H0 V16" fill="none" stroke="#000000" strokeOpacity="0.05" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect x="0" y="0" width="320" height="200" fill="url(#dl-grid)" />
+      <rect x="48" y="34" width="104" height="120" fill="#ffffff" />
+      <rect x="152" y="34" width="104" height="120" fill="#ffffff" />
+      <path d="M152 154 L256 154 L232 182 L176 182 Z" fill="#ffffff" />
+      <path d="M48 34 L256 34 L256 154 L232 182 L176 182 L152 154 L48 154 Z" fill="none" stroke="#FF2E63" strokeWidth="1.5" strokeDasharray="5 4" />
+      <line x1="152" y1="34" x2="152" y2="154" stroke="#6E8BFF" strokeWidth="1.3" strokeDasharray="1.5 4" strokeLinecap="round" />
+      <line x1="152" y1="154" x2="256" y2="154" stroke="#6E8BFF" strokeWidth="1.3" strokeDasharray="1.5 4" strokeLinecap="round" />
+      <g stroke="#18181A" strokeWidth="1">
+        <path d="M40 34 H46 M48 26 V32" /><path d="M264 34 H258 M256 26 V32" />
+        <path d="M40 154 H46 M48 162 V156" /><path d="M264 154 H258 M256 162 V156" />
+      </g>
+      <rect x="66" y="58" width="68" height="78" rx="2" fill="none" stroke="#C9C9CE" strokeWidth="1" strokeDasharray="3 3" />
+      <text x="100" y="50" textAnchor="middle" fontSize="7" fontWeight="700" letterSpacing="0.5" fill="#A0A0A6">NUTRITION PANEL</text>
+      <g transform="translate(204,82)">
+        <g stroke="#86C42B" strokeWidth="3" fill="none" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M0 -14 L15 -5 L0 4 L-15 -5 Z" /><path d="M-15 2 L0 11 L15 2" />
+        </g>
+        <text x="0" y="28" textAnchor="middle" fontSize="12" fontWeight="800" letterSpacing="1.2" fill="#3a5a14">GREENS</text>
+        <text x="0" y="41" textAnchor="middle" fontSize="7" fontWeight="600" fill="#9a9aa3">Super Greens</text>
+      </g>
+      <text x="100" y="148" textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="1" fill="#B0B0B6">BACK</text>
+      <text x="204" y="148" textAnchor="middle" fontSize="7.5" fontWeight="700" letterSpacing="1" fill="#B0B0B6">FRONT</text>
+      <text x="204" y="176" textAnchor="middle" fontSize="7" fontWeight="700" letterSpacing="1" fill="#B0B0B6">GUSSET</text>
+    </svg>
+  )
+}
+
 /** Studio app window — design the packaging. */
 function StudioScreen({ compact = false }: { compact?: boolean }) {
   const tools = [MousePointer2, TypeIcon, ImageIcon, Palette, BoxIcon, Layers]
@@ -537,6 +579,17 @@ function StudioScreen({ compact = false }: { compact?: boolean }) {
           </div>
           <span className="fx-pop absolute left-3 top-3 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500" style={{ animationDelay: '1.2s' }}>● FDA panel valid</span>
           <span className="absolute bottom-3 left-3 rounded bg-ink-900/70 px-2 py-1 text-[10px] font-medium text-ink-400">100%</span>
+          <span className="pointer-events-none absolute" style={{ left: '46%', top: '47%' }}><span className="fx-ripple" style={{ marginLeft: -15, marginTop: -15 }} /></span>
+          <svg className="fx-cur2" width="20" height="20" viewBox="0 0 20 20" aria-hidden><path d="M3 2 L3 16 L7 12 L10 18 L12 17 L9 11 L15 11 Z" fill="#ffffff" stroke="#18181A" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+          <div className="fx-open absolute inset-3 z-20 overflow-hidden rounded-xl border border-ink-300 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)]" style={{ background: '#F7F6F2', animationDelay: '1.75s' }}>
+            <div className="flex items-center justify-between border-b border-ink-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-ink-600">
+              <span className="inline-flex items-center gap-1.5"><BoxIcon strokeWidth={2} className="h-3 w-3" /> Die-line · Stand-up pouch · layflat</span>
+              <span className="rounded-pill bg-pink-500/10 px-2 py-0.5 text-[9px] font-bold text-pink-700">2D surface</span>
+            </div>
+            <div className="relative h-[calc(100%-25px)] w-full">
+              <DielineNet />
+            </div>
+          </div>
         </div>
         {!compact && (
           <div className="border-l border-ink-700 bg-ink-800 p-3 text-white">
