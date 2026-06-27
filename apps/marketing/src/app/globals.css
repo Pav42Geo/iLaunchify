@@ -97,7 +97,7 @@ body {
 /* floor — rises from the bottom toward the centre */
 .cyber-net::before {
   bottom: -15%;
-  transform: rotate(-5deg) perspective(340px) rotateX(55deg);
+  transform: rotate(-15deg) perspective(340px) rotateX(55deg);
   transform-origin: 50% 100%;
   -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
   mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
@@ -106,7 +106,7 @@ body {
 /* ceiling — descends from the top toward the centre */
 .cyber-net::after {
   top: -15%;
-  transform: rotate(-5deg) perspective(340px) rotateX(-55deg);
+  transform: rotate(-15deg) perspective(340px) rotateX(-55deg);
   transform-origin: 50% 0%;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
