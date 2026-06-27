@@ -58,9 +58,9 @@ export function HeroBanner({
     <section
       data-surface="dark"
       className={cn(
-        'relative overflow-hidden bg-ink-900 text-white',
-        // Page-hero: full-bleed padding; Island: compact card-style padding + rounded
-        isPage ? 'px-8 py-24 sm:py-28' : 'px-8 py-9 sm:py-10 rounded-xl',
+        'relative overflow-hidden bg-[var(--landing-surface-dark)] text-white',
+        // Page-hero: full-bleed padding (tokenised); Island: compact card-style padding + rounded
+        isPage ? 'px-8 py-[var(--landing-hero-py)]' : 'px-8 py-9 sm:py-10 rounded-xl',
         className,
       )}
     >
@@ -114,8 +114,8 @@ export function HeroBanner({
               '[&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500 ' +
                 '[&_em]:tracking-[-0.025em]',
               isPage
-                ? 'text-4xl sm:text-6xl md:text-7xl max-w-[18ch] mb-7'
-                : 'text-3xl sm:text-4xl max-w-[20ch] mb-3',
+                ? 'text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3.75rem*var(--landing-heading-scale))] md:text-[calc(4.5rem*var(--landing-heading-scale))] max-w-[18ch] mb-7'
+                : 'text-[calc(1.875rem*var(--landing-heading-scale))] sm:text-[calc(2.25rem*var(--landing-heading-scale))] max-w-[20ch] mb-3',
               headlineClassName,
             )}
           >
@@ -126,7 +126,7 @@ export function HeroBanner({
             <p
               className={cn(
                 'text-ink-300 leading-[1.55]',
-                isPage ? 'text-lg max-w-[50ch] mb-10' : 'text-[15px] max-w-[52ch] mb-5',
+                isPage ? 'text-[calc(1.125rem*var(--landing-deck-scale))] max-w-[50ch] mb-10' : 'text-[calc(15px*var(--landing-deck-scale))] max-w-[52ch] mb-5',
               )}
             >
               {deck}

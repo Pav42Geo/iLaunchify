@@ -48,7 +48,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'history', label: 'History' },
 ]
 const CATEGORY: Record<'foundations' | 'colors' | 'components' | 'chrome', EditableThemeToken['group'][]> = {
-  foundations: ['Scale', 'Spacing', 'Fonts'],
+  foundations: ['Scale', 'Spacing', 'Fonts', 'Landing'],
   colors: ['Text', 'Brand', 'Backgrounds', 'Status'],
   components: ['Borders & cards', 'Forms', 'Buttons', 'Chips & badges', 'Menus'],
   chrome: ['Sidebar', 'Header', 'Footer', 'Studio'],

@@ -130,7 +130,7 @@ export default async function HomePage({
             <span>Cohort 1 applications open · US-only</span>
           </div>
 
-          <h1 className="font-display font-extrabold leading-[0.95] tracking-[-0.04em] max-w-[15ch] mb-7 text-[clamp(40px,5.2vw,80px)]">
+          <h1 className="font-display font-extrabold leading-[0.95] tracking-[-0.04em] max-w-[15ch] mb-7 text-[calc(clamp(40px,5.2vw,80px)*var(--landing-heading-scale))]">
             Launch{' '}
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               your
@@ -145,7 +145,7 @@ export default async function HomePage({
             not years.
           </h1>
 
-          <p className="pop-in text-[clamp(17px,2vw,22px)] max-w-[56ch] leading-[1.55] text-ink-900/[0.78] mb-10" style={{ animationDelay: '200ms' }}>
+          <p className="pop-in text-[calc(clamp(17px,2vw,22px)*var(--landing-deck-scale))] max-w-[56ch] leading-[1.55] text-ink-900/[0.78] mb-10" style={{ animationDelay: '200ms' }}>
             Pick a starter template. Customize the label. We orchestrate every
             manufacturer, label printer, co-packer, and warehouse behind one
             timeline and one quote — so you launch a real CPG brand without
@@ -209,7 +209,7 @@ export default async function HomePage({
       <Reveal>
       <section
         data-surface="dark"
-        className="bg-ink-900 text-white py-24 px-6 sm:px-8 rounded-t-[48px]"
+        className="bg-[var(--landing-surface-dark)] text-white py-[var(--landing-section-py)] px-6 sm:px-8 rounded-t-[48px]"
       >
         <div className="max-w-[1400px] mx-auto">
           <h2 className="font-display font-bold leading-[0.95] tracking-[-0.04em] mb-16 max-w-[16ch] text-[clamp(40px,6vw,88px)]">

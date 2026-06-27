@@ -24,17 +24,29 @@ consuming CSS, and they appear in Theme Studio automatically.
   get-started) use it, so a single Theme-Studio slider resizes them everywhere.
 - Colors + radius were already tokenized; sizes now join them in the same panel.
 
-## Phase 2 — Type scale + spacing/surfaces (next)
+## Phase 2 — Type scale + spacing/surfaces ✅ (shipped 2026-06-27)
 
-- **Type:** landing hero/section heading + deck sizes → tokens
-  (`landing-h1`, `landing-h2`, `landing-deck`, …) layered on the existing
-  `--fs-*` scale, so heading rhythm is adjustable. HeroBanner + section
-  components consume them.
-- **Spacing:** section vertical rhythm (`landing-section-py`) + hero padding as
-  tokens, so density is tunable per the `--space-scale` knob already in Studio.
-- **Surfaces:** the dark/light/cream band treatments → surface tokens so the
-  alternating-section pattern is themeable.
-- Add a **"Landing"** group (or extend Foundations) in the editor.
+New **Landing** group in `theme-tokens.ts` (rendered under the editor's
+*Foundations* tab via `CATEGORY.foundations`), defaults in `theme.css`:
+
+- **Type (multipliers, default 1 = no change):** `landing-heading-scale`,
+  `landing-deck-scale`. The key lesson from the earlier revert — never replace a
+  responsive `clamp()` with a fixed size. Instead headings/decks now read
+  `text-[calc(<original clamp|rem>*var(--landing-heading-scale))]`, so the fluid
+  sizing is preserved and the slider just scales it. Consumed by the shared
+  `HeroBanner` (business + marketplace-island heroes) and the home `/` hero
+  headline + deck.
+- **Spacing:** `landing-hero-py` (96px) drives `HeroBanner`'s page-hero padding;
+  `landing-section-py` (96px) drives the home dark niche band. Both default to
+  the prior value.
+- **Surfaces:** `landing-surface-dark` (#18181A) drives the `HeroBanner` slab +
+  the home dark band. (Cream dropped — cream was killed on public surfaces, so a
+  cream token would be dead; light = page white, already covered.)
+
+Everything defaults to the exact current values → zero visual change until an
+admin moves a slider. Remaining landing surfaces (how-it-works hero, the eight
+step bands, `/influencers`) can adopt the same tokens incrementally — the tokens
+exist and publish today.
 
 ## Phase 3 — Polish
 

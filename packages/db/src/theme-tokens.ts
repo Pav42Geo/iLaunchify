@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Spacing' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons' | 'Chips & badges' | 'Menus' | 'Sidebar' | 'Header' | 'Footer' | 'Studio'
+  group: 'Scale' | 'Spacing' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons' | 'Chips & badges' | 'Menus' | 'Sidebar' | 'Header' | 'Footer' | 'Studio' | 'Landing'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -79,6 +79,16 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'space-scale', label: 'Spacing density', kind: 'scale', group: 'Spacing', default: '1', min: 0.8, max: 1.4, step: 0.05, hint: 'Multiplies the whole 8pt spacing scale at once. Lower = denser; higher = roomier.' },
   { name: 'card-padding', label: 'Card padding', kind: 'length', group: 'Spacing', default: '24px', min: 8, max: 40, step: 1, hint: 'Fine override for card padding (on top of Spacing density). 16px = partner-compact.' },
   { name: 'section-gap', label: 'Section spacing', kind: 'length', group: 'Spacing', default: '48px', min: 16, max: 72, step: 2, hint: 'Fine override for the gap between major sections.' },
+
+  // Landing — public marketing surfaces (/, /business, /how-it-works, marketplace,
+  // partner get-started). Type scales MULTIPLY the existing responsive heading/
+  // deck sizes (default 1 = no change, so clamp() responsiveness is preserved).
+  // Padding + surfaces drive the section rhythm and the alternating dark/cream bands.
+  { name: 'landing-heading-scale', label: 'Landing headings', kind: 'scale', group: 'Landing', default: '1', min: 0.85, max: 1.25, step: 0.01, hint: 'Multiplies hero + section headline sizes on the public landing pages. Right = bigger.' },
+  { name: 'landing-deck-scale', label: 'Landing deck text', kind: 'scale', group: 'Landing', default: '1', min: 0.85, max: 1.2, step: 0.01, hint: 'Multiplies the sub-headline / deck paragraph size under landing headlines.' },
+  { name: 'landing-hero-py', label: 'Hero padding (Y)', kind: 'length', group: 'Landing', default: '96px', min: 48, max: 200, step: 4, hint: 'Vertical padding of the landing hero band.' },
+  { name: 'landing-section-py', label: 'Section padding (Y)', kind: 'length', group: 'Landing', default: '96px', min: 40, max: 180, step: 4, hint: 'Vertical rhythm between major landing sections.' },
+  { name: 'landing-surface-dark', label: 'Dark band', kind: 'color', group: 'Landing', default: '#18181A', hint: 'The dark hero / CTA / niche bands on landing pages.' },
 
   // Fonts (curated stacks only — self-hosted faces + system fonts)
   { name: 'font-sans', label: 'Body font', kind: 'font', group: 'Fonts', default: FONT_STACKS.inter!, hint: 'UI, body, buttons, tables.' },

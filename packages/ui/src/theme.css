@@ -274,6 +274,15 @@
   --button-h-lg: 52px;  --button-px-lg: 32px;
   --button-h-xl: 60px;  --button-px-xl: 32px;
 
+  /* Landing (public marketing) — type-scale multipliers (1 = unchanged, so the
+     responsive clamp() headlines keep their fluid sizing), hero/section vertical
+     rhythm, and the alternating dark/cream band surfaces. Theme-Studio managed. */
+  --landing-heading-scale: 1;
+  --landing-deck-scale:    1;
+  --landing-hero-py:       96px;
+  --landing-section-py:    96px;
+  --landing-surface-dark:  #18181A;
+
   /* Per-variant BUTTON fills/text/border (each defaults to the brand ramp so
      they follow the palette until an admin overrides a single variant). */
   --button-primary-bg:        var(--ink-900);
