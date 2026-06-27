@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ImagePlus } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { Reveal } from '@/components/Reveal'
 import { ProcessSteps } from '@/components/ProcessSteps'
+import { ProductShot } from '@/components/ProductShot'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
@@ -25,46 +26,6 @@ import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
  * Creator surface → white header + cream body. Standalone deep page; the
  * home page links here from the niche grid header.
  */
-/** Light orchestration network — faded hero graphic (your order → partners). */
-function HiwOrchestration() {
-  const core = { x: 300, y: 240 }
-  const nodes = [
-    { x: 300, y: 70, c: '#FF2E63', label: 'Your channel' },
-    { x: 110, y: 120, c: '#6E8BFF', label: 'Manufacturer' },
-    { x: 470, y: 110, c: '#9A82E0', label: 'Printer' },
-    { x: 120, y: 380, c: '#16A4AA', label: 'Co-packer' },
-    { x: 460, y: 380, c: '#86C42B', label: 'Warehouse' },
-  ]
-  return (
-    <svg viewBox="0 0 560 480" className="h-auto w-full max-w-[620px]" role="img" aria-label="orchestration network">
-      <g fill="none" stroke="#9A82E0" strokeOpacity="0.28">
-        <ellipse cx="300" cy="246" rx="232" ry="98" />
-        <ellipse cx="300" cy="246" rx="160" ry="160" strokeOpacity="0.14" />
-      </g>
-      {nodes.map((n, i) => (
-        <g key={`l${i}`}>
-          <line x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeOpacity="0.4" strokeWidth="1.6" />
-          <line className="hiw-flow" x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeWidth="1.6" />
-        </g>
-      ))}
-      {nodes.map((n, i) => (
-        <g key={`n${i}`} className="hiw-node" style={{ animationDelay: `${i * 0.5}s` }}>
-          <circle cx={n.x} cy={n.y} r="16" fill={n.c} opacity="0.13" />
-          <circle cx={n.x} cy={n.y} r="9" fill={n.c} />
-          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.4" fill="#18181A" fillOpacity="0.78">{n.label}</text>
-        </g>
-      ))}
-      <circle cx={core.x} cy={core.y} r="54" fill="#FF2E63" opacity="0.1" />
-      <g className="hiw-node">
-        <circle cx={core.x} cy={core.y} r="36" fill="#FF2E63" />
-        <g transform={`translate(${core.x},${core.y})`} stroke="#ffffff" strokeWidth="3.4" fill="none" strokeLinejoin="round" strokeLinecap="round">
-          <path d="M0 -15 L17 -5 L0 5 L-17 -5 Z" /><path d="M-17 3 L0 13 L17 3" />
-        </g>
-      </g>
-      <text x={core.x} y={core.y + 60} textAnchor="middle" fontSize="12" fontWeight="800" letterSpacing="1" fill="#18181A">YOUR ORDER</text>
-    </svg>
-  )
-}
 
 export default async function HowItWorksPage({
   searchParams,
@@ -85,27 +46,25 @@ export default async function HowItWorksPage({
       />
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-white">
         <style>{`
-          .hiw-float{animation:hiwFloat 9s ease-in-out infinite}
-          @keyframes hiwFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
-          .hiw-node{transform-box:fill-box;transform-origin:center;animation:hiwPulse 3.4s ease-in-out infinite}
-          @keyframes hiwPulse{0%,100%{opacity:.82}50%{opacity:1}}
-          .hiw-flow{stroke-dasharray:4 11;animation:hiwDash 1.5s linear infinite}
-          @keyframes hiwDash{to{stroke-dashoffset:-30}}
-          @media (prefers-reduced-motion:reduce){.hiw-float,.hiw-node,.hiw-flow{animation:none}}
+          .hiw-grid{position:absolute;left:50%;bottom:-18%;width:170%;height:60%;
+            transform:translateX(-50%) perspective(460px) rotateX(72deg);transform-origin:50% 100%;
+            background-image:linear-gradient(to right,rgba(154,130,224,0.22) 1px,transparent 1px),
+              linear-gradient(to top,rgba(255,46,99,0.16) 1px,transparent 1px);
+            background-size:54px 54px;
+            -webkit-mask-image:linear-gradient(to top,#000 0%,transparent 82%);
+            mask-image:linear-gradient(to top,#000 0%,transparent 82%);
+            animation:hiwGrid 6s linear infinite;}
+          @keyframes hiwGrid{from{background-position:0 0}to{background-position:0 54px}}
+          @media (prefers-reduced-motion:reduce){.hiw-grid{animation:none}}
         `}</style>
-        <div className="relative mx-auto max-w-[1200px] px-6 pt-16 pb-12 sm:pt-20">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[48%] items-center justify-end lg:flex"
-            style={{ maskImage: 'linear-gradient(to right, transparent, #000 46%)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 46%)' }}
-          >
-            <div className="hiw-float w-full">
-              <HiwOrchestration />
-            </div>
-          </div>
-          <div className="relative z-10 max-w-2xl">
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(680px 420px at 10% -5%, rgba(255,46,99,0.08), transparent 60%), radial-gradient(640px 440px at 95% 6%, rgba(110,139,255,0.09), transparent 62%), radial-gradient(760px 540px at 60% 125%, rgba(154,130,224,0.12), transparent 60%)' }} />
+          <div className="hiw-grid" />
+        </div>
+        <div className="relative z-10 mx-auto grid max-w-[1200px] items-center gap-10 px-6 pt-16 pb-14 sm:pt-20 lg:grid-cols-[1fr_0.92fr] lg:gap-14">
+          <div className="max-w-2xl">
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">
               How it works
             </div>
@@ -117,6 +76,17 @@ export default async function HowItWorksPage({
             <p className="max-w-[60ch] text-lg sm:text-xl leading-[1.55] text-ink-700">
               You pick a starter template. You customize the label in the Design Studio. You approve a sample. We orchestrate every manufacturer, label printer, co-packer, and warehouse in the production graph — so you launch a real CPG brand without becoming a CPG operator.
             </p>
+          </div>
+          <div className="hidden lg:block">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-ink-200 bg-ink-50 shadow-[0_30px_70px_-45px_rgba(0,0,0,0.4)]">
+              <ProductShot src="/how-it-works/hero.jpg" alt="How iLaunchify works" className="absolute inset-0 h-full w-full object-cover">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-400">
+                  <ImagePlus strokeWidth={1.75} className="h-7 w-7" />
+                  <span className="text-[13px] font-medium text-ink-500">Drop your hero image here</span>
+                  <span className="rounded bg-ink-100 px-2 py-1 text-[11px] text-ink-400">public/how-it-works/hero.jpg</span>
+                </div>
+              </ProductShot>
+            </div>
           </div>
         </div>
       </section>
