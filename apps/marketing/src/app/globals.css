@@ -93,23 +93,24 @@ body {
     linear-gradient(90deg, rgba(184, 204, 255, 0.28) 2px, transparent 2px);
   background-size: 64px 64px;
   background-position: 0 0;
+  height: 88%;
 }
 /* floor — rises from the bottom toward the centre */
 .cyber-net::before {
   bottom: -15%;
-  transform: rotate(-15deg) perspective(340px) rotateX(55deg);
+  transform: rotate(-5deg) perspective(340px) rotateX(55deg);
   transform-origin: 50% 100%;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
-  mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 66%, transparent 99%);
+  mask-image: linear-gradient(to top, #000 0%, #000 66%, transparent 99%);
   animation: cyber-floor 7s linear infinite;
 }
 /* ceiling — descends from the top toward the centre */
 .cyber-net::after {
   top: -15%;
-  transform: rotate(-15deg) perspective(340px) rotateX(-55deg);
+  transform: rotate(-5deg) perspective(340px) rotateX(-55deg);
   transform-origin: 50% 0%;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 66%, transparent 99%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 66%, transparent 99%);
   animation: cyber-ceil 7s linear infinite;
 }
 @keyframes cyber-floor { from { background-position: 0 0; } to { background-position: 0 64px; } }
