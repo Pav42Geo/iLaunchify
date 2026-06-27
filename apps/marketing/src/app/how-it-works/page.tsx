@@ -1,22 +1,10 @@
 import Link from 'next/link'
-import {
-  ArrowRight,
-  ShoppingBag,
-  Wand2,
-  ShieldCheck,
-  Truck,
-  Factory,
-  Printer,
-  Boxes,
-  Warehouse,
-  Globe,
-  Lock,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { Reveal } from '@/components/Reveal'
+import { ProcessSteps } from '@/components/ProcessSteps'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 
 /**
@@ -37,6 +25,47 @@ import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
  * Creator surface → white header + cream body. Standalone deep page; the
  * home page links here from the niche grid header.
  */
+/** Light orchestration network — faded hero graphic (your order → partners). */
+function HiwOrchestration() {
+  const core = { x: 300, y: 240 }
+  const nodes = [
+    { x: 300, y: 70, c: '#FF2E63', label: 'Your channel' },
+    { x: 110, y: 120, c: '#6E8BFF', label: 'Manufacturer' },
+    { x: 470, y: 110, c: '#9A82E0', label: 'Printer' },
+    { x: 120, y: 380, c: '#16A4AA', label: 'Co-packer' },
+    { x: 460, y: 380, c: '#86C42B', label: 'Warehouse' },
+  ]
+  return (
+    <svg viewBox="0 0 560 480" className="h-auto w-full max-w-[620px]" role="img" aria-label="orchestration network">
+      <g fill="none" stroke="#9A82E0" strokeOpacity="0.28">
+        <ellipse cx="300" cy="246" rx="232" ry="98" />
+        <ellipse cx="300" cy="246" rx="160" ry="160" strokeOpacity="0.14" />
+      </g>
+      {nodes.map((n, i) => (
+        <g key={`l${i}`}>
+          <line x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeOpacity="0.4" strokeWidth="1.6" />
+          <line className="hiw-flow" x1={core.x} y1={core.y} x2={n.x} y2={n.y} stroke={n.c} strokeWidth="1.6" />
+        </g>
+      ))}
+      {nodes.map((n, i) => (
+        <g key={`n${i}`} className="hiw-node" style={{ animationDelay: `${i * 0.5}s` }}>
+          <circle cx={n.x} cy={n.y} r="16" fill={n.c} opacity="0.13" />
+          <circle cx={n.x} cy={n.y} r="9" fill={n.c} />
+          <text x={n.x} y={n.y < 100 ? n.y - 18 : n.y + 26} textAnchor="middle" fontSize="12" fontWeight="700" letterSpacing="0.4" fill="#18181A" fillOpacity="0.78">{n.label}</text>
+        </g>
+      ))}
+      <circle cx={core.x} cy={core.y} r="54" fill="#FF2E63" opacity="0.1" />
+      <g className="hiw-node">
+        <circle cx={core.x} cy={core.y} r="36" fill="#FF2E63" />
+        <g transform={`translate(${core.x},${core.y})`} stroke="#ffffff" strokeWidth="3.4" fill="none" strokeLinejoin="round" strokeLinecap="round">
+          <path d="M0 -15 L17 -5 L0 5 L-17 -5 Z" /><path d="M-17 3 L0 13 L17 3" />
+        </g>
+      </g>
+      <text x={core.x} y={core.y + 60} textAnchor="middle" fontSize="12" fontWeight="800" letterSpacing="1" fill="#18181A">YOUR ORDER</text>
+    </svg>
+  )
+}
+
 export default async function HowItWorksPage({
   searchParams,
 }: {
@@ -56,244 +85,45 @@ export default async function HowItWorksPage({
       />
 
       {/* HERO */}
-      <section className="max-w-[1200px] mx-auto px-6 pt-16 pb-12 sm:pt-20">
-        <div className="max-w-2xl">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
-            How it works
+      <section className="relative overflow-hidden">
+        <style>{`
+          .hiw-float{animation:hiwFloat 9s ease-in-out infinite}
+          @keyframes hiwFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+          .hiw-node{transform-box:fill-box;transform-origin:center;animation:hiwPulse 3.4s ease-in-out infinite}
+          @keyframes hiwPulse{0%,100%{opacity:.82}50%{opacity:1}}
+          .hiw-flow{stroke-dasharray:4 11;animation:hiwDash 1.5s linear infinite}
+          @keyframes hiwDash{to{stroke-dashoffset:-30}}
+          @media (prefers-reduced-motion:reduce){.hiw-float,.hiw-node,.hiw-flow{animation:none}}
+        `}</style>
+        <div className="relative mx-auto max-w-[1200px] px-6 pt-16 pb-12 sm:pt-20">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[48%] items-center justify-end lg:flex"
+            style={{ maskImage: 'linear-gradient(to right, transparent, #000 46%)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 46%)' }}
+          >
+            <div className="hiw-float w-full">
+              <HiwOrchestration />
+            </div>
           </div>
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1] tracking-[-0.035em] mb-5">
-            From idea to{' '}
-            <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
-              shelf-ready,
-            </span>{' '}
-            without the supply-chain headache.
-          </h1>
-        </div>
-        <p className="text-lg sm:text-xl text-ink-700 max-w-[60ch] leading-[1.55] mt-6">
-          You pick a starter template. You customize the label in the Design
-          Studio. You approve a sample. We orchestrate every manufacturer, label
-          printer, co-packer, and warehouse in the production graph — so you
-          launch a real CPG brand without becoming a CPG operator.
-        </p>
-      </section>
-
-      {/* 4-STEP JOURNEY */}
-      <Reveal>
-      <section className="bg-white border-y border-ink-200">
-        <div className="max-w-[1200px] mx-auto px-6 py-20">
-          <div className="mb-12 max-w-xl">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-2">
-              Your side
+          <div className="relative z-10 max-w-2xl">
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">
+              How it works
             </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-[-0.025em] leading-[1]">
-              Four steps you{' '}
-              <span className="font-serif italic font-medium text-pink-500 tracking-[-0.02em]">
-                see.
-              </span>{' '}
-              Forty handoffs you don&apos;t.
-            </h2>
-          </div>
-
-          <ol className="grid grid-cols-1 lg:grid-cols-4 gap-3 lg:gap-4">
-            {CREATOR_STEPS.map((s, i) => (
-              <li
-                key={s.title}
-                className="bg-white border border-ink-200 rounded-2xl p-6 flex flex-col"
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <span className="font-display text-3xl font-extrabold text-ink-300 tabular-nums tracking-[-0.02em] leading-none">
-                    0{i + 1}
-                  </span>
-                  <span className="w-11 h-11 rounded-pill bg-ink-900 flex items-center justify-center">
-                    <s.icon strokeWidth={2} className="w-5 h-5 text-neon-500" />
-                  </span>
-                </div>
-                <h3 className="font-display text-[19px] font-bold leading-tight tracking-[-0.01em] text-ink-900 mb-2">
-                  {s.title}
-                </h3>
-                <p className="text-[13.5px] text-ink-600 leading-[1.55] mb-4 flex-1">
-                  {s.description}
-                </p>
-                <div className="text-[11px] font-bold uppercase tracking-[0.07em] text-pink-700 pt-3 border-t border-ink-100">
-                  {s.duration}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-      </Reveal>
-
-      {/* HIDDEN ORCHESTRATION */}
-      <Reveal>
-      <section className="bg-ink-900 text-white" data-surface="dark">
-        <div className="max-w-[1200px] mx-auto px-6 py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-12 lg:gap-16 items-center">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neon-500 mb-3">
-                Our side
-              </div>
-              <h2 className="font-display text-4xl sm:text-5xl font-extrabold leading-[1] tracking-[-0.03em] mb-5 max-w-[16ch]">
-                What happens{' '}
-                <span className="font-serif italic font-medium text-pink-500 tracking-[-0.02em]">
-                  while you sleep.
-                </span>
-              </h2>
-              <p className="text-ink-300 text-lg leading-[1.55] mb-6 max-w-[50ch]">
-                Each launch is a graph: a manufacturer formulates the recipe, a
-                printer produces the labels, a co-packer assembles the SKU, a
-                warehouse fulfills the orders. We coordinate the handoffs.
-              </p>
-              <p className="text-ink-300 text-lg leading-[1.55] mb-8 max-w-[50ch]">
-                You see one timeline. We run the orchestra.
-              </p>
-              <ul className="space-y-3 text-[14px]">
-                {ORCH_BULLETS.map((b) => (
-                  <li key={b} className="flex items-start gap-2.5">
-                    <span className="text-neon-500 flex-shrink-0 mt-0.5">▸</span>
-                    <span className="text-white/85">{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Stylized orchestration graphic */}
-            <div className="relative">
-              {/* animated links — the hub routes orders out to each partner */}
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
-                <g stroke="#B5FF3D" strokeWidth="1.5" fill="none" opacity="0.5" strokeDasharray="3 5" strokeLinecap="round" vectorEffect="non-scaling-stroke">
-                  <line x1="50" y1="50" x2="24" y2="24"><animate attributeName="stroke-dashoffset" values="0;-16" dur="1.6s" repeatCount="indefinite" /></line>
-                  <line x1="50" y1="50" x2="76" y2="24"><animate attributeName="stroke-dashoffset" values="0;-16" dur="2s" repeatCount="indefinite" /></line>
-                  <line x1="50" y1="50" x2="24" y2="76"><animate attributeName="stroke-dashoffset" values="0;-16" dur="1.8s" repeatCount="indefinite" /></line>
-                  <line x1="50" y1="50" x2="76" y2="76"><animate attributeName="stroke-dashoffset" values="0;-16" dur="2.2s" repeatCount="indefinite" /></line>
-                </g>
-              </svg>
-              <div className="relative z-10 grid grid-cols-2 gap-3">
-                {[
-                  { icon: Factory, label: 'Manufacturer', sub: 'Spray-dry · QC' },
-                  { icon: Printer, label: 'Printer', sub: 'CMYK · Die-cut' },
-                  { icon: Boxes, label: 'Co-packer', sub: 'Assembly · Pack-out' },
-                  { icon: Warehouse, label: 'Warehouse', sub: 'Inventory · Ship' },
-                ].map((node) => (
-                  <div
-                    key={node.label}
-                    className="bg-white/5 border border-white/15 rounded-xl p-5 backdrop-blur-sm"
-                  >
-                    <div className="w-10 h-10 rounded-pill bg-pink-500/15 border border-pink-500/30 flex items-center justify-center mb-3">
-                      <node.icon strokeWidth={2} className="w-4 h-4 text-pink-500" />
-                    </div>
-                    <div className="font-display text-[15px] font-bold tracking-[-0.005em]">
-                      {node.label}
-                    </div>
-                    <div className="text-[12px] text-white/60 mt-0.5">{node.sub}</div>
-                  </div>
-                ))}
-              </div>
-              {/* Central orchestrator node */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-pill bg-pink-500/40 motion-safe:animate-ping" />
-                <div className="relative w-20 h-20 rounded-pill bg-pink-500 flex items-center justify-center shadow-2xl ring-8 ring-ink-900">
-                  <span className="w-3 h-3 rounded-pill bg-white" />
-                </div>
-                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.1em] whitespace-nowrap text-white/70">
-                  iLaunchify
-                </div>
-              </div>
-            </div>
+            <h1 className="mb-5 font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1] tracking-[-0.035em]">
+              From idea to{' '}
+              <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">shelf-ready,</span>{' '}
+              without the supply-chain headache.
+            </h1>
+            <p className="max-w-[60ch] text-lg sm:text-xl leading-[1.55] text-ink-700">
+              You pick a starter template. You customize the label in the Design Studio. You approve a sample. We orchestrate every manufacturer, label printer, co-packer, and warehouse in the production graph — so you launch a real CPG brand without becoming a CPG operator.
+            </p>
           </div>
         </div>
       </section>
-      </Reveal>
 
-      {/* PRODUCTION NETWORK */}
-      <Reveal>
-      <section className="max-w-[1200px] mx-auto px-6 py-24">
-        <div className="text-center max-w-xl mx-auto mb-12">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
-            Vetted production network
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-[-0.025em] leading-[1]">
-            Three tiers of{' '}
-            <span className="font-serif italic font-medium text-pink-500 tracking-[-0.02em]">
-              proven.
-            </span>
-          </h2>
-        </div>
+      {/* ===================== 8-STEP PROCESS ===================== */}
+      <ProcessSteps />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PARTNER_TIERS.map((t) => (
-            <div
-              key={t.name}
-              className="bg-white border border-ink-200 rounded-2xl p-6 flex flex-col relative overflow-hidden"
-            >
-              {t.highlight && (
-                <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-[0.07em] bg-neon-500 text-ink-900 px-2 py-0.5 rounded-pill">
-                  Top tier
-                </span>
-              )}
-              <div className="font-display text-2xl font-bold tracking-[-0.015em] text-ink-900 mb-2">
-                {t.name}
-              </div>
-              <div className="text-[13px] text-ink-500 mb-5 leading-snug">
-                {t.gateline}
-              </div>
-              <ul className="space-y-2 text-[13.5px] text-ink-700 leading-[1.45]">
-                {t.bullets.map((b) => (
-                  <li key={b} className="flex items-start gap-2">
-                    <span className="text-pink-500 flex-shrink-0 font-bold">·</span>
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-10 max-w-[60ch] mx-auto text-center text-[14px] text-ink-600 leading-[1.6]">
-          Every partner goes through a five-layer onboarding — identity,
-          capability, operational standards, commercial terms, integration —
-          before they touch a single creator order.
-        </div>
-      </section>
-      </Reveal>
-
-      {/* COMPLIANCE + TRUST GRID */}
-      <Reveal>
-      <section className="bg-white border-y border-ink-200">
-        <div className="max-w-[1200px] mx-auto px-6 py-20">
-          <div className="text-center max-w-xl mx-auto mb-12">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
-              Built-in protections
-            </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-[-0.025em] leading-[1]">
-              The fine print is{' '}
-              <span className="font-serif italic font-medium text-pink-500 tracking-[-0.02em]">
-                handled.
-              </span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {TRUST_CARDS.map((card) => (
-              <div
-                key={card.title}
-                className="bg-white border border-ink-200 rounded-2xl p-6 flex flex-col"
-              >
-                <span className="w-10 h-10 rounded-pill bg-pink-50 flex items-center justify-center mb-4">
-                  <card.icon strokeWidth={2} className="w-4 h-4 text-pink-700" />
-                </span>
-                <div className="font-display text-[17px] font-bold tracking-[-0.01em] text-ink-900 mb-1.5">
-                  {card.title}
-                </div>
-                <div className="text-[13px] text-ink-600 leading-[1.55]">
-                  {card.body}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      </Reveal>
 
       {/* FINAL DARK CTA */}
       <Reveal>
@@ -332,101 +162,3 @@ export default async function HowItWorksPage({
     </>
   )
 }
-
-/* ============ data ============ */
-
-const CREATOR_STEPS = [
-  {
-    title: 'Browse the marketplace',
-    description:
-      'Pick from a curated library of production-ready templates across 8 niches. Every template is admin-curated against a locked taxonomy — verified ingredients, real packaging systems, FDA-compliant label fields. No free-text categories. No "list anything" chaos.',
-    duration: '~10 minutes',
-    icon: ShoppingBag,
-  },
-  {
-    title: 'Customize in the Design Studio',
-    description:
-      'Fabric.js canvas. Drag your logo. Brand colors apply automatically from your brand asset library. The Nutrition Facts and Supplement Facts panels render to 21 CFR spec — including min-font-size enforcement, allergen Big-9 detection, and net-quantity formatting. The compliance scan catches missing required sections before you export.',
-    duration: '~30 minutes',
-    icon: Wand2,
-  },
-  {
-    title: 'Order a sample',
-    description:
-      'Sample orders ship 5–10 units to your door at production-quality. Hold it. Show your audience. Approve to release the main order — we authorize your card at checkout but don’t capture until every assigned partner approves the manifest. Every new creator’s first sample is 50% off (Maker and Builder) or free + credited (Agency).',
-    duration: '4–6 days',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'We ship for you',
-    description:
-      'Direct to your warehouse, a 3PL we coordinate, or your home. We orchestrate every partner in the production graph and surface one timeline so you stay focused on the brand. End buyers buy through your Shopify or TikTok Shop — iLaunchify never appears in the consumer flow.',
-    duration: '7–14 days',
-    icon: Truck,
-  },
-]
-
-const ORCH_BULLETS = [
-  'Each order decomposes into a workflow graph — one node per partner role.',
-  'The routing engine selects partners by capability, region, capacity, and creator tier — same logic, every order, audit-logged.',
-  'Handoffs are reconciled automatically. If a co-packer’s slot moves, the label printer’s deadline moves with it.',
-  'Your card is authorized at checkout but never captured until every assigned partner approves the manifest. If anyone declines, we re-route — and you’re still not charged.',
-]
-
-// Partner tiers surface as information only — tier behaviors beyond the three
-// locked facts (commission, storage, support SLA) are still being designed in
-// V1, so we don't promise tier-gated routing/features (see
-// ilaunchify-marketplace-decisions-2026-06-01 + CLAUDE.md partner-tier lock).
-const PARTNER_TIERS = [
-  {
-    name: 'Verified',
-    gateline: 'Entry — cert + facility docs verified.',
-    bullets: [
-      '15% marketplace commission',
-      'Standard routing',
-      '1 GB file storage',
-    ],
-  },
-  {
-    name: 'Trusted',
-    gateline: '25+ orders shipped, 90%+ on-time.',
-    bullets: [
-      '12% marketplace commission',
-      '10 GB file storage',
-      '24-hour support SLA',
-    ],
-  },
-  {
-    name: 'Premier',
-    gateline: '100+ orders, 95%+ on-time, admin-reviewed.',
-    bullets: [
-      '8% marketplace commission',
-      'Unlimited file storage',
-      '4-hour support SLA',
-    ],
-    highlight: true,
-  },
-]
-
-const TRUST_CARDS = [
-  {
-    title: 'Payment held until approved',
-    body: 'Your card is authorized at checkout. We don’t capture until every assigned partner approves the manifest. If anyone declines, we re-route — and we still don’t charge you.',
-    icon: Lock,
-  },
-  {
-    title: 'FDA labels rendered for you',
-    body: 'Supplement Facts and Nutrition Facts panels per 21 CFR, with min-font-size enforcement, allergen Big-9 detection, bioengineered disclosure, and net-quantity formatting. The platform won’t let you export a non-compliant label without an explicit acknowledgement.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'US production network',
-    body: 'V1 is US-only. Canada is V1.1, EU is V2. We match partners by region to cut shipping time and lead-time risk.',
-    icon: Globe,
-  },
-  {
-    title: 'Quality, structured',
-    body: 'If a partner fails QC, they eat the cost and earn a strike. Three strikes in 12 months and they enter a suspension review. Disputes are mediated against the platform manifest, not free-form email arguments.',
-    icon: Sparkles,
-  },
-]
