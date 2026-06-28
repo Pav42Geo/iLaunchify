@@ -77,13 +77,19 @@ export async function createDraftFromTemplate(
     }
   }
 
-  // Map category enum
+  // Map category enum. Cosmetics + pet share mainCategory 'Other', so drive
+  // those (and supplements) off labelingType; food vs beverage from mainCategory.
+  const lt = template.labelingType
   const productCategory =
-    template.subcategory.category.mainCategory === 'Supplements'
+    lt === 'DIETARY_SUPPLEMENT'
       ? 'SUPPLEMENT'
-      : template.subcategory.category.mainCategory === 'Beverages'
-        ? 'BEVERAGE_FUNCTIONAL'
-        : 'FOOD'
+      : lt === 'COSMETIC'
+        ? 'COSMETIC'
+        : lt === 'PET_PRODUCT'
+          ? 'PET'
+          : template.subcategory.category.mainCategory === 'Beverages'
+            ? 'BEVERAGE_FUNCTIONAL'
+            : 'FOOD'
 
   // Slug: make it unique-per-brand by appending the variant flavor if needed
   let slug = template.slug + (variant.flavor ? `-${slugify(variant.flavor)}` : '')

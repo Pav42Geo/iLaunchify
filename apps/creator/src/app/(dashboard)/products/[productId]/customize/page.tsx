@@ -68,7 +68,13 @@ export default async function CustomizePage({ params }: { params: Promise<{ prod
         servingsPerContainer={Number(product.variant.servingsPerContainer)}
         servingSizeG={Number(product.variant.servingSizeG)}
         servingSizeDesc={product.variant.servingSizeDesc ?? `${Number(product.variant.servingSizeG)}g`}
-        productCategory={product.category}
+        productCategory={
+          product.category === 'SUPPLEMENT'
+            ? 'SUPPLEMENT'
+            : product.category === 'BEVERAGE_FUNCTIONAL' || product.category === 'COSMETIC'
+              ? 'BEVERAGE_FUNCTIONAL'
+              : 'FOOD'
+        }
         slots={product.productTemplate.ingredientSlots.map((slot) => ({
           id: slot.id,
           label: slot.label ?? slot.baseIngredient.name,

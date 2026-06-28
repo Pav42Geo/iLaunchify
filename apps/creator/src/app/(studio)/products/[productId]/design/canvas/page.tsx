@@ -177,7 +177,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
   // curation (#135) actually assigns die-cuts to products.
-  const dieCut = await resolveDefaultDieCut(product.category)
+  const dieCut = await resolveDefaultDieCut(studioCategory(product.category))
   if (!dieCut) {
     // No die-cuts seeded — kick back to product overview with a clear hint.
     redirect(`/products/${productId}?error=no-diecut-available`)
@@ -202,7 +202,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
 
   // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
   const productCtx = deriveProductCtx({
-    category: product.category,
+    category: studioCategory(product.category),
     recipe: product.recipe,
     variant: product.variant,
   })
@@ -214,7 +214,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // NEVER silently fall back to Nutrition Facts (the previous `?? 'FOOD'` did).
   const labelingType = resolveLabelingRegime(
     product.productTemplate?.labelingType ?? null,
-    product.category,
+    studioCategory(product.category),
   )
 
   // Per-product required (locked-mandatory) phrases — the compliance scanner
@@ -377,6 +377,19 @@ function resolveLabelingRegime(
 ): LabelingType {
   if (category === 'SUPPLEMENT') return 'DIETARY_SUPPLEMENT'
   return templateLabelingType ?? 'FOOD'
+}
+
+/**
+ * Narrow the owned-Product category to the three the Studio helpers branch on.
+ * COSMETIC + PET were added to ProductCategory (2026-06-28) for ownership/sample
+ * support; in the Studio they behave like their closest packaging regime
+ * (cosmetic → bottle, pet → pouch). The TRUE label regime is never lost — it
+ * still comes from the template's labelingType via resolveLabelingRegime.
+ */
+function studioCategory(c: string): 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT' {
+  if (c === 'SUPPLEMENT') return 'SUPPLEMENT'
+  if (c === 'BEVERAGE_FUNCTIONAL' || c === 'COSMETIC') return 'BEVERAGE_FUNCTIONAL'
+  return 'FOOD'
 }
 
 /**

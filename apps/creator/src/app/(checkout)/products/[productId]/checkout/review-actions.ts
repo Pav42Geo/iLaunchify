@@ -89,8 +89,15 @@ export async function loadReviewSnapshot(
     },
   })
 
-  // Die-cut — same resolver the canvas page uses.
-  const dieCut = await resolveDefaultDieCut(product.category)
+  // Die-cut — same resolver the canvas page uses. COSMETIC/PET narrow to their
+  // closest packaging regime (the label regime comes from the template).
+  const dieCut = await resolveDefaultDieCut(
+    product.category === 'SUPPLEMENT'
+      ? 'SUPPLEMENT'
+      : product.category === 'BEVERAGE_FUNCTIONAL' || product.category === 'COSMETIC'
+        ? 'BEVERAGE_FUNCTIONAL'
+        : 'FOOD',
+  )
 
   if (!designVersion) {
     return {

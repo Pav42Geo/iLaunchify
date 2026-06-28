@@ -129,13 +129,21 @@ export async function startLaunchFromTemplate(
     }
   }
 
-  // Category enum mapping (same as createDraftFromTemplate).
+  // Owned-Product category. Drive cosmetic/pet/supplement off the template's
+  // labelingType (cosmetics + pet both share mainCategory 'Other', so the old
+  // mainCategory-only mapping mislabelled them as FOOD); food vs beverage still
+  // comes from mainCategory. (same mapping as createDraftFromTemplate)
+  const lt = template.labelingType
   const productCategory =
-    template.subcategory.category.mainCategory === 'Supplements'
+    lt === 'DIETARY_SUPPLEMENT'
       ? 'SUPPLEMENT'
-      : template.subcategory.category.mainCategory === 'Beverages'
-        ? 'BEVERAGE_FUNCTIONAL'
-        : 'FOOD'
+      : lt === 'COSMETIC'
+        ? 'COSMETIC'
+        : lt === 'PET_PRODUCT'
+          ? 'PET'
+          : template.subcategory.category.mainCategory === 'Beverages'
+            ? 'BEVERAGE_FUNCTIONAL'
+            : 'FOOD'
 
   // Unique slug per brand.
   const baseSlug =
