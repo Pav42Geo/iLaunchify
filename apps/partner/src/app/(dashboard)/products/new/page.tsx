@@ -67,9 +67,13 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       category: { findMany: (a: unknown) => Promise<Array<{ id: string; name: string; mainCategory: string; labelingType: string }>> }
     }).category.findMany({ where: { isActive: true }, select: { id: true, name: true, mainCategory: true, labelingType: true }, orderBy: { name: 'asc' } }),
     prisma.subcategory.findMany({ where: { isActive: true }, select: { id: true, name: true, categoryId: true }, orderBy: { name: 'asc' } }),
-    prisma.packagingSystem.findMany({
+    // Cast-guarded — grossWeightG/casesPerLayer/layersPerPallet post-date the
+    // generated client until db:push. Surfaced read-only in the packaging step.
+    (prisma as unknown as {
+      packagingSystem: { findMany: (a: unknown) => Promise<Array<{ id: string; partnerName: string; topology: string; unitCount: number; moq: number; grossWeightG: number | null; casesPerLayer: number | null; layersPerPallet: number | null }>> }
+    }).packagingSystem.findMany({
       where: { partnerId: partner.id, status: 'ACTIVE' },
-      select: { id: true, partnerName: true, topology: true, unitCount: true, moq: true },
+      select: { id: true, partnerName: true, topology: true, unitCount: true, moq: true, grossWeightG: true, casesPerLayer: true, layersPerPallet: true },
       orderBy: { partnerName: 'asc' },
     }),
     prisma.niche.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),

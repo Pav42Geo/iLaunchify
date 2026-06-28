@@ -10,7 +10,7 @@ import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
 import { Package } from 'lucide-react'
 
-interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number }
+interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number; grossWeightG?: number | null; casesPerLayer?: number | null; layersPerPallet?: number | null }
 
 export function PackagingPicker({ draftId, systems }: { draftId: string | null; systems: PackagingOption[] }) {
   const [attached, setAttached] = useState<string[]>([])
@@ -52,6 +52,13 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
                 <div className="grow">
                   <b style={{ fontSize: 13 }}>{s.partnerName}</b>
                   <div className="tiny muted">{s.topology} · {s.unitCount} unit{s.unitCount === 1 ? '' : 's'} · MOQ {s.moq.toLocaleString()}</div>
+                  {(s.grossWeightG != null || (s.casesPerLayer != null && s.layersPerPallet != null)) && (
+                    <div className="tiny muted">
+                      {s.grossWeightG != null && <>gross {s.grossWeightG} g</>}
+                      {s.grossWeightG != null && s.casesPerLayer != null && s.layersPerPallet != null && ' · '}
+                      {s.casesPerLayer != null && s.layersPerPallet != null && <>pallet {s.casesPerLayer}×{s.layersPerPallet} = {(s.casesPerLayer * s.layersPerPallet).toLocaleString()} cases</>}
+                    </div>
+                  )}
                 </div>
                 <button className={on ? 'btn sm' : 'rb-btn-add'} disabled={busy === s.id} onClick={() => toggle(s.id, !on)}>
                   {busy === s.id ? '…' : on ? 'Attached ✓' : '+ Attach'}
