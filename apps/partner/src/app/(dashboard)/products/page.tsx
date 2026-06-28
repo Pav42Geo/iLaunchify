@@ -26,6 +26,7 @@ import {
   Coffee,
   Leaf,
   Truck,
+  Search,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
@@ -108,12 +109,14 @@ type Row = {
   imageAssetId: string | null
   _count: { ingredientSlots: number; packagingSystems: number; variants: number }
   needsCategoryReview?: boolean
+  manufacturerRefs?: { label: string; value: string }[]
+  familyCode: string | null
 }
 
 export default async function ProductsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sort?: string; dir?: string; view?: string }>
+  searchParams: Promise<{ tab?: string; sort?: string; dir?: string; view?: string; q?: string }>
 }) {
   const sp = await searchParams
   const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
@@ -128,13 +131,21 @@ export default async function ProductsListPage({
   })
   if (!partner) return null
 
-  // Subcategory options for the CSV import modal (default-category picker +
-  // per-row category-name resolution).
-  const importSubcats = (await prisma.subcategory.findMany({
+  // Categories (grouped with their subcategories) for the import modal's
+  // per-product Category → Subcategory pickers.
+  const subcatRows = await prisma.subcategory.findMany({
     where: { isActive: true },
-    select: { id: true, name: true, category: { select: { name: true } } },
-    orderBy: { name: 'asc' },
-  })).map((s) => ({ id: s.id, name: s.name, categoryName: s.category?.name ?? '' }))
+    select: { id: true, name: true, category: { select: { id: true, name: true } } },
+    orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+  })
+  const catGroupMap = new Map<string, { id: string; name: string; subcategories: { id: string; name: string }[] }>()
+  for (const s of subcatRows) {
+    const c = s.category
+    if (!c) continue
+    if (!catGroupMap.has(c.id)) catGroupMap.set(c.id, { id: c.id, name: c.name, subcategories: [] })
+    catGroupMap.get(c.id)!.subcategories.push({ id: s.id, name: s.name })
+  }
+  const importCategories = [...catGroupMap.values()]
 
   const serviceIds = partner.services.map((s) => s.id)
   const templates: Row[] = serviceIds.length
@@ -153,7 +164,7 @@ export default async function ProductsListPage({
   // create their first draft (a DRAFT template row), this list is non-empty
   // and the regular Products page renders automatically.
   if (templates.length === 0) {
-    return <ProductsGetStarted companyName={partner.companyName} subcategories={importSubcats} />
+    return <ProductsGetStarted companyName={partner.companyName} categories={importCategories} />
   }
 
   // Resolve hero thumbnails (Asset id → URL) for the name cell.
@@ -166,16 +177,25 @@ export default async function ProductsListPage({
   // two-hop relation).
   const templateIds = templates.map((t) => t.id)
 
-  // Flag products an admin is still re-filing (imported under an unmatched category).
-  // Cast-guarded + fail-safe — the column post-dates the client until db push.
+  // Pull the cast-guarded template extras (category-review flag + the partner's own
+  // external references) in one query. Fail-safe — these columns post-date the
+  // generated client until the Mac db push.
   if (templateIds.length) {
-    const flagged = await (
-      prisma as unknown as { productTemplate: { findMany: (a: unknown) => Promise<Array<{ id: string }>> } }
+    const extras = await (
+      prisma as unknown as { productTemplate: { findMany: (a: unknown) => Promise<Array<{ id: string; needsCategoryReview: boolean; manufacturerRefs: unknown }>> } }
     ).productTemplate
-      .findMany({ where: { id: { in: templateIds }, needsCategoryReview: true }, select: { id: true } })
-      .catch(() => [] as Array<{ id: string }>)
-    const flaggedIds = new Set(flagged.map((f) => f.id))
-    for (const t of templates) t.needsCategoryReview = flaggedIds.has(t.id)
+      .findMany({ where: { id: { in: templateIds } }, select: { id: true, needsCategoryReview: true, manufacturerRefs: true } })
+      .catch(() => [] as Array<{ id: string; needsCategoryReview: boolean; manufacturerRefs: unknown }>)
+    const byId = new Map(extras.map((e) => [e.id, e]))
+    for (const t of templates) {
+      const e = byId.get(t.id)
+      t.needsCategoryReview = !!e?.needsCategoryReview
+      t.manufacturerRefs = Array.isArray(e?.manufacturerRefs)
+        ? (e!.manufacturerRefs as Array<{ label?: unknown; value?: unknown }>)
+            .filter((r) => r && typeof r.value === 'string')
+            .map((r) => ({ label: typeof r.label === 'string' ? r.label : '', value: r.value as string }))
+        : []
+    }
   }
 
   const derivedProducts = templateIds.length
@@ -198,9 +218,15 @@ export default async function ProductsListPage({
     templates.filter((r) => TAB_STATUSES[t].includes(r.status)).length
   const certRefresh = templates.filter((r) => r.certRefreshNeededAt).length
 
+  const query = (sp.q ?? '').trim().toLowerCase()
   const visible = (
     tab === 'all' ? templates : templates.filter((r) => TAB_STATUSES[tab].includes(r.status))
-  ).slice()
+  )
+    .filter((r) => !query
+      || r.name.toLowerCase().includes(query)
+      || (r.familyCode ?? '').toLowerCase().includes(query)
+      || (r.manufacturerRefs ?? []).some((x) => x.value.toLowerCase().includes(query) || x.label.toLowerCase().includes(query)))
+    .slice()
   visible.sort((a, b) => {
     const flip = dir === 'asc' ? 1 : -1
     if (sort === 'name') return a.name.localeCompare(b.name) * flip
@@ -226,7 +252,7 @@ export default async function ProductsListPage({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <ProductImportButton subcategories={importSubcats} />
+            <ProductImportButton categories={importCategories} />
             <Link
               href="/products/new"
               className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
@@ -306,7 +332,24 @@ export default async function ProductsListPage({
             )
           })}
         </div>
-        <ViewToggle value={view} defaultMode="cards" />
+        <div className="flex items-center gap-2">
+          <form action="/products" className="relative">
+            {tab !== 'all' && <input type="hidden" name="tab" value={tab} />}
+            {sort !== 'updated' && <input type="hidden" name="sort" value={sort} />}
+            {dir !== 'desc' && <input type="hidden" name="dir" value={dir} />}
+            {view === 'table' && <input type="hidden" name="view" value="table" />}
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={sp.q ?? ''}
+              placeholder="Search name, SKU, your reference…"
+              aria-label="Search products"
+              className="w-56 rounded-full border border-ink-200 bg-white py-1.5 pl-8 pr-3 text-[12.5px] text-ink-900 placeholder:text-ink-400 focus:border-ink-400 focus:outline-none focus:ring-2 focus:ring-pink-500/30"
+            />
+          </form>
+          <ViewToggle value={view} defaultMode="cards" />
+        </div>
       </div>
 
       {/* Table / cards (true-empty is handled by the early-return landing above) */}
@@ -625,6 +668,14 @@ function PartnerProductCard({ r, heroUrls, orders }: { r: Row; heroUrls: Map<str
           </div>
 
           <div className="mt-0.5 text-[12.5px] text-ink-500">{r.subcategory.name}</div>
+
+          {r.manufacturerRefs && r.manufacturerRefs.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px]">
+              {r.manufacturerRefs.slice(0, 3).map((x, i) => (
+                <span key={i} className="text-ink-400"><span>{x.label || 'Ref'}:</span> <span className="font-medium text-ink-600">{x.value}</span></span>
+              ))}
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-ink-700">
             <span className="inline-flex items-center gap-1.5 text-ink-600">

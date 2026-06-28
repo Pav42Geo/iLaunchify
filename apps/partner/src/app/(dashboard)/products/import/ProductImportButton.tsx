@@ -115,6 +115,8 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   const [mapping, setMapping] = useState<Record<string, number | null>>({})
   const [previewIdx, setPreviewIdx] = useState(0) // which row the preview/editor shows
   const [overrides, setOverrides] = useState<Record<number, Record<string, string>>>({}) // rowIndex → field → tweaked value
+  // Partner-private external references — each maps a label (e.g. "ERP ID") to a column.
+  const [refMappings, setRefMappings] = useState<{ id: number; label: string; col: number | null }[]>([])
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<ImportResult[] | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set()) // keyed by raw row index
@@ -153,7 +155,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setResults(null); setDrag(false)
     setSelected(new Set()); setQuery(''); setAssign({}); setBulkCat(''); setBulkSub('')
     setSuggCats([]); setSuggSubs({}); setAddModal(null); setAddName(''); seqRef.current = 0
-    setPreviewIdx(0); setOverrides({})
+    setPreviewIdx(0); setOverrides({}); setRefMappings([])
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
@@ -280,6 +282,17 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   const previewEdited = previewFields.some((p) => p.edited)
   const previewName = rows.length ? valueFor(pIdx, 'name') : ''
 
+  // A product's external references = each ref-mapping's column value for that row.
+  const buildRefs = useCallback((rowIndex: number) => {
+    const r = rows[rowIndex]
+    if (!r) return [] as { label: string; value: string }[]
+    return refMappings
+      .filter((rm) => rm.col != null && rm.col >= 0)
+      .map((rm) => ({ label: rm.label.trim() || 'Reference', value: (r[rm.col!] ?? '').trim() }))
+      .filter((x) => x.value)
+  }, [rows, refMappings])
+  const previewRefs = useMemo(() => buildRefs(pIdx), [buildRefs, pIdx])
+
   // Which rows the partner has actually changed (override differs from the cell) —
   // for the "edited" markers in the preview header + the choose-products list.
   const editedRows = useMemo(() => {
@@ -348,6 +361,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
         ...v.base,
         subcategoryId: sug ? firstSubId : e.subcategoryId,
         suggestedCategoryName: sug ? label : null,
+        manufacturerRefs: buildRefs(v.rowIndex),
       }
     })
     setBusy(true)
@@ -447,6 +461,38 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                     ))}
                   </div>
 
+                  <div className="mt-4 rounded-lg border border-ink-200 bg-white px-3 py-2.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
+                      Your references <span className="font-medium normal-case tracking-normal text-ink-400">· optional — track products by your own ERP / warehouse codes</span>
+                    </div>
+                    {refMappings.length > 0 && (
+                      <div className="mt-2 grid gap-2">
+                        {refMappings.map((rm) => (
+                          <div key={rm.id} className="grid grid-cols-[1fr_1.2fr_28px] items-center gap-2">
+                            <input
+                              value={rm.label}
+                              onChange={(e) => setRefMappings((rs) => rs.map((x) => (x.id === rm.id ? { ...x, label: e.target.value } : x)))}
+                              placeholder="Label (e.g. ERP ID)"
+                              className={SEL}
+                            />
+                            <select className={SEL} value={rm.col ?? ''} onChange={(e) => setRefMappings((rs) => rs.map((x) => (x.id === rm.id ? { ...x, col: e.target.value === '' ? null : parseInt(e.target.value, 10) } : x)))}>
+                              <option value="">— which column —</option>
+                              {headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                            </select>
+                            <button type="button" aria-label="Remove reference" onClick={() => setRefMappings((rs) => rs.filter((x) => x.id !== rm.id))} className="grid h-8 w-7 place-items-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-ink-700">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {refMappings.length < 8 && (
+                      <button type="button" onClick={() => setRefMappings((rs) => [...rs, { id: seqRef.current++, label: '', col: null }])} className="mt-2 text-[12.5px] font-semibold text-pink-700 hover:text-pink-800">
+                        + Add a reference
+                      </button>
+                    )}
+                  </div>
+
                   {rows.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
                       <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-ink-50 px-3 py-2">
@@ -494,6 +540,16 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                           </div>
                         ))}
                       </div>
+                      {previewRefs.length > 0 && (
+                        <div className="border-t border-ink-100 px-3 py-2">
+                          <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-400">Your references</div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            {previewRefs.map((r, i) => (
+                              <span key={i} className="text-[12px] text-ink-600"><span className="text-ink-400">{r.label}:</span> <span className="font-medium text-ink-900">{r.value}</span></span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2 border-t border-ink-100 px-3 py-1.5">
                         <span className="text-[11px] text-ink-500">Edits apply to this product. Use ‹ › or type a number.</span>
                         <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>

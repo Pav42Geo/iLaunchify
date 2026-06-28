@@ -27,6 +27,9 @@ export interface ImportRow {
   // (default) subcategory but flag the draft for admin category review, carrying the
   // manufacturer's own category text as the suggestion.
   suggestedCategoryName?: string | null
+  // Partner-private external references for their own tracking (ERP id, warehouse
+  // code, …). Reference-only; never used by platform logic.
+  manufacturerRefs?: { label: string; value: string }[] | null
 }
 
 export interface ImportResult { ok: boolean; name: string; id?: string; error?: string }
@@ -57,16 +60,21 @@ export async function bulkImportProducts(
       // under the default subcategory, but flag it so an admin can re-file it,
       // carrying the manufacturer's own category text. Cast-guarded (the columns
       // post-date the generated client until the Mac db push). Best-effort.
+      const extra: Record<string, unknown> = {}
       const suggested = (row.suggestedCategoryName ?? '').trim()
-      if (suggested) {
+      if (suggested) { extra.needsCategoryReview = true; extra.suggestedCategoryName = suggested.slice(0, 120) }
+      // Partner-private external references — keep at most 8, trim label/value.
+      const refs = (row.manufacturerRefs ?? [])
+        .filter((r) => r && typeof r.value === 'string' && r.value.trim() !== '')
+        .slice(0, 8)
+        .map((r) => ({ label: (r.label || 'Reference').trim().slice(0, 40), value: r.value.trim().slice(0, 120) }))
+      if (refs.length) extra.manufacturerRefs = refs
+      if (Object.keys(extra).length) {
         try {
           await (prisma as unknown as {
             productTemplate: { update: (a: unknown) => Promise<unknown> }
-          }).productTemplate.update({
-            where: { id },
-            data: { needsCategoryReview: true, suggestedCategoryName: suggested.slice(0, 120) },
-          })
-        } catch { /* non-fatal — draft still created under the default category */ }
+          }).productTemplate.update({ where: { id }, data: extra })
+        } catch { /* non-fatal — draft still created */ }
       }
 
       // Template-level optional fields (best-effort; a field failure shouldn't

@@ -3161,6 +3161,10 @@ model ProductTemplate {
   pendingEditPayload         Json? // proposed edits while in PENDING_EDIT_REVIEW; live row keeps serving
   finishedProductWeightG     Int? // derived from slots; cached for shipping calc
   customMeta                 Json? // partner-supplied key/value pairs ([{key,value}] max 10)
+  // Partner-private external references for the manufacturer's OWN tracking — ERP id,
+  // warehouse code, legacy SKU, etc. [{label,value}]. Reference-only (the platform
+  // never keys off these), partner-visibility-only, searchable in the products list.
+  manufacturerRefs           Json?
   allergenCrossContamination String? // partner-input cross-contamination statement
   allergenManualOverrides    Json? // [{ allergen, reason }] for manual additions
   // V1 — Recipal-parity additions per docs/MANUFACTURER_PRODUCT_BUILDER.md §4a.5c + §4a.5d
