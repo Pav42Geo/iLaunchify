@@ -3151,6 +3151,12 @@ model ProductTemplate {
   videoAssetId               String?
   // Optional: snapshot of base nutrition (BASE ingredients only) for fast catalog display
   baseNutritionSnapshot      Json?
+  // Category review (importer): when a manufacturer's spreadsheet category has no
+  // iLaunchify match, the draft imports under the partner's default subcategory but
+  // is flagged here with their suggested category name, for an admin to re-file (or
+  // create a new category). Mirrors the PackagingSystem suggestedCategory pattern.
+  needsCategoryReview        Boolean                       @default(false)
+  suggestedCategoryName      String? // the manufacturer's own category text, verbatim
   // V1 — per docs/MANUFACTURER_PRODUCT_BUILDER.md
   pendingEditPayload         Json? // proposed edits while in PENDING_EDIT_REVIEW; live row keeps serving
   finishedProductWeightG     Int? // derived from slots; cached for shipping calc

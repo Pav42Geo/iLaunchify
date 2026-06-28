@@ -23,6 +23,10 @@ export interface ImportRow {
   shelfLifeDays?: number | null
   netContentValue?: number | null
   netContentUnit?: string | null
+  // When set, the row's category had no iLaunchify match: import under the resolved
+  // (default) subcategory but flag the draft for admin category review, carrying the
+  // manufacturer's own category text as the suggestion.
+  suggestedCategoryName?: string | null
 }
 
 export interface ImportResult { ok: boolean; name: string; id?: string; error?: string }
@@ -48,6 +52,22 @@ export async function bulkImportProducts(
       const created = await createDraftShell({ name, subcategoryId: row.subcategoryId })
       if (!created.ok) { results.push({ ok: false, name, error: created.error }); continue }
       const id = created.data.id
+
+      // Category review: the row's category had no iLaunchify match → it imported
+      // under the default subcategory, but flag it so an admin can re-file it,
+      // carrying the manufacturer's own category text. Cast-guarded (the columns
+      // post-date the generated client until the Mac db push). Best-effort.
+      const suggested = (row.suggestedCategoryName ?? '').trim()
+      if (suggested) {
+        try {
+          await (prisma as unknown as {
+            productTemplate: { update: (a: unknown) => Promise<unknown> }
+          }).productTemplate.update({
+            where: { id },
+            data: { needsCategoryReview: true, suggestedCategoryName: suggested.slice(0, 120) },
+          })
+        } catch { /* non-fatal — draft still created under the default category */ }
+      }
 
       // Template-level optional fields (best-effort; a field failure shouldn't
       // discard an already-created draft).

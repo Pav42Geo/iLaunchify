@@ -180,12 +180,16 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
     const get = (key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (r[i] ?? '').trim() : '' }
     const name = get('name')
     if (name.length < 2) return null
-    const catRaw = get('category').toLowerCase()
+    const catDisplay = get('category')
+    const catRaw = catDisplay.toLowerCase()
     // Per-category resolution: an explicit choice from the "Categories in your sheet"
-    // panel wins; else an auto-match by name; else the default. '__skip__' drops the row.
+    // panel wins; else an auto-match by name; else the default. '__skip__' drops the
+    // row; '__suggest__' imports it under the default but flags it for admin review
+    // carrying the manufacturer's own category text.
     const eff = catRaw ? (categoryMap[catRaw] ?? (subcatByName.get(catRaw) ?? '')) : ''
     if (eff === '__skip__') return null
-    const subcategoryId = eff || defaultSubcatId
+    const suggestCategory = eff === '__suggest__'
+    const subcategoryId = (suggestCategory ? '' : eff) || defaultSubcatId
     if (!subcategoryId) return null
     const cooRaw = get('countryOfOrigin')
     const coo = cooRaw ? (COUNTRY_TO_CODE[cooRaw.toLowerCase()] ?? (cooRaw.length === 2 ? cooRaw.toUpperCase() : cooRaw)) : null
@@ -203,6 +207,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       shelfLifeDays: toInt(get('shelfLifeDays')),
       netContentValue: toNum(get('netContentValue')),
       netContentUnit: get('netContentUnit') || null,
+      suggestedCategoryName: suggestCategory ? catDisplay : null,
     }
   }
 
@@ -425,6 +430,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                                 onChange={(e) => setCategoryMap((m) => ({ ...m, [c.value]: e.target.value }))}
                               >
                                 <option value="">Use default category</option>
+                                <option value="__suggest__">Suggest “{c.display}” for admin review</option>
                                 <option value="__skip__">Skip these products</option>
                                 {subcategories.map((s) => <option key={s.id} value={s.id}>{s.categoryName} → {s.name}</option>)}
                               </select>

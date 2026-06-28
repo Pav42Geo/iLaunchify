@@ -182,6 +182,13 @@ const PRIMARY: SidebarRegion = {
       href: '/categories',
     },
     {
+      kind: 'item',
+      label: 'Category review',
+      icon: Tag,
+      href: '/categories/review',
+      capability: 'catalog:write',
+    },
+    {
       kind: 'group',
       label: 'Users & Roles',
       icon: Users,
