@@ -1,6 +1,6 @@
-Product name,Category,Base SKU,Short description,Country of origin,MOQ,Order increment,Repeat lead time (days),First-run lead time (days),Monthly capacity,Shelf life (days),Net content value,Net content unit
-Sparkling Yuzu Soda,Sparkling Water,SODA-YUZU,"Crisp Japanese yuzu, lightly sparkling, zero sugar",US,500,100,21,35,50000,365,355,mL
-Cold Brew Coffee Concentrate,Cold Brew Coffee,CB-CONC-32,"Slow-steeped 18 hours, makes 8 cups, unsweetened",US,250,50,18,30,20000,270,946,mL
-Sparkling Grapefruit Water,Sparkling Water,SPK-GRPFRT,"Pink grapefruit, naturally flavored, no sweeteners",US,1000,250,21,35,80000,365,355,mL
-Electrolyte Hydration Mix,Powdered Drink Mix,ELEC-MIX-30,"Single-serve sticks, sodium + potassium, light citrus",US,500,100,28,45,30000,540,7,g
-Ginger Lemon Kombucha,Kombucha,KOMB-GL,"Raw, lightly fizzy, live cultures, real ginger",US,300,60,14,28,15000,120,414,mL
+Product name,Category,UPC,Base SKU,Short description,Country of origin,MOQ,Order increment,Repeat lead time (days),First-run lead time (days),Monthly capacity,Shelf life (days),Net content value,Net content unit
+Sparkling Yuzu Soda,Sparkling Water,850002345012,SODA-YUZU,"Crisp Japanese yuzu, lightly sparkling, zero sugar",US,500,100,21,35,50000,365,355,mL
+Cold Brew Coffee Concentrate,Cold Brew Coffee,850002345029,CB-CONC-32,"Slow-steeped 18 hours, makes 8 cups, unsweetened",US,250,50,18,30,20000,270,946,mL
+Sparkling Grapefruit Water,Sparkling Water,850002345036,SPK-GRPFRT,"Pink grapefruit, naturally flavored, no sweeteners",US,1000,250,21,35,80000,365,355,mL
+Electrolyte Hydration Mix,Powdered Drink Mix,850002345043,ELEC-MIX-30,"Single-serve sticks, sodium + potassium, light citrus",US,500,100,28,45,30000,540,7,g
+Ginger Lemon Kombucha,Kombucha,850002345050,KOMB-GL,"Raw, lightly fizzy, live cultures, real ginger",US,300,60,14,28,15000,120,414,mL

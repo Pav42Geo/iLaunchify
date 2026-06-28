@@ -31,7 +31,8 @@ interface FieldDef { key: keyof ImportRow | 'category'; label: string; required?
 const FIELDS: FieldDef[] = [
   { key: 'name', label: 'Product name', required: true, kind: 'text', aliases: ['product name', 'display name', 'item name', 'product title', 'name', 'title'] },
   { key: 'category', label: 'Category (optional)', kind: 'text', aliases: ['category', 'subcategory', 'product type', 'item type', 'class', 'type'] },
-  { key: 'familyCode', label: 'Base SKU', kind: 'text', aliases: ['base sku', 'variant sku', 'item number', 'item code', 'part number', 'mpn', 'style number', 'sku', 'code'] },
+  { key: 'gtin', label: 'GTIN / UPC / barcode', kind: 'text', aliases: ['gtin', 'upc', 'ean', 'barcode', 'gtin/upc', 'upc/ean', 'ean/upc', 'global trade item number'] },
+  { key: 'familyCode', label: 'Base SKU', kind: 'text', aliases: ['base sku', 'variant sku', 'item number', 'item code', 'part number', 'mpn', 'style number', 'sku'] },
   { key: 'description', label: 'Short description', kind: 'text', aliases: ['short description', 'body html', 'body (html)', 'long description', 'product description', 'description', 'desc', 'summary'] },
   { key: 'countryOfOrigin', label: 'Country of origin', kind: 'coo', aliases: ['country of origin', 'country of manufacture', 'manufactured in', 'made in', 'origin', 'coo', 'country'] },
   { key: 'moqMin', label: 'MOQ', kind: 'int', aliases: ['moq', 'minimum order quantity', 'min order qty', 'min qty', 'minimum order', 'min order', 'minimum'] },
@@ -79,8 +80,8 @@ const toNum = (s: string): number | null => { const n = parseFloat(s.replace(/[^
 
 // A starter CSV whose headers exactly match the auto-mapper, plus one example row.
 function downloadTemplate() {
-  const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
-  const example = ['Sparkling Yuzu Soda', '', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
+  const headers = ['Product name', 'Category', 'GTIN', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
+  const example = ['Sparkling Yuzu Soda', '', '850002345012', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
   const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)
   const csv = [headers, example].map((r) => r.map(esc).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -162,6 +163,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       name,
       subcategoryId,
       familyCode: get('familyCode') || null,
+      gtin: get('gtin') || null,
       description: get('description') || null,
       countryOfOrigin: coo,
       moqMin: toInt(get('moqMin')),
@@ -298,6 +300,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                           : <X className="h-3.5 w-3.5 flex-none text-danger-600" aria-hidden="true" />}
                         <span className="truncate text-ink-900">{r.name}</span>
                         {!r.ok && <span className="ml-auto truncate text-[12px] text-danger-700">{r.error}</span>}
+                        {r.ok && r.note && <span className="ml-auto truncate text-[12px] text-ink-500">{r.note}</span>}
                       </div>
                     ))}
                   </div>
