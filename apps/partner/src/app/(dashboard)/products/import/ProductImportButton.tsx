@@ -107,8 +107,7 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-export function ProductImportButton({ subcategories, triggerClassName, triggerLabel, mode = 'bulk' }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode; mode?: 'bulk' | 'single' }) {
-  const single = mode === 'single'
+export function ProductImportButton({ subcategories, triggerClassName, triggerLabel }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'drop' | 'map' | 'select' | 'done'>('drop')
@@ -254,34 +253,30 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   // selection step so the partner can pick which to import; a single-product sheet
   // skips straight to import.
   function next() {
-    if (!valid.length) { toast.error(single ? 'No usable product row found.' : 'No valid rows to import.'); return }
+    if (!valid.length) { toast.error('No valid rows to import.'); return }
     if (valid.length === 1) { commitRows(valid.map((v) => v.import)); return }
-    // Default: single → first product highlighted; bulk → everything selected.
-    setSelected(single ? new Set([0]) : new Set(valid.map((_, i) => i)))
+    setSelected(new Set(valid.map((_, i) => i))) // default: everything selected
     setStep('select')
   }
 
+  // One path for any selection. Import the chosen rows as drafts; if exactly ONE
+  // product was created, drop the partner straight into the builder to finish it
+  // (authoring → review). More than one → the summary list, each linking to the
+  // builder. So a single-product import lands in the builder without a separate
+  // "single" mode — the behaviour follows the count, not a toggle.
   function commitRows(rowsToImport: ImportRow[]) {
-    if (!rowsToImport.length) { toast.error(single ? 'Pick a product to set up.' : 'Select at least one product.'); return }
+    if (!rowsToImport.length) { toast.error('Select at least one product.'); return }
     setBusy(true)
-    if (single) {
-      // Single-product spec-sheet fill: create ONE draft (the chosen product) and
-      // drop the partner into the builder to review + finish (authoring → review).
-      bulkImportProducts([rowsToImport[0]!]).then((res) => {
-        setBusy(false)
-        if (!res.ok) { toast.error(res.error); return }
-        const r = res.results[0]
-        if (r?.ok && r.id) router.push(`/products/new?draft=${r.id}&imported=1`)
-        else toast.error(r?.error ?? 'Could not create the draft.')
-      })
-      return
-    }
     bulkImportProducts(rowsToImport).then((res) => {
       setBusy(false)
       if (!res.ok) { toast.error(res.error); return }
+      const okResults = res.results.filter((r) => r.ok)
+      if (okResults.length === 1 && okResults[0]?.id) {
+        router.push(`/products/new?draft=${okResults[0].id}&imported=1`)
+        return
+      }
       setResults(res.results); setStep('done')
-      const ok = res.results.filter((r) => r.ok).length
-      if (ok) { toast.success(`Created ${ok} draft${ok === 1 ? '' : 's'}`); router.refresh() }
+      if (okResults.length) { toast.success(`Created ${okResults.length} draft${okResults.length === 1 ? '' : 's'}`); router.refresh() }
     })
   }
 
@@ -295,7 +290,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
         onClick={() => setOpen(true)}
         className={triggerClassName ?? 'inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2'}
       >
-        {triggerLabel ?? <><Upload className="h-4 w-4" aria-hidden="true" /> Import CSV</>}
+        {triggerLabel ?? <><Upload className="h-4 w-4" aria-hidden="true" /> Import products</>}
       </button>
 
       {open && (
@@ -305,7 +300,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
-              <h2 className="font-display text-[17px] font-bold text-ink-900">{single ? 'Fill a product from a spec sheet' : 'Import products from CSV'}</h2>
+              <h2 className="font-display text-[17px] font-bold text-ink-900">Import products from a spreadsheet</h2>
               <button type="button" onClick={close} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-100 hover:text-ink-900">
                 <X className="h-4 w-4" />
               </button>
@@ -331,9 +326,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
                   </div>
                   <p className="mt-3 text-[12px] text-ink-500">
-                    {single
-                      ? 'Drop your spec sheet (we read the first product row). We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country” — you confirm the mapping, then review + finish in the builder.'
-                      : 'One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. You map the rest next.'}
+                    One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. Next you map the rest and choose which products to import.
                   </p>
                   <button type="button" onClick={downloadTemplate} className="mt-1.5 text-[12.5px] font-semibold text-pink-700 underline-offset-2 hover:text-pink-800 hover:underline">
                     Download a CSV template
@@ -383,7 +376,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
                       <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50 px-3 py-2">
                         <span className="text-[12.5px] font-semibold text-ink-900">
-                          {single ? 'Review your product' : `Preview — first of ${rows.length} row${rows.length === 1 ? '' : 's'}`}
+                          {`Preview — first of ${rows.length} row${rows.length === 1 ? '' : 's'}`}
                         </span>
                         <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
                           {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
@@ -408,7 +401,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                           </div>
                         ))}
                       </dl>
-                      {!single && (
+                      {rows.length > 1 && (
                         <p className="border-t border-ink-100 px-3 py-1.5 text-[11.5px] text-ink-500">
                           Other rows import with the same column mapping.
                         </p>
@@ -429,20 +422,17 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                 <>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <span className="text-[13px] font-semibold text-ink-900">
-                      {single
-                        ? `Pick the product to set up — ${valid.length} found`
-                        : `Choose products to import — ${valid.length} found`}
+                      Choose products to import — {valid.length} found
                     </span>
-                    {!single && (
-                      <div className="flex items-center gap-2 text-[12px]">
-                        <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const { i } of filtered) n.add(i); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
-                          {query.trim() ? 'Select matching' : 'All'}
-                        </button>
-                        <span className="text-ink-300">·</span>
-                        <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 text-[12px]">
+                      <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const { i } of filtered) n.add(i); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
+                        {query.trim() ? 'Select matching' : 'Select all'}
+                      </button>
+                      <span className="text-ink-300">·</span>
+                      <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
+                    </div>
                   </div>
+                  <p className="mb-2 text-[12px] text-ink-500">Tick one to set it up now, or several to create them all as drafts.</p>
 
                   {valid.length > 6 && (
                     <div className="relative mb-2">
@@ -465,11 +455,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                       return (
                         <label key={i} className={`flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-ink-50 ${on ? 'bg-pink-50/40' : ''}`}>
                           <input
-                            type={single ? 'radio' : 'checkbox'}
-                            name="pick-product"
+                            type="checkbox"
                             checked={on}
                             onChange={() => setSelected((s) => {
-                              if (single) return new Set([i])
                               const n = new Set(s)
                               if (n.has(i)) n.delete(i); else n.add(i)
                               return n
@@ -489,7 +477,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-600">
                     <span className="font-semibold text-ink-900">
-                      {single ? (chosen.length ? '1 selected' : 'Pick one to continue') : `${chosen.length} of ${valid.length} selected`}
+                      {chosen.length} of {valid.length} selected
                     </span>
                     {query.trim() && <span className="text-ink-500">· {filtered.length} match{filtered.length === 1 ? '' : 'es'}</span>}
                     {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} row{skippedNoName === 1 ? '' : 's'} skipped (missing name)</span>}
@@ -509,8 +497,10 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                         {r.ok
                           ? <Check className="h-3.5 w-3.5 flex-none text-success-600" aria-hidden="true" />
                           : <X className="h-3.5 w-3.5 flex-none text-danger-600" aria-hidden="true" />}
-                        <span className="truncate text-ink-900">{r.name}</span>
-                        {!r.ok && <span className="ml-auto truncate text-[12px] text-danger-700">{r.error}</span>}
+                        <span className="min-w-0 flex-1 truncate text-ink-900">{r.name}</span>
+                        {r.ok && r.id
+                          ? <a href={`/products/new?draft=${r.id}&imported=1`} className="flex-none text-[12px] font-semibold text-pink-700 hover:text-pink-800">Open →</a>
+                          : !r.ok && <span className="ml-auto truncate text-[12px] text-danger-700">{r.error}</span>}
                       </div>
                     ))}
                   </div>
@@ -532,8 +522,8 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     {busy
                       ? 'Creating…'
                       : valid.length === 1
-                        ? (single ? 'Create & review →' : 'Create 1 draft')
-                        : (single ? 'Choose product →' : 'Choose products →')}
+                        ? 'Create & review →'
+                        : 'Choose products →'}
                   </button>
                 </>
               )}
@@ -549,7 +539,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {busy
                       ? 'Creating…'
-                      : single
+                      : chosen.length === 1
                         ? 'Create & review →'
                         : `Create ${chosen.length} draft${chosen.length === 1 ? '' : 's'}`}
                   </button>

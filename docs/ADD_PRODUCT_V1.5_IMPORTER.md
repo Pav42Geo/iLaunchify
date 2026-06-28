@@ -9,13 +9,17 @@
 
 Built and verified (partner `tsc` 0 errors + `check:colors` clean). **No external dependency** — it reuses the existing CSV/xlsx parser and the guided-builder draft path. No schema change.
 
+**ONE button — behaviour follows the selection count, not a mode toggle** (consolidated 2026-06-28). There is a single **"Import products"** entry (the earlier separate "Fill from spec sheet" / single-mode button was removed — both did the same thing). The modal flow is drop → map → choose → import: you tick **one** product (→ created and you land straight in the builder to finish it) or **several / all** (→ created as drafts, each with an "Open →" link). No `mode` prop, no radio selector.
+
 | Piece | What it does | File |
 |---|---|---|
-| `mode='single'` on the importer | Same drag-drop modal + auto-mapping, but creates **one** DRAFT from the first row and redirects to the builder for review instead of bulk-creating | `products/import/ProductImportButton.tsx` |
-| "Fill from spec sheet" trigger | Entry point on the products list header (next to bulk "Import CSV" + "New product") | `products/page.tsx` |
+| Single "Import products" button | One entry on the products header (+ the empty-state "Import your catalog" link), opening the import modal. | `products/page.tsx`, `ProductsGetStarted.tsx` |
+| Bulk multi-select + Select all | The `select` step is always checkboxes with **Select all / None** (and "Select matching" when searching). Tick one to set it up now, or many to create drafts. A single-product sheet skips the picker and imports directly. | `products/import/ProductImportButton.tsx` |
+| Count-driven destination | `commitRows`: exactly **1** product imported → redirect into the guided builder (`?imported=1`); **>1** → the summary list, each created draft linking to its builder via "Open →". | `products/import/ProductImportButton.tsx` |
 | Builder review banner | When the builder opens with `?imported=1`, shows "Pre-filled from your spec sheet — review each step and complete the rest. Nothing publishes until you submit." | `products/new/page.tsx` |
-| Per-field value preview | The mapping step shows each field's RESOLVED value from the first row (using the real toInt/toNum/COO coercion), flagging required-but-missing fields and values that didn't parse cleanly (e.g. a numeric column holding "box of 12" → 12, "X to check"). Turns "map columns blind" into "review what will be saved" — the structured analogue of Phase B's per-field confidence highlighting. | `products/import/ProductImportButton.tsx` |
-| Product selection step | When a sheet holds more than one product, a `select` step (in the same modal) lists every product by name (+ Base SKU) so the manufacturer pulls **one** out of a full master sheet (single mode = radio → builder) or **a subset / all** (bulk = checkboxes + All/None, default all). A single-product sheet skips straight to import. So a 50-row catalog no longer forces "first row only" or "import everything." Includes a **search box** (name/SKU, shown for >6 products; "Select matching" when a query is active) and a **per-row "N to check" flag** so a partner can spot which products have values that didn't parse cleanly before picking. | `products/import/ProductImportButton.tsx` |
+| Mapping clarity | Plain-language explainer at the top of the mapping step; the footer flags the real blocker ("pick a default category above ↑") and only says "skipped (missing name)" for rows actually missing a name. | `products/import/ProductImportButton.tsx` |
+| Per-field value preview | The mapping step shows each field's RESOLVED value from the first row (real toInt/toNum/COO coercion), flagging required-but-missing fields and values that didn't parse cleanly (e.g. "box of 12" → 12, "X to check"). The structured analogue of Phase B's per-field confidence highlighting. | `products/import/ProductImportButton.tsx` |
+| Search + per-row flag | The picker has a **search box** (name/SKU, shown for >6 products) and a **per-row "N to check" flag** so a partner can spot products with un-clean values before picking. | `products/import/ProductImportButton.tsx` |
 
 ---
 

@@ -213,11 +213,6 @@ export default async function ProductsListPage({
           </div>
           <div className="flex items-center gap-2">
             <ProductImportButton subcategories={importSubcats} />
-            <ProductImportButton
-              subcategories={importSubcats}
-              mode="single"
-              triggerLabel="Fill from spec sheet"
-            />
             <Link
               href="/products/new"
               className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
