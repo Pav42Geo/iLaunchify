@@ -31,6 +31,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { marketingUrl } from '@/lib/marketing-url'
+import { ProductImportButton } from './import/ProductImportButton'
 
 // -----------------------------------------------------------------------------
 // Content
@@ -106,7 +107,13 @@ const FAQ: { q: string; a: string }[] = [
 // Component
 // -----------------------------------------------------------------------------
 
-export function ProductsGetStarted({ companyName }: { companyName: string }) {
+export function ProductsGetStarted({
+  companyName,
+  subcategories = [],
+}: {
+  companyName: string
+  subcategories?: { id: string; name: string; categoryName: string }[]
+}) {
   return (
     <div className="pb-2">
       {/* ===== HERO — dark Business-landing outlook, full-bleed, flush to topbar ===== */}
@@ -176,6 +183,14 @@ export function ProductsGetStarted({ companyName }: { companyName: string }) {
             <p className="mt-6 text-[12.5px] font-medium text-ink-400">
               No upfront cost · You set MOQ &amp; pricing · Stripe payouts · 3–5 day verification
             </p>
+            <div className="mt-4 text-[13px] text-ink-400">
+              Already sell elsewhere?{' '}
+              <ProductImportButton
+                subcategories={subcategories}
+                triggerClassName="inline font-semibold text-neon-500 underline-offset-2 hover:underline"
+                triggerLabel="Import your catalog from CSV →"
+              />
+            </div>
           </div>
         </div>
       </Band>

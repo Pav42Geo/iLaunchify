@@ -152,7 +152,7 @@ export default async function ProductsListPage({
   // create their first draft (a DRAFT template row), this list is non-empty
   // and the regular Products page renders automatically.
   if (templates.length === 0) {
-    return <ProductsGetStarted companyName={partner.companyName} />
+    return <ProductsGetStarted companyName={partner.companyName} subcategories={importSubcats} />
   }
 
   // Resolve hero thumbnails (Asset id → URL) for the name cell.

@@ -85,7 +85,7 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-export function ProductImportButton({ subcategories }: { subcategories: SubcatOption[] }) {
+export function ProductImportButton({ subcategories, triggerClassName, triggerLabel }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'drop' | 'map' | 'done'>('drop')
@@ -192,9 +192,9 @@ export function ProductImportButton({ subcategories }: { subcategories: SubcatOp
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        className={triggerClassName ?? 'inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2'}
       >
-        <Upload className="h-4 w-4" aria-hidden="true" /> Import CSV
+        {triggerLabel ?? <><Upload className="h-4 w-4" aria-hidden="true" /> Import CSV</>}
       </button>
 
       {open && (
