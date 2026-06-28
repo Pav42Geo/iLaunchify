@@ -25,6 +25,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { stripe } from './client'
+import { clawbackNettingEnabled, computeClawbackNetting, type ClawbackNetting } from './clawback-netting'
 
 /** Master switch — partner payouts only hit Stripe when this is explicitly enabled. */
 export function transfersEnabled(): boolean {
@@ -38,6 +39,7 @@ export type TransferOutcome = {
   amountCents: number
   result:
     | 'paid'
+    | 'netted' // fully recouped against APPROVED clawbacks — no Stripe transfer sent
     | 'held_account_inactive'
     | 'held_charge_unsettled'
     | 'skipped_claimed'
@@ -52,6 +54,7 @@ export type ExecuteTransfersResult = {
   enabled: boolean
   considered: number
   paid: number
+  netted: number // fully recouped against clawbacks (no Stripe transfer)
   held: number
   failed: number
   superseded: number // transfer sent but a refund cancelled the row mid-flight
@@ -127,13 +130,88 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
     }
 
     try {
+      // Clawback netting (opt-in, its own flag): recoup the partner's APPROVED
+      // clawbacks out of this payout before sending. Pure math (computeClawbackNetting);
+      // reduces the amount sent, never below 0; partial recoup carries to a future
+      // payout. The clawback rows are reduced in the SAME txn that settles the
+      // transfer (below) — never before — so a failed/raced payout can't under-recoup.
+      let sendAmount = t.amountCents
+      let netting: ClawbackNetting | null = null
+      if (clawbackNettingEnabled()) {
+        const approved = await (
+          prisma as unknown as {
+            partnerClawback: {
+              findMany: (a: unknown) => Promise<Array<{ id: string; amountCents: number; remainingCents: number | null }>>
+            }
+          }
+        ).partnerClawback
+          .findMany({
+            where: { partner: { userId: t.destinationUserId }, status: 'APPROVED' },
+            orderBy: { createdAt: 'asc' }, // oldest debt first
+            select: { id: true, amountCents: true, remainingCents: true },
+          })
+          .catch(() => [] as Array<{ id: string; amountCents: number; remainingCents: number | null }>)
+        netting = computeClawbackNetting(
+          t.amountCents,
+          approved.map((c) => ({ id: c.id, remainingCents: c.remainingCents ?? c.amountCents })),
+        )
+        sendAmount = netting.netAmountCents
+      }
+
+      // Settle the transfer + recoup the netted clawbacks ATOMICALLY (one txn,
+      // compare-and-set on EXECUTING). Stripe's idempotency key means a retry after a
+      // committed-Stripe / failed-DB window re-sends the same amount harmlessly and
+      // re-applies the (still-unreduced) clawbacks. Returns the settle outcome.
+      const settle = async (stripeTransferId: string | null): Promise<'settled' | 'superseded'> => {
+        return prisma.$transaction(async (tx) => {
+          const upd = await (
+            tx as unknown as { transfer: { updateMany: (a: unknown) => Promise<{ count: number }> } }
+          ).transfer.updateMany({
+            where: { id: t.id, status: 'EXECUTING' },
+            data: {
+              status: 'COMPLETED',
+              ...(stripeTransferId ? { stripeTransferId } : {}),
+              nettedCents: netting?.nettedCents ?? 0,
+              destinationStripeId: destination,
+              executedAt: new Date(),
+              failureReason: null,
+            },
+          })
+          if (upd.count !== 1) return 'superseded' as const
+          for (const app of netting?.applications ?? []) {
+            await (
+              tx as unknown as { partnerClawback: { update: (a: unknown) => Promise<unknown> } }
+            ).partnerClawback.update({
+              where: { id: app.clawbackId },
+              data: {
+                remainingCents: app.newRemainingCents,
+                ...(app.fullyRecouped ? { status: 'EXECUTED', resolvedAt: new Date() } : {}),
+              },
+            })
+          }
+          return 'settled' as const
+        })
+      }
+
+      // Fully netted: the partner owed ≥ this payout. Don't call Stripe (a 0-amount
+      // transfer would 400) — just settle as netted and recoup the clawbacks.
+      if (sendAmount === 0) {
+        const r = await settle(null)
+        if (r === 'settled') {
+          outcomes.push({ ...base, result: 'netted', detail: `Fully recouped against clawbacks (−${t.amountCents}c)` })
+        } else {
+          outcomes.push({ ...base, result: 'superseded', detail: 'Row left EXECUTING (refund raced) before netting settled' })
+        }
+        continue
+      }
+
       // Only a real charge id (ch_…) is valid as source_transaction; a pi_… fallback
       // would 400. Without it, Stripe draws from the platform's available balance.
       const sourceTransaction = t.charge.stripeChargeId.startsWith('ch_') ? t.charge.stripeChargeId : undefined
 
       const transfer = await stripe.transfers.create(
         {
-          amount: t.amountCents,
+          amount: sendAmount, // net of any clawback recoupment
           currency: 'usd',
           destination,
           ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
@@ -147,26 +225,21 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
         { idempotencyKey: `transfer:${t.id}` },
       )
 
-      // Compare-and-set on EXECUTING: only WE may move the row out of the state we
-      // claimed. If a refund flipped it to CANCELED/REVERSED while our Stripe call was
-      // in flight, count is 0 — we must NOT resurrect it to COMPLETED. The transfer DID
-      // go through but the racing refund (seeing it as not-yet-COMPLETED) issued NO
-      // Stripe reversal, so the money is NOT auto-recouped. We stamp stripeTransferId
-      // and surface 'superseded' so ops can manually reverse it (the refund's
-      // PartnerClawback is a ledger record; its executed-recoup lifecycle is a deferred
-      // V1.5 follow-up, not an automatic reversal). Idempotency-keyed → never double-pays.
-      const settled = await prisma.transfer.updateMany({
-        where: { id: t.id, status: 'EXECUTING' },
-        data: {
-          status: 'COMPLETED',
+      // Compare-and-set on EXECUTING (inside settle): only WE may move the row out of
+      // the state we claimed. If a refund flipped it to CANCELED/REVERSED while our
+      // Stripe call was in flight, settle returns 'superseded' — we must NOT resurrect
+      // it to COMPLETED. The transfer DID go through but the racing refund (seeing it
+      // as not-yet-COMPLETED) issued NO Stripe reversal, so the money is NOT
+      // auto-recouped; we stamp stripeTransferId and surface 'superseded' for manual
+      // reversal. Idempotency-keyed → never double-pays.
+      const r = await settle(transfer.id)
+      if (r === 'settled') {
+        outcomes.push({
+          ...base,
+          result: 'paid',
           stripeTransferId: transfer.id,
-          destinationStripeId: destination,
-          executedAt: new Date(),
-          failureReason: null,
-        },
-      })
-      if (settled.count === 1) {
-        outcomes.push({ ...base, result: 'paid', stripeTransferId: transfer.id })
+          ...(netting && netting.nettedCents > 0 ? { detail: `Net of −${netting.nettedCents}c clawback recoup` } : {}),
+        })
       } else {
         await prisma.transfer
           .update({ where: { id: t.id }, data: { stripeTransferId: transfer.id } })
@@ -175,7 +248,7 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
           ...base,
           result: 'superseded',
           stripeTransferId: transfer.id,
-          detail: 'Row left EXECUTING (refund raced) — transfer sent; recoup via clawback',
+          detail: 'Row left EXECUTING (refund raced) — transfer sent; flag for manual recoup',
         })
       }
     } catch (err) {
@@ -193,15 +266,17 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
   }
 
   const paid = outcomes.filter((o) => o.result === 'paid').length
+  const netted = outcomes.filter((o) => o.result === 'netted').length
   const failed = outcomes.filter((o) => o.result === 'failed').length
   const superseded = outcomes.filter((o) => o.result === 'superseded').length
-  const held = outcomes.length - paid - failed - superseded
+  const held = outcomes.length - paid - netted - failed - superseded
 
   return {
     executed: enabled,
     enabled,
     considered: candidates.length,
     paid,
+    netted,
     held,
     failed,
     superseded,

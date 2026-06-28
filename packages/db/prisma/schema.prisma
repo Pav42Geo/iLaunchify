@@ -1069,6 +1069,10 @@ model PartnerClawback {
   refundId    String?
   disputeId   String?
   amountCents Int
+  // Outstanding amount still owed, for partial recoup across multiple payouts.
+  // Nullable for additive migration: existing rows (null) = full amountCents
+  // remaining; new rows set it to amountCents at creation. Hits 0 → EXECUTED.
+  remainingCents Int?
   reason      String
   status      ClawbackStatus @default(PENDING_APPROVAL)
   createdAt   DateTime       @default(now())
@@ -2617,6 +2621,10 @@ model Transfer {
   destinationUserId   String
   destinationType     TransferDestination
   amountCents         Int
+  // Amount deducted from this payout to recoup APPROVED clawbacks (sent = amount −
+  // netted). Default 0 = no netting; preserves the amountCents ledger while the
+  // Stripe transfer carries the reduced net. See clawback-netting.ts.
+  nettedCents         Int                 @default(0)
   reason              TransferReason
   stripeTransferId    String?             @unique
   status              TransferStatus      @default(PENDING)

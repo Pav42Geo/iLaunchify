@@ -32,6 +32,10 @@ export type { ExecuteRefundInput, ExecuteRefundResult } from './refund-execute'
 // to the partner's Connect account. Gated behind STRIPE_TRANSFERS_ENABLED.
 export { executePendingTransfers, transfersEnabled } from './transfer-execute'
 export type { ExecuteTransfersResult, TransferOutcome } from './transfer-execute'
+// Clawback netting — recoup APPROVED partner clawbacks from the next payout.
+// Pure math + its own opt-in flag (STRIPE_CLAWBACK_NETTING_ENABLED).
+export { computeClawbackNetting, clawbackNettingEnabled } from './clawback-netting'
+export type { ClawbackNetting, ClawbackApplication, NettableClawback } from './clawback-netting'
 // Phase G6.b — production-run subscription helpers.
 export {
   getOrCreateCreatorCustomer,

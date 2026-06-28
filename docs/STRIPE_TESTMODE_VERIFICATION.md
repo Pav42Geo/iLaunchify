@@ -85,6 +85,16 @@ ship a dispatch on a PAID order whose partner is ACTIVE, then hit the cron again
 reconsidered); a mid-flight row claimed `EXECUTING` isn't grabbed by a second run.
 On a Stripe error the row reverts to `PENDING` with `failureReason` and retries next run.
 
+**Clawback netting (separate flag `STRIPE_CLAWBACK_NETTING_ENABLED`, default off).**
+With it on, before sending, the executor recoups the partner's **APPROVED** clawbacks
+(Finance → Clawbacks) out of the payout: the Stripe transfer is sent for `amount −
+netted`, `Transfer.nettedCents` records the deduction, and each clawback's
+`remainingCents` drops (→ `EXECUTED` at 0). If the clawbacks ≥ the payout, **no Stripe
+transfer is sent** (outcome `netted`) and the row settles fully recouped. The
+settle + clawback reduction commit in one DB txn, so a failed/raced payout never
+under-recoups. Leave this off until §2b is green; turn it on only after you've watched
+a real clawback approve→net cycle in test mode.
+
 ## 3. Sample order → credit mint (no production)
 
 Place a **SAMPLE** order (orderType=SAMPLE) for a product whose `ProductSampleOption`
