@@ -525,6 +525,25 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                         </div>
                       </div>
                     )}
+
+                    {previewRefs.length > 0 && (
+                      <div className="mt-3 border-t border-ink-100 pt-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider text-ink-500">
+                            For {previewName || `Row ${pIdx + 1}`}
+                          </span>
+                          <span className="flex-none text-[11px] tabular-nums text-ink-400">{pIdx + 1} / {rows.length}</span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                          {previewRefs.map((r, i) => (
+                            <span key={i} className="text-[12px] text-ink-600">
+                              <span className="text-ink-400">{r.label}:</span> <span className="font-medium text-ink-900">{r.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-ink-400">Values shown for the previewed product — use ‹ › below to check others.</p>
+                      </div>
+                    )}
                   </div>
 
                   {rows.length > 0 && (
@@ -574,16 +593,6 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                           </div>
                         ))}
                       </div>
-                      {previewRefs.length > 0 && (
-                        <div className="border-t border-ink-100 px-3 py-2">
-                          <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-400">Your references</div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1">
-                            {previewRefs.map((r, i) => (
-                              <span key={i} className="text-[12px] text-ink-600"><span className="text-ink-400">{r.label}:</span> <span className="font-medium text-ink-900">{r.value}</span></span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between gap-2 border-t border-ink-100 px-3 py-1.5">
                         <span className="text-[11px] text-ink-500">Edits apply to this product. Use ‹ › or type a number.</span>
                         <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
