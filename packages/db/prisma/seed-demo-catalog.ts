@@ -17,6 +17,7 @@
 // Additive + idempotent. Runs AFTER seedDemoCreator (needs the demo brand).
 
 import { PrismaClient } from '@prisma/client'
+import { getDemoOwnedTargets, mintOwnedProduct } from './seed-demo-creator'
 
 type Domain = 'FOOD' | 'DIETARY_SUPPLEMENT' | 'COSMETIC' | 'PET_PRODUCT'
 type OwnedCat = 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT' | 'COSMETIC' | 'PET' | null
@@ -349,9 +350,10 @@ async function ensureIngredient(prisma: PrismaClient, name: string, labelName: s
 export async function seedDemoCatalog(prisma: PrismaClient) {
   console.log('Seeding demo catalog (6 product types × domains)...')
 
-  const us = await prisma.market.findUnique({ where: { code: 'US' }, select: { id: true } })
   const manuf = await prisma.partnerService.findFirst({ where: { type: 'MANUFACTURING' }, select: { id: true } })
-  const brand = await prisma.brand.findUnique({ where: { handle: 'demo-brand' }, select: { id: true } })
+  // Owned products are minted under EVERY demo brand (demo-creator + sample-creator)
+  // so the sample/checkout flow works whichever account you sign in as.
+  const { brandIds, marketId } = await getDemoOwnedTargets(prisma)
 
   let made = 0
   for (const spec of SPECS) {
@@ -497,19 +499,12 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
     })
     await prisma.productTemplate.update({ where: { id: tpl.id }, data: { imageAssetId: heroAsset.id } })
 
-    // Owned product (sample/checkout testability) — cast-guarded so COSMETIC/PET
-    // compile before the client is regenerated for the enum change.
-    if (spec.ownedCategory && brand && us) {
+    // Owned products under every demo brand (sample/checkout testability).
+    if (spec.ownedCategory && brandIds.length > 0 && marketId) {
       const variant = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId: tpl.id }, select: { id: true } })
-      const existingProduct = await prisma.product.findFirst({ where: { brandId: brand.id, productTemplateId: tpl.id }, select: { id: true } })
-      if (!existingProduct) {
-        await (prisma as unknown as { product: { create: (a: unknown) => Promise<unknown> } }).product.create({
-          data: {
-            brandId: brand.id, marketId: us.id, slug: spec.slug, name: spec.name,
-            category: spec.ownedCategory, productTemplateId: tpl.id, variantId: variant?.id ?? null,
-          },
-        })
-      }
+      await mintOwnedProduct(prisma, brandIds, marketId, {
+        slug: spec.slug, name: spec.name, category: spec.ownedCategory, templateId: tpl.id, variantId: variant?.id ?? null,
+      })
     }
 
     made++
