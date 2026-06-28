@@ -459,7 +459,6 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
 
               {step === 'select' && (
                 <>
-                  <div className="mb-3 text-[13px] font-semibold text-ink-900">{valid.length} found · {selectedCount} selected</div>
 
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-ink-50 px-2.5 py-2">
                     <span className="text-[12px] text-ink-600">Set all selected:</span>
@@ -557,10 +556,13 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                     })}
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
-                    <span className="font-semibold text-ink-900">{chosen.length} ready</span>
-                    {needCategory > 0 && <span className="text-pink-700">· {needCategory} need a category</span>}
-                    {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-ink-900">{chosen.length} ready</span>
+                      {needCategory > 0 && <span className="text-pink-700">· {needCategory} need a category</span>}
+                      {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
+                    </span>
+                    <span className="text-ink-500">{valid.length} found · {selectedCount} selected</span>
                   </div>
                 </>
               )}
