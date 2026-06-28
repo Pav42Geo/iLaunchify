@@ -18,7 +18,7 @@ import { saveProductNiches, saveProductLifestyleTags } from '../[id]/edit/card-a
 import { CertificatesCard } from './CertificatesCard'
 import { MarketplaceAttributesCard } from './MarketplaceAttributesCard'
 import { MediaUpload } from './MediaUpload'
-import { Tag, Filter, FileText, ListPlus } from 'lucide-react'
+import { Tag, Filter, FileText, ListPlus, Hash } from 'lucide-react'
 import { Section, Field, RichTextField, SmartTextInput } from './_ui'
 
 // Finished-good country of origin (ISO-3166-1 alpha-2). Prefilled from the
@@ -77,6 +77,8 @@ export function BasicsScreen({
   const [longDesc, setLongDesc] = useState(initial?.longDescription ?? '')
   const [coo, setCoo] = useState(initial?.countryOfOrigin ?? '')
   const [meta, setMeta] = useState<Meta[]>([])
+  // Partner-private external references (ERP id, warehouse code, …). Reference-only.
+  const [refs, setRefs] = useState<{ label: string; value: string }[]>(initial?.manufacturerRefs ?? [])
   const [selNiches, setSelNiches] = useState<string[]>(initial?.nicheIds ?? [])
   const [selTags, setSelTags] = useState<string[]>(initial?.lifestyleTagIds ?? [])
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -135,6 +137,7 @@ export function BasicsScreen({
           name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc,
           countryOfOrigin: coo || null,
           customMeta: meta.filter((m) => m.key.trim()),
+          manufacturerRefs: refs.filter((r) => r.value.trim()),
         })
         setSaving(res.ok ? 'saved' : 'idle')
         if (!res.ok) toast.error(res.error)
@@ -143,7 +146,7 @@ export function BasicsScreen({
     }, 900)
     return () => { if (t.current) clearTimeout(t.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, baseSku, subcategoryId, shortDesc, longDesc, coo, meta])
+  }, [name, baseSku, subcategoryId, shortDesc, longDesc, coo, meta, refs])
 
   // Persist niches (1 primary + ≤2 secondary; first = primary) — debounced.
   const nTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -180,7 +183,7 @@ export function BasicsScreen({
         if (res?.ok) { id = res.data.id; onDraftId(id) }
       }
       if (id) {
-        await updateBasics(id, { name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc, countryOfOrigin: coo || null, customMeta: meta.filter((m) => m.key.trim()) })
+        await updateBasics(id, { name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc, countryOfOrigin: coo || null, customMeta: meta.filter((m) => m.key.trim()), manufacturerRefs: refs.filter((r) => r.value.trim()) })
         setSaving('saved')
       }
     }
@@ -290,6 +293,22 @@ export function BasicsScreen({
                 </div>
               ))}
               {meta.length < 10 && <button className="btn sm" style={{ marginTop: 2 }} onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
+            </div>
+          </Section>
+
+          <Section icon={Hash} title="Your references">
+            <div>
+              <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--ink-500, #6b7280)' }}>
+                Track this product by your own codes (ERP id, warehouse code, legacy SKU). Reference-only — searchable in your products list.
+              </div>
+              {refs.map((r, i) => (
+                <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
+                  <input className="input" style={{ width: '38%' }} value={r.label} placeholder="Label (e.g. ERP ID)" onChange={(e) => setRefs(refs.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
+                  <input className="input" style={{ flex: 1 }} value={r.value} placeholder="Value" onChange={(e) => setRefs(refs.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+                  <button className="btn sm" onClick={() => setRefs(refs.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              {refs.length < 8 && <button className="btn sm" style={{ marginTop: 2 }} onClick={() => setRefs([...refs, { label: '', value: '' }])}>+ Add reference</button>}
             </div>
           </Section>
 

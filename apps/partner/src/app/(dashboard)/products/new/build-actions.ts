@@ -288,6 +288,7 @@ export interface InitialDraft {
   countryOfOrigin: string | null
   leadTimeRepeatDays: number | null
   leadTimeFirstRunDays: number | null
+  manufacturerRefs: Array<{ label: string; value: string }>
   production: {
     fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH' | null
     moqMin: number; orderIncrement: number; monthlyCapacity: number | null
@@ -386,6 +387,16 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     if (!tpl) return null
     if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return null
 
+    // manufacturerRefs ships with a migration → cast-guarded read, fail-safe to [].
+    const refsRow = await (
+      prisma as unknown as { productTemplate: { findUnique: (a: unknown) => Promise<{ manufacturerRefs: unknown } | null> } }
+    ).productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerRefs: true } }).catch(() => null)
+    const manufacturerRefs = Array.isArray(refsRow?.manufacturerRefs)
+      ? (refsRow!.manufacturerRefs as Array<{ label?: unknown; value?: unknown }>)
+          .filter((r) => r && typeof r.value === 'string')
+          .map((r) => ({ label: typeof r.label === 'string' ? r.label : '', value: r.value as string }))
+      : []
+
     // Axes bind to the stable baseIngredientId client-side; the DB stores the
     // real slot id. Map it back so the binding re-selects the right base row.
     const slotToIng = new Map(tpl.ingredientSlots.map((s) => [s.id, s.baseIngredientId]))
@@ -411,6 +422,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       allergenFreeClaims: tpl.allergenFreeClaims ?? [],
       marketCodes: tpl.marketCodes ?? [],
       countryOfOrigin: tpl.countryOfOrigin ?? null,
+      manufacturerRefs,
       flavors: tpl.flavorPresets.map((f) => ({
         name: f.name,
         soi: f.statementOfIdentity ?? '',
@@ -1414,6 +1426,7 @@ export interface BasicsPatch {
   leadTimeFirstRunDays?: number | null
   allergenCrossContamination?: string | null
   customMeta?: Array<{ key: string; value: string }> | null
+  manufacturerRefs?: Array<{ label: string; value: string }> | null
 }
 
 /**
@@ -1620,6 +1633,12 @@ export async function updateBasics(
     if (patch.leadTimeFirstRunDays !== undefined) data.leadTimeFirstRunDays = patch.leadTimeFirstRunDays == null ? null : Math.max(0, Math.floor(patch.leadTimeFirstRunDays))
     if (patch.allergenCrossContamination !== undefined) data.allergenCrossContamination = patch.allergenCrossContamination?.trim() || null
     if (patch.customMeta !== undefined) data.customMeta = patch.customMeta ?? undefined
+    if (patch.manufacturerRefs !== undefined) {
+      data.manufacturerRefs = (patch.manufacturerRefs ?? [])
+        .filter((r) => r && typeof r.value === 'string' && r.value.trim() !== '')
+        .slice(0, 8)
+        .map((r) => ({ label: (r.label || 'Reference').trim().slice(0, 40), value: r.value.trim().slice(0, 120) }))
+    }
 
     if (Object.keys(data).length === 0) return { ok: true }
     // `data` is built dynamically; the productType/longDescription fields exist

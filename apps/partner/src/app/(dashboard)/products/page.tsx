@@ -148,7 +148,9 @@ export default async function ProductsListPage({
   const importCategories = [...catGroupMap.values()]
 
   const serviceIds = partner.services.map((s) => s.id)
-  const templates: Row[] = serviceIds.length
+  // Cast: the generated client types manufacturerRefs as JsonValue, which fights
+  // Row's typed array — we normalize it into Row shape in the extras loop below.
+  const templates: Row[] = (serviceIds.length
     ? await prisma.productTemplate.findMany({
         where: { manufacturerServiceId: { in: serviceIds } },
         include: {
@@ -157,7 +159,7 @@ export default async function ProductsListPage({
         },
         orderBy: { updatedAt: 'desc' },
       })
-    : []
+    : []) as unknown as Row[]
 
   // First-run: a partner with zero product templates gets the editorial
   // "get started" landing instead of the management chrome. The moment they
