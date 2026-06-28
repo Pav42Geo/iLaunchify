@@ -146,7 +146,7 @@ export function CertificatesCard({ draftId, preview = false }: { draftId: string
         <div className="cert-modal" onClick={() => setOpen(false)}>
           <div className="cert-panel" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Add certificates <i className="info" data-tip="Pick the certificates that apply to this product — add as many as you need, then close." tabIndex={0} role="img" aria-label="About certificates">i</i></div>
+              <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Add certificates</div>
               <button className="del" style={{ fontSize: 18, color: 'var(--ink-500)' }} onClick={() => setOpen(false)}>✕</button>
             </div>
 

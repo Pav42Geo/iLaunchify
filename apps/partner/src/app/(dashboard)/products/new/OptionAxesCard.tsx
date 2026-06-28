@@ -106,7 +106,7 @@ export function OptionAxesCard({ axes, onAxes }: { axes: OptionAxisUI[]; onAxes:
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div>
-          <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Additional creator options <i className="info" data-tip="Curated choices beyond flavor — e.g. sweetener, roast strength, caffeine. You define every allowed value; the Creator picks one per option in the marketplace, or you lock it to the default. Each value can add lead time, cost, or raise the MOQ. (Different from optional ingredients — those are add-ons, these are fixed-dimension choices.)" tabIndex={0} role="img" aria-label="About creator options">i</i></div>
+          <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Additional creator options</div>
         </div>
       </div>
 

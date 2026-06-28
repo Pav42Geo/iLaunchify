@@ -220,7 +220,7 @@ export function SupplementFormulationStep({
       <div className="space-y-4">
         {/* Dosage form */}
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Pill size={16} strokeWidth={2} /></span> Dosage form <i className="info" data-tip="Sets the default serving form and tags the product for NIH DSLD form matching." tabIndex={0} role="img" aria-label="Dosage form info">i</i></div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Pill size={16} strokeWidth={2} /></span> Dosage form</div>
           <div className="flex flex-wrap gap-2">
             {DOSAGE_FORMS.map((d) => (
               <button
@@ -239,7 +239,7 @@ export function SupplementFormulationStep({
         <div className="card">
           <button type="button" onClick={() => setNutOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
             <span className="flex items-center">
-              <span className="section-title"><span className="ic"><Flame size={16} strokeWidth={2} /></span> Nutrition information <i className="info" data-tip="Calories, fats, carbs, sugars, protein — only if your product has them (gummies, powders, chews). Per serving; leave blank what isn't present (empty rows are omitted). The &lt; toggle prints &ldquo;less than&rdquo; (e.g. &ldquo;&lt;1 g&rdquo;). %DV and the &ldquo;2,000 calorie&rdquo; footnote are added automatically." tabIndex={0} role="img" aria-label="Nutrition info">i</i></span>
+              <span className="section-title"><span className="ic"><Flame size={16} strokeWidth={2} /></span> Nutrition information</span>
             </span>
             <span className="text-[12px] font-semibold text-pink-700">{nutOpen ? 'Hide' : 'Add'}</span>
           </button>
@@ -275,7 +275,7 @@ export function SupplementFormulationStep({
         </div>
 
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Dietary ingredients <i className="info" data-tip="Leave % DV blank for ingredients with no established Daily Value — they print with the chosen footnote glyph. The &lt; button declares a trace amount (&ldquo;&lt;1 g&rdquo;); Sym adds a custom footnote mark to a row. Source / plant part goes in the name, e.g. &ldquo;Turmeric (root) extract&rdquo;." tabIndex={0} role="img" aria-label="Dietary ingredients info">i</i></div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Dietary ingredients</div>
 
           {/* NIH DSLD search — validated dietary-ingredient identities. */}
           <div className="relative mb-3">
@@ -371,7 +371,7 @@ export function SupplementFormulationStep({
         {/* Proprietary blends */}
         {blends.length > 0 && (
           <div className="card">
-            <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Layers size={16} strokeWidth={2} /></span> Proprietary blends <i className="info" data-tip="The blend total is printed; member amounts are hidden. Assign ingredients to a blend in the table above." tabIndex={0} role="img" aria-label="Proprietary blends info">i</i></div>
+            <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Layers size={16} strokeWidth={2} /></span> Proprietary blends</div>
             <div className="space-y-2">
               {blends.map((b) => {
                 const members = dietRows.filter((r) => r.blendId === b.id).length

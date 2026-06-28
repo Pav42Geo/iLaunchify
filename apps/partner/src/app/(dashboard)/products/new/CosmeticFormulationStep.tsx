@@ -107,7 +107,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
       {/* LEFT — formulation */}
       <div className="space-y-4">
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Palette size={16} strokeWidth={2} /></span> Ingredients (INCI) <i className="info" data-tip="Enter the % concentration — the declaration auto-orders by 21 CFR 701.3: &gt;1% by predominance, then ≤1% in any order, color additives last." tabIndex={0} role="img" aria-label="INCI ingredients info">i</i></div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Palette size={16} strokeWidth={2} /></span> Ingredients (INCI)</div>
 
           {/* INCI dictionary search */}
           <div className="relative mb-3">
@@ -168,7 +168,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
 
         {/* Net contents + MoCRA */}
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Building2 size={16} strokeWidth={2} /></span> Net contents &amp; responsible person (MoCRA) <i className="info" data-tip="MoCRA requires a responsible person + a way to receive adverse-event reports on the label. Facility registration &amp; product listing are handled separately." tabIndex={0} role="img" aria-label="MoCRA info">i</i></div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Building2 size={16} strokeWidth={2} /></span> Net contents &amp; responsible person (MoCRA)</div>
           <div className="flex flex-wrap items-end gap-4">
             <label className="text-[12.5px] text-ink-700">Net contents
               <div className="mt-1 flex gap-2">

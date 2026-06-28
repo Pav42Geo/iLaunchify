@@ -764,7 +764,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                   <p className="mx-auto mt-1.5 max-w-[16rem] text-[12px] leading-relaxed text-ink-500">
                     {activeSystem?.packagingTypeName ? `Upload or create a die-line of type "${activeSystem.packagingTypeName}" to lay its mandatory-element frames.` : 'Attach a typed packaging system, then add a die-line to start laying frames.'}
                   </p>
-                  <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-pink-700">
+                  <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600">
                     <Upload className="h-3.5 w-3.5" /> Upload / create a die-line
                   </Link>
                 </div>
@@ -907,10 +907,13 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
       <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-ink-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-5 py-4">
-          <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-semibold text-ink-900">Manage files — {system.name}</h3>
-            <p className="text-[11.5px] text-ink-500">Mockups, photos &amp; panel-tagged die-lines for admin review.</p>
+        <div className="flex items-center justify-between gap-2 border-b border-ink-200 px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-pink-50 text-pink-700"><Inbox className="h-4 w-4" /></span>
+            <div className="min-w-0">
+              <h3 className="truncate font-display text-[15px] font-bold tracking-[-0.015em] text-ink-900">Manage files — {system.name}</h3>
+              <p className="text-[11.5px] text-ink-500">Mockups, photos &amp; panel-tagged die-lines for admin review.</p>
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-7 w-7 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-700"><X className="h-4 w-4" /></button>
         </div>
@@ -945,13 +948,13 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
           {/* Add new */}
           <FileGroup title="Add mockups" hint="JPG, PNG, GLB, GLTF, OBJ" accept="image/*,.glb,.gltf,.obj,.usdz" addLabel="Add mockup(s)" count={mockups.length} onAdd={addMockups}>
             {mockups.map((m, i) => (
-              <FileRow key={i} file={m.file} onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))} meta={<input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-24 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />} />
+              <FileRow key={i} file={m.file} onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))} meta={<input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-24 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-500" />} />
             ))}
           </FileGroup>
           <FileGroup title="Add die-lines" hint="PDF, AI, SVG, DXF" accept=".pdf,.ai,.svg,.dxf,image/*" addLabel="Add die-line(s)" count={dielines.length} onAdd={addDielines}>
             {dielines.map((d, i) => (
               <FileRow key={i} file={d.file} onRemove={() => setDielines((p) => p.filter((_, idx) => idx !== i))} meta={
-                <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-300">
+                <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-500">
                   {DIELINE_PANELS.map((pn) => <option key={pn} value={pn}>{pn[0] + pn.slice(1).toLowerCase()}</option>)}
                 </select>
               } />
@@ -960,8 +963,8 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
         </div>
 
         <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
-          <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Done</button>
-          <button type="button" onClick={() => void saveNew()} disabled={busy || !hasNew} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">{busy ? 'Uploading…' : 'Add files'}</button>
+          <button type="button" onClick={onClose} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400">Done</button>
+          <button type="button" onClick={() => void saveNew()} disabled={busy || !hasNew} className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50">{busy ? 'Uploading…' : 'Add files'}</button>
         </div>
       </div>
     </div>
@@ -1025,17 +1028,17 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
     onCreated(r.systemId, name.trim(), topology)
   }
 
-  const numInput = 'w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100'
+  const numInput = 'w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50'
   const labelCls = 'mb-1 block text-[11px] font-semibold text-ink-600'
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
       <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-ink-200 bg-white shadow-xl">
-        <div className="flex items-center gap-2 border-b border-ink-100 px-5 py-4">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-pink-50 text-pink-600"><Upload className="h-4 w-4" /></span>
+        <div className="flex items-center gap-2.5 border-b border-ink-200 px-5 py-4">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-pink-50 text-pink-700"><Upload className="h-4 w-4" /></span>
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold text-ink-900">Upload custom packaging</h3>
+            <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-900">Upload custom packaging</h3>
             <p className="truncate text-[11.5px] text-ink-500">Parameters + artwork go to admin to prep the 3D/2D mockups.</p>
           </div>
         </div>
@@ -1049,12 +1052,12 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
           {/* Identity */}
           <div>
             <label className={labelCls}>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. 500 ml matte HDPE bottle" className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" />
+            <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. 500 ml matte HDPE bottle" className="w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Type</label>
-              <select value={topology} onChange={(e) => setTopology(e.target.value)} className="w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+              <select value={topology} onChange={(e) => setTopology(e.target.value)} className="w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12.5px] outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50">
                 {TOPOLOGY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -1095,7 +1098,7 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
                 file={m.file}
                 onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))}
                 meta={
-                  <input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label (e.g. Bottle)" className="w-28 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />
+                  <input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label (e.g. Bottle)" className="w-28 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-500" />
                 }
               />
             ))}
@@ -1117,10 +1120,10 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
                 onRemove={() => setDielines((p) => p.filter((_, idx) => idx !== i))}
                 meta={
                   <div className="flex items-center gap-1.5">
-                    <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-300">
+                    <select value={d.panel} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, panel: e.target.value } : x))} className="rounded-md border border-ink-200 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-pink-500">
                       {DIELINE_PANELS.map((pn) => <option key={pn} value={pn}>{pn[0] + pn.slice(1).toLowerCase()}</option>)}
                     </select>
-                    <input value={d.label} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-20 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-300" />
+                    <input value={d.label} onChange={(e) => setDielines((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-20 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-500" />
                   </div>
                 }
               />
@@ -1131,8 +1134,8 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
         <div className="flex items-center justify-between gap-2 border-t border-ink-100 px-5 py-3.5">
           <span className="text-[11px] text-ink-400">{!draftId ? 'Save your product draft first.' : name.trim().length < 2 ? 'Enter a name to continue.' : ''}</span>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-ink-600 hover:bg-ink-100">Cancel</button>
-            <button type="button" onClick={() => void submit()} disabled={busy || !draftId || name.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50">
+            <button type="button" onClick={onClose} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400">Cancel</button>
+            <button type="button" onClick={() => void submit()} disabled={busy || !draftId || name.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50">
               {busy ? 'Uploading…' : 'Add packaging'}
             </button>
           </div>
@@ -1231,11 +1234,21 @@ function GuideBox({ box, color, label, dashed, onPointerDown }: { box: NormBox; 
 // Drawers
 // =============================================================================
 
-function DrawerHead({ title, sub }: { title: string; sub?: string }) {
+// Panel/drawer header — platform treatment: Bricolage display title + the pink
+// icon-chip pattern (matches `.gb .section-title` + `.ic`) so each drawer reads
+// like the rest of the builder.
+function DrawerHead({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
-    <div className="border-b border-ink-100 px-4 py-3">
-      <div className="font-display text-[14px] font-semibold">{title}</div>
-      {sub && <p className="mt-0.5 text-[11.5px] text-ink-500">{sub}</p>}
+    <div className="border-b border-ink-200 px-4 py-3">
+      <div className="flex items-center gap-2.5">
+        {Icon && (
+          <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-pink-50 text-pink-700">
+            <Icon className="h-[17px] w-[17px]" />
+          </span>
+        )}
+        <div className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-900">{title}</div>
+      </div>
+      {sub && <p className="mt-1 text-[11.5px] text-ink-500">{sub}</p>}
     </div>
   )
 }
@@ -1375,7 +1388,7 @@ function LibraryDrawer({
               else if (e.key === 'Escape') { setSearchFocused(false) }
             }}
             placeholder={tab === 'library' ? 'Try “water bottle”, “tuck-end box”…' : 'Search your packaging…'}
-            className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-8 text-[12px] outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+            className="w-full rounded-lg border border-ink-200 py-2 pl-8 pr-8 text-[12px] outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50"
           />
           {draft && (
             <button
@@ -1499,7 +1512,7 @@ function LibraryDrawer({
                           type="button"
                           onClick={() => onUseCatalog(c.id)}
                           disabled={busyCatalog === c.id || !hasDraft}
-                          className="mt-1 w-full rounded-lg bg-pink-600 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50"
+                          className="mt-1 w-full rounded-lg bg-pink-500 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50"
                         >
                           {busyCatalog === c.id ? '…' : 'Use this'}
                         </button>
@@ -1545,7 +1558,7 @@ function LibraryDrawer({
                         type="button"
                         onClick={() => onToggleAttach(s.id, !on)}
                         disabled={busyAttach === s.id || !hasDraft}
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${on ? 'border border-pink-200 bg-pink-50 text-pink-700' : 'bg-pink-600 text-white hover:bg-pink-700'}`}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${on ? 'border border-pink-200 bg-pink-50 text-pink-700' : 'bg-pink-500 text-white hover:bg-pink-600'}`}
                       >
                         {busyAttach === s.id ? '…' : on ? 'Attached ✓' : '+ Attach'}
                       </button>
@@ -1625,7 +1638,7 @@ function LibraryDrawer({
 function NoDielineDrawer() {
   return (
     <div>
-      <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements." />
+      <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements." icon={Shapes} />
       <div className="px-4 py-4 text-[12px] leading-relaxed text-ink-500">
         Pick a packaging with a die-line in the <b>Library</b> tab, or upload one from the Die-line view.
       </div>
@@ -1646,7 +1659,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 }) {
   return (
     <div>
-      <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." />
+      <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements. Content fills them per scope." icon={Shapes} />
 
       {/* Preflight + Confirm — die-line workflow lives here (out of the top bar). */}
       <div className={`border-b px-4 py-2.5 ${issues.length === 0 ? 'border-ink-100 bg-success-50/40' : 'border-warning-100 bg-warning-50/60'}`}>
@@ -1664,7 +1677,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
           type="button"
           onClick={onConfirm}
           disabled={confirmed || issues.length > 0}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-pink-600 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-700 disabled:opacity-50"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-pink-500 px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600 disabled:opacity-50"
         >
           <CircleCheck className="h-3.5 w-3.5" /> {confirmed ? 'Die-line confirmed' : 'Confirm die-line'}
         </button>
@@ -1687,7 +1700,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
               defaultValue={(selected.appliesTo?.materials ?? []).join(', ')}
               onBlur={(e) => onPatch(selected.id, { appliesTo: { ...selected.appliesTo, materials: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } })}
               placeholder="materials: pet, glass (blank = all)"
-              className="mt-2 w-full rounded border border-ink-200 px-2 py-1 text-[11.5px]"
+              className="mt-2 w-full rounded-lg border border-ink-200 px-2 py-1 text-[11.5px] outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50"
             />
           )}
           {selected.kind === 'CERTIFICATIONS' && (
@@ -1738,7 +1751,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
 function GuidesDrawer({ show, setShow, trim, safe, disabled }: { show: { trim: boolean; safe: boolean }; setShow: (s: { trim: boolean; safe: boolean }) => void; trim: NormBox; safe: NormBox; disabled?: boolean }) {
   return (
     <div>
-      <DrawerHead title="Guides" sub="Trim + safe area. Drag them on the die-line canvas." />
+      <DrawerHead title="Guides" sub="Trim + safe area. Drag them on the die-line canvas." icon={SquareDashedBottom} />
       {disabled ? (
         <div className="px-4 py-4 text-[12px] text-ink-500">Guides appear once a die-line is loaded.</div>
       ) : (
@@ -1757,7 +1770,7 @@ function GuidesDrawer({ show, setShow, trim, safe, disabled }: { show: { trim: b
 function LayersDrawer({ layout, selectedId, onSelect, onRemove }: { layout: FrameLayout; selectedId: string | null; onSelect: (id: string) => void; onRemove: (id: string) => void }) {
   return (
     <div>
-      <DrawerHead title="Layers" sub="Every frame on the die-line." />
+      <DrawerHead title="Layers" sub="Every frame on the die-line." icon={LayersIcon} />
       <ul className="px-2 py-2">
         {layout.frames.length === 0 && <li className="px-2 py-2 text-[12px] text-ink-500">No frames yet.</li>}
         {layout.frames.map((f) => (

@@ -6,7 +6,7 @@
 // computed by the real @ilaunchify/nutrition engine, not a mock.
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ComponentType } from 'react'
-import { ChefHat, List, ShieldAlert, DollarSign, Tag, FolderOpen, LayoutGrid } from 'lucide-react'
+import { ChefHat, List, ShieldAlert, DollarSign, Tag, FolderOpen, LayoutGrid, Utensils, Sparkles, Scale, ListPlus, ListChecks, FlaskConical, Table, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
 import { NutritionFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
@@ -197,10 +197,10 @@ const RACC_INFANT: Array<{ group: string; serving: string; grams: number }> = [
 
 // Pink "active" dot shown next to the ingredient currently in the recipe (base
 // when no swap is active, otherwise the active replaceable). Mirrors the prototype.
-const DOT_STYLE: CSSProperties = { width: 8, height: 8, borderRadius: '50%', background: 'var(--g)', display: 'inline-block', marginLeft: 6, verticalAlign: 'middle' }
+const DOT_STYLE: CSSProperties = { width: 8, height: 8, borderRadius: '50%', background: 'var(--pink)', display: 'inline-block', marginLeft: 6, verticalAlign: 'middle' }
 // Circular action button: the base ingredient's "＋ add replaceable" and each
 // replaceable's "⇄ activate" share this chrome (filled/accented when active).
-const iconBtnStyle = (active: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${active ? 'var(--g2)' : '#c4c9d4'}`, background: active ? 'var(--g-50)' : 'transparent', color: active ? 'var(--g2)' : '#6b7280', cursor: 'pointer', fontSize: 14, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' })
+const iconBtnStyle = (active: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${active ? 'var(--pink-700)' : 'var(--ink-300)'}`, background: active ? 'var(--pink-50)' : 'transparent', color: active ? 'var(--pink-700)' : 'var(--ink-500)', cursor: 'pointer', fontSize: 14, fontWeight: 700, lineHeight: 1, padding: 0, flex: '0 0 auto' })
 
 type TabKey = 'build' | 'ingredients' | 'allergens' | 'cost' | 'label' | 'recipes' | 'templates'
 const TABS: Array<{ key: TabKey; label: string; icon: ComponentType<{ className?: string }>; soon?: boolean }> = [
@@ -886,7 +886,7 @@ export function RecipeBuilderStep({
           >
             <t.icon className="rb-tab-ic" />
             {t.label}
-            {t.soon && <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--mut)', border: '1px solid var(--bd)', borderRadius: 999, padding: '1px 5px' }}>soon</span>}
+            {t.soon && <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--ink-500)', border: '1px solid var(--ink-200)', borderRadius: 999, padding: '1px 5px' }}>soon</span>}
           </div>
         ))}
       </div>
@@ -919,11 +919,11 @@ export function RecipeBuilderStep({
       <div className={`rb-wrap${base.length === 0 ? ' solo' : ''}`}>
         <div>
           {/* Add Ingredients — search sits ABOVE the recipe table. */}
-          <div className="rb-card">
-            <div className="rb-h" style={{ justifyContent: 'space-between' }}>
-              <span>≣ Add Ingredients</span>
+          <div className="card">
+            <div className="section-title" style={{ justifyContent: 'space-between' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="ic"><ListPlus size={16} strokeWidth={2} /></span> Add Ingredients</span>
               {rows.length > 0 && (
-                <select value={addCat} onChange={(e) => setAddCat(e.target.value as 'base' | 'optional')} style={{ fontWeight: 600 }}>
+                <select className="sel" value={addCat} onChange={(e) => setAddCat(e.target.value as 'base' | 'optional')} style={{ width: 'auto', fontWeight: 600 }}>
                   <option value="base">Main Ingredients</option>
                   <option value="optional">Optional Ingredients</option>
                 </select>
@@ -939,8 +939,8 @@ export function RecipeBuilderStep({
 
           {/* Recipe Ingredients — appears only once the first ingredient is added. */}
           {base.length > 0 && (
-          <div className="rb-card">
-            <div className="rb-h">🍽 {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
+          <div className="card">
+            <div className="section-title"><span className="ic"><Utensils size={16} strokeWidth={2} /></span> {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
             <table>
               <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Cost <i className="info" data-tip="You set ingredient prices here — they aren't stored in the catalog. Enter your price and pick the basis (kg · lb · g · oz). The Total sums each ingredient's price × its grams.">i</i></th><th /></tr></thead>
               <tbody>
@@ -1002,7 +1002,7 @@ export function RecipeBuilderStep({
                     const sShowVol = sDens != null || VOLUME_UNITS.has(su)
                     const sg = toGrams(sq, su, { densityGPerMl: sDens ?? undefined }) * (1 - sw / 100)
                     return (
-                      <tr key={`${r.uid}-swap-${sIng}`} style={{ borderLeft: '3px solid var(--g)', background: isAct ? 'var(--g-50)' : 'transparent', opacity: isAct ? 1 : 0.6 }}>
+                      <tr key={`${r.uid}-swap-${sIng}`} style={{ borderLeft: '3px solid var(--pink)', background: isAct ? 'var(--pink-50)' : 'transparent', opacity: isAct ? 1 : 0.6 }}>
                         <td style={{ paddingLeft: 22 }}>{v.overlayIngName || v.label}{isAct && <span style={DOT_STYLE} />}</td>
                         <td className="r" style={{ whiteSpace: 'nowrap' }}>
                           <button
@@ -1062,8 +1062,8 @@ export function RecipeBuilderStep({
               activation toggle: click the check to tick the ingredient into the
               Preview label, click again to deactivate it. */}
           {optional.length > 0 && (
-            <div className="rb-card">
-              <div className="rb-h">✓ Optional Ingredients ({optional.length})</div>
+            <div className="card">
+              <div className="section-title"><span className="ic"><ListChecks size={16} strokeWidth={2} /></span> Optional Ingredients ({optional.length})</div>
               <table>
                 <thead><tr><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} title="Click to activate / deactivate">On</th><th style={{ width: '99%' }}>Ingredient Name</th><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r">$/kg</th><th /></tr></thead>
                 <tbody>
@@ -1107,8 +1107,8 @@ export function RecipeBuilderStep({
               ingredients overlay the shared base recipe. Drives the per-flavor
               label shown in the live preview on the right. */}
           {flavorMode === 'MULTI' && (
-            <div className="rb-card">
-              <div className="rb-h">❀ Flavor variants ({flavors.length}) <i className="info" data-tip={`Each flavor overlays the shared base with its own flavored ingredients. Up to a ${maxColumns}-column label.`}>i</i></div>
+            <div className="card">
+              <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavor variants ({flavors.length})</div>
               <div className="flavtabs" role="tablist" aria-label="Flavors">
                 {flavors.map((f, i) => (
                   <button key={i} type="button" role="tab" aria-selected={activeFlavor === i} className={`flavtab${activeFlavor === i ? ' on' : ''}`} onClick={() => setActiveFlavor(i)}>
@@ -1130,7 +1130,7 @@ export function RecipeBuilderStep({
                   <>
                     <div className="flavedit" style={{ marginTop: 10 }}>
                       <input className="flavname" value={f.name} onChange={(e) => setFlavors(flavors.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)))} placeholder={`Flavor ${idx + 1}`} aria-label="Flavor name" />
-                      {flavors.length > 1 && <button type="button" className="rb-btn o sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>}
+                      {flavors.length > 1 && <button type="button" className="btn sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>}
                     </div>
                     {lines.length > 0 ? (
                       <table style={{ marginTop: 10 }}>
@@ -1171,8 +1171,8 @@ export function RecipeBuilderStep({
 
           {/* Packaging & Serving — appears only once the first ingredient is added. */}
           {base.length > 0 && (
-          <div className="rb-card">
-            <div className="rb-h">⚖ Packaging &amp; Serving Information</div>
+          <div className="card">
+            <div className="section-title"><span className="ic"><Scale size={16} strokeWidth={2} /></span> Packaging &amp; Serving Information</div>
             <div className="subtab">
               <button className={subtab === 'pack' ? 'on' : ''} onClick={() => setSubtab('pack')}>Packaging</button>
               <button className={subtab === 'adv' ? 'on' : ''} onClick={() => setSubtab('adv')}>Advanced</button>
@@ -1221,7 +1221,7 @@ export function RecipeBuilderStep({
                     <span className="f">Suggested serving <i className="info" data-tip="The descriptive household measure printed on the label — 1 cup, 1 tbsp, 1 scoop, 1 cookie, etc. Use your best judgment, or Find serving for FDA reference amounts.">i</i></span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input style={{ flex: 1 }} value={suggestedServing} onChange={(e) => setSuggestedServing(e.target.value)} placeholder="1 cup" />
-                      <button type="button" className="rb-btn sm" onClick={() => setFindServingOpen(true)}>Find serving</button>
+                      <button type="button" className="btn pink sm" onClick={() => setFindServingOpen(true)}>Find serving</button>
                     </div>
                   </div>
                   <div>
@@ -1236,7 +1236,7 @@ export function RecipeBuilderStep({
                 <span className="f">Suggested serving (French) <i className="info" data-tip="For Canadian nutrition labels, provide the same serving size in French as in English.">i</i></span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input style={{ flex: 1 }} value={suggestedServingFr} onChange={(e) => setSuggestedServingFr(e.target.value)} placeholder="ex. 1 tasse" />
-                  <button type="button" className="rb-btn o sm" onClick={() => setSuggestedServingFr(suggestedServing ? `${suggestedServing} (FR)` : '')}>Translate</button>
+                  <button type="button" className="btn sm" onClick={() => setSuggestedServingFr(suggestedServing ? `${suggestedServing} (FR)` : '')}>Translate</button>
                 </div>
                 <span className="f" style={{ marginTop: 10 }}>Package count for aggregate labels <i className="info" data-tip="If this recipe appears in an FDA aggregate (combined) label, this is the number of servings it contributes. Each recipe’s aggregate servings are summed for the total.">i</i></span>
                 <input type="number" min={0} style={{ width: 140 }} value={aggCount} onChange={(e) => setAggCount(parseFloat(e.target.value) || 1)} />
@@ -1257,17 +1257,17 @@ export function RecipeBuilderStep({
             </div>
             {/* Only products with multiple label previews (≥2 flavors with data). */}
             {varietyCols.length >= 2 && (
-              <button type="button" className="rb-btn o sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
+              <button type="button" className="btn sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
             )}
           </div>
           {flavorMode === 'MULTI' && flavors.length > 0 && (
             <div className="tiny muted" style={{ marginBottom: 8 }}>
-              Previewing <b style={{ color: 'var(--ink)' }}>{flavors[Math.min(activeFlavor, flavors.length - 1)]?.name || `Flavor ${Math.min(activeFlavor, flavors.length - 1) + 1}`}</b> · switch flavors in the <b>Flavor variants</b> card on the left
+              Previewing <b style={{ color: 'var(--ink-900)' }}>{flavors[Math.min(activeFlavor, flavors.length - 1)]?.name || `Flavor ${Math.min(activeFlavor, flavors.length - 1) + 1}`}</b> · switch flavors in the <b>Flavor variants</b> card on the left
             </div>
           )}
           {noFactsPanel ? (
-            <div className="rb-card" style={{ color: 'var(--mut)', fontSize: 12.5, lineHeight: 1.5 }}>
-              <b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} {!dom.labelBuilt && <span className="tiny">This domain&apos;s label renderer ships in a later phase.</span>} <span className="tiny">(Auto-selected from this product&apos;s category.)</span>
+            <div className="card" style={{ color: 'var(--ink-500)', fontSize: 12.5, lineHeight: 1.5 }}>
+              <b style={{ color: 'var(--ink-900)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} {!dom.labelBuilt && <span className="tiny">This domain&apos;s label renderer ships in a later phase.</span>} <span className="tiny">(Auto-selected from this product&apos;s category.)</span>
             </div>
           ) : ps && result ? (
             flavorMode === 'MULTI' && flavors.length > 0 ? (() => {
@@ -1280,7 +1280,7 @@ export function RecipeBuilderStep({
                   {fr && overlayG > 0 ? (
                     <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} contains={flavorContains(f)} />
                   ) : (
-                    <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)', padding: 20 }}>
+                    <div className="card" style={{ textAlign: 'center', color: 'var(--ink-500)', padding: 20 }}>
                       <div className="flavhdr" style={{ margin: '0 0 8px' }}>{f.name || `Flavor ${idx + 1}`}</div>
                       <p className="tiny" style={{ margin: 0 }}>Add at least one flavor ingredient with an amount to generate this flavor&apos;s Facts label.</p>
                     </div>
@@ -1302,7 +1302,7 @@ export function RecipeBuilderStep({
               </>
             )
           ) : (
-            <div className="rb-card" style={{ textAlign: 'center', color: 'var(--mut)' }}>Add ingredients + a serving size to see the label.</div>
+            <div className="card" style={{ textAlign: 'center', color: 'var(--ink-500)' }}>Add ingredients + a serving size to see the label.</div>
           )}
           {!noFactsPanel && noNutritionData && (
             <p className="rb-warn">⚠ These ingredients have no nutrition data yet, so the label reads all zeros. Pick USDA / library ingredients, or open the ingredient to add per-100 g values.</p>
@@ -1312,7 +1312,7 @@ export function RecipeBuilderStep({
       </div>
 
       {result && breakdown.length > 0 && (
-        <details className="rb-card" style={{ marginTop: 14 }}>
+        <details className="card" style={{ marginTop: 14 }}>
           <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>🧪 Nutrition Breakdown — per-ingredient contribution (QA)</summary>
           <p className="muted tiny" style={{ marginTop: 6 }}>Each ingredient&apos;s exact <b>batch</b> contribution from the engine. Per serving = batch ÷ {ts.toFixed(2)} servings.</p>
           <table>
@@ -1322,7 +1322,7 @@ export function RecipeBuilderStep({
                 const noData = b.usableG > 0 && b.batch.calories === 0 && b.batch.protein === 0 && b.batch.totalFat === 0 && b.batch.totalCarbohydrate === 0
                 return (
                   <tr key={i}>
-                    <td>{b.name}{noData && <span style={{ color: 'var(--red)', marginLeft: 6, fontSize: 10 }} title="This ingredient has no stored nutrition data — it contributes 0 to the label.">⚠ no data</span>}</td>
+                    <td>{b.name}{noData && <span style={{ color: 'var(--danger-600)', marginLeft: 6, fontSize: 10 }} title="This ingredient has no stored nutrition data — it contributes 0 to the label.">⚠ no data</span>}</td>
                     <td className="r">{b.usableG.toFixed(1)}</td>
                     <td className="r">{Math.round(b.batch.calories)}</td>
                     <td className="r">{b.batch.protein.toFixed(1)}</td>
@@ -1374,8 +1374,8 @@ export function RecipeBuilderStep({
 
       {/* ≣ INGREDIENTS — read-only summary of the full recipe. */}
       {activeTab === 'ingredients' && (
-        <div className="rb-card">
-          <div className="rb-h">≣ Ingredients ({rows.length})</div>
+        <div className="card">
+          <div className="section-title"><span className="ic"><List size={16} strokeWidth={2} /></span> Ingredients ({rows.length})</div>
           <p className="muted tiny" style={{ margin: '0 0 8px' }}>Read-only — edit in <b>Build recipe</b>.</p>
           <table>
             <thead><tr><th>Ingredient</th><th>Section</th><th className="r">Qty</th><th>Unit</th><th className="r">Grams</th></tr></thead>
@@ -1400,7 +1400,7 @@ export function RecipeBuilderStep({
       {activeTab === 'allergens' && (
         draftId
           ? <AllergensCard draftId={draftId} />
-          : <div className="rb-card"><div className="rb-h">⛨ Allergens</div><p className="muted">Save your draft first to manage allergens.</p></div>
+          : <div className="card"><div className="section-title"><span className="ic"><ShieldAlert size={16} strokeWidth={2} /></span> Allergens</div><p className="muted">Save your draft first to manage allergens.</p></div>
       )}
 
       {/* $ COST — cost summary + per-ingredient nutrition breakdown. */}
@@ -1408,8 +1408,8 @@ export function RecipeBuilderStep({
         <>
           <CostSummaryCard totalCents={totalCents} perServingCost={perServingCost} retail={retail} markup={markup} onMarkup={setMarkup} />
           {base.length > 0 && (
-            <div className="rb-card">
-              <div className="rb-h">▦ Nutrition Breakdown</div>
+            <div className="card">
+              <div className="section-title"><span className="ic"><Table size={16} strokeWidth={2} /></span> Nutrition Breakdown</div>
               <table>
                 <thead><tr><th>Ingredient</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Carbs</th><th className="r">Fat</th><th className="r">Sugars</th></tr></thead>
                 <tbody>
@@ -1437,14 +1437,14 @@ export function RecipeBuilderStep({
 
       {/* 🏷 LABEL — full live label preview (Public / Internal). */}
       {activeTab === 'label' && (
-        <div className="rb-card">
-          <div className="rb-h">🏷 Label preview</div>
+        <div className="card">
+          <div className="section-title"><span className="ic"><Tag size={16} strokeWidth={2} /></span> Label preview</div>
           <div className="seg" style={{ marginBottom: 10 }}>
             <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
           </div>
           {noFactsPanel ? (
-            <p className="muted" style={{ lineHeight: 1.5 }}><b style={{ color: 'var(--ink)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} <span className="tiny">(Auto-selected from this product&apos;s category.)</span></p>
+            <p className="muted" style={{ lineHeight: 1.5 }}><b style={{ color: 'var(--ink-900)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} <span className="tiny">(Auto-selected from this product&apos;s category.)</span></p>
           ) : ps && result ? (
             <div style={{ maxWidth: 340 }}>
               {simpEligible && (
@@ -1466,8 +1466,8 @@ export function RecipeBuilderStep({
       {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces. My recipes copies a
           past product's base slots; templates resolve curated items to the catalog. */}
       {activeTab === 'recipes' && (
-        <div className="rb-card">
-          <div className="rb-h">🗂 My recipes</div>
+        <div className="card">
+          <div className="section-title"><span className="ic"><FolderOpen size={16} strokeWidth={2} /></span> My recipes</div>
           <p className="muted tiny" style={{ margin: '0 0 8px' }}>Reuse a formulation from another product — applies its base ingredients here to tweak.</p>
           {myRecipes === null ? (
             <p className="muted">Loading your recipes…</p>
@@ -1482,7 +1482,7 @@ export function RecipeBuilderStep({
                     <td>{r.name || 'Untitled product'}</td>
                     <td className="r">{r.slots.length}</td>
                     <td><span className="muted tiny">{r.status.replace(/_/g, ' ').toLowerCase()}</span></td>
-                    <td className="r"><button type="button" className="rb-btn o sm" onClick={() => applyRecipe(r.slots)} disabled={r.slots.length === 0}>Apply</button></td>
+                    <td className="r"><button type="button" className="btn sm" onClick={() => applyRecipe(r.slots)} disabled={r.slots.length === 0}>Apply</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1491,8 +1491,8 @@ export function RecipeBuilderStep({
         </div>
       )}
       {activeTab === 'templates' && (
-        <div className="rb-card">
-          <div className="rb-h">▦ Recipe templates</div>
+        <div className="card">
+          <div className="section-title"><span className="ic"><LayoutGrid size={16} strokeWidth={2} /></span> Recipe templates</div>
           <p className="muted tiny" style={{ margin: '0 0 8px' }}>Start from a curated formulation — ingredients are matched to your catalog to refine.</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {RECIPE_TEMPLATES.map((t) => (
@@ -1502,7 +1502,7 @@ export function RecipeBuilderStep({
                     <b>{t.name}</b>
                     <p className="muted tiny" style={{ margin: '2px 0 0' }}>{t.desc} · {t.items.length} ingredients</p>
                   </div>
-                  <button type="button" className="rb-btn o sm" onClick={() => applyTemplate(t)}>Start from this</button>
+                  <button type="button" className="btn sm" onClick={() => applyTemplate(t)}>Start from this</button>
                 </div>
               </div>
             ))}
@@ -1537,15 +1537,15 @@ function AddReplaceableOverlay({ baseName, onPick, onClose }: {
 }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,28,.45)', display: 'grid', placeItems: 'center', zIndex: 60, padding: 16 }}>
-      <div className="rb-card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 100%)', margin: 0 }}>
-        <div className="rb-h" style={{ justifyContent: 'space-between' }}>
-          <span>⇄ Add Replaceable Ingredient</span>
-          <button type="button" onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--mut)' }}>✕</button>
+      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 100%)', margin: 0 }}>
+        <div className="section-title" style={{ justifyContent: 'space-between' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="ic"><ArrowLeftRight size={16} strokeWidth={2} /></span> Add Replaceable Ingredient</span>
+          <button type="button" onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--ink-500)' }}>✕</button>
         </div>
         <p className="muted tiny" style={{ margin: '0 0 10px' }}>Search for an ingredient to replace “{baseName}” — added as a dimmed alternative; click its ⇄ to swap in.</p>
         <IngredientPicker onPick={(p) => { onPick(p); onClose() }} placeholder="Search for replaceable ingredients…" />
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
-          <button type="button" className="rb-btn o sm" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn sm" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
@@ -1601,8 +1601,8 @@ function LabelOptionsSection({
   const cfgLabel = cfgList.length ? calculateLabel(cfgList, geometry) : null
 
   return (
-    <div className="rb-card" style={{ marginTop: 16 }}>
-      <div className="rb-h">⚗ Label options · bind ingredient changes <i className="info" data-tip="These options change the recipe, so the Facts label recomputes per chosen combination. Bind each to a base slot, then pick the ingredient for each value. The preview below shows the default combination.">i</i></div>
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Label options · bind ingredient changes</div>
       {labelAxes.map(({ a, i }) => (
         <div key={i} className="lo-axis">
           <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1649,10 +1649,10 @@ function LabelOptionsSection({
         </div>
       )}
       <style>{`
-        .rb .lo-axis{border:1px solid #E0E1E5;border-radius:16px;padding:12px;margin-top:10px}
-        .rb .lo-axis select{border:1px solid #E0E1E5;border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;background:#fff}
-        .rb .lo-prev{margin-top:12px;border:1px solid #FFB3CC;background:#FFE9F0;color:#C71350;border-radius:10px;padding:8px 12px;font-size:12px}
-        .rb .lo-link{background:none;border:0;color:#C71350;cursor:pointer;font:inherit;font-size:11px;text-decoration:underline}
+        .rb .lo-axis{border:1px solid var(--ink-200);border-radius:16px;padding:12px;margin-top:10px}
+        .rb .lo-axis select{border:1px solid var(--ink-200);border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;background:#fff}
+        .rb .lo-prev{margin-top:12px;border:1px solid var(--pink-100);background:var(--pink-50);color:var(--pink-700);border-radius:10px;padding:8px 12px;font-size:12px}
+        .rb .lo-link{background:none;border:0;color:var(--pink-700);cursor:pointer;font:inherit;font-size:11px;text-decoration:underline}
       `}</style>
     </div>
   )
@@ -1671,8 +1671,8 @@ function CostSummaryCard({
   onMarkup: (m: number) => void
 }) {
   return (
-    <div className="rb-card">
-      <div className="rb-h">$ Cost Summary</div>
+    <div className="card">
+      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Cost Summary</div>
       <div className="costgrid">
         <div className="costtile"><div className="l">Total ingredient cost</div><div className="v">${totalCents.toFixed(2)}</div></div>
         <div className="costtile retail"><div className="l">Suggested retail / serving</div><div className="v">${retail.toFixed(2)}</div></div>
@@ -1728,7 +1728,7 @@ function FindServingModal({ onClose, onPick }: { onClose: () => void; onPick: (s
           {list.map((r) => (
             <div key={r.group} className="fs-row">
               <div><b>{r.group}</b><span className="muted tiny" style={{ marginLeft: 8 }}>{r.serving} · {r.grams} g</span></div>
-              <button type="button" className="rb-btn sm" onClick={() => onPick(r.serving, r.grams)}>Select</button>
+              <button type="button" className="btn pink sm" onClick={() => onPick(r.serving, r.grams)}>Select</button>
             </div>
           ))}
           {list.length === 0 && <p className="muted tiny" style={{ padding: 16 }}>No categories match “{q}”.</p>}
@@ -1768,7 +1768,7 @@ function AddCustomMeasureModal({
             <input className="num" type="number" min={0} value={qty} onChange={(e) => setQty(e.target.value)} aria-label="Quantity" />
             <input style={{ flex: 1 }} value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "case"' aria-label="Unit name" />
           </div>
-          <div style={{ textAlign: 'center', color: 'var(--mut)', fontSize: 12, margin: '10px 0' }}>is equivalent to</div>
+          <div style={{ textAlign: 'center', color: 'var(--ink-500)', fontSize: 12, margin: '10px 0' }}>is equivalent to</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input className="num" type="number" min={0} value={eqQty} onChange={(e) => setEqQty(e.target.value)} aria-label="Equivalent quantity" />
             <select style={{ flex: 1 }} value={eqUnit} onChange={(e) => setEqUnit(e.target.value)}>
@@ -1778,8 +1778,8 @@ function AddCustomMeasureModal({
           {dupe && <p className="rb-warn" style={{ marginTop: 10 }}>“{name.trim()}” already exists for this ingredient.</p>}
           {valid && <p className="muted tiny" style={{ marginTop: 8 }}>1 {name.trim()} = {gramsPerUnit.toFixed(1)} g</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button type="button" className="rb-btn sm" disabled={!valid} style={!valid ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => valid && onSave(name.trim(), gramsPerUnit)}>Save</button>
-            <button type="button" className="rb-btn o sm" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn pink sm" disabled={!valid} style={!valid ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => valid && onSave(name.trim(), gramsPerUnit)}>Save</button>
+            <button type="button" className="btn sm" onClick={onClose}>Cancel</button>
           </div>
         </div>
       </div>
@@ -1816,104 +1816,101 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simpl
 }
 
 const CSS = `
-.rb{--g:#FF2E63;--g2:#C71350;--g-50:#FFE9F0;--g-bd:#FFB3CC;--ink:#18181A;--mut:#6B6D78;--bd:#E0E1E5;--bg:#fff;--red:#e24b4a;font-size:13px;color:var(--ink)}
-.rb .muted{color:var(--mut)} .rb .tiny{font-size:10.5px}
-.rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--bd);margin-bottom:14px;overflow:auto}
-.rb-tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
+.rb{font-size:var(--fs-sm);color:var(--ink-900)}
+.rb .muted{color:var(--ink-500)} .rb .tiny{font-size:10.5px}
+.rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--ink-200);margin-bottom:14px;overflow:auto}
+.rb-tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;font-weight:600;color:var(--ink-500);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
 .rb-tab .rb-tab-ic{width:15px;height:15px;flex:0 0 auto;stroke-width:2}
-.rb-tab.on{color:var(--g2);border-color:var(--g)}
+.rb-tab.on{color:var(--pink-700);border-color:var(--pink)}
 .rb-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px}
 .rb-wrap.solo{grid-template-columns:1fr}
-.rb-card{border:1px solid var(--bd);border-radius:16px;background:#fff;padding:16px;margin-bottom:16px}
-.agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--g-bd);background:var(--g-50);border-radius:16px;padding:12px 16px;margin-bottom:16px}
+.rb .card{margin-bottom:16px}
+.agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--pink-100);background:var(--pink-50);border-radius:16px;padding:12px 16px;margin-bottom:16px}
 .agebar-l{display:flex;flex-direction:column;gap:2px;min-width:220px}
-.agebar-t{font-weight:700;font-size:13.5px;color:var(--ink)}
-.agebar-s{font-size:11px;color:var(--mut)}
-.agebar-seg{display:inline-flex;background:#fff;border:1px solid var(--g-bd);border-radius:999px;padding:3px}
-.agebar-seg button{appearance:none;border:0;background:transparent;color:var(--mut);font-weight:600;font-size:12px;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
-.agebar-seg button:hover{color:var(--ink)}
-.agebar-seg button.on{background:var(--ink);color:#fff}
-.agebar-seg button:focus-visible{outline:2px solid var(--g);outline-offset:2px}
-.rb-h{display:flex;align-items:center;gap:8px;color:var(--ink);font-weight:700;font-size:15px;margin-bottom:10px}
+.agebar-t{font-weight:700;font-size:13.5px;color:var(--ink-900)}
+.agebar-s{font-size:11px;color:var(--ink-500)}
+.agebar-seg{display:inline-flex;background:#fff;border:1px solid var(--pink-100);border-radius:999px;padding:3px}
+.agebar-seg button{appearance:none;border:0;background:transparent;color:var(--ink-500);font-weight:600;font-size:12px;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.agebar-seg button:hover{color:var(--ink-900)}
+.agebar-seg button.on{background:var(--ink-900);color:#fff}
+.agebar-seg button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
 .rb table{width:100%;border-collapse:collapse}
-.rb th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px;border-bottom:1px solid var(--bd)}
-.rb th.r,.rb td.r{text-align:right} .rb .grn{color:var(--g2);font-weight:700}
-.rb td{padding:7px 6px;border-bottom:1px solid #F1F1F3;vertical-align:middle;font-size:12.5px}
-.rb input,.rb select{border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff}
-.rb input:focus,.rb select:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px var(--g-50)}
+.rb th{font-size:11px;color:var(--ink-500);text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px;border-bottom:1px solid var(--ink-200)}
+.rb th.r,.rb td.r{text-align:right} .rb .grn{color:var(--pink-700);font-weight:700}
+.rb td{padding:7px 6px;border-bottom:1px solid var(--ink-100);vertical-align:middle;font-size:12.5px}
+.rb input,.rb select{border:1px solid var(--ink-200);border-radius:var(--input-radius);padding:6px 8px;font:inherit;font-size:12.5px;background:#fff}
+.rb input:focus,.rb select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
 /* All compact table fields share the Waste field's width — equal, not wider. */
 .rb .qty,.rb .waste,.rb .num{width:52px;text-align:center;padding-left:4px;padding-right:4px}
 .rb select.num{width:52px}
 .rb .costcell{display:inline-flex;gap:3px;align-items:center;justify-content:flex-end}
 .rb .costins{display:inline-flex;flex-direction:column;gap:3px}
 .rb .curin{display:inline-flex;align-items:center;gap:2px;justify-content:flex-end}
-.rb .cursym{font-size:14px;font-weight:700;color:var(--pink,#FF2E63);min-width:18px;text-align:right}
+.rb .cursym{font-size:14px;font-weight:700;color:var(--pink);min-width:18px;text-align:right}
 .rb .costcell .num{width:46px}
 .rb .cu{width:46px;padding:6px 2px;text-align:center}
 .rb .rwcell{display:inline-flex;gap:5px;align-items:center;justify-content:flex-end}
 .rb .rwcell .num{width:52px}
-.rb-btn{background:var(--g);color:#fff;border:0;border-radius:8px;padding:7px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
-.rb-btn.o{background:#fff;color:var(--g2);border:1px solid var(--g-bd)} .rb-btn.sm{padding:5px 11px;font-size:12px}
-.rb .circle{width:24px;height:24px;border-radius:50%;border:1px solid var(--bd);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--g)}
-.rb .circle.chk{border-color:var(--g);background:var(--g-50)}
-.rb .dim{opacity:.5} .rb .del{color:var(--red);cursor:pointer}
-.rb .res{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer}
-.rb .res:hover{border-color:var(--g-bd);background:var(--g-50)}
-.rb .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--g-50);color:var(--g2);font-size:10px;font-weight:700;cursor:help;margin-left:5px;border:1px solid var(--g-bd);font-style:normal}
-.rb input[type=radio]{accent-color:#33343C}
+.rb .circle{width:24px;height:24px;border-radius:50%;border:1px solid var(--ink-200);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--pink)}
+.rb .circle.chk{border-color:var(--pink);background:var(--pink-50)}
+.rb .dim{opacity:.5} .rb .del{color:var(--danger-600);cursor:pointer}
+.rb .res{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--ink-200);border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer}
+.rb .res:hover{border-color:var(--pink-100);background:var(--pink-50)}
+.rb input[type=radio]{accent-color:var(--ink-700)}
 .rb .radio{display:flex;gap:20px;margin:6px 0 12px} .rb .radio label{display:flex;gap:6px;align-items:center;cursor:pointer}
-.rb .subtab{display:inline-flex;border-bottom:1px solid var(--bd);gap:18px;margin-bottom:12px;width:100%}
-.rb .subtab button{border:0;background:transparent;padding:8px 2px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent}
-.rb .subtab button.on{color:var(--g2);border-color:var(--g)}
+.rb .subtab{display:inline-flex;border-bottom:1px solid var(--ink-200);gap:18px;margin-bottom:12px;width:100%}
+.rb .subtab button{border:0;background:transparent;padding:8px 2px;font:inherit;font-weight:600;color:var(--ink-500);cursor:pointer;border-bottom:2px solid transparent}
+.rb .subtab button.on{color:var(--pink-700);border-color:var(--pink)}
 .rb .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px} .rb .row2 input{width:100%}
-.rb .f{display:block;font-size:10.5px;color:var(--mut);margin-bottom:3px}
-.rb .makes{color:var(--g2);font-size:12px;margin:6px 0 0}
+.rb .f{display:block;font-size:10.5px;color:var(--ink-500);margin-bottom:3px}
+.rb .makes{color:var(--pink-700);font-size:12px;margin:6px 0 0}
 .rb .costgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
-.rb .costtile{border:1px solid var(--bd);border-radius:10px;padding:9px 11px}
-.rb .costtile .l{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
-.rb .costtile .v{font-size:18px;font-weight:800;margin-top:2px} .rb .costtile.retail .v{color:var(--g2)}
-.rb .costfoot{display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:10px;font-size:12px;color:var(--mut)} .rb .costfoot b{color:var(--ink)}
-.rb .seg{display:inline-flex;border:1px solid var(--bd);border-radius:999px;padding:3px;background:#fff;gap:3px}
-.rb .seg button{border:0;background:transparent;padding:6px 16px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
-.rb .seg button.on{background:#18181A;color:#fff}
+.rb .costtile{border:1px solid var(--ink-200);border-radius:10px;padding:9px 11px}
+.rb .costtile .l{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-500)}
+.rb .costtile .v{font-size:18px;font-weight:800;margin-top:2px} .rb .costtile.retail .v{color:var(--pink-700)}
+.rb .costfoot{display:flex;justify-content:space-between;border-top:1px solid var(--ink-200);padding-top:10px;font-size:12px;color:var(--ink-500)} .rb .costfoot b{color:var(--ink-900)}
+.rb .seg{display:inline-flex;border:1px solid var(--ink-200);border-radius:999px;padding:3px;background:#fff;gap:3px}
+.rb .seg button{border:0;background:transparent;padding:6px 16px;border-radius:999px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-500);cursor:pointer}
+.rb .seg button.on{background:var(--ink-900);color:#fff}
 .rb .facts{border:2px solid #000;border-radius:4px;padding:8px;font-family:Helvetica,Arial,sans-serif;color:#000;background:#fff;font-size:11px}
 .rb .facts h2{font-size:23px;margin:0;font-weight:800;border-bottom:6px solid #000;padding-bottom:2px}
 .rb .b8{border-bottom:8px solid #000}
 .rb .cal{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid #000;margin-top:3px} .rb .cal .n{font-size:28px;font-weight:800}
 .rb .fr{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:1px 0}
-.rb .netwt{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-top:10px;font-weight:700;font-size:13px}
-.rb .flavtabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--bd);padding-bottom:0}
-.rb .flavtab{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--g2);cursor:pointer;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px 8px 0 0;margin-bottom:-1px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rb .flavtab:hover{color:var(--ink);background:var(--g-50)}
-.rb .flavtab.on{color:var(--ink);background:#fff;border-color:var(--bd);border-bottom:1px solid #fff;font-weight:700}
-.rb .flavtab.add{color:var(--g2);font-weight:600;border-style:dashed;border-color:var(--g-bd);border-bottom-color:var(--g-bd);border-radius:8px;margin-bottom:0}
+.rb .netwt{border:1px solid var(--ink-200);border-radius:10px;padding:8px 10px;margin-top:10px;font-weight:700;font-size:13px}
+.rb .flavtabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--ink-200);padding-bottom:0}
+.rb .flavtab{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--pink-700);cursor:pointer;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px 8px 0 0;margin-bottom:-1px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb .flavtab:hover{color:var(--ink-900);background:var(--pink-50)}
+.rb .flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
+.rb .flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-bottom-color:var(--pink-100);border-radius:8px;margin-bottom:0}
 .rb .flavedit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
-.rb .flavname{flex:1 1 120px;min-width:100px;border:1px solid var(--bd);border-radius:8px;padding:6px 9px;font:inherit;font-weight:600;color:var(--ink)}
-.rb .flavbuilder{border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--g-50)}
-.rb .flavbuilder-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.rb .flavname{flex:1 1 120px;min-width:100px;border:1px solid var(--ink-200);border-radius:8px;padding:6px 9px;font:inherit;font-weight:600;color:var(--ink-900)}
+.rb .flavbuilder{border:1px solid var(--ink-200);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--pink-50)}
+.rb .flavbuilder-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;color:var(--ink-900);margin-bottom:6px}
 .rb .flavbuilder table{background:#fff;border-radius:8px}
 .rb .del{border:0;background:transparent;cursor:pointer;font-size:13px;opacity:.7;padding:0 2px}
 .rb .del:hover{opacity:1}
-.rb .varietypack{margin-top:14px;padding-top:12px;border-top:2px solid var(--ink)}
-.rb .vp-h{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.rb .varietypack{margin-top:14px;padding-top:12px;border-top:2px solid var(--ink-900)}
+.rb .vp-h{font-size:13px;font-weight:700;color:var(--ink-900);margin-bottom:8px}
 .rb .seg.sm button{font-size:11px;padding:4px 9px}
-.rb .flavhdr{background:var(--g-50);color:var(--g2);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--g-bd);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
+.rb .flavhdr{background:var(--pink-50);color:var(--pink-700);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--pink-100);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
 /* Readable hover tooltip for the "i" info icons (replaces the tiny native title). */
+.rb .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--pink-50);color:var(--pink-700);font-size:10px;font-weight:700;cursor:help;margin-left:5px;border:1px solid var(--pink-100);font-style:normal}
 .rb .info[data-tip]{position:relative}
-.rb .info[data-tip]:hover::after,.rb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#18181A;color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
-.rb .info[data-tip]:hover::before,.rb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#18181A;z-index:60;pointer-events:none}
-.rb .rb-warn{margin-top:10px;background:#FFF7E6;border:1px solid #F4D58A;color:#7A5A00;font-size:11.5px;line-height:1.45;border-radius:10px;padding:9px 11px}
+.rb .info[data-tip]:hover::after,.rb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:var(--ink-900);color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.rb .info[data-tip]:hover::before,.rb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink-900);z-index:60;pointer-events:none}
+.rb .rb-warn{margin-top:10px;background:var(--warning-50);border:1px solid var(--warning-200);color:var(--warning-700);font-size:11.5px;line-height:1.45;border-radius:10px;padding:9px 11px}
 /* Find Serving Size modal */
 .fs-overlay{position:fixed;inset:0;background:rgba(20,20,24,.5);display:grid;place-items:start center;padding:48px 16px;z-index:200;overflow:auto}
 .fs-modal{background:#fff;border-radius:16px;width:min(640px,100%);box-shadow:0 24px 80px rgba(0,0,0,.3);overflow:hidden}
 .fs-head{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 8px;font-size:18px}
-.fs-x{border:0;background:transparent;font-size:16px;color:#6B6D78;cursor:pointer;width:28px;height:28px;border-radius:50%}
-.fs-x:hover{background:#EEEFF1}
+.fs-x{border:0;background:transparent;font-size:16px;color:var(--ink-500);cursor:pointer;width:28px;height:28px;border-radius:50%}
+.fs-x:hover{background:var(--ink-100)}
 .fs-seg{display:flex;gap:8px;padding:6px 16px 12px}
-.fs-seg button{flex:1;border:1px solid var(--g-bd);background:#fff;color:var(--g2);font:inherit;font-weight:600;font-size:12.5px;padding:9px 10px;border-radius:8px;cursor:pointer}
-.fs-seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.fs-seg button{flex:1;border:1px solid var(--pink-100);background:#fff;color:var(--pink-700);font:inherit;font-weight:600;font-size:12.5px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.fs-seg button.on{background:var(--pink);color:#fff;border-color:var(--pink)}
 .fs-list{max-height:52vh;overflow:auto;padding:8px 16px 16px}
-.fs-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-left:3px solid var(--g-bd);background:#fff;border-bottom:1px solid var(--bd);padding:11px 12px}
-.fs-row:hover{background:var(--g-50)}
+.fs-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border-left:3px solid var(--pink-100);background:#fff;border-bottom:1px solid var(--ink-200);padding:11px 12px}
+.fs-row:hover{background:var(--pink-50)}
 @media(max-width:900px){.rb-wrap{grid-template-columns:1fr}}
 `

@@ -109,10 +109,10 @@ const FAQ: { q: string; a: string }[] = [
 
 export function ProductsGetStarted({
   companyName,
-  subcategories = [],
+  categories = [],
 }: {
   companyName: string
-  subcategories?: { id: string; name: string; categoryName: string }[]
+  categories?: { id: string; name: string; subcategories: { id: string; name: string }[] }[]
 }) {
   return (
     <div className="pb-2">
@@ -186,7 +186,7 @@ export function ProductsGetStarted({
             <div className="mt-4 text-[13px] text-ink-400">
               Already sell elsewhere?{' '}
               <ProductImportButton
-                subcategories={subcategories}
+                categories={categories}
                 triggerClassName="inline font-semibold text-neon-500 underline-offset-2 hover:underline"
                 triggerLabel="Import your catalog from CSV →"
               />

@@ -61,7 +61,7 @@ export function ApprovalTriggersCard({ draftId, initialRules }: { draftId: strin
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><span className="ic"><Settings2 size={16} strokeWidth={2} /></span> Changes that need re-approval <i className="info" data-tip="Which kind of change re-triggers review, and by whom. Defaults are sensible; adjust if your process differs." tabIndex={0} role="img" aria-label="About re-approval rules">i</i></div>
+      <div className="section-title"><span className="ic"><Settings2 size={16} strokeWidth={2} /></span> Changes that need re-approval</div>
       <table style={{ marginTop: 12 }}>
         <thead><tr><th>Change type</th><th>Required approver</th></tr></thead>
         <tbody>
@@ -121,7 +121,7 @@ export function CompatibilityRulesCard({ draftId, axes, initialRules }: { draftI
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><span className="ic"><Ban size={16} strokeWidth={2} /></span> Compatibility rules <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· advanced</span> <i className="info" data-tip="Restrict which option values can combine — e.g. &quot;Decaf excludes Vanilla.&quot; The marketplace blocks incompatible combinations with your message." tabIndex={0} role="img" aria-label="About compatibility rules">i</i></div>
+      <div className="section-title"><span className="ic"><Ban size={16} strokeWidth={2} /></span> Compatibility rules <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· advanced</span></div>
       {rules.length > 0 && (
         <table style={{ marginTop: 12 }}>
           <thead><tr><th>When</th><th /><th>Then</th><th>Message</th><th /></tr></thead>

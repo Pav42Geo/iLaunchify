@@ -280,6 +280,13 @@ export function GuidedBuilder({
     })
   }
 
+  // Back from Basics (the first step) leaves the builder to the previous page —
+  // the products list when there's no browser history to pop.
+  const exitBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/products')
+  }
+
   // Completion % for the rail (like the editor's readiness). A step counts done
   // once passed, or when its key data is present (Basics name+draft, type chosen).
   const stepDone = STEPS.map((_, i) =>
@@ -410,10 +417,9 @@ export function GuidedBuilder({
             ))}
           </div>
 
-          {/* Back — between the stepper and the title (top of the flow). */}
-          {cur > 0 && (
-            <button className="btn sm" type="button" onClick={() => go(cur - 1)} style={{ marginBottom: 12 }}>← Back</button>
-          )}
+          {/* Back — between the stepper and the title. On Basics (first step) it
+              leaves the builder to the previous page; otherwise it steps back. */}
+          <button className="btn sm" type="button" onClick={() => (cur > 0 ? go(cur - 1) : exitBack())} style={{ marginBottom: 12 }}>← Back</button>
 
           {/* Page title — defaults to "Add Product", becomes the product name
               once the manufacturer types it in Basics. */}
@@ -431,7 +437,7 @@ export function GuidedBuilder({
           {cur === 0 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product domain <i className="info" data-tip="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance." tabIndex={0} role="img" aria-label="What are you making? This sets the label regime and tailors the whole flow — ingredients, formulation, and compliance.">i</i></div>
+                <div className="section-title"><span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product domain</div>
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
                   {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
@@ -456,7 +462,7 @@ export function GuidedBuilder({
                 initial={initial}
                 registerFlush={registerFlush}
               />
-              <NavBtns onNext={() => go(1)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Variants & packs →" nextDisabled={!draftId} />
+              <NavBtns onBack={exitBack} onNext={() => go(1)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Variants & packs →" nextDisabled={!draftId} />
             </section>
           )}
 
@@ -628,16 +634,26 @@ function Field({ label, full, children }: { label: string; full?: boolean; child
   )
 }
 
-// All nav now lives at the top: Back (between stepper + title) and Save draft /
-// Next (app topbar). This bottom component renders nothing — kept so the 6 call
-// sites compile unchanged.
-function NavBtns(_props: { onBack?: () => void; onNext?: () => void; onSaveDraft?: () => void; saving?: boolean; nextLabel?: string; nextDisabled?: boolean }) {
-  return null
+// Bottom-of-step Back. The Next button lives in the sticky topbar (always
+// visible), but the top Back sits in the scrolling content and slides out of
+// view on long steps (Recipe, Cost & pricing). This renders a Back at the bottom
+// of every step that has a previous one, so Back stays reachable throughout the
+// whole stepper. Forward nav stays in the topbar to keep one source of truth for
+// "Next / Submit".
+function NavBtns({ onBack }: { onBack?: () => void; onNext?: () => void; onSaveDraft?: () => void; saving?: boolean; nextLabel?: string; nextDisabled?: boolean }) {
+  if (!onBack) return null
+  return (
+    <div className="navbtns">
+      <div className="navleft">
+        <button type="button" className="btn" onClick={onBack}>← Back</button>
+      </div>
+    </div>
+  )
 }
 
 // Scoped CSS ported from the prototype, on the locked mood-board tokens.
 const CSS = `
-.gb{--font-scale:1.15;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--success-50:#E1F5EE;--warning-50:#FAEEDA;--info-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
+.gb{--font-scale:1.15;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:var(--ink-900);--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--success-50:#E1F5EE;--warning-50:#FAEEDA;--info-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
@@ -651,6 +667,8 @@ const CSS = `
 .gb .btn:hover{border-color:var(--ink-400)} .gb .btn:disabled{opacity:.5;cursor:not-allowed}
 .gb .btn.primary{background:var(--ink-900);color:#fff;border-color:var(--ink-900)} .gb .btn.primary:hover{background:var(--ink-700)}
 .gb .btn.pink{background:var(--pink);color:#fff;border-color:var(--pink)} .gb .btn.sm{padding:6px 12px;font-size:var(--fs-sm)}
+.gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:6px 12px;font:inherit;font-size:var(--fs-xs);font-weight:600;cursor:pointer;transition:.12s}
+.gb .rb-btn-add:hover{background:var(--pink-50)} .gb .rb-btn-add:disabled{opacity:.5;cursor:not-allowed}
 .gb .card{border:var(--card-border-width) solid var(--card-border-color);border-radius:var(--card-radius);background:#fff;padding:18px}
 .gb .field label{display:block;font-size:var(--fs-base);font-weight:600;color:var(--ink-800);margin-bottom:7px;letter-spacing:-.005em}
 .gb .input,.gb .sel,.gb textarea{width:100%;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);background:#fff}
@@ -686,7 +704,7 @@ const CSS = `
 .gb-iconbtn{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;border:1px solid #E0E1E5;background:#fff;color:#33343C;cursor:pointer;transition:.12s}
 .gb-iconbtn:hover{background:#F8F8F9;border-color:#CBCCD3}
 .gb-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:61;background:#fff;border:1px solid #E0E1E5;border-radius:12px;box-shadow:0 16px 40px -16px rgba(0,0,0,.3);padding:6px;min-width:200px}
-.gb-menuitem{display:block;padding:8px 11px;border-radius:8px;font-size:var(--fs-base);color:#18181A;text-decoration:none}
+.gb-menuitem{display:block;padding:8px 11px;border-radius:8px;font-size:var(--fs-base);color:var(--ink-900);text-decoration:none}
 .gb-menuitem:hover{background:#FFE9F0;color:#C71350}
 .gb-saveicon{display:inline-flex;align-items:center;color:#1D9E75}
 .gb-nextbtn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 16px;font:inherit;font-size:var(--fs-base);font-weight:600;cursor:pointer;border:1px solid #FF2E63;background:#FF2E63;color:#fff;transition:.15s}
@@ -703,8 +721,8 @@ const CSS = `
 .gb .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
 .gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--ink-200);color:var(--ink-600);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
 .gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--ink-300);color:var(--ink-900);outline:none}
-.gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#18181A;color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
-.gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#18181A;z-index:60;pointer-events:none}
+.gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:var(--ink-900);color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink-900);z-index:60;pointer-events:none}
 .gb .two{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
 .gb .msel{position:relative}
 .gb .msel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;background:#fff;font:inherit;font-size:var(--fs-base);color:var(--ink-900);cursor:pointer;text-align:left}

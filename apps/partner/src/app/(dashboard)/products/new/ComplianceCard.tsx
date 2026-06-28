@@ -25,7 +25,6 @@ export function ComplianceCard({ draftId }: { draftId: string | null }) {
     <div className="card">
       <div className="section-title"><span className="ic"><ShieldCheck size={16} strokeWidth={2} /></span> Compliance scan
         {checks.length > 0 && <span className={`pill ${fails ? 'amber' : 'green'}`} style={{ marginLeft: 8, fontSize: 10 }}>{fails ? `${fails} to fix` : 'structural OK'}</span>}
-        <i className="info" data-tip="Structural checks run live here. The full FDA scan (nutrient %DV, font sizes, banned-list) runs at the compliance check after submit." tabIndex={0} role="img" aria-label="About the scan">i</i>
       </div>
       {!draftId && <p className="tiny muted" style={{ marginTop: 8 }}>Save the draft to run checks.</p>}
       {draftId && (

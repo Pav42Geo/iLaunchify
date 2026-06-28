@@ -81,7 +81,7 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
 
   return (
     <div className="card">
-      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Volume price tiers <i className="info" data-tip="Your per-unit cost and hard floor per quantity band. The Maker / Builder / Agency columns show the creator's all-in price at each tier (your cost + that tier's platform fee). Unit cost is the same across tiers — higher tiers just pay a lower fee. Shipping & accessories are added at checkout." tabIndex={0} role="img" aria-label="How volume price tiers work">i</i></div>
+      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Volume price tiers</div>
 
       {/* Bulk / On-demand tabs — default Bulk */}
       <div className="ptabs" style={{ marginTop: 10 }}>

@@ -148,7 +148,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
 
         {/* Ingredients */}
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Plus size={16} strokeWidth={2} /></span> Ingredients <i className="info" data-tip="Enter a relative weight — the statement auto-orders by descending predominance." tabIndex={0} role="img" aria-label="Ingredients info">i</i></div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Plus size={16} strokeWidth={2} /></span> Ingredients</div>
 
           {/* AAFCO ingredient search */}
           <div className="relative mb-3">
