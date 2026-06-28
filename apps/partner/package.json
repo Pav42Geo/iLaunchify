@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
-    "@sentry/nextjs": "^8.45.0",
     "@ilaunchify/ai": "workspace:*",
     "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
@@ -21,8 +20,8 @@
     "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/nutrition": "workspace:*",
     "@ilaunchify/orders": "workspace:*",
-    "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/payments": "workspace:*",
+    "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/storage": "workspace:*",
     "@ilaunchify/support": "workspace:*",
     "@ilaunchify/types": "workspace:*",
@@ -31,6 +30,7 @@
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.0",
+    "@sentry/nextjs": "^8.45.0",
     "@tanstack/react-query": "^5.59.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -42,6 +42,7 @@
     "react-hook-form": "^7.53.0",
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.4",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

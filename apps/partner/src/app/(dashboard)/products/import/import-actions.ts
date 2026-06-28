@@ -23,10 +23,9 @@ export interface ImportRow {
   shelfLifeDays?: number | null
   netContentValue?: number | null
   netContentUnit?: string | null
-  gtin?: string | null
 }
 
-export interface ImportResult { ok: boolean; name: string; id?: string; error?: string; note?: string }
+export interface ImportResult { ok: boolean; name: string; id?: string; error?: string }
 
 const MAX_ROWS = 200
 
@@ -40,32 +39,8 @@ export async function bulkImportProducts(
     if (!Array.isArray(rows) || rows.length === 0) return { ok: false, error: 'Nothing to import.' }
     if (rows.length > MAX_ROWS) return { ok: false, error: `Too many rows — import up to ${MAX_ROWS} at a time.` }
 
-    // GTIN/UPC dedupe — gtin is globally @unique. Validate length (UPC-A 12 /
-    // EAN-13 13 / EAN-8 8 / ITF-14 14), then drop duplicates within the batch AND
-    // against existing variants so a collision never blocks the import.
-    const cleanGtin = (s?: string | null): string | null => {
-      const d = (s ?? '').replace(/[^0-9]/g, '')
-      return /^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(d) ? d : null
-    }
-    const wantedGtin = new Map<number, string>()
-    rows.forEach((r, i) => { const g = cleanGtin(r.gtin); if (g) wantedGtin.set(i, g) })
-    const uniqueGtins = [...new Set(wantedGtin.values())]
-    const takenGtins = new Set<string>(
-      uniqueGtins.length
-        ? (await prisma.productTemplateVariant.findMany({ where: { gtin: { in: uniqueGtins } }, select: { gtin: true } }))
-            .map((v) => v.gtin).filter((g): g is string => !!g)
-        : [],
-    )
-    const effGtin = new Map<number, string>()
-    const usedGtin = new Set<string>()
-    for (const [i, g] of wantedGtin) {
-      if (takenGtins.has(g) || usedGtin.has(g)) continue
-      usedGtin.add(g); effGtin.set(i, g)
-    }
-
     const results: ImportResult[] = []
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]!
+    for (const row of rows) {
       const name = (row.name ?? '').trim()
       if (name.length < 2) { results.push({ ok: false, name: name || '(blank)', error: 'Missing product name.' }); continue }
       if (!row.subcategoryId) { results.push({ ok: false, name, error: 'No category resolved for this row.' }); continue }
@@ -86,12 +61,10 @@ export async function bulkImportProducts(
         try { await updateBasics(id, basics) } catch { /* non-fatal */ }
       }
 
-      const gtin = effGtin.get(i) ?? null
-
-      // Variant-level production fields — ensure the variant exists when there's
-      // production data OR a GTIN to attach. Required fields default sensibly.
+      // Variant-level production fields — only when the import mapped at least
+      // one. Required fields filled with sensible defaults.
       const hasProd =
-        gtin != null || row.moqMin != null || row.orderIncrement != null || row.monthlyCapacity != null ||
+        row.moqMin != null || row.orderIncrement != null || row.monthlyCapacity != null ||
         row.shelfLifeDays != null || row.netContentValue != null || (row.netContentUnit?.trim() ?? '') !== ''
       if (hasProd) {
         try {
@@ -108,23 +81,7 @@ export async function bulkImportProducts(
         } catch { /* non-fatal */ }
       }
 
-      // Attach the GTIN to the draft's variant — isolated + best-effort so a
-      // unique-constraint race never drops the other production fields.
-      if (gtin) {
-        try {
-          const v = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId: id }, select: { id: true } })
-          if (v) await prisma.productTemplateVariant.update({ where: { id: v.id }, data: { gtin } })
-        } catch { /* unique race — leave the GTIN unset */ }
-      }
-
-      // Surface a note when a provided GTIN was dropped.
-      const cleaned = cleanGtin(row.gtin)
-      const rawProvided = (row.gtin ?? '').trim() !== ''
-      let note: string | undefined
-      if (rawProvided && !cleaned) note = 'GTIN ignored (invalid format)'
-      else if (cleaned && !gtin) note = 'GTIN skipped (duplicate)'
-
-      results.push({ ok: true, name, id, note })
+      results.push({ ok: true, name, id })
     }
 
     return { ok: true, results }
