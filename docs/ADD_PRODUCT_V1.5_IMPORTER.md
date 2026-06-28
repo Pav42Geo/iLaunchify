@@ -14,6 +14,7 @@ Built and verified (partner `tsc` 0 errors + `check:colors` clean). **No externa
 | `mode='single'` on the importer | Same drag-drop modal + auto-mapping, but creates **one** DRAFT from the first row and redirects to the builder for review instead of bulk-creating | `products/import/ProductImportButton.tsx` |
 | "Fill from spec sheet" trigger | Entry point on the products list header (next to bulk "Import CSV" + "New product") | `products/page.tsx` |
 | Builder review banner | When the builder opens with `?imported=1`, shows "Pre-filled from your spec sheet — review each step and complete the rest. Nothing publishes until you submit." | `products/new/page.tsx` |
+| Per-field value preview | The mapping step shows each field's RESOLVED value from the first row (using the real toInt/toNum/COO coercion), flagging required-but-missing fields and values that didn't parse cleanly (e.g. a numeric column holding "box of 12" → 12, "X to check"). Turns "map columns blind" into "review what will be saved" — the structured analogue of Phase B's per-field confidence highlighting. | `products/import/ProductImportButton.tsx` |
 
 ---
 

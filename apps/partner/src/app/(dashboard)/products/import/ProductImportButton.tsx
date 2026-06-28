@@ -180,6 +180,39 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   const skipped = rows.length - valid.length
   const nameMapped = mapping.name != null && mapping.name >= 0
 
+  // Per-field PREVIEW of the first row's RESOLVED values — turns "map columns
+  // blind" into "review what will actually be saved" (the research thesis). Uses
+  // the same toInt/toNum/COO coercion as the real import, then flags fields that
+  // are required-but-missing or didn't parse cleanly (e.g. a numeric column holding
+  // "box of 12" → 12, worth a look). The structured analogue of Phase B's
+  // "confirm the flagged fields".
+  type PreviewFlag = 'ok' | 'missing' | 'check' | 'empty'
+  const preview = useMemo(() => {
+    if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; mapped: boolean; shown: string; raw: string; flag: PreviewFlag }>
+    const row = rows[0]!
+    const get = (key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (row[i] ?? '').trim() : '' }
+    return FIELDS.filter((f) => f.key !== 'category').map((f) => {
+      const raw = get(String(f.key))
+      const mapped = mapping[f.key] != null && (mapping[f.key] as number) >= 0
+      let shown = ''
+      let flag: PreviewFlag = 'empty'
+      if (raw === '') {
+        flag = f.required ? 'missing' : 'empty'
+      } else if (f.kind === 'int' || f.kind === 'num') {
+        const n = f.kind === 'int' ? toInt(raw) : toNum(raw)
+        if (n == null) { shown = raw; flag = 'check' }
+        else { shown = String(n); flag = /^\d+(\.\d+)?$/.test(raw) ? 'ok' : 'check' }
+      } else if (f.kind === 'coo') {
+        const code = COUNTRY_TO_CODE[raw.toLowerCase()] ?? (raw.length === 2 ? raw.toUpperCase() : raw)
+        shown = code; flag = /^[A-Z]{2}$/.test(code) ? 'ok' : 'check'
+      } else {
+        shown = raw; flag = 'ok'
+      }
+      return { key: String(f.key), label: f.label, required: !!f.required, mapped, shown, raw, flag }
+    })
+  }, [rows, mapping])
+  const previewIssues = preview.filter((p) => p.flag === 'missing' || p.flag === 'check').length
+
   function commit() {
     if (!valid.length) { toast.error(single ? 'No usable product row found.' : 'No valid rows to import.'); return }
     setBusy(true)
@@ -289,6 +322,43 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                       </div>
                     ))}
                   </div>
+
+                  {preview.length > 0 && (
+                    <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
+                      <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50 px-3 py-2">
+                        <span className="text-[12.5px] font-semibold text-ink-900">
+                          {single ? 'Review your product' : `Preview — first of ${rows.length} row${rows.length === 1 ? '' : 's'}`}
+                        </span>
+                        <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
+                          {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
+                        </span>
+                      </div>
+                      <dl className="divide-y divide-ink-100">
+                        {preview.filter((p) => p.mapped || p.flag === 'missing').map((p) => (
+                          <div key={p.key} className="grid grid-cols-[1fr_1.3fr] items-baseline gap-3 px-3 py-1.5">
+                            <dt className="text-[12.5px] text-ink-600">{p.label}{p.required && <span className="text-pink-700"> *</span>}</dt>
+                            <dd className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px]">
+                              {p.flag === 'missing' ? (
+                                <span className="font-medium text-danger-700">Missing</span>
+                              ) : p.flag === 'check' ? (
+                                <>
+                                  <span className="font-medium text-ink-900">{p.shown || '—'}</span>
+                                  <span className="text-warning-700">· check “{p.raw}”</span>
+                                </>
+                              ) : (
+                                <span className="font-medium text-ink-900">{p.shown || '—'}</span>
+                              )}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {!single && (
+                        <p className="border-t border-ink-100 px-3 py-1.5 text-[11.5px] text-ink-500">
+                          Other rows import with the same column mapping.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-4 flex items-center gap-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[13px]">
                     <span className="font-semibold text-ink-900">{valid.length} ready</span>
