@@ -222,6 +222,10 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
     return out
   }, [rows, mapping, defaultSubcatId, subcatByName, cellOf])
   const skipped = rows.length - valid.length
+  // Rows skipped specifically for a missing NAME (vs. a missing category, which the
+  // "pick a default category" hint already covers) — so the footer never says
+  // "missing name" when the real blocker is the category.
+  const skippedNoName = useMemo(() => rows.filter((r) => cellOf(r, 'name').length < 2).length, [rows, cellOf])
   const nameMapped = mapping.name != null && mapping.name >= 0
 
   // Per-field PREVIEW of the first row's RESOLVED values (shares fieldResolve with
@@ -345,6 +349,11 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     <span className="ml-auto text-ink-500">{rows.length} row{rows.length === 1 ? '' : 's'}</span>
                   </div>
 
+                  <p className="mb-4 text-[12.5px] leading-relaxed text-ink-600">
+                    <span className="font-semibold text-ink-800">1. Pick a category, then check the column matches.</span>{' '}
+                    Each iLaunchify field on the left is matched to a column from your sheet on the right — we auto-matched what we could, so most rows are already correct. Change any dropdown that looks wrong, or leave a field “— not mapped —” to skip it.
+                  </p>
+
                   <label className="mb-4 block">
                     <span className="mb-1.5 block text-[13px] font-semibold text-ink-800">Default category for all rows <span className="text-pink-700">*</span></span>
                     <select className={SEL} value={defaultSubcatId} onChange={(e) => setDefaultSubcatId(e.target.value)}>
@@ -408,10 +417,10 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   )}
 
                   <div className="mt-4 flex items-center gap-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[13px]">
-                    <span className="font-semibold text-ink-900">{valid.length} ready</span>
-                    {skipped > 0 && <span className="text-ink-500">· {skipped} skipped (missing name)</span>}
+                    <span className={`font-semibold ${valid.length ? 'text-ink-900' : 'text-ink-500'}`}>{valid.length} ready</span>
+                    {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
                     {!nameMapped && <span className="text-pink-700">· map a Product name column</span>}
-                    {!defaultSubcatId && <span className="text-pink-700">· pick a default category</span>}
+                    {!defaultSubcatId && <span className="text-pink-700">· pick a default category above ↑</span>}
                   </div>
                 </>
               )}
@@ -483,7 +492,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                       {single ? (chosen.length ? '1 selected' : 'Pick one to continue') : `${chosen.length} of ${valid.length} selected`}
                     </span>
                     {query.trim() && <span className="text-ink-500">· {filtered.length} match{filtered.length === 1 ? '' : 'es'}</span>}
-                    {skipped > 0 && <span className="text-ink-500">· {skipped} row{skipped === 1 ? '' : 's'} skipped (missing name)</span>}
+                    {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} row{skippedNoName === 1 ? '' : 's'} skipped (missing name)</span>}
                   </div>
                 </>
               )}
@@ -522,11 +531,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {busy
                       ? 'Creating…'
-                      : valid.length > 1
-                        ? 'Choose products →'
-                        : single
-                          ? 'Create & review →'
-                          : 'Create 1 draft'}
+                      : valid.length === 1
+                        ? (single ? 'Create & review →' : 'Create 1 draft')
+                        : (single ? 'Choose product →' : 'Choose products →')}
                   </button>
                 </>
               )}
