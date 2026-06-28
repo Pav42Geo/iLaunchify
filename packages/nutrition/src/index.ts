@@ -12,6 +12,7 @@ export * from './engine'
 export * from './panel-adapter'
 export * from './supplement-facts'
 export * from './domain-labels'
+export * from './marketplace-recompose'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.

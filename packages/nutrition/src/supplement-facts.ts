@@ -103,6 +103,15 @@ const CALORIE_BASIS_KEYS = new Set<keyof SupplementNutrition>([
   'totalFat', 'saturatedFat', 'totalCarbohydrate', 'dietaryFiber', 'addedSugars', 'protein',
 ])
 
+// Same calorie-basis nutrients, by the label name a manufacturer would use when
+// declaring one directly as a dietary ingredient (e.g. a protein supplement
+// listing "Protein 25 g 50%"). Declaring a %DV for any of these — whether in the
+// nutrition block OR as a dietary-ingredient row — triggers the 2,000-calorie
+// footnote (21 CFR 101.36(b)(2)(iii)(D)).
+const CALORIE_BASIS_INGREDIENT_NAMES = new Set<string>([
+  'total fat', 'saturated fat', 'total carbohydrate', 'dietary fiber', 'added sugars', 'protein',
+])
+
 /** Build the FDA-ordered Calories/fat/carb/sugars/protein rows above the dietary
  *  ingredients. %DV uses the standard food Daily Values; calorie-based %DVs carry
  *  `pctSymbol`. Honors per-nutrient "<" trace flags. */
@@ -217,7 +226,14 @@ export function toSupplementPanelData(
   // Footnotes, in the conventional order: calorie note, no-DV note, then any
   // custom-symbol notes the manufacturer defined.
   const footerParts: string[] = []
-  if (nut.usesCalorieBasis) footerParts.push(`${pctSymbol} Percent Daily Values are based on a 2,000 calorie diet.`)
+  // The footnote is required if a calorie-basis nutrient %DV is declared EITHER in
+  // the nutrition block OR directly as a dietary-ingredient row (e.g. Protein).
+  const ingredientCalorieBasis = panelIngredients.some(
+    (i) => i.percentDV != null && CALORIE_BASIS_INGREDIENT_NAMES.has(cleanLabel(i.name).trim().toLowerCase()),
+  )
+  if (nut.usesCalorieBasis || ingredientCalorieBasis) {
+    footerParts.push(`${pctSymbol} Percent Daily Values are based on a 2,000 calorie diet.`)
+  }
   if (usesDefaultNoDv) footerParts.push(`${noDvSymbol} Daily Value Not Established.`)
   for (const cf of opts.customFootnotes ?? []) {
     const sym = cf.symbol.trim()

@@ -30,14 +30,18 @@ import {
   type IngredientAddOn,
 } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
+import { recomputeMarketplacePanel } from '@/lib/recipe-recompute-actions'
 
 export interface CustomizeRailProps {
+  /** Template slug — used to recompute the Nutrition panel server-side on swap. */
+  slug?: string
   ingredients: IngredientRow[]
   ingredientAddOns?: IngredientAddOn[]
   nutrition?: PanelData
 }
 
 export function CustomizeRail({
+  slug,
   ingredients,
   ingredientAddOns = [],
   nutrition,
@@ -49,6 +53,10 @@ export function CustomizeRail({
   const [addOnIds, setAddOnIds] = React.useState<string[]>([])
   // Which row's picker is open (only one at a time).
   const [openRowId, setOpenRowId] = React.useState<string | null>(null)
+  // Live Nutrition panel recomputed server-side for the current swaps. null =
+  // show the base `nutrition` prop (no swaps yet, or recompute unavailable).
+  const [livePanel, setLivePanel] = React.useState<PanelData | null>(null)
+  const [recomputing, setRecomputing] = React.useState(false)
 
   // Private Label = at least one slot can be swapped or an add-on
   // exists. White Label = pure base recipe, nothing to customise.
@@ -117,6 +125,57 @@ export function CustomizeRail({
     .filter((a) => !liveAllergens.includes(a))
     .sort((a, b) => a.localeCompare(b))
   const allergensChanged = addedAllergens.length > 0 || removedAllergens.length > 0
+
+  // Live Nutrition Facts recompute. Any change to the composition — a slot swap
+  // OR an optional add-on toggle — must recompute the panel. We re-run the same
+  // engine server-side (deterministic + correct FDA rounding) with the full
+  // selection (swaps respect weightGOverride; add-ons contribute their nutrition)
+  // and swap in the result.
+  const activeSwaps = React.useMemo(
+    () => Object.entries(replacements).filter(([, v]) => v && v !== '__default'),
+    [replacements],
+  )
+  const sortedAddOnIds = React.useMemo(() => [...addOnIds].sort(), [addOnIds])
+  const hasCustomization = activeSwaps.length > 0 || sortedAddOnIds.length > 0
+  // Stable key so the effect only fires when the actual selection changes.
+  const selectionKey =
+    activeSwaps
+      .map(([k, v]) => `${k}:${v}`)
+      .sort()
+      .join('|') + '#' + sortedAddOnIds.join(',')
+
+  React.useEffect(() => {
+    if (!slug) return
+    // Default composition → show the base panel; skip the round-trip.
+    if (!hasCustomization) {
+      setLivePanel(null)
+      setRecomputing(false)
+      return
+    }
+    let cancelled = false
+    setRecomputing(true)
+    const picks = Object.fromEntries(activeSwaps)
+    const t = setTimeout(() => {
+      recomputeMarketplacePanel(slug, { replacements: picks, addOnIds: sortedAddOnIds })
+        .then((panel) => {
+          if (!cancelled) setLivePanel(panel)
+        })
+        .catch(() => {
+          if (!cancelled) setLivePanel(null)
+        })
+        .finally(() => {
+          if (!cancelled) setRecomputing(false)
+        })
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+    // selectionKey captures swaps + add-ons; slug is stable per page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionKey, slug])
+
+  const shownPanel = livePanel ?? nutrition
 
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
@@ -395,21 +454,31 @@ export function CustomizeRail({
       )}
 
       {/* --- Live nutrition card ------------------------------------- */}
-      {nutrition && (
+      {shownPanel && (
         <div className="rounded-xl border border-ink-200 bg-white p-3">
-          <header className="mb-3">
-            <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
-              Nutrition Facts
-            </h3>
-            <p className="mt-1 text-[12px] leading-snug text-ink-500">
-              {hasChanges
-                ? 'Shown for the base recipe. Values recompute when your swaps are finalized.'
-                : 'Computed from the recipe. Final values come from the compliance check.'}
-            </p>
+          <header className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
+                Nutrition Facts
+              </h3>
+              <p className="mt-1 text-[12px] leading-snug text-ink-500">
+                {recomputing
+                  ? 'Recalculating for your selections…'
+                  : livePanel
+                    ? 'Updated for your selections. Final values come from the compliance check.'
+                    : 'Computed from the recipe. Final values come from the compliance check.'}
+              </p>
+            </div>
+            {livePanel && !recomputing && <Badge variant="pink">Updated</Badge>}
           </header>
-          <div className="overflow-hidden rounded-md">
+          <div
+            className={
+              'overflow-hidden rounded-md transition-opacity ' +
+              (recomputing ? 'opacity-50' : 'opacity-100')
+            }
+          >
             {/* Fits inside the locked 250px rail column (≈226px usable inside p-3). */}
-            <NutritionFactsRenderer data={nutrition} widthPx={220} />
+            <NutritionFactsRenderer data={shownPanel} widthPx={220} />
           </div>
         </div>
       )}

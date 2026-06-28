@@ -19,7 +19,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const TSC = 'node_modules/.bin/tsc'
-const PKGS = ['packages/orders/src', 'packages/payments/src']
+const PKGS = ['packages/orders/src', 'packages/payments/src', 'packages/nutrition/src']
 
 // ── minimal vitest shim ───────────────────────────────────────────────────────
 let pass = 0
@@ -56,6 +56,7 @@ function makeExpect(actual, negate = false) {
     toBeDefined: () => check(actual !== undefined, `expected defined`),
     toBeUndefined: () => check(actual === undefined, `expected undefined`),
     toContain: (e) => check(Array.isArray(actual) ? actual.includes(e) : String(actual).includes(e), `expected ${fmt(actual)} to contain ${fmt(e)}`),
+    toMatch: (e) => check(e instanceof RegExp ? e.test(String(actual)) : String(actual).includes(String(e)), `expected ${fmt(actual)} to match ${fmt(e)}`),
     toHaveLength: (n) => check(actual != null && actual.length === n, `expected length ${actual?.length} to be ${n}`),
     toMatchObject: (e) => check(Object.keys(e).every((k) => deepEqual(actual?.[k], e[k])), `expected ${fmt(actual)} to match ${fmt(e)}`),
     toThrow: (expected) => {
