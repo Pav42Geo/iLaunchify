@@ -11,7 +11,7 @@
 
 import * as React from 'react'
 import { Plus, Trash2, FlaskConical, Layers, Search, Loader2, Pill, Flame, Package } from 'lucide-react'
-import { SupplementFactsSvg } from '@ilaunchify/ui'
+import { SupplementFactsSvg, InfoTip } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
 import { dsldLabelName, cleanSourceName, type DsldIngredientCandidate } from './dsld'
@@ -361,7 +361,7 @@ export function SupplementFormulationStep({
             <button type="button" onClick={addBlend} className="btn sm"><Layers className="h-3.5 w-3.5" /> Proprietary blend</button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
-            <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value) <i className="info" data-tip="Glyph used for ingredients with no established Daily Value, and its footnote. Default &ldquo;†&rdquo;." tabIndex={0} role="img" aria-label="Footnote symbol info">i</i></span>
+            <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value) <InfoTip text="Glyph used for ingredients with no established Daily Value, and its footnote. Default &ldquo;†&rdquo;." /></span>
             <select className={`${INPUT} w-20`} value={noDvSymbol} onChange={(e) => setNoDvSymbol(e.target.value)}>
               {NO_DV_SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>

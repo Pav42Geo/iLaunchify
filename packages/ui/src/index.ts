@@ -50,6 +50,7 @@ export * from './primitives/tabs'
 export * from './primitives/row-actions-menu'
 
 // Object-view components
+export * from './components/InfoTip'
 export * from './components/SectionLabel'
 export * from './components/ElementRail'
 export * from './color'

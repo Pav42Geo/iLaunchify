@@ -18,6 +18,7 @@
 //  • Single pack (packs-per-bundle = 1) → bundle copy + units collapse.
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { InfoTip } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, type FeeInput, type SampleOptionInput, type InitialDraft } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
@@ -511,9 +512,9 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
           <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
             <input type="checkbox" checked={row.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
             {branded ? 'Branded sample' : 'Unbranded sample'}
-            <i className="info" data-tip={branded
+            <InfoTip text={branded
               ? 'Product in the creator’s packaging + artwork (a “golden sample”). Gates on the dieline passing the compliance check before it can be produced.'
-              : 'The recipe in plain / generic packaging — “taste the formulation.” Ships before artwork exists; stamped NOT FOR RESALE.'} tabIndex={0} role="img" aria-label={branded ? 'About branded samples' : 'About unbranded samples'}>i</i>
+              : 'The recipe in plain / generic packaging — “taste the formulation.” Ships before artwork exists; stamped NOT FOR RESALE.'} />
           </label>
         </div>
         {row.enabled && <span className="pill" style={{ padding: '1px 8px', fontSize: 10 }}>{isMultiFlavor ? `${dollars(row.perFlavorCents)}/flavor` : dollars(row.perFlavorCents)}</span>}

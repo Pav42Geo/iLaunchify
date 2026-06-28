@@ -9,7 +9,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSS
 import { ChefHat, List, ShieldAlert, DollarSign, Tag, FolderOpen, LayoutGrid, Utensils, Sparkles, Scale, ListPlus, ListChecks, FlaskConical, Table, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
-import { NutritionFactsSvg, type VarietyColumn } from '@ilaunchify/ui'
+import { NutritionFactsSvg, InfoTip, type VarietyColumn } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
 import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
@@ -897,7 +897,7 @@ export function RecipeBuilderStep({
         <div className="agebar">
           <div className="agebar-l">
             <span className="agebar-t">Who are you building this for?
-              <i className="info" data-tip="Sets the FDA Nutrition Facts format (21 CFR 101.9(j)(5)); the live label updates automatically. General (adults & children 4+) prints the standard panel. Children 1–3 uses the toddler Daily Values. Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. Note: infant FORMULA (21 CFR 107) is a separately regulated product — this is for baby/toddler FOOD.">i</i>
+              <InfoTip text="Sets the FDA Nutrition Facts format (21 CFR 101.9(j)(5)); the live label updates automatically. General (adults & children 4+) prints the standard panel. Children 1–3 uses the toddler Daily Values. Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. Note: infant FORMULA (21 CFR 107) is a separately regulated product — this is for baby/toddler FOOD." />
             </span>
           </div>
           <div className="agebar-seg" role="radiogroup" aria-label="Intended age group">
@@ -942,7 +942,7 @@ export function RecipeBuilderStep({
           <div className="card">
             <div className="section-title"><span className="ic"><Utensils size={16} strokeWidth={2} /></span> {dom.stepName} {dom.ingredientNounPlural} ({base.length})</div>
             <table>
-              <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Cost <i className="info" data-tip="You set ingredient prices here — they aren't stored in the catalog. Enter your price and pick the basis (kg · lb · g · oz). The Total sums each ingredient's price × its grams.">i</i></th><th /></tr></thead>
+              <thead><tr><th style={{ width: '99%' }}>Ingredient Name</th><th className="r" style={{ width: 1, whiteSpace: 'nowrap' }} /><th className="r">Qty</th><th className="r">Unit</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Waste %</th><th className="r">Grams</th><th className="r" style={{ whiteSpace: 'nowrap' }}>Cost <InfoTip text="You set ingredient prices here — they aren't stored in the catalog. Enter your price and pick the basis (kg · lb · g · oz). The Total sums each ingredient's price × its grams." /></th><th /></tr></thead>
               <tbody>
                 {base.map((r) => {
                   const alts = onAxes ? swapAltsFor(r.ingId) : []
@@ -1036,7 +1036,7 @@ export function RecipeBuilderStep({
               <tfoot>
                 <tr>
                   <td /><td /><td />
-                  <td className="grn r" style={{ whiteSpace: 'nowrap' }}>Total <i className="info" data-tip="Recipe Waste % is applied to EVERY ingredient, in addition to each ingredient's own waste. Use it when a known fraction of the whole batch is lost — spillage, trim left in the mixer, residue, etc.">i</i></td>
+                  <td className="grn r" style={{ whiteSpace: 'nowrap' }}>Total <InfoTip text="Recipe Waste % is applied to EVERY ingredient, in addition to each ingredient's own waste. Use it when a known fraction of the whole batch is lost — spillage, trim left in the mixer, residue, etc." /></td>
                   <td className="r">
                     <span className="rwcell">
                       <input className="num" type="number" min={0} max={100} value={recipeWaste} onChange={(e) => setRecipeWaste(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} aria-label="Recipe waste percent" />
@@ -1181,7 +1181,7 @@ export function RecipeBuilderStep({
               <>
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>
                   How would you like to set up your label?
-                  <i className="info" data-tip="To create your nutrition label we need the serving and package size. BY PACKAGE SIZE: enter the package size and the number of packages the recipe makes — precisely controls how much product your recipe yields. BY SERVING SIZE: enter only the serving size weight and optional moisture loss and we calculate the rest (this method does not account for density).">i</i>
+                  <InfoTip text="To create your nutrition label we need the serving and package size. BY PACKAGE SIZE: enter the package size and the number of packages the recipe makes — precisely controls how much product your recipe yields. BY SERVING SIZE: enter only the serving size weight and optional moisture loss and we calculate the rest (this method does not account for density)." />
                 </div>
                 <div className="radio">
                   <label><input type="radio" name="lmode" checked={lmode === 'package'} onChange={() => setLmode('package')} /> By package size</label>
@@ -1190,7 +1190,7 @@ export function RecipeBuilderStep({
 
                 {lmode === 'serving' ? (
                   <div>
-                    <span className="f">Serving size weight <i className="info" data-tip="The amount customarily consumed per sitting by a person 4+ years of age. Enter the weight and pick the unit. Nutrition is scaled to this serving size.">i</i></span>
+                    <span className="f">Serving size weight <InfoTip text="The amount customarily consumed per sitting by a person 4+ years of age. Enter the weight and pick the unit. Nutrition is scaled to this serving size." /></span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input type="number" min={0} style={{ flex: 1 }} value={servingSizeG} onChange={(e) => setServingSizeG(parseFloat(e.target.value) || 0)} />
                       <select value={servingUnit} onChange={(e) => setServingUnit(e.target.value)}>
@@ -1213,19 +1213,19 @@ export function RecipeBuilderStep({
                   </div>
                 )}
 
-                <span className="f" style={{ marginTop: 10 }}>Moisture loss % <i className="info" data-tip="The decrease in water content during cooking/preparation. A 100 g recipe that loses 20% to evaporation yields 80 g. Reducing water concentrates nutrients — higher moisture loss = LARGER per-serving values, assuming the serving size stays the same.">i</i></span>
+                <span className="f" style={{ marginTop: 10 }}>Moisture loss % <InfoTip text="The decrease in water content during cooking/preparation. A 100 g recipe that loses 20% to evaporation yields 80 g. Reducing water concentrates nutrients — higher moisture loss = LARGER per-serving values, assuming the serving size stays the same." /></span>
                 <input type="number" min={0} max={100} style={{ width: 120 }} value={moisture} onChange={(e) => setMoisture(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))} />
 
                 <div className="row2" style={{ marginTop: 10 }}>
                   <div>
-                    <span className="f">Suggested serving <i className="info" data-tip="The descriptive household measure printed on the label — 1 cup, 1 tbsp, 1 scoop, 1 cookie, etc. Use your best judgment, or Find serving for FDA reference amounts.">i</i></span>
+                    <span className="f">Suggested serving <InfoTip text="The descriptive household measure printed on the label — 1 cup, 1 tbsp, 1 scoop, 1 cookie, etc. Use your best judgment, or Find serving for FDA reference amounts." /></span>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input style={{ flex: 1 }} value={suggestedServing} onChange={(e) => setSuggestedServing(e.target.value)} placeholder="1 cup" />
                       <button type="button" className="btn pink sm" onClick={() => setFindServingOpen(true)}>Find serving</button>
                     </div>
                   </div>
                   <div>
-                    <span className="f">How many servings are in each package? <i className="info" data-tip="The number of servings EACH PACKAGE has. 20 cookies at 1 cookie/serving = 20 servings. Non-round numbers (e.g. 2.2) round on the label and are prefixed “about”.">i</i></span>
+                    <span className="f">How many servings are in each package? <InfoTip text="The number of servings EACH PACKAGE has. 20 cookies at 1 cookie/serving = 20 servings. Non-round numbers (e.g. 2.2) round on the label and are prefixed “about”." /></span>
                     <input type="number" min={0} style={{ width: '100%' }} value={servingsPerPackage} onChange={(e) => setServingsPerPackage(parseFloat(e.target.value) || 1)} />
                   </div>
                 </div>
@@ -1233,12 +1233,12 @@ export function RecipeBuilderStep({
             )}
             {subtab === 'adv' && (
               <>
-                <span className="f">Suggested serving (French) <i className="info" data-tip="For Canadian nutrition labels, provide the same serving size in French as in English.">i</i></span>
+                <span className="f">Suggested serving (French) <InfoTip text="For Canadian nutrition labels, provide the same serving size in French as in English." /></span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input style={{ flex: 1 }} value={suggestedServingFr} onChange={(e) => setSuggestedServingFr(e.target.value)} placeholder="ex. 1 tasse" />
                   <button type="button" className="btn sm" onClick={() => setSuggestedServingFr(suggestedServing ? `${suggestedServing} (FR)` : '')}>Translate</button>
                 </div>
-                <span className="f" style={{ marginTop: 10 }}>Package count for aggregate labels <i className="info" data-tip="If this recipe appears in an FDA aggregate (combined) label, this is the number of servings it contributes. Each recipe’s aggregate servings are summed for the total.">i</i></span>
+                <span className="f" style={{ marginTop: 10 }}>Package count for aggregate labels <InfoTip text="If this recipe appears in an FDA aggregate (combined) label, this is the number of servings it contributes. Each recipe’s aggregate servings are summed for the total." /></span>
                 <input type="number" min={0} style={{ width: 140 }} value={aggCount} onChange={(e) => setAggCount(parseFloat(e.target.value) || 1)} />
               </>
             )}
@@ -1294,7 +1294,7 @@ export function RecipeBuilderStep({
                 {simpEligible && (
                   <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
                     <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
-                    <span>Use the <b>simplified format</b> (qualifies) — hides zero rows, adds “Not a significant source of…” (21 CFR 101.9(f)). <i className="info" data-tip="Offered only when most nutrients are insignificant. Drops the zero rows and prints the “Not a significant source of…” statement per 21 CFR 101.9(f).">i</i></span>
+                    <span>Use the <b>simplified format</b> (qualifies) — hides zero rows, adds “Not a significant source of…” (21 CFR 101.9(f)). <InfoTip text="Offered only when most nutrients are insignificant. Drops the zero rows and prints the “Not a significant source of…” statement per 21 CFR 101.9(f)." /></span>
                   </label>
                 )}
                 <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
@@ -1681,7 +1681,7 @@ function CostSummaryCard({
       <div className="costfoot" style={{ borderTop: 0, paddingTop: 6 }}>
         <span>
           Retail markup ×
-          <i className="info" data-tip="Suggested retail = per-serving cost × markup. Set your target margin; fees configured in Variants & packs apply at checkout.">i</i>
+          <InfoTip text="Suggested retail = per-serving cost × markup. Set your target margin; fees configured in Variants & packs apply at checkout." />
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <input
@@ -1895,10 +1895,10 @@ const CSS = `
 .rb .seg.sm button{font-size:11px;padding:4px 9px}
 .rb .flavhdr{background:var(--pink-50);color:var(--pink-700);font-weight:700;font-size:11px;text-align:center;padding:3px;border:1px solid var(--pink-100);border-radius:4px 4px 0 0;margin:-8px -8px 6px}
 /* Readable hover tooltip for the "i" info icons (replaces the tiny native title). */
-.rb .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--pink-50);color:var(--pink-700);font-size:10px;font-weight:700;cursor:help;margin-left:5px;border:1px solid var(--pink-100);font-style:normal}
+.rb .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:#fff;color:var(--ink-600);font-size:10px;font-weight:700;cursor:help;margin-left:5px;border:1px solid var(--ink-300);font-style:normal}
 .rb .info[data-tip]{position:relative}
-.rb .info[data-tip]:hover::after,.rb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:var(--pink-700);color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
-.rb .info[data-tip]:hover::before,.rb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--pink-700);z-index:60;pointer-events:none}
+.rb .info[data-tip]:hover::after,.rb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#fff;color:var(--ink-900);border:1px solid var(--ink-200);font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.rb .info[data-tip]:hover::before,.rb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#fff;z-index:60;pointer-events:none}
 .rb .rb-warn{margin-top:10px;background:var(--warning-50);border:1px solid var(--warning-200);color:var(--warning-700);font-size:11.5px;line-height:1.45;border-radius:10px;padding:9px 11px}
 /* Find Serving Size modal */
 .fs-overlay{position:fixed;inset:0;background:rgba(20,20,24,.5);display:grid;place-items:start center;padding:48px 16px;z-index:200;overflow:auto}

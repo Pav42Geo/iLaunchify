@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Bold, Italic, List, ChevronDown, Check, type LucideIcon } from 'lucide-react'
+import { InfoTip } from '@ilaunchify/ui'
 
 // --- Section: a titled card with a consistent icon tile -------------------
 
@@ -36,7 +37,7 @@ export function Section({
 }
 
 export function Info({ tip }: { tip: string }) {
-  return <i className="info" data-tip={tip} tabIndex={0} role="img" aria-label={tip}>i</i>
+  return <InfoTip text={tip} />
 }
 
 // --- Field: top-aligned, readable label over its control ------------------
