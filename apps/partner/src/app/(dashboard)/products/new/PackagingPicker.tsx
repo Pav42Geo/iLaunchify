@@ -35,7 +35,7 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><Package size={16} strokeWidth={2} /></span> Packaging systems <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· attach yours</span></div>
+      <div className="section-title"><span className="ic"><Package size={16} strokeWidth={2} /></span> Packaging systems <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· attach yours</span></div>
       <p className="tiny muted" style={{ marginTop: 4 }}>Attach the packaging this product ships in. Manage your systems on the <a href="/packaging" style={{ color: 'var(--pink-700)' }}>Packaging</a> page.</p>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft first to attach packaging.</p>}
@@ -73,8 +73,6 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
         .gb .pkgrow{display:flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:12px;padding:10px 12px}
         .gb .pkgrow[data-on=on]{border-color:var(--pink);background:var(--pink-50)}
         .gb .pkgrow .grow{flex:1;min-width:0}
-        .gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
-        .gb .rb-btn-add:hover{background:var(--pink-50)} .gb .rb-btn-add:disabled{opacity:.5}
       `}</style>
     </div>
   )

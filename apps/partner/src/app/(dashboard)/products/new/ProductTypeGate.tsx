@@ -77,9 +77,7 @@ export function ProductTypeGate({
         <div className="eyebrow">Manufacturing · New product</div>
         <h1 className="display" style={{ fontSize: 26, marginTop: 4 }}>What kind of product is this?</h1>
         <p className="muted" style={{ marginTop: 4 }}>
-          This is the structural choice — it shapes the recipe (one recipe vs a base + flavor
-          presets), the label, and how the pack is composed. You can change it until you start the
-          recipe, after which it locks.
+          The structural choice — it shapes the recipe, the label, and how the pack is composed. Locks once you start the recipe.
         </p>
       </div>
 

@@ -148,8 +148,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
 
         {/* Ingredients */}
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 6 }}><span className="ic"><Plus size={16} strokeWidth={2} /></span> Ingredients</div>
-          <p className="mb-3 text-[11px] text-ink-500">Enter a relative weight — the statement auto-orders by descending predominance.</p>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Plus size={16} strokeWidth={2} /></span> Ingredients <i className="info" data-tip="Enter a relative weight — the statement auto-orders by descending predominance." tabIndex={0} role="img" aria-label="Ingredients info">i</i></div>
 
           {/* AAFCO ingredient search */}
           <div className="relative mb-3">
@@ -214,7 +213,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
           {method !== 'intermittent' && !feedingDirections.trim() && <p className="mt-1 text-[11px] text-warning-600">Feeding directions are required for complete &amp; balanced products.</p>}
         </div>
 
-        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} AAFCO search uses a curated starter dictionary (admin-managed, expandable). {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live AAFCO label (print-grade SVG, CSS-immune like the other

@@ -121,15 +121,14 @@ export function VariantsPacksStep({
   return (
     <div>
       <p className="muted small" style={{ marginBottom: 14 }}>
-        Pick the product type first — it shapes the recipe (one recipe vs base + flavor presets),
-        the label columns, and pack composition. Then set the production spec.
+        Pick the product type first, then set the production spec.
       </p>
 
       {/* Product type — space-saving dropdown that opens grouped cards */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
-          <span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product type
-          {locked && <span className="pill" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 10 }}>🔒 locked</span>}
+          <span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product type <i className="info" data-tip="Drives the recipe (one recipe vs base + flavor presets), the label columns, and pack composition." tabIndex={0} role="img" aria-label="What product type controls">i</i>
+          {locked && <span className="pill" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 10 }} title="Locked because a recipe has been started — changing it would reshape the recipe and label. To use a different type, start a new product.">🔒 locked</span>}
         </div>
         <button type="button" className="pt-trigger" data-open={open ? 'on' : undefined} disabled={locked} aria-disabled={locked} onClick={() => { if (!locked) setOpen((v) => !v) }} style={{ marginTop: 10, ...(locked ? { cursor: 'not-allowed', opacity: 0.75 } : null) }}>
           {selected ? (
@@ -177,11 +176,6 @@ export function VariantsPacksStep({
               })}
             </div>
             {packingProfiles.length === 0 && <p className="tiny muted" style={{ marginTop: 10 }}>No packing types seeded yet — run the DB seed.</p>}
-          </div>
-        )}
-        {locked && (
-          <div className="note grey" style={{ marginTop: 10 }}>
-            🔒 The product type is locked because a recipe has been started — changing it would reshape the recipe and label. To use a different type, start a new product.
           </div>
         )}
       </div>
@@ -238,8 +232,6 @@ export function VariantsPacksStep({
         .gb .ptcard{border:1px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 13px;text-align:left;cursor:pointer;font:inherit;color:var(--ink-900);transition:.12s;width:100%}
         .gb .ptcard:hover{border-color:var(--pink-100)}
         .gb .ptcard[data-on=on]{border-color:var(--pink);background:var(--pink-50)}
-        .gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
-        .gb .rb-btn-add:hover{background:var(--pink-50)}
         .gb .del{color:#e24b4a;cursor:pointer;background:none;border:0;font-size:12px;padding:0}
         .gb .warn{margin-top:10px;border:1px solid #f0c36d;background:#fdf6e6;color:#8a6418;border-radius:10px;padding:8px 12px;font-size:12px}
         .gb .addon{margin-top:16px;padding-top:14px;border-top:1px dashed var(--ink-200)}
@@ -357,7 +349,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
 
   return (
     <>
-      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Production &amp; availability</div>
+      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Production &amp; availability <i className="info" data-tip="Net weight, servings &amp; container live in Recipe + Packaging — not here." tabIndex={0} role="img" aria-label="Where net content lives">i</i></div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
         <Field label="Fulfillment mode">
           <select className="sel" value={fulfillment} onChange={(e) => setFulfillment(e.target.value as 'bulk' | 'mto' | 'both')}>
@@ -419,9 +411,8 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         <div className="warn">⚠ Monthly capacity ({capacity.toLocaleString()}) is below your MOQ ({effMoq.toLocaleString()}) — you couldn’t fulfill a single minimum order in a month. Raise capacity or lower MOQ.</div>
       )}
       {onDemand && (
-        <p className="tiny muted" style={{ marginTop: 8 }}>On-demand: each order is produced to order, so there’s no batch minimum (MOQ = 1). Lead time is typically longer than bulk.</p>
+        <p className="tiny muted" style={{ marginTop: 8 }}>On-demand: no batch minimum (MOQ = 1); lead time runs longer than bulk.</p>
       )}
-      <p className="tiny muted" style={{ marginTop: 8 }}>Net weight, servings &amp; container live in Recipe + Packaging — not here.</p>
     </>
   )
 }
@@ -456,11 +447,7 @@ function FeesCard({ draftId, initialFees }: { draftId: string | null; initialFee
 
   return (
     <>
-      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Fees</div>
-      <p className="tiny muted" style={{ marginTop: 4 }}>
-        One-time, per-unit, or per-order charges on top of the unit price — tooling, QA batch testing,
-        palletization. One-time per-SKU fees can waive above a volume threshold.
-      </p>
+      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Fees <i className="info" data-tip="One-time, per-unit, or per-order charges on top of the unit price — tooling, QA batch testing, palletization. One-time per-SKU fees can waive above a volume threshold." tabIndex={0} role="img" aria-label="What fees cover">i</i></div>
       {fees.length > 0 && (
         <table style={{ marginTop: 12 }}>
           <thead><tr><th>Fee</th><th>Basis</th><th>Amount (¢)</th><th>Waive above qty</th><th /></tr></thead>
@@ -524,12 +511,10 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
           <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
             <input type="checkbox" checked={row.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
             {branded ? 'Branded sample' : 'Unbranded sample'}
-          </label>
-          <div className="tiny muted" style={{ marginTop: 3, maxWidth: 440 }}>
-            {branded
+            <i className="info" data-tip={branded
               ? 'Product in the creator’s packaging + artwork (a “golden sample”). Gates on the dieline passing the compliance check before it can be produced.'
-              : 'The recipe in plain / generic packaging — “taste the formulation.” Ships before artwork exists; stamped NOT FOR RESALE.'}
-          </div>
+              : 'The recipe in plain / generic packaging — “taste the formulation.” Ships before artwork exists; stamped NOT FOR RESALE.'} tabIndex={0} role="img" aria-label={branded ? 'About branded samples' : 'About unbranded samples'}>i</i>
+          </label>
         </div>
         {row.enabled && <span className="pill" style={{ padding: '1px 8px', fontSize: 10 }}>{isMultiFlavor ? `${dollars(row.perFlavorCents)}/flavor` : dollars(row.perFlavorCents)}</span>}
       </div>
@@ -563,7 +548,7 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
               </Field>
             )}
           </div>
-          {branded && <p className="tiny" style={{ marginTop: 8, color: 'var(--pink-700)' }}>ⓘ A branded sample can’t be produced until this product’s dieline passes the compliance check — the marketplace will keep it locked until then.</p>}
+          {branded && <p className="tiny" style={{ marginTop: 8, color: 'var(--pink-700)' }}>ⓘ Locked until the dieline passes the compliance check.</p>}
         </>
       )}
     </div>
@@ -601,15 +586,11 @@ function SamplesCard({ draftId, initialOptions, isMultiFlavor }: { draftId: stri
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· let creators de-risk before a full run</span></div>
+        <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· de-risk before a full run</span> <i className="info" data-tip={isMultiFlavor ? 'Produced to order and bypass the production MOQ. Pick which kinds you offer and price each. For multi-flavor products you can price per flavor and/or offer a flat all-flavors sampler set.' : 'Produced to order and bypass the production MOQ. Pick which kinds you offer and price each.'} tabIndex={0} role="img" aria-label="How samples work">i</i></div>
         <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
           <input type="checkbox" checked={samplesOn} onChange={(e) => setSamplesOn(e.target.checked)} /> Allow sample orders
         </label>
       </div>
-      <p className="tiny muted" style={{ marginTop: 4 }}>
-        Samples are produced to order and bypass the production MOQ. Pick which kinds you offer and price each.
-        {isMultiFlavor ? ' For multi-flavor products you can price per flavor and/or offer a flat all-flavors sampler set.' : ''}
-      </p>
       {!samplesOn && <p className="tiny muted" style={{ marginTop: 10 }}>Sample orders are off for this product. Turn them on to let creators order a pre-production sample.</p>}
       {samplesOn && (
         <>
@@ -650,7 +631,7 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
 
   return (
     <>
-      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how the single flavor is bundled for sale</span></div>
+      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how it&rsquo;s bundled</span> <i className="info" data-tip="One recipe, one flavor. The bundle is the sellable SKU — its barcode and pricing live on this configuration." tabIndex={0} role="img" aria-label="How the pack is sold">i</i></div>
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Packs per bundle" hint="you choose">
           <input className="input" type="number" min={1} value={packsPerBundle} onChange={(e) => setPacksPerBundle(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} />
@@ -663,7 +644,6 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
           {unitsPerPack > 1 ? `, ${unitsPerPack} pcs each` : ''} · <b>{totalUnits.toLocaleString()}</b> sellable unit{totalUnits === 1 ? '' : 's'} per bundle.
         </span>
       </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>One recipe, one flavor. The bundle is the sellable SKU — its barcode and pricing live on this configuration.</p>
     </>
   )
 }
@@ -743,7 +723,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· you set how many · each becomes its own recipe in the next step · ≤{maxColumns}-column label</span></div>
+        <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· ≤{maxColumns}-column label</span> <i className="info" data-tip="You set how many. Each becomes its own recipe in the next step; the pack gets a combined multi-column label." tabIndex={0} role="img" aria-label="How flavors work">i</i></div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
             <input type="checkbox" checked={perFlavorCap} onChange={(e) => setPerFlavorCap(e.target.checked)} /> Per-flavor capacity
@@ -841,7 +821,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
         </tbody>
       </table>
       <p className="tiny muted" style={{ marginTop: 8 }}>
-        List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator chooses which (up to {effCap}) go in a pack in the marketplace. Each flavor carries into the Recipe step as its own recipe + single-column label; the pack gets a combined multi-column label.
+        List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator picks up to {effCap} per pack.
         {perFlavorCap && ' Blank MOQ/capacity inherits the shared production values above.'}
       </p>
     </>

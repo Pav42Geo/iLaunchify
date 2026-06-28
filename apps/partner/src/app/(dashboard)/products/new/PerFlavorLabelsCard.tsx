@@ -49,15 +49,10 @@ export function PerFlavorLabelsCard({ draftId }: { draftId: string | null }) {
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="section-title">
-        <span className="ic"><Tags size={16} strokeWidth={2} /></span> Per-flavor labels
+        <span className="ic"><Tags size={16} strokeWidth={2} /></span> Per-flavor labels <i className="info" data-tip="Each flavor is its own labeled unit. Pick a die-line per flavor, or keep the shared template die-line — the usual case (same container, different artwork). Creators then design each flavor's label in the Studio." tabIndex={0} role="img" aria-label="About per-flavor labels">i</i>
       </div>
-      <p className="muted small" style={{ marginTop: 4, marginBottom: 12 }}>
-        Each flavor is its own labeled unit. Pick a die-line per flavor, or keep the
-        shared template die-line — the usual case (same container, different artwork).
-        Creators then design each flavor&apos;s label in the Studio.
-      </p>
 
-      <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
         {flavors.map((f) => (
           <div
             key={f.id}
@@ -94,9 +89,7 @@ export function PerFlavorLabelsCard({ draftId }: { draftId: string | null }) {
 
       {dielines.length === 0 && (
         <p className="tiny muted" style={{ marginTop: 10 }}>
-          No alternate die-lines are available for this product&apos;s packaging yet — all
-          flavors will share the template die-line. Add die-lines in the Packaging Studio to
-          offer per-flavor overrides.
+          No alternate die-lines yet — all flavors share the template die-line. Add die-lines in the Packaging Studio for per-flavor overrides.
         </p>
       )}
     </div>

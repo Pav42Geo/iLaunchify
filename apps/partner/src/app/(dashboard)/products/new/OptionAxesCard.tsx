@@ -106,18 +106,12 @@ export function OptionAxesCard({ axes, onAxes }: { axes: OptionAxisUI[]; onAxes:
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div>
-          <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Additional creator options</div>
-          <p className="tiny muted" style={{ marginTop: 4, maxWidth: 560 }}>
-            Curated choices beyond flavor — e.g. sweetener, roast strength, caffeine. You define every
-            allowed value; the Creator picks one per option in the marketplace, or you lock it to the
-            default. Each value can add lead time, cost, or raise the MOQ. (Different from optional
-            ingredients — those are add-ons, these are fixed-dimension choices.)
-          </p>
+          <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Additional creator options <i className="info" data-tip="Curated choices beyond flavor — e.g. sweetener, roast strength, caffeine. You define every allowed value; the Creator picks one per option in the marketplace, or you lock it to the default. Each value can add lead time, cost, or raise the MOQ. (Different from optional ingredients — those are add-ons, these are fixed-dimension choices.)" tabIndex={0} role="img" aria-label="About creator options">i</i></div>
         </div>
       </div>
 
       {axes.length === 0 && (
-        <p className="tiny muted" style={{ marginTop: 12 }}>No extra options — the Creator configures flavor only. Add one below if you offer other choices.</p>
+        <p className="tiny muted" style={{ marginTop: 12 }}>No extra options — flavor only. Add one below.</p>
       )}
 
       {axes.map((axis, ai) => (
@@ -141,8 +135,7 @@ export function OptionAxesCard({ axes, onAxes }: { axes: OptionAxisUI[]; onAxes:
           </div>
           {axis.affectsLabel && (
             <p className="tiny" style={{ marginTop: 6, color: 'var(--pink-700)' }}>
-              ⓘ Each value changes ingredients, so the FDA Facts label is recomputed per chosen
-              combination. You&apos;ll bind each value to its ingredient swap in the Recipe step.
+              ⓘ Facts label recomputes per combination — bind each value to its ingredient swap in the Recipe step.
             </p>
           )}
 

@@ -220,7 +220,7 @@ export function SupplementFormulationStep({
       <div className="space-y-4">
         {/* Dosage form */}
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Pill size={16} strokeWidth={2} /></span> Dosage form</div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Pill size={16} strokeWidth={2} /></span> Dosage form <i className="info" data-tip="Sets the default serving form and tags the product for NIH DSLD form matching." tabIndex={0} role="img" aria-label="Dosage form info">i</i></div>
           <div className="flex flex-wrap gap-2">
             {DOSAGE_FORMS.map((d) => (
               <button
@@ -233,15 +233,13 @@ export function SupplementFormulationStep({
               </button>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-ink-500">Sets the default serving form and tags the product for NIH DSLD form matching.</p>
         </div>
 
         {/* Nutrition information (Calories / macros) — declare only if present. */}
         <div className="card">
           <button type="button" onClick={() => setNutOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
             <span className="flex items-center">
-              <span className="section-title"><span className="ic"><Flame size={16} strokeWidth={2} /></span> Nutrition information</span>
-              <span className="ml-2 text-[11.5px] text-ink-500">Calories, fats, carbs, sugars, protein — only if your product has them (gummies, powders, chews)</span>
+              <span className="section-title"><span className="ic"><Flame size={16} strokeWidth={2} /></span> Nutrition information <i className="info" data-tip="Calories, fats, carbs, sugars, protein — only if your product has them (gummies, powders, chews). Per serving; leave blank what isn't present (empty rows are omitted). The &lt; toggle prints &ldquo;less than&rdquo; (e.g. &ldquo;&lt;1 g&rdquo;). %DV and the &ldquo;2,000 calorie&rdquo; footnote are added automatically." tabIndex={0} role="img" aria-label="Nutrition info">i</i></span>
             </span>
             <span className="text-[12px] font-semibold text-pink-700">{nutOpen ? 'Hide' : 'Add'}</span>
           </button>
@@ -272,13 +270,12 @@ export function SupplementFormulationStep({
                   </div>
                 </label>
               ))}
-              <p className="col-span-full text-[11px] text-ink-500">Per serving. Leave blank what isn’t present — empty rows are omitted from the panel. The <b>&lt;</b> toggle prints “less than” (e.g. “&lt;1 g”). %DV and the “2,000 calorie” footnote are added automatically.</p>
             </div>
           )}
         </div>
 
         <div className="card">
-          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Dietary ingredients</div>
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Dietary ingredients <i className="info" data-tip="Leave % DV blank for ingredients with no established Daily Value — they print with the chosen footnote glyph. The &lt; button declares a trace amount (&ldquo;&lt;1 g&rdquo;); Sym adds a custom footnote mark to a row. Source / plant part goes in the name, e.g. &ldquo;Turmeric (root) extract&rdquo;." tabIndex={0} role="img" aria-label="Dietary ingredients info">i</i></div>
 
           {/* NIH DSLD search — validated dietary-ingredient identities. */}
           <div className="relative mb-3">
@@ -364,20 +361,17 @@ export function SupplementFormulationStep({
             <button type="button" onClick={addBlend} className="btn sm"><Layers className="h-3.5 w-3.5" /> Proprietary blend</button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
-            <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value)</span>
+            <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value) <i className="info" data-tip="Glyph used for ingredients with no established Daily Value, and its footnote. Default &ldquo;†&rdquo;." tabIndex={0} role="img" aria-label="Footnote symbol info">i</i></span>
             <select className={`${INPUT} w-20`} value={noDvSymbol} onChange={(e) => setNoDvSymbol(e.target.value)}>
               {NO_DV_SYMBOLS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <span className="text-[11px] text-ink-500">Glyph used for ingredients with no established Daily Value, and its footnote. Default “†”.</span>
           </div>
-          <p className="mt-2 text-[11px] text-ink-500">Leave <b>% DV</b> blank for ingredients with no established Daily Value — they print with “{noDvSymbol}”. The <b>&lt;</b> button declares a trace amount (“&lt;1 g”); <b>Sym</b> adds a custom footnote mark to a row. Source / plant part goes in the name, e.g. “Turmeric (root) extract”.</p>
         </div>
 
         {/* Proprietary blends */}
         {blends.length > 0 && (
           <div className="card">
-            <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Layers size={16} strokeWidth={2} /></span> Proprietary blends</div>
-            <p className="mb-3 text-[11px] text-ink-500">The blend total is printed; member amounts are hidden. Assign ingredients to a blend in the table above.</p>
+            <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Layers size={16} strokeWidth={2} /></span> Proprietary blends <i className="info" data-tip="The blend total is printed; member amounts are hidden. Assign ingredients to a blend in the table above." tabIndex={0} role="img" aria-label="Proprietary blends info">i</i></div>
             <div className="space-y-2">
               {blends.map((b) => {
                 const members = dietRows.filter((r) => r.blendId === b.id).length
@@ -421,7 +415,7 @@ export function SupplementFormulationStep({
           </div>
         </div>
 
-        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} NIH DSLD search is live (admin-configurable). {productName ? <span>· {productName}</span> : null}</p>
+        <p className="text-[11px] text-ink-500">{draftId ? 'Autosaves to your draft.' : 'Save your draft to keep this formulation.'} {productName ? <span>· {productName}</span> : null}</p>
       </div>
 
       {/* RIGHT — live Supplement Facts */}

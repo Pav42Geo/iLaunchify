@@ -37,8 +37,6 @@ const STYLES = (
     .gb .certbadge.fallback{display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--pink-700);background:var(--pink-50)}
     .gb .certrow{display:flex;align-items:center;gap:11px;border:1px solid var(--ink-200);border-radius:12px;padding:9px 11px;margin-top:8px}
     .gb .certrow .grow{flex:1;min-width:0}
-    .gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
-    .gb .rb-btn-add:hover{background:var(--pink-50)} .gb .rb-btn-add:disabled{opacity:.5;cursor:not-allowed}
     .gb .del{color:#e24b4a;cursor:pointer;background:none;border:0;font-size:12px;padding:0} .gb .del:disabled{opacity:.5}
     .gb .cert-modal{position:fixed;inset:0;z-index:1000;background:rgba(20,20,26,.45);display:grid;place-items:center;padding:20px}
     .gb .cert-panel{background:#fff;border-radius:18px;width:min(680px,94vw);max-height:85vh;overflow:auto;padding:20px;box-shadow:0 24px 64px -20px rgba(0,0,0,.4)}
@@ -148,10 +146,9 @@ export function CertificatesCard({ draftId, preview = false }: { draftId: string
         <div className="cert-modal" onClick={() => setOpen(false)}>
           <div className="cert-panel" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Add certificates</div>
+              <div className="section-title"><span className="ic"><BadgeCheck size={16} strokeWidth={2} /></span> Add certificates <i className="info" data-tip="Pick the certificates that apply to this product — add as many as you need, then close." tabIndex={0} role="img" aria-label="About certificates">i</i></div>
               <button className="del" style={{ fontSize: 18, color: 'var(--ink-500)' }} onClick={() => setOpen(false)}>✕</button>
             </div>
-            <p className="tiny muted" style={{ marginTop: 4 }}>Pick the certificates that apply to this product — add as many as you need, then close.</p>
 
             {attachable.length === 0 && data.attached.length === 0 && (
               <p className="tiny muted" style={{ marginTop: 12 }}>No verified certificates in your catalog yet. Upload one below for review.</p>

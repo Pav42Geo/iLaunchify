@@ -81,11 +81,7 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
 
   return (
     <div className="card">
-      <div className="section-title" style={{ fontSize: 15 }}><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Volume price tiers</div>
-      <p className="tiny muted" style={{ marginTop: 4 }}>
-        Your per-unit cost &amp; hard floor per quantity band. The Maker / Builder / Agency columns show the
-        creator&apos;s all-in price at each subscription tier (your cost + that tier&apos;s platform fee).
-      </p>
+      <div className="section-title"><span className="ic"><DollarSign size={16} strokeWidth={2} /></span> Volume price tiers <i className="info" data-tip="Your per-unit cost and hard floor per quantity band. The Maker / Builder / Agency columns show the creator's all-in price at each tier (your cost + that tier's platform fee). Unit cost is the same across tiers — higher tiers just pay a lower fee. Shipping & accessories are added at checkout." tabIndex={0} role="img" aria-label="How volume price tiers work">i</i></div>
 
       {/* Bulk / On-demand tabs — default Bulk */}
       <div className="ptabs" style={{ marginTop: 10 }}>
@@ -123,11 +119,7 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
         </tbody>
       </table>
 
-      <div className="note grey" style={{ marginTop: 10 }}>
-        Unit cost is the same across creator tiers — Builder &amp; Agency creators just pay a lower platform fee,
-        so their all-in price is lower. Shipping &amp; accessories are added at checkout.
-      </div>
-      <div className="row" style={{ justifyContent: 'space-between', marginTop: 10, alignItems: 'center' }}>
+      <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, alignItems: 'center' }}>
         <button className="rb-btn-add" onClick={() => { const last = rows[rows.length - 1]; setRows([...rows, { minQty: (last?.maxQty ?? last?.minQty ?? 0) + 1, maxQty: null, perUnitCents: last?.perUnitCents ?? (tab === 'ON_DEMAND' ? 150 : 100), floorCents: last?.floorCents ?? (tab === 'ON_DEMAND' ? 130 : 90), leadTimeDays: last?.leadTimeDays ?? (tab === 'ON_DEMAND' ? 7 : 21) }]) }}>+ Add {tab === 'ON_DEMAND' ? 'on-demand' : 'bulk'} band</button>
       </div>
 
@@ -136,8 +128,6 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
         .gb .pt{background:none;border:0;border-radius:7px;padding:5px 14px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-600,#666);cursor:pointer}
         .gb .pt.on{background:#fff;color:var(--pink-700);box-shadow:0 1px 2px rgba(0,0,0,.08)}
         .gb .tnum{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;padding-right:8px}
-        .gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
-        .gb .rb-btn-add:hover{background:var(--pink-50)}
         .gb .del{color:#e24b4a;cursor:pointer;background:none;border:0;font-size:12px;padding:0}
       `}</style>
     </div>

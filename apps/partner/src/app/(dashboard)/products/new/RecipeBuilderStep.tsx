@@ -896,10 +896,8 @@ export function RecipeBuilderStep({
       {domain === 'FOOD' && (
         <div className="agebar">
           <div className="agebar-l">
-            <span className="agebar-t">Who are you building this for?</span>
-            <span className="agebar-s">
-              Sets the FDA Nutrition Facts format (21 CFR 101.9(j)(5)) — the live label updates automatically.
-              <i className="info" data-tip="General (adults & children 4+) prints the standard panel. Children 1–3 uses the toddler Daily Values. Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. Note: infant FORMULA (21 CFR 107) is a separately regulated product — this is for baby/toddler FOOD.">i</i>
+            <span className="agebar-t">Who are you building this for?
+              <i className="info" data-tip="Sets the FDA Nutrition Facts format (21 CFR 101.9(j)(5)); the live label updates automatically. General (adults & children 4+) prints the standard panel. Children 1–3 uses the toddler Daily Values. Infants 0–12 months uses infant Daily Values and drops Saturated Fat, Trans Fat and Cholesterol. Note: infant FORMULA (21 CFR 107) is a separately regulated product — this is for baby/toddler FOOD.">i</i>
             </span>
           </div>
           <div className="agebar-seg" role="radiogroup" aria-label="Intended age group">
@@ -933,9 +931,9 @@ export function RecipeBuilderStep({
             </div>
             <IngredientPicker onPick={handlePick} placeholder={dom.searchBuilt ? `Search ${dom.searchSourceLabel}, the library, or your private ${dom.ingredientNounPlural}…` : `Search the library or your private ${dom.ingredientNounPlural}…`} />
             {dom.searchBuilt ? (
-              <p className="tiny muted" style={{ marginTop: 8 }}>Real search — picked rows bring their {dom.searchSourceLabel} nutrient panel into the live label.</p>
+              <p className="tiny muted" style={{ marginTop: 8 }}>Picked rows pull their {dom.searchSourceLabel} nutrients into the live label.</p>
             ) : (
-              <p className="tiny muted" style={{ marginTop: 8 }}>Dedicated <b>{dom.searchSourceLabel}</b> {dom.ingredientNoun} search for {dom.label.toLowerCase()} products ships in a later phase — using the shared library for now.</p>
+              <p className="tiny muted" style={{ marginTop: 8 }}>Dedicated <b>{dom.searchSourceLabel}</b> {dom.ingredientNoun} search ships later — using the shared library for now.</p>
             )}
           </div>
 
@@ -1055,7 +1053,7 @@ export function RecipeBuilderStep({
               </tfoot>
             </table>
             {base.length > 0 && totalCents === 0 && (
-              <p className="muted tiny" style={{ marginTop: 8 }}>Total cost is {curSym(primaryCcy)}0.00 because no ingredient prices are set yet — type your price in the <b>Cost</b> column for each ingredient (it isn’t pulled from the catalog; you set it per recipe).{currencies.length > 1 && <> Prices are entered per active market currency ({currencies.join(' · ')}).</>}</p>
+              <p className="muted tiny" style={{ marginTop: 8 }}>Total is {curSym(primaryCcy)}0.00 — set a price per ingredient in the <b>Cost</b> column.{currencies.length > 1 && <> One price per active market currency ({currencies.join(' · ')}).</>}</p>
             )}
           </div>
           )}
@@ -1101,7 +1099,7 @@ export function RecipeBuilderStep({
                   })}
                 </tbody>
               </table>
-              <p className="muted tiny">Optional ingredients tick into the <b>Preview</b> label only — the Public label stays base-only. Deactivate one (click its check) to drop it from the preview without deleting it.</p>
+              <p className="muted tiny">Optional ingredients tick into the <b>Preview</b> label only; the Public label stays base-only. Click a check to drop it without deleting.</p>
             </div>
           )}
 
@@ -1110,7 +1108,7 @@ export function RecipeBuilderStep({
               label shown in the live preview on the right. */}
           {flavorMode === 'MULTI' && (
             <div className="rb-card">
-              <div className="rb-h">❀ Flavor variants ({flavors.length}) <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· flavored ingredients per flavor, on top of the base · ≤{maxColumns}-column label</span></div>
+              <div className="rb-h">❀ Flavor variants ({flavors.length}) <i className="info" data-tip={`Each flavor overlays the shared base with its own flavored ingredients. Up to a ${maxColumns}-column label.`}>i</i></div>
               <div className="flavtabs" role="tablist" aria-label="Flavors">
                 {flavors.map((f, i) => (
                   <button key={i} type="button" role="tab" aria-selected={activeFlavor === i} className={`flavtab${activeFlavor === i ? ' on' : ''}`} onClick={() => setActiveFlavor(i)}>
@@ -1122,7 +1120,7 @@ export function RecipeBuilderStep({
                 )}
               </div>
               {flavors.length === 0 ? (
-                <p className="muted tiny" style={{ marginTop: 8 }}>Add a flavor to start — each flavor overlays the shared base recipe with its own ingredients.</p>
+                <p className="muted tiny" style={{ marginTop: 8 }}>Add a flavor to start.</p>
               ) : (() => {
                 const idx = Math.min(activeFlavor, flavors.length - 1)
                 const f = flavors[idx]!
@@ -1158,7 +1156,7 @@ export function RecipeBuilderStep({
                         </tbody>
                       </table>
                     ) : (
-                      <p className="tiny muted" style={{ margin: '10px 0 6px' }}>No flavor-specific ingredients yet. Add the flavor system, color, sweetener, etc. — each with its own amount.</p>
+                      <p className="tiny muted" style={{ margin: '10px 0 6px' }}>No flavor ingredients yet — add the flavor system, color, sweetener, etc.</p>
                     )}
                     <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <div style={{ flex: '1 1 240px' }}><IngredientPicker onPick={(p) => addFlavorLine(idx, p)} placeholder={`Add an ingredient for “${f.name || 'this flavor'}”…`} /></div>
@@ -1288,7 +1286,7 @@ export function RecipeBuilderStep({
                     </div>
                   )}
                   <div className="netwt">{netContentsLabel}</div>
-                  <p className="makes">{flavors.length} flavors · each overlays the shared base with its own ingredients + amounts · one Facts label per flavor.{varietyCols.length >= 2 ? ' Use “View all labels” to compare them and see the variety-pack aggregate.' : ''}</p>
+                  <p className="makes">{flavors.length} flavors · one Facts label each.{varietyCols.length >= 2 ? ' Use “View all labels” to compare + see the pack aggregate.' : ''}</p>
                 </>
               )
             })() : (
@@ -1296,7 +1294,7 @@ export function RecipeBuilderStep({
                 {simpEligible && (
                   <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
                     <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
-                    <span>Use the <b>simplified format</b> — this product qualifies (most nutrients are insignificant). Hides the zero rows and adds the “Not a significant source of…” statement (21 CFR 101.9(f)).</span>
+                    <span>Use the <b>simplified format</b> (qualifies) — hides zero rows, adds “Not a significant source of…” (21 CFR 101.9(f)). <i className="info" data-tip="Offered only when most nutrients are insignificant. Drops the zero rows and prints the “Not a significant source of…” statement per 21 CFR 101.9(f).">i</i></span>
                   </label>
                 )}
                 <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
@@ -1316,7 +1314,7 @@ export function RecipeBuilderStep({
       {result && breakdown.length > 0 && (
         <details className="rb-card" style={{ marginTop: 14 }}>
           <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>🧪 Nutrition Breakdown — per-ingredient contribution (QA)</summary>
-          <p className="muted tiny" style={{ marginTop: 6 }}>Each ingredient&apos;s exact contribution to the <b>batch</b> (whole recipe), straight from the engine — if a number looks off, the culprit ingredient is visible here. Per serving = batch ÷ {ts.toFixed(2)} servings.</p>
+          <p className="muted tiny" style={{ marginTop: 6 }}>Each ingredient&apos;s exact <b>batch</b> contribution from the engine. Per serving = batch ÷ {ts.toFixed(2)} servings.</p>
           <table>
             <thead><tr><th>Ingredient</th><th className="r">Usable g</th><th className="r">Cal</th><th className="r">Protein</th><th className="r">Fat</th><th className="r">Carb</th><th className="r">Sugars</th><th className="r">Sodium</th></tr></thead>
             <tbody>
@@ -1378,7 +1376,7 @@ export function RecipeBuilderStep({
       {activeTab === 'ingredients' && (
         <div className="rb-card">
           <div className="rb-h">≣ Ingredients ({rows.length})</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Read-only summary. Edit quantities in <b>Build recipe</b>.</p>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Read-only — edit in <b>Build recipe</b>.</p>
           <table>
             <thead><tr><th>Ingredient</th><th>Section</th><th className="r">Qty</th><th>Unit</th><th className="r">Grams</th></tr></thead>
             <tbody>
@@ -1470,13 +1468,11 @@ export function RecipeBuilderStep({
       {activeTab === 'recipes' && (
         <div className="rb-card">
           <div className="rb-h">🗂 My recipes</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>
-            Reuse a formulation from another of your products — applies its base ingredients here so you can tweak from there.
-          </p>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Reuse a formulation from another product — applies its base ingredients here to tweak.</p>
           {myRecipes === null ? (
             <p className="muted">Loading your recipes…</p>
           ) : myRecipes.length === 0 ? (
-            <p className="muted">No other recipes yet. Once you’ve built a product, its formulation shows here to reuse.</p>
+            <p className="muted">No other recipes yet — built products show here to reuse.</p>
           ) : (
             <table>
               <thead><tr><th>Product</th><th className="r">Ingredients</th><th>Status</th><th /></tr></thead>
@@ -1497,9 +1493,7 @@ export function RecipeBuilderStep({
       {activeTab === 'templates' && (
         <div className="rb-card">
           <div className="rb-h">▦ Recipe templates</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>
-            Start from a curated base formulation — ingredients are matched to your catalog, and you refine from there.
-          </p>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Start from a curated formulation — ingredients are matched to your catalog to refine.</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {RECIPE_TEMPLATES.map((t) => (
               <div key={t.id} className="lo-axis" style={{ marginTop: 0 }}>
@@ -1548,7 +1542,7 @@ function AddReplaceableOverlay({ baseName, onPick, onClose }: {
           <span>⇄ Add Replaceable Ingredient</span>
           <button type="button" onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--mut)' }}>✕</button>
         </div>
-        <p className="muted tiny" style={{ margin: '0 0 10px' }}>Search for an ingredient to replace “{baseName}”. It’s added as a dimmed alternative under it — set its amounts inline and click its ⇄ to swap it in.</p>
+        <p className="muted tiny" style={{ margin: '0 0 10px' }}>Search for an ingredient to replace “{baseName}” — added as a dimmed alternative; click its ⇄ to swap in.</p>
         <IngredientPicker onPick={(p) => { onPick(p); onClose() }} placeholder="Search for replaceable ingredients…" />
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
           <button type="button" className="rb-btn o sm" onClick={onClose}>Cancel</button>
@@ -1608,11 +1602,7 @@ function LabelOptionsSection({
 
   return (
     <div className="rb-card" style={{ marginTop: 16 }}>
-      <div className="rb-h">⚗ Label options · bind ingredient changes</div>
-      <p className="muted tiny" style={{ margin: '4px 0 8px' }}>
-        These options change the recipe, so the Facts label recomputes per chosen combination. Bind each to a
-        base slot, then pick the ingredient for each value. The preview below shows the default combination.
-      </p>
+      <div className="rb-h">⚗ Label options · bind ingredient changes <i className="info" data-tip="These options change the recipe, so the Facts label recomputes per chosen combination. Bind each to a base slot, then pick the ingredient for each value. The preview below shows the default combination.">i</i></div>
       {labelAxes.map(({ a, i }) => (
         <div key={i} className="lo-axis">
           <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1773,7 +1763,7 @@ function AddCustomMeasureModal({
           <button className={kind === 'volume' ? 'on' : ''} onClick={() => { setKind('volume'); setEqUnit('ml') }}>Volume</button>
         </div>
         <div style={{ padding: '4px 16px 16px' }}>
-          <p className="muted tiny" style={{ marginTop: 0 }}>For things like <em>case, jar, 12-pack</em>. Specific to {ingredientName || 'this ingredient'} — it won’t change the ingredient for anyone else.</p>
+          <p className="muted tiny" style={{ marginTop: 0 }}>For things like <em>case, jar, 12-pack</em>. Specific to {ingredientName || 'this ingredient'} only.</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input className="num" type="number" min={0} value={qty} onChange={(e) => setQty(e.target.value)} aria-label="Quantity" />
             <input style={{ flex: 1 }} value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "case"' aria-label="Unit name" />

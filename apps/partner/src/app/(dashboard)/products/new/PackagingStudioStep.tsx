@@ -791,7 +791,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                       <img src={customBackdrop} alt="die-line" className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-90" />
                     )}
                     {!ded?.fileUrl && !customBackdrop && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-[12px] text-ink-300">{customMode ? 'Blank board — lay the mandatory frames; upload a die-line in the Library “My” tab to trace over it.' : 'No file uploaded — frames still save'}</div>
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-[12px] text-ink-300">{customMode ? 'Blank board — lay the mandatory frames (upload a die-line in Library “My” to trace over).' : 'No file uploaded — frames still save'}</div>
                     )}
 
                     {/* guides */}
@@ -1519,7 +1519,7 @@ function LibraryDrawer({
             <button type="button" onClick={onUpload} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-300 bg-white px-3 py-2.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50">
               <Upload className="h-3.5 w-3.5" /> Upload packaging
             </button>
-            <p className="mt-1 px-0.5 text-[10.5px] leading-snug text-ink-400">Custom uploads go to admin for 3D/2D mockup prep; once approved they appear in the Library under their category.</p>
+            <p className="mt-1 px-0.5 text-[10.5px] leading-snug text-ink-400">Goes to admin for mockup prep; appears in Library once approved.</p>
           </div>
 
           {/* Your packaging — attach + pick to design */}
@@ -1562,7 +1562,7 @@ function LibraryDrawer({
                           att.reviewStatus === 'SUBMITTED' ? (
                             <div className="mt-1.5 rounded-lg border border-warning-200 bg-warning-50 px-2 py-1.5">
                               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-warning-800"><Check className="h-3 w-3" /> Awaiting admin approval</div>
-                              <p className="mt-0.5 text-[10px] leading-snug text-warning-700">This packaging + die-line need admin sign-off, and the product itself goes through admin review before it can go live. Track status on your Packaging page.</p>
+                              <p className="mt-0.5 text-[10px] leading-snug text-warning-700">Packaging, die-line &amp; product all need admin sign-off before going live. Track status on your Packaging page.</p>
                             </div>
                           ) : (
                             <>
@@ -1575,7 +1575,7 @@ function LibraryDrawer({
                               >
                                 <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review (optional)'}
                               </button>
-                              <p className="mt-1 px-0.5 text-[10px] leading-snug text-ink-400">Optional — keep building. When you submit your product, this packaging is sent for review with it and admin approves both together.</p>
+                              <p className="mt-1 px-0.5 text-[10px] leading-snug text-ink-400">Optional — submitting your product sends this for review too.</p>
                             </>
                           )
                         )}
@@ -1627,7 +1627,7 @@ function NoDielineDrawer() {
     <div>
       <DrawerHead title="Frames" sub="Slots for mandatory + packaging elements." />
       <div className="px-4 py-4 text-[12px] leading-relaxed text-ink-500">
-        Pick a packaging with a die-line in the <b>Library</b> tab to start placing frames — or upload a die-line from the Die-line view.
+        Pick a packaging with a die-line in the <b>Library</b> tab, or upload one from the Die-line view.
       </div>
     </div>
   )

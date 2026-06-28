@@ -65,14 +65,13 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
 
       <div className="card">
         <div className="eyebrow">Label regime</div>
-        <h3 style={{ margin: '6px 0' }}>{data.labelArtifact}</h3>
+        <h3 style={{ margin: '6px 0' }}>{data.labelArtifact} <i className="info" data-tip={`Auto-selected from the ${data.domainLabel.toLowerCase()} domain · drives the compliance rule pack.`} tabIndex={0} role="img" aria-label="About label regime">i</i></h3>
         {data.ageGroupLabel && (
           <p className="muted small" style={{ marginTop: 2 }}>
             Audience: <b>{data.ageGroupLabel}</b>
             {data.ageGroupLabel.startsWith('General') ? '' : ' · age-specific Nutrition Facts variant (21 CFR 101.9(j)(5))'}
           </p>
         )}
-        <p className="muted small" style={{ marginTop: 2 }}>Auto-selected from the {data.domainLabel.toLowerCase()} domain · drives the compliance rule pack.</p>
       </div>
 
       <div className="card">
