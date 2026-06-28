@@ -102,6 +102,10 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
         select: {
           containerFormat: true,
           containerSizeG: true,
+          // The manufacturer's chosen die-line for this variant — the Studio uses
+          // it directly (a serum gets its dropper bottle, greens their sachet),
+          // falling back to a category default only when unset.
+          dieCutTemplateId: true,
           // Mockup Slice 2 — drives which photo-mockup (by PackagingType) to warp
           // the design into.
           packagingTypeId: true,
@@ -177,7 +181,11 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
   // curation (#135) actually assigns die-cuts to products.
-  const dieCut = await resolveDefaultDieCut(studioCategory(product.category))
+  // Prefer the variant's manufacturer-chosen die-line; only guess from category
+  // when the variant has none (legacy products / no die-line assigned yet).
+  const dieCut =
+    (await resolveDieCutById(product.variant?.dieCutTemplateId ?? null)) ??
+    (await resolveDefaultDieCut(studioCategory(product.category)))
   if (!dieCut) {
     // No die-cuts seeded — kick back to product overview with a clear hint.
     redirect(`/products/${productId}?error=no-diecut-available`)
@@ -472,6 +480,24 @@ function deriveProductCtx(product: {
 
 // Pick a default DieCutTemplate by product category.
 // V1 fallback: first ACTIVE die-cut whose category roughly matches the product.
+// Load a specific die-cut by id (the variant's manufacturer-chosen die-line).
+async function resolveDieCutById(id: string | null): Promise<DieCutSpec | null> {
+  if (!id) return null
+  const row = await prisma.dieCutTemplate.findFirst({
+    where: { id, isActive: true },
+    select: {
+      id: true, name: true, category: true, widthMm: true, heightMm: true,
+      bleedMm: true, safeAreaMm: true, outlineSvg: true,
+    },
+  })
+  if (!row) return null
+  return {
+    id: row.id, name: row.name, category: row.category as DieCutSpec['category'],
+    widthMm: row.widthMm, heightMm: row.heightMm, bleedMm: row.bleedMm,
+    safeAreaMm: row.safeAreaMm, outlineSvg: row.outlineSvg,
+  }
+}
+
 async function resolveDefaultDieCut(
   productCategory: 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT',
 ): Promise<DieCutSpec | null> {

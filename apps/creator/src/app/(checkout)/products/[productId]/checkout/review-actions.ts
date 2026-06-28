@@ -71,7 +71,7 @@ export async function loadReviewSnapshot(
       id: productId,
       brand: { creatorProfile: { userId: user.id } },
     },
-    select: { id: true, category: true },
+    select: { id: true, category: true, variant: { select: { dieCutTemplateId: true } } },
   })
   if (!product) return emptySnapshot()
 
@@ -89,15 +89,17 @@ export async function loadReviewSnapshot(
     },
   })
 
-  // Die-cut — same resolver the canvas page uses. COSMETIC/PET narrow to their
-  // closest packaging regime (the label regime comes from the template).
-  const dieCut = await resolveDefaultDieCut(
-    product.category === 'SUPPLEMENT'
-      ? 'SUPPLEMENT'
-      : product.category === 'BEVERAGE_FUNCTIONAL' || product.category === 'COSMETIC'
-        ? 'BEVERAGE_FUNCTIONAL'
-        : 'FOOD',
-  )
+  // Die-cut — prefer the variant's manufacturer-chosen die-line; fall back to a
+  // category default (COSMETIC/PET narrow to their closest packaging regime).
+  const dieCut =
+    (await resolveDieCutById(product.variant?.dieCutTemplateId ?? null)) ??
+    (await resolveDefaultDieCut(
+      product.category === 'SUPPLEMENT'
+        ? 'SUPPLEMENT'
+        : product.category === 'BEVERAGE_FUNCTIONAL' || product.category === 'COSMETIC'
+          ? 'BEVERAGE_FUNCTIONAL'
+          : 'FOOD',
+    ))
 
   if (!designVersion) {
     return {
@@ -237,6 +239,15 @@ function readComplianceState(generationMeta: unknown): ComplianceState {
  * product category. Kept inline (rather than imported) so this server
  * action stays self-contained.
  */
+// Load a specific die-cut by id (the variant's manufacturer-chosen die-line).
+async function resolveDieCutById(id: string | null): Promise<ReviewSnapshot['dieCut']> {
+  if (!id) return null
+  return prisma.dieCutTemplate.findFirst({
+    where: { id, isActive: true },
+    select: { id: true, name: true, widthMm: true, heightMm: true, bleedMm: true, safeAreaMm: true },
+  })
+}
+
 async function resolveDefaultDieCut(
   productCategory: 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT',
 ): Promise<ReviewSnapshot['dieCut']> {
