@@ -400,13 +400,16 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink-900/45 p-4" onMouseDown={close}>
           <div
-            className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-xl"
+            className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--card-radius)] border border-ink-200 bg-white shadow-xl"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
-              <h2 className="font-display text-[17px] font-bold text-ink-900">
-                {step === 'select' ? 'Choose products & set their category' : 'Import products from a spreadsheet'}
-              </h2>
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[9px] bg-pink-50 text-pink-700"><Upload className="h-[15px] w-[15px]" aria-hidden="true" /></span>
+                <h2 className="font-display text-[17px] font-bold tracking-[-0.015em] text-ink-900">
+                  {step === 'select' ? 'Choose products & set their category' : 'Import products from a spreadsheet'}
+                </h2>
+              </div>
               <button type="button" onClick={close} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-100 hover:text-ink-900">
                 <X className="h-4 w-4" />
               </button>
@@ -564,7 +567,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                             value={pIdx + 1}
                             onChange={(e) => { const n = parseInt(e.target.value, 10); if (Number.isFinite(n)) setPreviewIdx(Math.min(rows.length - 1, Math.max(0, n - 1))) }}
                             aria-label="Go to product number"
-                            className="w-12 rounded-md border border-ink-200 bg-white px-1 py-0.5 text-center text-[11.5px] tabular-nums text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                            className="w-12 rounded-md border border-ink-200 bg-white px-1 py-0.5 text-center text-[11.5px] tabular-nums text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-50"
                           />
                           <span className="text-[11.5px] tabular-nums text-ink-500">/ {rows.length}</span>
                           <button type="button" aria-label="Next product" disabled={pIdx >= rows.length - 1} onClick={() => setPreviewIdx((i) => Math.min(rows.length - 1, i + 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
@@ -585,7 +588,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                                 value={p.value}
                                 onChange={(ev) => setOverrides((o) => ({ ...o, [pIdx]: { ...(o[pIdx] ?? {}), [p.key]: ev.target.value } }))}
                                 placeholder="—"
-                                className={`w-full rounded-md border bg-white px-2 py-1 text-[12.5px] text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-pink-100 ${p.flag === 'missing' ? 'border-danger-300 focus:border-danger-400' : p.flag === 'check' ? 'border-warning-300 focus:border-warning-400' : 'border-ink-200 focus:border-pink-500'}`}
+                                className={`w-full rounded-md border bg-white px-2 py-1 text-[12.5px] text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-[3px] focus:ring-pink-50 ${p.flag === 'missing' ? 'border-danger-300 focus:border-danger-400' : p.flag === 'check' ? 'border-warning-300 focus:border-warning-400' : 'border-ink-200 focus:border-pink-500'}`}
                               />
                               {p.flag === 'check' && <span className="flex-none text-[11px] text-warning-700">check</span>}
                               {p.flag === 'missing' && <span className="flex-none text-[11px] text-danger-600">required</span>}
@@ -634,7 +637,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search by name or SKU…"
-                        className="w-full rounded-lg border border-ink-200 bg-white py-2 pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-ink-400 focus:outline-none focus:ring-2 focus:ring-pink-500/30"
+                        className="w-full rounded-lg border border-ink-200 bg-white py-2 pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-50"
                       />
                     </div>
                   )}
@@ -747,7 +750,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
             <div className="flex items-center justify-end gap-2 border-t border-ink-100 px-5 py-3.5">
               {step === 'map' && (
                 <>
-                  <button type="button" onClick={() => setStep('drop')} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Back</button>
+                  <button type="button" onClick={() => setStep('drop')} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 hover:border-ink-400">Back</button>
                   <button
                     type="button"
                     onClick={next}
@@ -760,7 +763,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
               )}
               {step === 'select' && (
                 <>
-                  <button type="button" onClick={() => setStep('map')} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Back</button>
+                  <button type="button" onClick={() => setStep('map')} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 hover:border-ink-400">Back</button>
                   <button
                     type="button"
                     onClick={commit}
@@ -776,15 +779,15 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                 <button type="button" onClick={close} className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700">Done</button>
               )}
               {step === 'drop' && (
-                <button type="button" onClick={close} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Cancel</button>
+                <button type="button" onClick={close} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 hover:border-ink-400">Cancel</button>
               )}
             </div>
           </div>
 
           {addModal && (
             <div className="fixed inset-0 z-[60] grid place-items-center bg-ink-900/55 p-4" onMouseDown={() => setAddModal(null)}>
-              <div className="w-full max-w-sm rounded-xl border border-ink-200 bg-white p-5 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
-                <h3 className="font-display text-[15px] font-bold text-ink-900">
+              <div className="w-full max-w-sm rounded-[var(--card-radius)] border border-ink-200 bg-white p-5 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+                <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-900">
                   {addModal.mode === 'category' ? 'Suggest a new category' : `Suggest a subcategory${addModal.categoryId ? ` in ${catNameOf(addModal.categoryId)}` : ''}`}
                 </h3>
                 <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
@@ -796,10 +799,10 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                   onChange={(e) => setAddName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') saveAdd() }}
                   placeholder={addModal.mode === 'category' ? 'e.g. Functional Elixirs' : 'e.g. Hard Kombucha'}
-                  className="mt-3 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                  className="mt-3 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-50"
                 />
                 <div className="mt-4 flex justify-end gap-2">
-                  <button type="button" onClick={() => setAddModal(null)} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Cancel</button>
+                  <button type="button" onClick={() => setAddModal(null)} className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 hover:border-ink-400">Cancel</button>
                   <button type="button" onClick={saveAdd} disabled={addName.trim().length < 2} className="rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50">Save</button>
                 </div>
               </div>
@@ -811,4 +814,4 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   )
 }
 
-const SEL = 'w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100'
+const SEL = 'w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-50'
