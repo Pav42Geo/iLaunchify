@@ -23,6 +23,7 @@ import { seedCertificateTypes } from './seed-certificate-types'
 import { seedCertificateCatalog } from './seed-certificate-catalog'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
+import { seedDemoProduct } from './seed-demo-product'
 import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
@@ -657,6 +658,14 @@ async function main() {
   // One real ProductTemplate matching a marketplace fixture slug + real pricing
   // tiers, so the detail page shows real volume pricing (proves the wire).
   await seedPricingBridge(prisma)
+
+  // --- Demo product (fully-wired, PUBLISHED FOOD) ---
+  // One real product with replaceable + optional ingredients, real recipe
+  // nutrition, a 355mL-can variant + die-line, and pricing tiers — the test
+  // bed for the Customize rail's live Nutrition Facts + allergen recompute.
+  // Reachable at /marketplace/functional-wellness-beverages/adaptogen-drinks/
+  // demo-adaptogen-sparkling-tonic.
+  await seedDemoProduct(prisma)
 
   // --- Design Studio template gallery (#148) ---
   // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
