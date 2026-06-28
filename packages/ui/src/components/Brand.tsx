@@ -41,12 +41,56 @@ export function Brand({
   }
   return (
     <span className={cn('inline-flex items-center gap-[7px]', className)}>
-      <span aria-hidden="true" className={cn('h-[26px] w-[26px] shrink-0 rounded-md bg-[var(--brand-mark-bg)]', markClassName)} />
+      <LayersGlyph className={cn('h-[26px] w-[26px]', markClassName)} />
       <span className={cn('font-display text-[length:var(--header-wordmark-fs)] font-extrabold tracking-[-0.04em] text-[var(--header-fg)]', wordmarkClassName)}>
         {label}
       </span>
       {sublabel ? <span className={cn('ml-0.5', SUBLABEL_CLASS, sublabelClassName)}>{sublabel}</span> : null}
     </span>
+  )
+}
+
+/**
+ * LayersMark — the iLaunchify platform mark: a rounded tile (`--brand-mark-bg`,
+ * themeable) with the white open stacked-layers glyph. Inline SVG so it stays
+ * crisp at any size; the rect's own rounding stands in for `rounded-md`.
+ */
+export function LayersMark({
+  className,
+  style,
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <svg viewBox="0 0 96 96" aria-hidden="true" className={cn('shrink-0', className)} style={style}>
+      <rect width="96" height="96" rx="24" fill="var(--brand-mark-bg)" />
+      <path d="M48 20 L76 34 L48 48 L20 34 Z" fill="none" stroke="#fff" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M20 48 L48 62 L76 48" fill="none" stroke="#fff" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M20 62 L48 76 L76 62" fill="none" stroke="#fff" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/**
+ * LayersGlyph — the mark WITHOUT the tile: pink (`--brand-mark-bg`) open
+ * stacked-layers strokes on a transparent, tightly-cropped canvas. Used beside
+ * the "iLaunchify" wordmark in the lockup (the tile reads as a heavy box next to
+ * text). For icon-only / thumbnail spots use LayersMark (the pink tile) instead.
+ */
+export function LayersGlyph({
+  className,
+  style,
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <svg viewBox="14 14 68 68" aria-hidden="true" className={cn('shrink-0', className)} style={style}>
+      <path d="M48 20 L76 34 L48 48 L20 34 Z" fill="none" stroke="var(--brand-mark-bg)" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M20 48 L48 62 L76 48" fill="none" stroke="var(--brand-mark-bg)" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M20 62 L48 76 L76 62" fill="none" stroke="var(--brand-mark-bg)" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   )
 }
 
@@ -83,13 +127,16 @@ export function BrandMark({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageSrc} alt="iLaunchify" className={cn('shrink-0 rounded-md object-contain', markClassName)} style={{ height: size, width: size }} />
       ) : (
-        // No explicit src: show the uploaded mark via the --brand-mark-url CSS var
-        // (layered over the pink square); falls back to the square when unset.
-        <span
-          aria-hidden="true"
-          className={cn('shrink-0 rounded-md bg-[var(--brand-mark-bg)] bg-cover bg-center', markClassName)}
-          style={{ height: size, width: size, backgroundImage: 'var(--brand-mark-url)' }}
-        />
+        // No explicit src: the stacked-layers mark by default; an admin-uploaded
+        // compact mark (--brand-mark-url) overlays on top when set (else `none`).
+        <span className="relative shrink-0" style={{ height: size, width: size }}>
+          <LayersMark className={cn('h-full w-full', markClassName)} />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-md bg-cover bg-center"
+            style={{ backgroundImage: 'var(--brand-mark-url)' }}
+          />
+        </span>
       )}
       {sublabel ? <span className={cn(SUBLABEL_CLASS, sublabelClassName)}>{sublabel}</span> : null}
     </span>

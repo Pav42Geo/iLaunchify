@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { LandingFooter } from './LandingFooter'
-import { LEGAL_DOCS } from '@/content/legal/content'
+import { LEGAL_DOCS, type LegalDoc } from '@/content/legal/content'
 
 /**
  * Renders a legal document (Terms / Privacy / Creator-Agreement /
@@ -11,8 +11,10 @@ import { LEGAL_DOCS } from '@/content/legal/content'
  * counsel review — surfaced via the amber banner. Final terms swap in by
  * re-running the extractor once the source docs are finalized.
  */
-export function LegalDocument({ slug }: { slug: string }) {
-  const doc = LEGAL_DOCS[slug]
+export function LegalDocument({ slug, doc: docOverride }: { slug?: string; doc?: LegalDoc }) {
+  // `doc` override lets hand-authored drafts (e.g. Membership Terms) render
+  // without living in the auto-generated content.ts. Otherwise look up by slug.
+  const doc = docOverride ?? (slug ? LEGAL_DOCS[slug] : undefined)
   if (!doc) notFound()
 
   return (

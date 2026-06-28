@@ -67,10 +67,11 @@ export async function LandingFooter() {
           </FooterCol>
 
           <FooterCol title="Company">
+            <FooterLink href="/policies">Policies</FooterLink>
             <FooterLink href="/terms">Terms</FooterLink>
             <FooterLink href="/privacy">Privacy</FooterLink>
-            <FooterLink href="/creator-agreement">Creator Agreement</FooterLink>
-            <FooterLink href="/partner-agreement">Partner Agreement</FooterLink>
+            <FooterLink href="/policies/creator-agreement">Creator Agreement</FooterLink>
+            <FooterLink href="/policies/partner-agreement">Partner Agreement</FooterLink>
           </FooterCol>
         </div>
 

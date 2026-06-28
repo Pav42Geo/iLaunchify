@@ -43,7 +43,11 @@ export function MarketplaceSearchBar() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex-1 relative" role="search">
+    <form
+      onSubmit={handleSubmit}
+      className="relative w-[240px] max-w-[42vw] transition-[width] duration-200 ease-out focus-within:w-[460px]"
+      role="search"
+    >
       <Search
         className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-ink-400 pointer-events-none"
         strokeWidth={2}

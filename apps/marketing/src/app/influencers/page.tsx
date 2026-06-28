@@ -285,10 +285,10 @@ function HowItWorks() {
       <div className="max-w-[1400px] mx-auto px-8 py-24">
         <Reveal>
           <header className="mb-14 max-w-[60ch]">
-            <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-white mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
+            <h2 className="font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] font-bold leading-none tracking-[-0.03em] text-white mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
               From application to first <em>payout.</em>
             </h2>
-            <p className="text-ink-400 text-[17px]">
+            <p className="text-ink-400 text-[calc(17px*var(--landing-deck-scale))]">
               Three steps. Run on Impact's network so tracking, payouts, and tax handling
               are professional from day one.
             </p>
@@ -330,10 +330,10 @@ function WhyPartner() {
     <section data-surface="light" className="bg-white text-ink-900 py-24 px-8">
       <div className="max-w-[1400px] mx-auto">
         <header className="mb-14 max-w-[60ch]">
-          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
+          <h2 className="font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
             Why partner with <em>iLaunchify.</em>
           </h2>
-          <p className="text-ink-600 text-[17px]">
+          <p className="text-ink-600 text-[calc(17px*var(--landing-deck-scale))]">
             We pay generously, give you free access to the product you're recommending,
             and invite our top performers into paid brand campaigns.
           </p>
@@ -364,10 +364,10 @@ function WhoItsFor() {
     >
       <div className="max-w-[1400px] mx-auto">
         <header className="mb-12 max-w-[60ch]">
-          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
+          <h2 className="font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
             Who we're <em>looking for.</em>
           </h2>
-          <p className="text-ink-600 text-[17px]">
+          <p className="text-ink-600 text-[calc(17px*var(--landing-deck-scale))]">
             You don't need a million followers. You need an audience who's curious
             about building things — and trusts your recommendations.
           </p>
@@ -400,7 +400,7 @@ function Faq() {
     >
       <div className="max-w-[900px] mx-auto">
         <header className="mb-12">
-          <h2 className="font-display text-4xl sm:text-5xl font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
+          <h2 className="font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] font-bold leading-none tracking-[-0.03em] text-ink-900 mb-3.5 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-pink-500">
             Frequently asked <em>questions.</em>
           </h2>
         </header>
@@ -483,10 +483,10 @@ function FinalCta() {
         }}
       />
       <div className="relative z-[1] max-w-[900px] mx-auto">
-        <h2 className="font-display text-5xl sm:text-7xl font-extrabold leading-[0.94] tracking-[-0.04em] text-white mb-6 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
+        <h2 className="font-display text-[calc(3rem*var(--landing-heading-scale))] sm:text-[calc(4.5rem*var(--landing-heading-scale))] font-extrabold leading-[0.94] tracking-[-0.04em] text-white mb-6 [&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500">
           Grow with <em>iLaunchify.</em>
         </h2>
-        <p className="text-ink-400 text-lg mb-10 max-w-[54ch] mx-auto">
+        <p className="text-ink-400 text-[calc(1.125rem*var(--landing-deck-scale))] mb-10 max-w-[54ch] mx-auto">
           Founding cohort is open. Application takes about ten minutes. We respond
           within fourteen days with a personalized welcome and your tracking links.
         </p>

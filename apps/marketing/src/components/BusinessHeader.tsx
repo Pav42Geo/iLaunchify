@@ -19,7 +19,7 @@ export async function BusinessHeader({ placementKey = 'businessHeader' }: { plac
   const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(placementKey)])
   return (
     <header className="sticky top-0 z-50 bg-ink-900 border-b border-ink-700">
-      <div className="max-w-[1400px] mx-auto px-8 py-3.5 flex items-center gap-8">
+      <div className="pl-7 pr-6 py-3.5 flex items-center gap-8">
         <Link href="/business" className="flex items-center flex-shrink-0">
           {placement.kind === 'mark' ? (
             <BrandMark imageSrc={logos.markDark} sublabel={placement.sublabel} sublabelClassName="text-[22px] text-neon-500" />
