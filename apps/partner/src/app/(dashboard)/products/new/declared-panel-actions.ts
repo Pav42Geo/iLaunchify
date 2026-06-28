@@ -14,7 +14,6 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import type { PanelData } from '@ilaunchify/types'
 import { revalidatePath } from 'next/cache'
 
@@ -69,12 +68,8 @@ export async function declareNutritionPanel(
   const { user, partner, template, error } = await authorizeDeclare(productTemplateId)
   if (error) return { ok: false, error }
 
-  const planCode = partnerTierToPlanCode(
-    partner.tier.toLowerCase() as 'verified' | 'trusted' | 'premier',
-  )
-  if (!(await hasFeature(planCode, 'declare_nutrition_panel'))) {
-    return { ok: false, error: 'upgrade-required' }
-  }
+  // Declaring your own label is the basic, low-friction path — available on every
+  // partner tier (un-gated 2026-06-27). The panel stays manufacturer-attested.
 
   // Synthetic ingredient's canonical nutrient store — derive from the numeric
   // panel rows (keyed by row id). Per-serving values; for DECLARED mode the
