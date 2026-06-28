@@ -42,7 +42,7 @@ export type TransferOutcome = {
     | 'held_charge_unsettled'
     | 'skipped_claimed'
     | 'failed'
-    | 'superseded' // a refund cancelled the row mid-flight; transfer sent, recoup via clawback
+    | 'superseded' // a refund cancelled the row mid-flight; transfer was sent — flag for manual recoup
   stripeTransferId?: string
   detail?: string
 }
@@ -150,9 +150,11 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
       // Compare-and-set on EXECUTING: only WE may move the row out of the state we
       // claimed. If a refund flipped it to CANCELED/REVERSED while our Stripe call was
       // in flight, count is 0 — we must NOT resurrect it to COMPLETED. The transfer DID
-      // go through, so we still stamp stripeTransferId for reconciliation, and the
-      // refund's PartnerClawback (PENDING_APPROVAL) is the recoup path. (Stripe call is
-      // idempotency-keyed, so this race never double-pays.)
+      // go through but the racing refund (seeing it as not-yet-COMPLETED) issued NO
+      // Stripe reversal, so the money is NOT auto-recouped. We stamp stripeTransferId
+      // and surface 'superseded' so ops can manually reverse it (the refund's
+      // PartnerClawback is a ledger record; its executed-recoup lifecycle is a deferred
+      // V1.5 follow-up, not an automatic reversal). Idempotency-keyed → never double-pays.
       const settled = await prisma.transfer.updateMany({
         where: { id: t.id, status: 'EXECUTING' },
         data: {
