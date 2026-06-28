@@ -97,6 +97,7 @@ export type BadgeKey =
   | 'certs.pending'
   | 'disputes.pending'
   | 'cancellations.pending'
+  | 'categoryReview.pending'
   | 'inbox.total'
 
 export type SidebarBadges = Partial<Record<BadgeKey, number>>
@@ -186,6 +187,7 @@ const PRIMARY: SidebarRegion = {
       label: 'Category review',
       icon: Tag,
       href: '/categories/review',
+      badgeKey: 'categoryReview.pending',
       capability: 'catalog:write',
     },
     {

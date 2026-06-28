@@ -107,6 +107,7 @@ type Row = {
   certRefreshNeededAt: Date | null
   imageAssetId: string | null
   _count: { ingredientSlots: number; packagingSystems: number; variants: number }
+  needsCategoryReview?: boolean
 }
 
 export default async function ProductsListPage({
@@ -164,6 +165,19 @@ export default async function ProductsListPage({
   // "X orders placed". One extra query, JS-aggregated (Prisma can't _count a
   // two-hop relation).
   const templateIds = templates.map((t) => t.id)
+
+  // Flag products an admin is still re-filing (imported under an unmatched category).
+  // Cast-guarded + fail-safe — the column post-dates the client until db push.
+  if (templateIds.length) {
+    const flagged = await (
+      prisma as unknown as { productTemplate: { findMany: (a: unknown) => Promise<Array<{ id: string }>> } }
+    ).productTemplate
+      .findMany({ where: { id: { in: templateIds }, needsCategoryReview: true }, select: { id: true } })
+      .catch(() => [] as Array<{ id: string }>)
+    const flaggedIds = new Set(flagged.map((f) => f.id))
+    for (const t of templates) t.needsCategoryReview = flaggedIds.has(t.id)
+  }
+
   const derivedProducts = templateIds.length
     ? await prisma.product.findMany({
         where: { productTemplateId: { in: templateIds } },
@@ -362,6 +376,14 @@ export default async function ProductsListPage({
                                 >
                                   <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Cert refresh
                                 </Link>
+                              )}
+                              {r.needsCategoryReview && (
+                                <span
+                                  title="The category you suggested is with iLaunchify for review — we'll re-file this product into the right category."
+                                  className="inline-flex flex-none items-center rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-700"
+                                >
+                                  Category in review
+                                </span>
                               )}
                             </div>
                             <div className="font-mono text-[10.5px] text-ink-400">{r.id}</div>
@@ -567,6 +589,14 @@ function PartnerProductCard({ r, heroUrls, orders }: { r: Row; heroUrls: Map<str
         <span>
           <span className="text-ink-500">Category</span> &nbsp;{r.subcategory.name}
         </span>
+        {r.needsCategoryReview && (
+          <span
+            className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-[0.04em] text-warning-700"
+            title="The category you suggested is with iLaunchify for review — we'll re-file this product into the right category."
+          >
+            Category in review
+          </span>
+        )}
         <span className="ml-auto text-ink-500">Updated {formatRelative(r.updatedAt)}</span>
         <span className="font-mono text-[11px] text-ink-400">PRD-{r.id.slice(-6)}</span>
       </header>

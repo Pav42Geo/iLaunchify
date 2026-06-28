@@ -20,6 +20,7 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     certsPending,
     disputesPending,
     cancellationsPending,
+    categoryReviewPending,
   ] = await Promise.all([
     // Leads = Partners in DRAFT or INVITED (Phase-A legacy statuses still in
     // use by leads page). Mirrors the existing /admin/leads query so the
@@ -64,6 +65,13 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     prisma.cancellationRequest
       .count({ where: { status: 'PENDING_REVIEW' } })
       .catch(() => 0),
+    // Imported products whose category had no iLaunchify match (needsCategoryReview).
+    // Cast-guarded + fail-safe to 0 — the column post-dates the client until db push.
+    (
+      prisma as unknown as { productTemplate: { count: (a: unknown) => Promise<number> } }
+    ).productTemplate
+      .count({ where: { needsCategoryReview: true } })
+      .catch(() => 0),
   ])
 
   return {
@@ -74,6 +82,7 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     'certs.pending': certsPending,
     'disputes.pending': disputesPending,
     'cancellations.pending': cancellationsPending,
+    'categoryReview.pending': categoryReviewPending,
     'inbox.total':
       leadsPending +
       partnersPending +
