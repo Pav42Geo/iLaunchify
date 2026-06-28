@@ -459,16 +459,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
 
               {step === 'select' && (
                 <>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-[13px] font-semibold text-ink-900">{valid.length} found · {selectedCount} selected</span>
-                    <div className="flex items-center gap-2 text-[12px]">
-                      <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const v of filtered) n.add(v.rowIndex); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
-                        {query.trim() ? 'Select matching' : 'Select all'}
-                      </button>
-                      <span className="text-ink-300">·</span>
-                      <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
-                    </div>
-                  </div>
+                  <div className="mb-3 text-[13px] font-semibold text-ink-900">{valid.length} found · {selectedCount} selected</div>
 
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-ink-50 px-2.5 py-2">
                     <span className="text-[12px] text-ink-600">Set all selected:</span>
@@ -496,7 +487,21 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                     </div>
                   )}
 
-                  <div className="max-h-[44vh] divide-y divide-ink-100 overflow-auto rounded-lg border border-ink-200">
+                  <div className="overflow-hidden rounded-lg border border-ink-200">
+                    <div className="grid grid-cols-[20px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2.5 border-b border-ink-100 bg-ink-50 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all products"
+                        ref={(el) => { if (el) el.indeterminate = filtered.some((v) => selected.has(v.rowIndex)) && !filtered.every((v) => selected.has(v.rowIndex)) }}
+                        checked={filtered.length > 0 && filtered.every((v) => selected.has(v.rowIndex))}
+                        onChange={() => setSelected((s) => { const n = new Set(s); const all = filtered.length > 0 && filtered.every((v) => n.has(v.rowIndex)); for (const v of filtered) { if (all) n.delete(v.rowIndex); else n.add(v.rowIndex) } return n })}
+                        className="h-4 w-4 accent-pink-600"
+                      />
+                      <span>Product</span>
+                      <span>Category</span>
+                      <span>Subcategory</span>
+                    </div>
+                    <div className="max-h-[44vh] divide-y divide-ink-100 overflow-auto">
                     {filtered.length === 0 ? (
                       <p className="px-3 py-6 text-center text-[12.5px] text-ink-500">No products match “{query}”.</p>
                     ) : filtered.map((v) => {
@@ -550,6 +555,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                         </div>
                       )
                     })}
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
                     <span className="font-semibold text-ink-900">{chosen.length} ready</span>
