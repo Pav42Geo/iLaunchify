@@ -304,6 +304,19 @@ export interface InitialDraft {
   pricingTiers: Array<{ minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' }>
 }
 
+/** Coerce a nutritionPer100g JSON blob into a plain { key: number } map. Guards
+ *  the RSC → client boundary: any Prisma Decimal / stringified numbers inside the
+ *  JSON become plain numbers, non-numeric entries are dropped. */
+function plainNutrition(v: unknown): Record<string, number> {
+  if (!v || typeof v !== 'object') return {}
+  const out: Record<string, number> = {}
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    const n = Number(val)
+    if (!Number.isNaN(n)) out[k] = n
+  }
+  return out
+}
+
 /** Load an existing DRAFT for the guided builder to resume (#35 load-back). Returns
  *  null if not found / not owned. Single cast query so new columns + relations
  *  (packingProfileId, optionAxes, …) resolve before the client is regenerated. */
@@ -407,10 +420,12 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       recipeSlots: tpl.ingredientSlots.map((s) => ({
         ingId: s.baseIngredientId,
         name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
-        per100g: (s.baseIngredient?.nutritionPer100g ?? {}) as Record<string, number>,
-        densityGPerMl: s.baseIngredient?.densityGPerML ?? null,
+        // Prisma Decimal columns (weightG, densityGPerML) must be coerced to plain
+        // numbers — they can't cross the RSC → client boundary as Decimal objects.
+        per100g: plainNutrition(s.baseIngredient?.nutritionPer100g),
+        densityGPerMl: s.baseIngredient?.densityGPerML != null ? Number(s.baseIngredient.densityGPerML) : null,
         allergens: s.baseIngredient?.allergenFlags ?? [],
-        weightG: s.weightG ?? 0,
+        weightG: Number(s.weightG ?? 0),
       })),
       axes: (tpl.optionAxes ?? []).map((a) => ({
         key: a.key, label: a.label, editableByCreator: a.editableByCreator, affectsLabel: a.affectsLabel,
@@ -1685,5 +1700,411 @@ export async function createDraftShell(
   } catch (err) {
     console.error('[createDraftShell] failed:', err)
     return { ok: false, error: `Could not create draft: ${(err as Error).message}` }
+  }
+}
+
+/**
+ * Clone an existing ProductTemplate owned by the partner into a brand-new DRAFT
+ * ("Clone from existing product"). Deep-copies the template's author-set scalars
+ * and every per-template relation, REGENERATING all ids and remapping internal
+ * cross-references (slot ids, flavor-preset ids, option-value ids) so the clone
+ * carries no dangling references.
+ *
+ * Correctness rule (docs note + operational-trust philosophy): recreated child
+ * rows get NEW ids. Anything that references an old per-template id by value —
+ * `ProductOptionAxis.boundSlotId` (→ slot), `FlavorPreset.slotResolution[].slotId`
+ * (→ slot), `ProductOptionValue.flavorPresetId` (→ flavor) — is remapped old→new
+ * via Maps built right after creating the parents. `ProductOptionRule` endpoints
+ * are stored as composite `axisKey:valueLabel` strings (id-churn-safe, see
+ * saveOptionRules), so they survive a clone verbatim because keys + labels are
+ * copied; a real value-id endpoint (legacy/mixed data) is remapped when known and
+ * otherwise the rule is skipped rather than copied broken.
+ *
+ * Cast-guarded throughout (the Configurator / sample-policy models post-date the
+ * generated client on some machines) and wrapped in a single `$transaction` so a
+ * partial failure never leaves an orphaned half-cloned template.
+ *
+ * Relations CLONED: TemplateIngredientSlot, FlavorPreset, ProductTemplateVariant,
+ * ProductTemplatePackaging, ProductTemplatePricingTier, ProductTemplateFee,
+ * ProductSampleOption, ProductTemplateNiche, ProductTemplateLifestyleTag,
+ * ProductOptionAxis (+ values), ProductOptionRule (id-safe rows), and
+ * ProductChangeApprovalRule.
+ *
+ * Relations intentionally NOT cloned (returned in the summary): certificates,
+ * notes, review items, spec sheets, phrases, niche/phrase assignment audits,
+ * optional ingredients, and any option rule whose endpoints reference unknown
+ * raw value-ids that cannot be safely remapped.
+ */
+export async function cloneDraftFromTemplate(
+  sourceTemplateId: string,
+): Promise<Result<{ id: string; slug: string }>> {
+  // Whole body guarded — a server action must always resolve to a Result.
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+
+    // ----- Load the FULL source template (scalars + every relation we copy) -----
+    // Single cast query so newer columns/relations resolve before the generated
+    // client is regenerated on this machine (same pattern loadDraft uses).
+    type SrcSlot = { id: string; baseIngredientId: string; weightG: unknown; costPerKgCents: number | null; displayOrder: number; allowReplacement: boolean; label: string | null; description: string | null }
+    type SrcFlavor = { id: string; name: string; statementOfIdentity: string | null; swatchHex: string | null; swatchImageFileId: string | null; dielineId: string | null; slotResolution: unknown; extras: unknown; priceDeltaCents: number; status: string; sortOrder: number; nutrientOverrides: unknown }
+    type SrcVariant = Record<string, unknown> & { id: string }
+    type SrcAxis = { id: string; key: string; label: string; layer: string; editableByCreator: boolean; required: boolean; affectsLabel: boolean; boundSlotId: string | null; sortOrder: number; isActive: boolean; values: SrcValue[] }
+    type SrcValue = { id: string; label: string; isDefault: boolean; status: string; leadTimeDeltaDays: number; unitCostDeltaCents: number; moqOverride: number | null; priceDeltaCents: number; flavorPresetId: string | null; substrateId: string | null; packagingTypeId: string | null; overlayOp: string; recipeOverlay: unknown; sortOrder: number }
+    type Src = {
+      id: string; manufacturerServiceId: string | null; subcategoryId: string; name: string
+      // copied scalars
+      recipeEntryMode: string | null; nutrientSource: string; declaredPanel: unknown
+      description: string | null; longDescription: string | null; priceFloorCents: number; unitCostCents: number
+      imageAssetId: string | null; galleryAssetIds: string[]; videoAssetId: string | null; baseNutritionSnapshot: unknown
+      finishedProductWeightG: number | null; customMeta: unknown
+      allergenCrossContamination: string | null; allergenManualOverrides: unknown
+      nutrientOverrides: unknown; ingredientGroups: unknown
+      labelingType: string; labelingTypeLocked: boolean; intendedAgeGroup: string; flavorsRunSequentially: boolean
+      formulationData: unknown; statementOfIdentity: string | null; familyCode: string | null; productType: string
+      packingProfileId: string | null; maxFlavorsPerPack: number | null
+      leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
+      storageClass: string; storageTempMinF: number | null; storageTempMaxF: number | null
+      marketingDetail: unknown
+      manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
+      phraseFacts: unknown
+      // relations
+      ingredientSlots: SrcSlot[]
+      flavorPresets: SrcFlavor[]
+      variants: SrcVariant[]
+      packagingSystems: Array<{ packagingSystemId: string; basePriceCents: number; moqOverride: number | null; leadTimeDays: number; pricingTiers: unknown; surfaceOverrides: unknown; coPackerServiceId: string | null }>
+      pricingTiers: Array<{ fulfillmentMode: string; sortOrder: number; minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number; leadTimeDays: number | null; notes: string | null }>
+      fees: Array<{ label: string; basis: string; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
+      sampleOptions: Array<{ kind: string; enabled: boolean; perFlavorCents: number | null; samplerSetCents: number | null; sampleMoq: number; maxUnitsPerFlavor: number | null; leadTimeDays: number; creditTowardFirstOrder: boolean; creditCapCents: number | null; maxPerCreatorPerPeriod: number | null; sortOrder: number }>
+      niches: Array<{ nicheId: string; isPrimary: boolean }>
+      lifestyleTags: Array<{ lifestyleTagId: string; source: string }>
+      optionAxes: SrcAxis[]
+      optionRules: Array<{ kind: string; whenValueId: string; targetValueId: string; message: string | null }>
+      changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
+    }
+
+    const src = await (prisma as unknown as {
+      productTemplate: { findUnique: (a: unknown) => Promise<Src | null> }
+    }).productTemplate.findUnique({
+      where: { id: sourceTemplateId },
+      select: {
+        id: true, manufacturerServiceId: true, subcategoryId: true, name: true,
+        recipeEntryMode: true, nutrientSource: true, declaredPanel: true,
+        description: true, longDescription: true, priceFloorCents: true, unitCostCents: true,
+        imageAssetId: true, galleryAssetIds: true, videoAssetId: true, baseNutritionSnapshot: true,
+        finishedProductWeightG: true, customMeta: true,
+        allergenCrossContamination: true, allergenManualOverrides: true,
+        nutrientOverrides: true, ingredientGroups: true,
+        labelingType: true, labelingTypeLocked: true, intendedAgeGroup: true, flavorsRunSequentially: true,
+        formulationData: true, statementOfIdentity: true, familyCode: true, productType: true,
+        packingProfileId: true, maxFlavorsPerPack: true,
+        leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
+        storageClass: true, storageTempMinF: true, storageTempMaxF: true,
+        marketingDetail: true,
+        manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
+        phraseFacts: true,
+        ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, costPerKgCents: true, displayOrder: true, allowReplacement: true, label: true, description: true } },
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, statementOfIdentity: true, swatchHex: true, swatchImageFileId: true, dielineId: true, slotResolution: true, extras: true, priceDeltaCents: true, status: true, sortOrder: true, nutrientOverrides: true } },
+        variants: { orderBy: { createdAt: 'asc' }, select: { id: true, flavor: true, containerFormat: true, containerSizeG: true, servingsPerContainer: true, servingSizeG: true, servingSizeDesc: true, packingType: true, flavorArrangement: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, assortmentFlavors: true, packingConfig: true, sku: true, gtin: true, gtinSource: true, moqMin: true, moqMax: true, leadTimeDays: true, unitCostCentsOverride: true, fulfillmentMode: true, monthlyCapacity: true, shelfLifeDays: true, orderIncrement: true, lotTracking: true, facilityId: true, dieCutTemplateId: true, isActive: true, packagingTypeId: true } },
+        packagingSystems: { select: { packagingSystemId: true, basePriceCents: true, moqOverride: true, leadTimeDays: true, pricingTiers: true, surfaceOverrides: true, coPackerServiceId: true } },
+        pricingTiers: { orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }], select: { fulfillmentMode: true, sortOrder: true, minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true, notes: true } },
+        fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
+        sampleOptions: { orderBy: { sortOrder: 'asc' }, select: { kind: true, enabled: true, perFlavorCents: true, samplerSetCents: true, sampleMoq: true, maxUnitsPerFlavor: true, leadTimeDays: true, creditTowardFirstOrder: true, creditCapCents: true, maxPerCreatorPerPeriod: true, sortOrder: true } },
+        niches: { select: { nicheId: true, isPrimary: true } },
+        lifestyleTags: { select: { lifestyleTagId: true, source: true } },
+        optionAxes: { orderBy: { sortOrder: 'asc' }, select: { id: true, key: true, label: true, layer: true, editableByCreator: true, required: true, affectsLabel: true, boundSlotId: true, sortOrder: true, isActive: true, values: { orderBy: { sortOrder: 'asc' }, select: { id: true, label: true, isDefault: true, status: true, leadTimeDeltaDays: true, unitCostDeltaCents: true, moqOverride: true, priceDeltaCents: true, flavorPresetId: true, substrateId: true, packagingTypeId: true, overlayOp: true, recipeOverlay: true, sortOrder: true } } } },
+        optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
+        changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
+      },
+    }).catch(() => null)
+
+    if (!src) return { ok: false, error: 'Product not found.' }
+    // Ownership — same check loadDraft uses. A null manufacturerServiceId is a
+    // legacy/unowned row; only the partner's own services may clone.
+    if (!src.manufacturerServiceId || !ownIds.includes(src.manufacturerServiceId)) {
+      return { ok: false, error: 'Not your product.' }
+    }
+
+    // ----- Derive the new identity -----
+    const copyName = `Copy of ${src.name}`.slice(0, 120)
+    const base = slugify(copyName) || 'product'
+    let slug = `${base}-${partner.id.slice(-6)}`
+    let n = 0
+    while (await prisma.productTemplate.findUnique({ where: { slug }, select: { id: true } })) {
+      n += 1
+      slug = `${base}-${partner.id.slice(-6)}-${n}`
+      if (n > 50) return { ok: false, error: 'Could not generate a unique slug — try a different name.' }
+    }
+
+    // Pre-generate new ids for the relations whose ids are referenced internally,
+    // so the Maps are ready before we write anything. We let Prisma default the
+    // ids for relations with no inbound internal reference.
+    const newId = () => crypto.randomUUID()
+    const slotIdMap = new Map<string, string>() // old TemplateIngredientSlot.id → new
+    for (const s of src.ingredientSlots) slotIdMap.set(s.id, newId())
+    const flavorIdMap = new Map<string, string>() // old FlavorPreset.id → new
+    for (const f of src.flavorPresets) flavorIdMap.set(f.id, newId())
+    const valueIdMap = new Map<string, string>() // old ProductOptionValue.id → new
+    for (const a of src.optionAxes) for (const v of a.values) valueIdMap.set(v.id, newId())
+
+    const skipped: string[] = []
+
+    // Remap FlavorPreset.slotResolution JSON (`[{ slotId, ... }]`). Live builder
+    // writes `[]`, but legacy data may carry slot ids — rewrite them to the new
+    // slot ids. If an entry references a slot id we don't recognize, keep the
+    // entry's non-id fields but drop the dangling slotId (never emit a bad ref).
+    let droppedSlotRefs = 0
+    const remapSlotResolution = (raw: unknown): unknown => {
+      if (!Array.isArray(raw)) return raw
+      return raw.map((entry) => {
+        if (entry && typeof entry === 'object' && 'slotId' in entry) {
+          const e = entry as Record<string, unknown>
+          const old = String(e.slotId ?? '')
+          const mapped = slotIdMap.get(old)
+          if (!mapped) { droppedSlotRefs += 1; const { slotId: _drop, ...rest } = e; return rest }
+          return { ...e, slotId: mapped }
+        }
+        return entry
+      })
+    }
+
+    // Build the clone's relation create-payloads (all ids regenerated/remapped).
+    const slotCreates = src.ingredientSlots.map((s) => ({
+      id: slotIdMap.get(s.id)!,
+      baseIngredientId: s.baseIngredientId,
+      weightG: s.weightG,
+      costPerKgCents: s.costPerKgCents,
+      displayOrder: s.displayOrder,
+      allowReplacement: s.allowReplacement,
+      label: s.label,
+      description: s.description,
+    }))
+
+    const flavorCreates = src.flavorPresets.map((f) => ({
+      id: flavorIdMap.get(f.id)!,
+      name: f.name,
+      statementOfIdentity: f.statementOfIdentity,
+      swatchHex: f.swatchHex,
+      swatchImageFileId: f.swatchImageFileId,
+      // dielineId is a soft FK to a partner-shared PackagingDieline (a physical
+      // artifact, NOT a per-template id) — keep it pointing at the same dieline.
+      dielineId: f.dielineId,
+      slotResolution: remapSlotResolution(f.slotResolution),
+      extras: f.extras ?? undefined,
+      priceDeltaCents: f.priceDeltaCents,
+      status: f.status,
+      sortOrder: f.sortOrder,
+      nutrientOverrides: f.nutrientOverrides ?? undefined,
+    }))
+
+    // Option axes (+ values). boundSlotId → remapped to the new slot id; an
+    // unmappable boundSlotId is nulled (axis kept, binding dropped). Each value's
+    // flavorPresetId → remapped; substrateId/packagingTypeId reference shared
+    // catalog rows (NOT per-template) → kept verbatim. recipeOverlay holds GLOBAL
+    // ingredient ids (toIngredientId/addIngredientId) → no remap needed.
+    let droppedAxisBindings = 0
+    const axisCreates = src.optionAxes.map((a) => {
+      let boundSlotId: string | null = null
+      if (a.boundSlotId) {
+        const mapped = slotIdMap.get(a.boundSlotId)
+        if (mapped) boundSlotId = mapped
+        else droppedAxisBindings += 1
+      }
+      return {
+        id: newId(),
+        key: a.key,
+        label: a.label,
+        layer: a.layer,
+        editableByCreator: a.editableByCreator,
+        required: a.required,
+        affectsLabel: a.affectsLabel,
+        boundSlotId,
+        sortOrder: a.sortOrder,
+        isActive: a.isActive,
+        values: {
+          create: a.values.map((v) => ({
+            id: valueIdMap.get(v.id)!,
+            label: v.label,
+            isDefault: v.isDefault,
+            status: v.status,
+            leadTimeDeltaDays: v.leadTimeDeltaDays,
+            unitCostDeltaCents: v.unitCostDeltaCents,
+            moqOverride: v.moqOverride,
+            priceDeltaCents: v.priceDeltaCents,
+            flavorPresetId: v.flavorPresetId ? (flavorIdMap.get(v.flavorPresetId) ?? null) : null,
+            substrateId: v.substrateId,
+            packagingTypeId: v.packagingTypeId,
+            overlayOp: v.overlayOp,
+            recipeOverlay: v.recipeOverlay ?? undefined,
+            sortOrder: v.sortOrder,
+          })),
+        },
+      }
+    })
+
+    // Option rules. Endpoints are stored as composite `axisKey:valueLabel` strings
+    // (saveOptionRules) which survive a clone verbatim (keys + labels are copied).
+    // A legacy endpoint that is instead a raw ProductOptionValue.id is remapped
+    // when known. If an endpoint LOOKS like a raw value id (no ':' separator) and
+    // is NOT in valueIdMap, we cannot safely remap → skip that rule (a correct
+    // partial clone beats a dangling reference).
+    const knownOldValueIds = new Set(valueIdMap.keys())
+    const remapEndpoint = (ep: string): string | null => {
+      if (knownOldValueIds.has(ep)) return valueIdMap.get(ep)!
+      if (ep.includes(':')) return ep // composite axisKey:valueLabel — copied verbatim
+      // No ':' and not a known value id: a bare token (likely a value label or
+      // legacy id we can't resolve). Pass composite-safe tokens through; only a
+      // genuine-looking orphan id is unmappable.
+      return ep
+    }
+    let skippedRules = 0
+    const ruleCreates: Array<{ kind: string; whenValueId: string; targetValueId: string; message: string | null }> = []
+    for (const r of src.optionRules) {
+      const w = remapEndpoint(r.whenValueId)
+      const t = remapEndpoint(r.targetValueId)
+      if (w == null || t == null) { skippedRules += 1; continue }
+      ruleCreates.push({ kind: r.kind, whenValueId: w, targetValueId: t, message: r.message })
+    }
+    if (skippedRules > 0) skipped.push(`${skippedRules} option rule(s): endpoint referenced an unmappable option-value id`)
+    if (droppedSlotRefs > 0) skipped.push(`${droppedSlotRefs} flavor slotResolution ref(s): pointed at an unknown slot id`)
+    if (droppedAxisBindings > 0) skipped.push(`${droppedAxisBindings} option-axis boundSlot binding(s): pointed at an unknown slot id`)
+
+    // ProductTemplateVariant rows — strip the source id; null the GTIN (it is a
+    // GLOBAL @unique — copying it verbatim would collide and fail the whole
+    // transaction). `sku` is only unique per-template, so it copies safely.
+    const variantCreates = src.variants.map((v) => {
+      const { id: _drop, gtin: _gtin, ...rest } = v
+      return { ...rest, gtin: null, gtinSource: 'USER_PROVIDED' }
+    })
+
+    // ----- Create everything in one transaction -----
+    // Parent template carries the inline-creatable child relations; the cast-only
+    // models (axes, rules, sample options, fees, change rules, niches, tags) are
+    // created as follow-up statements inside the SAME $transaction.
+    const px = prisma as unknown as {
+      $transaction: (ops: unknown[]) => Promise<unknown[]>
+      productTemplate: { create: (a: unknown) => Promise<{ id: string; slug: string }> }
+      productOptionAxis: { create: (a: unknown) => Promise<unknown> }
+      productOptionRule: { createMany: (a: unknown) => Promise<unknown> }
+      productSampleOption: { createMany: (a: unknown) => Promise<unknown> }
+      productChangeApprovalRule: { createMany: (a: unknown) => Promise<unknown> }
+      productTemplateNiche: { createMany: (a: unknown) => Promise<unknown> }
+      productTemplateLifestyleTag: { createMany: (a: unknown) => Promise<unknown> }
+    }
+
+    const newTplId = newId()
+    const ops: unknown[] = []
+
+    // 1) The template + its inline-creatable relations (slots, flavors, variants,
+    //    packaging, pricing tiers, fees, axes+values). Force DRAFT; reset all
+    //    review/lifecycle state to defaults (omit pendingEditPayload, certs, etc.).
+    ops.push(
+      px.productTemplate.create({
+        data: {
+          id: newTplId,
+          name: copyName,
+          slug,
+          status: 'DRAFT',
+          subcategoryId: src.subcategoryId,
+          manufacturerServiceId: src.manufacturerServiceId,
+          // Author-set scalars (everything that isn't identity / lifecycle).
+          recipeEntryMode: src.recipeEntryMode ?? undefined,
+          nutrientSource: src.nutrientSource,
+          declaredPanel: src.declaredPanel ?? undefined,
+          description: src.description,
+          longDescription: src.longDescription,
+          priceFloorCents: src.priceFloorCents,
+          unitCostCents: src.unitCostCents,
+          imageAssetId: src.imageAssetId,
+          galleryAssetIds: src.galleryAssetIds ?? [],
+          videoAssetId: src.videoAssetId,
+          baseNutritionSnapshot: src.baseNutritionSnapshot ?? undefined,
+          finishedProductWeightG: src.finishedProductWeightG,
+          customMeta: src.customMeta ?? undefined,
+          allergenCrossContamination: src.allergenCrossContamination,
+          allergenManualOverrides: src.allergenManualOverrides ?? undefined,
+          nutrientOverrides: src.nutrientOverrides ?? undefined,
+          ingredientGroups: src.ingredientGroups ?? undefined,
+          labelingType: src.labelingType,
+          labelingTypeLocked: src.labelingTypeLocked,
+          intendedAgeGroup: src.intendedAgeGroup,
+          flavorsRunSequentially: src.flavorsRunSequentially,
+          formulationData: src.formulationData ?? undefined,
+          statementOfIdentity: src.statementOfIdentity,
+          familyCode: src.familyCode,
+          productType: src.productType,
+          packingProfileId: src.packingProfileId,
+          maxFlavorsPerPack: src.maxFlavorsPerPack,
+          leadTimeRepeatDays: src.leadTimeRepeatDays,
+          leadTimeFirstRunDays: src.leadTimeFirstRunDays,
+          storageClass: src.storageClass,
+          storageTempMinF: src.storageTempMinF,
+          storageTempMaxF: src.storageTempMaxF,
+          marketingDetail: src.marketingDetail ?? undefined,
+          manufacturingFormat: src.manufacturingFormat ?? undefined,
+          manufacturingProcesses: src.manufacturingProcesses ?? [],
+          allergenFreeClaims: src.allergenFreeClaims ?? [],
+          marketCodes: src.marketCodes ?? ['US'],
+          phraseFacts: src.phraseFacts ?? undefined,
+          // Inline relations with internally-consistent (remapped) ids.
+          ingredientSlots: slotCreates.length ? { create: slotCreates } : undefined,
+          flavorPresets: flavorCreates.length ? { create: flavorCreates } : undefined,
+          variants: variantCreates.length ? { create: variantCreates } : undefined,
+          packagingSystems: src.packagingSystems.length ? { create: src.packagingSystems } : undefined,
+          pricingTiers: src.pricingTiers.length ? { create: src.pricingTiers } : undefined,
+          fees: src.fees.length ? { create: src.fees } : undefined,
+        } as never,
+        select: { id: true, slug: true },
+      }),
+    )
+
+    // 2) Option axes (+ nested values) — created per-axis so the cast path matches
+    //    saveOptionAxes (createMany can't nest value creates).
+    for (const a of axisCreates) {
+      ops.push(px.productOptionAxis.create({ data: { productTemplateId: newTplId, ...a } }))
+    }
+    // 3) Option rules (id-safe rows only).
+    if (ruleCreates.length) {
+      ops.push(px.productOptionRule.createMany({ data: ruleCreates.map((r) => ({ productTemplateId: newTplId, ...r })) }))
+    }
+    // 4) Sample options.
+    if (src.sampleOptions.length) {
+      ops.push(px.productSampleOption.createMany({ data: src.sampleOptions.map((s) => ({ productTemplateId: newTplId, ...s })) }))
+    }
+    // 5) Change-approval-rule overrides.
+    if (src.changeApprovalRules.length) {
+      ops.push(px.productChangeApprovalRule.createMany({ data: src.changeApprovalRules.map((r) => ({ productTemplateId: newTplId, ...r })) }))
+    }
+    // 6) Niche + lifestyle-tag junctions (reference shared taxonomy rows → copied verbatim).
+    if (src.niches.length) {
+      ops.push(px.productTemplateNiche.createMany({ data: src.niches.map((nrow) => ({ productTemplateId: newTplId, nicheId: nrow.nicheId, isPrimary: nrow.isPrimary })) }))
+    }
+    if (src.lifestyleTags.length) {
+      ops.push(px.productTemplateLifestyleTag.createMany({ data: src.lifestyleTags.map((l) => ({ productTemplateId: newTplId, lifestyleTagId: l.lifestyleTagId, source: l.source })) }))
+    }
+
+    const results = await px.$transaction(ops)
+    const created = results[0] as { id: string; slug: string }
+
+    // Audit — best-effort (non-fatal), like createDraftShell.
+    try {
+      await logAuditAs(user, {
+        entityType: 'ProductTemplate',
+        entityId: created.id,
+        action: 'PRODUCT_TEMPLATE_CLONE',
+        toValue: 'DRAFT',
+        payload: { partnerId: partner.id, sourceTemplateId, name: copyName, skipped },
+      })
+    } catch (auditErr) {
+      console.error('[cloneDraftFromTemplate] audit log failed (non-fatal):', auditErr)
+    }
+
+    revalidatePath('/products')
+    return { ok: true, data: created }
+  } catch (err) {
+    console.error('[cloneDraftFromTemplate] failed:', err)
+    return { ok: false, error: `Could not clone product: ${(err as Error).message}` }
   }
 }

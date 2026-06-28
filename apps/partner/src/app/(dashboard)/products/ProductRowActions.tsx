@@ -32,6 +32,7 @@ import {
   ExternalLink,
   PencilLine,
   LifeBuoy,
+  CopyPlus,
 } from 'lucide-react'
 import {
   RowActionsMenu,
@@ -41,6 +42,7 @@ import {
 } from '@ilaunchify/ui'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { pauseProduct, resumeProduct, deleteDraft } from './actions'
+import { cloneDraftFromTemplate } from './new/build-actions'
 
 interface Props {
   id: string
@@ -85,6 +87,19 @@ export function ProductRowActions({
       }
       toast.success(success)
       router.refresh()
+    })
+  }
+
+  // Clone → deep-copies into a new DRAFT and opens it in the builder.
+  function clone() {
+    startTransition(async () => {
+      const r = await cloneDraftFromTemplate(id)
+      if (!r.ok) {
+        toast.error(r.error ?? 'Could not clone')
+        return
+      }
+      toast.success(`Cloned “${name}” — opening the copy`)
+      router.push(`/products/new?draft=${r.data.id}`)
     })
   }
 
@@ -156,6 +171,11 @@ export function ProductRowActions({
           Re-list (turn back on)
         </RowActionItem>
       )}
+
+      {/* Clone — available in every phase; deep-copies into a new editable draft */}
+      <RowActionItem icon={CopyPlus} onSelect={clone}>
+        Clone product
+      </RowActionItem>
 
       {/* Everyone can start a new product */}
       <RowActionItem href="/products/new" icon={FileStack}>
