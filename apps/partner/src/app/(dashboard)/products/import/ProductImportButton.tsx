@@ -267,15 +267,30 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   // pages through with < >. Each field is an input bound to valueFor → overrides.
   const pIdx = rows.length ? Math.min(previewIdx, rows.length - 1) : 0
   const previewFields = useMemo(() => {
-    if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; value: string; flag: PreviewFlag }>
+    if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; value: string; flag: PreviewFlag; edited: boolean }>
+    const r = rows[pIdx]
     return FIELDS.filter((f) => f.key !== 'category').map((f) => {
       const value = valueFor(pIdx, String(f.key))
+      const raw = r ? cellOf(r, String(f.key)) : ''
       const { flag } = fieldResolve(f, value)
-      return { key: String(f.key), label: f.label, required: !!f.required, value, flag }
+      return { key: String(f.key), label: f.label, required: !!f.required, value, flag, edited: value !== raw }
     })
-  }, [rows, pIdx, valueFor])
+  }, [rows, pIdx, valueFor, cellOf])
   const previewIssues = previewFields.filter((p) => p.flag === 'missing' || p.flag === 'check').length
+  const previewEdited = previewFields.some((p) => p.edited)
   const previewName = rows.length ? valueFor(pIdx, 'name') : ''
+
+  // Which rows the partner has actually changed (override differs from the cell) —
+  // for the "edited" markers in the preview header + the choose-products list.
+  const editedRows = useMemo(() => {
+    const s = new Set<number>()
+    for (const k of Object.keys(overrides)) {
+      const idx = Number(k)
+      const r = rows[idx]
+      if (r && Object.entries(overrides[idx]!).some(([key, v]) => v !== cellOf(r, key))) s.add(idx)
+    }
+    return s
+  }, [overrides, rows, cellOf])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -435,26 +450,36 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                   {rows.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
                       <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-ink-50 px-3 py-2">
-                        <span className="min-w-0 truncate text-[12.5px] font-semibold text-ink-900">Preview — {previewName || `Row ${pIdx + 1}`}</span>
-                        <div className="flex flex-none items-center gap-2">
-                          <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
-                            {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button type="button" aria-label="Previous product" disabled={pIdx === 0} onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
-                              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                            </button>
-                            <span className="text-[11.5px] tabular-nums text-ink-500">{pIdx + 1} / {rows.length}</span>
-                            <button type="button" aria-label="Next product" disabled={pIdx >= rows.length - 1} onClick={() => setPreviewIdx((i) => Math.min(rows.length - 1, i + 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
-                              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                            </button>
-                          </div>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 truncate text-[12.5px] font-semibold text-ink-900">Preview — {previewName || `Row ${pIdx + 1}`}</span>
+                          {previewEdited && <span className="flex-none rounded-full bg-pink-100 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-pink-700">Edited</span>}
+                        </span>
+                        <div className="flex flex-none items-center gap-1">
+                          <button type="button" aria-label="Previous product" disabled={pIdx === 0} onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
+                            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={rows.length}
+                            value={pIdx + 1}
+                            onChange={(e) => { const n = parseInt(e.target.value, 10); if (Number.isFinite(n)) setPreviewIdx(Math.min(rows.length - 1, Math.max(0, n - 1))) }}
+                            aria-label="Go to product number"
+                            className="w-12 rounded-md border border-ink-200 bg-white px-1 py-0.5 text-center text-[11.5px] tabular-nums text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                          />
+                          <span className="text-[11.5px] tabular-nums text-ink-500">/ {rows.length}</span>
+                          <button type="button" aria-label="Next product" disabled={pIdx >= rows.length - 1} onClick={() => setPreviewIdx((i) => Math.min(rows.length - 1, i + 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
+                            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
                         </div>
                       </div>
                       <div className="divide-y divide-ink-100">
                         {previewFields.map((p) => (
                           <div key={p.key} className="grid grid-cols-[1fr_1.4fr] items-center gap-3 px-3 py-1.5">
-                            <label htmlFor={`pv-${p.key}`} className="text-[12.5px] text-ink-600">{p.label}{p.required && <span className="text-pink-700"> *</span>}</label>
+                            <label htmlFor={`pv-${p.key}`} className="flex items-center gap-1.5 text-[12.5px] text-ink-600">
+                              <span>{p.label}{p.required && <span className="text-pink-700"> *</span>}</span>
+                              {p.edited && <span className="h-1.5 w-1.5 flex-none rounded-full bg-pink-500" title="Edited" aria-label="edited" />}
+                            </label>
                             <div className="flex items-center gap-1.5">
                               <input
                                 id={`pv-${p.key}`}
@@ -469,7 +494,12 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                           </div>
                         ))}
                       </div>
-                      <p className="border-t border-ink-100 px-3 py-1.5 text-[11px] text-ink-500">Edits apply to this product only. Use ‹ › to review each one.</p>
+                      <div className="flex items-center justify-between gap-2 border-t border-ink-100 px-3 py-1.5">
+                        <span className="text-[11px] text-ink-500">Edits apply to this product. Use ‹ › or type a number.</span>
+                        <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
+                          {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
+                        </span>
+                      </div>
                     </div>
                   )}
 
@@ -545,6 +575,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                             <span className="flex items-center gap-1.5 text-[11px]">
                               {v.base.familyCode && <span className="truncate text-ink-400">{v.base.familyCode}</span>}
                               {v.issues > 0 && <span className="text-warning-700">{v.issues} to check</span>}
+                              {editedRows.has(v.rowIndex) && <span className="text-pink-700">· edited</span>}
                               {sug && <span className="text-warning-700">· admin review</span>}
                             </span>
                           </span>
