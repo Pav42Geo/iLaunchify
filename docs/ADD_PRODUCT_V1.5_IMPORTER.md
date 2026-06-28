@@ -59,6 +59,20 @@ Net-new code is only a `mode` branch + a redirect + a banner. Everything load-be
 
 ---
 
+## SKU / identity model — what import owns vs. what it never touches (Pavel 2026-06-28)
+
+The mental model, three distinct layers:
+
+1. **Platform identity (system-owned, never set or overwritten by import).** `ProductTemplate.id` is a server-generated `uuid` — the real identity. `gtin` is `@unique` **globally** (both `ProductTemplate.gtin` and `ProductTemplateVariant.gtin`), deduped on import. The importer **always creates a NEW draft** (`createDraftShell`) and never updates an existing product, so an import cannot clobber any existing record's identity. ✅ The manufacturer's original SKU does **not** become or replace the platform's unique key.
+
+2. **SKU = the manufacturer's own value, by design.** `familyCode` ("Base SKU") and `ProductTemplateVariant.sku` are *meant* to carry the manufacturer's SKU (schema comment: variant sku is "manufacturer stock-keeping unit for this exact config"). So importing the sheet's SKU into Base SKU is intended — there is no separate iLaunchify-minted SKU it would displace. Uniqueness here is deliberately loose: `familyCode` is only `@@index`ed (NOT unique); variant `sku` is unique **only within one product** (`@@unique([productTemplateId, sku])`), not across the partner's catalog or globally. Only **GTIN** is the globally-unique retail key.
+
+3. **`manufacturerRefs` (the imported references) are reference-only** — ERP / warehouse / legacy codes, never identity, never used for matching.
+
+**Open guardrail (follow-up, not built):** we do NOT enforce SKU uniqueness across a partner's catalog — two products (or two imported rows) can share a `familyCode`/Base SKU with no collision warning. If desired later: a soft per-partner duplicate-SKU check at import + in the builder Basics (warn, don't block — GTIN stays the only hard-unique key). Scope is a non-blocking advisory, mirroring the GTIN dedupe pattern.
+
+---
+
 ## Phase B — AI / PDF extraction (NOT built; the seam is clean)
 
 Phase B adds extraction from **unstructured** spec sheets (PDF, scanned docs, free-form Excel) via document-AI / OCR. The research flags it as high-upside but **accuracy-must-be-validated, human-in-the-loop** — and it needs a provider (keys). Crucially, **the rest of the flow does not change.**
