@@ -17,7 +17,6 @@
 // Additive + idempotent. Runs AFTER seedDemoCreator (needs the demo brand).
 
 import { PrismaClient } from '@prisma/client'
-import { getDemoOwnedTargets, mintOwnedProduct } from './seed-demo-creator'
 
 type Domain = 'FOOD' | 'DIETARY_SUPPLEMENT' | 'COSMETIC' | 'PET_PRODUCT'
 type OwnedCat = 'FOOD' | 'BEVERAGE_FUNCTIONAL' | 'SUPPLEMENT' | 'COSMETIC' | 'PET' | null
@@ -47,6 +46,7 @@ interface ProductSpec {
   price: { floorCents: number; costCents: number }
   tiers: { minQty: number; maxQty: number | null; perUnitCostCents: number; perUnitFloorCents: number }[]
   flavors?: { name: string; color: string; soi?: string }[]
+  packaging: { id: string; name: string; icon: string; leadTimeDays: number; priceDelta: number }[]
   food?: { slots: FoodSlot[]; optionals?: FoodOptional[] }
   formulationData?: object
   niches?: { slug: string; isPrimary: boolean }[]
@@ -98,6 +98,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'beauty', isPrimary: true }],
     lifestyleTags: ['vegan'],
+    packaging: [
+      { id: 'dropper-30', name: 'Glass dropper bottle (30 mL)', icon: '💧', leadTimeDays: 14, priceDelta: 0 },
+      { id: 'airless-30', name: 'Airless pump bottle (30 mL)', icon: '🧴', leadTimeDays: 18, priceDelta: 0.4 },
+      { id: 'frosted-30', name: 'Frosted glass bottle (30 mL)', icon: '🫙', leadTimeDays: 16, priceDelta: 0.25 },
+    ],
     sample: { perFlavorCents: 1200 },
   },
 
@@ -139,6 +144,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'energy-performance', isPrimary: true }],
     lifestyleTags: ['gluten-free'],
+    packaging: [
+      { id: 'flowwrap', name: 'Flow-wrap (per bar)', icon: '🍫', leadTimeDays: 12, priceDelta: 0 },
+      { id: 'carton-12', name: '12-bar carton', icon: '📦', leadTimeDays: 14, priceDelta: 0.3 },
+      { id: 'kraft-box', name: 'Kraft retail box', icon: '🟫', leadTimeDays: 16, priceDelta: 0.45 },
+    ],
     sample: { perFlavorCents: 600 },
   },
 
@@ -179,6 +189,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'healthy-lifestyle', isPrimary: true }],
     lifestyleTags: ['sugar-free', 'vegan'],
+    packaging: [
+      { id: 'slim-can', name: '355 mL slim can', icon: '🥤', leadTimeDays: 14, priceDelta: 0 },
+      { id: 'std-can', name: '355 mL standard can', icon: '🥫', leadTimeDays: 14, priceDelta: 0 },
+      { id: 'sleek-can', name: '355 mL sleek can (matte)', icon: '🪙', leadTimeDays: 18, priceDelta: 0.15 },
+    ],
     sample: { perFlavorCents: 400, samplerSetCents: 1500 },
   },
 
@@ -227,6 +242,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'pet-wellness', isPrimary: true }],
     lifestyleTags: ['grain-free'],
+    packaging: [
+      { id: 'resealable', name: 'Resealable kraft pouch (200 g)', icon: '🛍️', leadTimeDays: 12, priceDelta: 0 },
+      { id: 'compostable', name: 'Compostable pouch (200 g)', icon: '🌱', leadTimeDays: 16, priceDelta: 0.25 },
+      { id: 'tub-pet', name: 'Resealable tub (200 g)', icon: '🪣', leadTimeDays: 18, priceDelta: 0.4 },
+    ],
     sample: { perFlavorCents: 500, samplerSetCents: 1800 },
   },
 
@@ -273,6 +293,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'wellness', isPrimary: true }],
     lifestyleTags: ['vegan', 'sugar-free'],
+    packaging: [
+      { id: 'carton-20', name: '20-sachet carton', icon: '📦', leadTimeDays: 14, priceDelta: 0 },
+      { id: 'eco-refill', name: 'Eco refill box (40 sachets)', icon: '♻️', leadTimeDays: 18, priceDelta: 0.2 },
+      { id: 'travel-tin', name: 'Travel tin (10 sachets)', icon: '🥫', leadTimeDays: 16, priceDelta: 0.35 },
+    ],
     sample: { perFlavorCents: 500, samplerSetCents: 1200 },
   },
 
@@ -320,6 +345,11 @@ const SPECS: ProductSpec[] = [
     },
     niches: [{ slug: 'energy-performance', isPrimary: true }],
     lifestyleTags: ['vegetarian'],
+    packaging: [
+      { id: 'byo-box', name: 'Build-your-own box (6)', icon: '📦', leadTimeDays: 14, priceDelta: 0 },
+      { id: 'mailer', name: 'Branded mailer box', icon: '📬', leadTimeDays: 18, priceDelta: 0.5 },
+      { id: 'gift-box', name: 'Premium gift box', icon: '🎁', leadTimeDays: 21, priceDelta: 0.9 },
+    ],
     sample: { perFlavorCents: 600, samplerSetCents: 2200 },
   },
 ]
@@ -351,9 +381,17 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
   console.log('Seeding demo catalog (6 product types × domains)...')
 
   const manuf = await prisma.partnerService.findFirst({ where: { type: 'MANUFACTURING' }, select: { id: true } })
-  // Owned products are minted under EVERY demo brand (demo-creator + sample-creator)
-  // so the sample/checkout flow works whichever account you sign in as.
-  const { brandIds, marketId } = await getDemoOwnedTargets(prisma)
+
+  // Marketplace products are MANUFACTURER-owned templates — public, orderable by
+  // any active creator. A creator only owns a Product once they draft (Start
+  // Launching) or order. So we do NOT mint creator-owned Products here, and we
+  // clean up any that an earlier seed wrongly created for these demo templates
+  // (best-effort — skips any with real orders attached via FK).
+  const demoSlugs = [...SPECS.map((s) => s.slug), 'demo-adaptogen-sparkling-tonic']
+  const demoTemplates = await prisma.productTemplate.findMany({ where: { slug: { in: demoSlugs } }, select: { id: true } })
+  for (const t of demoTemplates) {
+    await prisma.product.deleteMany({ where: { productTemplateId: t.id } }).catch(() => {})
+  }
 
   let made = 0
   for (const spec of SPECS) {
@@ -374,6 +412,7 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
         { label: 'Customizability', value: 80 },
       ],
       flavors: (spec.flavors ?? [{ name: 'Original', color: '#E7E2D8' }]).map((f, i) => ({ id: `f${i}`, name: f.name, color: f.color })),
+      packaging: spec.packaging,
     }
 
     const tpl = await prisma.productTemplate.upsert({
@@ -498,14 +537,6 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
       select: { id: true },
     })
     await prisma.productTemplate.update({ where: { id: tpl.id }, data: { imageAssetId: heroAsset.id } })
-
-    // Owned products under every demo brand (sample/checkout testability).
-    if (spec.ownedCategory && brandIds.length > 0 && marketId) {
-      const variant = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId: tpl.id }, select: { id: true } })
-      await mintOwnedProduct(prisma, brandIds, marketId, {
-        slug: spec.slug, name: spec.name, category: spec.ownedCategory, templateId: tpl.id, variantId: variant?.id ?? null,
-      })
-    }
 
     made++
   }

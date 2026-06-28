@@ -24,7 +24,6 @@ import { seedCertificateCatalog } from './seed-certificate-catalog'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDemoProduct } from './seed-demo-product'
-import { seedDemoCreator } from './seed-demo-creator'
 import { seedDemoCatalog } from './seed-demo-catalog'
 import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
@@ -669,10 +668,9 @@ async function main() {
   // demo-adaptogen-sparkling-tonic.
   await seedDemoProduct(prisma)
 
-  // --- Demo creator + owned products (sample/checkout flow testability) ---
-  await seedDemoCreator(prisma)
-
-  // --- Demo catalog: 6 products (one per pack type) across all domains ---
+  // --- Demo catalog: 6 manufacturer-owned products (one per pack type) across
+  // all domains. Public marketplace templates — NOT creator-owned. A creator
+  // owns a Product only after drafting (Start Launching) or ordering. ---
   await seedDemoCatalog(prisma)
 
   // --- Design Studio template gallery (#148) ---
