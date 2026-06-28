@@ -285,6 +285,7 @@ export interface InitialDraft {
   storageClass: 'AMBIENT' | 'CHILLED' | 'FROZEN' | null
   storageTempMinF: number | null
   storageTempMaxF: number | null
+  countryOfOrigin: string | null
   leadTimeRepeatDays: number | null
   leadTimeFirstRunDays: number | null
   production: {
@@ -331,7 +332,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
       manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
-      storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null
+      storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
       flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown }>
@@ -358,7 +359,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
         manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
-        storageClass: true, storageTempMinF: true, storageTempMaxF: true,
+        storageClass: true, storageTempMinF: true, storageTempMaxF: true, countryOfOrigin: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
         flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true } },
@@ -408,6 +409,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       manufacturingProcesses: tpl.manufacturingProcesses ?? [],
       allergenFreeClaims: tpl.allergenFreeClaims ?? [],
       marketCodes: tpl.marketCodes ?? [],
+      countryOfOrigin: tpl.countryOfOrigin ?? null,
       flavors: tpl.flavorPresets.map((f) => ({
         name: f.name,
         soi: f.statementOfIdentity ?? '',
@@ -1392,6 +1394,7 @@ export interface BasicsPatch {
   familyCode?: string | null // base SKU
   description?: string | null // short
   longDescription?: string | null
+  countryOfOrigin?: string | null // ISO-3166-1 alpha-2 finished-good country of origin
   productType?: 'SINGLE' | 'MULTI_FLAVOR' | 'MULTI_PACK'
   packingProfileId?: string | null
   maxFlavorsPerPack?: number | null // multi-flavor variety cap; null = no cap
@@ -1595,6 +1598,7 @@ export async function updateBasics(
     if (patch.familyCode !== undefined) data.familyCode = patch.familyCode?.trim() || null
     if (patch.description !== undefined) data.description = patch.description?.trim() || null
     if (patch.longDescription !== undefined) data.longDescription = patch.longDescription?.trim() || null
+    if (patch.countryOfOrigin !== undefined) data.countryOfOrigin = patch.countryOfOrigin?.trim() || null
     if (patch.productType !== undefined) data.productType = patch.productType
     if (patch.packingProfileId !== undefined) data.packingProfileId = patch.packingProfileId
     if (patch.maxFlavorsPerPack !== undefined) {
@@ -1685,6 +1689,13 @@ export async function createDraftShell(
           storageClass: string | null
           storageTempMinF: number | null
           storageTempMaxF: number | null
+          moqMin: number | null
+          moqMax: number | null
+          orderIncrement: number | null
+          monthlyCapacity: number | null
+          fulfillmentMode: string | null
+          lotTracking: boolean | null
+          defaultFacilityId: string | null
         }>
       }
     }).partnerProductDefaults.findUnique({ where: { partnerId: partner.id } }).catch(() => null)
@@ -1713,6 +1724,32 @@ export async function createDraftShell(
       },
       select: { id: true, slug: true },
     })
+
+    // Variant-level defaults → pre-fill step 2 by seeding the default variant so
+    // the partner sees MOQ / fulfillment / lot / facility already filled. Best-
+    // effort: a stale facility FK (or any hiccup) must NOT fail the draft —
+    // saveProduction will create/patch the variant later. Cast-guarded.
+    if (defaults?.applyToNewProducts) {
+      const vSeed: Record<string, unknown> = {}
+      if (defaults.moqMin != null) vSeed.moqMin = defaults.moqMin
+      if (defaults.moqMax != null) vSeed.moqMax = defaults.moqMax
+      if (defaults.orderIncrement != null) vSeed.orderIncrement = defaults.orderIncrement
+      if (defaults.monthlyCapacity != null) vSeed.monthlyCapacity = defaults.monthlyCapacity
+      if (defaults.fulfillmentMode) vSeed.fulfillmentMode = defaults.fulfillmentMode
+      if (defaults.lotTracking != null) vSeed.lotTracking = defaults.lotTracking
+      if (defaults.defaultFacilityId) vSeed.facilityId = defaults.defaultFacilityId
+      if (Object.keys(vSeed).length) {
+        try {
+          await (prisma as unknown as {
+            productTemplateVariant: { create: (a: unknown) => Promise<unknown> }
+          }).productTemplateVariant.create({
+            data: { productTemplateId: created.id, containerFormat: 'Default', servingsPerContainer: 1, servingSizeG: 1, ...vSeed },
+          })
+        } catch (vErr) {
+          console.error('[createDraftShell] variant default seed failed (non-fatal):', vErr)
+        }
+      }
+    }
 
     // Audit is best-effort — never let a logging hiccup fail the create.
     try {

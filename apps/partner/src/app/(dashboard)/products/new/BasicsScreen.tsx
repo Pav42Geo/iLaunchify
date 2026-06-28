@@ -20,6 +20,20 @@ import { MediaUpload } from './MediaUpload'
 import { Tag, Filter, FileText, ListPlus } from 'lucide-react'
 import { Section, Field, RichTextField, SmartTextInput } from './_ui'
 
+// Finished-good country of origin (ISO-3166-1 alpha-2). Prefilled from the
+// partner's product defaults; editable per product.
+const COO_OPTS: { value: string; label: string }[] = [
+  { value: 'US', label: 'United States' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'MX', label: 'Mexico' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'FR', label: 'France' },
+  { value: 'IT', label: 'Italy' },
+  { value: 'CN', label: 'China' },
+  { value: 'IN', label: 'India' },
+]
+
 interface Opt { id: string; label: string }
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
@@ -60,6 +74,7 @@ export function BasicsScreen({
   const [subcategoryId, setSubcategoryId] = useState(initial?.subcategoryId ?? '')
   const [shortDesc, setShortDesc] = useState(initial?.description ?? '')
   const [longDesc, setLongDesc] = useState(initial?.longDescription ?? '')
+  const [coo, setCoo] = useState(initial?.countryOfOrigin ?? '')
   const [meta, setMeta] = useState<Meta[]>([])
   const [selNiches, setSelNiches] = useState<string[]>(initial?.nicheIds ?? [])
   const [selTags, setSelTags] = useState<string[]>(initial?.lifestyleTagIds ?? [])
@@ -117,6 +132,7 @@ export function BasicsScreen({
         }
         const res = await updateBasics(id, {
           name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc,
+          countryOfOrigin: coo || null,
           customMeta: meta.filter((m) => m.key.trim()),
         })
         setSaving(res.ok ? 'saved' : 'idle')
@@ -126,7 +142,7 @@ export function BasicsScreen({
     }, 900)
     return () => { if (t.current) clearTimeout(t.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, baseSku, subcategoryId, shortDesc, longDesc, meta])
+  }, [name, baseSku, subcategoryId, shortDesc, longDesc, coo, meta])
 
   // Persist niches (1 primary + ≤2 secondary; first = primary) — debounced.
   const nTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -163,7 +179,7 @@ export function BasicsScreen({
         if (res?.ok) { id = res.data.id; onDraftId(id) }
       }
       if (id) {
-        await updateBasics(id, { name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc, customMeta: meta.filter((m) => m.key.trim()) })
+        await updateBasics(id, { name, subcategoryId, familyCode: baseSku, description: shortDesc, longDescription: longDesc, countryOfOrigin: coo || null, customMeta: meta.filter((m) => m.key.trim()) })
         setSaving('saved')
       }
     }
@@ -217,6 +233,12 @@ export function BasicsScreen({
                 <select className="sel" value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} disabled={!categoryId}>
                   <option value="">{categoryId ? 'Select…' : 'Pick a category first'}</option>
                   {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Country of origin">
+                <select className="sel" value={coo} onChange={(e) => setCoo(e.target.value)}>
+                  <option value="">—</option>
+                  {COO_OPTS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </Field>
               <Field full label="Niches">
