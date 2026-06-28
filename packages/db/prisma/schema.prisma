@@ -211,7 +211,11 @@ enum ProductCategory {
   FOOD
   BEVERAGE_FUNCTIONAL
   SUPPLEMENT
-  // V1.5+: BEAUTY, PET_FOOD, BABY_FOOD
+  COSMETIC
+  PET
+  // Owned-Product category. Mirrors the label-domain set so creators can own
+  // cosmetic + pet products (and order samples for them), not just food/supp.
+  // Additive 2026-06-28 — run `pnpm db:push` + `pnpm db:generate`.
 }
 
 enum ProductStatus {

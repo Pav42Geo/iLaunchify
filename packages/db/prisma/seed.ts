@@ -24,6 +24,7 @@ import { seedCertificateCatalog } from './seed-certificate-catalog'
 import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDemoProduct } from './seed-demo-product'
+import { seedDemoCreator } from './seed-demo-creator'
 import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
@@ -666,6 +667,9 @@ async function main() {
   // Reachable at /marketplace/functional-wellness-beverages/adaptogen-drinks/
   // demo-adaptogen-sparkling-tonic.
   await seedDemoProduct(prisma)
+
+  // --- Demo creator + owned products (sample/checkout flow testability) ---
+  await seedDemoCreator(prisma)
 
   // --- Design Studio template gallery (#148) ---
   // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
