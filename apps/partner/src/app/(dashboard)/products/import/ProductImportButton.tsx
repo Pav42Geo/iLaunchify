@@ -123,6 +123,11 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   // ONE product (or a subset) out of a full multi-product master sheet.
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
+  // Per distinct "Category" value found in the sheet → how to resolve it:
+  // a subcategoryId, '' (use the default category), or '__skip__' (drop those rows).
+  // Lets a mixed sheet file each category correctly, and lets a category iLaunchify
+  // doesn't have be mapped to the closest one or skipped.
+  const [categoryMap, setCategoryMap] = useState<Record<string, string>>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
   const subcatByName = useMemo(() => {
@@ -132,7 +137,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }, [subcategories])
 
   function reset() {
-    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set()); setQuery('')
+    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set()); setQuery(''); setCategoryMap({})
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
@@ -176,7 +181,11 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
     const name = get('name')
     if (name.length < 2) return null
     const catRaw = get('category').toLowerCase()
-    const subcategoryId = (catRaw && subcatByName.get(catRaw)) || defaultSubcatId
+    // Per-category resolution: an explicit choice from the "Categories in your sheet"
+    // panel wins; else an auto-match by name; else the default. '__skip__' drops the row.
+    const eff = catRaw ? (categoryMap[catRaw] ?? (subcatByName.get(catRaw) ?? '')) : ''
+    if (eff === '__skip__') return null
+    const subcategoryId = eff || defaultSubcatId
     if (!subcategoryId) return null
     const cooRaw = get('countryOfOrigin')
     const coo = cooRaw ? (COUNTRY_TO_CODE[cooRaw.toLowerCase()] ?? (cooRaw.length === 2 ? cooRaw.toUpperCase() : cooRaw)) : null
@@ -219,8 +228,26 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       out.push({ import: imp, issues })
     }
     return out
-  }, [rows, mapping, defaultSubcatId, subcatByName, cellOf])
+  }, [rows, mapping, defaultSubcatId, subcatByName, cellOf, categoryMap])
   const skipped = rows.length - valid.length
+
+  // Distinct non-empty "Category" values found in the sheet (only when a Category
+  // column is mapped) + whether each auto-matches one of the partner's subcategories.
+  const distinctCats = useMemo(() => {
+    if (mapping.category == null || (mapping.category as number) < 0) return [] as Array<{ value: string; display: string; count: number; autoId: string | null }>
+    const counts = new Map<string, { display: string; count: number }>()
+    for (const r of rows) {
+      const raw = cellOf(r, 'category')
+      if (!raw) continue
+      const key = raw.toLowerCase()
+      const cur = counts.get(key)
+      if (cur) cur.count++
+      else counts.set(key, { display: raw, count: 1 })
+    }
+    return [...counts.entries()]
+      .map(([value, { display, count }]) => ({ value, display, count, autoId: subcatByName.get(value) ?? null }))
+      .sort((a, b) => b.count - a.count)
+  }, [rows, mapping, subcatByName, cellOf])
   // Rows skipped specifically for a missing NAME (vs. a missing category, which the
   // "pick a default category" hint already covers) — so the footer never says
   // "missing name" when the real blocker is the category.
@@ -353,9 +380,13 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                       <option value="">Select a subcategory…</option>
                       {subcategories.map((s) => <option key={s.id} value={s.id}>{s.categoryName} → {s.name}</option>)}
                     </select>
-                    <span className="mt-1 block text-[12px] text-ink-500">Used for every row, unless a mapped “Category” column matches one of your subcategories.</span>
+                    <span className="mt-1 block text-[12px] text-ink-500">The fallback — used for any product whose category is blank or left on “Use default” below. Map a “Category” column to send different products to different categories.</span>
                   </label>
 
+                  <div className="mb-1.5 grid grid-cols-[1fr_1.2fr] items-center gap-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-ink-500">iLaunchify field</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-ink-500">← matched to your column</span>
+                  </div>
                   <div className="grid gap-2.5">
                     {FIELDS.map((f) => (
                       <div key={f.key} className="grid grid-cols-[1fr_1.2fr] items-center gap-3">
@@ -365,12 +396,44 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                           value={mapping[f.key] ?? ''}
                           onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value === '' ? null : parseInt(e.target.value, 10) }))}
                         >
-                          <option value="">— not mapped —</option>
+                          <option value="">— not in my sheet —</option>
                           {headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
                         </select>
                       </div>
                     ))}
                   </div>
+
+                  {distinctCats.length > 0 && (
+                    <div className="mt-4 overflow-hidden rounded-lg border border-ink-200">
+                      <div className="border-b border-ink-100 bg-ink-50 px-3 py-2">
+                        <span className="text-[12.5px] font-semibold text-ink-900">Categories in your sheet — {distinctCats.length}</span>
+                        <p className="mt-0.5 text-[11.5px] text-ink-500">Send each of your categories to an iLaunchify category. We can&apos;t match? Pick the closest, or skip those products. (Anything left on “Use default” files under the category above.)</p>
+                      </div>
+                      <div className="max-h-52 divide-y divide-ink-100 overflow-auto">
+                        {distinctCats.map((c) => {
+                          const effective = categoryMap[c.value] ?? (c.autoId ?? '')
+                          return (
+                            <div key={c.value} className="grid grid-cols-[1fr_1.3fr] items-center gap-3 px-3 py-1.5">
+                              <span className="min-w-0 truncate text-[12.5px] text-ink-800">
+                                {c.display}
+                                <span className="ml-1 text-ink-400">· {c.count}</span>
+                                {!c.autoId && !categoryMap[c.value] && <span className="ml-1 text-warning-700">· no match</span>}
+                              </span>
+                              <select
+                                className={SEL}
+                                value={effective}
+                                onChange={(e) => setCategoryMap((m) => ({ ...m, [c.value]: e.target.value }))}
+                              >
+                                <option value="">Use default category</option>
+                                <option value="__skip__">Skip these products</option>
+                                {subcategories.map((s) => <option key={s.id} value={s.id}>{s.categoryName} → {s.name}</option>)}
+                              </select>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {preview.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
