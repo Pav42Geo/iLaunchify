@@ -135,6 +135,46 @@ export async function seedDemoProduct(prisma: PrismaClient) {
     return id
   }
 
+  // Real marketing copy so the narrative / properties / flavor sections render
+  // THIS product, not the generic unknown-slug fixture fallback.
+  const ABOUT =
+    'A lightly sparkling adaptogen tonic — the fully-wired demo product. Every ' +
+    'replaceable slot, optional booster, the live Nutrition Facts panel, the ' +
+    'allergen "Contains" line, and the volume pricing ladder are real data and ' +
+    'recompute as you customize.'
+  const marketingDetail = {
+    format: 'Sparkling functional tonic',
+    productionMethod: 'Cold-blended, lightly carbonated, hot-filled',
+    netWeight: '12 fl oz (355 mL)',
+    customizationDescription:
+      'Swap the sweetener (sugar → stevia / monk fruit) or the flavor base, and add ' +
+      'functional boosters (collagen, MCT, L-theanine). The label + allergens recompute live.',
+    performanceBullets: [
+      'Zero-proof functional beverage',
+      'Shelf-stable ~12 months',
+      'Vegan base (whey booster optional)',
+    ],
+    properties: [
+      { label: 'Sweetness', value: 40 },
+      { label: 'Carbonation', value: 55 },
+      { label: 'Functional dose', value: 70 },
+    ],
+    flavors: [{ id: 'original-citrus', name: 'Original Citrus', color: '#F7D154' }],
+    sizeChart: [{ size: '355 mL can', servings: '1', bottle: '355 mL', capsules: '—' }],
+    packingSpecs: [
+      {
+        size: '355 mL can',
+        box: '24-can case',
+        boxIn: '16 × 11 × 5 in',
+        volumeCm3: '7,400',
+        volumeIn3: '451',
+        weightG: '9,200',
+        weightLb: '20.3',
+      },
+    ],
+    about: ABOUT,
+  }
+
   // 5. ProductTemplate (PUBLISHED FOOD).
   const tpl = await prisma.productTemplate.upsert({
     where: { slug: SLUG },
@@ -146,6 +186,8 @@ export async function seedDemoProduct(prisma: PrismaClient) {
       labelingType: 'FOOD',
       priceFloorCents: 180,
       unitCostCents: 240,
+      longDescription: ABOUT,
+      marketingDetail: marketingDetail as object,
     },
     create: {
       slug: SLUG,
@@ -158,6 +200,8 @@ export async function seedDemoProduct(prisma: PrismaClient) {
       labelingType: 'FOOD',
       priceFloorCents: 180,
       unitCostCents: 240,
+      longDescription: ABOUT,
+      marketingDetail: marketingDetail as object,
     },
     select: { id: true },
   })

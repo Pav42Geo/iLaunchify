@@ -30,6 +30,7 @@ import {
   type IngredientAddOn,
 } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
+import { composeContainsAllergens } from '@ilaunchify/nutrition'
 import { recomputeMarketplacePanel } from '@/lib/recipe-recompute-actions'
 
 export interface CustomizeRailProps {
@@ -89,36 +90,18 @@ export function CustomizeRail({
   const totalDelta = replacementDelta + addOnDelta
   const hasChanges = totalDelta !== 0
 
-  // Live allergen "Contains" set — recomputed from the CURRENT composition.
-  // Unlike the Nutrition panel (which needs per-option nutrient deltas the
-  // public recipe loader doesn't carry yet), allergens are fully derivable
-  // from the data already in props: every row, replacement, and add-on carries
-  // its FALCPA Big-9 flags. So this line is accurate and updates on each swap.
-  const baseAllergens = React.useMemo(() => {
-    const s = new Set<string>()
-    for (const ing of ingredients) for (const a of ing.allergens ?? []) s.add(a)
-    return s
-  }, [ingredients])
-
-  const liveAllergens = React.useMemo(() => {
-    const s = new Set<string>()
-    for (const ing of ingredients) {
-      const pickedId = replacements[ing.id]
-      const picked =
-        pickedId && pickedId !== '__default'
-          ? ing.replacements?.find((r) => r.id === pickedId)
-          : null
-      // A swap replaces the default ingredient — so use the chosen
-      // replacement's allergens instead of the base row's.
-      const src = picked ? picked.allergens : ing.allergens
-      for (const a of src ?? []) s.add(a)
-    }
-    for (const id of addOnIds) {
-      const ao = ingredientAddOns.find((a) => a.id === id)
-      for (const a of ao?.allergens ?? []) s.add(a)
-    }
-    return [...s].sort((a, b) => a.localeCompare(b))
-  }, [ingredients, replacements, addOnIds, ingredientAddOns])
+  // Live allergen "Contains" set — recomputed from the CURRENT composition via
+  // the shared, unit-tested composeContainsAllergens (a swap replaces the base's
+  // allergens; a ticked add-on adds its own). Every row/replacement/add-on
+  // already carries its FALCPA Big-9 flags, so this is accurate on each change.
+  const baseAllergens = React.useMemo(
+    () => new Set(composeContainsAllergens(ingredients, ingredientAddOns, {})),
+    [ingredients, ingredientAddOns],
+  )
+  const liveAllergens = React.useMemo(
+    () => composeContainsAllergens(ingredients, ingredientAddOns, { replacements, addOnIds }),
+    [ingredients, ingredientAddOns, replacements, addOnIds],
+  )
 
   const addedAllergens = liveAllergens.filter((a) => !baseAllergens.has(a))
   const removedAllergens = [...baseAllergens]

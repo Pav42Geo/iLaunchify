@@ -1,7 +1,7 @@
 import 'server-only'
 import { prisma } from '@ilaunchify/db'
 import {
-  calculateLabel, toPanelData, type RecipeRow,
+  calculateLabel, toPanelData, composeMarketplaceRows,
   toSupplementPanelData, toInciDeclaration, formatGuaranteedAnalysis,
   petIngredientOrder, adequacyStatement,
   type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition,
@@ -216,16 +216,20 @@ export async function getTemplateRecipeDetail(slug: string): Promise<TemplateRec
       // Need a real serving size to compute a per-serving panel; without a
       // variant we leave nutrition to the fixture.
       if (servingSizeG > 0) {
-        const rows: RecipeRow[] = slots.map((s, i) => ({
-          id: `b${i}`,
-          name: s.baseIngredient.internalName ?? s.baseIngredient.name,
-          per100g: (s.baseIngredient.nutritionPer100g ?? {}) as Record<string, number>,
-          quantity: Number(s.weightG) || 0,
-          unit: 'g',
-          densityGPerMl: s.baseIngredient.densityGPerML ?? undefined,
-          category: 'base',
-          selected: true,
-        }))
+        // Use the SAME composer the live recompute uses (with no selection), so
+        // the public base panel and the customized panel can never diverge.
+        const rows = composeMarketplaceRows(
+          slots.map((s) => ({
+            weightG: Number(s.weightG) || 0,
+            base: {
+              name: s.baseIngredient.internalName ?? s.baseIngredient.name,
+              per100g: (s.baseIngredient.nutritionPer100g ?? {}) as Record<string, number>,
+              densityGPerMl: s.baseIngredient.densityGPerML ?? undefined,
+            },
+          })),
+          [],
+          {},
+        )
         const result = calculateLabel(rows, { basis: 'serving', servingSizeG, servingsPerPackage }, {
           // Age-group-correct %DV (21 CFR 101.9(j)(5)) — infant/child panels.
           audience: tmpl.intendedAgeGroup ?? 'GENERAL',

@@ -13,6 +13,7 @@ export * from './panel-adapter'
 export * from './supplement-facts'
 export * from './domain-labels'
 export * from './marketplace-recompose'
+export * from './contains-allergens'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.

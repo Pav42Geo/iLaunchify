@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { IngredientsList, type IngredientRow, type IngredientAddOn } from '@ilaunchify/ui'
+import { composeContainsAllergens } from '@ilaunchify/nutrition'
 import { findTemplateDetail } from '@/lib/template-detail'
 
 /**
@@ -68,23 +69,12 @@ export function IngredientsTabInner({ slug, ingredients, addOns }: IngredientsTa
   const hasChanges =
     Object.keys(replacements).length > 0 || addOnIds.length > 0
 
-  // Derived allergens (post-swap + post-add-on)
-  const allergens = React.useMemo(() => {
-    const set = new Set<string>()
-    for (const ing of detail.ingredients) {
-      const replacementId = replacements[ing.id]
-      const rep = replacementId
-        ? ing.replacements?.find((r) => r.id === replacementId)
-        : null
-      const active = rep ?? ing
-      for (const a of active.allergens ?? []) set.add(a)
-    }
-    for (const id of addOnIds) {
-      const ao = detail.ingredientAddOns.find((a) => a.id === id)
-      for (const a of ao?.allergens ?? []) set.add(a)
-    }
-    return Array.from(set)
-  }, [detail, replacements, addOnIds])
+  // Derived allergens (post-swap + post-add-on) — shared, unit-tested helper so
+  // this tab and the Customize rail can never disagree on the "Contains" set.
+  const allergens = React.useMemo(
+    () => composeContainsAllergens(detail.ingredients, detail.ingredientAddOns, { replacements, addOnIds }),
+    [detail, replacements, addOnIds],
+  )
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 items-start">
