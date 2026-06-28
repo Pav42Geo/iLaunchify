@@ -335,6 +335,19 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     .findUnique({ where: { id }, select: { longDescription: true, marketingDetail: true } })
     .catch(() => null)
 
+  // Manufacturer's own external references (ERP id, warehouse code, …) — partner-
+  // private; admin sees them on the detail page. Cast-guarded (ships w/ migration).
+  const refsRow = await (prisma as unknown as {
+    productTemplate: { findUnique: (a: unknown) => Promise<{ manufacturerRefs: unknown } | null> }
+  }).productTemplate
+    .findUnique({ where: { id }, select: { manufacturerRefs: true } })
+    .catch(() => null)
+  const manufacturerRefs = Array.isArray(refsRow?.manufacturerRefs)
+    ? (refsRow!.manufacturerRefs as Array<{ label?: unknown; value?: unknown }>)
+        .filter((r) => r && typeof r.value === 'string')
+        .map((r) => ({ label: typeof r.label === 'string' ? r.label : 'Reference', value: r.value as string }))
+    : []
+
   // Marketplace filter attributes (§7) — Format / processes / allergen-free /
   // markets. Cast-guarded — these columns ship with a pending migration.
   const filterAttrs = await (prisma as unknown as {
@@ -1663,6 +1676,28 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               }))}
             />
           </div>
+
+          {/* Manufacturer's own external references (ERP id, warehouse/bin code,
+              legacy SKU, …). Partner-private tracking codes — reference-only,
+              the platform never keys off them. Read-only for admin. */}
+          {manufacturerRefs.length > 0 && (
+            <SnapshotCard icon={Hash} title="Manufacturer references" compact>
+              <dl className="space-y-2">
+                {manufacturerRefs.map((r, i) => (
+                  <div key={i} className="flex items-baseline justify-between gap-3">
+                    <dt className="shrink-0 text-[12px] text-ink-500">{r.label}</dt>
+                    <dd className="truncate font-mono text-[12px] font-medium text-ink-900" title={r.value}>
+                      {r.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 text-[11px] leading-snug text-ink-400">
+                The partner&rsquo;s own tracking codes (ERP, warehouse, legacy SKU). Reference only —
+                iLaunchify never routes or matches on these.
+              </p>
+            </SnapshotCard>
+          )}
 
           {/* Quick actions */}
           <SnapshotCard icon={ExternalLink} title="Quick actions" compact>

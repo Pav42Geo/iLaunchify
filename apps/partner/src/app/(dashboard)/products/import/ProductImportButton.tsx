@@ -9,7 +9,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { bulkImportProducts, parseSpreadsheet, type ImportRow, type ImportResult } from './import-actions'
 
 function abToB64(buf: ArrayBuffer): string {
@@ -293,6 +293,18 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   }, [rows, refMappings])
   const previewRefs = useMemo(() => buildRefs(pIdx), [buildRefs, pIdx])
 
+  // Columns from the sheet not yet consumed by an iLaunchify field OR a reference —
+  // offered as one-click "keep as my reference" so nothing in the sheet is silently
+  // dropped. Adding one moves it into the references list above (and out of here).
+  const unmatchedCols = useMemo(() => {
+    const used = new Set<number>()
+    for (const k of Object.keys(mapping)) { const v = mapping[k]; if (v != null && v >= 0) used.add(v) }
+    for (const rm of refMappings) { if (rm.col != null && rm.col >= 0) used.add(rm.col) }
+    return headers
+      .map((h, i) => ({ label: (h || `Column ${i + 1}`).trim(), col: i }))
+      .filter(({ col }) => !used.has(col))
+  }, [headers, mapping, refMappings])
+
   // Which rows the partner has actually changed (override differs from the cell) —
   // for the "edited" markers in the preview header + the choose-products list.
   const editedRows = useMemo(() => {
@@ -490,6 +502,28 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                       <button type="button" onClick={() => setRefMappings((rs) => [...rs, { id: seqRef.current++, label: '', col: null }])} className="mt-2 text-[12.5px] font-semibold text-pink-700 hover:text-pink-800">
                         + Add a reference
                       </button>
+                    )}
+
+                    {unmatchedCols.length > 0 && refMappings.length < 8 && (
+                      <div className="mt-3 border-t border-ink-100 pt-2.5">
+                        <div className="text-[11.5px] text-ink-500">
+                          Other columns in your sheet — tap to keep as a reference{' '}
+                          <span className="text-ink-400">(applies to every product you import; each keeps its own value)</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {unmatchedCols.map((c) => (
+                            <button
+                              key={c.col}
+                              type="button"
+                              onClick={() => setRefMappings((rs) => (rs.length >= 8 ? rs : [...rs, { id: seqRef.current++, label: c.label, col: c.col }]))}
+                              className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-[12px] font-medium text-ink-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-800"
+                            >
+                              <Plus className="h-3 w-3" />
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
 
