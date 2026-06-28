@@ -104,6 +104,21 @@ export async function declineDispatch({
   // types still go to ON_HOLD for admin manual reroute until #153 lands
   // marketplace auto-rerouting.
   const isManufacturerReject = dispatch.type === 'PRODUCT'
+
+  // A manufacturer decline CANCELS a paid order — the creator is owed their money
+  // back. Capture that as a structured PENDING SupportRefundRequest (lands in the
+  // admin refund Inbox, which has the approve→executeOrderRefund action + approver
+  // notifications) instead of relying on a free-text "refund needed" note that an
+  // admin could miss. Only when money was actually captured (a dispatch exists ⇒ the
+  // order was PAID, so a SUCCEEDED Charge should be present). Amount = the real
+  // captured charge, not the order total.
+  const paidCharge = isManufacturerReject
+    ? await prisma.charge.findFirst({
+        where: { orderId: dispatch.orderId, status: 'SUCCEEDED' },
+        select: { amountCents: true },
+      })
+    : null
+
   await prisma.$transaction(async (tx) => {
     await tx.orderDispatch.update({
       where: { id: dispatch.id },
@@ -123,6 +138,17 @@ export async function declineDispatch({
           internalNotes: `Manufacturer declined (${reason}): ${notes ?? ''} — order cancelled, refund needed`,
         },
       })
+      // Structured refund obligation (skipped if somehow unpaid — nothing to refund).
+      if (paidCharge && paidCharge.amountCents > 0) {
+        await tx.supportRefundRequest.create({
+          data: {
+            orderId: dispatch.orderId,
+            requestedById: user.id,
+            amountCents: paidCharge.amountCents,
+            reason: `Manufacturer declined production (${reason}) — order auto-cancelled, full refund owed`,
+          },
+        })
+      }
     } else {
       await tx.order.update({
         where: { id: dispatch.orderId },

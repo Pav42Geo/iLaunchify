@@ -82,6 +82,14 @@ export async function respondToDispatchDelay({
   } else {
     // Reject → decline the dispatch + cancel the order (refund needed). Mirrors the
     // manufacturer-decline path; manufacturing is owner-pinned so there's no reroute.
+    // The order is PAID (a dispatch exists), so capture the refund obligation as a
+    // structured PENDING SupportRefundRequest — it lands in the admin refund Inbox
+    // (approve→executeOrderRefund) instead of living only in a note that could be
+    // missed. Amount = the real captured charge.
+    const paidCharge = await prisma.charge.findFirst({
+      where: { orderId: dispatch.orderId, status: 'SUCCEEDED' },
+      select: { amountCents: true },
+    })
     await prisma.$transaction(async (tx) => {
       await (tx as unknown as { orderDispatch: { update: (a: unknown) => Promise<unknown> } }).orderDispatch.update({
         where: { id: dispatch.id },
@@ -95,6 +103,16 @@ export async function respondToDispatchDelay({
           internalNotes: 'Creator rejected the partner’s proposed delay — order cancelled, refund needed',
         },
       })
+      if (paidCharge && paidCharge.amountCents > 0) {
+        await tx.supportRefundRequest.create({
+          data: {
+            orderId: dispatch.orderId,
+            requestedById: user.id,
+            amountCents: paidCharge.amountCents,
+            reason: 'Creator rejected the partner’s proposed delivery delay — order auto-cancelled, full refund owed',
+          },
+        })
+      }
     })
 
     await logAuditAs(user, {
