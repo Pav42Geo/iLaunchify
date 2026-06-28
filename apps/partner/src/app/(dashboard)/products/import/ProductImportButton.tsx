@@ -9,7 +9,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search } from 'lucide-react'
+import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { bulkImportProducts, parseSpreadsheet, type ImportRow, type ImportResult } from './import-actions'
 
 function abToB64(buf: ArrayBuffer): string {
@@ -113,6 +113,8 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, number | null>>({})
+  const [previewIdx, setPreviewIdx] = useState(0) // which row the preview/editor shows
+  const [overrides, setOverrides] = useState<Record<number, Record<string, string>>>({}) // rowIndex → field → tweaked value
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<ImportResult[] | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set()) // keyed by raw row index
@@ -151,6 +153,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setResults(null); setDrag(false)
     setSelected(new Set()); setQuery(''); setAssign({}); setBulkCat(''); setBulkSub('')
     setSuggCats([]); setSuggSubs({}); setAddModal(null); setAddName(''); seqRef.current = 0
+    setPreviewIdx(0); setOverrides({})
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
@@ -164,7 +167,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
       })
       map[f.key] = idx >= 0 ? idx : null
     }
-    setFileName(name); setHeaders(h); setRows(r); setMapping(map); setStep('map')
+    setFileName(name); setHeaders(h); setRows(r); setMapping(map); setPreviewIdx(0); setOverrides({}); setStep('map')
   }, [])
 
   function onFile(file: File | undefined) {
@@ -192,42 +195,51 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     [mapping],
   )
 
-  function rowToBase(r: string[]): BaseRow | null {
-    const get = (key: string) => cellOf(r, key)
-    const name = get('name')
+  // The effective value for a field on a row: a manufacturer's inline edit (preview
+  // editor) wins, else the mapped cell. Drives the editable preview AND the import.
+  const valueFor = useCallback((rowIndex: number, key: string): string => {
+    const o = overrides[rowIndex]?.[key]
+    if (o != null) return o
+    const r = rows[rowIndex]
+    return r ? cellOf(r, key) : ''
+  }, [overrides, rows, cellOf])
+
+  function rowToBase(rowIndex: number): BaseRow | null {
+    const g = (key: string) => valueFor(rowIndex, key)
+    const name = g('name')
     if (name.length < 2) return null
-    const cooRaw = get('countryOfOrigin')
+    const cooRaw = g('countryOfOrigin')
     const coo = cooRaw ? (COUNTRY_TO_CODE[cooRaw.toLowerCase()] ?? (cooRaw.length === 2 ? cooRaw.toUpperCase() : cooRaw)) : null
     return {
       name,
-      familyCode: get('familyCode') || null,
-      description: get('description') || null,
+      familyCode: g('familyCode') || null,
+      description: g('description') || null,
       countryOfOrigin: coo,
-      moqMin: toInt(get('moqMin')),
-      orderIncrement: toInt(get('orderIncrement')),
-      leadTimeRepeatDays: toInt(get('leadTimeRepeatDays')),
-      leadTimeFirstRunDays: toInt(get('leadTimeFirstRunDays')),
-      monthlyCapacity: toInt(get('monthlyCapacity')),
-      shelfLifeDays: toInt(get('shelfLifeDays')),
-      netContentValue: toNum(get('netContentValue')),
-      netContentUnit: get('netContentUnit') || null,
+      moqMin: toInt(g('moqMin')),
+      orderIncrement: toInt(g('orderIncrement')),
+      leadTimeRepeatDays: toInt(g('leadTimeRepeatDays')),
+      leadTimeFirstRunDays: toInt(g('leadTimeFirstRunDays')),
+      monthlyCapacity: toInt(g('monthlyCapacity')),
+      shelfLifeDays: toInt(g('shelfLifeDays')),
+      netContentValue: toNum(g('netContentValue')),
+      netContentUnit: g('netContentUnit') || null,
     }
   }
 
   const valid = useMemo(() => {
     const out: Array<{ base: BaseRow; issues: number; rowIndex: number; sheetCategory: string }> = []
     rows.forEach((r, rowIndex) => {
-      const base = rowToBase(r)
+      const base = rowToBase(rowIndex)
       if (!base) return
       let issues = 0
       for (const f of FIELDS) {
         if (f.key === 'category') continue
-        if (fieldResolve(f, cellOf(r, String(f.key))).flag === 'check') issues++
+        if (fieldResolve(f, valueFor(rowIndex, String(f.key))).flag === 'check') issues++
       }
       out.push({ base, issues, rowIndex, sheetCategory: cellOf(r, 'category') })
     })
     return out
-  }, [rows, mapping, cellOf])
+  }, [rows, mapping, cellOf, valueFor])
 
   const skippedNoName = useMemo(() => rows.filter((r) => cellOf(r, 'name').length < 2).length, [rows, cellOf])
   const nameMapped = mapping.name != null && mapping.name >= 0
@@ -251,16 +263,19 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     return !!e.subcategoryId || isSugCat(e.categoryId)
   }, [effAssign])
 
-  const preview = useMemo(() => {
-    if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; mapped: boolean; shown: string; raw: string; flag: PreviewFlag }>
-    const row = rows[0]!
+  // Editable per-product preview. `pIdx` is the row currently shown; the partner
+  // pages through with < >. Each field is an input bound to valueFor → overrides.
+  const pIdx = rows.length ? Math.min(previewIdx, rows.length - 1) : 0
+  const previewFields = useMemo(() => {
+    if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; value: string; flag: PreviewFlag }>
     return FIELDS.filter((f) => f.key !== 'category').map((f) => {
-      const raw = cellOf(row, String(f.key))
-      const { shown, flag } = fieldResolve(f, raw)
-      return { key: String(f.key), label: f.label, required: !!f.required, mapped: mapping[f.key] != null && (mapping[f.key] as number) >= 0, shown, raw, flag }
+      const value = valueFor(pIdx, String(f.key))
+      const { flag } = fieldResolve(f, value)
+      return { key: String(f.key), label: f.label, required: !!f.required, value, flag }
     })
-  }, [rows, mapping, cellOf])
-  const previewIssues = preview.filter((p) => p.flag === 'missing' || p.flag === 'check').length
+  }, [rows, pIdx, valueFor])
+  const previewIssues = previewFields.filter((p) => p.flag === 'missing' || p.flag === 'check').length
+  const previewName = rows.length ? valueFor(pIdx, 'name') : ''
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -417,35 +432,44 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                     ))}
                   </div>
 
-                  {preview.length > 0 && (
+                  {rows.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
-                      <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50 px-3 py-2">
-                        <span className="text-[12.5px] font-semibold text-ink-900">
-                          {`Preview — first of ${rows.length} row${rows.length === 1 ? '' : 's'}`}
-                        </span>
-                        <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
-                          {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
-                        </span>
+                      <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-ink-50 px-3 py-2">
+                        <span className="min-w-0 truncate text-[12.5px] font-semibold text-ink-900">Preview — {previewName || `Row ${pIdx + 1}`}</span>
+                        <div className="flex flex-none items-center gap-2">
+                          <span className={`text-[12px] font-medium ${previewIssues > 0 ? 'text-warning-700' : 'text-success-700'}`}>
+                            {previewIssues > 0 ? `${previewIssues} to check` : 'Looks clean'}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button type="button" aria-label="Previous product" disabled={pIdx === 0} onClick={() => setPreviewIdx((i) => Math.max(0, i - 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
+                              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                            <span className="text-[11.5px] tabular-nums text-ink-500">{pIdx + 1} / {rows.length}</span>
+                            <button type="button" aria-label="Next product" disabled={pIdx >= rows.length - 1} onClick={() => setPreviewIdx((i) => Math.min(rows.length - 1, i + 1))} className="grid h-6 w-6 place-items-center rounded-md border border-ink-200 text-ink-600 hover:bg-ink-100 disabled:opacity-40">
+                              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <dl className="divide-y divide-ink-100">
-                        {preview.filter((p) => p.mapped || p.flag === 'missing').map((p) => (
-                          <div key={p.key} className="grid grid-cols-[1fr_1.3fr] items-baseline gap-3 px-3 py-1.5">
-                            <dt className="text-[12.5px] text-ink-600">{p.label}{p.required && <span className="text-pink-700"> *</span>}</dt>
-                            <dd className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px]">
-                              {p.flag === 'missing' ? (
-                                <span className="font-medium text-danger-700">Missing</span>
-                              ) : p.flag === 'check' ? (
-                                <>
-                                  <span className="font-medium text-ink-900">{p.shown || '—'}</span>
-                                  <span className="text-warning-700">· check “{p.raw}”</span>
-                                </>
-                              ) : (
-                                <span className="font-medium text-ink-900">{p.shown || '—'}</span>
-                              )}
-                            </dd>
+                      <div className="divide-y divide-ink-100">
+                        {previewFields.map((p) => (
+                          <div key={p.key} className="grid grid-cols-[1fr_1.4fr] items-center gap-3 px-3 py-1.5">
+                            <label htmlFor={`pv-${p.key}`} className="text-[12.5px] text-ink-600">{p.label}{p.required && <span className="text-pink-700"> *</span>}</label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                id={`pv-${p.key}`}
+                                value={p.value}
+                                onChange={(ev) => setOverrides((o) => ({ ...o, [pIdx]: { ...(o[pIdx] ?? {}), [p.key]: ev.target.value } }))}
+                                placeholder="—"
+                                className={`w-full rounded-md border bg-white px-2 py-1 text-[12.5px] text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-pink-100 ${p.flag === 'missing' ? 'border-danger-300 focus:border-danger-400' : p.flag === 'check' ? 'border-warning-300 focus:border-warning-400' : 'border-ink-200 focus:border-pink-500'}`}
+                              />
+                              {p.flag === 'check' && <span className="flex-none text-[11px] text-warning-700">check</span>}
+                              {p.flag === 'missing' && <span className="flex-none text-[11px] text-danger-600">required</span>}
+                            </div>
                           </div>
                         ))}
-                      </dl>
+                      </div>
+                      <p className="border-t border-ink-100 px-3 py-1.5 text-[11px] text-ink-500">Edits apply to this product only. Use ‹ › to review each one.</p>
                     </div>
                   )}
 
