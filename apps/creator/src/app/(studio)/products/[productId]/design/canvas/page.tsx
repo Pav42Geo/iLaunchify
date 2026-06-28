@@ -181,10 +181,12 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // ---- Resolve die-cut ------------------------------------------------------
   // V1: pick a sensible default per product category until admin packaging
   // curation (#135) actually assigns die-cuts to products.
-  // Prefer the variant's manufacturer-chosen die-line; only guess from category
-  // when the variant has none (legacy products / no die-line assigned yet).
+  // Die-line resolution order: (1) the variant's own manufacturer-chosen
+  // die-line; (2) the admin-curated default for the variant's packaging type
+  // (#135); (3) a category guess. So a product always lands on its real cut.
   const dieCut =
     (await resolveDieCutById(product.variant?.dieCutTemplateId ?? null)) ??
+    (await resolveDieCutById(await resolvePackagingTypeDieCut(product.variant?.packagingTypeId ?? null))) ??
     (await resolveDefaultDieCut(studioCategory(product.category)))
   if (!dieCut) {
     // No die-cuts seeded — kick back to product overview with a clear hint.
@@ -480,6 +482,18 @@ function deriveProductCtx(product: {
 
 // Pick a default DieCutTemplate by product category.
 // V1 fallback: first ACTIVE die-cut whose category roughly matches the product.
+// The admin-curated default die-line for a packaging type (#135). Cast-guarded
+// so it compiles before the client is regenerated for the new column.
+async function resolvePackagingTypeDieCut(packagingTypeId: string | null): Promise<string | null> {
+  if (!packagingTypeId) return null
+  const row = await (prisma as unknown as {
+    packagingType: { findUnique: (a: unknown) => Promise<{ defaultDieCutTemplateId: string | null } | null> }
+  }).packagingType
+    .findUnique({ where: { id: packagingTypeId }, select: { defaultDieCutTemplateId: true } })
+    .catch(() => null)
+  return row?.defaultDieCutTemplateId ?? null
+}
+
 // Load a specific die-cut by id (the variant's manufacturer-chosen die-line).
 async function resolveDieCutById(id: string | null): Promise<DieCutSpec | null> {
   if (!id) return null

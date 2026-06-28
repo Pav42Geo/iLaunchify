@@ -1737,6 +1737,8 @@ model DieCutTemplate {
   templateVariants ProductTemplateVariant[]
   // Partner die-lines normalized against this canonical shape (P2 mapping).
   mappedDielines   PackagingDieline[]       @relation("DielineCanonicalShape")
+  // #135 — packaging-type catalogs that use this as their default die-line.
+  defaultForPackagingTypes PackagingType[]  @relation("PackagingTypeDefaultDieCut")
   createdAt        DateTime                 @default(now())
 }
 
@@ -4374,6 +4376,10 @@ model PackagingType {
   defaultDimensions  Json? // { lengthMm, widthMm, heightMm }
   defaultSurfaces    Json? // [{ name, defaultBleedMm }]
   status             PackagingTypeStatus        @default(ACTIVE)
+  // #135 — admin-curated default die-line for this container. The Studio uses it
+  // as the fallback when a product's variant has no die-line of its own.
+  defaultDieCutTemplateId String?
+  defaultDieCut           DieCutTemplate?       @relation("PackagingTypeDefaultDieCut", fields: [defaultDieCutTemplateId], references: [id])
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
   systems            PackagingSystem[]

@@ -71,7 +71,7 @@ export async function loadReviewSnapshot(
       id: productId,
       brand: { creatorProfile: { userId: user.id } },
     },
-    select: { id: true, category: true, variant: { select: { dieCutTemplateId: true } } },
+    select: { id: true, category: true, variant: { select: { dieCutTemplateId: true, packagingTypeId: true } } },
   })
   if (!product) return emptySnapshot()
 
@@ -89,10 +89,11 @@ export async function loadReviewSnapshot(
     },
   })
 
-  // Die-cut — prefer the variant's manufacturer-chosen die-line; fall back to a
+  // Die-line: variant's own → admin-curated packaging-type default (#135) →
   // category default (COSMETIC/PET narrow to their closest packaging regime).
   const dieCut =
     (await resolveDieCutById(product.variant?.dieCutTemplateId ?? null)) ??
+    (await resolveDieCutById(await resolvePackagingTypeDieCut(product.variant?.packagingTypeId ?? null))) ??
     (await resolveDefaultDieCut(
       product.category === 'SUPPLEMENT'
         ? 'SUPPLEMENT'
@@ -239,6 +240,18 @@ function readComplianceState(generationMeta: unknown): ComplianceState {
  * product category. Kept inline (rather than imported) so this server
  * action stays self-contained.
  */
+// Admin-curated default die-line for a packaging type (#135). Cast-guarded so it
+// compiles before the client is regenerated for the new column.
+async function resolvePackagingTypeDieCut(packagingTypeId: string | null): Promise<string | null> {
+  if (!packagingTypeId) return null
+  const row = await (prisma as unknown as {
+    packagingType: { findUnique: (a: unknown) => Promise<{ defaultDieCutTemplateId: string | null } | null> }
+  }).packagingType
+    .findUnique({ where: { id: packagingTypeId }, select: { defaultDieCutTemplateId: true } })
+    .catch(() => null)
+  return row?.defaultDieCutTemplateId ?? null
+}
+
 // Load a specific die-cut by id (the variant's manufacturer-chosen die-line).
 async function resolveDieCutById(id: string | null): Promise<ReviewSnapshot['dieCut']> {
   if (!id) return null
