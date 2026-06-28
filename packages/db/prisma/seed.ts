@@ -25,6 +25,7 @@ import { seedIngredientDictionaries } from './seed-ingredient-dictionaries'
 import { seedStarterTemplates } from './seed-starter-templates'
 import { seedDemoProduct } from './seed-demo-product'
 import { seedDemoCreator } from './seed-demo-creator'
+import { seedDemoCatalog } from './seed-demo-catalog'
 import { seedFilterDimensions } from './seed-filter-dimensions'
 import { seedPricingBridge } from './seed-pricing-bridge'
 import { seedDesignLibrary } from './seed-design-library'
@@ -670,6 +671,9 @@ async function main() {
 
   // --- Demo creator + owned products (sample/checkout flow testability) ---
   await seedDemoCreator(prisma)
+
+  // --- Demo catalog: 6 products (one per pack type) across all domains ---
+  await seedDemoCatalog(prisma)
 
   // --- Design Studio template gallery (#148) ---
   // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
