@@ -24,20 +24,24 @@ interface SubcatOption { id: string; name: string; categoryName: string }
 // Importable target fields + header-matching aliases for auto-mapping.
 type FieldKind = 'text' | 'int' | 'num' | 'coo'
 interface FieldDef { key: keyof ImportRow | 'category'; label: string; required?: boolean; kind: FieldKind; aliases: string[] }
+// Aliases cover common ERP / commerce / PIM export headers (NetSuite, Shopify,
+// QuickBooks, Akeneo/Salsify, GS1 GDM) so a dropped export auto-maps. Matching
+// is first-field-wins over `header === alias || header.includes(alias)`, so the
+// more specific fields are ordered to claim their columns first.
 const FIELDS: FieldDef[] = [
-  { key: 'name', label: 'Product name', required: true, kind: 'text', aliases: ['name', 'product', 'product name', 'title', 'item', 'item name'] },
-  { key: 'category', label: 'Category (optional)', kind: 'text', aliases: ['category', 'subcategory', 'type', 'product type'] },
-  { key: 'familyCode', label: 'Base SKU', kind: 'text', aliases: ['sku', 'base sku', 'family', 'code', 'item code'] },
-  { key: 'description', label: 'Short description', kind: 'text', aliases: ['description', 'desc', 'summary'] },
-  { key: 'countryOfOrigin', label: 'Country of origin', kind: 'coo', aliases: ['country', 'origin', 'coo', 'country of origin', 'made in'] },
-  { key: 'moqMin', label: 'MOQ', kind: 'int', aliases: ['moq', 'minimum', 'min order', 'minimum order'] },
-  { key: 'orderIncrement', label: 'Order increment', kind: 'int', aliases: ['increment', 'step', 'order increment'] },
-  { key: 'leadTimeRepeatDays', label: 'Repeat lead time (days)', kind: 'int', aliases: ['lead', 'lead time', 'repeat lead', 'lead days'] },
-  { key: 'leadTimeFirstRunDays', label: 'First-run lead time (days)', kind: 'int', aliases: ['first run', 'new sku lead', 'first-run lead'] },
-  { key: 'monthlyCapacity', label: 'Monthly capacity', kind: 'int', aliases: ['capacity', 'monthly capacity'] },
+  { key: 'name', label: 'Product name', required: true, kind: 'text', aliases: ['product name', 'display name', 'item name', 'product title', 'name', 'title'] },
+  { key: 'category', label: 'Category (optional)', kind: 'text', aliases: ['category', 'subcategory', 'product type', 'item type', 'class', 'type'] },
+  { key: 'familyCode', label: 'Base SKU', kind: 'text', aliases: ['base sku', 'variant sku', 'item number', 'item code', 'part number', 'mpn', 'style number', 'sku', 'code'] },
+  { key: 'description', label: 'Short description', kind: 'text', aliases: ['short description', 'body html', 'body (html)', 'long description', 'product description', 'description', 'desc', 'summary'] },
+  { key: 'countryOfOrigin', label: 'Country of origin', kind: 'coo', aliases: ['country of origin', 'country of manufacture', 'manufactured in', 'made in', 'origin', 'coo', 'country'] },
+  { key: 'moqMin', label: 'MOQ', kind: 'int', aliases: ['moq', 'minimum order quantity', 'min order qty', 'min qty', 'minimum order', 'min order', 'minimum'] },
+  { key: 'orderIncrement', label: 'Order increment', kind: 'int', aliases: ['order increment', 'increment', 'step'] },
+  { key: 'leadTimeRepeatDays', label: 'Repeat lead time (days)', kind: 'int', aliases: ['repeat lead', 'lead time days', 'lead time', 'lead days', 'lead'] },
+  { key: 'leadTimeFirstRunDays', label: 'First-run lead time (days)', kind: 'int', aliases: ['first-run lead', 'first run', 'new sku lead'] },
+  { key: 'monthlyCapacity', label: 'Monthly capacity', kind: 'int', aliases: ['monthly capacity', 'capacity'] },
   { key: 'shelfLifeDays', label: 'Shelf life (days)', kind: 'int', aliases: ['shelf life', 'shelf', 'expiry', 'expiration'] },
-  { key: 'netContentValue', label: 'Net content value', kind: 'num', aliases: ['net content', 'net weight', 'net', 'content', 'fill'] },
-  { key: 'netContentUnit', label: 'Net content unit', kind: 'text', aliases: ['unit', 'net unit', 'uom', 'content unit'] },
+  { key: 'netContentValue', label: 'Net content value', kind: 'num', aliases: ['net content', 'net weight', 'variant grams', 'fill weight', 'grams', 'fill', 'net', 'content'] },
+  { key: 'netContentUnit', label: 'Net content unit', kind: 'text', aliases: ['net content unit', 'weight unit', 'unit of measure', 'net unit', 'content unit', 'uom', 'unit'] },
 ]
 
 const COUNTRY_TO_CODE: Record<string, string> = {
