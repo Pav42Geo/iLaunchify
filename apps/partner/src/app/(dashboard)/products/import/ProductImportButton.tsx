@@ -93,7 +93,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   const single = mode === 'single'
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<'drop' | 'map' | 'done'>('drop')
+  const [step, setStep] = useState<'drop' | 'map' | 'select' | 'done'>('drop')
   const [drag, setDrag] = useState(false)
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState<string[]>([])
@@ -102,6 +102,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   const [defaultSubcatId, setDefaultSubcatId] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<ImportResult[] | null>(null)
+  // Indices (into `valid`) the partner chose to import. Lets a manufacturer pull
+  // ONE product (or a subset) out of a full multi-product master sheet.
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
 
   const subcatByName = useMemo(() => {
@@ -111,7 +114,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }, [subcategories])
 
   function reset() {
-    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false)
+    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set())
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
@@ -213,13 +216,24 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }, [rows, mapping])
   const previewIssues = preview.filter((p) => p.flag === 'missing' || p.flag === 'check').length
 
-  function commit() {
+  // From the mapping step: when the sheet has more than one product, go to the
+  // selection step so the partner can pick which to import; a single-product sheet
+  // skips straight to import.
+  function next() {
     if (!valid.length) { toast.error(single ? 'No usable product row found.' : 'No valid rows to import.'); return }
+    if (valid.length === 1) { commitRows(valid); return }
+    // Default: single → first product highlighted; bulk → everything selected.
+    setSelected(single ? new Set([0]) : new Set(valid.map((_, i) => i)))
+    setStep('select')
+  }
+
+  function commitRows(rowsToImport: ImportRow[]) {
+    if (!rowsToImport.length) { toast.error(single ? 'Pick a product to set up.' : 'Select at least one product.'); return }
     setBusy(true)
     if (single) {
-      // Single-product spec-sheet fill: create ONE draft from the first row and
+      // Single-product spec-sheet fill: create ONE draft (the chosen product) and
       // drop the partner into the builder to review + finish (authoring → review).
-      bulkImportProducts([valid[0]!]).then((res) => {
+      bulkImportProducts([rowsToImport[0]!]).then((res) => {
         setBusy(false)
         if (!res.ok) { toast.error(res.error); return }
         const r = res.results[0]
@@ -228,7 +242,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       })
       return
     }
-    bulkImportProducts(valid).then((res) => {
+    bulkImportProducts(rowsToImport).then((res) => {
       setBusy(false)
       if (!res.ok) { toast.error(res.error); return }
       setResults(res.results); setStep('done')
@@ -236,6 +250,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       if (ok) { toast.success(`Created ${ok} draft${ok === 1 ? '' : 's'}`); router.refresh() }
     })
   }
+
+  // Rows the partner ticked on the selection step.
+  const chosen = useMemo(() => valid.filter((_, i) => selected.has(i)), [valid, selected])
 
   return (
     <>
@@ -369,6 +386,54 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                 </>
               )}
 
+              {step === 'select' && (
+                <>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <span className="text-[13px] font-semibold text-ink-900">
+                      {single
+                        ? `Pick the product to set up — ${valid.length} found`
+                        : `Choose products to import — ${valid.length} found`}
+                    </span>
+                    {!single && (
+                      <div className="flex items-center gap-2 text-[12px]">
+                        <button type="button" onClick={() => setSelected(new Set(valid.map((_, i) => i)))} className="font-semibold text-pink-700 hover:text-pink-800">All</button>
+                        <span className="text-ink-300">·</span>
+                        <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="max-h-[46vh] divide-y divide-ink-100 overflow-auto rounded-lg border border-ink-200">
+                    {valid.map((row, i) => {
+                      const on = selected.has(i)
+                      return (
+                        <label key={i} className={`flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-ink-50 ${on ? 'bg-pink-50/40' : ''}`}>
+                          <input
+                            type={single ? 'radio' : 'checkbox'}
+                            name="pick-product"
+                            checked={on}
+                            onChange={() => setSelected((s) => {
+                              if (single) return new Set([i])
+                              const n = new Set(s)
+                              if (n.has(i)) n.delete(i); else n.add(i)
+                              return n
+                            })}
+                            className="h-4 w-4 flex-none accent-pink-600"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-900">{row.name}</span>
+                          {row.familyCode && <span className="flex-none truncate text-[12px] text-ink-500">{row.familyCode}</span>}
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-[12.5px] text-ink-600">
+                    <span className="font-semibold text-ink-900">
+                      {single ? (chosen.length ? '1 selected' : 'Pick one to continue') : `${chosen.length} of ${valid.length} selected`}
+                    </span>
+                    {skipped > 0 && <span className="text-ink-500">· {skipped} row{skipped === 1 ? '' : 's'} skipped (missing name)</span>}
+                  </div>
+                </>
+              )}
+
               {step === 'done' && results && (
                 <div>
                   <div className="mb-4 flex items-center gap-2 text-[14px] font-semibold text-ink-900">
@@ -396,16 +461,36 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   <button type="button" onClick={() => setStep('drop')} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Back</button>
                   <button
                     type="button"
-                    onClick={commit}
+                    onClick={next}
                     disabled={busy || !valid.length || !nameMapped || !defaultSubcatId}
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
                   >
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {busy
-                      ? (single ? 'Creating…' : 'Creating…')
+                      ? 'Creating…'
+                      : valid.length > 1
+                        ? 'Choose products →'
+                        : single
+                          ? 'Create & review →'
+                          : 'Create 1 draft'}
+                  </button>
+                </>
+              )}
+              {step === 'select' && (
+                <>
+                  <button type="button" onClick={() => setStep('map')} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Back</button>
+                  <button
+                    type="button"
+                    onClick={() => commitRows(chosen)}
+                    disabled={busy || chosen.length === 0}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
+                  >
+                    {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                    {busy
+                      ? 'Creating…'
                       : single
                         ? 'Create & review →'
-                        : `Create ${valid.length} draft${valid.length === 1 ? '' : 's'}`}
+                        : `Create ${chosen.length} draft${chosen.length === 1 ? '' : 's'}`}
                   </button>
                 </>
               )}
