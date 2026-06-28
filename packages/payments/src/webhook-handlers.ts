@@ -44,6 +44,16 @@ const log = appLogger('payments')
 // released so Stripe's retry can reprocess — otherwise a transient failure
 // would permanently swallow the event. Complements the per-domain idempotency
 // checks inside each handler; does not replace them.
+//
+// A clean throw releases the claim, but a HARD process death (OOM, deploy,
+// SIGKILL) mid-handler skips the catch — the claim row is orphaned and Stripe's
+// redelivery would be skipped forever, stranding e.g. a paid order with no
+// dispatches. So a P2002 also checks the existing claim's age: a claim older than
+// STALE_CLAIM_MS is treated as such an orphan and atomically reclaimed for
+// reprocessing. This is only safe because every handler is idempotent — re-running
+// a genuinely-completed event is a no-op (charge/order/credit already exist).
+const STALE_CLAIM_MS = 15 * 60 * 1000 // 15 min: >> any handler's runtime, << Stripe's 3-day retry window
+
 async function claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
   try {
     await prisma.processedWebhookEvent.create({
@@ -51,7 +61,24 @@ async function claimWebhookEvent(event: Stripe.Event): Promise<boolean> {
     })
     return true
   } catch (err) {
-    if ((err as { code?: string }).code === 'P2002') return false // already claimed
+    if ((err as { code?: string }).code === 'P2002') {
+      // Reclaim ONLY if the prior claim is stale (an orphan from a crashed process).
+      // The processedAt guard makes this atomic: among racing redeliveries exactly
+      // one updateMany matches `lt cutoff` and wins; the rest see the fresh timestamp
+      // and skip. A recent claim → genuine duplicate → skip.
+      const cutoff = new Date(Date.now() - STALE_CLAIM_MS)
+      const reclaimed = await prisma.processedWebhookEvent
+        .updateMany({
+          where: { id: event.id, processedAt: { lt: cutoff } },
+          data: { processedAt: new Date(), type: event.type },
+        })
+        .catch(() => ({ count: 0 }))
+      if (reclaimed.count === 1) {
+        log.warn('webhook.stale_claim_reclaimed', { eventId: event.id, type: event.type })
+        return true
+      }
+      return false // already claimed (recent) — skip
+    }
     // Unknown DB error — process anyway: per-domain idempotency still guards,
     // and dropping a paid-order event is worse than a rare double-dispatch.
     log.warn('webhook.claim_failed_processing_anyway', {
@@ -162,32 +189,40 @@ async function onPaymentSucceeded(pi: Stripe.PaymentIntent) {
   const orderId = pi.metadata?.ilaunchify_order_id
   if (!orderId) return
 
-  // Idempotent: skip if we already processed this PaymentIntent
+  // Idempotent CHARGE creation: record the Charge + flip the order to PAID exactly
+  // once per PaymentIntent. Crucially we do NOT early-return the whole handler when
+  // the Charge already exists — the post-payment side effects below (dispatch
+  // creation for production, credit mint for samples) must still run on a Stripe
+  // redelivery. Otherwise a crash between this commit and dispatch creation would
+  // strand a PAID order with no dispatches that no retry could ever repair. Both
+  // side effects are independently idempotent (createDispatches only acts on a PAID
+  // order, then flips it to ROUTING; mintCreditForPaidSample upserts on
+  // sourceOrderId), so re-running them is a safe no-op.
   const existing = await prisma.charge.findFirst({
     where: { stripePaymentIntentId: pi.id },
   })
-  if (existing) return
+  if (!existing) {
+    await prisma.$transaction(async (tx) => {
+      // Record the Charge
+      await tx.charge.create({
+        data: {
+          orderId,
+          stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.id,
+          stripePaymentIntentId: pi.id,
+          amountCents: pi.amount,
+          currency: pi.currency,
+          applicationFeeCents: pi.application_fee_amount ?? 0,
+          status: 'SUCCEEDED',
+          statementDescriptor: pi.statement_descriptor_suffix ?? null,
+        },
+      })
 
-  await prisma.$transaction(async (tx) => {
-    // Record the Charge
-    await tx.charge.create({
-      data: {
-        orderId,
-        stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.id,
-        stripePaymentIntentId: pi.id,
-        amountCents: pi.amount,
-        currency: pi.currency,
-        applicationFeeCents: pi.application_fee_amount ?? 0,
-        status: 'SUCCEEDED',
-        statementDescriptor: pi.statement_descriptor_suffix ?? null,
-      },
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'PAID', paidAt: new Date() },
+      })
     })
-
-    await tx.order.update({
-      where: { id: orderId },
-      data: { status: 'PAID', paidAt: new Date() },
-    })
-  })
+  }
 
   // Branch on order type (Pavel 2026-06-10). A SAMPLE order mints its credit
   // (when the partner enabled it) and does NOT enter the multi-partner production
@@ -483,7 +518,19 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
     },
     select: { id: true },
   })
-  if (existingOrder) return
+  if (existingOrder) {
+    // We already minted the Order for this invoice. Don't blindly return — re-drive
+    // the idempotent dispatch creation, in case a prior delivery crashed after the
+    // Order commit but before dispatches were created (which would otherwise strand
+    // a PAID subscription order with no production that no retry could repair).
+    // createDispatches self-guards: it only acts on a PAID order, then flips it to
+    // ROUTING, so re-running once dispatches exist is a no-op. The subscription
+    // advance is deliberately NOT re-run — it's keyed to runsCompleted and a full
+    // redelivery could double-count; a counter off by one is far milder than a paid
+    // order with no production.
+    await createDispatches({ orderId: existingOrder.id })
+    return
+  }
 
   // Read the locked manifest — every cycle uses the same picks.
   const manifest = sub.manifestSnapshot as unknown as {

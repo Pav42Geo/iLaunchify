@@ -155,6 +155,11 @@ Stripe subscription cancelled + `status=COMPLETED`.
   claim lost the P2002 race).
 - **Retry-on-throw:** if a handler throws, the claim is released so Stripe's retry reprocesses
   (don't leave a paid-order event permanently swallowed).
+- **Crash-orphan reclaim:** a hard process death mid-handler can't release the claim, so a claim
+  older than 15 min is treated as an orphan and atomically reclaimed on the next redelivery
+  (logs `webhook.stale_claim_reclaimed`). Safe because every handler is idempotent. (Hard to
+  force in a manual test — verified by code review; the per-handler idempotency in §2/§2b/§3/§6
+  is what makes the reprocess a no-op.)
 
 ---
 
