@@ -23,8 +23,8 @@ const SERVICE_SCOPE: Record<string, string> = {
   WAREHOUSE: 'Fulfillment',
 }
 
-export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
-  const { draft } = await searchParams
+export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ draft?: string; imported?: string }> }) {
+  const { draft, imported } = await searchParams
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -126,9 +126,17 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   const studioLogo = await resolveLogoForPlacement('partnerPackaging')
 
   return (
-    <GuidedBuilder
-      initial={initial}
-      studioLogo={studioLogo}
+    <>
+      {imported === '1' && (
+        <div className="mb-4 rounded-xl border border-info-200 bg-info-50 px-4 py-3 text-[13px] leading-relaxed text-info-700">
+          <strong className="font-semibold text-ink-900">Pre-filled from your spec sheet.</strong>{' '}
+          We mapped what we could read — review each step and complete the recipe, packaging, and pricing.
+          Nothing publishes until you submit.
+        </div>
+      )}
+      <GuidedBuilder
+        initial={initial}
+        studioLogo={studioLogo}
       categories={categories}
       subcategories={subcategories}
       packagingSystems={packagingSystems}
@@ -143,6 +151,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       enabledDomains={enabledDomains}
       markets={marketOptions}
       topbarRight={<PartnerTopbarRight email={user.email} name={user.name ?? null} companyName={partner.companyName} />}
-    />
+      />
+    </>
   )
 }

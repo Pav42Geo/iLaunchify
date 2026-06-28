@@ -89,7 +89,8 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-export function ProductImportButton({ subcategories, triggerClassName, triggerLabel }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode }) {
+export function ProductImportButton({ subcategories, triggerClassName, triggerLabel, mode = 'bulk' }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode; mode?: 'bulk' | 'single' }) {
+  const single = mode === 'single'
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'drop' | 'map' | 'done'>('drop')
@@ -180,8 +181,20 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   const nameMapped = mapping.name != null && mapping.name >= 0
 
   function commit() {
-    if (!valid.length) { toast.error('No valid rows to import.'); return }
+    if (!valid.length) { toast.error(single ? 'No usable product row found.' : 'No valid rows to import.'); return }
     setBusy(true)
+    if (single) {
+      // Single-product spec-sheet fill: create ONE draft from the first row and
+      // drop the partner into the builder to review + finish (authoring → review).
+      bulkImportProducts([valid[0]!]).then((res) => {
+        setBusy(false)
+        if (!res.ok) { toast.error(res.error); return }
+        const r = res.results[0]
+        if (r?.ok && r.id) router.push(`/products/new?draft=${r.id}&imported=1`)
+        else toast.error(r?.error ?? 'Could not create the draft.')
+      })
+      return
+    }
     bulkImportProducts(valid).then((res) => {
       setBusy(false)
       if (!res.ok) { toast.error(res.error); return }
@@ -208,7 +221,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
-              <h2 className="font-display text-[17px] font-bold text-ink-900">Import products from CSV</h2>
+              <h2 className="font-display text-[17px] font-bold text-ink-900">{single ? 'Fill a product from a spec sheet' : 'Import products from CSV'}</h2>
               <button type="button" onClick={close} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-100 hover:text-ink-900">
                 <X className="h-4 w-4" />
               </button>
@@ -234,7 +247,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
                   </div>
                   <p className="mt-3 text-[12px] text-ink-500">
-                    One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. You map the rest next.
+                    {single
+                      ? 'Drop your spec sheet (we read the first product row). We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country” — you confirm the mapping, then review + finish in the builder.'
+                      : 'One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. You map the rest next.'}
                   </p>
                   <button type="button" onClick={downloadTemplate} className="mt-1.5 text-[12.5px] font-semibold text-pink-700 underline-offset-2 hover:text-pink-800 hover:underline">
                     Download a CSV template
@@ -316,7 +331,11 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
                   >
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                    {busy ? 'Creating…' : `Create ${valid.length} draft${valid.length === 1 ? '' : 's'}`}
+                    {busy
+                      ? (single ? 'Creating…' : 'Creating…')
+                      : single
+                        ? 'Create & review →'
+                        : `Create ${valid.length} draft${valid.length === 1 ? '' : 's'}`}
                   </button>
                 </>
               )}
