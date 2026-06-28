@@ -71,6 +71,8 @@ export default async function PackagingEditPage({ params }: PageProps) {
   const dims = (system.dimensions ?? null) as
     | { lengthMm?: number | null; widthMm?: number | null; heightMm?: number | null }
     | null
+  // New logistics columns post-date the generated client until db:push.
+  const sx = system as unknown as { grossWeightG: number | null; casesPerLayer: number | null; layersPerPallet: number | null }
   const initial = {
     partnerName: system.partnerName,
     topology: system.topology,
@@ -82,6 +84,9 @@ export default async function PackagingEditPage({ params }: PageProps) {
     widthMm: dims?.widthMm != null ? String(dims.widthMm) : '',
     heightMm: dims?.heightMm != null ? String(dims.heightMm) : '',
     maxWeightG: system.maxWeightG != null ? String(system.maxWeightG) : '',
+    grossWeightG: sx.grossWeightG != null ? String(sx.grossWeightG) : '',
+    casesPerLayer: sx.casesPerLayer != null ? String(sx.casesPerLayer) : '',
+    layersPerPallet: sx.layersPerPallet != null ? String(sx.layersPerPallet) : '',
   }
 
   const statusPill = STATUS_PILL[system.status] ?? {

@@ -59,6 +59,11 @@ export interface CreatePackagingInput {
   moq: number
   dimensions: { lengthMm: number | null; widthMm: number | null; heightMm: number | null } | null
   maxWeightG: number | null
+  // Filled/packed logistics (presets slice). Authored once here, inherited by
+  // every product that uses this packaging.
+  grossWeightG: number | null
+  casesPerLayer: number | null // Ti
+  layersPerPallet: number | null // Hi
 }
 
 export async function createPackagingSystem(
@@ -88,8 +93,11 @@ export async function createPackagingSystem(
       moq: input.moq,
       dimensions: input.dimensions ?? undefined,
       maxWeightG: input.maxWeightG,
+      grossWeightG: input.grossWeightG,
+      casesPerLayer: input.casesPerLayer,
+      layersPerPallet: input.layersPerPallet,
       status: 'DRAFT',
-    },
+    } as never,
   })
 
   await logAuditAs(user, {
@@ -136,7 +144,10 @@ export async function updatePackagingSystem(
       moq: patch.moq,
       dimensions: patch.dimensions ?? undefined,
       maxWeightG: patch.maxWeightG,
-    },
+      grossWeightG: patch.grossWeightG,
+      casesPerLayer: patch.casesPerLayer,
+      layersPerPallet: patch.layersPerPallet,
+    } as never,
   })
 
   revalidatePath('/packaging')

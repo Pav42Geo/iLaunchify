@@ -31,6 +31,9 @@ interface PackagingFormState {
   widthMm: string
   heightMm: string
   maxWeightG: string
+  grossWeightG: string
+  casesPerLayer: string
+  layersPerPallet: string
 }
 
 const BLANK: PackagingFormState = {
@@ -44,6 +47,9 @@ const BLANK: PackagingFormState = {
   widthMm: '',
   heightMm: '',
   maxWeightG: '',
+  grossWeightG: '',
+  casesPerLayer: '',
+  layersPerPallet: '',
 }
 
 interface PackagingFormProps {
@@ -82,6 +88,9 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             }
           : null,
       maxWeightG: state.maxWeightG ? parseInt(state.maxWeightG, 10) : null,
+      grossWeightG: state.grossWeightG ? parseInt(state.grossWeightG, 10) : null,
+      casesPerLayer: state.casesPerLayer ? parseInt(state.casesPerLayer, 10) : null,
+      layersPerPallet: state.layersPerPallet ? parseInt(state.layersPerPallet, 10) : null,
     }
 
     startTransition(async () => {
@@ -277,6 +286,23 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
           onChange={(e) => patch('maxWeightG', e.target.value)}
           disabled={isPending}
         />
+      </div>
+
+      {/* Pallet logistics (Ti-Hi) — authored once here, inherited by every product
+          that uses this packaging. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="grossWeightG" className="text-sm font-medium text-ink-900">Gross weight (g, optional)</Label>
+          <Input id="grossWeightG" type="number" min={0} value={state.grossWeightG} onChange={(e) => patch('grossWeightG', e.target.value)} disabled={isPending} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="casesPerLayer" className="text-sm font-medium text-ink-900">Cases per layer (Ti)</Label>
+          <Input id="casesPerLayer" type="number" min={0} value={state.casesPerLayer} onChange={(e) => patch('casesPerLayer', e.target.value)} disabled={isPending} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="layersPerPallet" className="text-sm font-medium text-ink-900">Layers per pallet (Hi)</Label>
+          <Input id="layersPerPallet" type="number" min={0} value={state.layersPerPallet} onChange={(e) => patch('layersPerPallet', e.target.value)} disabled={isPending} />
+        </div>
       </div>
 
       {error && (

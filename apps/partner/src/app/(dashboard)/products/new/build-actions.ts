@@ -292,6 +292,7 @@ export interface InitialDraft {
     fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH' | null
     moqMin: number; orderIncrement: number; monthlyCapacity: number | null
     shelfLifeDays: number | null; lotTracking: boolean; sku: string | null
+    netContentValue: number | null; netContentUnit: string | null
   } | null
   packing: {
     innerPacksPerOuter: number; outerPacksPerCase: number
@@ -339,7 +340,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
-      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null }>
+      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null; netContentValue: unknown; netContentUnit: string | null }>
       fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
       changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
       optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
@@ -366,7 +367,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
-        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true } },
+        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true, netContentValue: true, netContentUnit: true } },
         fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
         changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
         optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
@@ -456,6 +457,8 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
             shelfLifeDays: tpl.variants[0].shelfLifeDays,
             lotTracking: tpl.variants[0].lotTracking,
             sku: tpl.variants[0].sku,
+            netContentValue: tpl.variants[0].netContentValue == null ? null : Number(tpl.variants[0].netContentValue),
+            netContentUnit: tpl.variants[0].netContentUnit ?? null,
           }
         : null,
       packing: tpl.variants[0]
@@ -851,6 +854,9 @@ export interface ProductionInput {
   monthlyCapacity: number | null
   shelfLifeDays: number | null
   lotTracking: boolean
+  /** Declared net content (label principal display panel) — by weight/volume/count. */
+  netContentValue?: number | null
+  netContentUnit?: string | null
   /** Manufacturer base SKU for the default variant. null/undefined leaves it unchanged. */
   sku?: string | null
 }
@@ -877,6 +883,8 @@ export async function saveProduction(productTemplateId: string, input: Productio
       lotTracking: input.lotTracking,
     }
     if (input.sku !== undefined) data.sku = input.sku?.trim() ? input.sku.trim() : null
+    if (input.netContentValue !== undefined) data.netContentValue = input.netContentValue == null ? null : input.netContentValue
+    if (input.netContentUnit !== undefined) data.netContentUnit = input.netContentUnit?.trim() ? input.netContentUnit.trim() : null
     const existing = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId }, select: { id: true } })
     if (existing) {
       await prisma.productTemplateVariant.update({ where: { id: existing.id }, data: data as never })

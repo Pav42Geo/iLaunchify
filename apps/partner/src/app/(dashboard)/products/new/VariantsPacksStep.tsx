@@ -272,6 +272,8 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
   const [shelfLife, setShelfLife] = useState(p?.shelfLifeDays ?? 365)
   const [lotTracking, setLotTracking] = useState(p?.lotTracking ?? true)
   const [sku, setSku] = useState(p?.sku ?? baseSku)
+  const [netVal, setNetVal] = useState<number | ''>(p?.netContentValue ?? '')
+  const [netUnit, setNetUnit] = useState(p?.netContentUnit ?? '')
   const [storageClass, setStorageClass] = useState<'AMBIENT' | 'CHILLED' | 'FROZEN'>(initial?.storageClass ?? 'AMBIENT')
   const [tempMin, setTempMin] = useState<number | ''>(initial?.storageTempMinF ?? 55)
   const [tempMax, setTempMax] = useState<number | ''>(initial?.storageTempMaxF ?? 75)
@@ -315,11 +317,13 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         shelfLifeDays: shelfLife,
         lotTracking,
         sku,
+        netContentValue: netVal === '' ? null : netVal,
+        netContentUnit: netUnit || null,
       })
     }, 800)
     return () => { if (prodTimer.current) clearTimeout(prodTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, sku, draftId])
+  }, [fulfillment, moq, increment, capacity, shelfLife, lotTracking, sku, netVal, netUnit, draftId])
 
   // Immediate flush of the two draft-level autosaves before navigation (registry).
   const flushRef = useRef<() => Promise<void>>(async () => {})
@@ -342,6 +346,8 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
       shelfLifeDays: shelfLife,
       lotTracking,
       sku,
+      netContentValue: netVal === '' ? null : netVal,
+      netContentUnit: netUnit || null,
     })
   }
   useEffect(() => {
@@ -385,6 +391,20 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         <Field label="Max storage temp (°F)"><input className="input" type="number" value={tempMax} onChange={(e) => setTempMax(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></Field>
         <Field label="Base SKU" hint="manufacturer stock id"><input className="input" value={sku} onChange={(e) => setSku(e.target.value)} /></Field>
         <Field label="Lot / batch tracking"><select className="sel" value={lotTracking ? 'on' : 'off'} onChange={(e) => setLotTracking(e.target.value === 'on')}><option value="on">On (recommended)</option><option value="off">Off</option></select></Field>
+        <Field label="Net content" hint="declared on label"><input className="input" type="number" min={0} step="any" value={netVal} onChange={(e) => setNetVal(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))} placeholder="e.g. 473" /></Field>
+        <Field label="Net content unit">
+          <select className="sel" value={netUnit} onChange={(e) => setNetUnit(e.target.value)}>
+            <option value="">—</option>
+            <option value="g">g</option>
+            <option value="mL">mL</option>
+            <option value="fl oz">fl oz</option>
+            <option value="oz">oz</option>
+            <option value="ct">count</option>
+            <option value="capsules">capsules</option>
+            <option value="tablets">tablets</option>
+            <option value="servings">servings</option>
+          </select>
+        </Field>
         <Field label="Manufactured by">
           <select className="sel">
             {facilities.length === 0 && <option>Onboarding address (default)</option>}
