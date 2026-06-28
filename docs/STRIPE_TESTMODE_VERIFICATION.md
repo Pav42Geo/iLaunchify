@@ -4,10 +4,11 @@ The pure money math is reviewed + green (see `PAYMENTS_READINESS.md`). This is t
 remaining go-live gate: exercise the **execution glue** (charges, Connect transfers,
 refunds, subscription webhooks) against **Stripe test mode** before any live money.
 
-> **THE GATE:** keep `STRIPE_REFUNDS_ENABLED` unset/false until §4 passes. Only
-> flip it to `true` (still in test mode) when you reach the refund step, and only
-> flip it in production after the whole runbook is green. Every Stripe call here
-> carries an idempotency key, so re-runs are safe.
+> **THE GATE:** keep `STRIPE_REFUNDS_ENABLED` unset/false until §4 passes, and
+> keep `STRIPE_TRANSFERS_ENABLED` unset/false until §2b passes. Only flip each to
+> `true` (still in test mode) when you reach its step, and only flip them in
+> production after the whole runbook is green. Every Stripe call here carries an
+> idempotency key, so re-runs are safe.
 
 ## 0. Preflight (no money, no Stripe calls)
 
@@ -56,6 +57,33 @@ Place a production order in the app and pay with `4242…`.
 
 **Idempotency:** re-deliver the event (`stripe events resend <id>`) → the handler
 sees the existing `Charge` (`stripePaymentIntentId`) and returns without a duplicate.
+
+## 2b. Partner payout — the OTHER money gate (`executePendingTransfers` + Connect transfer)
+
+After §1 (partner ACTIVE) and §2 (order PAID, dispatches created), the partner gets
+paid when they **ship** a dispatch: `shipDispatch` queues a `Transfer` row (`PENDING`,
+`amountCents` = the dispatch cost). The payout itself runs from a cron.
+
+**2b-dry (flag OFF).** With `STRIPE_TRANSFERS_ENABLED` unset, hit the cron:
+`curl -X POST localhost:3003/api/cron/execute-transfers -H "Authorization: Bearer $CRON_SECRET"`.
+
+**Pass (dry):** the response lists the queued transfer under `outcomes` with
+`executed:false`; **no Stripe transfer, Transfer stays `PENDING`**.
+
+**2b-exec (flag ON, still test mode).** Set `STRIPE_TRANSFERS_ENABLED=true`, restart,
+ship a dispatch on a PAID order whose partner is ACTIVE, then hit the cron again.
+
+**Pass (executed):**
+- `stripe.transfers.create` called with idempotencyKey `transfer:<transferId>`,
+  `amount == Transfer.amountCents`, `destination == partner.stripeAccountId`,
+  `source_transaction` = the charge's `ch_…` (omitted if only a `pi_…` is on file).
+- `Transfer.status=COMPLETED`, `stripeTransferId` + `executedAt` + `destinationStripeId` set.
+- A partner whose account is **not** ACTIVE (or whose charge isn't SUCCEEDED) is
+  **held** (`PENDING`, `result: held_*`) — never failed, never double-sent.
+
+**Idempotency:** re-run the cron → the COMPLETED row is no longer PENDING (not
+reconsidered); a mid-flight row claimed `EXECUTING` isn't grabbed by a second run.
+On a Stripe error the row reverts to `PENDING` with `failureReason` and retries next run.
 
 ## 3. Sample order → credit mint (no production)
 
@@ -137,6 +165,7 @@ Stripe subscription cancelled + `status=COMPLETED`.
 | 0 | Preflight | `stripe-preflight.mjs` ✓, test key only | ☐ |
 | 1 | Connect | `stripeAccountStatus` transitions correctly | ☐ |
 | 2 | Charge | Charge row + fee == 15%/override, Order PAID, 2 dispatches | ☐ |
+| 2b | Partner payout | ship → Transfer PENDING; cron → COMPLETED, idempotent, inactive held | ☐ |
 | 3 | Sample | SampleCredit AVAILABLE, no dispatch, idempotent | ☐ |
 | 4a | Refund dry-run | REFUND_PLANNED audit, no money, no Refund row | ☐ |
 | 4b | Refund execute | Refund + reversals + clawbacks; Σ invariant holds | ☐ |
@@ -145,5 +174,7 @@ Stripe subscription cancelled + `status=COMPLETED`.
 | 7 | Webhook sec | bad-sig rejected; dupe skipped; throw → retry | ☐ |
 
 **Only after every row is ✅:** move to live keys, set `STRIPE_REFUNDS_ENABLED=true`
-in production, and register the live webhook endpoints (creator + partner). Keep the
-flag off until you've watched the first live refund reconcile.
+and `STRIPE_TRANSFERS_ENABLED=true` in production, register the live webhook
+endpoints (creator + partner), and schedule the `execute-transfers` cron (every few
+minutes). Keep each flag off until you've watched the first live refund reconcile and
+the first live partner payout land.

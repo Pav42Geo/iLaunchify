@@ -28,6 +28,10 @@ export type {
 } from './refund-plan'
 export { executeOrderRefund, refundsEnabled } from './refund-execute'
 export type { ExecuteRefundInput, ExecuteRefundResult } from './refund-execute'
+// Partner payout executor — sends the PENDING Transfer rows shipDispatch queues
+// to the partner's Connect account. Gated behind STRIPE_TRANSFERS_ENABLED.
+export { executePendingTransfers, transfersEnabled } from './transfer-execute'
+export type { ExecuteTransfersResult, TransferOutcome } from './transfer-execute'
 // Phase G6.b — production-run subscription helpers.
 export {
   getOrCreateCreatorCustomer,
