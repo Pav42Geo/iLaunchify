@@ -898,6 +898,7 @@ model Partner {
   operationalStandards    PartnerOperationalStandards?
   commercialTerms         PartnerCommercialTerms?
   integrationCapability   PartnerIntegrationCapability?
+  productDefaults         PartnerProductDefaults?
   onboardingState         PartnerOnboardingProgress?
   // V1 new relations (ingredient sourcing)
   privateIngredients      Ingredient[]                  @relation("PartnerPrivateIngredients")
@@ -928,6 +929,7 @@ model PartnerFacility {
   isDefault    Boolean  @default(false)
   partner      Partner  @relation("PartnerFacilities", fields: [partnerId], references: [id], onDelete: Cascade)
   variants     ProductTemplateVariant[]
+  productDefaults PartnerProductDefaults[] @relation("FacilityProductDefaults")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -3204,6 +3206,10 @@ model ProductTemplate {
   storageClass               StorageClass                  @default(AMBIENT)
   storageTempMinF            Int?
   storageTempMaxF            Int?
+  // Finished-good country of origin (ISO-3166-1 alpha-2). Seeded from
+  // PartnerProductDefaults.countryOfOrigin → default facility country →
+  // Partner.country; override per product. Customs + label + DPP-ready.
+  countryOfOrigin            String?
   // Detail-page long description (Basics short = `description`).
   longDescription            String?
   // Marketplace detail-page marketing copy (format, productionMethod, netWeight,
@@ -3371,6 +3377,12 @@ model ProductTemplateVariant {
   servingsPerContainer Int
   servingSizeG         Decimal // grams per serving
   servingSizeDesc      String? // "1 scoop (30g)"
+  // Declared net quantity of contents (label principal display panel).
+  // containerSizeG above is the net WEIGHT (g) for shipping; these capture the
+  // DECLARED quantity, which may be volume or count (FDA 21 CFR 101.105).
+  netContentValue      Decimal?
+  netContentUnit       String? // 'g' | 'mL' | 'fl oz' | 'oz' | 'ct' | 'capsules' | ...
+  netContentDisplay    String? // optional pre-formatted label string, e.g. "16 fl oz (473 mL)"
 
   // ---- Packing topology (orthogonal to flavor/container) ----
   packingType          PackingType       @default(SINGLE_FLAVOR_SINGLE_PACK)
@@ -4429,6 +4441,13 @@ model PackagingSystem {
   moq                 Int
   dimensions          Json? // { lengthMm, widthMm, heightMm }
   maxWeightG          Int?
+  // Filled/packed logistics (presets slice). grossWeightG = packed weight of ONE
+  // sellable unit (vs maxWeightG capacity). Ti-Hi pallet config: casesPerLayer
+  // (Ti) × layersPerPallet (Hi) = cases/pallet. Authored once on the catalog row,
+  // inherited by every product via ProductTemplatePackaging.
+  grossWeightG        Int?
+  casesPerLayer       Int?
+  layersPerPallet     Int?
   material            String? // free-text substrate/material, e.g. "PET", "SBS folding carton"
   dielineFileId       String? // soft FK to PartnerFile — partner-supplied die-line/artwork reference
   customDielineLayout Json? // inline mandatory-frame layout for a type-less custom packaging: { layout, trim, safe }
@@ -6640,4 +6659,34 @@ model LogoPlacement {
   kind      String   @default("full")
   sublabel  String?
   updatedAt DateTime @updatedAt
+}
+
+// Manufacturer-level product defaults (presets slice, 2026-06-27). Seeded into
+// each new product DRAFT at createDraftShell so a team member fills only
+// product-specific deltas. All operational fields are nullable: a null falls
+// through to the existing schema @default (or, for COO, facility/partner
+// country). One row per partner in V1. Per-domain defaults later = drop @unique
+// on partnerId, add `labelingType`, switch to @@unique([partnerId, labelingType]).
+model PartnerProductDefaults {
+  id                   String           @id @default(uuid())
+  partnerId            String           @unique
+  defaultFacilityId    String?
+  countryOfOrigin      String? // ISO-3166-1 alpha-2
+  leadTimeRepeatDays   Int?
+  leadTimeFirstRunDays Int?
+  moqMin               Int?
+  moqMax               Int?
+  orderIncrement       Int?
+  monthlyCapacity      Int?
+  fulfillmentMode      FulfillmentMode?
+  lotTracking          Boolean?
+  storageClass         StorageClass?
+  storageTempMinF      Int?
+  storageTempMaxF      Int?
+  // Master switch — when false, createDraftShell skips seeding (manual entry).
+  applyToNewProducts   Boolean          @default(true)
+  partner              Partner          @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  defaultFacility      PartnerFacility? @relation("FacilityProductDefaults", fields: [defaultFacilityId], references: [id])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 }

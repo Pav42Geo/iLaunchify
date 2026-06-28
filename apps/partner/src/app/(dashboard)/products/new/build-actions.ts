@@ -1670,7 +1670,38 @@ export async function createDraftShell(
       if (n > 50) return { ok: false, error: 'Could not generate a unique slug — try a different name.' }
     }
 
-    const created = await prisma.productTemplate.create({
+    // Seed template-level operational defaults from the partner's product
+    // defaults (presets slice). Only non-null defaults seed; everything else
+    // falls through to the schema @default. Variant-level defaults (MOQ,
+    // fulfillment, …) apply where the first variant is created. Cast-guarded —
+    // PartnerProductDefaults post-dates the generated client until db:push.
+    const defaults = await (prisma as unknown as {
+      partnerProductDefaults: {
+        findUnique: (a: unknown) => Promise<null | {
+          applyToNewProducts: boolean
+          countryOfOrigin: string | null
+          leadTimeRepeatDays: number | null
+          leadTimeFirstRunDays: number | null
+          storageClass: string | null
+          storageTempMinF: number | null
+          storageTempMaxF: number | null
+        }>
+      }
+    }).partnerProductDefaults.findUnique({ where: { partnerId: partner.id } }).catch(() => null)
+
+    const seed: Record<string, unknown> = {}
+    if (defaults?.applyToNewProducts) {
+      if (defaults.countryOfOrigin) seed.countryOfOrigin = defaults.countryOfOrigin
+      if (defaults.leadTimeRepeatDays != null) seed.leadTimeRepeatDays = defaults.leadTimeRepeatDays
+      if (defaults.leadTimeFirstRunDays != null) seed.leadTimeFirstRunDays = defaults.leadTimeFirstRunDays
+      if (defaults.storageClass) seed.storageClass = defaults.storageClass
+      if (defaults.storageTempMinF != null) seed.storageTempMinF = defaults.storageTempMinF
+      if (defaults.storageTempMaxF != null) seed.storageTempMaxF = defaults.storageTempMaxF
+    }
+
+    const created = await (prisma as unknown as {
+      productTemplate: { create: (a: unknown) => Promise<{ id: string; slug: string }> }
+    }).productTemplate.create({
       data: {
         name,
         slug,
@@ -1678,6 +1709,7 @@ export async function createDraftShell(
         labelingType: draftDomain,
         manufacturerServiceId: partner.services[0]?.id ?? null,
         status: 'DRAFT',
+        ...seed,
       },
       select: { id: true, slug: true },
     })
