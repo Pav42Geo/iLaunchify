@@ -162,7 +162,10 @@ export function CustomizeRail({
 
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
-      {/* --- Ingredients (compact list, no per-row cards) ------------ */}
+      {/* --- Ingredients (compact list). Hidden when the product has no recipe
+          slots (cosmetic/pet/declared products) — avoids an empty card; their
+          INCI / Guaranteed Analysis declaration shows in the Recipe tab. ----- */}
+      {ingredients.length > 0 && (
       <div className="rounded-xl border border-ink-200 bg-white p-3">
         <header className="mb-3">
           <h3 className="font-display text-[18px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
@@ -387,6 +390,7 @@ export function CustomizeRail({
           </div>
         )}
       </div>
+      )}
 
       {/* --- Live allergen "Contains" card --------------------------- */}
       {(isPrivateLabel || liveAllergens.length > 0) && (

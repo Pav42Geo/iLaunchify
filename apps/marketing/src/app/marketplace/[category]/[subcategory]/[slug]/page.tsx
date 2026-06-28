@@ -108,11 +108,23 @@ export default async function ProductDetailPage({
   const recipeDetail = await getTemplateRecipeDetail(template.slug)
   // Real product images (hero first) for the gallery; [] → emoji+gradient fallback.
   const galleryImages = await getTemplateGalleryImages(template.slug)
+  // A product is "recipe-backed" if the DB gave us real ingredients, a computed/
+  // declared panel, OR a non-food domain declaration (cosmetic INCI / pet GA).
+  // For those, the product OWNS its recipe data — we must NOT inherit the fixture's
+  // generic FOOD ingredients/panel, which otherwise bleeds onto cosmetic/pet/
+  // supplement products (e.g. a serum showing "Cocoa powder" + a Supplement Facts
+  // panel). Fixture-only demo slugs (no DB recipe) keep the fixture as before.
+  const hasRealRecipe =
+    recipeDetail.ingredients.length > 0 || recipeDetail.nutrition != null || recipeDetail.domain != null
   const detail = {
     ...baseDetail,
-    ...(recipeDetail.ingredients.length > 0 ? { ingredients: recipeDetail.ingredients } : {}),
-    ...(recipeDetail.addOns.length > 0 ? { ingredientAddOns: recipeDetail.addOns } : {}),
-    ...(recipeDetail.nutrition ? { nutrition: recipeDetail.nutrition } : {}),
+    ...(hasRealRecipe
+      ? {
+          ingredients: recipeDetail.ingredients,
+          ingredientAddOns: recipeDetail.addOns,
+          nutrition: recipeDetail.nutrition ?? undefined,
+        }
+      : {}),
   }
 
   // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
@@ -341,6 +353,7 @@ export default async function ProductDetailPage({
               ingredient swaps + live Nutrition Facts pinned for the
               duration of the page. */}
           <CustomizeRail
+            slug={template.slug}
             ingredients={detail.ingredients}
             ingredientAddOns={detail.ingredientAddOns}
             nutrition={detail.nutrition}
@@ -401,6 +414,7 @@ export default async function ProductDetailPage({
               slug={template.slug}
               ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
               addOns={recipeDetail.addOns.length > 0 ? recipeDetail.addOns : undefined}
+              hasRealRecipe={hasRealRecipe}
             />
           </TabsContent>
 
@@ -775,11 +789,25 @@ function IngredientsTabClient({
   slug,
   ingredients,
   addOns,
+  hasRealRecipe,
 }: {
   slug: string
   ingredients?: IngredientRow[]
   addOns?: IngredientAddOn[]
+  hasRealRecipe?: boolean
 }) {
+  // DB-backed product with no swappable slots (cosmetic / pet / declared) — its
+  // declaration lives in the Recipe & Nutrition tab; don't fall back to the
+  // fixture's generic food ingredients here.
+  if (hasRealRecipe && (!ingredients || ingredients.length === 0)) {
+    return (
+      <p className="max-w-2xl text-[14px] leading-relaxed text-ink-600">
+        This product is formulated and declared by the manufacturer. See the{' '}
+        <span className="font-semibold text-ink-900">Recipe &amp; Nutrition</span> tab
+        for the full ingredient declaration.
+      </p>
+    )
+  }
   return <IngredientsTabInner slug={slug} ingredients={ingredients} addOns={addOns} />
 }
 
