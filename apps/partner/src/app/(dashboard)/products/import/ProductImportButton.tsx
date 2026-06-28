@@ -1,8 +1,10 @@
 'use client'
 
-// "Import CSV" button → drag-and-drop modal → column mapping → bulk create
-// DRAFT products via bulkImportProducts. Export Excel → CSV to use it.
-// Tailwind + semantic tokens.
+// "Import products" button → drag-drop modal → (1) map columns → (2) choose
+// products + set each one's Category → Subcategory → create DRAFTs.
+// Category assignment is PER PRODUCT in step 2. A partner can "+ Add category" /
+// "+ Add subcategory" inline: these are SUGGESTIONS (taxonomy is admin-curated) —
+// they appear in the dropdown now and flow to the admin review queue on import.
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,7 +12,6 @@ import { toast } from 'sonner'
 import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search } from 'lucide-react'
 import { bulkImportProducts, parseSpreadsheet, type ImportRow, type ImportResult } from './import-actions'
 
-// ArrayBuffer → base64 (chunked, safe for larger workbooks) for the .xlsx path.
 function abToB64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf)
   let bin = ''
@@ -19,18 +20,18 @@ function abToB64(buf: ArrayBuffer): string {
   return btoa(bin)
 }
 
-interface SubcatOption { id: string; name: string; categoryName: string }
+interface ImportCategory { id: string; name: string; subcategories: { id: string; name: string }[] }
+type BaseRow = Omit<ImportRow, 'subcategoryId' | 'suggestedCategoryName'>
+type Assignment = { categoryId: string; subcategoryId: string }
 
-// Importable target fields + header-matching aliases for auto-mapping.
+const isSugCat = (id: string) => id.startsWith('sug:c:')
+const isSugSub = (id: string) => id.startsWith('sug:s:')
+
 type FieldKind = 'text' | 'int' | 'num' | 'coo'
 interface FieldDef { key: keyof ImportRow | 'category'; label: string; required?: boolean; kind: FieldKind; aliases: string[] }
-// Aliases cover common ERP / commerce / PIM export headers (NetSuite, Shopify,
-// QuickBooks, Akeneo/Salsify, GS1 GDM) so a dropped export auto-maps. Matching
-// is first-field-wins over `header === alias || header.includes(alias)`, so the
-// more specific fields are ordered to claim their columns first.
 const FIELDS: FieldDef[] = [
   { key: 'name', label: 'Product name', required: true, kind: 'text', aliases: ['product name', 'display name', 'item name', 'product title', 'name', 'title'] },
-  { key: 'category', label: 'Category (optional)', kind: 'text', aliases: ['category', 'subcategory', 'product type', 'item type', 'class', 'type'] },
+  { key: 'category', label: 'Category', kind: 'text', aliases: ['category', 'subcategory', 'product type', 'item type', 'class', 'type'] },
   { key: 'familyCode', label: 'Base SKU', kind: 'text', aliases: ['base sku', 'variant sku', 'item number', 'item code', 'part number', 'mpn', 'style number', 'sku'] },
   { key: 'description', label: 'Short description', kind: 'text', aliases: ['short description', 'body html', 'body (html)', 'long description', 'product description', 'description', 'desc', 'summary'] },
   { key: 'countryOfOrigin', label: 'Country of origin', kind: 'coo', aliases: ['country of origin', 'country of manufacture', 'manufactured in', 'made in', 'origin', 'coo', 'country'] },
@@ -77,9 +78,6 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
 const toInt = (s: string): number | null => { const n = parseInt(s.replace(/[^0-9.-]/g, ''), 10); return Number.isFinite(n) ? Math.max(0, n) : null }
 const toNum = (s: string): number | null => { const n = parseFloat(s.replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? Math.max(0, n) : null }
 
-// Resolve a single field's raw cell → { displayed value, flag }. Shared by the
-// first-row preview AND the per-row issue counter so both speak the same language:
-//   missing = required + empty · check = parsed-but-not-clean · ok · empty
 type PreviewFlag = 'ok' | 'missing' | 'check' | 'empty'
 function fieldResolve(f: FieldDef, raw: string): { shown: string; flag: PreviewFlag } {
   if (raw === '') return { shown: '', flag: f.required ? 'missing' : 'empty' }
@@ -95,10 +93,9 @@ function fieldResolve(f: FieldDef, raw: string): { shown: string; flag: PreviewF
   return { shown: raw, flag: 'ok' }
 }
 
-// A starter CSV whose headers exactly match the auto-mapper, plus one example row.
 function downloadTemplate() {
   const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
-  const example = ['Sparkling Yuzu Soda', '', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
+  const example = ['Sparkling Yuzu Soda', 'Beverages', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
   const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)
   const csv = [headers, example].map((r) => r.map(esc).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -107,7 +104,7 @@ function downloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-export function ProductImportButton({ subcategories, triggerClassName, triggerLabel }: { subcategories: SubcatOption[]; triggerClassName?: string; triggerLabel?: React.ReactNode }) {
+export function ProductImportButton({ categories, triggerClassName, triggerLabel }: { categories: ImportCategory[]; triggerClassName?: string; triggerLabel?: React.ReactNode }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'drop' | 'map' | 'select' | 'done'>('drop')
@@ -116,34 +113,49 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, number | null>>({})
-  const [defaultSubcatId, setDefaultSubcatId] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<ImportResult[] | null>(null)
-  // Indices (into `valid`) the partner chose to import. Lets a manufacturer pull
-  // ONE product (or a subset) out of a full multi-product master sheet.
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [selected, setSelected] = useState<Set<number>>(new Set()) // keyed by raw row index
   const [query, setQuery] = useState('')
-  // Per distinct "Category" value found in the sheet → how to resolve it:
-  // a subcategoryId, '' (use the default category), or '__skip__' (drop those rows).
-  // Lets a mixed sheet file each category correctly, and lets a category iLaunchify
-  // doesn't have be mapped to the closest one or skipped.
-  const [categoryMap, setCategoryMap] = useState<Record<string, string>>({})
+  const [assign, setAssign] = useState<Record<number, Assignment>>({}) // rowIndex → category/subcategory
+  const [bulkCat, setBulkCat] = useState('')
+  const [bulkSub, setBulkSub] = useState('')
+  // Partner-suggested categories / subcategories (session-local; admin finalizes on import).
+  const [suggCats, setSuggCats] = useState<{ id: string; name: string }[]>([])
+  const [suggSubs, setSuggSubs] = useState<Record<string, { id: string; name: string }[]>>({})
+  const [addModal, setAddModal] = useState<{ mode: 'category' | 'subcategory'; categoryId: string; rowIndex: number } | null>(null)
+  const [addName, setAddName] = useState('')
+  const seqRef = useRef(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const subcatByName = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const s of subcategories) { m.set(s.name.trim().toLowerCase(), s.id); m.set(s.categoryName.trim().toLowerCase(), s.id) }
-    return m
-  }, [subcategories])
+  // Auto-match maps from the REAL category tree.
+  const { subcatByName, catByName, realSubsByCat, firstSubId } = useMemo(() => {
+    const sbn = new Map<string, { subId: string; catId: string }>()
+    const cbn = new Map<string, string>()
+    const sbc = new Map<string, { id: string; name: string }[]>()
+    for (const c of categories) {
+      cbn.set(c.name.trim().toLowerCase(), c.id)
+      sbc.set(c.id, c.subcategories)
+      for (const s of c.subcategories) sbn.set(s.name.trim().toLowerCase(), { subId: s.id, catId: c.id })
+    }
+    return { subcatByName: sbn, catByName: cbn, realSubsByCat: sbc, firstSubId: categories[0]?.subcategories[0]?.id ?? '' }
+  }, [categories])
+
+  // Category options for the dropdowns = real + partner-suggested.
+  const catOptions = useMemo(() => [...categories.map((c) => ({ id: c.id, name: c.name })), ...suggCats], [categories, suggCats])
+  const subsFor = useCallback((catId: string) => [...(realSubsByCat.get(catId) ?? []), ...(suggSubs[catId] ?? [])], [realSubsByCat, suggSubs])
+  const catNameOf = useCallback((catId: string) => catOptions.find((c) => c.id === catId)?.name ?? '', [catOptions])
+  const subNameOf = useCallback((catId: string, subId: string) => subsFor(catId).find((s) => s.id === subId)?.name ?? '', [subsFor])
 
   function reset() {
-    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set()); setQuery(''); setCategoryMap({})
+    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setResults(null); setDrag(false)
+    setSelected(new Set()); setQuery(''); setAssign({}); setBulkCat(''); setBulkSub('')
+    setSuggCats([]); setSuggSubs({}); setAddModal(null); setAddName(''); seqRef.current = 0
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
   const applyParsed = useCallback((name: string, h: string[], r: string[][]) => {
     if (h.length === 0 || r.length === 0) { toast.error('Could not read any rows from that file.'); return }
-    // Auto-map fields by header alias.
     const map: Record<string, number | null> = {}
     for (const f of FIELDS) {
       const idx = h.findIndex((header) => {
@@ -175,27 +187,19 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
     toast.error('Upload a .csv or .xlsx file.')
   }
 
-  // Resolve a row → ImportRow using the current mapping + default subcategory.
-  function rowToImport(r: string[]): ImportRow | null {
-    const get = (key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (r[i] ?? '').trim() : '' }
+  const cellOf = useCallback(
+    (row: string[], key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (row[i] ?? '').trim() : '' },
+    [mapping],
+  )
+
+  function rowToBase(r: string[]): BaseRow | null {
+    const get = (key: string) => cellOf(r, key)
     const name = get('name')
     if (name.length < 2) return null
-    const catDisplay = get('category')
-    const catRaw = catDisplay.toLowerCase()
-    // Per-category resolution: an explicit choice from the "Categories in your sheet"
-    // panel wins; else an auto-match by name; else the default. '__skip__' drops the
-    // row; '__suggest__' imports it under the default but flags it for admin review
-    // carrying the manufacturer's own category text.
-    const eff = catRaw ? (categoryMap[catRaw] ?? (subcatByName.get(catRaw) ?? '')) : ''
-    if (eff === '__skip__') return null
-    const suggestCategory = eff === '__suggest__'
-    const subcategoryId = (suggestCategory ? '' : eff) || defaultSubcatId
-    if (!subcategoryId) return null
     const cooRaw = get('countryOfOrigin')
     const coo = cooRaw ? (COUNTRY_TO_CODE[cooRaw.toLowerCase()] ?? (cooRaw.length === 2 ? cooRaw.toUpperCase() : cooRaw)) : null
     return {
       name,
-      subcategoryId,
       familyCode: get('familyCode') || null,
       description: get('description') || null,
       countryOfOrigin: coo,
@@ -207,61 +211,46 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
       shelfLifeDays: toInt(get('shelfLifeDays')),
       netContentValue: toNum(get('netContentValue')),
       netContentUnit: get('netContentUnit') || null,
-      suggestedCategoryName: suggestCategory ? catDisplay : null,
     }
   }
 
-  const cellOf = useCallback(
-    (row: string[], key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (row[i] ?? '').trim() : '' },
-    [mapping],
-  )
-
-  // Importable rows, each with a count of fields that parsed but not cleanly
-  // ("issues") — surfaced as a per-row flag on the selection list so a partner can
-  // spot which products need a second look before picking.
   const valid = useMemo(() => {
-    if (!(defaultSubcatId || mapping.category != null)) return [] as Array<{ import: ImportRow; issues: number }>
-    const out: Array<{ import: ImportRow; issues: number }> = []
-    for (const r of rows) {
-      const imp = rowToImport(r)
-      if (!imp) continue
+    const out: Array<{ base: BaseRow; issues: number; rowIndex: number; sheetCategory: string }> = []
+    rows.forEach((r, rowIndex) => {
+      const base = rowToBase(r)
+      if (!base) return
       let issues = 0
       for (const f of FIELDS) {
         if (f.key === 'category') continue
         if (fieldResolve(f, cellOf(r, String(f.key))).flag === 'check') issues++
       }
-      out.push({ import: imp, issues })
-    }
+      out.push({ base, issues, rowIndex, sheetCategory: cellOf(r, 'category') })
+    })
     return out
-  }, [rows, mapping, defaultSubcatId, subcatByName, cellOf, categoryMap])
-  const skipped = rows.length - valid.length
+  }, [rows, mapping, cellOf])
 
-  // Distinct non-empty "Category" values found in the sheet (only when a Category
-  // column is mapped) + whether each auto-matches one of the partner's subcategories.
-  const distinctCats = useMemo(() => {
-    if (mapping.category == null || (mapping.category as number) < 0) return [] as Array<{ value: string; display: string; count: number; autoId: string | null }>
-    const counts = new Map<string, { display: string; count: number }>()
-    for (const r of rows) {
-      const raw = cellOf(r, 'category')
-      if (!raw) continue
-      const key = raw.toLowerCase()
-      const cur = counts.get(key)
-      if (cur) cur.count++
-      else counts.set(key, { display: raw, count: 1 })
-    }
-    return [...counts.entries()]
-      .map(([value, { display, count }]) => ({ value, display, count, autoId: subcatByName.get(value) ?? null }))
-      .sort((a, b) => b.count - a.count)
-  }, [rows, mapping, subcatByName, cellOf])
-  // Rows skipped specifically for a missing NAME (vs. a missing category, which the
-  // "pick a default category" hint already covers) — so the footer never says
-  // "missing name" when the real blocker is the category.
   const skippedNoName = useMemo(() => rows.filter((r) => cellOf(r, 'name').length < 2).length, [rows, cellOf])
   const nameMapped = mapping.name != null && mapping.name >= 0
 
-  // Per-field PREVIEW of the first row's RESOLVED values (shares fieldResolve with
-  // the per-row issue count) — turns "map columns blind" into "review what will be
-  // saved". The structured analogue of Phase B's "confirm the flagged fields".
+  const autoMatch = useCallback((sheetCategory: string): Assignment => {
+    const key = sheetCategory.trim().toLowerCase()
+    if (!key) return { categoryId: '', subcategoryId: '' }
+    const sub = subcatByName.get(key)
+    if (sub) return { categoryId: sub.catId, subcategoryId: sub.subId }
+    const cat = catByName.get(key)
+    if (cat) return { categoryId: cat, subcategoryId: '' }
+    return { categoryId: '', subcategoryId: '' }
+  }, [subcatByName, catByName])
+  const effAssign = useCallback(
+    (v: { rowIndex: number; sheetCategory: string }): Assignment => assign[v.rowIndex] ?? autoMatch(v.sheetCategory),
+    [assign, autoMatch],
+  )
+  const isSuggested = useCallback((e: Assignment) => isSugCat(e.categoryId) || isSugSub(e.subcategoryId), [])
+  const isReady = useCallback((v: { rowIndex: number; sheetCategory: string }): boolean => {
+    const e = effAssign(v)
+    return !!e.subcategoryId || isSugCat(e.categoryId)
+  }, [effAssign])
+
   const preview = useMemo(() => {
     if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; mapped: boolean; shown: string; raw: string; flag: PreviewFlag }>
     const row = rows[0]!
@@ -273,47 +262,74 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }, [rows, mapping, cellOf])
   const previewIssues = preview.filter((p) => p.flag === 'missing' || p.flag === 'check').length
 
-  // Selection-list search (handy for a long master sheet). Returns {row, idx-into-valid}.
   const filtered = useMemo(() => {
-    const withIdx = valid.map((v, i) => ({ v, i }))
     const q = query.trim().toLowerCase()
-    if (!q) return withIdx
-    return withIdx.filter(({ v }) => v.import.name.toLowerCase().includes(q) || (v.import.familyCode ?? '').toLowerCase().includes(q))
+    if (!q) return valid
+    return valid.filter((v) => v.base.name.toLowerCase().includes(q) || (v.base.familyCode ?? '').toLowerCase().includes(q))
   }, [valid, query])
 
-  // From the mapping step: when the sheet has more than one product, go to the
-  // selection step so the partner can pick which to import; a single-product sheet
-  // skips straight to import.
+  const selectedCount = valid.filter((v) => selected.has(v.rowIndex)).length
+  const chosen = useMemo(
+    () => valid.filter((v) => selected.has(v.rowIndex) && isReady(v)),
+    [valid, selected, isReady],
+  )
+  const needCategory = selectedCount - chosen.length
+
   function next() {
-    if (!valid.length) { toast.error('No valid rows to import.'); return }
-    if (valid.length === 1) { commitRows(valid.map((v) => v.import)); return }
-    setSelected(new Set(valid.map((_, i) => i))) // default: everything selected
+    if (!valid.length) { toast.error('No products found to import.'); return }
+    setSelected(new Set(valid.map((v) => v.rowIndex)))
     setStep('select')
   }
 
-  // One path for any selection. Import the chosen rows as drafts; if exactly ONE
-  // product was created, drop the partner straight into the builder to finish it
-  // (authoring → review). More than one → the summary list, each linking to the
-  // builder. So a single-product import lands in the builder without a separate
-  // "single" mode — the behaviour follows the count, not a toggle.
-  function commitRows(rowsToImport: ImportRow[]) {
-    if (!rowsToImport.length) { toast.error('Select at least one product.'); return }
-    setBusy(true)
-    bulkImportProducts(rowsToImport).then((res) => {
-      setBusy(false)
-      if (!res.ok) { toast.error(res.error); return }
-      const okResults = res.results.filter((r) => r.ok)
-      if (okResults.length === 1 && okResults[0]?.id) {
-        router.push(`/products/new?draft=${okResults[0].id}&imported=1`)
-        return
-      }
-      setResults(res.results); setStep('done')
-      if (okResults.length) { toast.success(`Created ${okResults.length} draft${okResults.length === 1 ? '' : 's'}`); router.refresh() }
+  function applyBulk() {
+    if (!bulkCat || !bulkSub) return
+    setAssign((a) => {
+      const n = { ...a }
+      for (const v of valid) if (selected.has(v.rowIndex)) n[v.rowIndex] = { categoryId: bulkCat, subcategoryId: bulkSub }
+      return n
     })
   }
 
-  // Rows the partner ticked on the selection step.
-  const chosen = useMemo(() => valid.filter((_, i) => selected.has(i)).map((v) => v.import), [valid, selected])
+  function saveAdd() {
+    const name = addName.trim()
+    if (!addModal || name.length < 2) return
+    if (addModal.mode === 'category') {
+      const id = `sug:c:${seqRef.current++}`
+      setSuggCats((cs) => [...cs, { id, name }])
+      setAssign((a) => ({ ...a, [addModal.rowIndex]: { categoryId: id, subcategoryId: '' } }))
+    } else {
+      const id = `sug:s:${seqRef.current++}`
+      const catId = addModal.categoryId
+      setSuggSubs((m) => ({ ...m, [catId]: [...(m[catId] ?? []), { id, name }] }))
+      setAssign((a) => ({ ...a, [addModal.rowIndex]: { categoryId: catId, subcategoryId: id } }))
+    }
+    setAddModal(null); setAddName('')
+  }
+
+  function commit() {
+    const ready = chosen
+    if (!ready.length) { toast.error('Select products and give each a category.'); return }
+    const importRows: ImportRow[] = ready.map((v) => {
+      const e = effAssign(v)
+      const sug = isSuggested(e)
+      const subLabel = e.subcategoryId ? subNameOf(e.categoryId, e.subcategoryId) : ''
+      const label = (catNameOf(e.categoryId) || v.sheetCategory || 'New') + (subLabel ? ` › ${subLabel}` : '')
+      return {
+        ...v.base,
+        subcategoryId: sug ? firstSubId : e.subcategoryId,
+        suggestedCategoryName: sug ? label : null,
+      }
+    })
+    setBusy(true)
+    bulkImportProducts(importRows).then((res) => {
+      setBusy(false)
+      if (!res.ok) { toast.error(res.error); return }
+      const ok = res.results.filter((r) => r.ok)
+      if (ok.length === 1 && ok[0]?.id) { router.push(`/products/new?draft=${ok[0].id}&imported=1`); return }
+      setResults(res.results); setStep('done')
+      if (ok.length) { toast.success(`Created ${ok.length} draft${ok.length === 1 ? '' : 's'}`); router.refresh() }
+    })
+  }
 
   return (
     <>
@@ -332,7 +348,9 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
-              <h2 className="font-display text-[17px] font-bold text-ink-900">Import products from a spreadsheet</h2>
+              <h2 className="font-display text-[17px] font-bold text-ink-900">
+                {step === 'select' ? 'Choose products & set their category' : 'Import products from a spreadsheet'}
+              </h2>
               <button type="button" onClick={close} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-100 hover:text-ink-900">
                 <X className="h-4 w-4" />
               </button>
@@ -358,7 +376,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
                   </div>
                   <p className="mt-3 text-[12px] text-ink-500">
-                    One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. Next you map the rest and choose which products to import.
+                    One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. Next you confirm the columns, then choose products and set each one&apos;s category.
                   </p>
                   <button type="button" onClick={downloadTemplate} className="mt-1.5 text-[12.5px] font-semibold text-pink-700 underline-offset-2 hover:text-pink-800 hover:underline">
                     Download a CSV template
@@ -375,22 +393,13 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   </div>
 
                   <p className="mb-4 text-[12.5px] leading-relaxed text-ink-600">
-                    <span className="font-semibold text-ink-800">1. Pick a category, then check the column matches.</span>{' '}
-                    Each iLaunchify field on the left is matched to a column from your sheet on the right — we auto-matched what we could, so most rows are already correct. Change any dropdown that looks wrong, or leave a field “— not mapped —” to skip it.
+                    <span className="font-semibold text-ink-800">Confirm which of your columns maps to each iLaunchify field.</span>{' '}
+                    We auto-matched what we could. Change any dropdown that looks wrong, or leave a field “— not in my sheet —”. You&apos;ll pick each product&apos;s category in the next step.
                   </p>
-
-                  <label className="mb-4 block">
-                    <span className="mb-1.5 block text-[13px] font-semibold text-ink-800">Default category for all rows <span className="text-pink-700">*</span></span>
-                    <select className={SEL} value={defaultSubcatId} onChange={(e) => setDefaultSubcatId(e.target.value)}>
-                      <option value="">Select a subcategory…</option>
-                      {subcategories.map((s) => <option key={s.id} value={s.id}>{s.categoryName} → {s.name}</option>)}
-                    </select>
-                    <span className="mt-1 block text-[12px] text-ink-500">The fallback — used for any product whose category is blank or left on “Use default” below. Map a “Category” column to send different products to different categories.</span>
-                  </label>
 
                   <div className="mb-1.5 grid grid-cols-[1fr_1.2fr] items-center gap-3">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-ink-500">iLaunchify field</span>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-ink-500">← matched to your column</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-ink-500">← your spreadsheet column</span>
                   </div>
                   <div className="grid gap-2.5">
                     {FIELDS.map((f) => (
@@ -407,39 +416,6 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                       </div>
                     ))}
                   </div>
-
-                  {distinctCats.length > 0 && (
-                    <div className="mt-4 overflow-hidden rounded-lg border border-ink-200">
-                      <div className="border-b border-ink-100 bg-ink-50 px-3 py-2">
-                        <span className="text-[12.5px] font-semibold text-ink-900">Categories in your sheet — {distinctCats.length}</span>
-                        <p className="mt-0.5 text-[11.5px] text-ink-500">Send each of your categories to an iLaunchify category. We can&apos;t match? Pick the closest, or skip those products. (Anything left on “Use default” files under the category above.)</p>
-                      </div>
-                      <div className="max-h-52 divide-y divide-ink-100 overflow-auto">
-                        {distinctCats.map((c) => {
-                          const effective = categoryMap[c.value] ?? (c.autoId ?? '')
-                          return (
-                            <div key={c.value} className="grid grid-cols-[1fr_1.3fr] items-center gap-3 px-3 py-1.5">
-                              <span className="min-w-0 truncate text-[12.5px] text-ink-800">
-                                {c.display}
-                                <span className="ml-1 text-ink-400">· {c.count}</span>
-                                {!c.autoId && !categoryMap[c.value] && <span className="ml-1 text-warning-700">· no match</span>}
-                              </span>
-                              <select
-                                className={SEL}
-                                value={effective}
-                                onChange={(e) => setCategoryMap((m) => ({ ...m, [c.value]: e.target.value }))}
-                              >
-                                <option value="">Use default category</option>
-                                <option value="__suggest__">Suggest “{c.display}” for admin review</option>
-                                <option value="__skip__">Skip these products</option>
-                                {subcategories.map((s) => <option key={s.id} value={s.id}>{s.categoryName} → {s.name}</option>)}
-                              </select>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
 
                   {preview.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-lg border border-ink-200 bg-white">
@@ -470,19 +446,13 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                           </div>
                         ))}
                       </dl>
-                      {rows.length > 1 && (
-                        <p className="border-t border-ink-100 px-3 py-1.5 text-[11.5px] text-ink-500">
-                          Other rows import with the same column mapping.
-                        </p>
-                      )}
                     </div>
                   )}
 
                   <div className="mt-4 flex items-center gap-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[13px]">
-                    <span className={`font-semibold ${valid.length ? 'text-ink-900' : 'text-ink-500'}`}>{valid.length} ready</span>
+                    <span className={`font-semibold ${valid.length ? 'text-ink-900' : 'text-ink-500'}`}>{valid.length} product{valid.length === 1 ? '' : 's'} found</span>
                     {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
                     {!nameMapped && <span className="text-pink-700">· map a Product name column</span>}
-                    {!defaultSubcatId && <span className="text-pink-700">· pick a default category above ↑</span>}
                   </div>
                 </>
               )}
@@ -490,18 +460,28 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
               {step === 'select' && (
                 <>
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-[13px] font-semibold text-ink-900">
-                      Choose products to import — {valid.length} found
-                    </span>
+                    <span className="text-[13px] font-semibold text-ink-900">{valid.length} found · {selectedCount} selected</span>
                     <div className="flex items-center gap-2 text-[12px]">
-                      <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const { i } of filtered) n.add(i); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
+                      <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const v of filtered) n.add(v.rowIndex); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
                         {query.trim() ? 'Select matching' : 'Select all'}
                       </button>
                       <span className="text-ink-300">·</span>
                       <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
                     </div>
                   </div>
-                  <p className="mb-2 text-[12px] text-ink-500">Tick one to set it up now, or several to create them all as drafts.</p>
+
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-ink-50 px-2.5 py-2">
+                    <span className="text-[12px] text-ink-600">Set all selected:</span>
+                    <select className={`${SEL} h-9 w-auto min-w-[120px] flex-1 py-1`} value={bulkCat} onChange={(e) => { setBulkCat(e.target.value); setBulkSub('') }}>
+                      <option value="">Category…</option>
+                      {catOptions.map((c) => <option key={c.id} value={c.id}>{isSugCat(c.id) ? `${c.name} · new` : c.name}</option>)}
+                    </select>
+                    <select className={`${SEL} h-9 w-auto min-w-[120px] flex-1 py-1`} value={bulkSub} onChange={(e) => setBulkSub(e.target.value)} disabled={!bulkCat}>
+                      <option value="">Subcategory…</option>
+                      {subsFor(bulkCat).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <button type="button" onClick={applyBulk} disabled={!bulkCat || !bulkSub || selectedCount === 0} className="rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-40">Apply</button>
+                  </div>
 
                   {valid.length > 6 && (
                     <div className="relative mb-2">
@@ -516,40 +496,65 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     </div>
                   )}
 
-                  <div className="max-h-[46vh] divide-y divide-ink-100 overflow-auto rounded-lg border border-ink-200">
+                  <div className="max-h-[44vh] divide-y divide-ink-100 overflow-auto rounded-lg border border-ink-200">
                     {filtered.length === 0 ? (
                       <p className="px-3 py-6 text-center text-[12.5px] text-ink-500">No products match “{query}”.</p>
-                    ) : filtered.map(({ v, i }) => {
-                      const on = selected.has(i)
+                    ) : filtered.map((v) => {
+                      const on = selected.has(v.rowIndex)
+                      const e = effAssign(v)
+                      const sug = isSuggested(e)
                       return (
-                        <label key={i} className={`flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-ink-50 ${on ? 'bg-pink-50/40' : ''}`}>
+                        <div key={v.rowIndex} className={`grid grid-cols-[20px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2.5 px-3 py-2 transition-colors ${on ? 'bg-pink-50/40' : ''}`}>
                           <input
                             type="checkbox"
                             checked={on}
-                            onChange={() => setSelected((s) => {
-                              const n = new Set(s)
-                              if (n.has(i)) n.delete(i); else n.add(i)
-                              return n
-                            })}
+                            aria-label={`Select ${v.base.name}`}
+                            onChange={() => setSelected((s) => { const n = new Set(s); if (n.has(v.rowIndex)) n.delete(v.rowIndex); else n.add(v.rowIndex); return n })}
                             className="h-4 w-4 flex-none accent-pink-600"
                           />
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-900">{v.import.name}</span>
-                          {v.issues > 0 && (
-                            <span className="flex-none rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10.5px] font-semibold text-warning-700">
-                              {v.issues} to check
+                          <span className="min-w-0">
+                            <span className="block truncate text-[13px] font-medium text-ink-900">{v.base.name}</span>
+                            <span className="flex items-center gap-1.5 text-[11px]">
+                              {v.base.familyCode && <span className="truncate text-ink-400">{v.base.familyCode}</span>}
+                              {v.issues > 0 && <span className="text-warning-700">{v.issues} to check</span>}
+                              {sug && <span className="text-warning-700">· admin review</span>}
                             </span>
-                          )}
-                          {v.import.familyCode && <span className="flex-none truncate text-[12px] text-ink-500">{v.import.familyCode}</span>}
-                        </label>
+                          </span>
+                          <select
+                            className={`${SEL} h-9 py-1 ${on && !isReady(v) ? 'border-pink-300' : ''}`}
+                            value={e.categoryId}
+                            onChange={(ev) => {
+                              const val = ev.target.value
+                              if (val === '__add_cat__') { setAddModal({ mode: 'category', categoryId: '', rowIndex: v.rowIndex }); setAddName(''); return }
+                              setAssign((a) => ({ ...a, [v.rowIndex]: { categoryId: val, subcategoryId: '' } }))
+                            }}
+                          >
+                            <option value="">Category…</option>
+                            {catOptions.map((c) => <option key={c.id} value={c.id}>{isSugCat(c.id) ? `${c.name} · new` : c.name}</option>)}
+                            <option value="__add_cat__">+ Add category…</option>
+                          </select>
+                          <select
+                            className={`${SEL} h-9 py-1 ${on && e.categoryId && !e.subcategoryId && !isSugCat(e.categoryId) ? 'border-pink-300' : ''}`}
+                            value={e.subcategoryId}
+                            disabled={!e.categoryId}
+                            onChange={(ev) => {
+                              const val = ev.target.value
+                              if (val === '__add_sub__') { setAddModal({ mode: 'subcategory', categoryId: e.categoryId, rowIndex: v.rowIndex }); setAddName(''); return }
+                              setAssign((a) => ({ ...a, [v.rowIndex]: { ...effAssign(v), subcategoryId: val } }))
+                            }}
+                          >
+                            <option value="">{e.categoryId ? 'Subcategory…' : '—'}</option>
+                            {subsFor(e.categoryId).map((s) => <option key={s.id} value={s.id}>{isSugSub(s.id) ? `${s.name} · new` : s.name}</option>)}
+                            {e.categoryId && <option value="__add_sub__">+ Add subcategory…</option>}
+                          </select>
+                        </div>
                       )
                     })}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-600">
-                    <span className="font-semibold text-ink-900">
-                      {chosen.length} of {valid.length} selected
-                    </span>
-                    {query.trim() && <span className="text-ink-500">· {filtered.length} match{filtered.length === 1 ? '' : 'es'}</span>}
-                    {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} row{skippedNoName === 1 ? '' : 's'} skipped (missing name)</span>}
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
+                    <span className="font-semibold text-ink-900">{chosen.length} ready</span>
+                    {needCategory > 0 && <span className="text-pink-700">· {needCategory} need a category</span>}
+                    {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
                   </div>
                 </>
               )}
@@ -584,15 +589,10 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   <button
                     type="button"
                     onClick={next}
-                    disabled={busy || !valid.length || !nameMapped || !defaultSubcatId}
+                    disabled={!valid.length || !nameMapped}
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
                   >
-                    {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                    {busy
-                      ? 'Creating…'
-                      : valid.length === 1
-                        ? 'Create & review →'
-                        : 'Choose products →'}
+                    Choose products →
                   </button>
                 </>
               )}
@@ -601,16 +601,12 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                   <button type="button" onClick={() => setStep('map')} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Back</button>
                   <button
                     type="button"
-                    onClick={() => commitRows(chosen)}
+                    onClick={commit}
                     disabled={busy || chosen.length === 0}
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
                   >
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                    {busy
-                      ? 'Creating…'
-                      : chosen.length === 1
-                        ? 'Create & review →'
-                        : `Create ${chosen.length} draft${chosen.length === 1 ? '' : 's'}`}
+                    {busy ? 'Creating…' : chosen.length === 1 ? 'Create & review →' : `Create ${chosen.length} draft${chosen.length === 1 ? '' : 's'}`}
                   </button>
                 </>
               )}
@@ -622,6 +618,31 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
               )}
             </div>
           </div>
+
+          {addModal && (
+            <div className="fixed inset-0 z-[60] grid place-items-center bg-ink-900/55 p-4" onMouseDown={() => setAddModal(null)}>
+              <div className="w-full max-w-sm rounded-xl border border-ink-200 bg-white p-5 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+                <h3 className="font-display text-[15px] font-bold text-ink-900">
+                  {addModal.mode === 'category' ? 'Suggest a new category' : `Suggest a subcategory${addModal.categoryId ? ` in ${catNameOf(addModal.categoryId)}` : ''}`}
+                </h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
+                  Added to the dropdown now so you can assign it. iLaunchify reviews it when you import and files the product into the right place.
+                </p>
+                <input
+                  autoFocus
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveAdd() }}
+                  placeholder={addModal.mode === 'category' ? 'e.g. Functional Elixirs' : 'e.g. Hard Kombucha'}
+                  className="mt-3 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                />
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={() => setAddModal(null)} className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-700 hover:bg-ink-100">Cancel</button>
+                  <button type="button" onClick={saveAdd} disabled={addName.trim().length < 2} className="rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:bg-ink-700 disabled:opacity-50">Save</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
