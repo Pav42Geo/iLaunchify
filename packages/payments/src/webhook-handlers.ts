@@ -293,7 +293,25 @@ async function mintCreditForPaidSample(orderId: string): Promise<void> {
 }
 
 async function onChargeRefunded(charge: Stripe.Charge) {
-  const orderId = charge.metadata?.ilaunchify_order_id
+  // Resolve the order id robustly. Stripe does NOT copy a PaymentIntent's
+  // metadata onto its Charge, so charge.metadata is empty for our PI-created
+  // charges (we only stamp the PI, in createCheckoutSession). Fall back to OUR
+  // Charge row, linked at payment time by stripeChargeId / stripePaymentIntentId
+  // — otherwise the whole refund reconciliation below silently no-ops.
+  let orderId = charge.metadata?.ilaunchify_order_id ?? null
+  if (!orderId) {
+    const piId =
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id ?? null
+    const ours = await prisma.charge
+      .findFirst({
+        where: { OR: [{ stripeChargeId: charge.id }, ...(piId ? [{ stripePaymentIntentId: piId }] : [])] },
+        select: { orderId: true },
+      })
+      .catch(() => null)
+    orderId = ours?.orderId ?? null
+  }
   if (!orderId) return
 
   // Reconcile any Refund rows we created (executeOrderRefund) against Stripe's
