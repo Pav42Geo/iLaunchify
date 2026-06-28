@@ -64,6 +64,18 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
 const toInt = (s: string): number | null => { const n = parseInt(s.replace(/[^0-9.-]/g, ''), 10); return Number.isFinite(n) ? Math.max(0, n) : null }
 const toNum = (s: string): number | null => { const n = parseFloat(s.replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? Math.max(0, n) : null }
 
+// A starter CSV whose headers exactly match the auto-mapper, plus one example row.
+function downloadTemplate() {
+  const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
+  const example = ['Sparkling Yuzu Soda', '', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
+  const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)
+  const csv = [headers, example].map((r) => r.map(esc).join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url; a.download = 'ilaunchify-products-template.csv'; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function ProductImportButton({ subcategories }: { subcategories: SubcatOption[] }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -198,6 +210,9 @@ export function ProductImportButton({ subcategories }: { subcategories: SubcatOp
                   <p className="mt-3 text-[12px] text-ink-500">
                     One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. You map the rest next.
                   </p>
+                  <button type="button" onClick={downloadTemplate} className="mt-1.5 text-[12.5px] font-semibold text-pink-700 underline-offset-2 hover:text-pink-800 hover:underline">
+                    Download a CSV template
+                  </button>
                 </>
               )}
 
