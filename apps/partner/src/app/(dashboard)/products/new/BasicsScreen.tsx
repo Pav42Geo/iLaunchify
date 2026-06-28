@@ -7,8 +7,9 @@
 // pack composition). Rendered inside GuidedBuilder's `.gb` style scope.
 //
 // Persistence: creates the DRAFT once name+subcategory are valid, then autosaves
-// scalar fields via updateBasics. Niches/tags/variant persistence is the next
-// revision pass (local + functional in-session for now).
+// scalar fields via updateBasics. Niches + lifestyle tags persist via
+// saveProductNiches / saveProductLifestyleTags and round-trip through loadDraft
+// (nicheIds / lifestyleTagIds).
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'

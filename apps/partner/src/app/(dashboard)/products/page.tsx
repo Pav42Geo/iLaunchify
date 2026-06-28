@@ -34,6 +34,7 @@ import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSele
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
 import { ProductsGetStarted } from './ProductsGetStarted'
+import { ProductImportButton } from './import/ProductImportButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -126,6 +127,14 @@ export default async function ProductsListPage({
   })
   if (!partner) return null
 
+  // Subcategory options for the CSV import modal (default-category picker +
+  // per-row category-name resolution).
+  const importSubcats = (await prisma.subcategory.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, category: { select: { name: true } } },
+    orderBy: { name: 'asc' },
+  })).map((s) => ({ id: s.id, name: s.name, categoryName: s.category?.name ?? '' }))
+
   const serviceIds = partner.services.map((s) => s.id)
   const templates: Row[] = serviceIds.length
     ? await prisma.productTemplate.findMany({
@@ -202,12 +211,15 @@ export default async function ProductsListPage({
               customized + ordered.
             </p>
           </div>
-          <Link
-            href="/products/new"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" /> New product
-          </Link>
+          <div className="flex items-center gap-2">
+            <ProductImportButton subcategories={importSubcats} />
+            <Link
+              href="/products/new"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> New product
+            </Link>
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
