@@ -36,7 +36,13 @@ export type TransferOutcome = {
   orderId: string
   destinationUserId: string
   amountCents: number
-  result: 'paid' | 'held_account_inactive' | 'held_charge_unsettled' | 'skipped_claimed' | 'failed'
+  result:
+    | 'paid'
+    | 'held_account_inactive'
+    | 'held_charge_unsettled'
+    | 'skipped_claimed'
+    | 'failed'
+    | 'superseded' // a refund cancelled the row mid-flight; transfer sent, recoup via clawback
   stripeTransferId?: string
   detail?: string
 }
@@ -48,6 +54,7 @@ export type ExecuteTransfersResult = {
   paid: number
   held: number
   failed: number
+  superseded: number // transfer sent but a refund cancelled the row mid-flight
   outcomes: TransferOutcome[]
 }
 
@@ -140,8 +147,14 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
         { idempotencyKey: `transfer:${t.id}` },
       )
 
-      await prisma.transfer.update({
-        where: { id: t.id },
+      // Compare-and-set on EXECUTING: only WE may move the row out of the state we
+      // claimed. If a refund flipped it to CANCELED/REVERSED while our Stripe call was
+      // in flight, count is 0 — we must NOT resurrect it to COMPLETED. The transfer DID
+      // go through, so we still stamp stripeTransferId for reconciliation, and the
+      // refund's PartnerClawback (PENDING_APPROVAL) is the recoup path. (Stripe call is
+      // idempotency-keyed, so this race never double-pays.)
+      const settled = await prisma.transfer.updateMany({
+        where: { id: t.id, status: 'EXECUTING' },
         data: {
           status: 'COMPLETED',
           stripeTransferId: transfer.id,
@@ -150,13 +163,27 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
           failureReason: null,
         },
       })
-      outcomes.push({ ...base, result: 'paid', stripeTransferId: transfer.id })
+      if (settled.count === 1) {
+        outcomes.push({ ...base, result: 'paid', stripeTransferId: transfer.id })
+      } else {
+        await prisma.transfer
+          .update({ where: { id: t.id }, data: { stripeTransferId: transfer.id } })
+          .catch(() => undefined) // best-effort: row may already carry a reversal's id
+        outcomes.push({
+          ...base,
+          result: 'superseded',
+          stripeTransferId: transfer.id,
+          detail: 'Row left EXECUTING (refund raced) — transfer sent; recoup via clawback',
+        })
+      }
     } catch (err) {
       // Revert the claim so the row is retried next run (the idempotency key makes a
-      // retry safe even if Stripe actually created the transfer before throwing).
+      // retry safe even if Stripe actually created the transfer before throwing). Also
+      // compare-and-set on EXECUTING: never resurrect a row a refund cancelled mid-flight
+      // back to PENDING (that would re-pay a partner whose order is being refunded).
       const detail = err instanceof Error ? err.message : String(err)
-      await prisma.transfer.update({
-        where: { id: t.id },
+      await prisma.transfer.updateMany({
+        where: { id: t.id, status: 'EXECUTING' },
         data: { status: 'PENDING', failureReason: detail.slice(0, 500) },
       })
       outcomes.push({ ...base, result: 'failed', detail })
@@ -165,7 +192,8 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
 
   const paid = outcomes.filter((o) => o.result === 'paid').length
   const failed = outcomes.filter((o) => o.result === 'failed').length
-  const held = outcomes.length - paid - failed
+  const superseded = outcomes.filter((o) => o.result === 'superseded').length
+  const held = outcomes.length - paid - failed - superseded
 
   return {
     executed: enabled,
@@ -174,6 +202,7 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
     paid,
     held,
     failed,
+    superseded,
     outcomes,
   }
 }
