@@ -7,14 +7,16 @@
 // the domain is COSMETIC. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 2).
 
 import * as React from 'react'
-import { Plus, Trash2, Palette, Search } from 'lucide-react'
+import { Plus, Trash2, Palette, Search, Building2 } from 'lucide-react'
 import { toInciDeclaration } from './inci'
 import { InciDeclarationSvg } from '@ilaunchify/ui'
 import { searchInci, type InciEntry } from './inci-dictionary'
 import { searchLibraryIngredients } from './domain-library-actions'
 import { saveCosmeticFormulation, loadCosmeticFormulation } from './cosmetic-actions'
 
-const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
+// Compact form control aligned to the builder's `.gb .input` family (canon input
+// radius + soft border + pink focus ring), kept dense enough for the tables.
+const INPUT = 'rounded-[var(--input-radius)] border border-ink-200 bg-white px-2.5 py-1.5 text-[13px] text-ink-900 focus:border-pink-500 focus:outline-none focus:shadow-[0_0_0_3px_var(--pink-50)]'
 const NET_UNITS = ['fl oz', 'mL', 'g', 'oz']
 let seq = 0
 const uid = () => `c${Date.now().toString(36)}${(seq++).toString(36)}`
@@ -104,11 +106,8 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
       {/* LEFT — formulation */}
       <div className="space-y-4">
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700"><Palette className="h-4 w-4" /></span>
-            <h2 className="text-[15px] font-bold text-ink-900">Ingredients (INCI)</h2>
-          </div>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 6 }}><span className="ic"><Palette size={16} strokeWidth={2} /></span> Ingredients (INCI)</div>
           <p className="mb-3 text-[11px] text-ink-500">Enter the % concentration — the declaration auto-orders by 21 CFR 701.3: &gt;1% by predominance, then ≤1% in any order, color additives last.</p>
 
           {/* INCI dictionary search */}
@@ -164,13 +163,13 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
               )}
             </table>
           </div>
-          <button type="button" onClick={addRow} className="mt-3 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Ingredient</button>
+          <button type="button" onClick={addRow} className="btn sm" style={{ marginTop: 12 }}><Plus className="h-3.5 w-3.5" /> Ingredient</button>
           {rows.length > 0 && Math.abs(totalPct - 100) > 0.5 && <p className="mt-2 text-[11px] text-warning-600">Concentrations total {totalPct.toFixed(2)}% — they should add up to ~100% w/w.</p>}
         </div>
 
         {/* Net contents + MoCRA */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-3 text-[14px] font-bold text-ink-900">Net contents &amp; responsible person (MoCRA)</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Building2 size={16} strokeWidth={2} /></span> Net contents &amp; responsible person (MoCRA)</div>
           <div className="flex flex-wrap items-end gap-4">
             <label className="text-[12.5px] text-ink-700">Net contents
               <div className="mt-1 flex gap-2">
@@ -205,7 +204,7 @@ export function CosmeticFormulationStep({ productName, draftId, registerFlush }:
             widthPx={300}
           />
         ) : (
-          <div className="rounded-2xl border border-ink-200 bg-white p-4 text-[12.5px] text-ink-400">Add ingredients to build the declaration.</div>
+          <div className="card text-[12.5px] text-ink-400">Add ingredients to build the declaration.</div>
         )}
         <p className="text-[11px] text-ink-500">Print-grade INCI declaration preview.</p>
       </div>

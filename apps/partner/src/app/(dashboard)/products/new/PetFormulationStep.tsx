@@ -6,14 +6,16 @@
 // when the domain is PET_PRODUCT. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 3).
 
 import * as React from 'react'
-import { Plus, Trash2, PawPrint, Search } from 'lucide-react'
+import { Plus, Trash2, PawPrint, Search, ClipboardList, Utensils } from 'lucide-react'
 import { petIngredientOrder, formatGuaranteedAnalysis, adequacyStatement, type PetSpecies, type LifeStage, type AdequacyMethod } from './pet'
 import { GuaranteedAnalysisSvg } from '@ilaunchify/ui'
 import { searchAafco, type AafcoEntry } from './aafco-dictionary'
 import { searchLibraryIngredients } from './domain-library-actions'
 import { savePetFormulation, loadPetFormulation } from './pet-actions'
 
-const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
+// Compact form control aligned to the builder's `.gb .input` family (canon input
+// radius + soft border + pink focus ring), kept dense enough for the tables.
+const INPUT = 'rounded-[var(--input-radius)] border border-ink-200 bg-white px-2.5 py-1.5 text-[13px] text-ink-900 focus:border-pink-500 focus:outline-none focus:shadow-[0_0_0_3px_var(--pink-50)]'
 let seq = 0
 const uid = () => `p${Date.now().toString(36)}${(seq++).toString(36)}`
 
@@ -125,11 +127,8 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
       {/* LEFT — formulation */}
       <div className="space-y-4">
         {/* Species / adequacy */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700"><PawPrint className="h-4 w-4" /></span>
-            <h2 className="text-[15px] font-bold text-ink-900">Species &amp; nutritional adequacy</h2>
-          </div>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><PawPrint size={16} strokeWidth={2} /></span> Species &amp; nutritional adequacy</div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="text-[12.5px] text-ink-700">Species
               <select className={`${INPUT} mt-1 block w-full`} value={species} onChange={(e) => setSpecies(e.target.value as PetSpecies)}><option>Dog</option><option>Cat</option></select>
@@ -148,8 +147,8 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
         </div>
 
         {/* Ingredients */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-1 text-[14px] font-bold text-ink-900">Ingredients</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 6 }}><span className="ic"><Plus size={16} strokeWidth={2} /></span> Ingredients</div>
           <p className="mb-3 text-[11px] text-ink-500">Enter a relative weight — the statement auto-orders by descending predominance.</p>
 
           {/* AAFCO ingredient search */}
@@ -184,12 +183,12 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
               {rows.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-[12px] text-ink-400">No ingredients yet — add the first below.</td></tr>}
             </tbody>
           </table>
-          <button type="button" onClick={addRow} className="mt-3 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Ingredient</button>
+          <button type="button" onClick={addRow} className="btn sm" style={{ marginTop: 12 }}><Plus className="h-3.5 w-3.5" /> Ingredient</button>
         </div>
 
         {/* Guaranteed analysis */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-3 text-[14px] font-bold text-ink-900">Guaranteed Analysis</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><ClipboardList size={16} strokeWidth={2} /></span> Guaranteed Analysis</div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <label className="text-[12.5px] text-ink-700">Crude Protein (min)<div className="mt-1 flex items-center gap-1"><input className={`${INPUT} w-20 text-right`} type="number" min={0} value={cp} onChange={(e) => setCp(Math.max(0, parseFloat(e.target.value) || 0))} /><span className="text-ink-500">%</span></div></label>
             <label className="text-[12.5px] text-ink-700">Crude Fat (min)<div className="mt-1 flex items-center gap-1"><input className={`${INPUT} w-20 text-right`} type="number" min={0} value={cf} onChange={(e) => setCf(Math.max(0, parseFloat(e.target.value) || 0))} /><span className="text-ink-500">%</span></div></label>
@@ -205,12 +204,12 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
               <button type="button" aria-label="Remove" onClick={() => removeOther(i)} className="text-ink-400 hover:text-danger-600"><Trash2 className="h-4 w-4" /></button>
             </div>
           ))}
-          <button type="button" onClick={addOther} className="mt-2 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Extra guarantee</button>
+          <button type="button" onClick={addOther} className="btn sm" style={{ marginTop: 8 }}><Plus className="h-3.5 w-3.5" /> Extra guarantee</button>
         </div>
 
         {/* Feeding directions */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-2 text-[14px] font-bold text-ink-900">Feeding directions</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Utensils size={16} strokeWidth={2} /></span> Feeding directions</div>
           <textarea className={`${INPUT} w-full`} rows={3} value={feedingDirections} placeholder="e.g. Feed 1 cup per 20 lbs of body weight daily, divided into two meals. Adjust to maintain ideal body condition. Provide fresh water." onChange={(e) => setFeeding(e.target.value)} />
           {method !== 'intermittent' && !feedingDirections.trim() && <p className="mt-1 text-[11px] text-warning-600">Feeding directions are required for complete &amp; balanced products.</p>}
         </div>

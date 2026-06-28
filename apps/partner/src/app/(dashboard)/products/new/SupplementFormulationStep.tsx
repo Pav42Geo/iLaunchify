@@ -10,7 +10,7 @@
 // is DIETARY_SUPPLEMENT. docs/PRODUCT_DOMAINS_ARCHITECTURE.md (Phase 1).
 
 import * as React from 'react'
-import { Plus, Trash2, FlaskConical, Layers, Search, Loader2 } from 'lucide-react'
+import { Plus, Trash2, FlaskConical, Layers, Search, Loader2, Pill, Flame, Package } from 'lucide-react'
 import { SupplementFactsSvg } from '@ilaunchify/ui'
 import { toSupplementPanelData, type DietaryIngredient, type ProprietaryBlend, type SupplementNutrition } from '@ilaunchify/nutrition'
 import { searchDsldIngredients } from './dsld-actions'
@@ -65,7 +65,9 @@ interface DietRow {
 // Footnote glyph choices for ingredients with no established Daily Value.
 const NO_DV_SYMBOLS = ['†', '‡', '*', '**']
 
-const INPUT = 'rounded-md border border-ink-300 bg-white px-2 py-1 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
+// Compact form control aligned to the builder's `.gb .input` family (canon input
+// radius + soft border + pink focus ring), kept dense enough for the tables.
+const INPUT = 'rounded-[var(--input-radius)] border border-ink-200 bg-white px-2.5 py-1.5 text-[13px] text-ink-900 focus:border-pink-500 focus:outline-none focus:shadow-[0_0_0_3px_var(--pink-50)]'
 
 export function SupplementFormulationStep({
   productName,
@@ -217,15 +219,15 @@ export function SupplementFormulationStep({
       {/* LEFT — formulation */}
       <div className="space-y-4">
         {/* Dosage form */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-2 text-[14px] font-bold text-ink-900">Dosage form</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Pill size={16} strokeWidth={2} /></span> Dosage form</div>
           <div className="flex flex-wrap gap-2">
             {DOSAGE_FORMS.map((d) => (
               <button
                 key={d.key}
                 type="button"
                 onClick={() => pickDosageForm(d.key)}
-                className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${dosageForm === d.key ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 text-ink-700 hover:bg-ink-50'}`}
+                className={`chip ${dosageForm === d.key ? 'on' : ''}`}
               >
                 {d.label}
               </button>
@@ -235,10 +237,10 @@ export function SupplementFormulationStep({
         </div>
 
         {/* Nutrition information (Calories / macros) — declare only if present. */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
+        <div className="card">
           <button type="button" onClick={() => setNutOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
-            <span>
-              <span className="text-[14px] font-bold text-ink-900">Nutrition information</span>
+            <span className="flex items-center">
+              <span className="section-title"><span className="ic"><Flame size={16} strokeWidth={2} /></span> Nutrition information</span>
               <span className="ml-2 text-[11.5px] text-ink-500">Calories, fats, carbs, sugars, protein — only if your product has them (gummies, powders, chews)</span>
             </span>
             <span className="text-[12px] font-semibold text-pink-700">{nutOpen ? 'Hide' : 'Add'}</span>
@@ -275,11 +277,8 @@ export function SupplementFormulationStep({
           )}
         </div>
 
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700"><FlaskConical className="h-4 w-4" /></span>
-            <h2 className="text-[15px] font-bold text-ink-900">Dietary ingredients</h2>
-          </div>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Dietary ingredients</div>
 
           {/* NIH DSLD search — validated dietary-ingredient identities. */}
           <div className="relative mb-3">
@@ -313,7 +312,7 @@ export function SupplementFormulationStep({
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-ink-200 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700">
+                <tr className="border-b border-ink-200 text-left text-[11.5px] font-bold uppercase tracking-wide text-ink-500">
                   <th className="py-1.5 pr-2">Ingredient (incl. source / plant part)</th>
                   <th className="py-1.5 px-1 text-right">Amount</th>
                   <th className="py-1.5 px-1">Unit</th>
@@ -361,8 +360,8 @@ export function SupplementFormulationStep({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => addRow(false)} className="inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Dietary ingredient</button>
-            <button type="button" onClick={addBlend} className="inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Layers className="h-3.5 w-3.5" /> Proprietary blend</button>
+            <button type="button" onClick={() => addRow(false)} className="btn sm"><Plus className="h-3.5 w-3.5" /> Dietary ingredient</button>
+            <button type="button" onClick={addBlend} className="btn sm"><Layers className="h-3.5 w-3.5" /> Proprietary blend</button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
             <span className="text-[12px] font-semibold text-ink-700">Footnote symbol (no Daily Value)</span>
@@ -376,8 +375,8 @@ export function SupplementFormulationStep({
 
         {/* Proprietary blends */}
         {blends.length > 0 && (
-          <div className="rounded-2xl border border-ink-200 bg-white p-4">
-            <h2 className="mb-2 text-[14px] font-bold text-ink-900">Proprietary blends</h2>
+          <div className="card">
+            <div className="section-title" style={{ marginBottom: 8 }}><span className="ic"><Layers size={16} strokeWidth={2} /></span> Proprietary blends</div>
             <p className="mb-3 text-[11px] text-ink-500">The blend total is printed; member amounts are hidden. Assign ingredients to a blend in the table above.</p>
             <div className="space-y-2">
               {blends.map((b) => {
@@ -397,8 +396,8 @@ export function SupplementFormulationStep({
         )}
 
         {/* Serving + Other ingredients */}
-        <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <h2 className="mb-3 text-[14px] font-bold text-ink-900">Serving &amp; other ingredients</h2>
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 12 }}><span className="ic"><Package size={16} strokeWidth={2} /></span> Serving &amp; other ingredients</div>
           <div className="flex flex-wrap gap-4">
             <label className="text-[12.5px] text-ink-700">Serving form
               <input className={`${INPUT} mt-1 block w-48`} value={servingForm} placeholder="2 capsules" onChange={(e) => setServingForm(e.target.value)} />
@@ -418,7 +417,7 @@ export function SupplementFormulationStep({
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => addRow(true)} className="mt-2 inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"><Plus className="h-3.5 w-3.5" /> Other ingredient</button>
+            <button type="button" onClick={() => addRow(true)} className="btn sm" style={{ marginTop: 8 }}><Plus className="h-3.5 w-3.5" /> Other ingredient</button>
           </div>
         </div>
 
@@ -430,7 +429,7 @@ export function SupplementFormulationStep({
         {hasPanel ? (
           <SupplementFactsSvg data={panel} otherIngredients={otherIngredients} widthPx={300} />
         ) : (
-          <div className="rounded-2xl border border-ink-200 bg-white p-5 text-center text-[12.5px] text-ink-500">Add a dietary ingredient to see the live Supplement Facts panel.</div>
+          <div className="card text-center text-[12.5px] text-ink-500">Add a dietary ingredient to see the live Supplement Facts panel.</div>
         )}
       </div>
     </div>
