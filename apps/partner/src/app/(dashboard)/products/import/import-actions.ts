@@ -90,3 +90,38 @@ export async function bulkImportProducts(
     return { ok: false, error: `Import failed: ${(err as Error).message}` }
   }
 }
+
+// -----------------------------------------------------------------------------
+// Optional .xlsx parsing — server-side, behind a guarded dynamic import so the
+// build never depends on the package. Ready the moment `pnpm add xlsx` runs;
+// until then .xlsx uploads get a friendly "export to CSV" message. CSV parsing
+// stays client-side. The variable specifier (typed `string`) keeps TS from
+// resolving the module at compile time.
+// -----------------------------------------------------------------------------
+
+export async function parseSpreadsheet(
+  base64: string,
+): Promise<{ ok: true; headers: string[]; rows: string[][] } | { ok: false; error: string }> {
+  try {
+    const specifier: string = 'xlsx'
+    let XLSX: {
+      read: (data: unknown, opts: unknown) => { SheetNames: string[]; Sheets: Record<string, unknown> }
+      utils: { sheet_to_json: (ws: unknown, opts: unknown) => unknown[][] }
+    }
+    try {
+      XLSX = (await import(specifier)) as never
+    } catch {
+      return { ok: false, error: 'Excel support isn’t installed yet — export your sheet to CSV, or have an admin add the “xlsx” package.' }
+    }
+    const buf = Buffer.from(base64, 'base64')
+    const wb = XLSX.read(buf, { type: 'buffer' })
+    const first = wb.SheetNames[0]
+    if (!first) return { ok: false, error: 'That workbook has no sheets.' }
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[first], { header: 1, blankrows: false, defval: '' })
+    const headers = (aoa.shift() ?? []).map((x) => String(x ?? '').trim())
+    const rows = aoa.map((r) => r.map((x) => String(x ?? '')))
+    return { ok: true, headers, rows }
+  } catch (e) {
+    return { ok: false, error: `Could not read the spreadsheet: ${(e as Error).message}` }
+  }
+}

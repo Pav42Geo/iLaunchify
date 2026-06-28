@@ -8,7 +8,16 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2 } from 'lucide-react'
-import { bulkImportProducts, type ImportRow, type ImportResult } from './import-actions'
+import { bulkImportProducts, parseSpreadsheet, type ImportRow, type ImportResult } from './import-actions'
+
+// ArrayBuffer → base64 (chunked, safe for larger workbooks) for the .xlsx path.
+function abToB64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf)
+  let bin = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  return btoa(bin)
+}
 
 interface SubcatOption { id: string; name: string; categoryName: string }
 
@@ -101,8 +110,7 @@ export function ProductImportButton({ subcategories }: { subcategories: SubcatOp
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
-  const ingest = useCallback((name: string, text: string) => {
-    const { headers: h, rows: r } = parseCsv(text)
+  const applyParsed = useCallback((name: string, h: string[], r: string[][]) => {
     if (h.length === 0 || r.length === 0) { toast.error('Could not read any rows from that file.'); return }
     // Auto-map fields by header alias.
     const map: Record<string, number | null> = {}
@@ -118,8 +126,22 @@ export function ProductImportButton({ subcategories }: { subcategories: SubcatOp
 
   function onFile(file: File | undefined) {
     if (!file) return
-    if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') { toast.error('Please upload a .csv file (export Excel → CSV).'); return }
-    file.text().then((t) => ingest(file.name, t)).catch(() => toast.error('Could not read the file.'))
+    if (file.size > 4 * 1024 * 1024) { toast.error('File is over 4 MB — split it or trim columns.'); return }
+    const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv'
+    const isXlsx = /\.xlsx?$/i.test(file.name)
+    if (isCsv) {
+      file.text().then((t) => { const { headers: h, rows: r } = parseCsv(t); applyParsed(file.name, h, r) }).catch(() => toast.error('Could not read the file.'))
+      return
+    }
+    if (isXlsx) {
+      file.arrayBuffer().then(async (buf) => {
+        const res = await parseSpreadsheet(abToB64(buf))
+        if (!res.ok) { toast.error(res.error); return }
+        applyParsed(file.name, res.headers, res.rows)
+      }).catch(() => toast.error('Could not read the file.'))
+      return
+    }
+    toast.error('Upload a .csv or .xlsx file.')
   }
 
   // Resolve a row → ImportRow using the current mapping + default subcategory.
@@ -203,9 +225,9 @@ export function ProductImportButton({ subcategories }: { subcategories: SubcatOp
                     className={`grid cursor-pointer place-items-center gap-2 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${drag ? 'border-pink-500 bg-pink-50' : 'border-ink-300 bg-ink-50/40 hover:border-ink-400'}`}
                   >
                     <UploadCloud className={`h-9 w-9 ${drag ? 'text-pink-600' : 'text-ink-400'}`} aria-hidden="true" />
-                    <div className="text-[14px] font-semibold text-ink-900">Drag &amp; drop a CSV here</div>
-                    <div className="text-[12.5px] text-ink-500">or click to choose a file · export Excel → CSV</div>
-                    <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+                    <div className="text-[14px] font-semibold text-ink-900">Drag &amp; drop a CSV or Excel file</div>
+                    <div className="text-[12.5px] text-ink-500">or click to choose · .csv or .xlsx</div>
+                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
                   </div>
                   <p className="mt-3 text-[12px] text-ink-500">
                     One product per row, with a header row. We auto-match columns like “Product name”, “SKU”, “MOQ”, “Country”. You map the rest next.
