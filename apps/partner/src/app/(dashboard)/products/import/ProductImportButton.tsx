@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2 } from 'lucide-react'
+import { Upload, UploadCloud, X, Check, FileSpreadsheet, Loader2, Search } from 'lucide-react'
 import { bulkImportProducts, parseSpreadsheet, type ImportRow, type ImportResult } from './import-actions'
 
 // ArrayBuffer → base64 (chunked, safe for larger workbooks) for the .xlsx path.
@@ -77,6 +77,24 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
 const toInt = (s: string): number | null => { const n = parseInt(s.replace(/[^0-9.-]/g, ''), 10); return Number.isFinite(n) ? Math.max(0, n) : null }
 const toNum = (s: string): number | null => { const n = parseFloat(s.replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? Math.max(0, n) : null }
 
+// Resolve a single field's raw cell → { displayed value, flag }. Shared by the
+// first-row preview AND the per-row issue counter so both speak the same language:
+//   missing = required + empty · check = parsed-but-not-clean · ok · empty
+type PreviewFlag = 'ok' | 'missing' | 'check' | 'empty'
+function fieldResolve(f: FieldDef, raw: string): { shown: string; flag: PreviewFlag } {
+  if (raw === '') return { shown: '', flag: f.required ? 'missing' : 'empty' }
+  if (f.kind === 'int' || f.kind === 'num') {
+    const n = f.kind === 'int' ? toInt(raw) : toNum(raw)
+    if (n == null) return { shown: raw, flag: 'check' }
+    return { shown: String(n), flag: /^\d+(\.\d+)?$/.test(raw) ? 'ok' : 'check' }
+  }
+  if (f.kind === 'coo') {
+    const code = COUNTRY_TO_CODE[raw.toLowerCase()] ?? (raw.length === 2 ? raw.toUpperCase() : raw)
+    return { shown: code, flag: /^[A-Z]{2}$/.test(code) ? 'ok' : 'check' }
+  }
+  return { shown: raw, flag: 'ok' }
+}
+
 // A starter CSV whose headers exactly match the auto-mapper, plus one example row.
 function downloadTemplate() {
   const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
@@ -105,6 +123,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   // Indices (into `valid`) the partner chose to import. Lets a manufacturer pull
   // ONE product (or a subset) out of a full multi-product master sheet.
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [query, setQuery] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const subcatByName = useMemo(() => {
@@ -114,7 +133,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }, [subcategories])
 
   function reset() {
-    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set())
+    setStep('drop'); setFileName(''); setHeaders([]); setRows([]); setMapping({}); setDefaultSubcatId(''); setResults(null); setDrag(false); setSelected(new Set()); setQuery('')
   }
   function close() { setOpen(false); setTimeout(reset, 200) }
 
@@ -179,49 +198,60 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
     }
   }
 
-  const valid = useMemo(() => (defaultSubcatId || mapping.category != null) ? rows.map(rowToImport).filter((x): x is ImportRow => x != null) : [], [rows, mapping, defaultSubcatId, subcatByName])
+  const cellOf = useCallback(
+    (row: string[], key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (row[i] ?? '').trim() : '' },
+    [mapping],
+  )
+
+  // Importable rows, each with a count of fields that parsed but not cleanly
+  // ("issues") — surfaced as a per-row flag on the selection list so a partner can
+  // spot which products need a second look before picking.
+  const valid = useMemo(() => {
+    if (!(defaultSubcatId || mapping.category != null)) return [] as Array<{ import: ImportRow; issues: number }>
+    const out: Array<{ import: ImportRow; issues: number }> = []
+    for (const r of rows) {
+      const imp = rowToImport(r)
+      if (!imp) continue
+      let issues = 0
+      for (const f of FIELDS) {
+        if (f.key === 'category') continue
+        if (fieldResolve(f, cellOf(r, String(f.key))).flag === 'check') issues++
+      }
+      out.push({ import: imp, issues })
+    }
+    return out
+  }, [rows, mapping, defaultSubcatId, subcatByName, cellOf])
   const skipped = rows.length - valid.length
   const nameMapped = mapping.name != null && mapping.name >= 0
 
-  // Per-field PREVIEW of the first row's RESOLVED values — turns "map columns
-  // blind" into "review what will actually be saved" (the research thesis). Uses
-  // the same toInt/toNum/COO coercion as the real import, then flags fields that
-  // are required-but-missing or didn't parse cleanly (e.g. a numeric column holding
-  // "box of 12" → 12, worth a look). The structured analogue of Phase B's
-  // "confirm the flagged fields".
-  type PreviewFlag = 'ok' | 'missing' | 'check' | 'empty'
+  // Per-field PREVIEW of the first row's RESOLVED values (shares fieldResolve with
+  // the per-row issue count) — turns "map columns blind" into "review what will be
+  // saved". The structured analogue of Phase B's "confirm the flagged fields".
   const preview = useMemo(() => {
     if (rows.length === 0) return [] as Array<{ key: string; label: string; required: boolean; mapped: boolean; shown: string; raw: string; flag: PreviewFlag }>
     const row = rows[0]!
-    const get = (key: string): string => { const i = mapping[key]; return i != null && i >= 0 ? (row[i] ?? '').trim() : '' }
     return FIELDS.filter((f) => f.key !== 'category').map((f) => {
-      const raw = get(String(f.key))
-      const mapped = mapping[f.key] != null && (mapping[f.key] as number) >= 0
-      let shown = ''
-      let flag: PreviewFlag = 'empty'
-      if (raw === '') {
-        flag = f.required ? 'missing' : 'empty'
-      } else if (f.kind === 'int' || f.kind === 'num') {
-        const n = f.kind === 'int' ? toInt(raw) : toNum(raw)
-        if (n == null) { shown = raw; flag = 'check' }
-        else { shown = String(n); flag = /^\d+(\.\d+)?$/.test(raw) ? 'ok' : 'check' }
-      } else if (f.kind === 'coo') {
-        const code = COUNTRY_TO_CODE[raw.toLowerCase()] ?? (raw.length === 2 ? raw.toUpperCase() : raw)
-        shown = code; flag = /^[A-Z]{2}$/.test(code) ? 'ok' : 'check'
-      } else {
-        shown = raw; flag = 'ok'
-      }
-      return { key: String(f.key), label: f.label, required: !!f.required, mapped, shown, raw, flag }
+      const raw = cellOf(row, String(f.key))
+      const { shown, flag } = fieldResolve(f, raw)
+      return { key: String(f.key), label: f.label, required: !!f.required, mapped: mapping[f.key] != null && (mapping[f.key] as number) >= 0, shown, raw, flag }
     })
-  }, [rows, mapping])
+  }, [rows, mapping, cellOf])
   const previewIssues = preview.filter((p) => p.flag === 'missing' || p.flag === 'check').length
+
+  // Selection-list search (handy for a long master sheet). Returns {row, idx-into-valid}.
+  const filtered = useMemo(() => {
+    const withIdx = valid.map((v, i) => ({ v, i }))
+    const q = query.trim().toLowerCase()
+    if (!q) return withIdx
+    return withIdx.filter(({ v }) => v.import.name.toLowerCase().includes(q) || (v.import.familyCode ?? '').toLowerCase().includes(q))
+  }, [valid, query])
 
   // From the mapping step: when the sheet has more than one product, go to the
   // selection step so the partner can pick which to import; a single-product sheet
   // skips straight to import.
   function next() {
     if (!valid.length) { toast.error(single ? 'No usable product row found.' : 'No valid rows to import.'); return }
-    if (valid.length === 1) { commitRows(valid); return }
+    if (valid.length === 1) { commitRows(valid.map((v) => v.import)); return }
     // Default: single → first product highlighted; bulk → everything selected.
     setSelected(single ? new Set([0]) : new Set(valid.map((_, i) => i)))
     setStep('select')
@@ -252,7 +282,7 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
   }
 
   // Rows the partner ticked on the selection step.
-  const chosen = useMemo(() => valid.filter((_, i) => selected.has(i)), [valid, selected])
+  const chosen = useMemo(() => valid.filter((_, i) => selected.has(i)).map((v) => v.import), [valid, selected])
 
   return (
     <>
@@ -396,14 +426,32 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                     </span>
                     {!single && (
                       <div className="flex items-center gap-2 text-[12px]">
-                        <button type="button" onClick={() => setSelected(new Set(valid.map((_, i) => i)))} className="font-semibold text-pink-700 hover:text-pink-800">All</button>
+                        <button type="button" onClick={() => setSelected((s) => { const n = new Set(s); for (const { i } of filtered) n.add(i); return n })} className="font-semibold text-pink-700 hover:text-pink-800">
+                          {query.trim() ? 'Select matching' : 'All'}
+                        </button>
                         <span className="text-ink-300">·</span>
                         <button type="button" onClick={() => setSelected(new Set())} className="font-semibold text-ink-600 hover:text-ink-900">None</button>
                       </div>
                     )}
                   </div>
+
+                  {valid.length > 6 && (
+                    <div className="relative mb-2">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search by name or SKU…"
+                        className="w-full rounded-lg border border-ink-200 bg-white py-2 pl-9 pr-3 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-ink-400 focus:outline-none focus:ring-2 focus:ring-pink-500/30"
+                      />
+                    </div>
+                  )}
+
                   <div className="max-h-[46vh] divide-y divide-ink-100 overflow-auto rounded-lg border border-ink-200">
-                    {valid.map((row, i) => {
+                    {filtered.length === 0 ? (
+                      <p className="px-3 py-6 text-center text-[12.5px] text-ink-500">No products match “{query}”.</p>
+                    ) : filtered.map(({ v, i }) => {
                       const on = selected.has(i)
                       return (
                         <label key={i} className={`flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-ink-50 ${on ? 'bg-pink-50/40' : ''}`}>
@@ -419,16 +467,22 @@ export function ProductImportButton({ subcategories, triggerClassName, triggerLa
                             })}
                             className="h-4 w-4 flex-none accent-pink-600"
                           />
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-900">{row.name}</span>
-                          {row.familyCode && <span className="flex-none truncate text-[12px] text-ink-500">{row.familyCode}</span>}
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-900">{v.import.name}</span>
+                          {v.issues > 0 && (
+                            <span className="flex-none rounded-full border border-warning-200 bg-warning-50 px-1.5 py-[1px] text-[10.5px] font-semibold text-warning-700">
+                              {v.issues} to check
+                            </span>
+                          )}
+                          {v.import.familyCode && <span className="flex-none truncate text-[12px] text-ink-500">{v.import.familyCode}</span>}
                         </label>
                       )
                     })}
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-[12.5px] text-ink-600">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-ink-600">
                     <span className="font-semibold text-ink-900">
                       {single ? (chosen.length ? '1 selected' : 'Pick one to continue') : `${chosen.length} of ${valid.length} selected`}
                     </span>
+                    {query.trim() && <span className="text-ink-500">· {filtered.length} match{filtered.length === 1 ? '' : 'es'}</span>}
                     {skipped > 0 && <span className="text-ink-500">· {skipped} row{skipped === 1 ? '' : 's'} skipped (missing name)</span>}
                   </div>
                 </>
