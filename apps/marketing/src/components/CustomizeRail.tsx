@@ -81,6 +81,43 @@ export function CustomizeRail({
   const totalDelta = replacementDelta + addOnDelta
   const hasChanges = totalDelta !== 0
 
+  // Live allergen "Contains" set — recomputed from the CURRENT composition.
+  // Unlike the Nutrition panel (which needs per-option nutrient deltas the
+  // public recipe loader doesn't carry yet), allergens are fully derivable
+  // from the data already in props: every row, replacement, and add-on carries
+  // its FALCPA Big-9 flags. So this line is accurate and updates on each swap.
+  const baseAllergens = React.useMemo(() => {
+    const s = new Set<string>()
+    for (const ing of ingredients) for (const a of ing.allergens ?? []) s.add(a)
+    return s
+  }, [ingredients])
+
+  const liveAllergens = React.useMemo(() => {
+    const s = new Set<string>()
+    for (const ing of ingredients) {
+      const pickedId = replacements[ing.id]
+      const picked =
+        pickedId && pickedId !== '__default'
+          ? ing.replacements?.find((r) => r.id === pickedId)
+          : null
+      // A swap replaces the default ingredient — so use the chosen
+      // replacement's allergens instead of the base row's.
+      const src = picked ? picked.allergens : ing.allergens
+      for (const a of src ?? []) s.add(a)
+    }
+    for (const id of addOnIds) {
+      const ao = ingredientAddOns.find((a) => a.id === id)
+      for (const a of ao?.allergens ?? []) s.add(a)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b))
+  }, [ingredients, replacements, addOnIds, ingredientAddOns])
+
+  const addedAllergens = liveAllergens.filter((a) => !baseAllergens.has(a))
+  const removedAllergens = [...baseAllergens]
+    .filter((a) => !liveAllergens.includes(a))
+    .sort((a, b) => a.localeCompare(b))
+  const allergensChanged = addedAllergens.length > 0 || removedAllergens.length > 0
+
   return (
     <aside className="lg:sticky lg:top-24 self-start space-y-4">
       {/* --- Ingredients (compact list, no per-row cards) ------------ */}
@@ -309,6 +346,54 @@ export function CustomizeRail({
         )}
       </div>
 
+      {/* --- Live allergen "Contains" card --------------------------- */}
+      {(isPrivateLabel || liveAllergens.length > 0) && (
+        <div className="rounded-xl border border-ink-200 bg-white p-3">
+          <header className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="font-display text-[16px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
+              Contains
+            </h3>
+            {allergensChanged && <Badge variant="warning">Updated</Badge>}
+          </header>
+
+          {liveAllergens.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {liveAllergens.map((a) => {
+                const isNew = addedAllergens.includes(a)
+                return (
+                  <span
+                    key={a}
+                    className={
+                      'rounded-full border px-2 py-0.5 text-[11px] font-medium ' +
+                      (isNew
+                        ? 'border-pink-400 bg-white font-semibold text-pink-700'
+                        : 'border-ink-200 bg-ink-50 text-ink-700')
+                    }
+                  >
+                    {a}
+                  </span>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-[12px] text-ink-500">
+              No Big-9 allergens in the current selection.
+            </p>
+          )}
+
+          {removedAllergens.length > 0 && (
+            <p className="mt-2 text-[11px] leading-snug text-ink-500">
+              Removed by your swaps: {removedAllergens.join(', ')}.
+            </p>
+          )}
+
+          <p className="mt-2 text-[11px] leading-snug text-ink-400">
+            Live allergen preview (FALCPA Big-9). The final &ldquo;Contains&rdquo;
+            statement is confirmed at the compliance check.
+          </p>
+        </div>
+      )}
+
       {/* --- Live nutrition card ------------------------------------- */}
       {nutrition && (
         <div className="rounded-xl border border-ink-200 bg-white p-3">
@@ -317,20 +402,15 @@ export function CustomizeRail({
               Nutrition Facts
             </h3>
             <p className="mt-1 text-[12px] leading-snug text-ink-500">
-              Updates as you customize. Final values come from the
-              compliance check.
+              {hasChanges
+                ? 'Shown for the base recipe. Values recompute when your swaps are finalized.'
+                : 'Computed from the recipe. Final values come from the compliance check.'}
             </p>
           </header>
           <div className="overflow-hidden rounded-md">
             {/* Fits inside the locked 250px rail column (≈226px usable inside p-3). */}
             <NutritionFactsRenderer data={nutrition} widthPx={220} />
           </div>
-          {hasChanges && (
-            <p className="mt-2 text-[11px] leading-snug text-ink-500">
-              Values shown for the base recipe. We recalculate the panel
-              once you Start Launching.
-            </p>
-          )}
         </div>
       )}
     </aside>
