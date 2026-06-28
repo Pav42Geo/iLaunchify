@@ -97,7 +97,7 @@ export async function seedDemoProduct(prisma: PrismaClient) {
   // 2. A manufacturer service to own it (optional — null is fine for display).
   const manuf = await prisma.partnerService.findFirst({
     where: { type: 'MANUFACTURING' },
-    select: { id: true },
+    select: { id: true, partnerId: true },
   })
 
   // 3. Die-line for the can.
@@ -313,5 +313,111 @@ export async function seedDemoProduct(prisma: PrismaClient) {
     ],
   })
 
-  console.log(`  ✓ ${SLUG} published (FOOD) with replaceable + optional ingredients, variant, die-line, pricing.`)
+  // 11. Taxonomy chips — niches (Layer 1, 1 primary + 1 secondary).
+  for (const ns of [
+    { slug: 'wellness', isPrimary: true },
+    { slug: 'healthy-lifestyle', isPrimary: false },
+  ]) {
+    const niche = await prisma.niche.findUnique({ where: { slug: ns.slug }, select: { id: true } })
+    if (!niche) continue
+    await prisma.productTemplateNiche.upsert({
+      where: { productTemplateId_nicheId: { productTemplateId: tpl.id, nicheId: niche.id } },
+      update: { isPrimary: ns.isPrimary },
+      create: { productTemplateId: tpl.id, nicheId: niche.id, isPrimary: ns.isPrimary },
+    })
+  }
+
+  // Lifestyle tags (Layer 4).
+  for (const slug of ['vegan', 'gluten-free', 'sugar-free']) {
+    const tag = await prisma.lifestyleTag.findUnique({ where: { slug }, select: { id: true } })
+    if (!tag) continue
+    await prisma.productTemplateLifestyleTag.upsert({
+      where: { productTemplateId_lifestyleTagId: { productTemplateId: tpl.id, lifestyleTagId: tag.id } },
+      update: {},
+      create: { productTemplateId: tpl.id, lifestyleTagId: tag.id },
+    })
+  }
+
+  // 12. Sample option — one UNBRANDED single-can sample (idempotent replace).
+  await prisma.productSampleOption.deleteMany({ where: { productTemplateId: tpl.id } })
+  await prisma.productSampleOption.create({
+    data: {
+      productTemplateId: tpl.id,
+      kind: 'UNBRANDED',
+      enabled: true,
+      perFlavorCents: 900,
+      sampleMoq: 1,
+      maxUnitsPerFlavor: 6,
+      leadTimeDays: 10,
+      creditTowardFirstOrder: true,
+      creditCapCents: 5000,
+      sortOrder: 0,
+    },
+  })
+
+  // 13. Hero gallery image — inline-SVG Asset (no R2 needed) + set imageAssetId.
+  const heroSvg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">` +
+    `<rect width="400" height="400" fill="#0B0B0C"/>` +
+    `<rect x="150" y="78" width="100" height="244" rx="16" fill="#F7D154"/>` +
+    `<rect x="150" y="150" width="100" height="62" fill="#FF2E63"/>` +
+    `<text x="200" y="190" font-family="sans-serif" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle">TONIC</text>` +
+    `<circle cx="200" cy="58" r="11" fill="#B5FF3D"/></svg>`
+  const heroDataUri = `data:image/svg+xml;utf8,${encodeURIComponent(heroSvg)}`
+  const heroAsset = await prisma.asset.upsert({
+    where: { storageKey: 'demo-tonic-hero' },
+    update: { publicUrl: heroDataUri, ownerType: 'PRODUCT', ownerId: tpl.id, type: 'HERO_IMAGE', isPublic: true },
+    create: {
+      ownerType: 'PRODUCT',
+      ownerId: tpl.id,
+      type: 'HERO_IMAGE',
+      storageKey: 'demo-tonic-hero',
+      publicUrl: heroDataUri,
+      mimeType: 'image/svg+xml',
+      sizeBytes: heroSvg.length,
+      isPublic: true,
+    },
+    select: { id: true },
+  })
+  await prisma.productTemplate.update({ where: { id: tpl.id }, data: { imageAssetId: heroAsset.id } })
+
+  // 14. Earned cert badge — a VERIFIED Vegan certificate on the manufacturer,
+  // attached to this product (needs a manufacturer partner; skipped otherwise).
+  if (manuf?.partnerId) {
+    const certType = await prisma.certificateType.findUnique({
+      where: { slug: 'vegan-certified' },
+      select: { id: true },
+    })
+    if (certType) {
+      const existingInstance = await prisma.partnerCertificateInstance.findFirst({
+        where: { partnerId: manuf.partnerId, certificateTypeId: certType.id, notes: 'demo-seed' },
+        select: { id: true },
+      })
+      const instanceId = existingInstance
+        ? (await prisma.partnerCertificateInstance.update({
+            where: { id: existingInstance.id },
+            data: { status: 'VERIFIED', expiryDate: new Date(Date.now() + 365 * 864e5) },
+            select: { id: true },
+          })).id
+        : (await prisma.partnerCertificateInstance.create({
+            data: {
+              partnerId: manuf.partnerId,
+              certificateTypeId: certType.id,
+              pdfFileId: 'demo-seed-cert-pdf',
+              status: 'VERIFIED',
+              issuingBody: 'Demo Certifier',
+              expiryDate: new Date(Date.now() + 365 * 864e5),
+              notes: 'demo-seed',
+            },
+            select: { id: true },
+          })).id
+      await prisma.productCertificate.upsert({
+        where: { productTemplateId_instanceId: { productTemplateId: tpl.id, instanceId } },
+        update: {},
+        create: { productTemplateId: tpl.id, instanceId, appliesToPackagingSystemIds: [] },
+      })
+    }
+  }
+
+  console.log(`  ✓ ${SLUG} published (FOOD) with recipe, variant, die-line, pricing, chips, sample, gallery, cert.`)
 }
