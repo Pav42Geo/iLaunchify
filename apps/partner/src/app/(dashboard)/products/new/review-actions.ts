@@ -8,6 +8,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import {
   calculateLabel,
   toPanelData,
@@ -265,6 +266,21 @@ export interface ReviewDetailCertificate {
   id: string
   name: string
   status: string
+  /** Admin-curated PNG web badge (CertificateType.thumbnailFileId) → URL, if set. */
+  iconUrl: string | null
+}
+/** A finish offered on this product (docs/PER_DRAFT_FINISHES.md §6). */
+export interface ReviewDetailFinish {
+  id: string
+  name: string
+  /** FinishCategory enum value (SURFACE / FOIL_METALLIC / …). */
+  category: string
+  /** Compact "+$0.08/unit · +2d · MOQ 500" string, or null. */
+  pricingSummary: string | null
+  leadTimeDays: number | null
+  isDefault: boolean
+  isIncludedInPrice: boolean
+  note: string | null
 }
 
 export interface ReviewDetail {
@@ -308,6 +324,8 @@ export interface ReviewDetail {
   packingProfile: ReviewDetailPackingProfile | null
   /** Substrate / packaging-material declarations (free-text from PackagingSystem.material). */
   packagingMaterials: string[]
+  /** Print finishes offered on this product (docs/PER_DRAFT_FINISHES.md). */
+  finishes: ReviewDetailFinish[]
   // ---- Variants ----
   variants: ReviewDetailVariant[]
   // ---- Flavors ----
@@ -341,6 +359,48 @@ const AGE_GROUP_LABEL: Record<string, string> = {
   GENERAL: 'General — adults & children 4+',
   CHILD_1_3: 'Children 1–3 years',
   INFANT_0_12: 'Infants 0–12 months',
+}
+
+/** Compact finish pricing summary ("+$0.08/unit · +2d · MOQ 500") from a
+ *  PartnerFinish's pricing fields. Mirrors packaging-finishes-actions.ts. */
+function reviewFinishPricingSummary(f: {
+  pricingMode: string
+  basePriceCents: number
+  perUnitPriceCents: number
+  pricePerSqInCents: number | null
+  pricePerObjectCents: number | null
+  pricePerColorCents: number | null
+  leadTimeDays: number
+  moqMin: number
+}): string | null {
+  const money = (c: number) => `$${(c / 100).toFixed(2)}`
+  const parts: string[] = []
+  switch (f.pricingMode) {
+    case 'PER_UNIT':
+      if (f.perUnitPriceCents > 0) parts.push(`+${money(f.perUnitPriceCents)}/unit`)
+      break
+    case 'PER_AREA':
+      if (f.pricePerSqInCents && f.pricePerSqInCents > 0) parts.push(`+${money(f.pricePerSqInCents)}/sq in`)
+      break
+    case 'PER_OBJECT':
+      if (f.pricePerObjectCents && f.pricePerObjectCents > 0) parts.push(`+${money(f.pricePerObjectCents)}/object`)
+      break
+    case 'PER_COLOR':
+      if (f.pricePerColorCents && f.pricePerColorCents > 0) parts.push(`+${money(f.pricePerColorCents)}/color`)
+      break
+    case 'FLAT_PER_ORDER':
+      if (f.basePriceCents > 0) parts.push(`+${money(f.basePriceCents)}/order`)
+      break
+    case 'TIERED':
+      parts.push('tiered')
+      break
+    default:
+      if (f.perUnitPriceCents > 0) parts.push(`+${money(f.perUnitPriceCents)}/unit`)
+  }
+  if (f.pricingMode !== 'FLAT_PER_ORDER' && f.basePriceCents > 0) parts.push(`+${money(f.basePriceCents)} setup`)
+  if (f.leadTimeDays > 0) parts.push(`+${f.leadTimeDays}d`)
+  if (f.moqMin > 0) parts.push(`MOQ ${f.moqMin.toLocaleString()}`)
+  return parts.length ? parts.join(' · ') : null
 }
 
 export async function getProductReviewDetail(draftId: string): Promise<DetailResult> {
@@ -397,7 +457,7 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
             instance: {
               select: {
                 status: true,
-                certificateType: { select: { name: true } },
+                certificateType: { select: { name: true, thumbnailFileId: true } },
               },
             },
           },
@@ -437,6 +497,79 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
       (await looseDb.productTemplateFee
         ?.findMany({ where: { productTemplateId: draftId }, orderBy: { sortOrder: 'asc' } })
         .catch(() => [])) ?? []
+
+    // Per-product finishes — cast-guarded (ProductTemplateFinish ships with the
+    // PER_DRAFT_FINISHES migration; degrades to [] until then).
+    const finishLooseDb = prisma as unknown as {
+      productTemplateFinish?: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            partnerFinishId: string
+            isDefault: boolean
+            isIncludedInPrice: boolean
+            note: string | null
+            partnerFinish: {
+              name: string | null
+              pricingMode: string
+              basePriceCents: number
+              perUnitPriceCents: number
+              pricePerSqInCents: number | null
+              pricePerObjectCents: number | null
+              pricePerColorCents: number | null
+              leadTimeDays: number
+              moqMin: number
+              finishType: { name: string; category: string }
+            }
+          }>
+        >
+      }
+    }
+    const finishRows =
+      (await finishLooseDb.productTemplateFinish
+        ?.findMany({
+          where: { productTemplateId: draftId },
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            partnerFinishId: true,
+            isDefault: true,
+            isIncludedInPrice: true,
+            note: true,
+            partnerFinish: {
+              select: {
+                name: true,
+                pricingMode: true,
+                basePriceCents: true,
+                perUnitPriceCents: true,
+                pricePerSqInCents: true,
+                pricePerObjectCents: true,
+                pricePerColorCents: true,
+                leadTimeDays: true,
+                moqMin: true,
+                finishType: { select: { name: true, category: true } },
+              },
+            },
+          },
+        })
+        .catch(() => [])) ?? []
+    const finishes: ReviewDetailFinish[] = finishRows.map((f) => ({
+      id: f.partnerFinishId,
+      name: f.partnerFinish.name?.trim() || f.partnerFinish.finishType.name,
+      category: String(f.partnerFinish.finishType.category),
+      pricingSummary: reviewFinishPricingSummary({
+        pricingMode: String(f.partnerFinish.pricingMode),
+        basePriceCents: f.partnerFinish.basePriceCents,
+        perUnitPriceCents: f.partnerFinish.perUnitPriceCents,
+        pricePerSqInCents: f.partnerFinish.pricePerSqInCents,
+        pricePerObjectCents: f.partnerFinish.pricePerObjectCents,
+        pricePerColorCents: f.partnerFinish.pricePerColorCents,
+        leadTimeDays: f.partnerFinish.leadTimeDays,
+        moqMin: f.partnerFinish.moqMin,
+      }),
+      leadTimeDays: f.partnerFinish.leadTimeDays ?? null,
+      isDefault: f.isDefault,
+      isIncludedInPrice: f.isIncludedInPrice,
+      note: f.note,
+    }))
 
     // Manufacturer's own external references — partner-private. Cast-guarded
     // (ships with a pending migration; matches the admin shape).
@@ -562,6 +695,11 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
       ),
     ]
 
+    // Resolve admin-curated PNG web badges (CertificateType.thumbnailFileId) → URLs.
+    const certBadgeUrls = await resolveCertBadgeUrls(
+      tpl.certificates.map((c) => c.instance.certificateType.thumbnailFileId),
+    ).catch(() => new Map<string, string>())
+
     const data: ReviewDetail = {
       name: tpl.name,
       slug: tpl.slug,
@@ -614,6 +752,7 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
       })),
       packingProfile,
       packagingMaterials,
+      finishes,
       variants: tpl.variants.map((v) => ({
         id: v.id,
         containerFormat: v.containerFormat,
@@ -671,6 +810,9 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
         id: c.instanceId,
         name: c.instance.certificateType.name,
         status: c.instance.status,
+        iconUrl: c.instance.certificateType.thumbnailFileId
+          ? (certBadgeUrls.get(c.instance.certificateType.thumbnailFileId) ?? null)
+          : null,
       })),
       manufacturerRefs,
     }

@@ -47,6 +47,7 @@ import {
   ChevronRight,
   X,
   Clock,
+  Sparkles,
 } from 'lucide-react'
 import {
   Brand,
@@ -67,6 +68,7 @@ import {
 import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
 import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, loadPackagingFiles, addPackagingFilesToSystem, removePackagingFile, loadCustomDieline, saveCustomDieline, type PackagingStudioData, type StudioPackaging, type CatalogItem, type StudioFile } from './packaging-studio-actions'
 import { listDraftSnapshots } from './snapshot-actions'
+import { getDraftFinishesEditorData, saveDraftFinishes, type FinishOption, type SaveFinishRow } from './packaging-finishes-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
 import {
@@ -79,7 +81,7 @@ import {
 
 export interface StudioPackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number }
 
-type Tool = 'library' | 'frames' | 'guides' | 'layers'
+type Tool = 'library' | 'frames' | 'guides' | 'layers' | 'finishes'
 
 function toStudioTopology(enumValue: string | undefined): TopologyKey {
   if (enumValue === 'CAPSULE_JAR') return 'jar'
@@ -615,6 +617,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           <RailButton icon={Shapes} label="Frames" active={tool === 'frames'} onClick={() => setTool('frames')} />
           <RailButton icon={SquareDashedBottom} label="Guides" active={tool === 'guides'} onClick={() => setTool('guides')} />
           <RailButton icon={LayersIcon} label="Layers" active={tool === 'layers'} onClick={() => setTool('layers')} />
+          <RailButton icon={Sparkles} label="Finishes" active={tool === 'finishes'} onClick={() => setTool('finishes')} />
         </nav>
 
         {/* ---- Drawer ---- */}
@@ -656,6 +659,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           )}
           {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId && !customMode} />}
           {tool === 'layers' && <LayersDrawer layout={layout} selectedId={selectedFrameId} onSelect={setSelectedFrameId} onRemove={removeFrame} />}
+          {tool === 'finishes' && <FinishesDrawer draftId={draftId} />}
         </aside>
 
         {/* ---- Canvas ---- */}
@@ -1830,4 +1834,237 @@ function Toggle({ label, color, on, onChange }: { label: string; color: string; 
 
 function ScopeChip({ scope }: { scope: FrameScope }) {
   return <span className={`inline-flex items-center rounded-full border px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider ${SCOPE_COLOR[scope].chip}`}>{scope}</span>
+}
+
+// =============================================================================
+// FinishesDrawer — per-draft print finishes (docs/PER_DRAFT_FINISHES.md, phase 2).
+// Renders as the Studio's 5th left-rail tool, INSIDE the full-screen studio
+// portal (outside the `.gb` scope), so it is styled with the same Tailwind
+// token-class drawer idiom as FramesDrawer / LayersDrawer — `.gb`-scoped classes
+// (.card/.chip/.toggle-label/.input/.section-title) are NOT styled in the portal.
+// A multi-select of the draft's manufacturer-service PartnerFinishes grouped by
+// FinishType.category; each offered row gets "Recommended" (isDefault) +
+// "Included in price" (isIncludedInPrice) toggles and an optional note.
+// Autosaves (debounced / onBlur) via saveDraftFinishes.
+// =============================================================================
+
+// FinishCategory enum → display group label + order.
+const FINISH_CATEGORY_LABEL: Record<string, string> = {
+  SURFACE: 'Surface',
+  FOIL_METALLIC: 'Foil & metallic',
+  EMBOSS_TEXTURE: 'Emboss & texture',
+  CUT: 'Cut',
+  INK: 'Ink',
+  SPECIAL: 'Special',
+}
+const FINISH_CATEGORY_ORDER = ['SURFACE', 'FOIL_METALLIC', 'EMBOSS_TEXTURE', 'CUT', 'INK', 'SPECIAL']
+
+interface FinishCardState {
+  offered: boolean
+  isDefault: boolean
+  isIncludedInPrice: boolean
+  note: string
+}
+
+function FinishesDrawer({ draftId }: { draftId: string | null }) {
+  const [options, setOptions] = useState<FinishOption[]>([])
+  const [state, setState] = useState<Record<string, FinishCardState>>({})
+  const [loaded, setLoaded] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved')
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Load the menu + existing offers on mount.
+  useEffect(() => {
+    if (!draftId) { setLoaded(true); return }
+    let alive = true
+    void getDraftFinishesEditorData(draftId).then((d) => {
+      if (!alive) return
+      setOptions(d.options)
+      const next: Record<string, FinishCardState> = {}
+      const selById = new Map(d.selected.map((s) => [s.partnerFinishId, s]))
+      for (const o of d.options) {
+        const sel = selById.get(o.partnerFinishId)
+        next[o.partnerFinishId] = {
+          offered: Boolean(sel),
+          isDefault: sel?.isDefault ?? false,
+          isIncludedInPrice: sel?.isIncludedInPrice ?? false,
+          note: sel?.note ?? '',
+        }
+      }
+      setState(next)
+      setLoaded(true)
+    })
+    return () => { alive = false }
+  }, [draftId])
+
+  // Build the save payload from current state, preserving option order.
+  const buildRows = useCallback(
+    (st: Record<string, FinishCardState>): SaveFinishRow[] =>
+      options
+        .filter((o) => st[o.partnerFinishId]?.offered)
+        .map((o) => {
+          const s = st[o.partnerFinishId]!
+          return {
+            partnerFinishId: o.partnerFinishId,
+            isDefault: s.isDefault,
+            isIncludedInPrice: s.isIncludedInPrice,
+            note: s.note.trim() || undefined,
+          }
+        }),
+    [options],
+  )
+
+  const queueSave = useCallback(
+    (st: Record<string, FinishCardState>) => {
+      if (!draftId) return
+      setSaveStatus('saving')
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      saveTimer.current = setTimeout(async () => {
+        const r = await saveDraftFinishes(draftId, buildRows(st))
+        setSaveStatus(r.ok ? 'saved' : 'idle')
+        if (!r.ok) toast.error(r.error)
+      }, 600)
+    },
+    [draftId, buildRows],
+  )
+
+  const patch = useCallback(
+    (id: string, p: Partial<FinishCardState>, save = true) => {
+      setState((prev) => {
+        const next = { ...prev, [id]: { ...prev[id]!, ...p } }
+        if (save) queueSave(next)
+        return next
+      })
+    },
+    [queueSave],
+  )
+
+  // "Add all compatible" — offer every option (§7-D convenience button).
+  const addAll = useCallback(() => {
+    setState((prev) => {
+      const next = { ...prev }
+      for (const o of options) next[o.partnerFinishId] = { ...next[o.partnerFinishId]!, offered: true }
+      queueSave(next)
+      return next
+    })
+  }, [options, queueSave])
+
+  const grouped = useMemo(() => {
+    const by: Record<string, FinishOption[]> = {}
+    for (const o of options) (by[o.category] ??= []).push(o)
+    return FINISH_CATEGORY_ORDER.filter((c) => by[c]?.length).map((c) => ({ category: c, items: by[c]! }))
+  }, [options])
+
+  const offeredCount = options.filter((o) => state[o.partnerFinishId]?.offered).length
+
+  return (
+    <div>
+      <DrawerHead title="Finishes" sub="Print finishes & coatings this product can take." icon={Sparkles} />
+
+      {/* Add-all + save indicator — matches the FramesDrawer sub-band idiom. */}
+      {draftId && options.length > 0 && (
+        <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-4 py-2.5">
+          <button
+            type="button"
+            onClick={addAll}
+            className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-pink-300 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <Plus className="h-3 w-3" /> Add all compatible
+          </button>
+          {saveStatus !== 'saved' && (
+            <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : ''}</span>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-4 px-4 py-3">
+        {!draftId && (
+          <p className="text-[12px] leading-relaxed text-ink-500">Save the draft first to offer finishes.</p>
+        )}
+
+        {draftId && loaded && options.length === 0 && (
+          <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 px-3 py-4 text-center">
+            <Sparkles className="mx-auto mb-2 h-5 w-5 text-ink-300" />
+            <div className="text-[12.5px] font-semibold text-ink-700">This service has no finishes yet.</div>
+            <p className="mx-auto mt-1 max-w-[16rem] text-[11.5px] leading-relaxed text-ink-500">
+              Add finishes on the{' '}
+              <a href="/finishes" className="font-semibold text-pink-600 hover:underline">Finishes</a>{' '}
+              page, then offer them here.
+            </p>
+          </div>
+        )}
+
+        {draftId && options.length > 0 && grouped.map(({ category, items }) => (
+          <div key={category}>
+            <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
+              {FINISH_CATEGORY_LABEL[category] ?? category}
+            </p>
+            <div className="space-y-2">
+              {items.map((o) => {
+                const s = state[o.partnerFinishId]!
+                return (
+                  <div
+                    key={o.partnerFinishId}
+                    className={`rounded-xl border px-3 py-2.5 ${s.offered ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white'}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <label className="flex items-center gap-2 text-[12px] font-medium text-ink-900">
+                        <input
+                          type="checkbox"
+                          checked={s.offered}
+                          onChange={(e) => patch(o.partnerFinishId, { offered: e.target.checked })}
+                          className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus-visible:ring-pink-500"
+                        />
+                        {o.name}
+                      </label>
+                      <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-ink-500">
+                        {FINISH_CATEGORY_LABEL[o.category] ?? o.category}
+                      </span>
+                      {o.pricingSummary && <span className="text-[11px] tabular-nums text-ink-500">{o.pricingSummary}</span>}
+                    </div>
+
+                    {s.offered && (
+                      <div className="mt-2.5 space-y-2">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                          <label className="flex items-center gap-2 text-[12px] text-ink-700">
+                            <input
+                              type="checkbox"
+                              checked={s.isDefault}
+                              onChange={(e) => patch(o.partnerFinishId, { isDefault: e.target.checked })}
+                              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus-visible:ring-pink-500"
+                            />
+                            Recommended
+                          </label>
+                          <label className="flex items-center gap-2 text-[12px] text-ink-700">
+                            <input
+                              type="checkbox"
+                              checked={s.isIncludedInPrice}
+                              onChange={(e) => patch(o.partnerFinishId, { isIncludedInPrice: e.target.checked })}
+                              className="h-3.5 w-3.5 rounded border-ink-300 text-pink-600 focus-visible:ring-pink-500"
+                            />
+                            Included in price
+                          </label>
+                        </div>
+                        <input
+                          placeholder="Note for the creator (optional)"
+                          value={s.note}
+                          onChange={(e) => patch(o.partnerFinishId, { note: e.target.value }, false)}
+                          onBlur={() => queueSave(state)}
+                          className="w-full rounded-lg border border-ink-200 px-2 py-1 text-[11.5px] text-ink-900 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-50"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+
+        {draftId && options.length > 0 && offeredCount > 0 && (
+          <p className="text-[11px] text-ink-500">{offeredCount} finish{offeredCount === 1 ? '' : 'es'} offered on this product.</p>
+        )}
+      </div>
+    </div>
+  )
 }

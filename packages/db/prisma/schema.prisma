@@ -1640,11 +1640,42 @@ model PartnerFinish {
   partnerService       PartnerService            @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
   finishType           FinishType                @relation(fields: [finishTypeId], references: [id])
   applications         DesignFinishApplication[]
+  // Per-product offers of this finish (which ProductTemplates expose it). See
+  // docs/PER_DRAFT_FINISHES.md — the menu-vs-capability join.
+  templateOffers       ProductTemplateFinish[]
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
 
   @@index([partnerServiceId, status])
   @@index([finishTypeId])
+}
+
+// Per-product finish offering (docs/PER_DRAFT_FINISHES.md §3). The manufacturer
+// declares, in the builder's Packaging step, which of their service's
+// PartnerFinish rows are available for THIS product template; the Passport and
+// (later) the Studio Finishes drawer read it. Allow-list: no rows ⇒ no finishes
+// offered. Additive join — mirrors ProductTemplatePackaging /
+// TemplateOptionalIngredient.
+model ProductTemplateFinish {
+  id                String          @id @default(uuid()) // repo convention: uuid, not cuid
+  productTemplateId String
+  partnerFinishId   String
+
+  // Per-product overrides (all optional — fall back to the PartnerFinish values).
+  isDefault         Boolean         @default(false) // pre-applied / "Recommended" on this product
+  isIncludedInPrice Boolean         @default(false) // bundled (no upcharge) for this product — V1 cosmetic
+  sortOrder         Int             @default(0)
+  note              String? // partner note shown to the creator
+
+  productTemplate   ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  partnerFinish     PartnerFinish   @relation(fields: [partnerFinishId], references: [id])
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([productTemplateId, partnerFinishId])
+  @@index([productTemplateId])
+  @@index([partnerFinishId])
 }
 
 model DesignFinishApplication {
@@ -3277,6 +3308,8 @@ model ProductTemplate {
   products                   Product[]
   // V1 new relations (manufacturer product builder)
   packagingSystems           ProductTemplatePackaging[]
+  // Per-product finish offerings (docs/PER_DRAFT_FINISHES.md §3).
+  finishes                   ProductTemplateFinish[]
   certificates               ProductCertificate[]
   reviewItems                ProductReviewItem[]
   notes                      ProductNote[]

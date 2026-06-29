@@ -24,7 +24,6 @@ import {
   DollarSign,
   ImageIcon,
   PackageOpen,
-  BadgeCheck,
   Hash,
   Scissors,
   ClipboardList,
@@ -338,28 +337,45 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
               {d.lifestyleTags.slice(0, 6).map((t) => <span key={`tag-${t}`} className="pill">{t}</span>)}
             </div>
 
-            {/* Certificates — icon-only badges (name on hover), promoted into the cover */}
+            {/* Certificates — the real imported badge image (admin-curated PNG),
+                with a larger neutral placeholder when no badge is uploaded. */}
             {d.certificates.length > 0 && (
-              <div className="row" style={{ flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
-                {d.certificates.map((c) => (
-                  <span
-                    key={c.id}
-                    title={`${c.name} · ${c.status.toLowerCase().replace(/_/g, ' ')}`}
-                    aria-label={`${c.name} · ${c.status.toLowerCase().replace(/_/g, ' ')}`}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 12,
-                      background: 'var(--pink-50)',
-                      border: '1px solid var(--pink-100)',
-                      display: 'grid',
-                      placeItems: 'center',
-                      flex: 'none',
-                    }}
-                  >
-                    <BadgeCheck size={26} strokeWidth={2} style={{ color: 'var(--pink-700)' }} />
-                  </span>
-                ))}
+              <div className="row" style={{ flexWrap: 'wrap', gap: 12, marginTop: 14 }}>
+                {d.certificates.map((c) => {
+                  const tip = `${c.name} · ${c.status.toLowerCase().replace(/_/g, ' ')}`
+                  return c.iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={c.id}
+                      src={c.iconUrl}
+                      alt={tip}
+                      title={tip}
+                      style={{ width: 64, height: 64, objectFit: 'contain', flex: 'none' }}
+                    />
+                  ) : (
+                    <span
+                      key={c.id}
+                      title={tip}
+                      aria-label={tip}
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 14,
+                        background: 'var(--ink-50)',
+                        border: '1px dashed var(--ink-300)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        textAlign: 'center',
+                        padding: 6,
+                        flex: 'none',
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-500)', lineHeight: 1.2 }}>
+                        {c.name}
+                      </span>
+                    </span>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -595,6 +611,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
           {(d.packingProfile ||
             d.packaging.length > 0 ||
             d.packagingMaterials.length > 0 ||
+            d.finishes.length > 0 ||
             d.dielines.length > 0) && (
             <Section icon={Box} title="Packaging & die-lines">
               {/* (a) Packaging structure — chosen packing profile + filled logistics */}
@@ -638,9 +655,71 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                 </div>
               )}
 
+              {/* (b2) Finishes — name · category · pricing · lead delta + pills */}
+              {d.finishes.length > 0 && (
+                <div style={{ marginTop: d.packingProfile || d.packagingMaterials.length > 0 ? 16 : 0 }}>
+                  <div className="row" style={{ alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Sparkles size={15} strokeWidth={2} style={{ color: 'var(--pink-700)' }} />
+                    <span style={{ ...LABEL_STYLE }}>Finishes</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {d.finishes.map((fin) => (
+                      <div
+                        key={fin.id}
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: 8,
+                          border: '1px solid var(--ink-200)',
+                          borderRadius: 12,
+                          padding: '8px 12px',
+                        }}
+                      >
+                        <b style={{ fontSize: 14, color: 'var(--ink-900)' }}>{fin.name}</b>
+                        <span className="chip">{humanize(fin.category)}</span>
+                        {fin.pricingSummary && (
+                          <span style={{ ...CAPTION_STYLE }} className="tnum">{fin.pricingSummary}</span>
+                        )}
+                        {!fin.pricingSummary && fin.leadTimeDays != null && fin.leadTimeDays > 0 && (
+                          <span style={{ ...CAPTION_STYLE }} className="tnum">+{fin.leadTimeDays}d</span>
+                        )}
+                        {fin.isDefault && (
+                          <span
+                            className="pill"
+                            style={{
+                              background: 'var(--success-50)',
+                              color: 'var(--success-700)',
+                              borderColor: 'var(--success-200)',
+                            }}
+                          >
+                            Recommended
+                          </span>
+                        )}
+                        {fin.isIncludedInPrice && (
+                          <span
+                            className="pill"
+                            style={{
+                              background: 'var(--ink-100)',
+                              color: 'var(--ink-700)',
+                              borderColor: 'var(--ink-200)',
+                            }}
+                          >
+                            Included
+                          </span>
+                        )}
+                        {fin.note && (
+                          <span style={{ ...CAPTION_STYLE, flexBasis: '100%' }}>{fin.note}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* (c) Packaging systems table */}
               {d.packaging.length > 0 && (
-                <table style={{ marginTop: d.packingProfile || d.packagingMaterials.length > 0 ? 16 : 0 }}>
+                <table style={{ marginTop: d.packingProfile || d.packagingMaterials.length > 0 || d.finishes.length > 0 ? 16 : 0 }}>
                   <thead>
                     <tr><th>System</th><th>Topology</th><th>Per pack</th><th>MOQ</th><th>Price</th><th>Lead</th></tr>
                   </thead>
@@ -661,7 +740,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
 
               {/* (d) Die-line outline SVGs */}
               {d.dielines.length > 0 && (
-                <div style={{ marginTop: d.packaging.length > 0 || d.packingProfile || d.packagingMaterials.length > 0 ? 16 : 0 }}>
+                <div style={{ marginTop: d.packaging.length > 0 || d.packingProfile || d.packagingMaterials.length > 0 || d.finishes.length > 0 ? 16 : 0 }}>
                   <div className="row" style={{ alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <Scissors size={15} strokeWidth={2} style={{ color: 'var(--pink-700)' }} />
                     <span style={{ ...LABEL_STYLE }}>Die-line outline{d.dielines.length === 1 ? '' : 's'}</span>
