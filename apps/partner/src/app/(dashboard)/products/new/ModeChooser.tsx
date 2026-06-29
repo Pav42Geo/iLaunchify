@@ -14,6 +14,7 @@
 
 import type { ComponentType } from 'react'
 import { Search, Sparkles, FileText } from 'lucide-react'
+import { InfoTip } from '@ilaunchify/ui'
 
 export type Mode = 'SEARCH_BUILD' | 'AI_PARSER' | 'DECLARED_PANEL'
 
@@ -118,19 +119,22 @@ function ModeTile({
   onClick?: () => void
 }) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onClick}
-      disabled={disabled}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick?.() }
+      }}
       title={disabled ? (lockedHint ?? 'Available in next release.') : undefined}
       aria-disabled={disabled}
       className={
-        'relative flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors ' +
+        'relative flex items-start gap-3 rounded-lg border p-3.5 text-left transition-colors ' +
         (disabled
           ? 'cursor-not-allowed border-ink-200 bg-[var(--bg-hero)] opacity-60'
           : active
-            ? 'border-[1.5px] border-pink-500 bg-[#FFF8FA]'
-            : 'border-ink-200 bg-[var(--bg-hero)] hover:border-pink-300 hover:bg-[#FFF8FA]')
+            ? 'cursor-pointer border-[1.5px] border-pink-500 bg-[#FFF8FA]'
+            : 'cursor-pointer border-ink-200 bg-[var(--bg-hero)] hover:border-pink-300 hover:bg-[#FFF8FA]')
       }
     >
       {badge && (
@@ -138,12 +142,27 @@ function ModeTile({
           {badge}
         </span>
       )}
-      <Icon className={`h-4 w-4 ${active ? 'text-pink-600' : 'text-ink-500'}`} />
-      <span className="text-[13px] font-semibold text-ink-900">{title}</span>
-      <span className="text-[11px] leading-snug text-ink-500">{sub}</span>
-      <span className="mt-0.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
-        {when}
+      {/* Bigger pink icon chip — matches the section-title .ic treatment. */}
+      <span
+        className={
+          'grid h-9 w-9 flex-none place-items-center rounded-xl ' +
+          (active ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-700')
+        }
+      >
+        <Icon className="h-5 w-5" />
       </span>
-    </button>
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-display text-[14.5px] font-bold tracking-[-0.01em] text-ink-900">{title}</span>
+          {/* Small description tucked into the shared tooltip (click stops tile select). */}
+          <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            <InfoTip text={sub} label={`About: ${title}`} />
+          </span>
+        </div>
+        <span className="mt-0.5 block text-[11px] font-bold uppercase tracking-wider text-pink-700">
+          {when}
+        </span>
+      </div>
+    </div>
   )
 }
