@@ -173,6 +173,12 @@ export async function getProductReviewSummary(draftId: string): Promise<Result> 
 // admin uses for pending-migration columns. Partner-gated to the owning service.
 // =============================================================================
 
+export interface ReviewDetailReplacement {
+  id: string
+  name: string
+  /** Optional weight override (g) for the swap, if the slot declares one. */
+  weightGOverride: number | null
+}
 export interface ReviewDetailIngredient {
   id: string
   name: string
@@ -180,6 +186,14 @@ export interface ReviewDetailIngredient {
   weightPct: number
   source: string | null
   allergenFlags: string[]
+  /** "⇄ or" alternatives the creator can swap into this base slot. */
+  replacements: ReviewDetailReplacement[]
+}
+export interface ReviewDetailOptionalIngredient {
+  id: string
+  name: string
+  weightG: number
+  note: string | null
 }
 export interface ReviewDetailPackaging {
   id: string
@@ -262,6 +276,8 @@ export interface ReviewDetail {
   servingSizeG: number | null
   // ---- Ingredients ----
   ingredients: ReviewDetailIngredient[]
+  /** FOOD: template-wide pool of OPTIONAL ingredients the creator can toggle on. */
+  optionalIngredients: ReviewDetailOptionalIngredient[]
   // ---- Allergens ----
   allergenCrossContamination: string | null
   allergenManualOverrides: Array<{ allergen: string; reason: string }>
@@ -317,7 +333,17 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
             baseIngredient: {
               select: { id: true, name: true, source: true, allergenFlags: true },
             },
+            // ⇄ swap alternatives for this base slot (TemplateIngredientReplacement).
+            replacements: {
+              orderBy: { displayOrder: 'asc' },
+              include: { ingredient: { select: { id: true, name: true, labelDeclarationName: true, internalName: true } } },
+            },
           },
+        },
+        // Template-wide OPTIONAL ingredient pool (TemplateOptionalIngredient).
+        optionalIngredients: {
+          orderBy: { displayOrder: 'asc' },
+          include: { ingredient: { select: { id: true, name: true, labelDeclarationName: true, internalName: true } } },
         },
         packagingSystems: {
           include: {
@@ -451,8 +477,20 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
         weightPct: totalRecipeWeightG > 0 ? (weightG / totalRecipeWeightG) * 100 : 0,
         source: s.baseIngredient.source ?? null,
         allergenFlags: s.baseIngredient.allergenFlags,
+        replacements: s.replacements.map((r) => ({
+          id: r.id,
+          name: r.ingredient.labelDeclarationName || r.ingredient.internalName || r.ingredient.name,
+          weightGOverride: r.weightGOverride != null ? Number(r.weightGOverride) : null,
+        })),
       }
     })
+
+    const optionalIngredients: ReviewDetailOptionalIngredient[] = tpl.optionalIngredients.map((o) => ({
+      id: o.id,
+      name: o.ingredient.labelDeclarationName || o.ingredient.internalName || o.ingredient.name,
+      weightG: Number(o.weightG),
+      note: o.calloutText ?? null,
+    }))
 
     const firstVariant = tpl.variants[0] ?? null
     const variantWithGtin = tpl.variants.find((v) => v.gtin) ?? null
@@ -487,6 +525,7 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
       servingsPerContainer: firstVariant?.servingsPerContainer ?? null,
       servingSizeG: firstVariant ? Number(firstVariant.servingSizeG) : null,
       ingredients,
+      optionalIngredients,
       allergenCrossContamination: tpl.allergenCrossContamination,
       allergenManualOverrides: Array.isArray(tpl.allergenManualOverrides)
         ? (tpl.allergenManualOverrides as Array<{ allergen?: unknown; reason?: unknown }>)
@@ -641,6 +680,13 @@ export interface ProductPassport extends ReviewDetail {
   /** True when this product carries >1 flavor — the view shows the flavor roster
    *  prominently (per-flavor variety columns are an in-builder live view). */
   isMultiFlavor: boolean
+  /** FOOD multi-flavor → one serializable Nutrition Facts panel per flavor, fed
+   *  straight into LabelViewerModal (`columns`). Each carries the flavor name +
+   *  its single-flavor PanelData + resolved "Contains" line. Empty when not
+   *  computable (no base panel / non-food). Shape ≡ @ilaunchify/ui VarietyColumn. */
+  flavorColumns: Array<{ label: string; data: PanelData; contains?: string }>
+  /** Multiunit net-contents statement for the outer carton, when derivable. */
+  packNetContents: string | null
   // ---- Formulation ingredient lists (non-food domains) ----
   supplementIngredients: PassportFormulationIngredient[]
   cosmeticIngredients: PassportFormulationIngredient[]
@@ -1008,12 +1054,34 @@ export async function getProductPassport(draftId: string): Promise<PassportResul
       // customMeta column not present yet — degrade to [].
     }
 
+    // ---- Per-flavor Nutrition Facts columns (FOOD multi-flavor) ----
+    // The Passport's "View all flavor labels" feeds LabelViewerModal a column
+    // per flavor. Each unit in a variety pack carries its OWN single-flavor
+    // label; absent per-flavor nutrient overrides (a live-builder feature), that
+    // single-flavor panel is the base recipe panel. We attach the flavor name +
+    // base PanelData so the reviewer sees one labelled column per flavor.
+    const flavorColumns: Array<{ label: string; data: PanelData; contains?: string }> = []
+    if (base.labelingType === 'FOOD' && base.flavors.length > 1 && factsPanel?.panel) {
+      for (const f of base.flavors) {
+        flavorColumns.push({
+          label: f.name,
+          data: factsPanel.panel,
+          ...(factsPanel.contains ? { contains: factsPanel.contains } : {}),
+        })
+      }
+    }
+    // Outer-carton net contents for the aggregate (compare) view, when derivable.
+    const firstVariant = base.variants[0] ?? null
+    const packNetContents = firstVariant?.netContentDisplay ?? null
+
     const data: ProductPassport = {
       ...base,
       factsPanel,
       cosmeticFacts,
       petFacts,
       isMultiFlavor: base.flavors.length > 1,
+      flavorColumns,
+      packNetContents,
       supplementIngredients,
       cosmeticIngredients,
       petIngredients,

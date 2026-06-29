@@ -37,10 +37,8 @@ import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep, type Flavor } from './VariantsPacksStep'
 import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
-import { CertificatesCard } from './CertificatesCard'
 import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
-import { ComplianceCard } from './ComplianceCard'
 import { PackagingPicker } from './PackagingPicker'
 import { PackagingStudioStep } from './PackagingStudioStep'
 import { PerFlavorLabelsCard } from './PerFlavorLabelsCard'
@@ -521,14 +519,13 @@ export function GuidedBuilder({
           )}
 
           {/* ===== STEP 6 — REVIEW ===== */}
+          {/* Compliance + Certificates now live INSIDE the Passport (rail + a
+              dedicated section), so the step renders just the Passport + Notes. */}
           {cur === 5 && (
             <section>
-              <div style={{ marginBottom: 16 }}><ComplianceCard draftId={draftId} /></div>
-
               <ReviewSummary draftId={draftId} />
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-                <CertificatesCard draftId={draftId} preview />
+              <div style={{ marginTop: 16 }}>
                 <NotesCard draftId={draftId} />
               </div>
 

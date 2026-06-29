@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify — Add Product typography + data system (proposal)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF2E63; --pink-700:#C71350; --pink-50:#FFE9F0; --pink-100:#FFB3CC;
+    --ink-900:#18181A; --ink-800:#232327; --ink-700:#33343C; --ink-600:#474954;
+    --ink-500:#6B6D78; --ink-400:#9A9CA6; --ink-300:#CBCCD3; --ink-200:#E0E1E5;
+    --ink-100:#EEEFF1; --ink-50:#F8F8F9; --green:#1D9E75; --green-50:#E1F5EE;
+    --sans:'Inter',system-ui,sans-serif; --display:'Bricolage Grotesque','Inter',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);color:var(--ink-900);background:var(--ink-50);line-height:1.55;-webkit-font-smoothing:antialiased;padding:40px 20px}
+  .wrap{max-width:980px;margin:0 auto}
+  .doc-eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--pink-700)}
+  .doc-title{font-family:var(--display);font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.08;margin:6px 0 4px}
+  .doc-sub{font-size:15px;color:var(--ink-500);margin-bottom:34px}
+  .block{background:#fff;border:1px solid var(--ink-200);border-radius:16px;padding:26px 28px;margin-bottom:22px}
+  .block-h{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+  .block-h .ic{width:30px;height:30px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;font-size:15px}
+  .block-note{font-size:13px;color:var(--ink-500);margin-bottom:20px}
+
+  /* ── type specimen ── */
+  .spec-row{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:baseline;padding:16px 0;border-top:1px solid var(--ink-100)}
+  .spec-meta{font-size:12px;color:var(--ink-500);line-height:1.5}
+  .spec-meta b{display:block;color:var(--ink-900);font-weight:600;font-size:13px;text-transform:none;letter-spacing:0}
+  .t-display{font-family:var(--display);font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .t-h1{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+  .t-h2{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+  .t-h3{font-size:15px;font-weight:600;line-height:1.3}
+  .t-eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500)}
+  .t-body{font-size:14px;font-weight:400;line-height:1.55;color:var(--ink-700)}
+  .t-value{font-size:14px;font-weight:600;color:var(--ink-900)}
+  .t-caption{font-size:12.5px;font-weight:400;color:var(--ink-500)}
+  .t-button{font-size:15px;font-weight:600}
+
+  /* ── passport demo ── */
+  .cover{display:grid;grid-template-columns:230px 1fr;gap:0;border:1px solid var(--ink-200);border-radius:16px;overflow:hidden;background:#fff;margin-bottom:22px}
+  .cover-img{background:var(--ink-100);display:grid;place-items:center;color:var(--ink-400);font-size:13px;min-height:210px}
+  .cover-body{padding:24px}
+  .cover-name{font-family:var(--display);font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.08;margin:8px 0 6px}
+  .cover-line{font-size:14px;color:var(--ink-500);margin-bottom:12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px}
+  .pill.green{background:var(--green-50);color:#085041}
+  .pill.ok{background:var(--ink-100);color:var(--ink-700)}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+  .tile{background:var(--ink-50);border-radius:10px;padding:11px 13px}
+  .tile .l{font-size:12px;color:var(--ink-500);font-weight:500}
+  .tile .v{font-size:18px;font-weight:700;font-family:var(--display);letter-spacing:-.01em;margin-top:3px}
+
+  /* label-ABOVE-value data grid (the "less busy" pattern) */
+  .dl{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 22px}
+  .dl > div{padding:11px 0;border-top:1px solid var(--ink-100)}
+  .dl .l{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500)}
+  .dl .v{font-size:15px;font-weight:600;color:var(--ink-900);margin-top:3px}
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .stat{flex:1;min-width:120px;background:var(--ink-50);border-radius:10px;padding:12px 14px;text-align:center}
+  .stat .v{font-size:18px;font-weight:700;font-family:var(--display)}
+  .stat .l{font-size:12px;color:var(--ink-500);margin-top:2px}
+  .facts-ph{border:1px dashed var(--ink-300);border-radius:10px;min-height:180px;display:grid;place-items:center;color:var(--ink-400);font-size:13px;background:var(--ink-50)}
+  .bad{color:var(--pink-700)} .good{color:var(--green)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="doc-eyebrow">iLaunchify · design proposal</div>
+  <h1 class="doc-title">Add Product typography &amp; data system</h1>
+  <p class="doc-sub">One family (Inter) doing the work through size + weight, Bricolage Grotesque for display headings only. A Perfect-Fourth-ish scale, label-above-value data, and proximity grouping. If you like it here, it becomes the platform-wide system.</p>
+
+  <div class="block">
+    <div class="block-h"><span class="ic">Aa</span> The type scale</div>
+    <div class="block-note">Nine roles, two families, three weights. Sizes/line-heights from the research; sentence case everywhere.</div>
+
+    <div class="spec-row"><div class="spec-meta"><b>Display</b>Bricolage · 30 / 800<br>line 1.1 · tracking -.02em</div><div class="t-display">Adaptogen sparkling tonic</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>H1 · page title</b>Bricolage · 24 / 700</div><div class="t-h1">Add product</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>H2 · section title</b>Bricolage · 17 / 700</div><div class="t-h2">Regulated facts label</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Subhead</b>Inter · 15 / 600</div><div class="t-h3">Cost &amp; pricing</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Label / eyebrow</b>Inter · 12 / 600<br>uppercase · tracking .06em</div><div class="t-eyebrow">Base SKU</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Value</b>Inter · 14 / 600</div><div class="t-value">SODA-YUZU</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Body</b>Inter · 14 / 400<br>line 1.55</div><div class="t-body">Field-grown adaptogen blend with citrus and reishi, lightly carbonated. Sweetened with stevia and monk fruit.</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Caption / hint</b>Inter · 12.5 / 400</div><div class="t-caption">Autosaves to your draft.</div></div>
+    <div class="spec-row"><div class="spec-meta"><b>Button</b>Inter · 15 / 600</div><div><span style="display:inline-block;background:var(--ink-900);color:#fff;border-radius:999px;padding:9px 18px" class="t-button">Submit for review</span></div></div>
+  </div>
+
+  <div class="block" style="background:none;border:0;padding:0">
+    <div class="block-h" style="padding:0 4px"><span class="ic">▣</span> The Passport, with the new system applied</div>
+    <div class="block-note" style="padding:0 4px">Passport on top · key facts as stat tiles · data as label-above-value · compliance folded into a status chip.</div>
+  </div>
+
+  <div class="cover">
+    <div class="cover-img">product photo</div>
+    <div class="cover-body">
+      <div class="t-eyebrow" style="color:var(--pink-700)">Digital product passport</div>
+      <div class="cover-name">Adaptogen sparkling tonic</div>
+      <div class="cover-line">Beverages › Functional tonics · Food / Beverage · Nutrition Facts</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="pill green">✓ Ready for review</span>
+        <span class="pill ok">Compliance: structural OK</span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="l">From / unit</div><div class="v">$0.86</div></div>
+        <div class="tile"><div class="l">MOQ</div><div class="v">500</div></div>
+        <div class="tile"><div class="l">Markets</div><div class="v">US</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-h"><span class="ic">▦</span> Identity</div>
+    <div class="dl">
+      <div><div class="l">Base SKU</div><div class="v">SODA-YUZU</div></div>
+      <div><div class="l">GTIN</div><div class="v">0 12345 67890</div></div>
+      <div><div class="l">Country</div><div class="v">United States</div></div>
+      <div><div class="l">Statement</div><div class="v">Sparkling tonic</div></div>
+      <div><div class="l">Net content</div><div class="v">355 mL</div></div>
+      <div><div class="l">Shelf life</div><div class="v">365 days</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-h"><span class="ic">⚗</span> Regulated facts label</div>
+    <div class="block-note">The real Nutrition Facts SVG renders here, framed like a printed label.</div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start">
+      <div class="facts-ph" style="width:260px">Nutrition Facts panel</div>
+      <div style="flex:1;min-width:220px">
+        <div class="t-eyebrow" style="margin-bottom:6px">Ingredient statement</div>
+        <div class="t-body">Carbonated water, cane sugar, ashwagandha root extract, turmeric extract, reishi mushroom extract, natural citrus flavor, citric acid, sea salt, stevia leaf extract.</div>
+        <div class="t-eyebrow" style="margin:14px 0 6px">Contains</div>
+        <div class="t-value">No major allergens</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="block-h"><span class="ic">$</span> Cost &amp; pricing</div>
+    <div class="stat-row">
+      <div class="stat"><div class="v">$1.10</div><div class="l">500–2,499</div></div>
+      <div class="stat"><div class="v">$0.98</div><div class="l">2,500–9,999</div></div>
+      <div class="stat"><div class="v">$0.86</div><div class="l">10,000+</div></div>
+    </div>
+    <div class="dl" style="grid-template-columns:repeat(2,1fr)">
+      <div><div class="l">Fulfillment</div><div class="v">Bulk + on-demand</div></div>
+      <div><div class="l">Setup fee</div><div class="v">$250 one-time</div></div>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:var(--ink-500);text-align:center;margin-top:10px">Old pattern (avoid): <span class="bad">label ——————————— value</span> flung across a 1,200px card. &nbsp; New pattern: <span class="good">label above value</span>, grouped, scannable.</p>
+</div>
+</body>
+</html>
