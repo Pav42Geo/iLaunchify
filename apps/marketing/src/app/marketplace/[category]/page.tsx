@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ProductCard } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { MarketplaceFilters } from '@/components/MarketplaceFilters'
 import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { CATEGORY_ROWS, templateToCardProps } from '@/lib/sample-templates'
+import { InfiniteProductGrid } from '@/components/InfiniteProductGrid'
 import {
   getMarketplaceTemplates,
   getMarketplaceCategory,
@@ -174,11 +174,7 @@ export default async function CategoryPage({
               </p>
             </section>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-              {templates.map((t) => (
-                <ProductCard key={t.slug} {...templateToCardProps(t)} />
-              ))}
-            </div>
+            <InfiniteProductGrid items={templates.map(templateToCardProps)} />
           )}
         </main>
       </div>

@@ -7,6 +7,7 @@ import { MarketplaceControlsBar } from '@/components/MarketplaceControlsBar'
 import { ActiveFilterChips } from '@/components/ActiveFilterChips'
 import { FeaturedCollection } from '@/components/FeaturedCollection'
 import { templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
+import { InfiniteProductGrid } from '@/components/InfiniteProductGrid'
 import {
   getMarketplaceTemplates,
   getMarketplaceCategorySections,
@@ -317,11 +318,7 @@ function ResultsGrid({
 
   return (
     <section className="mb-12">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-        {templates.map((t) => (
-          <ProductCard key={t.slug} {...templateToCardProps(t)} />
-        ))}
-      </div>
+      <InfiniteProductGrid items={templates.map(templateToCardProps)} />
     </section>
   )
 }
@@ -353,7 +350,7 @@ function CategorySection({
           See all →
         </Link>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
         {row.templates.map((t: SampleTemplate) => (
           <ProductCard key={t.slug} {...templateToCardProps(t)} />
         ))}

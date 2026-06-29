@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ProductCard, productGradient, Button } from '@ilaunchify/ui'
+import { InfiniteProductGrid } from '@/components/InfiniteProductGrid'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { loadActiveNiches, loadNicheBySlug } from '@/lib/niches-db'
 import { getNicheProductCards, getNicheSubcategoryCards } from '@/lib/niche-content-db'
@@ -117,11 +118,7 @@ export default async function NicheLandingPage({
                 See all →
               </Link>
             </header>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-              {sampleProducts.map((t) => (
-                <ProductCard key={t.href} {...t} />
-              ))}
-            </div>
+            <InfiniteProductGrid items={sampleProducts} />
           </section>
         )}
       </div>
