@@ -130,9 +130,15 @@ export function GuidedBuilder({
     const html = document.documentElement
     const prevGutter = html.style.scrollbarGutter
     html.style.scrollbarGutter = 'stable'
+    // Fold the partner sidebar to icons while building (body.gb-active CSS moves
+    // it to the right). Remember the prior fold state and restore it on exit.
+    let priorCollapsed = false
+    try { priorCollapsed = window.localStorage.getItem('ilf-partner-sidebar-collapsed') === '1' } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('ilf:sidebar-collapse', { detail: true }))
     return () => {
       document.body.classList.remove('gb-active')
       html.style.scrollbarGutter = prevGutter
+      window.dispatchEvent(new CustomEvent('ilf:sidebar-collapse', { detail: priorCollapsed }))
     }
   }, [])
 
@@ -759,7 +765,11 @@ const CSS = `
 /* Builder-active chrome overrides (global, mount-scoped via body.gb-active). The
    dashboard sidebar hides and the shell padding/width are neutralized so the
    builder's own rail acts as the side menu. Reverts when the builder unmounts. */
-body.gb-active [data-partner-sidebar]{display:none!important}
+/* Builder chrome: keep the partner sidebar but move it to the RIGHT, folded to
+   icons (the builder dispatches the collapse). Flip its border + fold toggle to
+   the inner edge. Main goes full-bleed; the builder's own max-width centers it. */
+body.gb-active [data-partner-sidebar]{order:2;border-right:0;border-left:1px solid var(--ink-200)}
+body.gb-active [data-partner-sidebar] > button{right:auto!important;left:-12px!important}
 body.gb-active [data-partner-shell-main]{padding:0!important}
 body.gb-active [data-partner-shell-content]{max-width:none!important}
 `

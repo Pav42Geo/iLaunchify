@@ -96,6 +96,19 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
     }
   }, [])
 
+  // Bridge: the Add-Product builder folds this sidebar to icons (and moves it to
+  // the right via body.gb-active CSS) on enter, and restores the prior state on
+  // exit, by dispatching `ilf:sidebar-collapse`. The shared layout doesn't
+  // re-mount on client nav, so an event is how the builder reaches us.
+  useEffect(() => {
+    function onForce(e: Event) {
+      const v = (e as CustomEvent<boolean>).detail
+      if (typeof v === 'boolean') setCollapsed(v)
+    }
+    window.addEventListener('ilf:sidebar-collapse', onForce as EventListener)
+    return () => window.removeEventListener('ilf:sidebar-collapse', onForce as EventListener)
+  }, [])
+
   function toggle() {
     setCollapsed((c) => {
       const next = !c
