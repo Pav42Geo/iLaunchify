@@ -286,6 +286,78 @@ export function ThemeEditor({
   )
 }
 
+/**
+ * Small live specimen shown in front of every control — reflects the token's
+ * CURRENT (proposed) value so it updates in real time as the control moves.
+ * Switches on kind + token-name heuristics so each token previews what it
+ * actually affects (color swatch / font "Ag" / glyph at a type size / scaled
+ * glyph for a multiplier / rounded box for a radius / proportional box for a
+ * width-or-padding length).
+ */
+function TokenPreview({ t, value }: { t: EditableThemeToken; value: string }) {
+  const box = 'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-ink-200 bg-ink-50'
+
+  if (t.kind === 'rgb') return <span className={box} style={{ background: `rgb(${value})` }} aria-hidden />
+  if (t.kind === 'color') return <span className={box} style={{ background: isHex(value) ? value : '#FFFFFF' }} aria-hidden />
+  if (t.kind === 'font')
+    return (
+      <span className={box} aria-hidden>
+        <span style={{ fontFamily: value, fontSize: 16, lineHeight: 1, color: 'var(--ink-900)' }}>Ag</span>
+      </span>
+    )
+
+  if (t.kind === 'scale') {
+    const n = Number(value) || 1
+    if (t.name === 'radius-scale')
+      return (
+        <span className={box} aria-hidden>
+          <span style={{ width: 18, height: 18, background: 'var(--ink-400)', borderRadius: Math.min(9 * n, 12) }} />
+        </span>
+      )
+    if (t.name === 'space-scale')
+      return (
+        <span className={box} aria-hidden>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: Math.min(2.5 * n, 7) }}>
+            <i style={{ display: 'block', width: 16, height: 3, background: 'var(--ink-400)' }} />
+            <i style={{ display: 'block', width: 16, height: 3, background: 'var(--ink-400)' }} />
+          </span>
+        </span>
+      )
+    // type-scale multipliers (font/heading/body/landing) → glyph scaled by the value
+    return (
+      <span className={box} aria-hidden>
+        <span style={{ fontSize: Math.max(8, Math.min(13 * n, 27)), lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink-900)' }}>Ag</span>
+      </span>
+    )
+  }
+
+  // length
+  const px = parseFloat(value) || 0
+  const nm = t.name
+  if (nm.includes('radius')) {
+    const r = t.pillable && px >= 100 ? 11 : Math.min(px, 11)
+    return (
+      <span className={box} aria-hidden>
+        <span style={{ width: 22, height: 22, background: 'var(--ink-400)', borderRadius: r }} />
+      </span>
+    )
+  }
+  if (nm.startsWith('fs-') || nm.endsWith('-fs')) {
+    return (
+      <span className={box} aria-hidden>
+        <span style={{ fontSize: Math.max(8, Math.min(px, 28)), lineHeight: 1, fontWeight: 700, fontFamily: nm.startsWith('fs-ui-') ? 'var(--font-display)' : 'inherit', color: 'var(--ink-900)' }}>Ag</span>
+      </span>
+    )
+  }
+  // width / height / padding / gap / py → proportional filled box
+  const dim = Math.max(4, Math.min(px / 9, 26))
+  return (
+    <span className={box} aria-hidden>
+      <span style={{ width: dim, height: dim, background: 'var(--ink-400)', borderRadius: 2 }} />
+    </span>
+  )
+}
+
 function Control({
   t,
   value,
@@ -301,6 +373,7 @@ function Control({
 }) {
   return (
     <div className="flex items-center gap-4">
+      <TokenPreview t={t} value={value} />
       <div className="w-44 shrink-0">
         <div className="text-[length:var(--fs-md)] font-semibold text-ink-900">{t.label}</div>
         {t.hint && <div className="text-[length:var(--fs-2xs)] leading-snug text-ink-500">{t.hint}</div>}
