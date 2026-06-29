@@ -15,6 +15,7 @@
 import { prisma, getOrderSettings, getOrCreateDefaultBrand } from '@ilaunchify/db'
 import type { DecorationMethod } from '@ilaunchify/db'
 import { auth } from '@ilaunchify/auth'
+import type { Session } from '@ilaunchify/auth'
 import { creatorUrl } from './app-urls'
 
 export interface StartLaunchInput {
@@ -41,33 +42,42 @@ export type StartLaunchResult =
   | { ok: false; reason: 'NO_VARIANT' }
   | { ok: false; reason: 'INTERNAL'; message: string }
 
-export async function startLaunchFromTemplate(
+/**
+ * Shared product resolve-or-create core. Contains the guest / not-creator
+ * gates, ProductTemplate resolution, brand get-or-create, the Product DRAFT
+ * create, the optional decoration PackagingComponent, and the CheckoutDraft
+ * seed. Both `startLaunchFromTemplate` (Design Studio) and
+ * `startSampleFromTemplate` (sample order) build on this so the ~150 lines of
+ * creation logic live in exactly one place.
+ *
+ * Returns the new product id on success, or a typed failure reason (mirroring
+ * StartLaunchResult's reasons). For GUEST the caller decides the final
+ * signupUrl (launch vs sample intent differs), so we hand back the resolved
+ * `signupParams` rather than a finished URL.
+ */
+type ResolveOrCreateResult =
+  | { ok: true; productId: string }
+  | { ok: false; reason: 'GUEST'; signupParams: Record<string, string> }
+  | { ok: false; reason: 'NOT_CREATOR'; role: string }
+  | { ok: false; reason: 'NO_BRAND' }
+  | { ok: false; reason: 'TEMPLATE_NOT_FOUND' }
+  | { ok: false; reason: 'NO_VARIANT' }
+  | { ok: false; reason: 'INTERNAL'; message: string }
+
+async function resolveOrCreateProductForTemplate(
+  session: Session | null,
   input: StartLaunchInput,
-): Promise<StartLaunchResult> {
-  if (!process.env.AUTH_SECRET) {
-    return { ok: false, reason: 'INTERNAL', message: 'AUTH not configured' }
-  }
-
-  let session
-  try {
-    session = await auth()
-  } catch {
-    session = null
-  }
-
-  // True guest (no session) → inline signup modal with a return URL so the
-  // selection survives account creation. R4 polishes this with the modal.
+): Promise<ResolveOrCreateResult> {
+  // True guest (no session) → caller routes to /signup with the selection
+  // preserved. We only assemble the params here; the caller adds intent-specific
+  // ones (e.g. sample=1) and builds the final URL.
   if (!session?.user?.id) {
-    const params = new URLSearchParams({ template: input.templateSlug })
-    if (input.flavor) params.set('flavor', input.flavor)
-    if (input.size) params.set('size', input.size)
-    if (input.packaging) params.set('packaging', input.packaging)
-    if (input.quantity) params.set('quantity', String(input.quantity))
-    return {
-      ok: false,
-      reason: 'GUEST',
-      signupUrl: creatorUrl('/signup', Object.fromEntries(params)),
-    }
+    const signupParams: Record<string, string> = { template: input.templateSlug }
+    if (input.flavor) signupParams.flavor = input.flavor
+    if (input.size) signupParams.size = input.size
+    if (input.packaging) signupParams.packaging = input.packaging
+    if (input.quantity) signupParams.quantity = String(input.quantity)
+    return { ok: false, reason: 'GUEST', signupParams }
   }
 
   // Signed in, but NOT as a creator (e.g. an ADMIN or PARTNER account). These
@@ -248,10 +258,7 @@ export async function startLaunchFromTemplate(
       )
     }
 
-    return {
-      ok: true,
-      url: creatorUrl(`/products/${product.id}/design/canvas`),
-    }
+    return { ok: true, productId: product.id }
   } catch (err) {
     return {
       ok: false,
@@ -259,6 +266,144 @@ export async function startLaunchFromTemplate(
       message: (err as Error).message,
     }
   }
+}
+
+export async function startLaunchFromTemplate(
+  input: StartLaunchInput,
+): Promise<StartLaunchResult> {
+  if (!process.env.AUTH_SECRET) {
+    return { ok: false, reason: 'INTERNAL', message: 'AUTH not configured' }
+  }
+
+  let session
+  try {
+    session = await auth()
+  } catch {
+    session = null
+  }
+
+  const resolved = await resolveOrCreateProductForTemplate(session, input)
+  if (!resolved.ok) {
+    if (resolved.reason === 'GUEST') {
+      // R4 polishes this with the modal. Selection preserved in the query so
+      // the launch resumes straight into the Studio after account setup.
+      return {
+        ok: false,
+        reason: 'GUEST',
+        signupUrl: creatorUrl('/signup', resolved.signupParams),
+      }
+    }
+    return resolved
+  }
+
+  return {
+    ok: true,
+    url: creatorUrl(`/products/${resolved.productId}/design/canvas`),
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Sample order — "try before you commit". A sample must never require the
+// creator to already own a Product: it REUSES their existing product for this
+// template if one exists, otherwise creates one on the fly (same path as
+// launch). Routing then differs by sample kind:
+//   • BRANDED   → Design Studio canvas (author the label/artwork first).
+//   • UNBRANDED → the creator sample checkout (no artwork needed).
+// -----------------------------------------------------------------------------
+
+export interface StartSampleInput extends StartLaunchInput {
+  /** Which sample kind the creator selected on the PDP card. */
+  kind: 'UNBRANDED' | 'BRANDED'
+}
+
+export async function startSampleFromTemplate(
+  input: StartSampleInput,
+): Promise<StartLaunchResult> {
+  if (!process.env.AUTH_SECRET) {
+    return { ok: false, reason: 'INTERNAL', message: 'AUTH not configured' }
+  }
+
+  let session
+  try {
+    session = await auth()
+  } catch {
+    session = null
+  }
+
+  // Guest → /signup with the sample intent preserved (template + sample=1 +
+  // kind) so the order resumes after account setup. Use the shared gate to
+  // build the base params, then layer the sample-specific ones on top.
+  if (!session?.user?.id) {
+    const signupParams: Record<string, string> = {
+      template: input.templateSlug,
+      sample: '1',
+      kind: input.kind,
+    }
+    if (input.flavor) signupParams.flavor = input.flavor
+    if (input.quantity) signupParams.quantity = String(input.quantity)
+    return {
+      ok: false,
+      reason: 'GUEST',
+      signupUrl: creatorUrl('/signup', signupParams),
+    }
+  }
+
+  if (session.user.role !== 'CREATOR') {
+    return { ok: false, reason: 'NOT_CREATOR', role: session.user.role }
+  }
+
+  // REUSE the creator's existing product for this template if one exists
+  // (mirrors getOwnedSampleProductId's lookup) — never create a duplicate.
+  let productId: string | null = null
+  try {
+    const owned = await prisma.product.findFirst({
+      where: {
+        productTemplate: { slug: input.templateSlug },
+        brand: { creatorProfile: { userId: session.user.id } },
+      },
+      select: { id: true },
+    })
+    productId = owned?.id ?? null
+  } catch (err) {
+    console.warn(
+      '[launch-actions] owned-product lookup failed — will create:',
+      (err as Error).message,
+    )
+  }
+
+  // No existing product → create one on the fly (same logic as launch).
+  if (!productId) {
+    const resolved = await resolveOrCreateProductForTemplate(session, input)
+    if (!resolved.ok) {
+      if (resolved.reason === 'GUEST') {
+        // Defensive — session was present above, so this shouldn't hit.
+        return {
+          ok: false,
+          reason: 'GUEST',
+          signupUrl: creatorUrl('/signup', {
+            ...resolved.signupParams,
+            sample: '1',
+            kind: input.kind,
+          }),
+        }
+      }
+      return resolved
+    }
+    productId = resolved.productId
+  }
+
+  // Route by kind. BRANDED designs the label first (Studio); UNBRANDED goes
+  // straight to the sample checkout. Carry the sample intent so the destination
+  // can pick it up.
+  const url =
+    input.kind === 'BRANDED'
+      ? creatorUrl(`/products/${productId}/design/canvas`, {
+          sample: '1',
+          kind: input.kind,
+        })
+      : creatorUrl(`/products/${productId}/sample`, { kind: input.kind })
+
+  return { ok: true, url }
 }
 
 // -----------------------------------------------------------------------------

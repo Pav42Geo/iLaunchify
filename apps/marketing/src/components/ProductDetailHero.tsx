@@ -104,6 +104,7 @@ export function ProductDetailHero({
             isMultiFlavor={sample.isMultiFlavor}
             dielineReady={sample.dielineReady}
             isAuthenticated={isAuthenticated}
+            templateSlug={template.slug}
             ownedProductId={sample.ownedProductId}
             trigger={(open) => (
               <ProductDetailConfigurator

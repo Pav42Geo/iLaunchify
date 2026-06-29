@@ -171,11 +171,11 @@ export function ProductDetailConfigurator({
   const previewUnitCost = subscribe
     ? +((landedCost * (10_000 - subDiscountBp)) / 10_000).toFixed(2)
     : landedCost
-  // Grand total stays in state for the launch payload, but is NOT rendered —
-  // the amount the customer pays is hidden on the PDP (per-unit price + earnings
-  // are the only figures shown). // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Grand total — the all-in amount the creator pays at checkout. This is the
+  // headline figure on the PDP (Pavel 2026-06-29: must be transparent + the
+  // most visible number, not hidden). Per-unit price is the supporting line.
   const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
-  void totalOrderCost
+  const totalWithoutSub = +(landedCost * quantity).toFixed(2)
 
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
@@ -359,29 +359,51 @@ export function ProductDetailConfigurator({
         </div>
       </div>
 
-      {/* Price line + tier pricing — reflects the Subscribe & save discount. */}
-      <div className="flex items-baseline justify-between border-t border-ink-100 pt-3">
-        <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
-          ${previewUnitCost.toFixed(2)}
-          <span className="ml-1 text-[13px] font-medium text-ink-500">/ unit</span>
-          {subscribe && (
-            <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
-              ${landedCost.toFixed(2)}
-            </span>
-          )}
+      {/* Pricing — the TOTAL is the headline (what the creator pays at
+          checkout: transparent + most visible); per-unit is the supporting
+          line. Reflects the Subscribe & save discount. */}
+      <div className="border-t border-ink-100 pt-3">
+        {/* Per-unit (secondary) + tier-pricing link */}
+        <div className="flex items-baseline justify-between">
+          <div className="text-[15px] font-semibold text-ink-700 tabular-nums">
+            ${previewUnitCost.toFixed(2)}
+            <span className="ml-1 text-[12px] font-medium text-ink-500">/ unit</span>
+            {subscribe && (
+              <span className="ml-1.5 text-[12px] font-medium text-ink-400 line-through">
+                ${landedCost.toFixed(2)}
+              </span>
+            )}
+          </div>
+          <PricingTierModal
+            productName={template.title}
+            variantName={`${sizeKey} · ${
+              detail.packaging.find((p) => p.id === packagingId)?.name ?? ''
+            }`}
+            rows={rows}
+            onDemandRows={onDemandRows}
+            currentTier={currentTier}
+            currentQuantity={quantity}
+            isAuthenticated={isAuthenticated}
+            feePctByTier={feePctByTier}
+          />
         </div>
-        <PricingTierModal
-          productName={template.title}
-          variantName={`${sizeKey} · ${
-            detail.packaging.find((p) => p.id === packagingId)?.name ?? ''
-          }`}
-          rows={rows}
-          onDemandRows={onDemandRows}
-          currentTier={currentTier}
-          currentQuantity={quantity}
-          isAuthenticated={isAuthenticated}
-          feePctByTier={feePctByTier}
-        />
+
+        {/* Total (headline) — the all-in amount the creator pays. */}
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <span className="text-[12px] font-semibold uppercase tracking-[0.04em] text-ink-500">
+            Total · {quantity.toLocaleString()} units
+          </span>
+          <div className="text-right">
+            <div className="font-display text-[34px] font-extrabold leading-none tracking-[-0.01em] text-ink-900 tabular-nums">
+              ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            {subscribe && (
+              <div className="mt-0.5 text-[12px] font-medium text-ink-400 line-through tabular-nums">
+                ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}

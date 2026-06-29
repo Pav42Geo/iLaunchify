@@ -12,9 +12,10 @@
 import * as React from 'react'
 import { Beaker, Package, Minus, Plus, Check } from 'lucide-react'
 import { quoteSample, formatCents, hasSamplerSet, type SampleOption, type SampleMode } from '@/lib/sample-quote'
+import { startSampleFromTemplate } from '@/lib/launch-actions'
 import { creatorUrl } from '@/lib/app-urls'
 
-const CTA_BTN = 'mt-3 block w-full rounded-full bg-ink-900 px-4 py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-ink-800'
+const CTA_BTN = 'mt-3 block w-full rounded-full bg-ink-900 px-4 py-2.5 text-center text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40'
 
 interface SampleOrderCardProps {
   options: SampleOption[] // enabled only
@@ -22,8 +23,11 @@ interface SampleOrderCardProps {
   isMultiFlavor: boolean
   dielineReady: boolean
   isAuthenticated: boolean
-  /** The creator's owned Product for this template (samples require one). */
-  ownedProductId: string | null
+  /** Template slug — the sample action resolves-or-creates the Product from it. */
+  templateSlug: string
+  /** The creator's owned Product for this template, if any. Optional — the
+   *  action reuses-or-creates the product, so a sample no longer requires one. */
+  ownedProductId?: string | null
 }
 
 const KIND_META = {
@@ -31,10 +35,15 @@ const KIND_META = {
   BRANDED: { label: 'Branded', sub: 'In your packaging + artwork', Icon: Package },
 } as const
 
-export function SampleOrderCard({ options, flavorNames, isMultiFlavor, isAuthenticated, ownedProductId }: SampleOrderCardProps) {
+export function SampleOrderCard({ options, flavorNames, isMultiFlavor, isAuthenticated, templateSlug }: SampleOrderCardProps) {
   const kinds = options.map((o) => o.kind)
   const [activeKind, setActiveKind] = React.useState(() => (kinds.includes('UNBRANDED') ? 'UNBRANDED' : kinds[0]) as 'UNBRANDED' | 'BRANDED')
   const opt = options.find((o) => o.kind === activeKind) ?? options[0]
+
+  // Sample order action state (mirrors LaunchCtaCluster).
+  const [isPending, startTransition] = React.useTransition()
+  const [error, setError] = React.useState<string | null>(null)
+  const [notCreatorRole, setNotCreatorRole] = React.useState<string | null>(null)
 
   const samplerAvailable = isMultiFlavor && !!opt && hasSamplerSet(opt)
   const [mode, setMode] = React.useState<SampleMode>('PER_FLAVOR')
@@ -48,15 +57,54 @@ export function SampleOrderCard({ options, flavorNames, isMultiFlavor, isAuthent
   const quote = quoteSample(opt, { mode: effectiveMode, unitsByFlavor: units }, isMultiFlavor)
 
   // The selection produces a valid, orderable quote (≥1 unit, no blocking
-  // errors). This — NOT a die-line — is what enables the CTA. Branded routes
+  // errors). This — NOT an owned Product, NOT a die-line — is what enables the
+  // CTA. The sample action resolves-or-creates the Product on the fly ("try
+  // before you commit"), so a creator never has to launch first. Branded routes
   // into the Design Studio to author the artwork; unbranded routes straight to
-  // the existing sample checkout. (The old code disabled the CTA whenever the
-  // creator didn't already own a Product, and additionally replaced the whole
-  // branded selection UI with a die-line "locked" warning, so a branded sample
-  // could never even build a quote — that's why it stayed disabled.)
+  // the sample checkout.
   const quoteValid = quote.unitCount > 0 && quote.errors.length === 0
 
   const setUnit = (flavor: string, n: number) => setUnits((u) => ({ ...u, [flavor]: Math.max(0, n) }))
+
+  // Fire the sample order action. On success hard-navigates to the kind-specific
+  // destination (BRANDED → Studio canvas; UNBRANDED → sample checkout). GUEST →
+  // signup; NOT_CREATOR → inline notice. The product is created/reused server-side.
+  const onSampleClick = () => {
+    setError(null)
+    setNotCreatorRole(null)
+    startTransition(async () => {
+      const firstFlavor = isMultiFlavor
+        ? pool.find((f) => (units[f] ?? 0) > 0)
+        : undefined
+      const result = await startSampleFromTemplate({
+        templateSlug,
+        kind: activeKind,
+        ...(firstFlavor ? { flavor: firstFlavor } : {}),
+        quantity: quote.unitCount,
+      })
+      if (result.ok) {
+        window.location.href = result.url
+        return
+      }
+      if (result.reason === 'GUEST') {
+        window.location.href = result.signupUrl
+        return
+      }
+      if (result.reason === 'NOT_CREATOR') {
+        setNotCreatorRole(result.role)
+        return
+      }
+      if (result.reason === 'NO_BRAND') {
+        setError("You don't have a brand set up yet. Visit your dashboard to create one.")
+        return
+      }
+      if (result.reason === 'TEMPLATE_NOT_FOUND' || result.reason === 'NO_VARIANT') {
+        setError("This product isn't available to sample yet. Try a different one or contact support.")
+        return
+      }
+      setError(result.message ?? 'Something went wrong. Please try again.')
+    })
+  }
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-5">
@@ -151,39 +199,40 @@ export function SampleOrderCard({ options, flavorNames, isMultiFlavor, isAuthent
           </div>
 
           {/* CTA — label + destination switch on the selected kind:
-              • BRANDED  → "Design a sample"  → Design Studio (author the label/
-                           die-line first, since branded needs artwork).
-              • UNBRANDED → "Order sample"    → existing sample checkout (no
-                           design/die-line required).
-              Enabled once a valid quote exists (≥1 unit, no errors). Both routes
-              require an owned Product; without one we guide the creator to
-              customize first (Launch above creates the product). */}
+              • BRANDED  → "Design a sample"  → Design Studio (author the label
+                           first, since branded needs artwork).
+              • UNBRANDED → "Order sample"    → the sample checkout (no design
+                           required).
+              Enabled whenever the quote is valid (≥1 unit, no errors) AND the
+              creator is authenticated. The action resolves-or-creates the
+              Product on the fly, so owning one is NOT a prerequisite. Guests are
+              routed to signup. */}
           {(() => {
             const branded = activeKind === 'BRANDED'
-            const ctaLabel = branded ? 'Design a sample →' : 'Order sample →'
-            // Branded authors artwork in the Studio; unbranded goes to checkout.
-            const href = ownedProductId
-              ? branded
-                ? creatorUrl(`/products/${ownedProductId}/design/canvas`)
-                : creatorUrl(`/products/${ownedProductId}/sample`)
-              : null
+            const baseLabel = branded ? 'Design a sample →' : 'Order sample →'
+            const ctaLabel = isPending ? 'Setting up…' : baseLabel
 
             if (!isAuthenticated) {
               return <a href={creatorUrl('/login')} className={CTA_BTN}>Sign in to order a sample</a>
             }
-            if (!ownedProductId) {
-              return (
-                <>
-                  <span className={`${CTA_BTN} cursor-not-allowed opacity-40`}>{ctaLabel}</span>
-                  <p className="mt-2 text-center text-[11px] text-ink-500">Customize this product first (Start launching above) to order a sample.</p>
-                </>
-              )
-            }
-            if (!quoteValid) {
-              return <span className={`${CTA_BTN} cursor-not-allowed opacity-40`}>{ctaLabel}</span>
-            }
-            return <a href={href!} className={CTA_BTN}>{ctaLabel}</a>
+            return (
+              <button
+                type="button"
+                onClick={onSampleClick}
+                disabled={!quoteValid || isPending}
+                className={CTA_BTN}
+              >
+                {ctaLabel}
+              </button>
+            )
           })()}
+          {error && <p className="mt-2 text-center text-[11.5px] font-medium text-pink-700">{error}</p>}
+          {notCreatorRole && (
+            <div className="mt-2 rounded-lg border border-ink-200 bg-ink-50 px-3.5 py-2.5 text-[12px] leading-snug text-ink-700">
+              You&rsquo;re signed in with {notCreatorRole === 'ADMIN' ? 'an admin' : 'a partner'} account, which can&rsquo;t order samples — only creator accounts can.{' '}
+              <a href={creatorUrl('/login')} className="font-semibold text-pink-700 underline underline-offset-2 hover:text-pink-800">Sign in with your creator account</a> to continue.
+            </div>
+          )}
           <p className="mt-2 text-center text-[11px] text-ink-400">Produced to order · not for resale</p>
         </>
     </div>

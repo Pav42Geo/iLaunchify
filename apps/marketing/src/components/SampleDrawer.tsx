@@ -19,7 +19,9 @@ export interface SampleDrawerProps {
   isMultiFlavor: boolean
   dielineReady: boolean
   isAuthenticated: boolean
-  ownedProductId: string | null
+  /** Template slug — threaded to the card so the sample action can create the Product. */
+  templateSlug: string
+  ownedProductId?: string | null
   /** Renders the opener. Receives an `open` callback to wire to a button. */
   trigger: (open: () => void) => React.ReactNode
 }
@@ -30,6 +32,7 @@ export function SampleDrawer({
   isMultiFlavor,
   dielineReady,
   isAuthenticated,
+  templateSlug,
   ownedProductId,
   trigger,
 }: SampleDrawerProps) {
@@ -106,6 +109,7 @@ export function SampleDrawer({
           isMultiFlavor={isMultiFlavor}
           dielineReady={dielineReady}
           isAuthenticated={isAuthenticated}
+          templateSlug={templateSlug}
           ownedProductId={ownedProductId}
         />
             </aside>
