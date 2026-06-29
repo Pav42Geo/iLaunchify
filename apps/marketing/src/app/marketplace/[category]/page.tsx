@@ -159,7 +159,7 @@ export default async function CategoryPage({
 
           {totalCount === 0 ? (
             <section className="mb-12 border border-dashed border-ink-200 rounded-2xl p-10 text-center">
-              <div className="font-display text-2xl font-bold tracking-[-0.02em] mb-2">
+              <div className="font-display text-ui-title mb-2">
                 No templates match these filters.
               </div>
               <p className="text-[14px] text-ink-500 max-w-[42ch] mx-auto">

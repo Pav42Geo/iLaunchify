@@ -371,7 +371,7 @@ export default async function ProductDetailPage({
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
               Customization options
             </div>
-            <h3 className="text-2xl font-bold tracking-[-0.01em] mb-4">Label + recipe</h3>
+            <h3 className="text-ui-title mb-4">Label + recipe</h3>
             <p className="text-[14px] text-ink-700 leading-relaxed">
               {detail.customizationDescription}
             </p>
@@ -380,7 +380,7 @@ export default async function ProductDetailPage({
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
               Material &amp; performance
             </div>
-            <h3 className="text-2xl font-bold tracking-[-0.01em] mb-4">{detail.format}</h3>
+            <h3 className="text-ui-title mb-4">{detail.format}</h3>
             <div className="flex flex-col gap-4">
               {detail.properties.map((p) => (
                 <PropertyBar key={p.label} label={p.label} value={p.value} />
@@ -431,7 +431,7 @@ export default async function ProductDetailPage({
       {/* RELATED */}
       {related.length > 0 && (
         <section className="max-w-[1400px] mx-auto px-6 mb-24">
-          <h2 className="font-display text-3xl font-bold tracking-[-0.02em] mb-7">
+          <h2 className="font-display text-ui-display mb-7">
             You might also like
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
@@ -550,12 +550,12 @@ function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDeta
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
       <div>
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           Material description
         </h3>
         <p className="text-[15px] text-ink-700 mb-7">{detail.format}.</p>
 
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           Product performance
         </h3>
         <ul className="space-y-3 list-disc pl-5 marker:text-pink-500 text-[15px] text-ink-700 leading-relaxed">
@@ -615,7 +615,7 @@ function RecipeNutritionTab({
     return (
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12 items-start">
         <div>
-          <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+          <h3 className="font-display text-ui-title mb-4">
             About this product
           </h3>
           <p className="text-[15px] text-ink-700 leading-relaxed mb-6">{detail.about}</p>
@@ -657,7 +657,7 @@ function RecipeNutritionTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12 items-start">
       <div>
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           About this recipe
         </h3>
         <p className="text-[15px] text-ink-700 leading-relaxed mb-6">
@@ -716,17 +716,17 @@ function ComplianceTab({ detail }: { detail: ReturnType<typeof findTemplateDetai
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
       <div>
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           Reminder
         </h3>
         <p className="text-[15px] text-ink-700 leading-relaxed">{detail.designReminder}</p>
       </div>
       <div>
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           Picture request
         </h3>
         <p className="text-[15px] text-ink-700 mb-6">{detail.pictureRequest}</p>
-        <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-4">
+        <h3 className="font-display text-ui-title mb-4">
           Design area
         </h3>
         <p className="text-[15px] text-ink-700">
@@ -741,7 +741,7 @@ function ComplianceTab({ detail }: { detail: ReturnType<typeof findTemplateDetai
 function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> }) {
   return (
     <div>
-      <h3 className="font-display text-2xl font-bold tracking-[-0.02em] mb-5">
+      <h3 className="font-display text-ui-title mb-5">
         Packing specifications
       </h3>
       <div className="border border-ink-200 rounded-lg overflow-x-auto">

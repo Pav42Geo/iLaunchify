@@ -252,7 +252,7 @@ function GroupShell({
 }) {
   return (
     <div className={'border-t border-ink-200 py-3.5 ' + (firstBorderless ? 'first:border-t-0' : '')}>
-      <div className="flex items-center justify-between text-sm font-semibold py-0.5 mb-2.5">
+      <div className="flex items-center justify-between text-ui-value py-0.5 mb-2.5">
         <span>{title}</span>
         {right}
       </div>

@@ -304,7 +304,7 @@ function ResultsGrid({
   if (resultCount === 0) {
     return (
       <section className="mb-12 border border-dashed border-ink-200 rounded-2xl p-10 text-center">
-        <div className="font-display text-2xl font-bold tracking-[-0.02em] mb-2">
+        <div className="font-display text-ui-title mb-2">
           No templates match these filters.
         </div>
         <p className="text-[14px] text-ink-500 mb-4 max-w-[42ch] mx-auto">
@@ -339,7 +339,7 @@ function CategorySection({
     <section className="mb-12">
       <div className="flex items-baseline justify-between mb-4">
         <div>
-          <h2 className="font-display text-2xl font-bold tracking-[-0.02em] mb-1">
+          <h2 className="font-display text-ui-title mb-1">
             {row.title}
           </h2>
           <div className="text-[12px] text-ink-500 tabular-nums">

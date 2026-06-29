@@ -58,7 +58,7 @@ export function MarketplaceSearchBar() {
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search recipes, templates, niches…"
         aria-label="Search marketplace"
-        className="w-full h-[42px] pl-10 pr-10 text-sm bg-white border border-ink-300 rounded-pill text-ink-900 placeholder:text-ink-500 focus:outline-none focus:border-pink-500 focus:ring-[3px] focus:ring-pink-500/15 transition-[border-color,box-shadow]"
+        className="w-full h-[42px] pl-10 pr-10 text-ui-body bg-white border border-ink-300 rounded-pill text-ink-900 placeholder:text-ink-500 focus:outline-none focus:border-pink-500 focus:ring-[3px] focus:ring-pink-500/15 transition-[border-color,box-shadow]"
       />
       {value && (
         <button

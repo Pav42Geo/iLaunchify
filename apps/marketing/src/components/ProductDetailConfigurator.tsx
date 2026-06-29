@@ -228,7 +228,7 @@ export function ProductDetailConfigurator({
           <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
             Landed cost
           </div>
-          <div className="text-2xl font-bold text-ink-900 leading-none tabular-nums">
+          <div className="text-ui-title text-ink-900 tabular-nums">
             ${landedCost.toFixed(2)}
             <span className="text-ink-500 text-[13px] font-medium ml-1.5">
               / unit
