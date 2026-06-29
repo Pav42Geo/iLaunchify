@@ -130,7 +130,7 @@ export default async function HomePage({
             <span>Cohort 1 applications open · US-only</span>
           </div>
 
-          <h1 className="font-display font-extrabold leading-[0.95] tracking-[-0.04em] max-w-[15ch] mb-7 text-[calc(clamp(40px,5.2vw,80px)*var(--landing-heading-scale))]">
+          <h1 className="font-display font-extrabold leading-[0.95] tracking-[-0.04em] max-w-[15ch] mb-7 text-[calc(clamp(40px,5.2vw,80px)*var(--landing-hero-scale))]">
             Launch{' '}
             <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">
               your

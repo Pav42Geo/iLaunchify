@@ -114,7 +114,7 @@ export function HeroBanner({
               '[&_em]:font-serif [&_em]:italic [&_em]:font-medium [&_em]:text-neon-500 ' +
                 '[&_em]:tracking-[-0.025em]',
               isPage
-                ? 'text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3.75rem*var(--landing-heading-scale))] md:text-[calc(4.5rem*var(--landing-heading-scale))] max-w-[18ch] mb-7'
+                ? 'text-[calc(2.25rem*var(--landing-hero-scale))] sm:text-[calc(3.75rem*var(--landing-hero-scale))] md:text-[calc(4.5rem*var(--landing-hero-scale))] max-w-[18ch] mb-7'
                 : 'text-[calc(1.875rem*var(--landing-heading-scale))] sm:text-[calc(2.25rem*var(--landing-heading-scale))] max-w-[20ch] mb-3',
               headlineClassName,
             )}

@@ -68,7 +68,7 @@ export default async function HowItWorksPage({
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700">
               How it works
             </div>
-            <h1 className="mb-5 font-display text-[calc(2.25rem*var(--landing-heading-scale))] sm:text-[calc(3rem*var(--landing-heading-scale))] md:text-[calc(3.75rem*var(--landing-heading-scale))] font-extrabold leading-[1] tracking-[-0.035em]">
+            <h1 className="mb-5 font-display text-[calc(2.25rem*var(--landing-hero-scale))] sm:text-[calc(3rem*var(--landing-hero-scale))] md:text-[calc(3.75rem*var(--landing-hero-scale))] font-extrabold leading-[1] tracking-[-0.035em]">
               From idea to{' '}
               <span className="font-serif italic font-medium text-pink-500 tracking-[-0.025em]">shelf-ready,</span>{' '}
               without the supply-chain headache.
