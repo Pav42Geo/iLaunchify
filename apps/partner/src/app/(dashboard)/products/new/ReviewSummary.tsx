@@ -145,30 +145,90 @@ function DefGrid({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** White, hairline-framed mount for a regulated SVG panel — print-document feel. */
-function LabelFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'inline-block',
-        background: '#fff',
-        border: '1px solid var(--ink-200)',
-        borderRadius: 12,
-        padding: 14,
-        boxShadow: '0 1px 3px rgba(17,17,19,0.06)',
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
 /** Framed rail card with a pink icon chip + title (matches `.section-title` look). */
 function RailCard({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: React.ReactNode }) {
   return (
     <div className="card" style={{ padding: 16 }}>
       <div className="section-title"><span className="ic"><Icon size={16} strokeWidth={2} /></span> {title}</div>
       <div style={{ marginTop: 12 }}>{children}</div>
+    </div>
+  )
+}
+
+/** Interactive gallery: a large main image with a vertical thumbnail strip
+ *  flush to its LEFT. Clicking a thumb swaps the main image. */
+function Gallery({ images }: { images: Array<{ url: string; label: string }> }) {
+  const [active, setActive] = React.useState(0)
+  if (images.length === 0) return null
+  const current = images[Math.min(active, images.length - 1)] ?? images[0]!
+  const single = images.length === 1
+
+  return (
+    <div style={{ display: 'flex', gap: 0, alignItems: 'stretch' }}>
+      {/* Vertical thumbnail strip (hidden when only one image) */}
+      {!single && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            paddingRight: 10,
+            maxHeight: 340,
+            overflowY: 'auto',
+            flex: 'none',
+          }}
+        >
+          {images.map((img, i) => {
+            const isActive = i === Math.min(active, images.length - 1)
+            return (
+              <button
+                key={`thumb-${i}`}
+                type="button"
+                onClick={() => setActive(i)}
+                aria-label={`Show ${img.label}`}
+                aria-pressed={isActive}
+                style={{
+                  width: 62,
+                  height: 62,
+                  flex: 'none',
+                  padding: 0,
+                  borderRadius: 9,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  background: 'var(--ink-50)',
+                  border: isActive ? '2px solid var(--pink)' : '1px solid var(--ink-200)',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.url} alt={img.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Large main image */}
+      <div
+        style={{
+          flex: '1 1 auto',
+          minWidth: 0,
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: '1px solid var(--ink-200)',
+          background: 'var(--ink-50)',
+          display: 'grid',
+          placeItems: 'center',
+          minHeight: 260,
+          maxHeight: 340,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={current.url}
+          alt={current.label}
+          style={{ width: '100%', height: '100%', maxHeight: 340, objectFit: 'contain' }}
+        />
+      </div>
     </div>
   )
 }
@@ -204,6 +264,12 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
   const hero = d.images.find((i) => i.kind === 'hero')
   const gallery = d.images.filter((i) => i.kind === 'gallery')
   const mockup = d.images.find((i) => i.kind === 'mockup')
+  // One ordered list for the gallery viewer: hero → gallery → mockup.
+  const galleryImages: Array<{ url: string; label: string }> = [
+    ...(hero ? [{ url: hero.url, label: 'Hero' }] : []),
+    ...gallery.map((g, i) => ({ url: g.url, label: `Gallery ${i + 1}` })),
+    ...(mockup ? [{ url: mockup.url, label: 'Mockup' }] : []),
+  ]
 
   // Key-facts tiles for the cover strip.
   const tiles: Array<{ label: string; value: React.ReactNode }> = [
@@ -271,6 +337,31 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
               {d.niches.map((n) => <span key={`niche-${n}`} className="pill">{n}</span>)}
               {d.lifestyleTags.slice(0, 6).map((t) => <span key={`tag-${t}`} className="pill">{t}</span>)}
             </div>
+
+            {/* Certificates — icon-only badges (name on hover), promoted into the cover */}
+            {d.certificates.length > 0 && (
+              <div className="row" style={{ flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
+                {d.certificates.map((c) => (
+                  <span
+                    key={c.id}
+                    title={`${c.name} · ${c.status.toLowerCase().replace(/_/g, ' ')}`}
+                    aria-label={`${c.name} · ${c.status.toLowerCase().replace(/_/g, ' ')}`}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      background: 'var(--pink-50)',
+                      border: '1px solid var(--pink-100)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      flex: 'none',
+                    }}
+                  >
+                    <BadgeCheck size={26} strokeWidth={2} style={{ color: 'var(--pink-700)' }} />
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -501,10 +592,55 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
           )}
 
           {/* 4 · PACKAGING & DIE-LINES */}
-          {(d.packaging.length > 0 || d.dielines.length > 0) && (
+          {(d.packingProfile ||
+            d.packaging.length > 0 ||
+            d.packagingMaterials.length > 0 ||
+            d.dielines.length > 0) && (
             <Section icon={Box} title="Packaging & die-lines">
+              {/* (a) Packaging structure — chosen packing profile + filled logistics */}
+              {d.packingProfile && (
+                <DefGrid>
+                  <DefCell label="Packing profile">{d.packingProfile.name}</DefCell>
+                  {d.packingProfile.structuralType && (
+                    <DefCell label="Structure">{humanize(d.packingProfile.structuralType)}</DefCell>
+                  )}
+                  {d.packingProfile.merchandisingTag && (
+                    <DefCell label="Merchandising">{humanize(d.packingProfile.merchandisingTag)}</DefCell>
+                  )}
+                  {d.packingProfile.unitCount != null && (
+                    <DefCell label="Units / pack"><span className="tnum">{d.packingProfile.unitCount}</span></DefCell>
+                  )}
+                  {(d.packingProfile.casesPerLayer != null || d.packingProfile.layersPerPallet != null) && (
+                    <DefCell label="Ti × Hi (pallet)">
+                      <span className="tnum">{d.packingProfile.casesPerLayer ?? '—'}</span>
+                      {' × '}
+                      <span className="tnum">{d.packingProfile.layersPerPallet ?? '—'}</span>
+                      {d.packingProfile.casesPerLayer != null && d.packingProfile.layersPerPallet != null && (
+                        <span style={{ ...CAPTION_STYLE, fontWeight: 400 }}>
+                          {' '}= <span className="tnum">{d.packingProfile.casesPerLayer * d.packingProfile.layersPerPallet}</span> cases
+                        </span>
+                      )}
+                    </DefCell>
+                  )}
+                  {d.packingProfile.grossWeightG != null && (
+                    <DefCell label="Gross weight"><span className="tnum">{d.packingProfile.grossWeightG}</span> g / unit</DefCell>
+                  )}
+                </DefGrid>
+              )}
+
+              {/* (b) Substrate / packaging material — chips */}
+              {d.packagingMaterials.length > 0 && (
+                <div style={{ marginTop: d.packingProfile ? 16 : 0 }}>
+                  <div style={{ ...LABEL_STYLE, marginBottom: 8 }}>Substrate / material</div>
+                  <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                    {d.packagingMaterials.map((m) => <span key={m} className="pill">{m}</span>)}
+                  </div>
+                </div>
+              )}
+
+              {/* (c) Packaging systems table */}
               {d.packaging.length > 0 && (
-                <table>
+                <table style={{ marginTop: d.packingProfile || d.packagingMaterials.length > 0 ? 16 : 0 }}>
                   <thead>
                     <tr><th>System</th><th>Topology</th><th>Per pack</th><th>MOQ</th><th>Price</th><th>Lead</th></tr>
                   </thead>
@@ -523,8 +659,9 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                 </table>
               )}
 
+              {/* (d) Die-line outline SVGs */}
               {d.dielines.length > 0 && (
-                <div style={{ marginTop: d.packaging.length > 0 ? 16 : 0 }}>
+                <div style={{ marginTop: d.packaging.length > 0 || d.packingProfile || d.packagingMaterials.length > 0 ? 16 : 0 }}>
                   <div className="row" style={{ alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <Scissors size={15} strokeWidth={2} style={{ color: 'var(--pink-700)' }} />
                     <span style={{ ...LABEL_STYLE }}>Die-line outline{d.dielines.length === 1 ? '' : 's'}</span>
@@ -562,27 +699,8 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
 
           {/* 5 · IMAGERY */}
           <Section icon={ImageIcon} title="Imagery">
-            {gallery.length > 0 || mockup ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {gallery.map((g, i) => (
-                  <div
-                    key={`g-${i}`}
-                    style={{ width: 132, height: 132, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ink-100)', background: 'var(--ink-50)' }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={g.url} alt={`Gallery ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ))}
-                {mockup && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ width: 132, height: 132, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ink-100)', background: 'var(--ink-50)' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={mockup.url} alt="Mockup base" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <span style={{ ...CAPTION_STYLE, textAlign: 'center' }}>Mockup base</span>
-                  </div>
-                )}
-              </div>
+            {galleryImages.length > 0 ? (
+              <Gallery images={galleryImages} />
             ) : (
               <div
                 style={{
@@ -680,21 +798,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
             </Section>
           )}
 
-          {/* 8 · CERTIFICATES */}
-          {d.certificates.length > 0 && (
-            <Section icon={BadgeCheck} title="Certificates">
-              {d.certificates.map((c) => (
-                <div key={c.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--ink-100)' }}>
-                  <b style={{ fontSize: 14, color: 'var(--ink-900)' }}>{c.name}</b>
-                  <span className={`pill ${c.status === 'VERIFIED' ? 'green' : c.status === 'EXPIRED' ? 'amber' : ''}`}>
-                    {c.status.toLowerCase().replace(/_/g, ' ')}
-                  </span>
-                </div>
-              ))}
-            </Section>
-          )}
-
-          {/* 9 · MANUFACTURER REFERENCES / CUSTOM META */}
+          {/* 8 · MANUFACTURER REFERENCES / CUSTOM META */}
           {(d.manufacturerRefs.length > 0 || d.customMeta.length > 0) && (
             <Section icon={Hash} title="Manufacturer references">
               {d.manufacturerRefs.length > 0 && (
@@ -737,42 +841,34 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
               <div style={{ ...LABEL_STYLE, marginBottom: 10 }}>{d.labelArtifact}</div>
               <div style={{ display: 'grid', placeItems: 'center', gap: 12 }}>
                 {d.factsPanel && d.factsPanel.panel.format === 'SUPPLEMENT_FACTS' ? (
-                  <LabelFrame>
-                    <SupplementFactsSvg data={d.factsPanel.panel} widthPx={280} />
-                  </LabelFrame>
+                  <SupplementFactsSvg data={d.factsPanel.panel} widthPx={280} />
                 ) : d.factsPanel ? (
-                  <LabelFrame>
-                    <NutritionFactsSvg
-                      data={d.factsPanel.panel}
-                      contains={d.factsPanel.contains ?? undefined}
-                      ingredientStatement={d.factsPanel.ingredientStatement ?? undefined}
-                      widthPx={280}
-                    />
-                  </LabelFrame>
+                  <NutritionFactsSvg
+                    data={d.factsPanel.panel}
+                    contains={d.factsPanel.contains ?? undefined}
+                    ingredientStatement={d.factsPanel.ingredientStatement ?? undefined}
+                    widthPx={280}
+                  />
                 ) : null}
 
                 {d.cosmeticFacts && (
-                  <LabelFrame>
-                    <InciDeclarationSvg
-                      ingredients={d.cosmeticFacts.ingredients}
-                      netContents={d.cosmeticFacts.netContents ?? undefined}
-                      responsiblePerson={d.cosmeticFacts.responsiblePerson ?? undefined}
-                      adverseEventContact={d.cosmeticFacts.adverseEventContact ?? undefined}
-                      widthPx={280}
-                    />
-                  </LabelFrame>
+                  <InciDeclarationSvg
+                    ingredients={d.cosmeticFacts.ingredients}
+                    netContents={d.cosmeticFacts.netContents ?? undefined}
+                    responsiblePerson={d.cosmeticFacts.responsiblePerson ?? undefined}
+                    adverseEventContact={d.cosmeticFacts.adverseEventContact ?? undefined}
+                    widthPx={280}
+                  />
                 )}
 
                 {d.petFacts && (
-                  <LabelFrame>
-                    <GuaranteedAnalysisSvg
-                      gaRows={d.petFacts.gaRows}
-                      ingredients={d.petFacts.ingredients}
-                      adequacyStatement={d.petFacts.adequacyStatement ?? undefined}
-                      feedingDirections={d.petFacts.feedingDirections ?? undefined}
-                      widthPx={280}
-                    />
-                  </LabelFrame>
+                  <GuaranteedAnalysisSvg
+                    gaRows={d.petFacts.gaRows}
+                    ingredients={d.petFacts.ingredients}
+                    adequacyStatement={d.petFacts.adequacyStatement ?? undefined}
+                    feedingDirections={d.petFacts.feedingDirections ?? undefined}
+                    widthPx={280}
+                  />
                 )}
               </div>
 

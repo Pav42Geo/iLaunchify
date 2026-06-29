@@ -204,6 +204,26 @@ export interface ReviewDetailPackaging {
   basePriceCents: number
   leadTimeDays: number
 }
+/** The chosen packing PROFILE (structural keystone) + filled-logistics summary,
+ *  resolved from ProductTemplate.packingProfile + the linked PackagingSystem(s). */
+export interface ReviewDetailPackingProfile {
+  name: string
+  group: string | null
+  /** 6-value structural bucket (SINGLE_UNIT, PER_FLAVOR_IN_OUTER, …). */
+  structuralType: string | null
+  /** Merchandising framing (sampler / gift / bulk / retail …). */
+  merchandisingTag: string | null
+  packStructure: string | null
+  labelColumns: number | null
+  /** Units per sellable pack (from the linked packaging system). */
+  unitCount: number | null
+  /** Packed gross weight of ONE sellable unit, grams. */
+  grossWeightG: number | null
+  /** Ti — cases per pallet layer. */
+  casesPerLayer: number | null
+  /** Hi — layers per pallet. */
+  layersPerPallet: number | null
+}
 export interface ReviewDetailVariant {
   id: string
   containerFormat: string
@@ -284,6 +304,10 @@ export interface ReviewDetail {
   allergenFreeClaims: string[]
   // ---- Packaging ----
   packaging: ReviewDetailPackaging[]
+  /** The chosen packing profile (structural keystone) + Ti-Hi / gross weight. */
+  packingProfile: ReviewDetailPackingProfile | null
+  /** Substrate / packaging-material declarations (free-text from PackagingSystem.material). */
+  packagingMaterials: string[]
   // ---- Variants ----
   variants: ReviewDetailVariant[]
   // ---- Flavors ----
@@ -345,10 +369,23 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
           orderBy: { displayOrder: 'asc' },
           include: { ingredient: { select: { id: true, name: true, labelDeclarationName: true, internalName: true } } },
         },
+        packingProfile: {
+          select: {
+            name: true,
+            group: true,
+            structuralType: true,
+            merchandisingTag: true,
+            packStructure: true,
+            labelColumns: true,
+          },
+        },
         packagingSystems: {
           include: {
             packagingSystem: {
-              select: { partnerName: true, topology: true, unitCount: true, moq: true },
+              select: {
+                partnerName: true, topology: true, unitCount: true, moq: true,
+                grossWeightG: true, casesPerLayer: true, layersPerPallet: true, material: true,
+              },
             },
           },
         },
@@ -495,6 +532,36 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
     const firstVariant = tpl.variants[0] ?? null
     const variantWithGtin = tpl.variants.find((v) => v.gtin) ?? null
 
+    // ---- Packaging structure (chosen packing profile + filled-logistics) ----
+    // The packing profile is the structural keystone on ProductTemplate; Ti-Hi /
+    // gross weight / unit count live on the linked PackagingSystem catalog row
+    // (inherited per docs/PACKAGING). Pull from the first linked system.
+    const firstPackagingSystem = tpl.packagingSystems[0]?.packagingSystem ?? null
+    const packingProfile: ReviewDetailPackingProfile | null = tpl.packingProfile
+      ? {
+          name: tpl.packingProfile.name,
+          group: tpl.packingProfile.group ?? null,
+          structuralType: tpl.packingProfile.structuralType ?? null,
+          merchandisingTag: tpl.packingProfile.merchandisingTag ?? null,
+          packStructure: tpl.packingProfile.packStructure ?? null,
+          labelColumns: tpl.packingProfile.labelColumns ?? null,
+          unitCount: firstPackagingSystem?.unitCount ?? null,
+          grossWeightG: firstPackagingSystem?.grossWeightG ?? null,
+          casesPerLayer: firstPackagingSystem?.casesPerLayer ?? null,
+          layersPerPallet: firstPackagingSystem?.layersPerPallet ?? null,
+        }
+      : null
+
+    // Substrate / packaging-material declarations — free-text `material` strings
+    // across all linked packaging systems (e.g. "PET", "SBS folding carton").
+    const packagingMaterials = [
+      ...new Set(
+        tpl.packagingSystems
+          .map((p) => p.packagingSystem.material?.trim())
+          .filter((m): m is string => Boolean(m)),
+      ),
+    ]
+
     const data: ReviewDetail = {
       name: tpl.name,
       slug: tpl.slug,
@@ -545,6 +612,8 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
         basePriceCents: p.basePriceCents,
         leadTimeDays: p.leadTimeDays,
       })),
+      packingProfile,
+      packagingMaterials,
       variants: tpl.variants.map((v) => ({
         id: v.id,
         containerFormat: v.containerFormat,

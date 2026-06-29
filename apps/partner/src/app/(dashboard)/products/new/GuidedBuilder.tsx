@@ -392,16 +392,20 @@ export function GuidedBuilder({
           <button className="btn sm" type="button" onClick={() => (cur > 0 ? go(cur - 1) : exitBack())} style={{ marginBottom: 12 }}>← Back</button>
 
           {/* Page title — defaults to "Add Product", becomes the product name
-              once the manufacturer types it in Basics. */}
-          <div className="gb-pagehead">
-            <h1 className="display">{name.trim() || 'Add Product'}</h1>
-            <div className="gb-head-meta">
-              {/* Status + Archive only when resuming/editing an existing draft. */}
-              {initial && <StatusChip status={status} />}
-              {status === 'PENDING_EDIT_REVIEW' && <span className="pill amber">🅰 re-approval marked</span>}
-              {initial && <button className="btn sm" type="button" onClick={archive} disabled={!draftId || isPending}>Archive</button>}
+              once the manufacturer types it in Basics. Hidden on the Review step:
+              the Passport cover already carries the product name (avoids a
+              redundant title directly above the passport). */}
+          {cur !== 5 && (
+            <div className="gb-pagehead">
+              <h1 className="display">{name.trim() || 'Add Product'}</h1>
+              <div className="gb-head-meta">
+                {/* Status + Archive only when resuming/editing an existing draft. */}
+                {initial && <StatusChip status={status} />}
+                {status === 'PENDING_EDIT_REVIEW' && <span className="pill amber">🅰 re-approval marked</span>}
+                {initial && <button className="btn sm" type="button" onClick={archive} disabled={!draftId || isPending}>Archive</button>}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ===== STEP 1 — Basics (pure identity) ===== */}
           {cur === 0 && (
