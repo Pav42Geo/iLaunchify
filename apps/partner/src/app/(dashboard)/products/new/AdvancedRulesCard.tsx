@@ -121,7 +121,7 @@ export function CompatibilityRulesCard({ draftId, axes, initialRules }: { draftI
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <div className="section-title"><span className="ic"><Ban size={16} strokeWidth={2} /></span> Compatibility rules <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· advanced</span></div>
+      <div className="section-title"><span className="ic"><Ban size={16} strokeWidth={2} /></span> Compatibility rules</div>
       {rules.length > 0 && (
         <table style={{ marginTop: 12 }}>
           <thead><tr><th>When</th><th /><th>Then</th><th>Message</th><th /></tr></thead>

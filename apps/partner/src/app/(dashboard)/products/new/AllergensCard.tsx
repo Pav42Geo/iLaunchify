@@ -56,7 +56,7 @@ export function AllergensCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card" style={{ marginTop: 18 }}>
-      <div className="section-title"><span className="ic"><TriangleAlert size={16} strokeWidth={2} /></span> Allergens <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· FDA Big-9</span></div>
+      <div className="section-title"><span className="ic"><TriangleAlert size={16} strokeWidth={2} /></span> Allergens</div>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft + add ingredients to detect allergens.</p>}
 

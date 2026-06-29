@@ -552,7 +552,7 @@ export function GuidedBuilder({
           {cur === 5 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic"><CheckCircle2 size={16} strokeWidth={2} /></span> Ready to submit <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· {stepDone.filter(Boolean).length}/{STEPS.length} steps complete</span></div>
+                <div className="section-title"><span className="ic"><CheckCircle2 size={16} strokeWidth={2} /></span> Ready to submit</div>
                 <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
                   {STEPS.map((s, i) => (
                     <button key={s.t} type="button" className="rcheck" onClick={() => go(i)}>
@@ -719,10 +719,10 @@ const CSS = `
 .gb .section-title{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-lg);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
 .gb .section-title .ic{width:30px;height:30px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
 .gb .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
-.gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--pink-50);color:var(--pink-700);border:1px solid var(--pink-100);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
-.gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--pink-100);color:var(--pink-700);outline:none}
-.gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:var(--pink-700);color:#fff;font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
-.gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--pink-700);z-index:60;pointer-events:none}
+.gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--ink-600);border:1px solid var(--ink-300);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
+.gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--ink-50);color:var(--ink-900);border-color:var(--ink-400);outline:none}
+.gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#fff;color:var(--ink-900);border:1px solid var(--ink-200);font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
+.gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#fff;z-index:60;pointer-events:none}
 .gb .two{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
 .gb .msel{position:relative}
 .gb .msel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;background:#fff;font:inherit;font-size:var(--fs-base);color:var(--ink-900);cursor:pointer;text-align:left}

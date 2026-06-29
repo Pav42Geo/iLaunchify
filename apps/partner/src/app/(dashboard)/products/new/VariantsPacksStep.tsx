@@ -587,7 +587,7 @@ function SamplesCard({ draftId, initialOptions, isMultiFlavor }: { draftId: stri
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· de-risk before a full run</span></div>
+        <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples</div>
         <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
           <input type="checkbox" checked={samplesOn} onChange={(e) => setSamplesOn(e.target.checked)} /> Allow sample orders
         </label>
@@ -632,7 +632,7 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
 
   return (
     <>
-      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Pack <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how it&rsquo;s bundled</span></div>
+      <div className="section-title"><span className="ic"><Factory size={16} strokeWidth={2} /></span> Pack</div>
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Packs per bundle" hint="you choose">
           <input className="input" type="number" min={1} value={packsPerBundle} onChange={(e) => setPacksPerBundle(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} />
@@ -724,7 +724,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· ≤{maxColumns}-column label</span></div>
+        <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors</div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
             <input type="checkbox" checked={perFlavorCap} onChange={(e) => setPerFlavorCap(e.target.checked)} /> Per-flavor capacity
@@ -759,7 +759,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       {/* Pack composition — capacity + min run + even-fills rule → the valid
           flavor×pieces splits a Creator may pick. */}
       <div style={{ marginTop: 14, padding: 12, border: '1px solid var(--ink-200)', borderRadius: 10, background: '#fff' }}>
-        <div className="tiny" style={{ fontWeight: 700, marginBottom: 10 }}>Pack composition <span className="muted" style={{ fontWeight: 400 }}>· how flavors split across the box</span></div>
+        <div className="tiny" style={{ fontWeight: 700, marginBottom: 10 }}>Pack composition</div>
         <div className="row" style={{ gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <Field label="Pack capacity" hint="units per box">
             <input className="input" type="number" min={1} value={packCapacity ?? ''} placeholder="e.g. 18"
@@ -878,7 +878,7 @@ function MultiPack({ draftId, packing }: { draftId: string | null; packing: Pack
 
   return (
     <>
-      <div className="section-title"><span className="ic"><Package size={16} strokeWidth={2} /></span> Pack composition <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· how units nest inside the sellable outer</span></div>
+      <div className="section-title"><span className="ic"><Package size={16} strokeWidth={2} /></span> Pack composition</div>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
         <Field label="Pack type">
           <select className="sel" value={packType} onChange={(e) => setPackType(e.target.value)}>
