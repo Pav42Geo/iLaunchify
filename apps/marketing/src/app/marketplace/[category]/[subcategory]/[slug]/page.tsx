@@ -27,6 +27,7 @@ import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
 import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
+import { getPackagingImageMap } from '@/lib/packaging-images-db'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -141,14 +142,30 @@ export default async function ProductDetailPage({
   // changeover days. Drives the PackBuilder + live D5 lead-time in MULTI mode.
   const packData = await getPackBuilderData(template.slug)
 
+  // Per-package hero image — one resolved URL per linked PackagingSystem
+  // (override → PackagingType mockup base → partner image). Empty Map for
+  // fixture-only / demo templates, so the attach below is a no-op then. Match by
+  // packaging-option id ↔ PackagingSystem id; we only ATTACH imageUrl, never
+  // touch ids / order / price / lead time / availability.
+  const packagingImageMap = await getPackagingImageMap(template.slug)
+  const packagingWithImages =
+    packagingImageMap.size > 0
+      ? detail.packaging.map((p) => {
+          const url = packagingImageMap.get(p.id)
+          return url ? { ...p, imageUrl: url } : p
+        })
+      : detail.packaging
+  const detailWithPackaging =
+    packagingWithImages === detail.packaging ? detail : { ...detail, packaging: packagingWithImages }
+
   // Override the fixture flavor list with the template's REAL flavor pool from the
   // DB when present (single-flavor swatch in SINGLE mode; PackBuilder uses the pool
   // directly in MULTI mode). Keeps the fixture flavors as fallback for fixture-only
   // demo templates with no DB flavor presets.
   const detailForConfigurator =
     packData.pool.length > 0
-      ? { ...detail, flavors: packData.pool.map((f) => ({ id: f.id, name: f.name, color: f.swatchHex ?? '#E7E2D8' })) }
-      : detail
+      ? { ...detailWithPackaging, flavors: packData.pool.map((f) => ({ id: f.id, name: f.name, color: f.swatchHex ?? '#E7E2D8' })) }
+      : detailWithPackaging
 
   // Sample policy — enabled sample kinds the partner offers for this product
   // (Pavel 2026-06-10). Empty → the "Order a sample" card hides (fixture-only /

@@ -18,10 +18,11 @@ import { SampleDrawer } from './SampleDrawer'
  * mobile/tablet experience is the stacked version.
  *
  * Owns the selected-packaging state so the gallery main image can follow the
- * chosen package — BUT only when per-package image data exists. PackagingOption
- * carries no image field today (only an emoji glyph), so the image does not
- * actually swap yet (see the per-package-image TODO). The wiring is in place for
- * when that data lands.
+ * chosen package — when per-package image data exists. PackagingOption may now
+ * carry an `imageUrl` (resolved server-side from the linked PackagingSystem); when
+ * the selected option has one, the gallery hero swaps to it. Options without an
+ * imageUrl (fixture-only demos, packages with no photo) leave the gallery exactly
+ * as it was — real images, else emoji+gradient.
  *
  * The identity column is server-rendered content passed in as `identity` (so the
  * page keeps its server/client boundary clean: taxonomy chips, accordion bodies,
@@ -75,22 +76,21 @@ export function ProductDetailHero({
   flavorPricing,
   sample,
 }: ProductDetailHeroProps) {
-  // Selected packaging — wired for a future per-package hero image.
+  // Selected packaging — drives the per-package hero image when one exists.
   const [selectedPackagingId, setSelectedPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
 
-  // ZONE 1 image resolution. PackagingOption has no image/imageUrl field, so we
-  // can't swap the hero per package from real data yet.
-  // TODO follow-up: per-package hero image (needs data) — when PackagingOption
-  // gains an imageUrl, pick `detail.packaging.find(p => p.id === selectedPackagingId)?.imageUrl`
-  // here and prefer it over `images[0]`.
-  void selectedPackagingId
+  // ZONE 1 image resolution. When the selected package carries a resolved
+  // imageUrl (server-side, from its PackagingSystem), the gallery shows it as the
+  // hero; otherwise the gallery falls back to its existing logic (real images,
+  // else emoji+gradient). `undefined` → no swap.
+  const selectedPackageImage = detail.packaging.find((p) => p.id === selectedPackagingId)?.imageUrl
 
   return (
     <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_340px] lg:gap-[26px]">
       {/* ZONE 1 — gallery */}
-      <HeroGallery template={template} images={images} />
+      <HeroGallery template={template} images={images} packageImage={selectedPackageImage} />
 
       {/* ZONE 2 — identity (server-rendered) */}
       <div className="flex flex-col">{identity}</div>
@@ -146,34 +146,68 @@ export function ProductDetailHero({
   )
 }
 
-/** ZONE 1 — vertical thumbnails + main image. Real images or emoji+gradient. */
+/** ZONE 1 — vertical thumbnails + main image. Real images or emoji+gradient.
+ *  When `packageImage` is set (the selected package has a resolved photo), it
+ *  takes over the hero (and shows as the active leading thumbnail) without
+ *  disturbing the existing gallery; clearing it falls back to the prior image. */
 function HeroGallery({
   template,
   images,
+  packageImage,
 }: {
   template: SampleTemplate
   images: string[]
+  packageImage?: string
 }) {
   const hasImages = images.length > 0
   const mainGradient = (template.gradient ?? 'mint') as ProductGradient
   const gradientThumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
   const [activeIndex, setActiveIndex] = React.useState(0)
 
+  // A package image is showing → it owns the hero (no thumbnail selected from the
+  // real-image set). Clicking any thumbnail returns to the gallery image.
+  const [showPackage, setShowPackage] = React.useState(true)
+  // When the selected package changes (new url, or cleared), reset to showing it.
+  React.useEffect(() => {
+    setShowPackage(true)
+  }, [packageImage])
+  const packageActive = Boolean(packageImage) && showPackage
+
   return (
     <div className="lg:sticky lg:top-24 lg:self-start">
       <div className="flex gap-2.5">
         {/* Thumbnails */}
         <div className="flex flex-shrink-0 flex-col gap-2">
+          {/* Selected-package thumbnail (only when a package image exists). */}
+          {packageImage && (
+            <button
+              type="button"
+              onClick={() => setShowPackage(true)}
+              aria-label="View selected packaging"
+              className={
+                'h-14 w-14 overflow-hidden rounded-[10px] border transition-colors ' +
+                (packageActive
+                  ? 'border-2 border-ink-900'
+                  : 'border border-ink-200 hover:border-pink-500')
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={packageImage} alt="" className="h-full w-full object-cover" />
+            </button>
+          )}
           {hasImages
             ? images.slice(0, 4).map((src, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setActiveIndex(i)}
+                  onClick={() => {
+                    setShowPackage(false)
+                    setActiveIndex(i)
+                  }}
                   aria-label={`View image ${i + 1}`}
                   className={
                     'h-14 w-14 overflow-hidden rounded-[10px] border transition-colors ' +
-                    (i === activeIndex
+                    (!packageActive && i === activeIndex
                       ? 'border-2 border-ink-900'
                       : 'border border-ink-200 hover:border-pink-500')
                   }
@@ -196,9 +230,16 @@ function HeroGallery({
         {/* Main image */}
         <div
           className="flex aspect-square flex-1 items-center justify-center overflow-hidden rounded-2xl border border-ink-200"
-          style={hasImages ? undefined : { background: productGradient[mainGradient] }}
+          style={packageActive || hasImages ? undefined : { background: productGradient[mainGradient] }}
         >
-          {hasImages ? (
+          {packageActive ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={packageImage}
+              alt={`${template.title} — selected packaging`}
+              className="h-full w-full object-cover transition-opacity duration-base ease-out-quart"
+            />
+          ) : hasImages ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={images[activeIndex] ?? images[0]}

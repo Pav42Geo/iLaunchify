@@ -22,6 +22,12 @@ export interface PackagingOption {
   name: string
   /** Emoji glyph for V1; eventually a small image of the packaging. */
   icon: string
+  /**
+   * Optional resolved image URL of THIS package (e.g. the PackagingType's mockup
+   * base photo). When present, the PDP gallery swaps its hero to this image while
+   * the option is selected. Absent → gallery behaves exactly as before.
+   */
+  imageUrl?: string
   /** Optional price delta per unit vs. the cheapest option. Positive = premium. */
   priceDelta?: number
   /** Optional lead-time in days. */
