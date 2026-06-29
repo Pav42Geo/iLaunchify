@@ -294,7 +294,6 @@ export function GuidedBuilder({
     (i === 0 && name.trim().length >= 2 && !!draftId) ||
     (i === 1 && !!profile),
   )
-  const pct = Math.round((stepDone.filter(Boolean).length / STEPS.length) * 100)
 
   // Unified Next (the per-step nav now lives in the app topbar).
   const nextDisabled = (cur === 0 && !draftId) || (cur === 1 && !profile)
@@ -370,45 +369,19 @@ export function GuidedBuilder({
       />
 
       <div className="gb-shell">
-        {/* LEFT RAIL */}
-        <aside className="rail">
-          <div className="progress-card">
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline', margin: 0 }}>
-              <span className="eyebrow">Completion</span>
-              <b className="display" style={{ fontSize: 20 }}>{pct}%</b>
-            </div>
-            <div className="pbar"><div className="pfill" style={{ width: `${pct}%` }} /></div>
-          </div>
-          <div>
-            {STEPS.map((s, i) => (
-              <div
-                key={s.t}
-                className={`step ${i === cur ? 'active' : ''} ${i < cur ? 'done' : ''}`}
-                onClick={() => go(i)}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="n">{i < cur ? '✓' : i + 1}</div>
-                <div>
-                  <div className="t">{s.t}</div>
-                  <div className="d">{s.d}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="note grey" style={{ marginTop: 16 }}>
-            Modules shown depend on your services. A <b>Manufacturing-only</b> partner skips Packaging
-            & Printing; a <b>Packing/Printing-only</b> partner gets a different flow.
-          </div>
-        </aside>
-
-        {/* MAIN */}
+        {/* MAIN (left rail removed — the top stepper handles navigation) */}
         <main className="gb-main">
           {/* stepper beads */}
           <div className="stepper">
             {STEPS.map((s, i) => (
               <span key={s.t} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <span className={`sbead ${i === cur ? 'active' : ''} ${i < cur ? 'done' : ''}`}>
+                <span
+                  className={`sbead ${i === cur ? 'active' : ''} ${i < cur ? 'done' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => go(i)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(i) } }}
+                >
                   <span className="b">{i < cur ? '✓' : i + 1}</span>
                   {s.t}
                 </span>
@@ -686,7 +659,7 @@ const CSS = `
 .gb .note.grey{color:var(--ink-600);background:var(--ink-50);border-color:var(--ink-200)}
 .gb-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;background:#fff;border-bottom:1px solid var(--ink-200)}
 .gb-scopes{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .gb-actions{display:flex;gap:10px}
-.gb-shell{display:grid;grid-template-columns:248px 1fr;gap:0}
+.gb-shell{display:block}
 .gb .rail{border-right:1px solid var(--ink-200);padding:18px 14px;background:#fff}
 .gb .rail h3{font-size:var(--fs-lg)}
 .gb .progress-card{border:1px solid var(--ink-200);border-radius:14px;background:var(--ink-50);padding:12px;margin-bottom:14px}
@@ -714,7 +687,8 @@ const CSS = `
 .gb-nextbtn:disabled{background:#fff;border-color:#E0E1E5;color:#9A9CA6;cursor:not-allowed}
 .gb .hero{border:1px solid var(--pink-100);background:var(--cream);border-radius:24px;padding:20px 22px;margin-bottom:18px}
 .gb .stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
-.gb .sbead{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);color:var(--ink-500)}
+.gb .sbead{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);color:var(--ink-500);cursor:pointer}
+.gb .sbead:hover{color:var(--ink-900)}
 .gb .sbead .b{width:20px;height:20px;border-radius:50%;background:var(--ink-100);display:grid;place-items:center;font-size:var(--fs-2xs);font-weight:700;color:var(--ink-500)}
 .gb .sbead.active{color:var(--ink-900);font-weight:600} .gb .sbead.active .b{background:var(--pink);color:#fff}
 .gb .sbead.done .b{background:var(--green);color:#fff} .gb .sline{width:26px;height:1.5px;background:var(--ink-200);display:inline-block;margin:0 2px}
