@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Info } from 'lucide-react'
+import { Info, Sparkles } from 'lucide-react'
+import { getTierByRunCount } from '@ilaunchify/plans'
 import {
   PackagingPicker,
   PackBuilder,
@@ -16,6 +17,7 @@ import {
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
 import { LaunchCtaCluster } from './LaunchCtaCluster'
+import { SubscribeChoice } from './SubscribeChoice'
 
 /**
  * ProductDetailConfigurator — the single "Configure & launch" surface on the
@@ -23,15 +25,22 @@ import { LaunchCtaCluster } from './LaunchCtaCluster'
  * wrapped in the pink-bordered sticky box.
  *
  * Reuses all the original pricing / earnings / pack-builder / lead-time logic.
- * The redesign changes the *layout* and adds a few presentational affordances:
- *   - Flavor CARDS (per-flavor price; strike-through "was" when a sale delta
- *     exists — none until FlavorPreset gains a sale column).
- *   - Subscribe & save row (UI affordance; not yet threaded to checkout).
+ * The redesign changes the *layout* to follow the creator's real decision path
+ * (top → bottom):
+ *   1. "Customize recipe →" invitation ABOVE flavors (recipe changes flow into
+ *      every flavor). Switches to the Recipe & nutrition tab via ilf:goto-recipe.
+ *   2. Flavor CARDS (per-flavor price; strike-through "was" when a sale delta
+ *      exists — none until FlavorPreset gains a sale column).
+ *   3. Packaging — the chosen package DRIVES the size options.
+ *   4. Size — sourced from the selected package's `sizes` (fixture-driven) with
+ *      a fallback to the product-level sizeChart.
+ *   5. Quantity → price → "Your earnings" (neutral gray surface).
+ *   6. Primary actions side by side: [Launch this product] [Order a sample].
+ *   7. Subscribe & save — One-time vs Subscribe rows mirroring the checkout
+ *      SubscribeChoiceRail (discount from SUBSCRIPTION_DISCOUNT_LADDER). UI
+ *      affordance only — not yet threaded into launch/checkout.
  *   - Ship-to estimate line (estimate only — no address entry).
  *   - Production & returns info tooltip.
- *   - "Order a sample →" + "Customize recipe →" secondary buttons. Sample opens
- *     a drawer (rendered by the page); Customize switches the page to the
- *     Recipe & nutrition tab via a custom event.
  *
  * Decoration moved to the Design Studio — the DecorationPicker and its
  * decorationMethod are removed here (decorationMethod is left null on the CTA).
@@ -84,7 +93,9 @@ export function ProductDetailConfigurator({
   onPackagingChange,
   onOpenSample,
 }: ProductDetailConfiguratorProps) {
-  const sizeOptions = detail.sizeChart.map((s) => s.size)
+  // Product-level fallback sizes (legacy behaviour — used when the selected
+  // package doesn't define its own `sizes`).
+  const fallbackSizeOptions = detail.sizeChart.map((s) => s.size)
 
   const [flavorId, setFlavorId] = React.useState<string>(
     detail.flavors[0]?.id ?? '',
@@ -92,10 +103,30 @@ export function ProductDetailConfigurator({
   const isMultiFlavor = flavorMode === 'MULTI' && flavorPool.length > 0
   const [packPicks, setPackPicks] = React.useState<FlavorPick[]>([])
   const flavorCount = isMultiFlavor ? Math.max(1, distinctFlavorCount(packPicks)) : 1
-  const [sizeKey, setSizeKey] = React.useState<string>(sizeOptions[0] ?? '')
   const [packagingId, setPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
+
+  // Size options are DRIVEN BY THE SELECTED PACKAGE: a package's own `sizes`
+  // win; otherwise fall back to the product-level sizeChart sizes.
+  // TODO follow-up: real per-package sizes need a ProductTemplateVariant↔Packaging
+  // link (schema) — fixture-driven for now (see PackagingOption.sizes).
+  const selectedPackage = detail.packaging.find((p) => p.id === packagingId)
+  const sizeOptions =
+    selectedPackage?.sizes && selectedPackage.sizes.length > 0
+      ? selectedPackage.sizes
+      : fallbackSizeOptions
+
+  const [sizeKey, setSizeKey] = React.useState<string>(sizeOptions[0] ?? '')
+
+  // When the package changes the available sizes change — clamp the selected
+  // size to one valid for the new package (reset to the first when invalid).
+  React.useEffect(() => {
+    if (sizeOptions.length > 0 && !sizeOptions.includes(sizeKey)) {
+      setSizeKey(sizeOptions[0]!)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packagingId])
   const [quantity, setQuantity] = React.useState<number>(template.minUnits)
   // Subscribe & save — UI affordance only for now (the launch action doesn't yet
   // accept a subscription flag). // TODO wire subscribe into the launch/checkout
@@ -132,7 +163,14 @@ export function ProductDetailConfigurator({
 
   const baseCost = matchedRow.perUnitCents / 100
   const landedCost = +(baseCost * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2)
-  const totalOrderCost = +(landedCost * quantity).toFixed(2)
+
+  // Subscribe & save preview — applies the discount-ladder tier to the unit
+  // cost when the creator picks Subscribe. Open-ended tier (runCount = null).
+  const subDiscountBp = subscribe ? getTierByRunCount(null).discountBp : 0
+  const previewUnitCost = subscribe
+    ? +((landedCost * (10_000 - subDiscountBp)) / 10_000).toFixed(2)
+    : landedCost
+  const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
 
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
@@ -157,7 +195,27 @@ export function ProductDetailConfigurator({
         Configure &amp; launch
       </div>
 
-      {/* Flavor — cards with per-flavor price (single mode) / PackBuilder (multi). */}
+      {/* 1) Customize-recipe invitation — sits ABOVE flavors because recipe
+          changes flow into every flavor. Switches to the Recipe & nutrition tab
+          via the existing ilf:goto-recipe event (the old bottom "Customize
+          recipe →" button is removed). */}
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))}
+        className="flex items-start gap-2.5 rounded-[var(--card-radius)] border border-pink-200 bg-pink-50 px-3 py-2.5 text-left transition-colors hover:border-pink-300 hover:bg-pink-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
+      >
+        <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-700" aria-hidden="true" />
+        <span className="min-w-0">
+          <span className="block text-[13px] font-semibold text-pink-800">
+            Before you pick flavors, customize the recipe →
+          </span>
+          <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-600">
+            Swap ingredients or add actives — changes flow into every flavor.
+          </span>
+        </span>
+      </button>
+
+      {/* 2) Flavor — cards with per-flavor price (single mode) / PackBuilder (multi). */}
       {isMultiFlavor ? (
         <PackBuilder
           pool={flavorPool}
@@ -211,7 +269,20 @@ export function ProductDetailConfigurator({
         )
       )}
 
-      {/* Size pills */}
+      {/* 3) Packaging — selecting a package drives the size options (below) and
+          the hero image (when per-package image data exists). */}
+      <PackagingPicker
+        options={detail.packaging}
+        value={packagingId}
+        onChange={(id) => {
+          setPackagingId(id)
+          onPackagingChange?.(id)
+        }}
+      />
+
+      {/* 4) Size — DRIVEN BY THE SELECTED PACKAGE (its `sizes` win; otherwise
+          the product-level sizeChart). The clamp effect resets the selected
+          size when the package changes. */}
       {sizeOptions.length > 1 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-[12px] font-semibold text-ink-700">Size</div>
@@ -239,17 +310,7 @@ export function ProductDetailConfigurator({
         </div>
       )}
 
-      {/* Packaging — drives the hero image (when per-package image data exists). */}
-      <PackagingPicker
-        options={detail.packaging}
-        value={packagingId}
-        onChange={(id) => {
-          setPackagingId(id)
-          onPackagingChange?.(id)
-        }}
-      />
-
-      {/* Quantity */}
+      {/* 5) Quantity */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[12px] font-semibold text-ink-700">Quantity</label>
         <div className="flex w-fit items-center overflow-hidden rounded-[9px] border border-ink-200">
@@ -286,11 +347,16 @@ export function ProductDetailConfigurator({
         </div>
       </div>
 
-      {/* Price line + tier pricing */}
+      {/* Price line + tier pricing — reflects the Subscribe & save discount. */}
       <div className="flex items-baseline justify-between border-t border-ink-100 pt-3">
         <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
-          ${landedCost.toFixed(2)}
+          ${previewUnitCost.toFixed(2)}
           <span className="ml-1 text-[13px] font-medium text-ink-500">/ unit</span>
+          {subscribe && (
+            <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
+              ${landedCost.toFixed(2)}
+            </span>
+          )}
         </div>
         <PricingTierModal
           productName={template.title}
@@ -307,63 +373,47 @@ export function ProductDetailConfigurator({
       </div>
       <div className="text-[11px] text-ink-500 tabular-nums">
         ${totalOrderCost.toFixed(2)} total at this quantity
+        {subscribe && ' · per run'}
       </div>
 
-      <EarningsCalculator costPerUnit={landedCost} />
+      {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}
+      <EarningsCalculator costPerUnit={previewUnitCost} tone="neutral" />
 
-      {/* Primary CTA — decorationMethod left null (decoration moved to Studio). */}
-      <LaunchCtaCluster
-        templateSlug={template.slug}
-        templateName={template.title}
-        flavorId={flavorId}
-        sizeKey={sizeKey}
-        packagingId={packagingId}
-        quantity={quantity}
-        isAuthenticated={isAuthenticated}
-        decorationMethod={null}
-        partnerOfferingId={null}
-      />
-
-      {/* Secondary buttons — sample drawer + customize-recipe tab switch. */}
-      <div className="flex gap-2">
+      {/* 6) Primary actions — Launch + Order a sample side by side. */}
+      <div className="flex flex-wrap items-stretch gap-2">
+        {/* LaunchCtaCluster renders its own primary Button + error/notice. */}
+        <div className="flex-1 min-w-[160px]">
+          <LaunchCtaCluster
+            templateSlug={template.slug}
+            templateName={template.title}
+            flavorId={flavorId}
+            sizeKey={sizeKey}
+            packagingId={packagingId}
+            quantity={quantity}
+            isAuthenticated={isAuthenticated}
+            decorationMethod={null}
+            partnerOfferingId={null}
+          />
+        </div>
         {onOpenSample && (
           <button
             type="button"
             onClick={onOpenSample}
-            className="flex-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
+            className="flex-1 min-w-[140px] self-start rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
           >
             Order a sample →
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            // Tell the below-hero tabs to switch to Recipe & nutrition + scroll.
-            window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))
-          }}
-          className="flex-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
-        >
-          Customize recipe →
-        </button>
       </div>
 
-      {/* Subscribe & save (UI affordance — not yet wired to checkout). */}
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--card-radius)] border border-[var(--card-border)] px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={subscribe}
-          onChange={(e) => setSubscribe(e.target.checked)}
-          className="mt-0.5"
-        />
-        <span>
-          <span className="block text-[13px] font-semibold text-ink-900">
-            Subscribe &amp; save
-          </span>
-          <span className="mt-0.5 block text-[12px] text-ink-500">
-            Set up recurring production — pause or cancel anytime.
-          </span>
-        </span>
-      </label>
+      {/* 7) Subscribe & save — One-time vs Subscribe radio rows mirroring the
+          checkout SubscribeChoiceRail (discount from SUBSCRIPTION_DISCOUNT_LADDER).
+          // TODO wire subscribe into launch/checkout — UI affordance for now. */}
+      <SubscribeChoice
+        subscribe={subscribe}
+        onChange={setSubscribe}
+        unitPrice={landedCost}
+      />
 
       {/* Ship-to estimate (estimate only — no address entry). */}
       <div className="flex items-center gap-1.5 text-[12.5px] text-ink-600">

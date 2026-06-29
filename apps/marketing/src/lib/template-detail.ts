@@ -70,12 +70,16 @@ const ADAPTOGEN: TemplateDetail = {
     { id: 'matcha', name: 'Matcha', color: '#7BA05B' },
   ],
   packaging: [
+    // TODO follow-up: real per-package sizes need a ProductTemplateVariant↔Packaging
+    // link (schema). The `sizes` lists below are fixture-driven so the demo PDP
+    // visibly drives the size picker off the chosen package.
     {
       id: 'pouch-standup',
       name: 'Stand-up pouch (matte)',
       icon: '🛍️',
       leadTimeDays: 12,
       priceDelta: 0,
+      sizes: ['240g', '480g', '720g'],
     },
     {
       id: 'pouch-resealable',
@@ -83,6 +87,7 @@ const ADAPTOGEN: TemplateDetail = {
       icon: '👜',
       leadTimeDays: 12,
       priceDelta: 0.4,
+      sizes: ['8 oz', '16 oz'],
     },
     {
       id: 'jar-glass',
@@ -90,6 +95,7 @@ const ADAPTOGEN: TemplateDetail = {
       icon: '🫙',
       leadTimeDays: 18,
       priceDelta: 1.2,
+      sizes: ['250 mL', '500 mL'],
     },
     {
       id: 'jar-pet',
@@ -97,6 +103,7 @@ const ADAPTOGEN: TemplateDetail = {
       icon: '🥫',
       leadTimeDays: 14,
       priceDelta: 0.6,
+      sizes: ['8 oz', '12 oz'],
     },
     {
       id: 'sachet',
@@ -105,6 +112,7 @@ const ADAPTOGEN: TemplateDetail = {
       leadTimeDays: 20,
       priceDelta: 1.8,
       unavailable: true,
+      sizes: ['Single serve', '30-pack'],
     },
   ],
   properties: [
@@ -332,9 +340,11 @@ const GENERIC_DETAIL: TemplateDetail = {
     { id: 'citrus', name: 'Citrus', color: '#F2B23E' },
   ],
   packaging: [
-    { id: 'pouch', name: 'Stand-up pouch', icon: '🛍️', leadTimeDays: 12 },
-    { id: 'jar-pet', name: 'PET jar 8 oz', icon: '🥫', leadTimeDays: 14, priceDelta: 0.6 },
-    { id: 'jar-glass', name: 'Glass jar 250 mL', icon: '🫙', leadTimeDays: 18, priceDelta: 1.2 },
+    // TODO follow-up: real per-package sizes need a ProductTemplateVariant↔Packaging
+    // link (schema). Fixture-driven for the demo.
+    { id: 'pouch', name: 'Stand-up pouch', icon: '🛍️', leadTimeDays: 12, sizes: ['240g', '480g'] },
+    { id: 'jar-pet', name: 'PET jar 8 oz', icon: '🥫', leadTimeDays: 14, priceDelta: 0.6, sizes: ['8 oz', '12 oz'] },
+    { id: 'jar-glass', name: 'Glass jar 250 mL', icon: '🫙', leadTimeDays: 18, priceDelta: 1.2, sizes: ['250 mL', '500 mL'] },
   ],
   properties: [
     { label: 'Shelf life (18 months)', value: 75 },

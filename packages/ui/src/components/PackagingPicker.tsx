@@ -28,6 +28,16 @@ export interface PackagingOption {
    * the option is selected. Absent → gallery behaves exactly as before.
    */
   imageUrl?: string
+  /**
+   * Optional list of size labels valid for THIS package (e.g. carton →
+   * ["Single serve", "12-pack"]). When present, the PDP size picker shows
+   * these instead of the product-level sizeChart sizes. Absent → the size
+   * picker falls back to the product's sizeChart (legacy behaviour).
+   *
+   * TODO follow-up: real per-package sizes need a ProductTemplateVariant↔Packaging
+   * link (schema). This is a presentational fixture-driven affordance for now.
+   */
+  sizes?: string[]
   /** Optional price delta per unit vs. the cheapest option. Positive = premium. */
   priceDelta?: number
   /** Optional lead-time in days. */

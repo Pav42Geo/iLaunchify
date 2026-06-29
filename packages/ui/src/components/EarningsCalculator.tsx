@@ -23,6 +23,12 @@ export interface EarningsCalculatorProps {
   defaultRetail?: number
   /** Optional callback when the retail input changes. */
   onChange?: (retailPerUnit: number) => void
+  /**
+   * Surface tone. 'default' keeps the original white card; 'neutral' uses the
+   * subtle gray surface (`--bg-subtle`) so the earnings card reads as a neutral
+   * info panel rather than a primary action (PDP configure box).
+   */
+  tone?: 'default' | 'neutral'
   className?: string
 }
 
@@ -30,6 +36,7 @@ export function EarningsCalculator({
   costPerUnit,
   defaultRetail,
   onChange,
+  tone = 'default',
   className,
 }: EarningsCalculatorProps) {
   const initial = defaultRetail ?? Math.round(costPerUnit * 3.5 * 100) / 100
@@ -41,7 +48,10 @@ export function EarningsCalculator({
   return (
     <div
       className={cn(
-        'grid grid-cols-2 gap-4 p-4 rounded-lg border border-ink-200 bg-white',
+        'grid grid-cols-2 gap-4 p-4 rounded-lg border',
+        tone === 'neutral'
+          ? 'border-[var(--card-border)] bg-[var(--bg-subtle)]'
+          : 'border-ink-200 bg-white',
         className,
       )}
     >
