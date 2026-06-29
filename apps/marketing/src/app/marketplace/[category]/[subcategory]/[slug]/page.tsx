@@ -13,8 +13,7 @@ import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { ProductDetailHero } from '@/components/ProductDetailHero'
 import { ProductTabs } from '@/components/ProductTabs'
 import { ProductAccordion } from '@/components/ProductAccordion'
-import { IngredientsTabInner } from '@/components/IngredientsTabInner'
-import { CustomizeRail } from '@/components/CustomizeRail'
+import { RecipeNutritionStudio } from '@/components/RecipeNutritionStudio'
 import { ProductCarousel } from '@/components/ProductCarousel'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
@@ -507,33 +506,22 @@ function RecipeTab({
     )
   }
 
-  // Food / supplement with a swappable recipe — two columns: the swaps + add-ons
-  // (IngredientsTabInner) on the left, the live "Contains" + Nutrition Facts
-  // (CustomizeRail) on the right. CustomizeRail recomputes the panel server-side
-  // on each swap; "Preview full label" opens the panel in a modal.
+  // Food / supplement with a swappable recipe — the 3-column "recipe studio":
+  //   LEFT   recipe (swaps) + optional ingredients
+  //   MIDDLE live regulated Facts label (focal) + "Preview full label" modal
+  //   RIGHT  recipe summary · live ingredient statement · live "Contains" · net wt
+  // One shared live state drives all three columns (the recompute logic lifted
+  // verbatim from CustomizeRail — recomputeMarketplacePanel on each swap/add-on).
   return (
-    <div className="space-y-8">
-      <div>
-        <h3 className="mb-3 font-display text-ui-title">About this recipe</h3>
-        <p className="max-w-[70ch] text-[15px] leading-relaxed text-ink-700">
-          {detail.about}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-start">
-        <IngredientsTabInner
-          slug={template.slug}
-          ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
-          addOns={recipeDetail.addOns.length > 0 ? recipeDetail.addOns : undefined}
-        />
-        <CustomizeRail
-          slug={template.slug}
-          ingredients={detail.ingredients}
-          ingredientAddOns={detail.ingredientAddOns}
-          nutrition={detail.nutrition}
-        />
-      </div>
-    </div>
+    <RecipeNutritionStudio
+      slug={template.slug}
+      about={detail.about}
+      ingredients={detail.ingredients}
+      ingredientAddOns={detail.ingredientAddOns}
+      nutrition={detail.nutrition}
+      netWeight={detail.netWeight}
+      servings={detail.sizeChart[0]?.servings}
+    />
   )
 }
 
