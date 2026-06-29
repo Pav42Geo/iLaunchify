@@ -107,6 +107,7 @@ import { TemplatesDrawer } from './drawers/TemplatesDrawer'
 import { TemplateAuthorSaveDialog } from '../../../../studio/TemplateAuthorSaveDialog'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
+import type { StudioFinish } from './page'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { ElementsDrawer } from './drawers/ElementsDrawer'
 import { PhrasesDrawer } from './drawers/PhrasesDrawer'
@@ -193,6 +194,13 @@ interface Props {
    * Resolution lives in page.tsx — keeps the shell agnostic.
    */
   partnerOffersFinishes?: boolean
+  /**
+   * F3a — the finishes THIS product offers (partner's ProductTemplateFinish
+   * allow-list), serialized server-side in page.tsx#loadStudioFinishes.
+   * DISPLAY-ONLY: rendered by the Finishes drawer; no object-apply yet (F3b).
+   * Empty unless partnerOffersFinishes is true.
+   */
+  finishes?: StudioFinish[]
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -320,6 +328,7 @@ export function CanvasLayoutShell({
   labelingType,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
+  finishes = [],
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1030,6 +1039,7 @@ export function CanvasLayoutShell({
               onActiveBrandChange={setActiveBrandId}
               creatorTier={creatorTier}
               onSaveAsTemplate={onSaveTemplateClick}
+              finishes={finishes}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1570,6 +1580,7 @@ function ToolDrawer({
   onActiveBrandChange,
   creatorTier,
   onSaveAsTemplate,
+  finishes,
   onClose,
 }: {
   tool: ToolKey
@@ -1604,6 +1615,7 @@ function ToolDrawer({
   onActiveBrandChange: (brandId: string) => void
   creatorTier: TierKey
   onSaveAsTemplate: () => void
+  finishes: StudioFinish[]
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1713,7 +1725,7 @@ function ToolDrawer({
           />
         )}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
-        {tool === 'finishes' && <FinishesDrawer />}
+        {tool === 'finishes' && <FinishesDrawer finishes={finishes} />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool === 'phrases' && (
           <PhrasesDrawer canvas={canvas} productId={productId} labelingType={labelingType ?? 'FOOD'} />

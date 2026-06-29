@@ -39,6 +39,149 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+// ── F3a per-draft finishes (DISPLAY-ONLY) ─────────────────────────────────────
+// The Studio's Finishes drawer surfaces the finishes THIS product offers — the
+// partner's ProductTemplateFinish allow-list. Read-only: no object-apply, no
+// substrate hard-filter (F3b). ProductTemplateFinish lands on the generated
+// Prisma client only AFTER the additive migration (db:push → db:generate), so
+// ALL access is cast-guarded and degrades to [] at runtime.
+
+/** Serializable finish row handed to the (client) Finishes drawer. */
+export interface StudioFinish {
+  partnerFinishId: string
+  /** Partner override name, falling back to the FinishType catalog name. */
+  name: string
+  /** FinishCategory enum value (SURFACE / FOIL_METALLIC / …). */
+  category: string
+  /** Compact "+$0.08/unit · +2d · MOQ 500" string, or null. */
+  pricingSummary: string | null
+  leadTimeDays: number
+  isDefault: boolean
+  isIncludedInPrice: boolean
+  note: string | null
+  /** Substrate slugs this finish is compatible with (inert until F3b). */
+  compatibleSubstrates: string[]
+}
+
+function usd(c: number): string {
+  return `$${(c / 100).toFixed(2)}`
+}
+
+// Mirrors the partner-side pricing-summary formatter (packaging-finishes-actions.ts).
+function buildFinishPricingSummary(f: {
+  pricingMode: string
+  basePriceCents: number
+  perUnitPriceCents: number
+  pricePerSqInCents: number | null
+  pricePerObjectCents: number | null
+  pricePerColorCents: number | null
+  leadTimeDays: number
+  moqMin: number
+}): string | null {
+  const parts: string[] = []
+  switch (f.pricingMode) {
+    case 'PER_UNIT':
+      if (f.perUnitPriceCents > 0) parts.push(`+${usd(f.perUnitPriceCents)}/unit`)
+      break
+    case 'PER_AREA':
+      if (f.pricePerSqInCents && f.pricePerSqInCents > 0) parts.push(`+${usd(f.pricePerSqInCents)}/sq in`)
+      break
+    case 'PER_OBJECT':
+      if (f.pricePerObjectCents && f.pricePerObjectCents > 0) parts.push(`+${usd(f.pricePerObjectCents)}/object`)
+      break
+    case 'PER_COLOR':
+      if (f.pricePerColorCents && f.pricePerColorCents > 0) parts.push(`+${usd(f.pricePerColorCents)}/color`)
+      break
+    case 'FLAT_PER_ORDER':
+      if (f.basePriceCents > 0) parts.push(`+${usd(f.basePriceCents)}/order`)
+      break
+    case 'TIERED':
+      parts.push('tiered')
+      break
+    default:
+      if (f.perUnitPriceCents > 0) parts.push(`+${usd(f.perUnitPriceCents)}/unit`)
+  }
+  if (f.pricingMode !== 'FLAT_PER_ORDER' && f.basePriceCents > 0) parts.push(`+${usd(f.basePriceCents)} setup`)
+  if (f.leadTimeDays > 0) parts.push(`+${f.leadTimeDays}d`)
+  if (f.moqMin > 0) parts.push(`MOQ ${f.moqMin.toLocaleString()}`)
+  return parts.length ? parts.join(' · ') : null
+}
+
+/**
+ * Load the finishes a product template offers, for the DISPLAY-ONLY Studio
+ * drawer (F3a). Cast-guarded so it typechecks against the pre-migration client
+ * and yields [] at runtime when the model/data isn't there.
+ */
+async function loadStudioFinishes(productTemplateId: string | null): Promise<StudioFinish[]> {
+  if (!productTemplateId) return []
+  try {
+    const rows =
+      (await (
+        prisma as unknown as {
+          productTemplateFinish?: {
+            findMany: (a: unknown) => Promise<
+              Array<{
+                partnerFinishId: string
+                isDefault: boolean
+                isIncludedInPrice: boolean
+                note: string | null
+                sortOrder: number
+                partnerFinish: {
+                  name: string | null
+                  pricingMode: string
+                  basePriceCents: number
+                  perUnitPriceCents: number
+                  pricePerSqInCents: number | null
+                  pricePerObjectCents: number | null
+                  pricePerColorCents: number | null
+                  leadTimeDays: number
+                  moqMin: number
+                  compatibleSubstrates: string[]
+                  finishType: { name: string; category: string }
+                } | null
+              }>
+            >
+          }
+        }
+      ).productTemplateFinish
+        ?.findMany({
+          where: { productTemplateId },
+          orderBy: { sortOrder: 'asc' },
+          include: { partnerFinish: { include: { finishType: true } } },
+        })
+        .catch(() => [])) ?? []
+
+    return rows
+      .filter((r) => r.partnerFinish)
+      .map((r) => {
+        const pf = r.partnerFinish!
+        return {
+          partnerFinishId: r.partnerFinishId,
+          name: pf.name?.trim() || pf.finishType.name,
+          category: String(pf.finishType.category),
+          pricingSummary: buildFinishPricingSummary({
+            pricingMode: String(pf.pricingMode),
+            basePriceCents: pf.basePriceCents,
+            perUnitPriceCents: pf.perUnitPriceCents,
+            pricePerSqInCents: pf.pricePerSqInCents,
+            pricePerObjectCents: pf.pricePerObjectCents,
+            pricePerColorCents: pf.pricePerColorCents,
+            leadTimeDays: pf.leadTimeDays,
+            moqMin: pf.moqMin,
+          }),
+          leadTimeDays: pf.leadTimeDays,
+          isDefault: r.isDefault,
+          isIncludedInPrice: r.isIncludedInPrice,
+          note: r.note,
+          compatibleSubstrates: pf.compatibleSubstrates ?? [],
+        }
+      })
+  } catch (err) {
+    console.error('[loadStudioFinishes] failed:', err)
+    return []
+  }
+}
+
 interface PageProps {
   params: Promise<{ productId: string }>
   searchParams: Promise<{ flavor?: string }>
@@ -116,6 +259,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       // phraseFacts also feeds the restricted-category eligibility check.
       productTemplate: {
         select: {
+          id: true,
           labelingType: true,
           phraseFacts: true,
           // Per-flavor labels — labelTopology PER_FLAVOR + the flavor pool drive
@@ -271,6 +415,11 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
 
   const studioLogo = await resolveLogoForPlacement('creatorCanvas')
 
+  // F3a — finishes this product offers (partner's ProductTemplateFinish allow-
+  // list). DISPLAY-ONLY in the Studio drawer; cast-guarded → [] pre-migration.
+  const studioFinishes = await loadStudioFinishes(product.productTemplate?.id ?? null)
+  const partnerOffersFinishes = studioFinishes.length > 0
+
   return (
     <CanvasLayoutShell
       studioLogo={studioLogo}
@@ -297,6 +446,8 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       nutritionPanelData={nutritionPanelData}
       aggregateNutritionData={aggregateNutritionData}
       nonFoodPanelData={nonFoodPanelData}
+      partnerOffersFinishes={partnerOffersFinishes}
+      finishes={studioFinishes}
     />
   )
 }

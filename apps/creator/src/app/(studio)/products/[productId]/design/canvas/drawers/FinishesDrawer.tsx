@@ -1,75 +1,137 @@
 'use client'
 
-// FinishesDrawer — partner-conditional print finishes (DS-70b).
+// FinishesDrawer — F3a (DISPLAY-ONLY). Shows the print finishes & coatings THIS
+// product offers: the partner's ProductTemplateFinish allow-list, resolved
+// server-side in page.tsx#loadStudioFinishes and threaded down through
+// CanvasLayoutShell. The drawer only mounts when partnerOffersFinishes is true
+// (≥1 offered finish).
 //
-// Currently a placeholder. The actual finish picker (foil, spot UV,
-// embossing, special inks, etc.) ships in Phase F3 once partners can
-// describe their offerings via their Service Profile.
-//
-// This component is mounted only when the rail icon is visible, which
-// only happens when CanvasLayoutShell receives partnerOffersFinishes =
-// true. V1 always passes false, so this empty state is the only thing
-// the user can possibly see — but the slot is reserved.
-//
-// See docs/PRINT_FINISHES_PLAN.md for the full architecture +
-// catalog + UX + phased rollout.
+// Deliberately read-only: no object-level apply, no DesignFinishApplication
+// writes, no substrate hard-filter (substrate isn't selected in the Studio yet).
+// Those ship in F3b. Finishes are selected/applied at checkout for now — the
+// footer note keeps that honest. See docs/PER_DRAFT_FINISHES.md.
 
 import * as React from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Clock } from 'lucide-react'
+import type { StudioFinish } from '../page'
 
-export function FinishesDrawer() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-md border border-dashed border-pink-300 bg-pink-50/40 p-4">
+// FinishCategory enum → display group label + order. Mirrors the partner
+// builder's grouping (PackagingStudioStep.tsx) so creator + partner agree.
+const FINISH_CATEGORY_LABEL: Record<string, string> = {
+  SURFACE: 'Surface',
+  FOIL_METALLIC: 'Foil & metallic',
+  EMBOSS_TEXTURE: 'Emboss & texture',
+  CUT: 'Cut',
+  INK: 'Ink',
+  SPECIAL: 'Special',
+}
+const FINISH_CATEGORY_ORDER = ['SURFACE', 'FOIL_METALLIC', 'EMBOSS_TEXTURE', 'CUT', 'INK', 'SPECIAL']
+
+const sectionLabel = 'text-[12px] font-bold uppercase tracking-wider text-ink-700'
+
+export function FinishesDrawer({ finishes }: { finishes: StudioFinish[] }) {
+  // Group by category, preserving the canonical order; unknown categories fall
+  // to the end in first-seen order.
+  const groups = React.useMemo(() => {
+    const by: Record<string, StudioFinish[]> = {}
+    for (const f of finishes) (by[f.category] ??= []).push(f)
+    const known = FINISH_CATEGORY_ORDER.filter((c) => by[c]?.length).map((c) => ({
+      category: c,
+      items: by[c]!,
+    }))
+    const extra = Object.keys(by)
+      .filter((c) => !FINISH_CATEGORY_ORDER.includes(c))
+      .map((c) => ({ category: c, items: by[c]! }))
+    return [...known, ...extra]
+  }, [finishes])
+
+  if (finishes.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-ink-200 bg-ink-50/60 p-4">
         <div className="flex items-start gap-2.5">
-          <Sparkles className="h-4 w-4 text-pink-700 flex-shrink-0 mt-0.5" />
+          <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
           <div>
-            <div className="text-[12.5px] font-bold text-ink-900">
-              Print finishes
-            </div>
-            <p className="mt-1 text-[11.5px] text-ink-700 leading-[1.5]">
-              When your bound print partner offers premium finishes — foil
-              stamping, spot UV gloss, embossing, special inks — they
-              appear here for you to apply on specific text, images, or
-              regions of your design.
+            <div className="text-[12.5px] font-bold text-ink-900">No finishes offered</div>
+            <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
+              The manufacturer for this product hasn&rsquo;t published any premium
+              print finishes. If you need foil, spot UV, or another effect, message
+              your partner or reach out to iLaunchify support.
             </p>
           </div>
         </div>
       </div>
+    )
+  }
 
+  return (
+    <div className="space-y-4">
       <div>
-        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
-          What you'll be able to do
-        </div>
-        <ul className="space-y-1.5 text-[11.5px] text-ink-700">
-          <Bullet>Pick finishes from your printer's catalog</Bullet>
-          <Bullet>Apply to all text, all images, or specific objects</Bullet>
-          <Bullet>Mark regions on uploaded artwork via a mask layer</Bullet>
-          <Bullet>See live cost + lead-time impact as you choose</Bullet>
-          <Bullet>Leave notes for the printer per finish</Bullet>
-        </ul>
+        <div className="text-[13px] font-bold text-ink-900">Finishes</div>
+        <p className="mt-0.5 text-[11.5px] leading-[1.5] text-ink-600">
+          Print finishes &amp; coatings available for this product.
+        </p>
       </div>
 
-      <div className="rounded-md border border-ink-200 bg-ink-50/60 p-3">
-        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
-          Not seeing finishes?
+      {groups.map((g) => (
+        <div key={g.category}>
+          <div className={`${sectionLabel} mb-2`}>
+            {FINISH_CATEGORY_LABEL[g.category] ?? g.category}
+          </div>
+          <ul className="space-y-2">
+            {g.items.map((f) => (
+              <li
+                key={f.partnerFinishId}
+                className="rounded-md border border-ink-200 bg-[var(--studio-panel-bg)] p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[12.5px] font-semibold text-ink-900">
+                      {f.name}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+                        {FINISH_CATEGORY_LABEL[f.category] ?? f.category}
+                      </span>
+                      {f.isDefault && (
+                        <span className="rounded-full bg-success-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-success-700">
+                          Recommended
+                        </span>
+                      )}
+                      {f.isIncludedInPrice && (
+                        <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink-600">
+                          Included
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                    {f.pricingSummary && (
+                      <span className="text-[11px] font-medium text-ink-700">
+                        {f.pricingSummary}
+                      </span>
+                    )}
+                    {f.leadTimeDays > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] text-ink-500">
+                        <Clock className="h-3 w-3" />+{f.leadTimeDays}d
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {f.note && (
+                  <p className="mt-2 text-[11px] leading-[1.45] text-ink-500">{f.note}</p>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="mt-1 text-[11px] text-ink-600 leading-[1.45]">
-          Finishes show up only when the printer bound to this product
-          publishes them in their service profile. If you need a
-          finish that isn't here, message your printer directly or
-          reach out to iLaunchify support.
+      ))}
+
+      <div className="rounded-md border border-ink-200 bg-ink-50/60 p-3">
+        <p className="text-[11px] leading-[1.45] text-ink-600">
+          Finishes are selected and applied to your order at checkout. Applying a
+          finish to specific objects in your design ships in a later update.
         </p>
       </div>
     </div>
-  )
-}
-
-function Bullet({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex gap-1.5">
-      <span className="text-pink-700 font-bold">•</span>
-      <span>{children}</span>
-    </li>
   )
 }
