@@ -54,8 +54,8 @@ export default async function CustomizePage({ params }: { params: Promise<{ prod
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="font-display text-ui-title">{product.name}</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           {product.productTemplate.name} ·{' '}
           {product.variant.flavor && `${product.variant.flavor} · `}
           {product.variant.containerFormat}

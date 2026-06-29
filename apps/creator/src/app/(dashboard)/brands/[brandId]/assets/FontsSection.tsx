@@ -156,7 +156,7 @@ export function FontsSection({
 
       {selected.length > 0 && (
         <div className="mb-4 rounded-md border border-success-200 bg-success-50/50 p-3">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-success-700">
+          <Label className="text-ui-label text-success-700">
             Selected ({selected.length} / {MAX_FONTS})
           </Label>
           <ul className="mt-2 space-y-1">
@@ -192,7 +192,7 @@ export function FontsSection({
       {/* Brand Kit V2 Slice 2 — your uploaded fonts + upload affordance. */}
       <div className="mb-5 rounded-md border border-ink-200 bg-ink-50/40 p-4">
         <div className="mb-2 flex items-center gap-1.5">
-          <h3 className="text-sm font-semibold text-ink-900">Your brand fonts</h3>
+          <h3 className="text-ui-value text-ink-900">Your brand fonts</h3>
           <InfoTip text="Upload your own fonts (WOFF2, WOFF, TTF, or OTF) to use them in the Design Studio. Available on Builder and Agency plans. Upload the print file (OTF/TTF) you have the rights to embed." />
         </div>
 
@@ -275,7 +275,7 @@ export function FontsSection({
             </Button>
           </form>
         ) : (
-          <p className="text-xs text-ink-600">
+          <p className="text-ui-caption text-ink-600">
             Custom font upload is available on <strong>Builder</strong> and{' '}
             <strong>Agency</strong> plans.{' '}
             <a href="/settings/plan" className="font-semibold text-pink-700 hover:text-pink-600">

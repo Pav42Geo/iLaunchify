@@ -80,7 +80,7 @@ export function BrandSwitcher({ brands, activeBrandId }: BrandSwitcherProps) {
           role="menu"
           className="absolute right-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-md border border-ink-200 bg-white shadow-lg"
         >
-          <div className="border-b border-ink-100 px-3 py-2 text-xs font-bold uppercase tracking-wider text-ink-700">
+          <div className="border-b border-ink-100 px-3 py-2 text-ui-label text-ink-700">
             Switch brand
           </div>
           <ul className="max-h-72 overflow-y-auto py-1">

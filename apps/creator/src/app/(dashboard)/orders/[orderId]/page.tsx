@@ -256,7 +256,7 @@ export default async function OrderDetailPage({
             <p className="text-[12px] uppercase tracking-[0.06em] text-ink-700">
               {order.brand.name}
             </p>
-            <h1 className="mt-0.5 font-display text-2xl font-semibold tracking-tight text-ink-900">
+            <h1 className="mt-0.5 font-display text-ui-title text-ink-900">
               {product?.name ?? 'Order'}
             </h1>
             <p className="mt-1.5 text-[12.5px] text-ink-600">

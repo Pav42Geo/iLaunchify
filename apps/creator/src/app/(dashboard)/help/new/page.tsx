@@ -72,8 +72,8 @@ export default async function NewTicketPage({ searchParams }: PageProps) {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Help
       </Link>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Open a ticket</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="font-display text-ui-title text-ink-900">Open a ticket</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Tell us what&apos;s going on. The more detail you give, the faster we can help.
         </p>
       </div>

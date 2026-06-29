@@ -57,10 +57,10 @@ export default async function NewProductPage({
             ← Back to {template.name}
           </a>
         </nav>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-ui-title">
           Pick a variant of {template.name}
         </h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1 text-ui-body text-ink-500">
           Each variant has its own flavor, container, packing topology, MOQ, and lead time. You can
           customize ingredients in the next step.
         </p>

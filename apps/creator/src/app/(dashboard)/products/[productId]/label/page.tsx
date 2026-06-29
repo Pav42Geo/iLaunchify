@@ -38,8 +38,8 @@ export default async function LabelPage({ params }: { params: Promise<{ productI
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Label — {product.name}</h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <h1 className="font-display text-ui-title">Label — {product.name}</h1>
+          <p className="mt-1 text-ui-body text-ink-500">
             Step 3 of 3: design + final compliance check. Visual editor lands in Week 6-7.
           </p>
         </div>

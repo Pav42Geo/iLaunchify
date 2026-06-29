@@ -40,10 +40,10 @@ export default async function ChannelsSettingsPage() {
         <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Step 3 of 5
         </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+        <h1 className="mt-1 font-display text-ui-title">
           Where will customers buy your products?
         </h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1 text-ui-body text-ink-500">
           iLaunchify is the production layer — your customers check out on your own channel.
           Tell us which one so we can size shipping and packaging correctly.
         </p>

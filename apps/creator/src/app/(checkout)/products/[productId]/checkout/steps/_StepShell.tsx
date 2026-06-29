@@ -19,10 +19,10 @@ export function StepShell({ index, title, subtitle, children }: Props) {
       <p className="text-[10.5px] font-semibold uppercase tracking-widest text-pink-600">
         Step {index} of {WIZARD_STEPS.length}
       </p>
-      <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink-900">
+      <h1 className="mt-1 font-display text-ui-title text-ink-900">
         {title}
       </h1>
-      {subtitle && <p className="mt-1.5 text-sm text-ink-600">{subtitle}</p>}
+      {subtitle && <p className="mt-1.5 text-ui-body text-ink-600">{subtitle}</p>}
       {children && <div className="mt-6">{children}</div>}
     </div>
   )

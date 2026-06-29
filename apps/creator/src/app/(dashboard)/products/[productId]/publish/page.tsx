@@ -58,8 +58,8 @@ export default async function PublishStubPage({
       </Link>
 
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Push to channels</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="font-display text-ui-title">Push to channels</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           List {product.name} on your external sales channels. iLaunchify pushes the listing —
           consumer purchases happen on the channel.
         </p>
@@ -154,7 +154,7 @@ export default async function PublishStubPage({
               </Card>
             )
           })}
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             All connect / push actions become live in V1.1 once each channel's OAuth credentials
             are wired up by admin. The listing model + admin enable/disable is live now so
             creators can plan their channel strategy.

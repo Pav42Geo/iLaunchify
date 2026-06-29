@@ -26,8 +26,8 @@ export default async function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Notifications</h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <h1 className="font-display text-ui-title text-ink-900">Notifications</h1>
+          <p className="mt-1 text-ui-body text-ink-500">
             {unread} unread of last {notifications.length}
           </p>
         </div>

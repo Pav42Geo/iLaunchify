@@ -155,7 +155,7 @@ export function OrderSummary({
       <div className="my-4 h-px bg-ink-100" />
 
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-ink-900">
+        <span className="text-ui-value text-ink-900">
           {hasShipping ? 'Before tax' : hasEstimate ? 'Before ship + tax' : 'Total'}
         </span>
         <span className="text-lg font-bold text-ink-900 tabular-nums">

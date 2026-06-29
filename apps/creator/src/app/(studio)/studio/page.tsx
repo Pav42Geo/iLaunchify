@@ -138,7 +138,7 @@ function Notice({ title, body }: { title: string; body: string }) {
     <div className="flex min-h-[60vh] items-center justify-center p-8">
       <div className="max-w-md rounded-2xl border border-ink-200 bg-white p-6 text-center">
         <h1 className="text-lg font-semibold text-ink-900">{title}</h1>
-        <p className="mt-2 text-sm text-ink-600">{body}</p>
+        <p className="mt-2 text-ui-body text-ink-600">{body}</p>
       </div>
     </div>
   )

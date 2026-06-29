@@ -125,7 +125,7 @@ function LogoSlot({
       </div>
       <div className="flex-1 space-y-1.5 p-3">
         <div className="flex items-center gap-1">
-          <Label className="text-xs font-bold uppercase tracking-wider text-ink-700">
+          <Label className="text-ui-label text-ink-700">
             {variant.label}
           </Label>
           <InfoTip text={variant.description} />

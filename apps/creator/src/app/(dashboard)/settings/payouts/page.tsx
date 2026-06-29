@@ -14,7 +14,7 @@ export default async function PayoutsSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Payouts</h1>
+      <h1 className="font-display text-ui-title">Payouts</h1>
       <Card>
         <CardHeader>
           <CardTitle>Stripe Connect Express</CardTitle>

@@ -12,7 +12,7 @@ export default function CheckEmailPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-ink-500">
+        <p className="text-ui-body text-ink-500">
           If you don&apos;t see it, check your spam folder. Still missing?{' '}
           <a href="/login" className="underline">
             Try again

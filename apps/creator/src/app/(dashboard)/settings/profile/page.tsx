@@ -53,8 +53,8 @@ export default async function ProfileSettingsPage() {
         <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Step 1 of 5
         </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Tell us about you</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="mt-1 font-display text-ui-title">Tell us about you</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           We use this to pick the right label-compliance rules for your products and to
           tailor partner recommendations.
         </p>

@@ -140,8 +140,8 @@ export default async function OrdersListPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Orders</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="font-display text-ui-title text-ink-900">Orders</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Production orders across all your brands. Tap an order for the full per-partner
           timeline.
         </p>

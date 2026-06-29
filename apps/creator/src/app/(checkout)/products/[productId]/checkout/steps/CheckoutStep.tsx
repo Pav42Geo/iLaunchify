@@ -216,7 +216,7 @@ function Section({
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink-900 text-[11px] font-bold text-white">
           {stepNumber}
         </span>
-        <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+        <h2 className="text-ui-value text-ink-900">{title}</h2>
       </header>
       <div className="space-y-3 p-5">{children}</div>
     </section>
@@ -481,7 +481,7 @@ function WarehouseCard({
       }
     >
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-ink-900">
+        <div className="text-ui-value text-ink-900">
           {warehouse.partnerName}
         </div>
         <div className="text-xs text-ink-500">
@@ -559,7 +559,7 @@ function SavedAddressCard({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-ink-900">{address.label}</span>
+          <span className="text-ui-value text-ink-900">{address.label}</span>
           {address.isDefault && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-warning-800">
               <Star className="h-2.5 w-2.5" /> Default

@@ -27,11 +27,11 @@ export default async function CreatorHelpPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-ink-900">
+          <h1 className="flex items-center gap-2 font-display text-ui-title text-ink-900">
             <LifeBuoy className="h-6 w-6 text-pink-600" />
             Help &amp; Support
           </h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-ui-body text-ink-500">
             Open a ticket and our team will get back to you. You can track every conversation here.
           </p>
         </div>

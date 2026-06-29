@@ -49,10 +49,10 @@ export default async function NewBrandPage() {
         <p className="text-sm font-bold uppercase tracking-wider text-ink-700">
           Step 4 of 5
         </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">
+        <h1 className="mt-1 font-display text-ui-title">
           Create your brand
         </h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1 text-ui-body text-ink-500">
           Just the basics so we can render your label. You can upload additional logo variants,
           add more colors, and pick your fonts after creation in <strong>Brand kit</strong>.
         </p>
@@ -60,7 +60,7 @@ export default async function NewBrandPage() {
 
       {profile.brands.length > 0 && (
         <div className="rounded-md border border-ink-200 bg-ink-50 p-4 text-sm">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-700">
+          <div className="text-ui-label text-ink-700">
             Existing brands
           </div>
           <ul className="mt-2 space-y-1">
@@ -71,7 +71,7 @@ export default async function NewBrandPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-ink-500">
+          <p className="mt-2 text-ui-caption text-ink-500">
             Most creators run a single brand. If you&apos;re launching a second one, fill in
             the form below — they can run side-by-side.
           </p>
@@ -83,7 +83,7 @@ export default async function NewBrandPage() {
         defaultName={profile.displayName}
       />
 
-      <p className="text-xs text-ink-500">
+      <p className="text-ui-caption text-ink-500">
         Need a refresher?{' '}
         <Link href="/dashboard" className="underline">
           Back to dashboard

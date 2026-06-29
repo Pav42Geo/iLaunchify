@@ -77,13 +77,13 @@ export function PreferencesForm({ preferences, events, quietHoursStartUtc, quiet
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-start" className="text-xs uppercase tracking-wide text-ink-700">
+          <Label htmlFor="quiet-start" className="text-ui-label text-ink-700">
             Start (UTC)
           </Label>
           <Input id="quiet-start" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} className="w-32" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-end" className="text-xs uppercase tracking-wide text-ink-700">
+          <Label htmlFor="quiet-end" className="text-ui-label text-ink-700">
             End (UTC)
           </Label>
           <Input id="quiet-end" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} className="w-32" />

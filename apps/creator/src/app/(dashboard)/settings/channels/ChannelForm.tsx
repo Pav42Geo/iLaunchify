@@ -133,7 +133,7 @@ export function ChannelForm({
             onChange={(e) => setUrl(e.target.value)}
             onBlur={() => channel && commit({ channel, url })}
           />
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             Just so our team can take a look — never published anywhere.
           </p>
         </div>
