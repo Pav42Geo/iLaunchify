@@ -1817,7 +1817,7 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simpl
 
 const CSS = `
 .rb{--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-700:#33343C;--ink-500:#6B6D78;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--danger-600:#DC2626;--warning-50:#FAEEDA;--warning-200:#FAC775;--warning-700:#633806;font-size:var(--fs-sm,13px);color:var(--ink-900)}
-.rb .muted{color:var(--ink-500)} .rb .tiny{font-size:10.5px}
+.rb .muted{color:var(--ink-500)} .rb .tiny{font-size:var(--fs-xs)}
 .rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--ink-200);margin-bottom:14px;overflow:auto}
 .rb-tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;font-weight:600;color:var(--ink-500);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
 .rb-tab .rb-tab-ic{width:15px;height:15px;flex:0 0 auto;stroke-width:2}

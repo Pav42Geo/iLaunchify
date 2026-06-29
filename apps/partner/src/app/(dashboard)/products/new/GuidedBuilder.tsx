@@ -657,7 +657,9 @@ const CSS = `
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
-.gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-xs)} .gb .tiny{font-size:var(--fs-2xs)}
+.gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-xs)} .gb .tiny{font-size:var(--fs-xs)}
+.gb .toggle-label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;font-size:var(--fs-sm);color:var(--ink-800)}
+.gb .hint{font-size:var(--fs-sm);color:var(--ink-500);line-height:1.45;margin:0}
 .gb .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--ink-200);background:#fff}
 .gb .pill.green{background:var(--success-50);color:#085041;border-color:#9FE1CB}
 .gb .pill.amber{background:var(--warning-50);color:#633806;border-color:#FAC775}

@@ -176,7 +176,7 @@ export function VariantsPacksStep({
                 )
               })}
             </div>
-            {packingProfiles.length === 0 && <p className="tiny muted" style={{ marginTop: 10 }}>No packing types seeded yet — run the DB seed.</p>}
+            {packingProfiles.length === 0 && <p className="hint" style={{ marginTop: 10 }}>No packing types seeded yet — run the DB seed.</p>}
           </div>
         )}
       </div>
@@ -412,7 +412,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         <div className="warn">⚠ Monthly capacity ({capacity.toLocaleString()}) is below your MOQ ({effMoq.toLocaleString()}) — you couldn’t fulfill a single minimum order in a month. Raise capacity or lower MOQ.</div>
       )}
       {onDemand && (
-        <p className="tiny muted" style={{ marginTop: 8 }}>On-demand: no batch minimum (MOQ = 1); lead time runs longer than bulk.</p>
+        <p className="hint" style={{ marginTop: 8 }}>On-demand: no batch minimum (MOQ = 1); lead time runs longer than bulk.</p>
       )}
     </>
   )
@@ -509,7 +509,7 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
     <div style={{ marginTop: 12, border: '1px solid var(--ink-200)', borderRadius: 14, padding: 14, background: 'var(--ink-50)' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div>
-          <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
+          <label className="toggle-label">
             <input type="checkbox" checked={row.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
             {branded ? 'Branded sample' : 'Unbranded sample'}
             <InfoTip text={branded
@@ -539,7 +539,7 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
             <Field label="Max samples / creator" hint="optional"><input className="input" type="number" min={1} value={row.maxPerCreatorPerPeriod ?? ''} placeholder="∞" onChange={(e) => patch({ maxPerCreatorPerPeriod: e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10) || 1) })} /></Field>
           </div>
           <div className="row" style={{ gap: 16, marginTop: 10, alignItems: 'flex-end' }}>
-            <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
+            <label className="toggle-label">
               <input type="checkbox" checked={row.creditTowardFirstOrder} onChange={(e) => patch({ creditTowardFirstOrder: e.target.checked })} />
               Credit sample cost toward the creator’s first production order
             </label>
@@ -549,7 +549,7 @@ function SampleKindEditor({ row, onChange, isMultiFlavor }: { row: SampleRow; on
               </Field>
             )}
           </div>
-          {branded && <p className="tiny" style={{ marginTop: 8, color: 'var(--pink-700)' }}>ⓘ Locked until the dieline passes the compliance check.</p>}
+          {branded && <p className="hint" style={{ marginTop: 8, color: 'var(--pink-700)' }}>ⓘ Locked until the dieline passes the compliance check.</p>}
         </>
       )}
     </div>
@@ -588,11 +588,11 @@ function SamplesCard({ draftId, initialOptions, isMultiFlavor }: { draftId: stri
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> Samples</div>
-        <label className="tiny" style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600 }}>
+        <label className="toggle-label">
           <input type="checkbox" checked={samplesOn} onChange={(e) => setSamplesOn(e.target.checked)} /> Allow sample orders
         </label>
       </div>
-      {!samplesOn && <p className="tiny muted" style={{ marginTop: 10 }}>Sample orders are off for this product. Turn them on to let creators order a pre-production sample.</p>}
+      {!samplesOn && <p className="muted" style={{ marginTop: 10, fontSize: 'var(--fs-sm)' }}>Sample orders are off for this product. Turn them on to let creators order a pre-production sample.</p>}
       {samplesOn && (
         <>
           <SampleKindEditor row={unbranded} onChange={setUnbranded} isMultiFlavor={isMultiFlavor} />
@@ -640,7 +640,7 @@ function SinglePack({ draftId, packing }: { draftId: string | null; packing: Pac
         <Field label="Units (pcs) per pack" hint="e.g. 2 bars in a pack">
           <input className="input" type="number" min={1} value={unitsPerPack} onChange={(e) => setUnitsPerPack(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 110 }} />
         </Field>
-        <span className="tiny muted" style={{ paddingBottom: 9 }}>
+        <span className="hint" style={{ paddingBottom: 9 }}>
           {isBundle ? `A ${packsPerBundle}-pack bundle of the same flavor` : 'A single pack'}
           {unitsPerPack > 1 ? `, ${unitsPerPack} pcs each` : ''} · <b>{totalUnits.toLocaleString()}</b> sellable unit{totalUnits === 1 ? '' : 's'} per bundle.
         </span>
@@ -726,7 +726,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors</div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+          <label className="toggle-label">
             <input type="checkbox" checked={perFlavorCap} onChange={(e) => setPerFlavorCap(e.target.checked)} /> Per-flavor capacity
           </label>
           <button className="rb-btn-add" onClick={() => onFlavors([...list, { name: '', ingId: 'cane', soi: '' }])}>+ Add flavor</button>
@@ -749,7 +749,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
             style={{ width: 120 }}
           />
         </Field>
-        <span className="tiny muted" style={{ paddingBottom: 9 }}>
+        <span className="hint" style={{ paddingBottom: 9 }}>
           {effCap >= pool
             ? `No cap — a Creator can build a pack from all ${pool} flavor${pool === 1 ? '' : 's'}.`
             : `A Creator can mix up to ${effCap} of your ${pool} flavors in one pack.`}
@@ -759,7 +759,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       {/* Pack composition — capacity + min run + even-fills rule → the valid
           flavor×pieces splits a Creator may pick. */}
       <div style={{ marginTop: 14, padding: 12, border: '1px solid var(--ink-200)', borderRadius: 10, background: '#fff' }}>
-        <div className="tiny" style={{ fontWeight: 700, marginBottom: 10 }}>Pack composition</div>
+        <div className="section-title" style={{ marginBottom: 10 }}><span className="ic"><Package size={16} strokeWidth={2} /></span> Pack composition</div>
         <div className="row" style={{ gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <Field label="Pack capacity" hint="units per box">
             <input className="input" type="number" min={1} value={packCapacity ?? ''} placeholder="e.g. 18"
@@ -771,7 +771,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
               onChange={(e) => setMinPerFlavor(Math.max(1, parseInt(e.target.value, 10) || 1))}
               style={{ width: 110 }} />
           </Field>
-          <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', paddingBottom: 9 }}>
+          <label className="toggle-label" style={{ paddingBottom: 9 }}>
             <input type="checkbox" checked={evenOnly} onChange={(e) => setEvenOnly(e.target.checked)} /> Even fills only
           </label>
         </div>
@@ -791,12 +791,12 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
                   ))}
                 </tbody>
               </table>
-              <p className="tiny muted" style={{ marginTop: 8 }}>
+              <p className="hint" style={{ marginTop: 8 }}>
                 A {packCapacity}-unit box supports up to <b>{feasibleMaxFlavors}</b> flavor{feasibleMaxFlavors === 1 ? '' : 's'}{evenOnly ? ' (even fills)' : ''}. Set “Max flavors per pack” at or below this.{evenOnly ? '' : ' * uneven runs.'}
               </p>
             </>
           ) : (
-            <p className="tiny muted" style={{ marginTop: 8 }}>No valid splits — lower “Min per flavor” or turn off “Even fills only”.</p>
+            <p className="hint" style={{ marginTop: 8 }}>No valid splits — lower “Min per flavor” or turn off “Even fills only”.</p>
           )
         )}
       </div>
@@ -821,7 +821,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           ))}
         </tbody>
       </table>
-      <p className="tiny muted" style={{ marginTop: 8 }}>
+      <p className="hint" style={{ marginTop: 8 }}>
         List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator picks up to {effCap} per pack.
         {perFlavorCap && ' Blank MOQ/capacity inherits the shared production values above.'}
       </p>
@@ -897,7 +897,7 @@ function MultiPack({ draftId, packing }: { draftId: string | null; packing: Pack
         {components.map((c, i) => (
           <div key={i} className="compcard" style={c.printed ? undefined : { opacity: 0.7 }}>
             <input className="input" value={c.name} onChange={(e) => patchComp(i, { name: e.target.value })} style={{ fontWeight: 600, marginBottom: 4 }} />
-            <label className="tiny muted" style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+            <label className="toggle-label">
               <input type="checkbox" checked={c.printed} onChange={(e) => patchComp(i, { printed: e.target.checked })} /> {c.printed ? 'printed · die-line required' : 'not decorated'}
             </label>
             <button className="del" style={{ fontSize: 10, marginTop: 4 }} onClick={() => setComponents(components.filter((_, j) => j !== i))}>remove</button>
@@ -905,7 +905,7 @@ function MultiPack({ draftId, packing }: { draftId: string | null; packing: Pack
         ))}
         <button className="rb-btn-add" onClick={() => setComponents([...components, { name: `Component ${components.length + 1}`, printed: true }])}>+ Component</button>
       </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>{unitsPerOuter} unit{unitsPerOuter === 1 ? '' : 's'} per outer · {casesPerPallet} outer{casesPerPallet === 1 ? '' : 's'} per case · {components.length} component{components.length === 1 ? '' : 's'} ({printedCount} printed). Each printed component gets its own die-line in Packaging.</p>
+      <p className="hint" style={{ marginTop: 8 }}>{unitsPerOuter} unit{unitsPerOuter === 1 ? '' : 's'} per outer · {casesPerPallet} outer{casesPerPallet === 1 ? '' : 's'} per case · {components.length} component{components.length === 1 ? '' : 's'} ({printedCount} printed). Each printed component gets its own die-line in Packaging.</p>
       {printedCount === 0 && <div className="warn">⚠ No printed components — this pack has nothing to decorate. Mark at least one component as printed, or this will skip the Packaging die-line step.</div>}
     </>
   )
@@ -957,7 +957,7 @@ function SubscriptionConfig({ draftId, packing, flavorCount }: { draftId: string
           </select>
         </Field>
       </div>
-      <p className="tiny muted" style={{ marginTop: 8 }}>
+      <p className="hint" style={{ marginTop: 8 }}>
         Ships {rotation} rotating flavor{rotation === 1 ? '' : 's'} {CADENCE_LABEL[cadence] ?? cadence}
         {minCommitment > 0 ? ` · ${minCommitment}-shipment minimum` : ' · cancel anytime'}. Each shipment draws from the flavors defined above.
       </p>
@@ -993,7 +993,7 @@ function PickNConfig({ draftId, packing, flavorCount }: { draftId: string | null
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Min picks"><input className="input" type="number" min={1} value={min} onChange={(e) => setMin(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} /></Field>
         <Field label="Max picks"><input className="input" type="number" min={1} value={max} onChange={(e) => setMax(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ width: 90 }} /></Field>
-        <span className="tiny muted" style={{ paddingBottom: 9 }}>Customer picks {min === max ? min : `${min}–${max}`} of {M || 'the'} available flavor{M === 1 ? '' : 's'}.</span>
+        <span className="hint" style={{ paddingBottom: 9 }}>Customer picks {min === max ? min : `${min}–${max}`} of {M || 'the'} available flavor{M === 1 ? '' : 's'}.</span>
       </div>
       {minOverMax && <div className="warn">⚠ Min picks ({min}) is greater than max picks ({max}) — the customer would have no valid choice. Lower the min or raise the max.</div>}
       {exceedsPool && <div className="warn">⚠ Max picks ({max}) is more than the {M} flavor{M === 1 ? '' : 's'} you’ve defined. Add more flavors or lower the max.</div>}
