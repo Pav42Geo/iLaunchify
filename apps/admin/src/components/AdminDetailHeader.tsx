@@ -76,7 +76,7 @@ export function AdminDetailHeader({
                 {eyebrow && (
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">{eyebrow}</p>
                 )}
-                <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
+                <h1 className="mt-1 font-display text-ui-title text-ink-900">
                   {title}
                 </h1>
                 {meta && (

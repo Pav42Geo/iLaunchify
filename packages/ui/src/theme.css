@@ -194,6 +194,24 @@
   --fs-2xl:  calc(1.5rem    * var(--font-scale) * var(--heading-scale)); /* 24px */
   --fs-3xl:  calc(1.875rem  * var(--font-scale) * var(--heading-scale)); /* 30px */
 
+  /* APP-UI scale convenience vars (Phase 1, sign-off 2026-06-29) — mirror the
+     canonical `text-ui-*` Tailwind tokens for inline / CSS-in-JS consumers (the
+     builder's `.gb` rules, the Product Passport style constants). Multiplied by
+     the same --font-scale + --body-scale/--heading-scale so Theme Studio's
+     sliders still move them. Display/title/section ride --heading-scale (they
+     pair with Bricolage display); the rest ride --body-scale. Additive — none of
+     the --fs-* ramp values above changed. lineHeight/tracking/weight live in the
+     token tuple / utility, not here. */
+  --fs-ui-display: calc(1.875rem   * var(--font-scale) * var(--heading-scale)); /* 30px   */
+  --fs-ui-title:   calc(1.5rem     * var(--font-scale) * var(--heading-scale)); /* 24px   */
+  --fs-ui-section: calc(1.0625rem  * var(--font-scale) * var(--heading-scale)); /* 17px   */
+  --fs-ui-subhead: calc(0.9375rem  * var(--font-scale) * var(--body-scale));    /* 15px   */
+  --fs-ui-body:    calc(0.875rem   * var(--font-scale) * var(--body-scale));    /* 14px   */
+  --fs-ui-value:   calc(0.875rem   * var(--font-scale) * var(--body-scale));    /* 14px   */
+  --fs-ui-label:   calc(0.75rem    * var(--font-scale) * var(--body-scale));    /* 12px   */
+  --fs-ui-caption: calc(0.78125rem * var(--font-scale) * var(--body-scale));    /* 12.5px */
+  --fs-ui-button:  calc(0.9375rem  * var(--font-scale) * var(--body-scale));    /* 15px   */
+
   /* Corners — Tier-1 radius ramp + global multiplier.
      Values MIRROR packages/ui/src/tokens/radii.ts (the scale the Tailwind
      preset emits) so `rounded-*` utilities and var(--radius-*) always agree.

@@ -19,7 +19,7 @@ export function SectionLabel({ as, className = '', children, ...rest }: SectionL
   const Tag = (as ?? 'div') as React.ElementType
   return (
     <Tag
-      className={`text-[12px] font-bold uppercase tracking-[0.05em] text-ink-700 ${className}`.trim()}
+      className={`text-ui-label uppercase text-ink-700 ${className}`.trim()}
       {...rest}
     >
       {children}

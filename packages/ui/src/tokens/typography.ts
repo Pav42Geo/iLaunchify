@@ -40,6 +40,27 @@ export const fontSize = {
 
   // Eyebrow / label
   'label-sm': ['11px', { lineHeight: '1.4', letterSpacing: '0.06em', fontWeight: '600' }],
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // APP-UI SCALE (canonical, Phase 1 — sign-off 2026-06-29)
+  // The approved type scale for the AUTHENTICATED APP CHROME (admin/creator/
+  // partner). Use the `text-ui-*` Tailwind utilities (the tuple carries
+  // lineHeight/tracking/weight). Display/title/section ride Bricolage; the rest
+  // ride Inter — pair with `font-display`/`font-sans` as noted per role.
+  //
+  // These DO NOT replace the marketing `display-*`/`heading-*`/`body-*` keys —
+  // the marketing/landing editorial scale is intentionally separate and stays
+  // untouched. See docs/TYPOGRAPHY_SCALE.md.
+  // ──────────────────────────────────────────────────────────────────────────
+  'ui-display': ['30px',   { lineHeight: '1.1',  letterSpacing: '-0.02em',  fontWeight: '800' }], // Bricolage
+  'ui-title':   ['24px',   { lineHeight: '1.15', letterSpacing: '-0.02em',  fontWeight: '700' }], // Bricolage (H1)
+  'ui-section': ['17px',   { lineHeight: '1.2',  letterSpacing: '-0.015em', fontWeight: '700' }], // Bricolage
+  'ui-subhead': ['15px',   { lineHeight: '1.3',  fontWeight: '600' }],                            // Inter
+  'ui-body':    ['14px',   { lineHeight: '1.55', fontWeight: '400' }],                            // Inter
+  'ui-value':   ['14px',   { lineHeight: '1.4',  fontWeight: '600' }],                            // Inter
+  'ui-label':   ['12px',   { lineHeight: '1.3',  letterSpacing: '0.06em',   fontWeight: '600' }], // Inter, uppercase
+  'ui-caption': ['12.5px', { lineHeight: '1.45', fontWeight: '400' }],                            // Inter
+  'ui-button':  ['15px',   { lineHeight: '1.2',  fontWeight: '600' }],                            // Inter
 } as const
 
 /**

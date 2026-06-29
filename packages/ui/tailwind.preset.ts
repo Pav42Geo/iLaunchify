@@ -59,6 +59,13 @@ export const ilaunchifyPreset = {
         display: ['var(--font-display)'],
         serif: ['var(--font-serif)'],
       },
+      // Emits every key in src/tokens/typography.ts#fontSize as a `text-*`
+      // utility (the tuple carries lineHeight/tracking/weight). This includes
+      // the marketing `display-*`/`heading-*`/`body-*` keys AND the canonical
+      // APP-UI scale `text-ui-display | text-ui-title | text-ui-section |
+      // text-ui-subhead | text-ui-body | text-ui-value | text-ui-label |
+      // text-ui-caption | text-ui-button` (sign-off 2026-06-29). Pair `ui-*`
+      // with `font-display`/`font-sans` per role — see docs/TYPOGRAPHY_SCALE.md.
       fontSize: fontSize as unknown as Record<string, [string, Record<string, string>]>,
       // s-* spacing utilities resolve to the live CSS vars (values mirror
       // src/tokens/spacing.ts), so `p-s-*`/`gap-s-*` are runtime-scaled by
