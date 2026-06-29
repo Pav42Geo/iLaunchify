@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, CheckCircle2, type LucideIcon } from 'lucide-react'
+import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
@@ -293,13 +293,6 @@ export function GuidedBuilder({
     else router.push('/products')
   }
 
-  // Completion % for the rail (like the editor's readiness). A step counts done
-  // once passed, or when its key data is present (Basics name+draft, type chosen).
-  const stepDone = STEPS.map((_, i) =>
-    i < cur ||
-    (i === 0 && name.trim().length >= 2 && !!draftId) ||
-    (i === 1 && !!profile),
-  )
 
   // Unified Next (the per-step nav now lives in the app topbar).
   const nextDisabled = (cur === 0 && !draftId) || (cur === 1 && !profile)
@@ -530,20 +523,6 @@ export function GuidedBuilder({
           {/* ===== STEP 6 — REVIEW ===== */}
           {cur === 5 && (
             <section>
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic"><CheckCircle2 size={16} strokeWidth={2} /></span> Ready to submit</div>
-                <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-                  {STEPS.map((s, i) => (
-                    <button key={s.t} type="button" className="rcheck" onClick={() => go(i)}>
-                      <span className={`rdot ${stepDone[i] ? 'on' : ''}`}>{stepDone[i] ? '✓' : i + 1}</span>
-                      <span style={{ fontWeight: 600 }}>{s.t}</span>
-                      <span className="tiny muted" style={{ marginLeft: 'auto' }}>{stepDone[i] ? 'done' : 'review'}</span>
-                    </button>
-                  ))}
-                </div>
-                <style>{`.gb .rcheck{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--ink-200);border-radius:10px;background:#fff;padding:8px 11px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);cursor:pointer;transition:.12s}.gb .rcheck:hover{border-color:var(--pink-100);background:var(--pink-50)}.gb .rdot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;font-size:var(--fs-2xs);font-weight:700;color:var(--ink-500);flex:none}.gb .rdot.on{background:var(--green);border-color:var(--green);color:#fff}`}</style>
-              </div>
-
               <div style={{ marginBottom: 16 }}><ComplianceCard draftId={draftId} /></div>
 
               <ReviewSummary draftId={draftId} />
@@ -636,7 +615,7 @@ const CSS = `
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
-.gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-xs)} .gb .tiny{font-size:var(--fs-xs)}
+.gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-sm)} .gb .tiny{font-size:var(--fs-xs)}
 .gb .toggle-label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;font-size:var(--fs-sm);color:var(--ink-800)}
 .gb .hint{font-size:var(--fs-sm);color:var(--ink-500);line-height:1.45;margin:0}
 .gb .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--ink-200);background:#fff}
@@ -659,7 +638,7 @@ const CSS = `
 .gb .chip{display:inline-flex;align-items:center;gap:6px;border-radius:var(--chip-radius);border:var(--border-width) solid var(--border-soft);padding:5px 11px;font-size:var(--fs-sm);cursor:pointer;background:#fff;color:var(--ink-700)}
 .gb .chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
 .gb table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
-.gb th{text-align:left;font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--ink-100)}
+.gb th{text-align:left;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-500);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--ink-100)}
 .gb td{padding:9px 10px;border-bottom:1px solid var(--ink-50);vertical-align:middle}
 .gb .note{font-size:var(--fs-xs);color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);border-radius:10px;padding:7px 10px}
 .gb .note.grey{color:var(--ink-600);background:var(--ink-50);border-color:var(--ink-200)}
