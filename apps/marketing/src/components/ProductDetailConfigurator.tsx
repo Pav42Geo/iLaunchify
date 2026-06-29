@@ -134,6 +134,14 @@ export function ProductDetailConfigurator({
   // params once the recurring-production order type lands.
   const [subscribe, setSubscribe] = React.useState(false)
 
+  // Bulk vs On-demand — only when the manufacturer offers both. Bulk prices by
+  // MOQ band (headline = order total); On-demand is per-unit, no MOQ (headline
+  // = the single on-demand unit price). Display/preview toggle for now — the
+  // chosen mode isn't yet threaded into the launch/checkout order type.
+  const hasOnDemand = !!onDemandRows && onDemandRows.length > 0
+  const [priceMode, setPriceMode] = React.useState<'BULK' | 'ON_DEMAND'>('BULK')
+  const effectiveMode: 'BULK' | 'ON_DEMAND' = hasOnDemand ? priceMode : 'BULK'
+
   // Notify the parent hero of the initial + each subsequent package choice.
   React.useEffect(() => {
     onPackagingChange?.(packagingId)
@@ -176,6 +184,22 @@ export function ProductDetailConfigurator({
   // most visible number, not hidden). Per-unit price is the supporting line.
   const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
   const totalWithoutSub = +(landedCost * quantity).toFixed(2)
+
+  // On-demand per-unit price — matched the same way as bulk (band by quantity),
+  // with the same size/packaging/flavor deltas. This is a single-unit price
+  // (no MOQ), so in On-demand mode it becomes the headline figure.
+  const onDemandRow = React.useMemo(() => {
+    if (!onDemandRows || onDemandRows.length === 0) return null
+    const eligible = onDemandRows.filter((r) => r.bandMin !== null && r.bandMin <= quantity)
+    return eligible.length > 0 ? eligible[eligible.length - 1]! : onDemandRows[0]!
+  }, [onDemandRows, quantity])
+  const onDemandUnitCost =
+    onDemandRow != null
+      ? +(((onDemandRow.perUnitCents / 100) * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2))
+      : null
+  // The per-unit figure that downstream panels (earnings) should reflect.
+  const activeUnitCost =
+    effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? onDemandUnitCost : previewUnitCost
 
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
@@ -359,20 +383,52 @@ export function ProductDetailConfigurator({
         </div>
       </div>
 
-      {/* Price line + tier pricing — per-unit is the headline; the all-in
-          total is a smaller gray supporting line below it (still visible +
-          transparent, just not the dominant figure). Reflects Subscribe & save. */}
+      {/* Price block — Bulk vs On-demand toggle (when both offered), the
+          headline price, then "See pricing by tier" underneath.
+            • BULK      → headline = order TOTAL, per-unit in parentheses.
+            • ON-DEMAND → headline = the single on-demand UNIT price. */}
       <div className="border-t border-ink-100 pt-3">
-        <div className="flex items-baseline justify-between">
+        {hasOnDemand && (
+          <div className="mb-2.5 inline-flex rounded-lg border border-ink-200 p-0.5 text-[12px] font-semibold">
+            <button
+              type="button"
+              onClick={() => setPriceMode('BULK')}
+              className={`rounded-md px-3 py-1.5 transition-colors ${effectiveMode === 'BULK' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}
+            >
+              Bulk
+            </button>
+            <button
+              type="button"
+              onClick={() => setPriceMode('ON_DEMAND')}
+              className={`rounded-md px-3 py-1.5 transition-colors ${effectiveMode === 'ON_DEMAND' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}
+            >
+              On-demand
+            </button>
+          </div>
+        )}
+
+        {effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? (
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
-            ${previewUnitCost.toFixed(2)}
-            <span className="ml-1 text-[13px] font-medium text-ink-500">/ unit</span>
+            ${onDemandUnitCost.toFixed(2)}
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">/ unit</span>
+            <span className="ml-2 align-middle text-[12px] font-medium text-ink-400">no minimum</span>
+          </div>
+        ) : (
+          <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
+            ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">
+              (${previewUnitCost.toFixed(2)} / unit)
+            </span>
             {subscribe && (
               <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
-                ${landedCost.toFixed(2)}
+                ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             )}
           </div>
+        )}
+
+        {/* Tier-pricing link — moved under the price. */}
+        <div className="mt-2">
           <PricingTierModal
             productName={template.title}
             variantName={`${sizeKey} · ${
@@ -386,23 +442,10 @@ export function ProductDetailConfigurator({
             feePctByTier={feePctByTier}
           />
         </div>
-
-        {/* All-in total — smaller, gray, but always visible. */}
-        <div className="mt-1.5 flex items-baseline justify-between text-[13px] text-ink-500">
-          <span>Total · {quantity.toLocaleString()} units</span>
-          <span className="font-semibold tabular-nums text-ink-600">
-            ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            {subscribe && (
-              <span className="ml-1.5 font-medium text-ink-400 line-through">
-                ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            )}
-          </span>
-        </div>
       </div>
 
       {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}
-      <EarningsCalculator costPerUnit={previewUnitCost} tone="neutral" />
+      <EarningsCalculator costPerUnit={activeUnitCost} tone="neutral" />
 
       {/* 6) Primary actions — stacked vertically, both full-width: "Order a
           sample" on TOP (opens the SampleDrawer) and Launch BELOW
