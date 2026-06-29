@@ -8,6 +8,26 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import {
+  calculateLabel,
+  toPanelData,
+  composeMarketplaceRows,
+  toSupplementPanelData,
+  toInciDeclaration,
+  formatGuaranteedAnalysis,
+  petIngredientOrder,
+  adequacyStatement,
+  composeContainsAllergens,
+  type DietaryIngredient,
+  type ProprietaryBlend,
+  type SupplementNutrition,
+  type CosmeticIngredient,
+  type GuaranteedAnalysis,
+  type PetSpecies,
+  type LifeStage,
+  type AdequacyMethod,
+} from '@ilaunchify/nutrition'
+import type { PanelData } from '@ilaunchify/types'
 
 export interface ReviewSummary {
   name: string
@@ -550,5 +570,459 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
     return { ok: true, data }
   } catch (err) {
     return { ok: false, error: `Could not load review: ${(err as Error).message}` }
+  }
+}
+
+// =============================================================================
+// getProductPassport — the "Digital Product Passport": a document-grade,
+// display-only review of EVERYTHING a draft has accumulated, for the builder's
+// Review & submit step. It is a SUPERSET of getProductReviewDetail: same
+// identity / recipe / allergens / packaging / variants / flavors / pricing /
+// certs, PLUS the REAL regulated Facts panel(s) computed server-side into
+// serializable PanelData (so the view renders the actual SVG label), die-line
+// outline SVG(s), and resolved image URLs (hero / gallery / mockup base).
+//
+// Panel computation reuses the SAME engine path the marketplace detail uses
+// (apps/marketing/src/lib/recipe-detail.ts · composeMarketplaceRows →
+// calculateLabel → toPanelData / toSupplementPanelData), so the Passport panel
+// can never diverge from the public label. DECLARED panels render verbatim.
+// Partner-gated to the owning service; cast-guarded for pending-migration cols.
+// =============================================================================
+
+export interface PassportFactsPanel {
+  /** PanelData for the FOOD Nutrition Facts / SUPPLEMENT Supplement Facts panel. */
+  panel: PanelData
+  /** Resolved "Contains" allergen line (FALCPA Big-9), if any. */
+  contains: string | null
+  /** 21 CFR 101.4 ingredient statement, rendered below the box (food). */
+  ingredientStatement: string | null
+  /** True when the panel was entered by the manufacturer, not computed. */
+  declared: boolean
+}
+export interface PassportCosmeticFacts {
+  ingredients: string
+  netContents: string | null
+  responsiblePerson: string | null
+  adverseEventContact: string | null
+}
+export interface PassportPetFacts {
+  gaRows: Array<{ label: string; value: string }>
+  ingredients: string
+  adequacyStatement: string | null
+  feedingDirections: string | null
+}
+export interface PassportFormulationIngredient {
+  name: string
+  amount: string | null // pre-formatted ("250 mg", "12 %", "" )
+  note: string | null
+}
+export interface PassportDieline {
+  id: string
+  name: string
+  outlineSvg: string // raw SVG path string
+  widthMm: number
+  heightMm: number
+  /** Optional flavor this die-line slot belongs to (per-flavor packing types). */
+  flavorName: string | null
+}
+export interface PassportImage {
+  url: string
+  kind: 'hero' | 'gallery' | 'mockup'
+}
+
+export interface ProductPassport extends ReviewDetail {
+  // ---- Regulated Facts panel(s) — domain-aware, serializable ----
+  /** FOOD / SUPPLEMENT → a PanelData rendered by NutritionFactsSvg / SupplementFactsSvg. */
+  factsPanel: PassportFactsPanel | null
+  /** COSMETIC → INCI declaration. */
+  cosmeticFacts: PassportCosmeticFacts | null
+  /** PET_PRODUCT → AAFCO Guaranteed Analysis. */
+  petFacts: PassportPetFacts | null
+  /** True when this product carries >1 flavor — the view shows the flavor roster
+   *  prominently (per-flavor variety columns are an in-builder live view). */
+  isMultiFlavor: boolean
+  // ---- Formulation ingredient lists (non-food domains) ----
+  supplementIngredients: PassportFormulationIngredient[]
+  cosmeticIngredients: PassportFormulationIngredient[]
+  petIngredients: PassportFormulationIngredient[]
+  // ---- Die-lines + imagery ----
+  dielines: PassportDieline[]
+  images: PassportImage[]
+  // ---- Custom meta (admin/importer-added reference key/values) ----
+  customMeta: Array<{ label: string; value: string }>
+}
+
+type PassportResult = { ok: true; data: ProductPassport } | { ok: false; error: string }
+
+/** Narrow an unknown JSON blob to a PanelData (declared panels). */
+function asPanelDataLoose(v: unknown): PanelData | null {
+  if (v && typeof v === 'object' && 'format' in v && Array.isArray((v as { rows?: unknown }).rows)) {
+    return v as PanelData
+  }
+  return null
+}
+
+// Big-9 allergen codes → display labels (matches recipe-detail.ts).
+const PASSPORT_ALLERGEN_DISPLAY: Record<string, string> = {
+  milk: 'Milk', eggs: 'Eggs', egg: 'Eggs', fish: 'Fish',
+  shellfish: 'Shellfish', crustacean_shellfish: 'Shellfish', crustacean: 'Shellfish',
+  tree_nuts: 'Tree Nuts', treenuts: 'Tree Nuts', 'tree-nuts': 'Tree Nuts',
+  peanuts: 'Peanuts', peanut: 'Peanuts', wheat: 'Wheat',
+  soybeans: 'Soy', soybean: 'Soy', soy: 'Soy', sesame: 'Sesame', coconut: 'Coconut',
+}
+function passportDisplayAllergens(flags: string[] | null | undefined): string[] {
+  const out = new Set<string>()
+  for (const f of flags ?? []) {
+    const key = String(f).toLowerCase().trim()
+    out.add(PASSPORT_ALLERGEN_DISPLAY[key] ?? key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
+  }
+  return [...out]
+}
+
+interface PassportSupplementPayload {
+  dietaryIngredients?: Array<{ uid?: string; name?: string; amount?: number; unit?: string; percentDV?: string; blendId?: string; isOther?: boolean; amountLessThan?: boolean; symbol?: string }>
+  blends?: Array<{ id?: string; name?: string; total?: number; unit?: string; amountLessThan?: boolean }>
+  servingForm?: string
+  servingsPerContainer?: number
+  nutrition?: SupplementNutrition
+  nutritionLessThan?: Record<string, boolean>
+  noDvSymbol?: string
+  customFootnotes?: Array<{ symbol: string; text: string }>
+}
+interface PassportCosmeticPayload {
+  ingredients?: Array<{ uid?: string; inciName?: string; pct?: number; isColorAdditive?: boolean; isFragrance?: boolean }>
+  netContentsQty?: number
+  netContentsUnit?: string
+  responsiblePerson?: string
+  adverseEventContact?: string
+}
+interface PassportPetPayload {
+  ingredients?: Array<{ uid?: string; name?: string; weight?: number }>
+  ga?: GuaranteedAnalysis
+  species?: PetSpecies
+  lifeStage?: LifeStage
+  method?: AdequacyMethod
+  feedingDirections?: string
+}
+
+export async function getProductPassport(draftId: string): Promise<PassportResult> {
+  // Lean on the detail loader for the shared half (identity / recipe summary /
+  // ingredients / allergens / packaging / variants / flavors / pricing / fees /
+  // certs / refs). It is already ownership-checked + try/caught.
+  const detail = await getProductReviewDetail(draftId)
+  if (!detail.ok) return detail
+  const base = detail.data
+
+  try {
+    // Second, panel-focused fetch (the detail loader doesn't pull the columns the
+    // Facts computation needs: per100g, nutrientSource, declaredPanel, variant
+    // serving geometry, replacements, die-line outlines, asset ids).
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: draftId },
+      select: {
+        name: true,
+        labelingType: true,
+        nutrientSource: true,
+        declaredPanel: true,
+        intendedAgeGroup: true,
+        allergenCrossContamination: true,
+        imageAssetId: true,
+        galleryAssetIds: true,
+        videoAssetId: true,
+        ingredientSlots: {
+          orderBy: { displayOrder: 'asc' },
+          select: {
+            label: true,
+            weightG: true,
+            baseIngredient: {
+              select: { name: true, internalName: true, labelDeclarationName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
+            },
+          },
+        },
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { servingSizeG: true, servingsPerContainer: true, servingSizeDesc: true },
+        },
+      },
+    })
+
+    const dom = base.labelingType
+    let factsPanel: PassportFactsPanel | null = null
+    let cosmeticFacts: PassportCosmeticFacts | null = null
+    let petFacts: PassportPetFacts | null = null
+    let supplementIngredients: PassportFormulationIngredient[] = []
+    let cosmeticIngredients: PassportFormulationIngredient[] = []
+    let petIngredients: PassportFormulationIngredient[] = []
+    let ingredientStatement: string | null = null
+
+    // ---- FOOD / SUPPLEMENT → PanelData ----
+    if (tpl) {
+      const declared = tpl.nutrientSource === 'DECLARED'
+      if (declared) {
+        const panel = asPanelDataLoose(tpl.declaredPanel)
+        if (panel) factsPanel = { panel, contains: null, ingredientStatement: null, declared: true }
+      } else if (dom === 'FOOD' && tpl.ingredientSlots.length > 0) {
+        const variant = tpl.variants[0]
+        const servingSizeG = Number(variant?.servingSizeG) || 0
+        const servingsPerPackage = Number(variant?.servingsPerContainer) || 1
+        if (servingSizeG > 0) {
+          const rows = composeMarketplaceRows(
+            tpl.ingredientSlots.map((s) => ({
+              weightG: Number(s.weightG) || 0,
+              base: {
+                name: s.baseIngredient.internalName ?? s.baseIngredient.name,
+                per100g: (s.baseIngredient.nutritionPer100g ?? {}) as Record<string, number>,
+                densityGPerMl: s.baseIngredient.densityGPerML ?? undefined,
+              },
+            })),
+            [],
+            {},
+          )
+          const result = calculateLabel(rows, { basis: 'serving', servingSizeG, servingsPerPackage }, {
+            audience: tpl.intendedAgeGroup ?? 'GENERAL',
+          })
+          const panel = toPanelData(result, { suggestedServing: variant?.servingSizeDesc ?? undefined, showVoluntaryFats: true })
+          // Ingredient statement: label-declaration names, descending by weight (21 CFR 101.4).
+          const ordered = [...tpl.ingredientSlots]
+            .map((s, idx) => ({ s, idx, w: Number(s.weightG) || 0 }))
+            .sort((a, b) => b.w - a.w || a.idx - b.idx)
+            .map(({ s }) => s.label || s.baseIngredient.labelDeclarationName || s.baseIngredient.internalName || s.baseIngredient.name)
+            .filter(Boolean)
+          ingredientStatement = ordered.length ? ordered.join(', ') : null
+          // "Contains" line from base recipe allergens.
+          const contains = composeContainsAllergens(
+            tpl.ingredientSlots.map((s, i) => ({ id: `slot-${i}`, allergens: passportDisplayAllergens(s.baseIngredient.allergenFlags) })),
+            [],
+            {},
+          )
+          factsPanel = {
+            panel,
+            contains: contains.length ? `Contains: ${contains.join(', ')}.` : null,
+            ingredientStatement,
+            declared: false,
+          }
+        }
+      }
+    }
+
+    // ---- Non-food domains → formulationData (cast-guarded) ----
+    if (dom === 'DIETARY_SUPPLEMENT' || dom === 'COSMETIC' || dom === 'PET_PRODUCT') {
+      const fdRow = await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ name: string; formulationData: Record<string, unknown> | null } | null> }
+      }).productTemplate
+        .findUnique({ where: { id: draftId }, select: { name: true, formulationData: true } })
+        .catch(() => null)
+      const fd = (fdRow?.formulationData ?? {}) as Record<string, unknown>
+
+      if (dom === 'DIETARY_SUPPLEMENT' && !factsPanel) {
+        const p = (fd.supplement ?? {}) as PassportSupplementPayload
+        const di = p.dietaryIngredients ?? []
+        if (di.length) {
+          const dietary: DietaryIngredient[] = di
+            .filter((r) => r.name?.trim())
+            .map((r, i, arr) => ({
+              id: r.uid ?? `di-${i}`,
+              name: r.name!.trim(),
+              amountPerServing: r.amount ?? 0,
+              unit: r.unit ?? '',
+              percentDV: r.percentDV?.trim() === '' || r.percentDV == null ? null : Number(r.percentDV),
+              blendId: r.blendId || null,
+              isOtherIngredient: Boolean(r.isOther),
+              sortWeight: arr.length - i,
+              amountLessThan: r.amountLessThan,
+              symbol: r.symbol?.trim() || undefined,
+            }))
+          const blends: ProprietaryBlend[] = (p.blends ?? []).map((b, i) => ({
+            id: b.id ?? `bl-${i}`,
+            name: b.name ?? 'Blend',
+            totalAmount: b.total ?? 0,
+            unit: b.unit ?? '',
+            percentDV: null,
+            amountLessThan: b.amountLessThan,
+          }))
+          const { panel } = toSupplementPanelData(dietary, blends, {
+            servingSize: p.servingForm ?? '',
+            servingsPerContainer: p.servingsPerContainer ?? 1,
+            nutrition: p.nutrition,
+            nutritionLessThan: p.nutritionLessThan as Partial<Record<keyof SupplementNutrition, boolean>> | undefined,
+            noDvSymbol: p.noDvSymbol,
+            customFootnotes: p.customFootnotes,
+          })
+          factsPanel = { panel, contains: null, ingredientStatement: null, declared: false }
+        }
+        supplementIngredients = di
+          .filter((r) => r.name?.trim())
+          .map((r) => ({
+            name: r.name!.trim(),
+            amount: r.amount != null ? `${r.amountLessThan ? '< ' : ''}${r.amount}${r.unit ? ` ${r.unit}` : ''}` : null,
+            note: r.isOther ? 'other ingredient' : r.blendId ? 'in blend' : null,
+          }))
+      } else if (dom === 'COSMETIC') {
+        const p = (fd.cosmetic ?? {}) as PassportCosmeticPayload
+        const ings = p.ingredients ?? []
+        if (ings.length) {
+          const items: CosmeticIngredient[] = ings.map((r, i) => ({
+            id: r.uid ?? `ci-${i}`,
+            inciName: r.inciName ?? '',
+            pct: Number(r.pct) || 0,
+            isColorAdditive: Boolean(r.isColorAdditive),
+            isFragrance: Boolean(r.isFragrance),
+          }))
+          const decl = toInciDeclaration(items)
+          cosmeticFacts = {
+            ingredients: decl.text,
+            netContents: Number(p.netContentsQty) > 0 ? `Net contents: ${p.netContentsQty} ${p.netContentsUnit ?? ''}`.trim() : null,
+            responsiblePerson: p.responsiblePerson?.trim() || null,
+            adverseEventContact: p.adverseEventContact?.trim() || null,
+          }
+          cosmeticIngredients = ings
+            .filter((r) => r.inciName?.trim())
+            .map((r) => ({
+              name: r.inciName!.trim(),
+              amount: r.pct != null ? `${r.pct}%` : null,
+              note: r.isColorAdditive ? 'color additive' : r.isFragrance ? 'fragrance' : null,
+            }))
+        }
+      } else if (dom === 'PET_PRODUCT') {
+        const p = (fd.pet ?? {}) as PassportPetPayload
+        if (p.ga) {
+          const gaRows = formatGuaranteedAnalysis(p.ga)
+          const ingredients = petIngredientOrder((p.ingredients ?? []).map((r, i) => ({ id: r.uid ?? `pi-${i}`, name: r.name ?? '', weight: Number(r.weight) || 0 }))).join(', ')
+          petFacts = {
+            gaRows,
+            ingredients,
+            adequacyStatement: p.species && p.lifeStage && p.method
+              ? adequacyStatement(tpl?.name ?? base.name, p.species, p.lifeStage, p.method)
+              : null,
+            feedingDirections: p.feedingDirections?.trim() || null,
+          }
+        }
+        petIngredients = (p.ingredients ?? [])
+          .filter((r) => r.name?.trim())
+          .map((r) => ({ name: r.name!.trim(), amount: r.weight != null ? `${r.weight} g` : null, note: null }))
+      }
+    }
+
+    // ---- Die-line outline SVGs (variant.dieCutTemplateId + per-flavor slots) ----
+    const dielines: PassportDieline[] = []
+    const seenDieIds = new Set<string>()
+    try {
+      const looseTpl = await (prisma as unknown as {
+        productTemplate: {
+          findUnique: (a: unknown) => Promise<{
+            variants: Array<{ containerFormat: string; dieCutTemplateId: string | null; dieCutTemplate: { id: string; name: string; outlineSvg: string; widthMm: number; heightMm: number } | null }>
+            flavorPresets: Array<{ name: string; dieCutTemplateId?: string | null; dieCutTemplate?: { id: string; name: string; outlineSvg: string; widthMm: number; heightMm: number } | null }>
+          } | null>
+        }
+      }).productTemplate.findUnique({
+        where: { id: draftId },
+        select: {
+          variants: {
+            select: {
+              containerFormat: true,
+              dieCutTemplateId: true,
+              dieCutTemplate: { select: { id: true, name: true, outlineSvg: true, widthMm: true, heightMm: true } },
+            },
+          },
+          flavorPresets: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              name: true,
+              dieCutTemplateId: true,
+              dieCutTemplate: { select: { id: true, name: true, outlineSvg: true, widthMm: true, heightMm: true } },
+            },
+          },
+        },
+      }).catch(() => null)
+
+      for (const v of looseTpl?.variants ?? []) {
+        const d = v.dieCutTemplate
+        if (d && d.outlineSvg && !seenDieIds.has(d.id)) {
+          seenDieIds.add(d.id)
+          dielines.push({ id: d.id, name: d.name, outlineSvg: d.outlineSvg, widthMm: d.widthMm, heightMm: d.heightMm, flavorName: null })
+        }
+      }
+      for (const f of looseTpl?.flavorPresets ?? []) {
+        const d = f.dieCutTemplate
+        if (d && d.outlineSvg && !seenDieIds.has(d.id)) {
+          seenDieIds.add(d.id)
+          dielines.push({ id: d.id, name: d.name, outlineSvg: d.outlineSvg, widthMm: d.widthMm, heightMm: d.heightMm, flavorName: f.name })
+        }
+      }
+    } catch {
+      // die-line columns are part of a pending migration — degrade to [].
+    }
+
+    // ---- Image URLs (hero / gallery / mockup base) ----
+    const images: PassportImage[] = []
+    const assetIds: string[] = []
+    if (tpl?.imageAssetId) assetIds.push(tpl.imageAssetId)
+    for (const g of tpl?.galleryAssetIds ?? []) assetIds.push(g)
+    if (assetIds.length) {
+      const assets = await prisma.asset
+        .findMany({ where: { id: { in: assetIds } }, select: { id: true, publicUrl: true } })
+        .catch(() => [] as Array<{ id: string; publicUrl: string | null }>)
+      const byId = new Map(assets.map((a) => [a.id, a.publicUrl]))
+      const heroUrl = tpl?.imageAssetId ? byId.get(tpl.imageAssetId) : null
+      if (heroUrl) images.push({ url: heroUrl, kind: 'hero' })
+      for (const g of tpl?.galleryAssetIds ?? []) {
+        const u = byId.get(g)
+        if (u) images.push({ url: u, kind: 'gallery' })
+      }
+    }
+    // Mockup base image (PackagingType-owned) — cast-guarded; first linked system.
+    try {
+      const mockup = await (prisma as unknown as {
+        mockupTemplate?: { findFirst: (a: unknown) => Promise<{ baseImageAssetId: string } | null> }
+      }).mockupTemplate?.findFirst({
+        where: { packagingType: { variants: { some: { productTemplateId: draftId } } }, status: 'ACTIVE' },
+        select: { baseImageAssetId: true },
+        orderBy: { displayOrder: 'asc' },
+      }).catch(() => null)
+      if (mockup?.baseImageAssetId) {
+        const a = await prisma.asset.findUnique({ where: { id: mockup.baseImageAssetId }, select: { publicUrl: true } }).catch(() => null)
+        if (a?.publicUrl) images.push({ url: a.publicUrl, kind: 'mockup' })
+      }
+    } catch {
+      // mockup model / relation may not be present — skip.
+    }
+
+    // ---- Custom meta (importer/admin reference key-values) — cast-guarded ----
+    let customMeta: Array<{ label: string; value: string }> = []
+    try {
+      const metaRow = await prisma.productTemplate
+        .findUnique({ where: { id: draftId }, select: { customMeta: true } })
+        .catch(() => null)
+      // customMeta is [{ key, value }] (some legacy rows may use `label`).
+      if (Array.isArray(metaRow?.customMeta)) {
+        customMeta = (metaRow!.customMeta as Array<{ key?: unknown; label?: unknown; value?: unknown }>)
+          .filter((m) => m && typeof m.value === 'string')
+          .map((m) => ({
+            label: typeof m.key === 'string' ? m.key : typeof m.label === 'string' ? m.label : 'Field',
+            value: m.value as string,
+          }))
+      }
+    } catch {
+      // customMeta column not present yet — degrade to [].
+    }
+
+    const data: ProductPassport = {
+      ...base,
+      factsPanel,
+      cosmeticFacts,
+      petFacts,
+      isMultiFlavor: base.flavors.length > 1,
+      supplementIngredients,
+      cosmeticIngredients,
+      petIngredients,
+      dielines,
+      images,
+      customMeta,
+    }
+    return { ok: true, data }
+  } catch (err) {
+    return { ok: false, error: `Could not load passport: ${(err as Error).message}` }
   }
 }
