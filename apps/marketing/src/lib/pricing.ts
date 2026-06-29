@@ -17,6 +17,13 @@ export interface PackBuilderData {
   maxFlavorsPerPack: number | null
   pool: PackBuilderFlavor[]
   changeoverDays: number
+  /** PDP flavor cards — per-flavor price deltas (cents) so each flavor shows its
+   *  own resulting unit price. `saleDeltaCents` (when present, a non-zero
+   *  REDUCTION) drives the strike-through "was" price. Keyed by flavor id. */
+  flavorPricing: Record<
+    string,
+    { priceDeltaCents: number; saleDeltaCents: number | null }
+  >
 }
 
 export async function getPackBuilderData(slug: string): Promise<PackBuilderData> {
@@ -29,14 +36,27 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
         flavorPresets: {
           where: { status: 'ACTIVE' },
           orderBy: { sortOrder: 'asc' },
-          select: { id: true, name: true, swatchHex: true, statementOfIdentity: true },
+          select: { id: true, name: true, swatchHex: true, statementOfIdentity: true, priceDeltaCents: true },
         },
       },
     }),
     getOrderSettings(),
   ])
   if (!template) {
-    return { flavorMode: 'SINGLE', maxFlavorsPerPack: null, pool: [], changeoverDays: settings.changeoverDays }
+    return {
+      flavorMode: 'SINGLE',
+      maxFlavorsPerPack: null,
+      pool: [],
+      changeoverDays: settings.changeoverDays,
+      flavorPricing: {},
+    }
+  }
+  // Per-flavor price deltas for the PDP flavor cards. saleDeltaCents stays null
+  // until FlavorPreset gains a sale/compare-at column — the card then renders a
+  // strike-through "was" price. No schema invented here.
+  const flavorPricing: PackBuilderData['flavorPricing'] = {}
+  for (const f of template.flavorPresets) {
+    flavorPricing[f.id] = { priceDeltaCents: f.priceDeltaCents, saleDeltaCents: null }
   }
   return {
     flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
@@ -48,6 +68,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       statementOfIdentity: f.statementOfIdentity,
     })),
     changeoverDays: settings.changeoverDays,
+    flavorPricing,
   }
 }
 

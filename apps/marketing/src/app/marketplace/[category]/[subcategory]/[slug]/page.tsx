@@ -1,30 +1,21 @@
+import type * as React from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Heart, ShieldAlert } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 import {
-  Button,
   CertStrip,
-  ProductCard,
   ProductSpecGrid,
-  ShippingInfoCard,
-  PropertyBar,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
   NutritionFactsRenderer,
   InciDeclarationSvg,
   GuaranteedAnalysisSvg,
-  productGradient,
-  type ProductGradient,
-  type IngredientRow,
-  type IngredientAddOn,
 } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
-import { ProductDetailConfigurator } from '@/components/ProductDetailConfigurator'
-import { SampleOrderCard } from '@/components/SampleOrderCard'
+import { ProductDetailHero } from '@/components/ProductDetailHero'
+import { ProductTabs } from '@/components/ProductTabs'
+import { ProductAccordion } from '@/components/ProductAccordion'
 import { IngredientsTabInner } from '@/components/IngredientsTabInner'
 import { CustomizeRail } from '@/components/CustomizeRail'
+import { ProductCarousel } from '@/components/ProductCarousel'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
@@ -35,7 +26,6 @@ import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
-import { getDecorationOfferings } from '@/lib/decoration-offerings-db'
 import { getProductRestrictions } from '@/lib/product-restrictions'
 import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
 
@@ -132,10 +122,8 @@ export default async function ProductDetailPage({
   // the template isn't in the DB yet → chip strips just don't render.
   const taxonomyChips = await getProductTaxonomyChips(template.slug)
 
-  // Slice C8.2 — partner decoration offerings for this template's container
-  // types, grouped into one picker card per decoration method. Empty when no
-  // ACTIVE offering resolves → the picker hides.
-  const decorationOfferings = await getDecorationOfferings(template.slug)
+  // PDP redesign — decoration moved to the Design Studio. The marketplace PDP
+  // no longer surfaces a decoration picker (getDecorationOfferings dropped here).
 
   // P3 — real creator price = manufacturer unit cost + tier-discounted platform
   // fee. Tier comes from the signed-in creator's CreatorProfile (Maker for
@@ -207,6 +195,48 @@ export default async function ProductDetailPage({
           unconditional: tag.organic ?? false,
         }))
 
+  // Identity-column accordion — fed from existing detail fields. First row open
+  // by default (handled inside ProductAccordion). Rows render only when they
+  // carry content, so a sparse fixture doesn't show empty sections.
+  const ingredientStatement = detail.ingredients.map((i) => i.name).join(', ')
+  const allergenList = allergensFromIngredients(detail.ingredients)
+  const firstSpec = detail.packingSpecs[0]
+  const accordionRows = [
+    ingredientStatement && {
+      id: 'ingredients',
+      title: 'Ingredients',
+      body: (
+        <span>
+          {ingredientStatement}.{' '}
+          <span className="font-semibold text-pink-700">See full label in the Recipe tab.</span>
+        </span>
+      ),
+    },
+    {
+      id: 'allergens',
+      title: 'Allergens',
+      body:
+        allergenList.length > 0
+          ? `Contains: ${allergenList.join(', ')}. Made in a facility that handles common allergens.`
+          : 'No major (FALCPA Big-9) allergens in the base recipe. Final "Contains" statement is confirmed at the compliance check.',
+    },
+    firstSpec && {
+      id: 'dimensions',
+      title: 'Dimensions & weight',
+      body: `Carton ${firstSpec.box} (${firstSpec.boxIn}) · gross ${firstSpec.weightG} g (${firstSpec.weightLb} lb) · volume ${firstSpec.volumeCm3} cm³.`,
+    },
+    {
+      id: 'shelf-life',
+      title: 'Shelf life & storage',
+      body: shelfLifeFromProperties(detail.properties),
+    },
+    {
+      id: 'shipping',
+      title: 'Shipping & returns',
+      body: `Produced to order, ~${template.leadTimeDays}-day lead. Made-to-order runs are non-returnable; defective units are remade or refunded.`,
+    },
+  ].filter(Boolean) as { id: string; title: string; body: React.ReactNode }[]
+
   return (
     <>
       <MarketplaceHeader
@@ -242,190 +272,69 @@ export default async function ProductDetailPage({
           </div>
         )}
 
-        {/* HERO — 3-column: gallery (bigger, sticky w/ thumbs + certs) /
-            configurator (col 2) / customize rail (col 3, R3) */}
-        {/* Hero proportions: gallery 1.4fr / body 1fr / fixed 250px rail.
-            Gallery ratio held at 1.4fr so the main image doesn't grow
-            when the rail width changes; rail track locked at 250px. */}
-        <section className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_250px] gap-6 lg:gap-8 mb-12 items-start">
-          <DetailGallery template={template} certs={certs} images={galleryImages} />
-
-          <div className="flex flex-col">
-            <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700 mb-2">
-              {template.niche}
-            </div>
-            <h1 className="font-display text-[28px] lg:text-[32px] font-bold leading-[1.1] tracking-[-0.02em] text-ink-900 mb-3">
-              {template.title}
-            </h1>
-            <div className="text-[13px] text-ink-500 mb-5 flex items-center gap-2">
-              <RatingStars avg={template.ratingAvg} count={template.ratingCount} />
-              <span className="text-ink-300">·</span>
-              <span>{template.leadTimeDays}-day lead</span>
-            </div>
-
-            {/* Slice 2B — niche + lifestyle-tag chips. Renders nothing
-                when the template isn't in the DB yet, so existing
-                sample-template detail pages keep the old layout. */}
-            {(taxonomyChips.niches.length > 0 ||
-              taxonomyChips.lifestyleTags.length > 0) && (
-              <div className="flex flex-col gap-2 mb-5">
-                {taxonomyChips.niches.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {taxonomyChips.niches.map((n) => (
-                      <Link
-                        key={n.slug}
-                        href={`/launch/${n.slug}`}
-                        className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
-                      >
-                        {n.iconEmoji && <span aria-hidden="true">{n.iconEmoji}</span>}
-                        {n.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-                {taxonomyChips.lifestyleTags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {taxonomyChips.lifestyleTags.map((t) => (
-                      <Link
-                        key={t.slug}
-                        href={`/marketplace?tag=${encodeURIComponent(t.slug)}`}
-                        className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-white hover:text-pink-700 transition-colors"
-                      >
-                        {t.iconEmoji && <span aria-hidden="true">{t.iconEmoji}</span>}
-                        {t.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <ProductSpecGrid
-              items={[
-                { label: 'Format', value: detail.format },
-                { label: 'Production', value: detail.productionMethod },
-                { label: 'Net weight', value: detail.netWeight },
-              ]}
-              className="mb-6 rounded-lg overflow-hidden"
-            />
-
-            <p className="text-[14px] text-ink-700 leading-relaxed mb-6">{detail.about}</p>
-
-            {/* Client-side configurator handles all variant picking + pricing math */}
-            <ProductDetailConfigurator
-              template={template}
-              detail={detailForConfigurator}
-              pricingRows={pricingRows}
-              viewerTier={viewerTier}
-              feePctByTier={feePctByTier}
-              isAuthenticated={isAuthenticated}
-              decorationOfferings={decorationOfferings}
-              flavorMode={packData.flavorMode}
-              maxFlavorsPerPack={packData.maxFlavorsPerPack}
-              flavorPool={packData.pool}
-              changeoverDays={packData.changeoverDays}
-            />
-
-            {/* Order a sample — only when the partner enabled sample orders */}
-            {sampleData.options.length > 0 && (
-              <div className="mt-5">
-                <SampleOrderCard
-                  options={sampleData.options}
-                  flavorNames={sampleData.flavorNames}
-                  isMultiFlavor={sampleData.isMultiFlavor}
-                  dielineReady={sampleData.dielineReady}
-                  isAuthenticated={isAuthenticated}
-                  ownedProductId={ownedSampleProductId}
-                />
-              </div>
-            )}
-
-            <div className="flex items-center gap-4 mt-4 text-[13px] text-ink-600">
-              <button className="inline-flex items-center gap-1.5 hover:text-pink-500 transition-colors">
-                <Heart strokeWidth={1.75} className="w-4 h-4" /> Add to favorites
-              </button>
-              <span className="text-ink-300">·</span>
-              <button className="hover:text-ink-900">Share</button>
-            </div>
-          </div>
-
-          {/* REBUILD R3 — customize right-rail. Sticky inside its column,
-              ingredient swaps + live Nutrition Facts pinned for the
-              duration of the page. */}
-          <CustomizeRail
-            slug={template.slug}
-            ingredients={detail.ingredients}
-            ingredientAddOns={detail.ingredientAddOns}
-            nutrition={detail.nutrition}
+        {/* HERO — 3-zone: gallery (1.15fr) · identity (1fr) · zone3 (340px
+            configure box + business card). Stacks to one column under ~1000px.
+            ProductDetailHero is the client root; the identity column is
+            server-rendered and passed through so taxonomy chips, the cert trust
+            strip, the spec strip, and the accordion stay server-derived. */}
+        <div className="mb-12">
+          <ProductDetailHero
+            template={template}
+            detail={detailForConfigurator}
+            images={galleryImages}
+            pricingRows={pricingRows}
+            viewerTier={viewerTier}
+            isAuthenticated={isAuthenticated}
+            feePctByTier={feePctByTier}
+            flavorMode={packData.flavorMode}
+            maxFlavorsPerPack={packData.maxFlavorsPerPack}
+            flavorPool={packData.pool}
+            changeoverDays={packData.changeoverDays}
+            flavorPricing={packData.flavorPricing}
+            sample={
+              sampleData.options.length > 0
+                ? {
+                    options: sampleData.options,
+                    flavorNames: sampleData.flavorNames,
+                    isMultiFlavor: sampleData.isMultiFlavor,
+                    dielineReady: sampleData.dielineReady,
+                    ownedProductId: ownedSampleProductId,
+                  }
+                : null
+            }
+            identity={
+              <IdentityColumn
+                template={template}
+                detail={detail}
+                taxonomyChips={taxonomyChips}
+                certs={certs}
+                accordionRows={accordionRows}
+              />
+            }
           />
-        </section>
+        </div>
       </div>
 
-      {/* CertStrip moved into the gallery column under the image (R3.1).
-          Full-bleed strip removed to avoid duplication. */}
-
-      {/* CUSTOMIZATION + MATERIAL/PROPERTIES BENTO */}
-      <section className="max-w-[1400px] mx-auto px-6 mb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="bg-white border border-ink-200 rounded-xl p-7">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
-              Customization options
-            </div>
-            <h3 className="text-ui-title mb-4">Label + recipe</h3>
-            <p className="text-[14px] text-ink-700 leading-relaxed">
-              {detail.customizationDescription}
-            </p>
-          </div>
-          <div className="bg-white border border-ink-200 rounded-xl p-7">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-pink-700 mb-3">
-              Material &amp; performance
-            </div>
-            <h3 className="text-ui-title mb-4">{detail.format}</h3>
-            <div className="flex flex-col gap-4">
-              {detail.properties.map((p) => (
-                <PropertyBar key={p.label} label={p.label} value={p.value} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TABS — Description · Recipe & Nutrition · Ingredients · Compliance · Packing */}
+      {/* TABS — Recipe & nutrition · Packaging · Compliance & certificates.
+          The Recipe tab combines RecipeNutritionTab + the CustomizeRail (swaps,
+          add-ons, live "Contains", live Nutrition Facts) + the ingredients-tab
+          interactivity. Overview/Description dropped (now in the identity
+          column). */}
       <section className="max-w-[1400px] mx-auto px-6 mb-20">
-        <Tabs defaultValue="description">
-          <TabsList>
-            <TabsTrigger value="description">Description</TabsTrigger>
-            <TabsTrigger value="recipe">Recipe &amp; Nutrition</TabsTrigger>
-            <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-            <TabsTrigger value="compliance">Compliance</TabsTrigger>
-            <TabsTrigger value="packing">Packing</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="description">
-            <DescriptionTab detail={detail} />
-          </TabsContent>
-
-          <TabsContent value="recipe">
-            <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} domain={recipeDetail.domain} />
-          </TabsContent>
-
-          <TabsContent value="ingredients">
-            <IngredientsTabClient
-              slug={template.slug}
-              ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
-              addOns={recipeDetail.addOns.length > 0 ? recipeDetail.addOns : undefined}
+        <ProductTabs
+          recipe={
+            <RecipeTab
+              template={template}
+              detail={detail}
+              nutrientSource={nutrientSource}
+              domain={recipeDetail.domain}
+              recipeDetail={recipeDetail}
               hasRealRecipe={hasRealRecipe}
             />
-          </TabsContent>
-
-          <TabsContent value="compliance">
-            <ComplianceTab detail={detail} />
-          </TabsContent>
-
-          <TabsContent value="packing">
-            <PackingTab detail={detail} />
-          </TabsContent>
-        </Tabs>
+          }
+          packaging={<PackingTab detail={detail} />}
+          compliance={<ComplianceTab detail={detail} certs={certs} />}
+        />
       </section>
 
       {/* RELATED */}
@@ -434,11 +343,7 @@ export default async function ProductDetailPage({
           <h2 className="font-display text-ui-display mb-7">
             You might also like
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-            {related.map((t) => (
-              <ProductCard key={t.slug} {...templateToCardProps(t)} />
-            ))}
-          </div>
+          <ProductCarousel items={related.map(templateToCardProps)} />
         </section>
       )}
     </>
@@ -471,128 +376,163 @@ function Breadcrumb({
   )
 }
 
-interface DetailGalleryProps {
+/* ZONE 2 — identity column. Server-rendered; passed into ProductDetailHero.
+   Eyebrow · title · rating · CERT TRUST STRIP (moved here from the gallery) ·
+   taxonomy chips · about blurb · key-facts strip (ProductSpecGrid data) ·
+   accordion. */
+function IdentityColumn({
+  template,
+  detail,
+  taxonomyChips,
+  certs,
+  accordionRows,
+}: {
   template: SampleTemplate
-  /** Real product images (hero first). When present, replaces emoji+gradient. */
-  images?: string[]
-  certs?: Array<{
+  detail: ReturnType<typeof findTemplateDetail>
+  taxonomyChips: Awaited<ReturnType<typeof getProductTaxonomyChips>>
+  certs: Array<{
     name: string
     qualifier?: string
     icon?: string
     iconUrl?: string
     unconditional?: boolean
   }>
-}
-
-function DetailGallery({ template, certs = [], images = [] }: DetailGalleryProps) {
-  const mainGradient = (template.gradient ?? 'mint') as ProductGradient
-  const hasImages = images.length > 0
-  const gradientThumbs: ProductGradient[] = ['lime', 'pink', 'cyan', 'yellow']
+  accordionRows: { id: string; title: string; body: React.ReactNode }[]
+}) {
   return (
-    // REBUILD R3.1 — sticky inside col 1. As the page scrolls the
-    // gallery stays pinned below the sticky AppHeader.
-    <div className="lg:sticky lg:top-32 lg:self-start space-y-4">
-      <div className="flex gap-3">
-        {/* Vertical thumbnail strip on the LEFT — real images or gradient swatches */}
-        <div className="flex flex-col gap-2 flex-shrink-0">
-          {hasImages
-            ? images.slice(0, 4).map((src, i) => (
-                <div key={i} className="h-14 w-14 overflow-hidden rounded-md border border-ink-200">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                </div>
-              ))
-            : gradientThumbs.map((g) => (
-                <button
-                  key={g}
-                  className="w-14 h-14 rounded-md border border-ink-200 hover:border-pink-500 transition-colors"
-                  style={{ background: productGradient[g] }}
-                  aria-label={`Color variant ${g}`}
-                />
-              ))}
-        </div>
-
-        {/* Main image — real hero shot or emoji+gradient placeholder */}
-        <div
-          className="flex-1 aspect-square overflow-hidden rounded-xl flex items-center justify-center"
-          style={hasImages ? undefined : { background: productGradient[mainGradient] }}
-        >
-          {hasImages ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={images[0]} alt={template.title} className="h-full w-full object-cover" />
-          ) : (
-            <span
-              className="text-[140px] leading-none"
-              style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
-              aria-hidden="true"
-            >
-              {template.icon}
-            </span>
-          )}
-        </div>
+    <>
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
+        {template.niche}
+      </div>
+      <h1 className="mb-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
+        {template.title}
+      </h1>
+      <div className="mb-3 flex items-center gap-2 text-[13px] text-ink-500">
+        <RatingStars avg={template.ratingAvg} count={template.ratingCount} />
+        <span className="text-ink-300">·</span>
+        <span>{template.leadTimeDays}-day lead</span>
       </div>
 
-      {/* Certificate badges below the image (still inside col 1) —
-          compact icons in a soft bordered card per Pavel. */}
+      {/* Cert trust strip — moved here from the gallery. "Verified & certified"
+          eyebrow + a horizontal row of the earned/tag-derived cert badges. */}
       {certs.length > 0 && (
-        <CertStrip
-          items={certs}
-          heading="Product certificates"
-          compact
-          className="rounded-xl border border-ink-200 bg-white p-5"
-        />
+        <div className="mb-3.5 border-y border-ink-100 py-2.5">
+          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-success-700">
+            <span aria-hidden="true">✓</span> Verified &amp; certified
+          </div>
+          <CertStrip items={certs} heading="" compact />
+        </div>
       )}
-    </div>
+
+      {/* Taxonomy chips — niche + lifestyle tags. */}
+      {(taxonomyChips.niches.length > 0 || taxonomyChips.lifestyleTags.length > 0) && (
+        <div className="mb-3.5 flex flex-col gap-2">
+          {taxonomyChips.niches.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {taxonomyChips.niches.map((n) => (
+                <Link
+                  key={n.slug}
+                  href={`/launch/${n.slug}`}
+                  className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
+                >
+                  {n.iconEmoji && <span aria-hidden="true">{n.iconEmoji}</span>}
+                  {n.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          {taxonomyChips.lifestyleTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {taxonomyChips.lifestyleTags.map((t) => (
+                <Link
+                  key={t.slug}
+                  href={`/marketplace?tag=${encodeURIComponent(t.slug)}`}
+                  className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-white hover:text-pink-700 transition-colors"
+                >
+                  {t.iconEmoji && <span aria-hidden="true">{t.iconEmoji}</span>}
+                  {t.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Short description. */}
+      <p className="mb-4 max-w-[54ch] text-[14px] leading-relaxed text-ink-700">
+        {detail.about}
+      </p>
+
+      {/* Key-facts strip — Format · MOQ · Lead · From. Reuses the spec-grid data. */}
+      <ProductSpecGrid
+        items={[
+          { label: 'Format', value: detail.format },
+          { label: 'MOQ', value: template.minUnits.toLocaleString() },
+          { label: 'Lead', value: `${template.leadTimeDays}d` },
+          { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}` },
+        ]}
+        className="overflow-hidden rounded-xl"
+      />
+
+      {/* Accordion — additional info from existing detail fields. */}
+      <ProductAccordion rows={accordionRows} />
+    </>
   )
 }
 
-function DescriptionTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> }) {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
-      <div>
-        <h3 className="font-display text-ui-title mb-4">
-          Material description
-        </h3>
-        <p className="text-[15px] text-ink-700 mb-7">{detail.format}.</p>
+/* Recipe & nutrition tab — combines the RecipeNutritionTab info (about recipe /
+   declared-or-domain panel) with the interactive CustomizeRail (ingredient
+   swaps + add-ons + live "Contains" + live Nutrition Facts + Preview-full-label)
+   and the IngredientsTabInner swap UI. Two-column where the data supports it. */
+function RecipeTab({
+  template,
+  detail,
+  nutrientSource,
+  domain,
+  recipeDetail,
+  hasRealRecipe,
+}: {
+  template: SampleTemplate
+  detail: ReturnType<typeof findTemplateDetail>
+  nutrientSource: 'COMPUTED' | 'DECLARED' | null
+  domain?: DomainFacts
+  recipeDetail: Awaited<ReturnType<typeof getTemplateRecipeDetail>>
+  hasRealRecipe: boolean
+}) {
+  // Cosmetic / pet declaration (or a DB product with no swappable food slots) —
+  // there's nothing to customize, so show the declaration block only.
+  if (domain || (hasRealRecipe && detail.ingredients.length === 0)) {
+    return (
+      <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} domain={domain} />
+    )
+  }
 
-        <h3 className="font-display text-ui-title mb-4">
-          Product performance
-        </h3>
-        <ul className="space-y-3 list-disc pl-5 marker:text-pink-500 text-[15px] text-ink-700 leading-relaxed">
-          {detail.performanceBullets.map((b, i) => (
-            <li key={i}>
-              <strong className="text-ink-900 font-semibold">
-                {b.split(':')[0]}:
-              </strong>
-              {b.includes(':') ? ` ${b.split(':').slice(1).join(':').trim()}` : ''}
-            </li>
-          ))}
-        </ul>
+  // Food / supplement with a swappable recipe — two columns: the swaps + add-ons
+  // (IngredientsTabInner) on the left, the live "Contains" + Nutrition Facts
+  // (CustomizeRail) on the right. CustomizeRail recomputes the panel server-side
+  // on each swap; "Preview full label" opens the panel in a modal.
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="mb-3 font-display text-ui-title">About this recipe</h3>
+        <p className="max-w-[70ch] text-[15px] leading-relaxed text-ink-700">
+          {detail.about}
+        </p>
       </div>
 
-      <aside>
-        <div className="border border-ink-200 rounded-lg p-5 bg-white">
-          <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
-            Size chart
-          </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-left text-ink-500">
-                <th className="font-semibold pb-2">Size</th>
-                <th className="font-semibold pb-2">Servings</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.sizeChart.map((r) => (
-                <tr key={r.size} className="border-t border-ink-100">
-                  <td className="py-2 text-ink-900 font-medium">{r.size}</td>
-                  <td className="py-2 text-ink-700">{r.servings}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </aside>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-start">
+        <IngredientsTabInner
+          slug={template.slug}
+          ingredients={recipeDetail.ingredients.length > 0 ? recipeDetail.ingredients : undefined}
+          addOns={recipeDetail.addOns.length > 0 ? recipeDetail.addOns : undefined}
+        />
+        <CustomizeRail
+          slug={template.slug}
+          ingredients={detail.ingredients}
+          ingredientAddOns={detail.ingredientAddOns}
+          nutrition={detail.nutrition}
+        />
+      </div>
     </div>
   )
 }
@@ -712,27 +652,49 @@ function RecipeNutritionTab({
   )
 }
 
-function ComplianceTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> }) {
+function ComplianceTab({
+  detail,
+  certs,
+}: {
+  detail: ReturnType<typeof findTemplateDetail>
+  certs: Array<{
+    name: string
+    qualifier?: string
+    icon?: string
+    iconUrl?: string
+    unconditional?: boolean
+  }>
+}) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-      <div>
-        <h3 className="font-display text-ui-title mb-4">
-          Reminder
-        </h3>
-        <p className="text-[15px] text-ink-700 leading-relaxed">{detail.designReminder}</p>
-      </div>
-      <div>
-        <h3 className="font-display text-ui-title mb-4">
-          Picture request
-        </h3>
-        <p className="text-[15px] text-ink-700 mb-6">{detail.pictureRequest}</p>
-        <h3 className="font-display text-ui-title mb-4">
-          Design area
-        </h3>
-        <p className="text-[15px] text-ink-700">
-          Front-label print. Full bleed at the trim line. 3 mm safety margin enforced by the
-          canvas die-cut frame.
-        </p>
+    <div className="space-y-10">
+      {/* Full certificate detail — names + status from the earned/tag-derived
+          cert badges. */}
+      {certs.length > 0 && (
+        <div>
+          <h3 className="mb-4 font-display text-ui-title">Certificates</h3>
+          <CertStrip
+            items={certs}
+            heading="This product can be produced with the following certifications"
+            compact
+            className="rounded-xl border border-ink-200 bg-white p-5"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <div>
+          <h3 className="mb-4 font-display text-ui-title">Reminder</h3>
+          <p className="text-[15px] leading-relaxed text-ink-700">{detail.designReminder}</p>
+        </div>
+        <div>
+          <h3 className="mb-4 font-display text-ui-title">Picture request</h3>
+          <p className="mb-6 text-[15px] text-ink-700">{detail.pictureRequest}</p>
+          <h3 className="mb-4 font-display text-ui-title">Design area</h3>
+          <p className="text-[15px] text-ink-700">
+            Front-label print. Full bleed at the trim line. 3 mm safety margin enforced by the
+            canvas die-cut frame.
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -782,35 +744,6 @@ function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> 
   )
 }
 
-/* Ingredients tab — uses a client component for the swap/add interactivity.
-   `ingredients` (when present) are the DB recipe-derived rows; the inner
-   component falls back to the fixture when omitted. */
-function IngredientsTabClient({
-  slug,
-  ingredients,
-  addOns,
-  hasRealRecipe,
-}: {
-  slug: string
-  ingredients?: IngredientRow[]
-  addOns?: IngredientAddOn[]
-  hasRealRecipe?: boolean
-}) {
-  // DB-backed product with no swappable slots (cosmetic / pet / declared) — its
-  // declaration lives in the Recipe & Nutrition tab; don't fall back to the
-  // fixture's generic food ingredients here.
-  if (hasRealRecipe && (!ingredients || ingredients.length === 0)) {
-    return (
-      <p className="max-w-2xl text-[14px] leading-relaxed text-ink-600">
-        This product is formulated and declared by the manufacturer. See the{' '}
-        <span className="font-semibold text-ink-900">Recipe &amp; Nutrition</span> tab
-        for the full ingredient declaration.
-      </p>
-    )
-  }
-  return <IngredientsTabInner slug={slug} ingredients={ingredients} addOns={addOns} />
-}
-
 /* ============ helpers ============ */
 
 function allergensFromIngredients(
@@ -819,6 +752,19 @@ function allergensFromIngredients(
   const set = new Set<string>()
   for (const ing of ingredients) for (const a of ing.allergens ?? []) set.add(a)
   return Array.from(set)
+}
+
+/** Derive a shelf-life / storage line from the detail properties (the fixture
+ *  encodes shelf life as a "Shelf life (N months)" property bar). Falls back to
+ *  a generic shelf-stable line when no shelf-life property is present. */
+function shelfLifeFromProperties(
+  properties: ReturnType<typeof findTemplateDetail>['properties'],
+): string {
+  const shelf = properties.find((p) => /shelf life/i.test(p.label))
+  if (shelf) {
+    return `${shelf.label}. Store cool and dry; shelf-stable, no refrigeration required.`
+  }
+  return 'Shelf-stable. Store cool and dry; no refrigeration required.'
 }
 
 /** Marketplace rating display — real stars when rated, "New" otherwise (never a

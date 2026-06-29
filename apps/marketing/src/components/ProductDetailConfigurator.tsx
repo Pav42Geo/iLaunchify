@@ -1,14 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import Link from 'next/link'
+import { Info } from 'lucide-react'
 import {
-  Button,
-  FlavorSwatch,
   PackagingPicker,
   PackBuilder,
   EarningsCalculator,
-  ShippingInfoCard,
   PricingTierModal,
   applyFlavorChangeover,
   distinctFlavorCount,
@@ -18,57 +15,56 @@ import {
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
-import type { DecorationOfferingCard } from '@/lib/decoration-offerings-db'
-import { DecorationPicker, type DecorationSelection } from './DecorationPicker'
 import { LaunchCtaCluster } from './LaunchCtaCluster'
 
 /**
- * ProductDetailConfigurator — the right-column variant + pricing + CTA stack
- * on the ProductTemplate detail page.
+ * ProductDetailConfigurator — the single "Configure & launch" surface on the
+ * marketplace product detail page (PDP redesign). Lives in zone 3 of the hero,
+ * wrapped in the pink-bordered sticky box.
  *
- * Composes:
- *   - FlavorSwatch  (admin-curated flavor presets)
- *   - Size pills    (240g / 480g / 720g — from detail.sizeChart)
- *   - PackagingPicker (admin-curated packaging variants)
- *   - Quantity input with band-aware pricing
- *   - Pricing panel + "See pricing by tier" affordance
- *   - EarningsCalculator (cost → retail → margin)
- *   - ShippingInfoCard
- *   - "Start launching" + "Sample order" CTAs (server-routed)
+ * Reuses all the original pricing / earnings / pack-builder / lead-time logic.
+ * The redesign changes the *layout* and adds a few presentational affordances:
+ *   - Flavor CARDS (per-flavor price; strike-through "was" when a sale delta
+ *     exists — none until FlavorPreset gains a sale column).
+ *   - Subscribe & save row (UI affordance; not yet threaded to checkout).
+ *   - Ship-to estimate line (estimate only — no address entry).
+ *   - Production & returns info tooltip.
+ *   - "Order a sample →" + "Customize recipe →" secondary buttons. Sample opens
+ *     a drawer (rendered by the page); Customize switches the page to the
+ *     Recipe & nutrition tab via a custom event.
  *
- * V1 demo only — once the variant matrix flows from Prisma + the routing
- * engine produces real landed cost, the price math here gets replaced with
- * `useLandedCostQuery({ templateId, flavorId, sizeKey, packagingId, quantity })`.
+ * Decoration moved to the Design Studio — the DecorationPicker and its
+ * decorationMethod are removed here (decorationMethod is left null on the CTA).
+ *
+ * Package selection drives the hero image: `onPackagingChange` notifies the
+ * parent hero so it can swap the main gallery image when per-package image data
+ * exists (today it does not — see the page's TODO).
  */
 export interface ProductDetailConfiguratorProps {
   template: SampleTemplate
   detail: TemplateDetail
-  /** Per-unit pricing by quantity band, loaded server-side from
-   * ProductTemplatePricingTier (synthetic fallback for fixture-only demos). */
   pricingRows: PricingTierRow[]
-  /** Viewer's creator tier — drives the platform-fee already baked into the
-   * pricing rows + the "sign in for your tier" hint. 'maker' when signed-out. */
   viewerTier?: 'maker' | 'builder' | 'agency'
-  /** When true, "Start launching" goes straight to the Design Studio with the
-   * selection carried as query params. When false (default), it lands on
-   * /start, which converts the visitor into a signed-up creator first. */
   isAuthenticated?: boolean
-  /** Slice C8.2 — resolved partner decoration offerings (one card per method).
-   * Empty array hides the picker (most templates have no offering yet). */
-  decorationOfferings?: DecorationOfferingCard[]
-  /** Platform-fee % per subscription tier — drives the modal's per-tier columns. */
   feePctByTier?: { maker: number; builder: number; agency: number }
-  /** On-demand bands — when present, the modal shows a Bulk/On-demand switcher. */
   onDemandRows?: PricingTierRow[]
-  /** Variety-pack builder (Slice 1). When `flavorMode === 'MULTI'` and a pool is
-   * supplied, the single FlavorSwatch is replaced by the PackBuilder: pick up to
-   * `maxFlavorsPerPack` distinct flavors and split the order quantity across them.
-   * `changeoverDays` (OrderSettings) drives the live D5 lead-time increment. */
   flavorMode?: 'SINGLE' | 'MULTI'
   maxFlavorsPerPack?: number | null
   flavorPool?: PackBuilderFlavor[]
   changeoverDays?: number
   minPerFlavor?: number
+  /** Per-flavor price deltas (cents) keyed by flavor id — drives the flavor
+   *  cards' per-flavor unit price + optional strike-through. */
+  flavorPricing?: Record<
+    string,
+    { priceDeltaCents: number; saleDeltaCents: number | null }
+  >
+  /** Notifies the parent hero when the selected packaging changes, so the
+   *  gallery hero image can follow the package (when image data exists). */
+  onPackagingChange?: (packagingId: string) => void
+  /** Secondary "Order a sample →" opener — supplied by the page (opens the
+   *  SampleDrawer). When omitted, the sample button is hidden. */
+  onOpenSample?: () => void
 }
 
 export function ProductDetailConfigurator({
@@ -77,7 +73,6 @@ export function ProductDetailConfigurator({
   pricingRows,
   viewerTier = 'maker',
   isAuthenticated = false,
-  decorationOfferings = [],
   feePctByTier,
   onDemandRows,
   flavorMode = 'SINGLE',
@@ -85,13 +80,15 @@ export function ProductDetailConfigurator({
   flavorPool = [],
   changeoverDays = 0,
   minPerFlavor = 1,
+  flavorPricing = {},
+  onPackagingChange,
+  onOpenSample,
 }: ProductDetailConfiguratorProps) {
   const sizeOptions = detail.sizeChart.map((s) => s.size)
 
   const [flavorId, setFlavorId] = React.useState<string>(
     detail.flavors[0]?.id ?? '',
   )
-  // Variety-pack mode: pick N distinct flavors + split the quantity across them.
   const isMultiFlavor = flavorMode === 'MULTI' && flavorPool.length > 0
   const [packPicks, setPackPicks] = React.useState<FlavorPick[]>([])
   const flavorCount = isMultiFlavor ? Math.max(1, distinctFlavorCount(packPicks)) : 1
@@ -100,52 +97,67 @@ export function ProductDetailConfigurator({
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
   const [quantity, setQuantity] = React.useState<number>(template.minUnits)
-  // Slice C8.2 — chosen decoration offering (null until a card is picked).
-  const [decoration, setDecoration] = React.useState<DecorationSelection | null>(
-    null,
-  )
+  // Subscribe & save — UI affordance only for now (the launch action doesn't yet
+  // accept a subscription flag). // TODO wire subscribe into the launch/checkout
+  // params once the recurring-production order type lands.
+  const [subscribe, setSubscribe] = React.useState(false)
 
-  // ----- Pricing math (V1 demo) -----
-  // Per-unit price by quantity band comes from the server (real
-  // ProductTemplatePricingTier rows, or synthetic fallback). Size + packaging
-  // deltas below are still rough demo math until the routing engine lands.
+  // Notify the parent hero of the initial + each subsequent package choice.
+  React.useEffect(() => {
+    onPackagingChange?.(packagingId)
+    // Only re-fire when the package id changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packagingId])
+
+  // ----- Pricing math (unchanged from the original configurator) -----
   const rows = pricingRows
-
   const matchedRow = React.useMemo(() => {
-    const eligible = rows.filter(
-      (r) => r.bandMin !== null && r.bandMin <= quantity,
-    )
+    const eligible = rows.filter((r) => r.bandMin !== null && r.bandMin <= quantity)
     return eligible.length > 0 ? eligible[eligible.length - 1]! : rows[0]!
   }, [rows, quantity])
 
-  // Viewer's real tier (Maker for signed-out) — the platform fee for this tier
-  // is already baked into pricingRows.perUnitCents by getCreatorPricingMatrix.
   const currentTier = viewerTier
 
   const packagingDelta =
     detail.packaging.find((p) => p.id === packagingId)?.priceDelta ?? 0
 
-  // Larger sizes get a small per-unit cost bump (rough demo math).
   const sizeIndex = Math.max(0, sizeOptions.indexOf(sizeKey))
   const sizeMultiplier = 1 + sizeIndex * 0.85
 
+  // Per-flavor delta (single-flavor mode) — the selected flavor's price delta
+  // adds to the per-unit landed cost so the price line tracks the chosen card.
+  const flavorDelta = !isMultiFlavor
+    ? (flavorPricing[flavorId]?.priceDeltaCents ?? 0) / 100
+    : 0
+
   const baseCost = matchedRow.perUnitCents / 100
-  const landedCost = +(baseCost * sizeMultiplier + packagingDelta).toFixed(2)
+  const landedCost = +(baseCost * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2)
   const totalOrderCost = +(landedCost * quantity).toFixed(2)
 
-  // Lead time scales with quantity — read it from the matched pricing band first
-  // (production time differs at 500 vs 50,000 units), then fall back to the chosen
-  // packaging, then the template default.
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
     template.leadTimeDays
-  // D5 — a multi-flavor pack adds a line changeover per extra flavor.
-  const leadTimeDays = applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
+  const leadTimeDays =
+    applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
+
+  // Resulting per-unit price for a given flavor card (base band cost × size +
+  // packaging + that flavor's delta). Mirrors `landedCost` but flavor-specific.
+  const flavorUnitPrice = React.useCallback(
+    (id: string) => {
+      const d = (flavorPricing[id]?.priceDeltaCents ?? 0) / 100
+      return +(baseCost * sizeMultiplier + packagingDelta + d).toFixed(2)
+    },
+    [flavorPricing, baseCost, sizeMultiplier, packagingDelta],
+  )
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Variant pickers — variety-pack builder in MULTI mode, single swatch otherwise. */}
+    <div className="flex flex-col gap-3.5 rounded-2xl border-2 border-pink-500 bg-white p-[18px]">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pink-700">
+        Configure &amp; launch
+      </div>
+
+      {/* Flavor — cards with per-flavor price (single mode) / PackBuilder (multi). */}
       {isMultiFlavor ? (
         <PackBuilder
           pool={flavorPool}
@@ -157,22 +169,52 @@ export function ProductDetailConfigurator({
         />
       ) : (
         detail.flavors.length > 0 && (
-          <FlavorSwatch
-            options={detail.flavors}
-            value={flavorId}
-            onChange={setFlavorId}
-          />
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[12px] font-semibold text-ink-700">Flavor</div>
+            <div className="flex flex-wrap gap-2">
+              {detail.flavors.map((f) => {
+                const isActive = f.id === flavorId
+                const price = flavorUnitPrice(f.id)
+                const sale = flavorPricing[f.id]?.saleDeltaCents ?? null
+                // "was" only when a real sale delta (a reduction) exists.
+                const wasPrice =
+                  sale && sale < 0 ? +(price - sale / 100).toFixed(2) : null
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFlavorId(f.id)}
+                    aria-pressed={isActive}
+                    className={
+                      'min-w-[92px] rounded-[10px] border px-2.5 py-2 text-left transition-[border-color] cursor-pointer ' +
+                      (isActive
+                        ? 'border-2 border-ink-900'
+                        : 'border border-ink-200 hover:border-ink-400')
+                    }
+                  >
+                    <span className="block text-[13px] font-semibold text-ink-900">
+                      {f.name}
+                    </span>
+                    <span className="mt-0.5 block text-[12px] text-ink-600 tabular-nums">
+                      ${price.toFixed(2)}
+                      {wasPrice != null && (
+                        <span className="ml-1 text-[11px] text-ink-400 line-through">
+                          ${wasPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         )
       )}
 
+      {/* Size pills */}
       {sizeOptions.length > 1 && (
-        <div className="flex flex-col gap-2">
-          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700">
-            Size{' '}
-            <span className="text-ink-700 normal-case font-normal tracking-normal">
-              · {sizeKey}
-            </span>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="text-[12px] font-semibold text-ink-700">Size</div>
           <div className="flex flex-wrap gap-2">
             {sizeOptions.map((s) => {
               const isActive = s === sizeKey
@@ -183,10 +225,10 @@ export function ProductDetailConfigurator({
                   onClick={() => setSizeKey(s)}
                   aria-pressed={isActive}
                   className={
-                    'px-4 h-9 rounded-pill text-[13px] font-semibold border transition-[border-color,background-color,color] duration-base ease-out-quart cursor-pointer ' +
+                    'rounded-[9px] border px-3 py-1.5 text-[13px] transition-[border-color,color] cursor-pointer ' +
                     (isActive
-                      ? 'bg-ink-900 text-white border-ink-900'
-                      : 'bg-white text-ink-900 border-ink-300 hover:border-ink-500')
+                      ? 'border-ink-900 font-semibold text-ink-900'
+                      : 'border-ink-200 text-ink-700 hover:border-ink-400')
                   }
                 >
                   {s}
@@ -197,18 +239,28 @@ export function ProductDetailConfigurator({
         </div>
       )}
 
+      {/* Packaging — drives the hero image (when per-package image data exists). */}
       <PackagingPicker
         options={detail.packaging}
         value={packagingId}
-        onChange={setPackagingId}
+        onChange={(id) => {
+          setPackagingId(id)
+          onPackagingChange?.(id)
+        }}
       />
 
-      {/* Quantity + per-unit price */}
-      <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border border-ink-200 bg-white">
-        <div>
-          <label className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5 block">
-            Quantity
-          </label>
+      {/* Quantity */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[12px] font-semibold text-ink-700">Quantity</label>
+        <div className="flex w-fit items-center overflow-hidden rounded-[9px] border border-ink-200">
+          <button
+            type="button"
+            aria-label="Decrease quantity"
+            onClick={() => setQuantity((q) => Math.max(0, q - 50))}
+            className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
+          >
+            −
+          </button>
           <input
             type="number"
             min={template.minUnits}
@@ -218,67 +270,48 @@ export function ProductDetailConfigurator({
               const v = parseInt(e.target.value, 10)
               setQuantity(Number.isFinite(v) ? Math.max(0, v) : 0)
             }}
-            className="w-full h-10 px-3 rounded-md border border-ink-300 bg-white text-[15px] font-semibold text-ink-900 focus:outline-none focus:border-pink-500 focus:ring-[3px] focus:ring-pink-500/15 transition-[border-color,box-shadow] tabular-nums"
+            className="w-16 border-0 text-center text-[14px] font-semibold tabular-nums text-ink-900 focus:outline-none"
           />
-          <div className="text-[11px] text-ink-500 mt-1 tabular-nums">
-            min {template.minUnits} units · {matchedRow.band}
-          </div>
+          <button
+            type="button"
+            aria-label="Increase quantity"
+            onClick={() => setQuantity((q) => q + 50)}
+            className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
+          >
+            +
+          </button>
         </div>
-        <div>
-          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
-            Landed cost
-          </div>
-          <div className="text-ui-title text-ink-900 tabular-nums">
-            ${landedCost.toFixed(2)}
-            <span className="text-ink-500 text-[13px] font-medium ml-1.5">
-              / unit
-            </span>
-          </div>
-          <div className="text-[12px] text-ink-500 mt-1 tabular-nums">
-            ${totalOrderCost.toFixed(2)} total
-          </div>
+        <div className="text-[11px] text-ink-500 tabular-nums">
+          min {template.minUnits} units · {matchedRow.band}
         </div>
-        <div className="col-span-2 -mt-1">
-          <PricingTierModal
-            productName={template.title}
-            variantName={`${sizeKey} · ${
-              detail.packaging.find((p) => p.id === packagingId)?.name ?? ''
-            }`}
-            rows={rows}
-            onDemandRows={onDemandRows}
-            currentTier={currentTier}
-            currentQuantity={quantity}
-            isAuthenticated={isAuthenticated}
-            feePctByTier={feePctByTier}
-          />
+      </div>
+
+      {/* Price line + tier pricing */}
+      <div className="flex items-baseline justify-between border-t border-ink-100 pt-3">
+        <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
+          ${landedCost.toFixed(2)}
+          <span className="ml-1 text-[13px] font-medium text-ink-500">/ unit</span>
         </div>
+        <PricingTierModal
+          productName={template.title}
+          variantName={`${sizeKey} · ${
+            detail.packaging.find((p) => p.id === packagingId)?.name ?? ''
+          }`}
+          rows={rows}
+          onDemandRows={onDemandRows}
+          currentTier={currentTier}
+          currentQuantity={quantity}
+          isAuthenticated={isAuthenticated}
+          feePctByTier={feePctByTier}
+        />
+      </div>
+      <div className="text-[11px] text-ink-500 tabular-nums">
+        ${totalOrderCost.toFixed(2)} total at this quantity
       </div>
 
       <EarningsCalculator costPerUnit={landedCost} />
 
-      <ShippingInfoCard
-        serviceLabel={`${leadTimeDays}-day production`}
-        cost={0}
-        marketLabel="United States"
-        marketFlag="🇺🇸"
-        leadTimeLabel={`${leadTimeDays}–${leadTimeDays + 4} days door-to-door`}
-      />
-
-      {/* Slice C8.2 — decoration picker. Renders nothing when no partner
-       * offerings resolve for this template's container types. The chosen
-       * offering is carried into the launch CTA below. */}
-      <DecorationPicker
-        offerings={decorationOfferings}
-        selectedOfferingId={decoration?.partnerOfferingId ?? null}
-        onSelect={setDecoration}
-      />
-
-      {/* Primary CTAs — R5 wires Start Launching to a server action
-       * that materialises the Product row + redirects cross-app to
-       * /products/{id}/design/canvas. R4 opens an inline guest-gate
-       * modal when the visitor isn't signed in so the selection
-       * survives signup.
-       */}
+      {/* Primary CTA — decorationMethod left null (decoration moved to Studio). */}
       <LaunchCtaCluster
         templateSlug={template.slug}
         templateName={template.title}
@@ -287,9 +320,66 @@ export function ProductDetailConfigurator({
         packagingId={packagingId}
         quantity={quantity}
         isAuthenticated={isAuthenticated}
-        decorationMethod={decoration?.decorationMethod ?? null}
-        partnerOfferingId={decoration?.partnerOfferingId ?? null}
+        decorationMethod={null}
+        partnerOfferingId={null}
       />
+
+      {/* Secondary buttons — sample drawer + customize-recipe tab switch. */}
+      <div className="flex gap-2">
+        {onOpenSample && (
+          <button
+            type="button"
+            onClick={onOpenSample}
+            className="flex-1 rounded-pill border border-ink-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400"
+          >
+            Order a sample →
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            // Tell the below-hero tabs to switch to Recipe & nutrition + scroll.
+            window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))
+          }}
+          className="flex-1 rounded-pill border border-ink-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400"
+        >
+          Customize recipe →
+        </button>
+      </div>
+
+      {/* Subscribe & save (UI affordance — not yet wired to checkout). */}
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-ink-200 px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={subscribe}
+          onChange={(e) => setSubscribe(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          <span className="block text-[13px] font-semibold text-ink-900">
+            Subscribe &amp; save
+          </span>
+          <span className="mt-0.5 block text-[12px] text-ink-500">
+            Set up recurring production — pause or cancel anytime.
+          </span>
+        </span>
+      </label>
+
+      {/* Ship-to estimate (estimate only — no address entry). */}
+      <div className="flex items-center gap-1.5 text-[12.5px] text-ink-600">
+        <span aria-hidden="true">📍</span>
+        Ships to United States · est. {leadTimeDays}d
+      </div>
+
+      {/* Production & returns tooltip. */}
+      <div className="group relative inline-flex w-fit cursor-help items-center gap-1.5 text-[12px] text-ink-500">
+        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+        Production &amp; returns
+        <span className="pointer-events-none absolute bottom-[130%] left-0 z-10 hidden w-60 rounded-[10px] border border-ink-200 bg-white px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-700 shadow-md group-hover:block">
+          Made to order. Once production starts a run can&rsquo;t be cancelled;
+          defective units are remade or refunded. See full policy.
+        </span>
+      </div>
     </div>
   )
 }
