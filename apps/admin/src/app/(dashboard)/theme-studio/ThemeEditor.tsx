@@ -292,67 +292,123 @@ export function ThemeEditor({
 // color filling a control, "Aa" at the real type size, a scaled glyph for a
 // multiplier, a proportional box for a width/padding. Updates in real time.
 
-const PV_WRAP = 'flex h-9 w-12 shrink-0 items-center justify-center'
+const PV_WRAP = 'flex h-10 w-14 shrink-0 items-center justify-center'
+
+const TEXT_COLOR_TOKENS = new Set([
+  'ink-900-rgb', 'ink-600-rgb', 'ink-500-rgb', 'pink-700-rgb',
+  'input-text', 'input-placeholder', 'sidebar-fg', 'sidebar-active-fg',
+  'header-fg', 'footer-fg', 'chip-fg', 'chip-active-fg', 'brand-sublabel-color',
+])
+function isTextColorToken(nm: string): boolean {
+  return TEXT_COLOR_TOKENS.has(nm) || nm.endsWith('-text')
+}
+function isLightHex(hex: string): boolean {
+  if (!isHex(hex)) return false
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16)
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150
+}
 
 function ShapeGlyph({ size }: { size: number }) {
-  return <span style={{ fontSize: Math.max(10, Math.min(size, 26)), lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink-900)' }}>Aa</span>
+  return <span style={{ fontSize: Math.max(10, Math.min(size, 30)), lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink-900)' }}>Aa</span>
 }
-function ShapeButton({ r }: { r: number }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 20, background: 'var(--ink-900)', color: '#fff', borderRadius: r, fontSize: 11, lineHeight: 1 }}>Aa</span>
+function ShapeButton({ r, bg = 'var(--ink-900)', fg = '#fff', border, h = 22 }: { r: number; bg?: string; fg?: string; border?: string; h?: number }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 42, height: h, background: bg, color: fg, border: border ?? 'none', borderRadius: r, fontSize: 11, lineHeight: 1 }}>Aa</span>
 }
 function ShapeCard({ r }: { r: number }) {
   return (
-    <span style={{ display: 'block', width: 36, height: 27, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, padding: '4px 5px' }}>
-      <span style={{ display: 'block', width: '60%', height: 3, background: 'var(--ink-900)', borderRadius: 2, marginBottom: 3 }} />
-      <span style={{ display: 'block', width: '90%', height: 2.5, background: 'var(--ink-300)', borderRadius: 2, marginBottom: 2 }} />
+    <span style={{ display: 'block', width: 42, height: 31, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, padding: '5px 6px' }}>
+      <span style={{ display: 'block', width: '60%', height: 3.5, background: 'var(--ink-900)', borderRadius: 2, marginBottom: 3 }} />
+      <span style={{ display: 'block', width: '90%', height: 2.5, background: 'var(--ink-300)', borderRadius: 2, marginBottom: 2.5 }} />
       <span style={{ display: 'block', width: '75%', height: 2.5, background: 'var(--ink-300)', borderRadius: 2 }} />
     </span>
   )
 }
 function ShapeChip({ r }: { r: number }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 18, padding: '0 8px', background: 'var(--pink-50)', color: 'var(--pink-700)', border: '1px solid var(--pink-100)', borderRadius: r, fontSize: 10.5, lineHeight: 1, fontWeight: 600 }}>Tag</span>
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20, padding: '0 9px', background: 'var(--pink-50)', color: 'var(--pink-700)', border: '1px solid var(--pink-100)', borderRadius: r, fontSize: 11, lineHeight: 1, fontWeight: 600 }}>Tag</span>
 }
 function ShapeField({ r }: { r: number }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', width: 38, height: 18, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, paddingLeft: 4 }}>
-      <span style={{ display: 'block', width: 2, height: 9, background: 'var(--ink-400)' }} />
+    <span style={{ display: 'inline-flex', alignItems: 'center', width: 44, height: 20, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, paddingLeft: 5 }}>
+      <span style={{ display: 'block', width: 2, height: 10, background: 'var(--ink-400)' }} />
+    </span>
+  )
+}
+function ShapeRail({ px }: { px: number }) {
+  const w = Math.max(5, Math.min(px / 14, 22))
+  return (
+    <span style={{ display: 'inline-flex', width: 42, height: 30, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: 5, overflow: 'hidden' }}>
+      <span style={{ width: w, height: '100%', background: 'var(--ink-300)' }} />
+    </span>
+  )
+}
+function ShapePad({ px }: { px: number }) {
+  const pad = Math.max(2, Math.min(px / 5, 9))
+  return (
+    <span style={{ display: 'inline-flex', width: 40, height: 30, border: '1px solid var(--ink-300)', borderRadius: 5, padding: pad, boxSizing: 'border-box' }}>
+      <span style={{ flex: 1, background: 'var(--ink-200)', borderRadius: 2 }} />
+    </span>
+  )
+}
+function ShapeHeaderBar({ px }: { px: number }) {
+  const h = Math.max(8, Math.min(px * 1.3, 22))
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', width: 42, height: h, background: 'var(--ink-100)', border: '1px solid var(--ink-300)', borderRadius: 4, paddingLeft: 4 }}>
+      <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--ink-400)' }} />
+    </span>
+  )
+}
+function ShapeVGap({ px }: { px: number }) {
+  const gap = Math.max(2, Math.min(px / 11, 11))
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap }}>
+      <i style={{ display: 'block', width: 24, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
+      <i style={{ display: 'block', width: 24, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
     </span>
   )
 }
 
 function PreviewShape({ t, value }: { t: EditableThemeToken; value: string }) {
+  // ---- colors: text-role → colored letters · button-* → a real button · else swatch ----
   if (t.kind === 'rgb' || t.kind === 'color') {
     const c = t.kind === 'rgb' ? `rgb(${value})` : isHex(value) ? value : '#FFFFFF'
-    return <span className={PV_WRAP} aria-hidden><span style={{ width: 30, height: 18, background: c, border: '0.5px solid var(--ink-200)', borderRadius: 999 }} /></span>
+    const nm = t.name
+    if (nm.startsWith('button-')) {
+      if (nm.endsWith('-border')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={10} bg="#fff" fg="var(--ink-900)" border={`2px solid ${c}`} /></span>
+      if (nm.endsWith('-fg')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={10} bg="var(--ink-900)" fg={c} /></span>
+      return <span className={PV_WRAP} aria-hidden><ShapeButton r={10} bg={c} fg={isLightHex(c) ? 'var(--ink-900)' : '#fff'} /></span>
+    }
+    if (isTextColorToken(nm)) return <span className={PV_WRAP} aria-hidden><span style={{ color: c, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, lineHeight: 1 }}>Aa</span></span>
+    return <span className={PV_WRAP} aria-hidden><span style={{ width: 34, height: 22, background: c, border: '0.5px solid var(--ink-200)', borderRadius: 999 }} /></span>
   }
   if (t.kind === 'font') {
-    return <span className={PV_WRAP} aria-hidden><span style={{ fontFamily: value, fontSize: 16, lineHeight: 1, color: 'var(--ink-900)' }}>Ag</span></span>
+    return <span className={PV_WRAP} aria-hidden><span style={{ fontFamily: value, fontSize: 18, lineHeight: 1, color: 'var(--ink-900)' }}>Ag</span></span>
   }
   if (t.kind === 'scale') {
     const n = Number(value) || 1
-    if (t.name === 'radius-scale') return <span className={PV_WRAP} aria-hidden><ShapeButton r={Math.min(10 * n, 16)} /></span>
-    if (t.name === 'space-scale')
-      return (
-        <span className={PV_WRAP} aria-hidden>
-          <span style={{ display: 'flex', flexDirection: 'column', gap: Math.min(2.5 * n, 7) }}>
-            <i style={{ display: 'block', width: 18, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
-            <i style={{ display: 'block', width: 18, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
-          </span>
-        </span>
-      )
-    return <span className={PV_WRAP} aria-hidden><ShapeGlyph size={13 * n} /></span>
+    if (t.name === 'radius-scale') return <span className={PV_WRAP} aria-hidden><ShapeButton r={Math.min(11 * n, 18)} /></span>
+    if (t.name === 'space-scale') return <span className={PV_WRAP} aria-hidden><ShapeVGap px={48 * n} /></span>
+    return <span className={PV_WRAP} aria-hidden><ShapeGlyph size={14 * n} /></span>
   }
-  // length
+  // ---- length ----
   const px = parseFloat(value) || 0
   const nm = t.name
   const pillR = (cap: number) => (t.pillable && px >= 100 ? cap : Math.min(px, cap))
-  if (nm === 'card-radius') return <span className={PV_WRAP} aria-hidden><ShapeCard r={Math.min(px, 13)} /></span>
-  if (nm === 'chip-radius' || nm === 'badge-radius') return <span className={PV_WRAP} aria-hidden><ShapeChip r={pillR(9)} /></span>
-  if (nm === 'input-radius') return <span className={PV_WRAP} aria-hidden><ShapeField r={Math.min(px, 9)} /></span>
-  if (nm.includes('radius')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={pillR(10)} /></span>
+  // radii
+  if (nm === 'card-radius') return <span className={PV_WRAP} aria-hidden><ShapeCard r={Math.min(px, 15)} /></span>
+  if (nm === 'chip-radius' || nm === 'badge-radius') return <span className={PV_WRAP} aria-hidden><ShapeChip r={pillR(10)} /></span>
+  if (nm === 'input-radius') return <span className={PV_WRAP} aria-hidden><ShapeField r={Math.min(px, 10)} /></span>
+  if (nm.includes('radius')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={pillR(11)} /></span>
+  // type sizes
   if (nm.startsWith('fs-') || nm.endsWith('-fs')) return <span className={PV_WRAP} aria-hidden><ShapeGlyph size={px} /></span>
-  const dim = Math.max(5, Math.min(px / 9, 24))
-  return <span className={PV_WRAP} aria-hidden><span style={{ width: dim, height: Math.min(dim, 22), background: 'var(--ink-400)', borderRadius: 3 }} /></span>
+  // dimensions → shape that matches what the px controls
+  if (nm === 'sidebar-width' || nm.endsWith('rail-width') || nm.endsWith('inspector-width')) return <span className={PV_WRAP} aria-hidden><ShapeRail px={px} /></span>
+  if (nm.startsWith('button-h-')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={8} h={Math.max(13, Math.min(px / 2.4, 26))} /></span>
+  if (nm === 'card-padding' || nm === 'section-gap' || nm.startsWith('button-px-')) return <span className={PV_WRAP} aria-hidden><ShapePad px={px} /></span>
+  if (nm === 'header-py') return <span className={PV_WRAP} aria-hidden><ShapeHeaderBar px={px} /></span>
+  if (nm.endsWith('-py')) return <span className={PV_WRAP} aria-hidden><ShapeVGap px={px} /></span>
+  // fallback proportional box
+  const dim = Math.max(6, Math.min(px / 8, 26))
+  return <span className={PV_WRAP} aria-hidden><span style={{ width: dim, height: Math.min(dim, 24), background: 'var(--ink-400)', borderRadius: 3 }} /></span>
 }
 
 function Control({
