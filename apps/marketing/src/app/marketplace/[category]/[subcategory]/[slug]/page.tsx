@@ -22,7 +22,6 @@ import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getCreatorTier } from '@ilaunchify/auth'
-import { getProductTaxonomyChips } from '@/lib/product-taxonomy-db'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
@@ -116,11 +115,6 @@ export default async function ProductDetailPage({
         }
       : {}),
   }
-
-  // Slice 2B — niche + lifestyle-tag chips below the title. Joins through
-  // ProductTemplateNiche + ProductTemplateLifestyleTag. Empty arrays when
-  // the template isn't in the DB yet → chip strips just don't render.
-  const taxonomyChips = await getProductTaxonomyChips(template.slug)
 
   // PDP redesign — decoration moved to the Design Studio. The marketplace PDP
   // no longer surfaces a decoration picker (getDecorationOfferings dropped here).
@@ -322,7 +316,6 @@ export default async function ProductDetailPage({
               <IdentityColumn
                 template={template}
                 detail={detail}
-                taxonomyChips={taxonomyChips}
                 certs={certs}
                 accordionRows={accordionRows}
               />
@@ -401,13 +394,11 @@ function Breadcrumb({
 function IdentityColumn({
   template,
   detail,
-  taxonomyChips,
   certs,
   accordionRows,
 }: {
   template: SampleTemplate
   detail: ReturnType<typeof findTemplateDetail>
-  taxonomyChips: Awaited<ReturnType<typeof getProductTaxonomyChips>>
   certs: Array<{
     name: string
     qualifier?: string
@@ -422,66 +413,13 @@ function IdentityColumn({
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
         {template.niche}
       </div>
-      <h1 className="mb-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
+      <h1 className="mb-3 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
         {template.title}
       </h1>
-      <div className="mb-3 flex items-center gap-2 text-[13px] text-ink-500">
-        <RatingStars avg={template.ratingAvg} count={template.ratingCount} />
-        <span className="text-ink-300">·</span>
-        <span>{template.leadTimeDays}-day lead</span>
-      </div>
 
-      {/* Cert trust strip — moved here from the gallery. "Verified & certified"
-          eyebrow + a horizontal row of the earned/tag-derived cert badges. */}
-      {certs.length > 0 && (
-        <div className="mb-3.5 border-y border-ink-100 py-2.5">
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-success-700">
-            <span aria-hidden="true">✓</span> Verified &amp; certified
-          </div>
-          <CertStrip items={certs} heading="" compact />
-        </div>
-      )}
-
-      {/* Taxonomy chips — niche + lifestyle tags. */}
-      {(taxonomyChips.niches.length > 0 || taxonomyChips.lifestyleTags.length > 0) && (
-        <div className="mb-3.5 flex flex-col gap-2">
-          {taxonomyChips.niches.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {taxonomyChips.niches.map((n) => (
-                <Link
-                  key={n.slug}
-                  href={`/launch/${n.slug}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
-                >
-                  {n.iconEmoji && <span aria-hidden="true">{n.iconEmoji}</span>}
-                  {n.name}
-                </Link>
-              ))}
-            </div>
-          )}
-          {taxonomyChips.lifestyleTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {taxonomyChips.lifestyleTags.map((t) => (
-                <Link
-                  key={t.slug}
-                  href={`/marketplace?tag=${encodeURIComponent(t.slug)}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-[var(--card-border)] bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-[var(--bg-surface)] hover:text-pink-700 transition-colors"
-                >
-                  {t.iconEmoji && <span aria-hidden="true">{t.iconEmoji}</span>}
-                  {t.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Short description. */}
-      <p className="mb-4 max-w-[54ch] text-[14px] leading-relaxed text-ink-700">
-        {detail.about}
-      </p>
-
-      {/* Key-facts strip — Format · MOQ · Lead · From. Reuses the spec-grid data. */}
+      {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead · From.
+          Reuses the spec-grid data (this is the single source of these facts —
+          the old rating/meta line that duplicated them is removed). */}
       <ProductSpecGrid
         items={[
           { label: 'Format', value: detail.format },
@@ -489,8 +427,21 @@ function IdentityColumn({
           { label: 'Lead', value: `${template.leadTimeDays}d` },
           { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}` },
         ]}
-        className="overflow-hidden rounded-[var(--card-radius)]"
+        className="mb-3.5 overflow-hidden rounded-[var(--card-radius)]"
       />
+
+      {/* Cert badges — below the facts. Just the badges (the "Verified &
+          certified" eyebrow that sat above them is removed). */}
+      {certs.length > 0 && (
+        <div className="mb-3.5 border-y border-ink-100 py-2.5">
+          <CertStrip items={certs} heading="" compact />
+        </div>
+      )}
+
+      {/* Short description. */}
+      <p className="mb-4 max-w-[54ch] text-[14px] leading-relaxed text-ink-700">
+        {detail.about}
+      </p>
 
       {/* Accordion — additional info from existing detail fields. */}
       <ProductAccordion rows={accordionRows} />
@@ -860,26 +811,6 @@ function shelfLifeFromProperties(
     return `${shelf.label}. Store cool and dry; shelf-stable, no refrigeration required.`
   }
   return 'Shelf-stable. Store cool and dry; no refrigeration required.'
-}
-
-/** Marketplace rating display — real stars when rated, "New" otherwise (never a
- *  fabricated score). avg is 0–5; count is the number of ratings. */
-function RatingStars({ avg, count }: { avg?: number | null; count?: number }) {
-  if (!count || avg == null) {
-    return <span className="font-semibold text-ink-600">New</span>
-  }
-  const filled = Math.round(avg)
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-warning-500" aria-hidden="true">
-        {'★'.repeat(filled)}
-        <span className="text-ink-300">{'★'.repeat(5 - filled)}</span>
-      </span>
-      <span className="tabular-nums">
-        {avg.toFixed(1)} · {count.toLocaleString()} {count === 1 ? 'rating' : 'ratings'}
-      </span>
-    </span>
-  )
 }
 
 function certIconForLabel(label: string): string {

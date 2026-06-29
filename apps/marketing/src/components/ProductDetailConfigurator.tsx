@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Info, Sparkles } from 'lucide-react'
 import { getTierByRunCount } from '@ilaunchify/plans'
 import {
+  Button,
   PackagingPicker,
   PackBuilder,
   EarningsCalculator,
@@ -170,7 +171,11 @@ export function ProductDetailConfigurator({
   const previewUnitCost = subscribe
     ? +((landedCost * (10_000 - subDiscountBp)) / 10_000).toFixed(2)
     : landedCost
+  // Grand total stays in state for the launch payload, but is NOT rendered —
+  // the amount the customer pays is hidden on the PDP (per-unit price + earnings
+  // are the only figures shown). // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
+  void totalOrderCost
 
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
@@ -196,24 +201,31 @@ export function ProductDetailConfigurator({
       </div>
 
       {/* 1) Customize-recipe invitation — sits ABOVE flavors because recipe
-          changes flow into every flavor. Switches to the Recipe & nutrition tab
-          via the existing ilf:goto-recipe event (the old bottom "Customize
-          recipe →" button is removed). */}
-      <button
-        type="button"
-        onClick={() => window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))}
-        className="flex items-start gap-2.5 rounded-[var(--card-radius)] border border-pink-200 bg-pink-50 px-3 py-2.5 text-left transition-colors hover:border-pink-300 hover:bg-pink-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
-      >
-        <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-700" aria-hidden="true" />
-        <span className="min-w-0">
-          <span className="block text-[13px] font-semibold text-pink-800">
-            Before you pick flavors, customize the recipe →
+          changes flow into every flavor. The action is a solid PINK button
+          (Button variant="pink"); the copy/subline stays in the surrounding
+          card. Switches to the Recipe & nutrition tab via the existing
+          ilf:goto-recipe event. */}
+      <div className="flex flex-col gap-2.5 rounded-[var(--card-radius)] border border-pink-200 bg-pink-50 px-3 py-3">
+        <div className="flex items-start gap-2.5">
+          <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-700" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className="block text-[13px] font-semibold text-pink-800">
+              Before you pick flavors, customize the recipe
+            </span>
+            <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-600">
+              Swap ingredients or add actives — changes flow into every flavor.
+            </span>
           </span>
-          <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-600">
-            Swap ingredients or add actives — changes flow into every flavor.
-          </span>
-        </span>
-      </button>
+        </div>
+        <Button
+          variant="pink"
+          size="sm"
+          className="w-full"
+          onClick={() => window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))}
+        >
+          Customize recipe →
+        </Button>
+      </div>
 
       {/* 2) Flavor — cards with per-flavor price (single mode) / PackBuilder (multi). */}
       {isMultiFlavor ? (
@@ -371,39 +383,35 @@ export function ProductDetailConfigurator({
           feePctByTier={feePctByTier}
         />
       </div>
-      <div className="text-[11px] text-ink-500 tabular-nums">
-        ${totalOrderCost.toFixed(2)} total at this quantity
-        {subscribe && ' · per run'}
-      </div>
 
       {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}
       <EarningsCalculator costPerUnit={previewUnitCost} tone="neutral" />
 
-      {/* 6) Primary actions — Launch + Order a sample side by side. */}
-      <div className="flex flex-wrap items-stretch gap-2">
-        {/* LaunchCtaCluster renders its own primary Button + error/notice. */}
-        <div className="flex-1 min-w-[160px]">
-          <LaunchCtaCluster
-            templateSlug={template.slug}
-            templateName={template.title}
-            flavorId={flavorId}
-            sizeKey={sizeKey}
-            packagingId={packagingId}
-            quantity={quantity}
-            isAuthenticated={isAuthenticated}
-            decorationMethod={null}
-            partnerOfferingId={null}
-          />
-        </div>
+      {/* 6) Primary actions — stacked vertically, both full-width: "Order a
+          sample" on TOP (opens the SampleDrawer) and Launch BELOW
+          (LaunchCtaCluster). */}
+      <div className="flex flex-col gap-2">
         {onOpenSample && (
           <button
             type="button"
             onClick={onOpenSample}
-            className="flex-1 min-w-[140px] self-start rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
+            className="w-full rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
           >
             Order a sample →
           </button>
         )}
+        {/* LaunchCtaCluster renders its own primary Button + error/notice. */}
+        <LaunchCtaCluster
+          templateSlug={template.slug}
+          templateName={template.title}
+          flavorId={flavorId}
+          sizeKey={sizeKey}
+          packagingId={packagingId}
+          quantity={quantity}
+          isAuthenticated={isAuthenticated}
+          decorationMethod={null}
+          partnerOfferingId={null}
+        />
       </div>
 
       {/* 7) Subscribe & save — One-time vs Subscribe radio rows mirroring the

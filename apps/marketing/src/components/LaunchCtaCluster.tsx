@@ -111,6 +111,7 @@ export function LaunchCtaCluster({
         <Button
           variant="primary"
           size="md"
+          className="w-full"
           onClick={onLaunchClick}
           disabled={isPending}
         >

@@ -8,6 +8,7 @@
 // so the configure box can place the opener wherever it likes.
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { SampleOrderCard } from './SampleOrderCard'
 import type { SampleOption } from '@/lib/sample-quote'
@@ -33,6 +34,10 @@ export function SampleDrawer({
   trigger,
 }: SampleDrawerProps) {
   const [open, setOpen] = React.useState(false)
+  // Portal to <body> so the drawer escapes the sticky configure box's stacking
+  // context (otherwise the sticky marketplace header + mega-menu paint over it).
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
 
   // Lock body scroll while the drawer is open.
   React.useEffect(() => {
@@ -58,26 +63,29 @@ export function SampleDrawer({
     <>
       {trigger(() => setOpen(true))}
 
-      {/* Scrim */}
-      <div
-        onClick={() => setOpen(false)}
-        aria-hidden={!open}
-        className={
-          'fixed inset-0 z-40 bg-ink-900/45 transition-opacity duration-base ' +
-          (open ? 'opacity-100' : 'pointer-events-none opacity-0')
-        }
-      />
+      {mounted &&
+        createPortal(
+          <>
+            {/* Scrim — above the sticky header (z-[100] mega-menu) */}
+            <div
+              onClick={() => setOpen(false)}
+              aria-hidden={!open}
+              className={
+                'fixed inset-0 z-[120] bg-ink-900/45 transition-opacity duration-base ' +
+                (open ? 'opacity-100' : 'pointer-events-none opacity-0')
+              }
+            />
 
-      {/* Panel */}
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-label="Order a sample"
-        className={
-          'fixed inset-y-0 right-0 z-50 w-[400px] max-w-[92vw] overflow-y-auto bg-[var(--bg-surface)] p-5 shadow-xl transition-transform duration-base ease-out-quart ' +
-          (open ? 'translate-x-0' : 'translate-x-full')
-        }
-      >
+            {/* Panel */}
+            <aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Order a sample"
+              className={
+                'fixed inset-y-0 right-0 z-[130] w-[400px] max-w-[92vw] overflow-y-auto bg-[var(--bg-surface)] p-5 shadow-xl transition-transform duration-base ease-out-quart ' +
+                (open ? 'translate-x-0' : 'translate-x-full')
+              }
+            >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-[18px] font-bold text-ink-900">
             Order a sample
@@ -100,7 +108,10 @@ export function SampleDrawer({
           isAuthenticated={isAuthenticated}
           ownedProductId={ownedProductId}
         />
-      </aside>
+            </aside>
+          </>,
+          document.body,
+        )}
     </>
   )
 }
