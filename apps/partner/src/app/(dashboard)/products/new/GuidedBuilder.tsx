@@ -765,11 +765,9 @@ const CSS = `
 /* Builder-active chrome overrides (global, mount-scoped via body.gb-active). The
    dashboard sidebar hides and the shell padding/width are neutralized so the
    builder's own rail acts as the side menu. Reverts when the builder unmounts. */
-/* Builder chrome: keep the partner sidebar but move it to the RIGHT, folded to
-   icons (the builder dispatches the collapse). Flip its border + fold toggle to
-   the inner edge. Main goes full-bleed; the builder's own max-width centers it. */
-body.gb-active [data-partner-sidebar]{order:2;border-right:0;border-left:1px solid var(--ink-200)}
-body.gb-active [data-partner-sidebar] > button{right:auto!important;left:-12px!important}
+/* Builder chrome: keep the partner sidebar on the LEFT but folded to icons (the
+   builder dispatches the collapse on enter, restores on exit). Main goes
+   full-bleed; the builder's own max-width centers it. */
 body.gb-active [data-partner-shell-main]{padding:0!important}
 body.gb-active [data-partner-shell-content]{max-width:none!important}
 `
