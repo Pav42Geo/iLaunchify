@@ -204,15 +204,15 @@ export function VariantsPacksStep({
 
       {/* Type-specific config for the chosen type */}
       {kind && (
-        <div className="card">
-          {kind === 'single' && <SinglePack draftId={draftId} packing={initial?.packing ?? null} />}
+        <>
+          {kind === 'single' && <div className="card" style={{ marginBottom: 16 }}><SinglePack draftId={draftId} packing={initial?.packing ?? null} /></div>}
           {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} packing={initial?.packing ?? null} />}
-          {kind === 'pack' && <MultiPack draftId={draftId} packing={initial?.packing ?? null} />}
+          {kind === 'pack' && <div className="card" style={{ marginBottom: 16 }}><MultiPack draftId={draftId} packing={initial?.packing ?? null} /></div>}
 
-          {/* Conditional add-ons (stack under the base config) */}
-          {selected?.isSubscription && <SubscriptionConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} />}
-          {selected?.isCustomizable && <PickNConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} />}
-        </div>
+          {/* Conditional add-ons — each its own card */}
+          {selected?.isSubscription && <div className="card" style={{ marginBottom: 16 }}><SubscriptionConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} /></div>}
+          {selected?.isCustomizable && <div className="card" style={{ marginBottom: 16 }}><PickNConfig draftId={draftId} packing={initial?.packing ?? null} flavorCount={flavorCount} /></div>}
+        </>
       )}
 
       {/* Configurable axes beyond flavor (sweetener / strength / caffeine / …) */}
@@ -723,6 +723,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   }, [packCapacity, minPerFlavor, evenOnly, draftId])
   return (
     <>
+      <div className="card" style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavors</div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
@@ -732,6 +733,32 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           <button className="rb-btn-add" onClick={() => onFlavors([...list, { name: '', ingId: 'cane', soi: '' }])}>+ Add flavor</button>
         </div>
       </div>
+
+      <table style={{ marginTop: 14 }}>
+        <thead><tr><th>#</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
+        <tbody>
+          {list.map((f, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td><input className="input" value={f.name} placeholder={`Flavor ${i + 1}`} onChange={(e) => set(i, { name: e.target.value })} /></td>
+              <td className="muted">{baseSku ? `${baseSku}-F${i + 1}` : `F${i + 1}`}</td>
+              <td><input className="input" value={f.soi} placeholder="e.g. Sparkling yuzu soda" onChange={(e) => set(i, { soi: e.target.value })} /></td>
+              {perFlavorCap && <><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 80 }} /></td><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 90 }} /></td></>}
+              <td>
+                <select className="sel">
+                  {facilities.length === 0 && <option>Default</option>}
+                  {facilities.map((fa) => <option key={fa.id}>{fa.name}</option>)}
+                </select>
+              </td>
+              <td>{list.length > 1 && <button className="del" onClick={() => onFlavors(list.filter((_, j) => j !== i))}>🗑</button>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="hint" style={{ marginTop: 8 }}>
+        List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator picks up to {effCap} per pack.
+        {perFlavorCap && ' Blank MOQ/capacity inherits the shared production values above.'}
+      </p>
 
       {/* Manufacturer caps how many distinct flavors a Creator can mix per pack */}
       <div className="row" style={{ gap: 16, marginTop: 12, alignItems: 'flex-end' }}>
@@ -755,10 +782,10 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
             : `A Creator can mix up to ${effCap} of your ${pool} flavors in one pack.`}
         </span>
       </div>
+      </div>
 
-      {/* Pack composition — capacity + min run + even-fills rule → the valid
-          flavor×pieces splits a Creator may pick. */}
-      <div style={{ marginTop: 14, padding: 12, border: '1px solid var(--ink-200)', borderRadius: 10, background: '#fff' }}>
+      {/* Pack composition — its own card, under the Flavors card. */}
+      <div className="card">
         <div className="section-title" style={{ marginBottom: 10 }}><span className="ic"><Package size={16} strokeWidth={2} /></span> Pack composition</div>
         <div className="row" style={{ gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <Field label="Pack capacity" hint="units per box">
@@ -800,31 +827,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           )
         )}
       </div>
-      <table style={{ marginTop: 14 }}>
-        <thead><tr><th>#</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
-        <tbody>
-          {list.map((f, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td><input className="input" value={f.name} placeholder={`Flavor ${i + 1}`} onChange={(e) => set(i, { name: e.target.value })} /></td>
-              <td className="muted">{baseSku ? `${baseSku}-F${i + 1}` : `F${i + 1}`}</td>
-              <td><input className="input" value={f.soi} placeholder="e.g. Sparkling yuzu soda" onChange={(e) => set(i, { soi: e.target.value })} /></td>
-              {perFlavorCap && <><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 80 }} /></td><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 90 }} /></td></>}
-              <td>
-                <select className="sel">
-                  {facilities.length === 0 && <option>Default</option>}
-                  {facilities.map((fa) => <option key={fa.id}>{fa.name}</option>)}
-                </select>
-              </td>
-              <td>{list.length > 1 && <button className="del" onClick={() => onFlavors(list.filter((_, j) => j !== i))}>🗑</button>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="hint" style={{ marginTop: 8 }}>
-        List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator picks up to {effCap} per pack.
-        {perFlavorCap && ' Blank MOQ/capacity inherits the shared production values above.'}
-      </p>
+
     </>
   )
 }
