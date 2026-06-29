@@ -41,7 +41,7 @@ export function SurfacesPanel({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-ink-900">Surfaces</h2>
-          <p className="mt-0.5 text-xs text-ink-500">
+          <p className="mt-0.5 text-ui-caption text-ink-500">
             Each printable face of the packaging. E.g., a jar might have Front, Back, and Lid.
           </p>
         </div>
@@ -148,11 +148,11 @@ function AddSurfaceForm({
     <div className="rounded-md border border-ink-200 bg-ink-50 p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-700">Name</Label>
+          <Label className="text-ui-label text-ink-700">Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} disabled={isPending} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-700">Area (sq in)</Label>
+          <Label className="text-ui-label text-ink-700">Area (sq in)</Label>
           <Input
             type="number"
             min={0}
@@ -163,7 +163,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-700">Bleed (mm)</Label>
+          <Label className="text-ui-label text-ink-700">Bleed (mm)</Label>
           <Input
             type="number"
             min={0}
@@ -174,7 +174,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-700">DPI</Label>
+          <Label className="text-ui-label text-ink-700">DPI</Label>
           <Input
             type="number"
             min={0}
@@ -184,7 +184,7 @@ function AddSurfaceForm({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs uppercase tracking-wider text-ink-700">Color mode</Label>
+          <Label className="text-ui-label text-ink-700">Color mode</Label>
           <select
             value={colorMode}
             onChange={(e) => setColorMode(e.target.value)}
@@ -262,7 +262,7 @@ function SurfaceRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-medium text-ink-900">{surface.name}</div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-500">
+          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-ui-caption text-ink-500">
             {surface.printableAreaSqIn != null && <span>{surface.printableAreaSqIn} sq in</span>}
             <span>{surface.bleedMm} mm bleed</span>
             {surface.printDpi != null && <span>{surface.printDpi} dpi</span>}

@@ -59,7 +59,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-ink-900">Stripe Connect for payouts</h3>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-ui-body text-ink-500">
             We use Stripe Connect Express. Stripe owns KYB collection and bank verification —
             your bank details never touch our servers.
           </p>
@@ -84,7 +84,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
           </div>
           <ConnectButton accountStatus={status} />
           {isPending && (
-            <p className="text-sm text-warning-700">
+            <p className="text-ui-body text-warning-700">
               Stripe is still verifying your account. Refresh in a few minutes.
             </p>
           )}
@@ -172,7 +172,7 @@ function ContractCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-ink-900">{state.contract.name}</h3>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-ui-body text-ink-500">
             Version <code className="rounded bg-ink-100 px-1 text-xs">{state.contract.version}</code> —{' '}
             {state.contract.description}
           </p>
@@ -194,7 +194,7 @@ function ContractCard({
             ✓ Signed by <strong>{state.signerName || 'partner'}</strong> on{' '}
             {state.signedAt?.toLocaleDateString()}
           </div>
-          <div className="mt-1 text-xs text-success-700">
+          <div className="mt-1 text-ui-caption text-success-700">
             To re-sign with a different signer, contact support.
           </div>
         </div>
@@ -235,7 +235,7 @@ function ContractCard({
                 className="mt-1"
                 disabled={isPending}
               />
-              <p className="mt-1 text-xs text-ink-500">
+              <p className="mt-1 text-ui-caption text-ink-500">
                 Acts as your digital signature — recorded in our audit log.
               </p>
             </div>
@@ -248,7 +248,7 @@ function ContractCard({
                 disabled={isPending}
                 className="mt-1"
               />
-              <span className="text-sm text-ink-700">
+              <span className="text-ui-body text-ink-700">
                 I have authority to bind my company and I accept the terms of the{' '}
                 <strong>{state.contract.name}</strong> ({state.contract.version}).
               </span>

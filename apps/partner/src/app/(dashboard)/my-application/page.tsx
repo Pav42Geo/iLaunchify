@@ -223,7 +223,7 @@ export default async function MyApplicationPage() {
                 <CardContent className="space-y-3">
                   {section?.adminNotes && (
                     <div className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm">
-                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-warning-700">
+                      <div className="mb-1 text-ui-label text-warning-700">
                         Admin notes
                       </div>
                       <p className="whitespace-pre-wrap text-warning-900">{section.adminNotes}</p>
@@ -249,7 +249,7 @@ export default async function MyApplicationPage() {
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="grid grid-cols-[140px,1fr] items-baseline gap-2">
-      <span className="text-xs uppercase text-ink-500">{label}</span>
+      <span className="text-ui-label text-ink-500">{label}</span>
       <span>{value || '—'}</span>
     </div>
   )

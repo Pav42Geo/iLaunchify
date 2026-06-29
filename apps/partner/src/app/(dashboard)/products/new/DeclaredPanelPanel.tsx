@@ -368,7 +368,7 @@ export function DeclaredPanelPanel({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs uppercase tracking-wider text-ink-700">{label}</Label>
+      <Label className="text-ui-label text-ink-700">{label}</Label>
       {children}
     </div>
   )

@@ -213,7 +213,7 @@ export function DielineForm({
             </select>
           )}
           {mode === 'create' && packagingTypeId && decorationOptions.length === 0 && (
-            <p className="text-xs text-warning-700">
+            <p className="text-ui-caption text-warning-700">
               No decoration methods are configured for this container yet.
             </p>
           )}
@@ -236,7 +236,7 @@ export function DielineForm({
             className="block w-full text-sm text-ink-600 file:mr-3 file:rounded-md file:border-0 file:bg-ink-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-ink-700"
           />
         </div>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           AI, PDF, SVG, or DXF · up to 20 MB.{' '}
           {mode === 'edit' && initial?.originalFilename
             ? `Current: ${initial.originalFilename}`
@@ -249,7 +249,7 @@ export function DielineForm({
         <Label className="text-sm font-medium text-ink-900">Dimensions (mm)</Label>
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="space-y-1">
-            <span className="text-xs text-ink-500">Width</span>
+            <span className="text-ui-caption text-ink-500">Width</span>
             <Input
               type="number"
               min={0}
@@ -261,7 +261,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-ink-500">Height</span>
+            <span className="text-ui-caption text-ink-500">Height</span>
             <Input
               type="number"
               min={0}
@@ -273,7 +273,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-ink-500">Depth (optional)</span>
+            <span className="text-ui-caption text-ink-500">Depth (optional)</span>
             <Input
               type="number"
               min={0}
@@ -285,7 +285,7 @@ export function DielineForm({
             />
           </div>
           <div className="space-y-1">
-            <span className="text-xs text-ink-500">Bleed</span>
+            <span className="text-ui-caption text-ink-500">Bleed</span>
             <Input
               type="number"
               min={0}
@@ -296,7 +296,7 @@ export function DielineForm({
             />
           </div>
         </div>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           Width and height are required before you can confirm the spec. Bleed defaults to 3 mm.
         </p>
       </div>
@@ -313,7 +313,7 @@ export function DielineForm({
           placeholder="e.g. Front panel"
           disabled={isPending}
         />
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           Trim / safe-area / fold geometry ship in a later phase.
         </p>
       </div>

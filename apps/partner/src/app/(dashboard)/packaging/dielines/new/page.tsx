@@ -21,8 +21,8 @@ export default async function NewDielinePage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dielines
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Add dieline</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Add dieline</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Pick a container and decoration method, upload the source artwork, and enter the cut
           dimensions.
         </p>

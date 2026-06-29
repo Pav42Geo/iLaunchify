@@ -303,7 +303,7 @@ export default async function ProviderDashboardHome() {
               <span className="text-[11px] text-ink-500">Last 12 weeks</span>
             </div>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="font-display text-2xl font-bold tabular-nums text-ink-900">
+              <span className="text-ui-title tabular-nums text-ink-900">
                 ${(earned30 / 100).toLocaleString()}
               </span>
               {earnDeltaPct != null && (

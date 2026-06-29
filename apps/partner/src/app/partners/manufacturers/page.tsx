@@ -32,7 +32,7 @@ export default function ManufacturersLanding() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-xs text-ink-500">
+      <p className="mt-6 text-center text-ui-caption text-ink-500">
         Curated onboarding. We review every application before invitation.
       </p>
     </main>

@@ -120,13 +120,13 @@ export function OnboardingAccordion({
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Welcome, {companyName}</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Welcome, {companyName}</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Complete these sections so we can verify your account. You can save your progress
           and return any time.
         </p>
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-ink-500">
+          <div className="flex items-center justify-between text-ui-caption text-ink-500">
             <span>Progress</span>
             <span>{progressPct}%</span>
           </div>
@@ -221,7 +221,7 @@ export function OnboardingAccordion({
         )}
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             Your progress saves automatically. You can leave and come back any time.
           </p>
           <Button

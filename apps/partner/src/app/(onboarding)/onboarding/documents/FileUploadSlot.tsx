@@ -81,7 +81,7 @@ export function FileUploadSlot({
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-ink-900">{label}</h3>
+            <h3 className="text-ui-value text-ink-900">{label}</h3>
             {required && (
               <span className="rounded bg-danger-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-danger-700">
                 Required
@@ -89,10 +89,10 @@ export function FileUploadSlot({
             )}
           </div>
           {description && (
-            <p className="mt-0.5 text-xs text-ink-500">{description}</p>
+            <p className="mt-0.5 text-ui-caption text-ink-500">{description}</p>
           )}
         </div>
-        <span className="shrink-0 text-xs text-ink-400">
+        <span className="shrink-0 text-ui-caption text-ink-400">
           {existingFiles.length} file{existingFiles.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -137,7 +137,7 @@ export function FileUploadSlot({
             <span className="text-sm font-medium text-ink-700">
               Drop files or click to upload
             </span>
-            <span className="text-xs text-ink-500">PDF, PNG, JPEG, WebP · up to 20 MB</span>
+            <span className="text-ui-caption text-ink-500">PDF, PNG, JPEG, WebP · up to 20 MB</span>
           </button>
         )}
       </div>
@@ -155,7 +155,7 @@ export function FileUploadSlot({
                   <div className="truncate font-medium text-ink-900">
                     {file.originalFilename}
                   </div>
-                  <div className="text-xs text-ink-500">
+                  <div className="text-ui-caption text-ink-500">
                     {formatBytes(file.sizeBytes)} ·{' '}
                     {new Date(file.uploadedAt).toLocaleDateString()}
                   </div>

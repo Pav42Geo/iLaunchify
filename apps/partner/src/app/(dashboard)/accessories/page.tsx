@@ -108,7 +108,7 @@ export default async function AccessoriesListPage() {
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
             <Gift className="h-5 w-5 text-ink-400" />
           </span>
-          <p className="text-sm text-ink-500">
+          <p className="text-ui-body text-ink-500">
             No accessories yet. List engraved spoons, ribbons, recipe cards and more for creators to bundle.
           </p>
           <Button asChild variant="outline">

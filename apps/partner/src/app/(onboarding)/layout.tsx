@@ -27,8 +27,8 @@ export default async function OnboardingLayout({ children }: { children: React.R
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Welcome, {partner.companyName}</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Welcome, {partner.companyName}</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Complete your partner profile. We&apos;ll review and activate within 1–2 business days.
         </p>
       </header>

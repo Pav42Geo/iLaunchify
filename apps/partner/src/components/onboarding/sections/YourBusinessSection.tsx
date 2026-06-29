@@ -143,14 +143,14 @@ export function YourBusinessSection({
                 />
                 <div className="min-w-0">
                   <div className="font-medium text-ink-900">{m.name}</div>
-                  {m.region && <div className="text-xs text-ink-500">{m.region}</div>}
+                  {m.region && <div className="text-ui-caption text-ink-500">{m.region}</div>}
                 </div>
               </label>
             )
           })}
         </div>
         {markets.length === 0 && (
-          <p className="text-sm text-ink-500">
+          <p className="text-ui-body text-ink-500">
             No markets are currently active. Contact support if you think this is wrong.
           </p>
         )}
@@ -200,7 +200,7 @@ export function YourBusinessSection({
                 />
                 <div>
                   <div className="font-medium text-ink-900">{opt.label}</div>
-                  <div className="text-sm text-ink-500">{opt.description}</div>
+                  <div className="text-ui-body text-ink-500">{opt.description}</div>
                 </div>
               </label>
             )
@@ -227,7 +227,7 @@ function Field({
   return (
     <div>
       <Label className="text-base font-semibold text-ink-900">{label}</Label>
-      {hint && <p className="mt-0.5 text-sm text-ink-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-ui-body text-ink-500">{hint}</p>}
       <div className="mt-3">{children}</div>
     </div>
   )
@@ -254,5 +254,5 @@ function SaveIndicator({
     error: 'text-danger-600',
     idle: '',
   }[display]
-  return <span className={`text-xs ${cls}`}>{text}</span>
+  return <span className={`text-ui-caption ${cls}`}>{text}</span>
 }

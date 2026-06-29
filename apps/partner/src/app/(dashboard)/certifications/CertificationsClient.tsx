@@ -120,7 +120,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-semibold text-ink-900">Claim {certType.name}</h3>
-          <p className="mt-0.5 text-xs text-ink-500">{certType.description}</p>
+          <p className="mt-0.5 text-ui-caption text-ink-500">{certType.description}</p>
         </div>
         <button
           type="button"
@@ -198,7 +198,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
               <FileText className="h-5 w-5 text-pink-700" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink-900">{file.name}</div>
-                <div className="text-xs text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
+                <div className="text-ui-caption text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
               </div>
               <span className="text-xs font-medium text-pink-700">Click to change</span>
             </>
@@ -212,7 +212,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
             </>
           )}
         </button>
-        <p className="mt-1 text-xs text-ink-500">
+        <p className="mt-1 text-ui-caption text-ink-500">
           📎 Private — only iLaunchify admin sees the PDF. Public pages show only the verified
           badge.
         </p>
@@ -272,7 +272,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

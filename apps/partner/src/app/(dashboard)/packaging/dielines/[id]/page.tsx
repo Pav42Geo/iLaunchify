@@ -47,7 +47,7 @@ export default async function EditDielinePage({
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dielines
         </Link>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-ui-title">
             {dieline.packagingType.displayName}
           </h1>
           <span
@@ -56,7 +56,7 @@ export default async function EditDielinePage({
             {badge.label}
           </span>
         </div>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1 text-ui-body text-ink-500">
           Container type and decoration are fixed for this dieline — adjust dimensions, surface
           name, and replace the source file below. Confirm / activate from the dielines list.
         </p>

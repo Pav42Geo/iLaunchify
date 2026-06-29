@@ -86,7 +86,7 @@ export default async function SignupPage({
             <Brand imageSrc={logos.fullLight} sublabel="Business" sublabelClassName="text-pink-700" />
           </a>
 
-          <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-ink-900 mb-2">
+          <h2 className="text-ui-display text-ink-900 mb-2">
             Apply to join
           </h2>
           <p className="text-[14px] text-ink-600 leading-[1.55] mb-7">

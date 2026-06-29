@@ -101,7 +101,7 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-ink-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
-            <h3 className="text-sm font-semibold">Notifications</h3>
+            <h3 className="text-ui-value">Notifications</h3>
             {data.unread > 0 && (
               <button
                 type="button"
@@ -116,7 +116,7 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {data.notifications.length === 0 ? (
-              <div className="p-6 text-center text-sm text-ink-500">
+              <div className="p-6 text-center text-ui-body text-ink-500">
                 No notifications yet.
               </div>
             ) : (
@@ -137,7 +137,7 @@ export function NotificationBell() {
                           {n.title}
                         </div>
                         {n.body && (
-                          <div className="mt-0.5 line-clamp-2 text-xs text-ink-500">
+                          <div className="mt-0.5 line-clamp-2 text-ui-caption text-ink-500">
                             {n.body}
                           </div>
                         )}

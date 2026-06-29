@@ -18,8 +18,8 @@ export default function NewPackagingPage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Add packaging</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Add packaging</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Capture the core fields now — you&apos;ll add surfaces (Front, Lid, etc.) on the
           next screen.
         </p>

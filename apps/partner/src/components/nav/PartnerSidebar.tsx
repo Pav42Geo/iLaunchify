@@ -147,7 +147,7 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
         </div>
       ) : (
         <div className="mb-6 px-2">
-          <div className="text-xs font-medium text-ink-500">Partner portal</div>
+          <div className="text-ui-caption font-medium text-ink-500">Partner portal</div>
           <span
             className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ring-1 ${badge.className}`}
           >
@@ -179,7 +179,7 @@ export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
       </nav>
 
       {restricted && !collapsed && (
-        <p className="mt-6 px-2 text-xs text-ink-500">
+        <p className="mt-6 px-2 text-ui-caption text-ink-500">
           {status === 'UNDER_REVIEW' && (
             <>Your application is being reviewed. We&apos;ll email you when there&apos;s an update.</>
           )}

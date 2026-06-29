@@ -404,7 +404,7 @@ function Field({
       <Label htmlFor={id} className="text-sm font-medium text-ink-900">
         {label}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

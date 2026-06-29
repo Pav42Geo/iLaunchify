@@ -43,7 +43,7 @@ export function RequestCertTypeForm() {
       <div className="rounded-lg border border-success-200 bg-success-50/40 p-6 text-center">
         <CheckCircle2 className="mx-auto h-8 w-8 text-success-600" />
         <h3 className="mt-2 font-semibold text-ink-900">Request submitted</h3>
-        <p className="mt-1 text-sm text-ink-600">
+        <p className="mt-1 text-ui-body text-ink-600">
           An admin will review <span className="font-medium">{name.trim()}</span> and add it to the
           library if approved. You&apos;ll be able to claim it once it&apos;s live.
         </p>
@@ -148,7 +148,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

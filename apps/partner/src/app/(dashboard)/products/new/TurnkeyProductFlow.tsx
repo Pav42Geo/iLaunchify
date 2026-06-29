@@ -192,7 +192,7 @@ export function TurnkeyProductFlow({
           </button>
           <div className="flex items-center gap-3">
             {!canAdvance && gates[activeStep].reason && (
-              <p className="text-xs text-warning-700">{gates[activeStep].reason}</p>
+              <p className="text-ui-caption text-warning-700">{gates[activeStep].reason}</p>
             )}
             {activeStep < 4 ? (
               <button
@@ -289,7 +289,7 @@ function Step1({
         </Field>
       </div>
 
-      <p className="rounded-lg bg-pink-50 px-3 py-2 text-xs text-pink-700">
+      <p className="rounded-lg bg-pink-50 px-3 py-2 text-ui-caption text-pink-700">
         The subcategory selects the right FDA rule pack — Food, Supplement, and Pet labels each
         have different requirements. It also locks the panel type in the editor so you can&apos;t
         ship a mismatched Facts panel.
@@ -337,14 +337,14 @@ function Step2({
   return (
     <div className="space-y-5">
       <h2 className="font-display text-lg font-semibold text-ink-900">What goes in it?</h2>
-      <p className="-mt-3 text-sm text-ink-500">
+      <p className="-mt-3 text-ui-body text-ink-500">
         Search USDA, the iLaunchify library, and your own ingredients — picked rows bring real
         nutrition + allergen data with them, so the label calculates from minute one. Can&apos;t
         find it? Add a private ingredient right from the search.
       </p>
 
       <div className="space-y-1">
-        <Label className="text-xs uppercase tracking-wider text-ink-700">Add an ingredient</Label>
+        <Label className="text-ui-label text-ink-700">Add an ingredient</Label>
         <IngredientPicker
           onPick={addPicked}
           placeholder="Search e.g. whey protein concentrate…"
@@ -396,7 +396,7 @@ function Step2({
         </ul>
       )}
 
-      <p className="rounded-lg bg-pink-50 px-3 py-2 text-xs text-pink-700">
+      <p className="rounded-lg bg-pink-50 px-3 py-2 text-ui-caption text-pink-700">
         Each ingredient becomes a slot the creator can optionally swap alternatives into (e.g. monk
         fruit instead of sugar). You set up replaceables, optionals, and flavor presets in the
         editor&apos;s recipe builder.
@@ -428,7 +428,7 @@ function Step3({
   return (
     <div className="space-y-5">
       <h2 className="font-display text-lg font-semibold text-ink-900">How does it ship?</h2>
-      <p className="-mt-3 text-sm text-ink-500">
+      <p className="-mt-3 text-ui-body text-ink-500">
         Pick the packaging configurations creators can order in. Each one has its own per-size
         price you can tune in the editor.
       </p>
@@ -480,7 +480,7 @@ function Step4({
   return (
     <div className="space-y-5">
       <h2 className="font-display text-lg font-semibold text-ink-900">What does it cost?</h2>
-      <p className="-mt-3 text-sm text-ink-500">
+      <p className="-mt-3 text-ui-body text-ink-500">
         Set the base unit price + container specs. The editor lets you add per-size pricing tiers
         and per-flavor variants later.
       </p>
@@ -498,7 +498,7 @@ function Step4({
             className="block w-full bg-white px-3 py-2 text-sm focus:outline-none"
           />
         </div>
-        <p className="mt-1 text-xs text-ink-500">
+        <p className="mt-1 text-ui-caption text-ink-500">
           Per-unit cost to the creator at base MOQ. Volume tier discounts come later.
         </p>
       </Field>
@@ -563,7 +563,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

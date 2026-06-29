@@ -30,7 +30,7 @@ export default async function StripeStep() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-ink-600">
+            <p className="text-ui-body text-ink-600">
               Click below to complete Stripe&apos;s onboarding form. Takes ~10 minutes. You&apos;ll provide:
             </p>
             <ul className="ml-5 list-disc text-sm text-ink-600 space-y-1">
@@ -40,7 +40,7 @@ export default async function StripeStep() {
             </ul>
             <ConnectButton accountStatus={dbUser?.stripeAccountStatus ?? 'NONE'} />
             {isPending && (
-              <p className="text-sm text-warning-700">
+              <p className="text-ui-body text-warning-700">
                 Stripe is still verifying your account. Refresh in a few minutes.
               </p>
             )}

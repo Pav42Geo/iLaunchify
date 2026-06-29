@@ -162,8 +162,8 @@ function Field({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
-      {error && <p className="text-xs text-danger-600">{error}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
+      {error && <p className="text-ui-caption text-danger-600">{error}</p>}
     </div>
   )
 }

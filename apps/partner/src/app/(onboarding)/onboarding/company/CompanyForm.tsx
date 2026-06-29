@@ -97,7 +97,7 @@ function Field({ id, label, children, error }: { id: string; label: string; chil
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error && <p className="text-xs text-danger-600">{error}</p>}
+      {error && <p className="text-ui-caption text-danger-600">{error}</p>}
     </div>
   )
 }

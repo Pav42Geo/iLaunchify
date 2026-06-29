@@ -21,7 +21,7 @@ export default function Error({
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-700">Something went wrong</p>
-      <h1 className="mt-3 max-w-xl font-display text-2xl font-bold text-ink-900">This page hit an unexpected error.</h1>
+      <h1 className="mt-3 max-w-xl text-ui-title text-ink-900">This page hit an unexpected error.</h1>
       <p className="mt-2 max-w-md text-[14px] text-ink-500">
         Try again in a moment. If it keeps happening, contact{' '}
         <a className="text-pink-600 underline" href="mailto:ilaunchify@gmail.com">ilaunchify@gmail.com</a>.

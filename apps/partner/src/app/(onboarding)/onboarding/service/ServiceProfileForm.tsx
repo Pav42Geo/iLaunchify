@@ -122,7 +122,7 @@ export function ServiceProfileForm({
             <SelectItem value="FULL">Full — &quot;Manufactured by Acme Foods, San Jose, CA&quot;</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           You can override this per-order at routing time.
         </p>
       </div>

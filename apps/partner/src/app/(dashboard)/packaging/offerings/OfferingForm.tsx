@@ -294,7 +294,7 @@ export function OfferingForm({
             </select>
           )}
           {mode === 'create' && packagingTypeId && decorationOptions.length === 0 && (
-            <p className="text-xs text-warning-700">
+            <p className="text-ui-caption text-warning-700">
               No decoration methods are configured for this container yet.
             </p>
           )}
@@ -350,7 +350,7 @@ export function OfferingForm({
                 }`}
               >
                 <div className="font-medium text-ink-900">{opt.label}</div>
-                <div className="mt-0.5 text-xs text-ink-500">{opt.hint}</div>
+                <div className="mt-0.5 text-ui-caption text-ink-500">{opt.hint}</div>
               </button>
             )
           })}
@@ -360,14 +360,14 @@ export function OfferingForm({
       {/* Pricing tiers */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-ink-900">Pricing tiers</Label>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           At least one tier. Each is a quantity breakpoint and the per-unit price at that volume.
         </p>
         <div className="space-y-2">
           {tiers.map((t, i) => (
             <div key={i} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <span className="text-xs text-ink-500">Min qty</span>
+                <span className="text-ui-caption text-ink-500">Min qty</span>
                 <Input
                   type="number"
                   min={1}
@@ -377,7 +377,7 @@ export function OfferingForm({
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <span className="text-xs text-ink-500">Price / unit ($)</span>
+                <span className="text-ui-caption text-ink-500">Price / unit ($)</span>
                 <Input
                   type="number"
                   min={0}
@@ -433,7 +433,7 @@ export function OfferingForm({
           ))}
         </select>
         {packagingTypeId && decorationMethod && eligibleDielines.length === 0 ? (
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             No confirmed or active dielines match this container and decoration yet.{' '}
             <a href="/packaging/dielines/new" className="underline hover:text-ink-700">
               Add one
@@ -441,7 +441,7 @@ export function OfferingForm({
             .
           </p>
         ) : (
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             Link a prepress dieline so creators print to the right cut. Confirm or activate a
             dieline first to make it selectable.
           </p>
@@ -466,7 +466,7 @@ export function OfferingForm({
             </option>
           ))}
         </select>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           {STATUS_OPTIONS.find((o) => o.value === status)?.hint}
         </p>
       </div>

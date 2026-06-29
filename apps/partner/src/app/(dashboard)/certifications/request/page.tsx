@@ -19,8 +19,8 @@ export default function RequestCertificateTypePage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to certifications
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Request a new certificate type</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Request a new certificate type</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Carry a certification we don&apos;t list yet? Tell us about it. An admin reviews each
           request — once approved it joins the library and you can claim it with your PDF.
         </p>

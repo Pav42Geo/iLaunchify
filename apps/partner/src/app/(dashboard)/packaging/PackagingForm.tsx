@@ -130,7 +130,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
           required
           disabled={isPending}
         />
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           Just for you and admin — creators see a curated display name (or this as fallback).
         </p>
       </div>
@@ -154,7 +154,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
                 disabled={isPending}
               >
                 <div className="font-medium text-ink-900">{opt.label}</div>
-                <div className="mt-0.5 text-xs text-ink-500">{opt.hint}</div>
+                <div className="mt-0.5 text-ui-caption text-ink-500">{opt.hint}</div>
               </button>
             )
           })}
@@ -175,7 +175,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             onChange={(e) => patch('unitCount', e.target.value)}
             disabled={isPending}
           />
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             How many inner containers ship as one packaging unit (1 for a single jar).
           </p>
         </div>
@@ -191,7 +191,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             onChange={(e) => patch('moq', e.target.value)}
             disabled={isPending}
           />
-          <p className="text-xs text-ink-500">Minimum order quantity for a single creator batch.</p>
+          <p className="text-ui-caption text-ink-500">Minimum order quantity for a single creator batch.</p>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
               />
               <div>
                 <div className="font-medium text-ink-900">{opt.label}</div>
-                <div className="text-xs text-ink-500">{opt.hint}</div>
+                <div className="text-ui-caption text-ink-500">{opt.hint}</div>
               </div>
             </label>
           ))}
@@ -234,7 +234,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
               />
               <div>
                 <div className="font-medium text-ink-900">{opt.label}</div>
-                <div className="text-xs text-ink-500">{opt.hint}</div>
+                <div className="text-ui-caption text-ink-500">{opt.hint}</div>
               </div>
             </label>
           ))}
@@ -270,7 +270,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
             disabled={isPending}
           />
         </div>
-        <p className="text-xs text-ink-500">Used for shipping calculations and label dimension fit.</p>
+        <p className="text-ui-caption text-ink-500">Used for shipping calculations and label dimension fit.</p>
       </div>
 
       {/* Max weight */}

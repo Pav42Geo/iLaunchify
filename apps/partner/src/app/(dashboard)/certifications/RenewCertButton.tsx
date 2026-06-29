@@ -32,7 +32,7 @@ export function RenewCertButton({
 
   if (renewalPending) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-warning-700">
+      <span className="inline-flex items-center gap-1 text-ui-caption font-medium text-warning-700">
         <RefreshCw className="h-3 w-3" /> Renewal pending review
       </span>
     )
@@ -112,8 +112,8 @@ function RenewForm({
     >
       <div className="flex items-start justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-ink-900">Renew {certName}</h4>
-          <p className="mt-0.5 text-xs text-ink-500">
+          <h4 className="text-ui-value text-ink-900">Renew {certName}</h4>
+          <p className="mt-0.5 text-ui-caption text-ink-500">
             Upload the new certificate. Your products keep the old badge until admin verifies
             this — then attachments move over automatically.
           </p>
@@ -184,7 +184,7 @@ function RenewForm({
               <FileText className="h-5 w-5 text-success-600" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink-900">{file.name}</div>
-                <div className="text-xs text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
+                <div className="text-ui-caption text-ink-500">{(file.size / 1024).toFixed(1)} KB</div>
               </div>
               <span className="text-xs text-success-700">Change</span>
             </>

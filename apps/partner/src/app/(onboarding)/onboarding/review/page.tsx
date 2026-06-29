@@ -51,7 +51,7 @@ export default async function ReviewStep() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-ink-700">{title}</h3>
+      <h3 className="mb-2 text-ui-value text-ink-700">{title}</h3>
       <div className="space-y-1.5 rounded-md border border-ink-200 bg-ink-50 p-3 text-sm">{children}</div>
     </div>
   )
@@ -60,7 +60,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="grid grid-cols-[120px,1fr] items-baseline gap-2">
-      <span className="text-xs uppercase text-ink-500">{label}</span>
+      <span className="text-ui-label text-ink-500">{label}</span>
       <span className={mono ? 'whitespace-pre-wrap break-all font-mono text-xs' : ''}>
         {value || '—'}
       </span>

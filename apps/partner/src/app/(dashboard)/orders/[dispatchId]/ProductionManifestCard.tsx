@@ -107,7 +107,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
                   className="rounded border border-ink-200 bg-ink-50/50 p-2"
                 >
                   <div className="font-medium text-ink-900">{f.finishName}</div>
-                  <div className="text-xs text-ink-500">
+                  <div className="text-ui-caption text-ink-500">
                     {humanFinishCategory(f.category)} · pricing: {f.pricingMode}
                   </div>
                 </li>
@@ -164,7 +164,7 @@ export function ProductionManifestCard({ manifest, status }: Props) {
 
         {/* Download button — V1.5 worker fills this in */}
         <div className="flex items-center justify-between border-t border-ink-100 pt-4">
-          <div className="text-xs text-ink-500">
+          <div className="text-ui-caption text-ink-500">
             Manifest v{manifest.manifestVersion} ·{' '}
             {new Date(manifest.generatedAt).toLocaleString()}
           </div>
@@ -207,7 +207,7 @@ function Section({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[140px,1fr] items-baseline gap-2 text-sm">
-      <span className="text-xs uppercase text-ink-500">{label}</span>
+      <span className="text-ui-label text-ink-500">{label}</span>
       <span className="text-ink-800">{value}</span>
     </div>
   )

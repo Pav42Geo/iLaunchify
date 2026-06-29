@@ -21,8 +21,8 @@ export default async function NewOfferingPage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to offerings
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Add offering</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Add offering</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Declare a container type, a compatible decoration method, and your pricing.
         </p>
       </header>

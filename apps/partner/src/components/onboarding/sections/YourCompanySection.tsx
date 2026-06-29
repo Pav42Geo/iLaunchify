@@ -88,7 +88,7 @@ export function YourCompanySection({
   return (
     <div className="space-y-8">
       <div className="-mt-3 flex items-center justify-end gap-2">
-        {error && <span className="text-xs text-danger-600">{error}</span>}
+        {error && <span className="text-ui-caption text-danger-600">{error}</span>}
         <SaveIndicator status={saveStatus} pending={isPending} />
       </div>
 
@@ -139,7 +139,7 @@ export function YourCompanySection({
       {/* Address */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold text-ink-900">Primary facility address</h3>
-        <p className="-mt-2 text-sm text-ink-500">
+        <p className="-mt-2 text-ui-body text-ink-500">
           Where production happens. Used for shipping coordination and tax forms.
         </p>
 
@@ -202,7 +202,7 @@ export function YourCompanySection({
       {/* Documents */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold text-ink-900">Verification documents</h3>
-        <p className="-mt-2 text-sm text-ink-500">
+        <p className="-mt-2 text-ui-body text-ink-500">
           PDF, PNG, JPEG, or WebP — up to 20&nbsp;MB each. Files are stored privately on
           Cloudflare R2 and only seen by the iLaunchify admin reviewing your application.
         </p>
@@ -265,7 +265,7 @@ function Field({
           </span>
         )}
       </div>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )
@@ -287,7 +287,7 @@ function SaveIndicator({
     error: 'text-danger-600',
     idle: '',
   }[display]
-  return <span className={`text-xs ${cls}`}>{text}</span>
+  return <span className={`text-ui-caption ${cls}`}>{text}</span>
 }
 
 function humanizeError(code: string): string {

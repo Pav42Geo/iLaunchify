@@ -105,7 +105,7 @@ export function BasicsStep({ categories, subcategories }: BasicsStepProps) {
       {/* Basics form */}
       <section className="rounded-2xl border border-ink-200 bg-white p-6">
         <h2 className="font-display text-lg font-semibold text-ink-900">What is it?</h2>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1 text-ui-body text-ink-500">
           Just the essentials to get started — you&apos;ll build the recipe, variants, packaging,
           and pricing in the next steps.
         </p>
@@ -156,7 +156,7 @@ export function BasicsStep({ categories, subcategories }: BasicsStepProps) {
             </Field>
           </div>
 
-          <p className="rounded-lg bg-pink-50 px-3 py-2 text-xs text-pink-700">
+          <p className="rounded-lg bg-pink-50 px-3 py-2 text-ui-caption text-pink-700">
             The subcategory selects the right FDA rule pack — Food, Supplement, and Pet labels each
             have different requirements — and locks the panel type in the editor so you can&apos;t
             ship a mismatched Facts panel.
@@ -165,7 +165,7 @@ export function BasicsStep({ categories, subcategories }: BasicsStepProps) {
 
         <div className="mt-6 flex items-center justify-end gap-3 border-t border-ink-100 pt-4">
           {!canContinue && (
-            <p className="text-xs text-warning-700">Add a name + category to continue.</p>
+            <p className="text-ui-caption text-warning-700">Add a name + category to continue.</p>
           )}
           <button
             type="button"

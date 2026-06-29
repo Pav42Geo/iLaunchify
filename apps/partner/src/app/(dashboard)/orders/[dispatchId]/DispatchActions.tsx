@@ -440,7 +440,7 @@ function AcceptDeclinePanel({
         )}
         {showDelay && (
           <div className="space-y-3">
-            <p className="text-xs text-ink-500">
+            <p className="text-ui-caption text-ink-500">
               Propose a later delivery date you CAN hit. The order stays yours — the creator
               approves the new date (and the order proceeds) or declines (and it&apos;s cancelled
               + refunded). The accept window won&apos;t time out while they decide.
@@ -594,7 +594,7 @@ function RequestChangesForm({
               />
               <span className="flex-1">
                 <span className="block text-sm font-medium text-ink-900">{f.label}</span>
-                <span className="block text-xs text-ink-500">{f.hint}</span>
+                <span className="block text-ui-caption text-ink-500">{f.hint}</span>
               </span>
             </label>
           ))}

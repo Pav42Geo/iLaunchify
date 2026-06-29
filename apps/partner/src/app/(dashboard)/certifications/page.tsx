@@ -182,7 +182,7 @@ export default async function CertificationsPage({
           </CardContent>
         )}
         <CardContent className="border-t border-ink-100 pt-4">
-          <p className="text-sm text-ink-500">
+          <p className="text-ui-body text-ink-500">
             Carry a certification that isn&apos;t listed?{' '}
             <Link
               href="/certifications/request"
@@ -312,13 +312,13 @@ function CertRow({
             <div className="font-medium text-ink-900">{inst.certificateType.name}</div>
             <CertExpiryBadge expiryDate={inst.expiryDate} />
           </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-500">
+          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-ui-caption text-ink-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}
             {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
             <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>
           </div>
           {inst.status === 'REJECTED' && inst.rejectionReason && (
-            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-xs text-danger-800">
+            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-ui-caption text-danger-800">
               <span className="font-semibold">Reviewer note: </span>
               {inst.rejectionReason}
             </div>

@@ -51,7 +51,7 @@ export function SectionShell({
               </span>
             )}
           </div>
-          {subtitle && <p className="mt-0.5 text-sm text-ink-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-ui-body text-ink-500">{subtitle}</p>}
         </div>
         <StatusLabel status={status} />
         <ChevronDown
@@ -119,7 +119,7 @@ function StatusLabel({ status }: { status: SectionStatus }) {
   const { text, cls } = labels[status]
   return (
     <span
-      className={`hidden flex-shrink-0 text-xs font-semibold uppercase tracking-wider sm:inline ${cls}`}
+      className={`hidden flex-shrink-0 text-ui-label sm:inline ${cls}`}
     >
       {text}
     </span>

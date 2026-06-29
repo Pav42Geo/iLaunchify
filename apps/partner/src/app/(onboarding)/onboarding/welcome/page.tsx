@@ -43,7 +43,7 @@ export default async function WelcomePage() {
             <CalendarClock className="mt-1 h-6 w-6 flex-shrink-0 text-success-600" />
             <div>
               <h2 className="font-semibold text-ink-900">Here&apos;s what to expect</h2>
-              <p className="mt-2 text-sm text-ink-600">
+              <p className="mt-2 text-ui-body text-ink-600">
                 The form takes about <strong>10–15 minutes</strong> if you have everything ready.
                 Our verification team typically reviews within{' '}
                 <strong>3–5 business days</strong>. You can save your progress and return any
@@ -90,7 +90,7 @@ export default async function WelcomePage() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-xs text-ink-500">
+      <p className="mt-6 text-center text-ui-caption text-ink-500">
         <Link href="/help/verification" className="underline">
           How does verification work?
         </Link>{' '}
