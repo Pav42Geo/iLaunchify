@@ -61,8 +61,10 @@ const humanize = (s: string) =>
 
 // ── typography primitives (approved scale: dense, body 14px) ──────────────────
 
+// Sizes read the --fs-ui-* vars (theme.css) so Theme Studio's per-role
+// Typography sliders move the Passport too; the px is the fallback default.
 const LABEL_STYLE: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 'var(--fs-ui-label, 12px)',
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '.04em',
@@ -70,19 +72,19 @@ const LABEL_STYLE: React.CSSProperties = {
   lineHeight: 1.3,
 }
 const VALUE_STYLE: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: 'var(--fs-ui-value, 14px)',
   fontWeight: 600,
   color: 'var(--ink-900)',
   lineHeight: 1.4,
 }
 const BODY_STYLE: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: 'var(--fs-ui-body, 14px)',
   fontWeight: 400,
   color: 'var(--ink-700)',
   lineHeight: 1.55,
 }
 const CAPTION_STYLE: React.CSSProperties = {
-  fontSize: 12.5,
+  fontSize: 'var(--fs-ui-caption, 12.5px)',
   color: 'var(--ink-500)',
   lineHeight: 1.45,
 }
@@ -321,7 +323,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
             <div className="eyebrow" style={{ color: 'var(--pink-700)' }}>Digital product passport</div>
             <h2
               className="display"
-              style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.08, margin: '8px 0 6px', color: 'var(--ink-900)' }}
+              style={{ fontSize: 'var(--fs-ui-display, 30px)', fontWeight: 800, lineHeight: 1.08, margin: '8px 0 6px', color: 'var(--ink-900)' }}
             >
               {d.name || 'Untitled product'}
             </h2>
@@ -476,7 +478,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                             <td className="tnum">{i.weightG}g</td>
                             <td className="tnum">{i.weightPct.toFixed(1)}%</td>
                             <td style={CAPTION_STYLE}>{i.source ?? 'unsourced'}</td>
-                            <td style={{ fontSize: 14 }}>{i.allergenFlags.length ? i.allergenFlags.join(', ') : '—'}</td>
+                            <td style={{ fontSize: 'var(--fs-ui-body, 14px)' }}>{i.allergenFlags.length ? i.allergenFlags.join(', ') : '—'}</td>
                           </tr>
                           {i.replacements.length > 0 && (
                             <tr>
@@ -592,12 +594,12 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                           aria-hidden="true"
                           style={{ width: 18, height: 18, borderRadius: 999, border: '1px solid var(--ink-200)', background: f.swatchHex ?? 'var(--ink-100)', flex: 'none' }}
                         />
-                        <b style={{ fontSize: 14, color: 'var(--ink-900)' }}>{f.name}</b>
+                        <b style={{ fontSize: 'var(--fs-ui-value, 14px)', color: 'var(--ink-900)' }}>{f.name}</b>
                         <span className={`pill ${f.status === 'ACTIVE' ? 'green' : 'amber'}`}>{f.status.toLowerCase()}</span>
                         {f.hasExtras && <span className="pill">extras</span>}
                         {f.hasOverrides && <span className="pill amber">nutrient override</span>}
                       </span>
-                      <span className="tnum" style={{ fontSize: 14, fontWeight: 600 }}>
+                      <span className="tnum" style={{ fontSize: 'var(--fs-ui-value, 14px)', fontWeight: 600 }}>
                         {f.priceDeltaCents === 0 ? 'Base' : `${f.priceDeltaCents > 0 ? '+' : ''}${usd(f.priceDeltaCents)}/unit`}
                       </span>
                     </div>
@@ -676,7 +678,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                           padding: '8px 12px',
                         }}
                       >
-                        <b style={{ fontSize: 14, color: 'var(--ink-900)' }}>{fin.name}</b>
+                        <b style={{ fontSize: 'var(--fs-ui-value, 14px)', color: 'var(--ink-900)' }}>{fin.name}</b>
                         <span className="chip">{humanize(fin.category)}</span>
                         {fin.pricingSummary && (
                           <span style={{ ...CAPTION_STYLE }} className="tnum">{fin.pricingSummary}</span>
@@ -765,7 +767,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                           </svg>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                          <b style={{ fontSize: 14, color: 'var(--ink-900)' }}>{dl.flavorName ?? dl.name}</b>
+                          <b style={{ fontSize: 'var(--fs-ui-value, 14px)', color: 'var(--ink-900)' }}>{dl.flavorName ?? dl.name}</b>
                           <div style={CAPTION_STYLE}>{dl.widthMm}×{dl.heightMm} mm</div>
                         </div>
                       </div>

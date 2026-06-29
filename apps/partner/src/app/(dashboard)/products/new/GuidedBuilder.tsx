@@ -659,7 +659,7 @@ const CSS = `
 .gb .step .t{font-weight:600;font-size:var(--fs-base)} .gb .step .d{font-size:var(--fs-xs);color:var(--ink-500)}
 .gb-main{padding:24px 28px;max-width:1200px;margin:0 auto;width:100%}
 .gb-pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
-.gb-pagehead h1{font-size:var(--fs-3xl)}
+.gb-pagehead h1{font-size:var(--fs-ui-display,1.875rem)}
 .gb-head-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .gb-topinject{display:inline-flex;align-items:center;gap:8px}
 .gb-iconbtn{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;border:1px solid #E0E1E5;background:#fff;color:#33343C;cursor:pointer;transition:.12s}
@@ -678,7 +678,7 @@ const CSS = `
 .gb .sbead .b{width:20px;height:20px;border-radius:50%;background:var(--ink-100);display:grid;place-items:center;font-size:var(--fs-2xs);font-weight:700;color:var(--ink-500)}
 .gb .sbead.active{color:var(--ink-900);font-weight:600} .gb .sbead.active .b{background:var(--pink);color:#fff}
 .gb .sbead.done .b{background:var(--green);color:#fff} .gb .sline{width:26px;height:1.5px;background:var(--ink-200);display:inline-block;margin:0 2px}
-.gb .section-title{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-lg);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
+.gb .section-title{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-ui-section,1.0625rem);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
 .gb .section-title .ic{width:30px;height:30px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
 .gb .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
 .gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--ink-600);border:1px solid var(--ink-300);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
