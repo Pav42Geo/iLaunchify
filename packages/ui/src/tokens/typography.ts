@@ -52,15 +52,18 @@ export const fontSize = {
   // the marketing/landing editorial scale is intentionally separate and stays
   // untouched. See docs/TYPOGRAPHY_SCALE.md.
   // ──────────────────────────────────────────────────────────────────────────
-  'ui-display': ['30px',   { lineHeight: '1.1',  letterSpacing: '-0.02em',  fontWeight: '800' }], // Bricolage
-  'ui-title':   ['24px',   { lineHeight: '1.15', letterSpacing: '-0.02em',  fontWeight: '700' }], // Bricolage (H1)
-  'ui-section': ['17px',   { lineHeight: '1.2',  letterSpacing: '-0.015em', fontWeight: '700' }], // Bricolage
-  'ui-subhead': ['15px',   { lineHeight: '1.3',  fontWeight: '600' }],                            // Inter
-  'ui-body':    ['14px',   { lineHeight: '1.55', fontWeight: '400' }],                            // Inter
-  'ui-value':   ['14px',   { lineHeight: '1.4',  fontWeight: '600' }],                            // Inter
-  'ui-label':   ['12px',   { lineHeight: '1.3',  letterSpacing: '0.06em',   fontWeight: '600' }], // Inter, uppercase
-  'ui-caption': ['12.5px', { lineHeight: '1.45', fontWeight: '400' }],                            // Inter
-  'ui-button':  ['15px',   { lineHeight: '1.2',  fontWeight: '600' }],                            // Inter
+  // Sizes resolve to the `--fs-ui-*` CSS vars (theme.css) so Theme Studio can
+  // control each role live (per-scope/mode overrides); the px in the fallback is
+  // the sign-off default. lineHeight/tracking/weight stay in the tuple.
+  'ui-display': ['var(--fs-ui-display, 30px)',   { lineHeight: '1.1',  letterSpacing: '-0.02em',  fontWeight: '800' }], // Bricolage
+  'ui-title':   ['var(--fs-ui-title, 24px)',     { lineHeight: '1.15', letterSpacing: '-0.02em',  fontWeight: '700' }], // Bricolage (H1)
+  'ui-section': ['var(--fs-ui-section, 17px)',   { lineHeight: '1.2',  letterSpacing: '-0.015em', fontWeight: '700' }], // Bricolage
+  'ui-subhead': ['var(--fs-ui-subhead, 15px)',   { lineHeight: '1.3',  fontWeight: '600' }],                            // Inter
+  'ui-body':    ['var(--fs-ui-body, 14px)',      { lineHeight: '1.55', fontWeight: '400' }],                            // Inter
+  'ui-value':   ['var(--fs-ui-value, 14px)',     { lineHeight: '1.4',  fontWeight: '600' }],                            // Inter
+  'ui-label':   ['var(--fs-ui-label, 12px)',     { lineHeight: '1.3',  letterSpacing: '0.06em',   fontWeight: '600' }], // Inter, uppercase
+  'ui-caption': ['var(--fs-ui-caption, 12.5px)', { lineHeight: '1.45', fontWeight: '400' }],                            // Inter
+  'ui-button':  ['var(--fs-ui-button, 15px)',    { lineHeight: '1.2',  fontWeight: '600' }],                            // Inter
 } as const
 
 /**

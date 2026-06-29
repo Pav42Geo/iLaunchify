@@ -49,7 +49,7 @@ export interface EditableThemeToken {
   name: string
   label: string
   kind: ThemeTokenKind
-  group: 'Scale' | 'Spacing' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons' | 'Chips & badges' | 'Menus' | 'Sidebar' | 'Header' | 'Footer' | 'Studio' | 'Landing'
+  group: 'Scale' | 'Typography' | 'Spacing' | 'Fonts' | 'Text' | 'Brand' | 'Backgrounds' | 'Status' | 'Borders & cards' | 'Forms' | 'Buttons' | 'Chips & badges' | 'Menus' | 'Sidebar' | 'Header' | 'Footer' | 'Studio' | 'Landing'
   /** theme.css default in the token's native form (reset + preview baseline). */
   default: string
   min?: number
@@ -73,6 +73,20 @@ export const EDITABLE_THEME_TOKENS: EditableThemeToken[] = [
   { name: 'body-scale', label: 'Body size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.3, step: 0.01, hint: 'Fine-tune body/label text only (on top of Text size).' },
   { name: 'heading-scale', label: 'Heading size', kind: 'scale', group: 'Scale', default: '1', min: 0.85, max: 1.5, step: 0.01, hint: 'Fine-tune titles/headings only (on top of Text size).' },
   { name: 'radius-scale', label: 'Corner size', kind: 'scale', group: 'Scale', default: '1', min: 0.5, max: 2, step: 0.05, hint: 'Global corner-roundness multiplier (incl. buttons/chips).' },
+
+  // Typography — per-role app-UI sizes (the `text-ui-*` scale). These set an
+  // ABSOLUTE px per role (overriding the scale-aware default); use the Scale
+  // group's "Text size" sliders for proportional resizing across all roles.
+  // Drives every `text-ui-*` utility + the `--fs-ui-*` CSS vars (builder / Passport).
+  { name: 'fs-ui-display', label: 'Display', kind: 'length', group: 'Typography', default: '30px', min: 22, max: 48, step: 0.5, hint: 'Largest titles (Passport cover, hero figures). Bricolage 800.' },
+  { name: 'fs-ui-title', label: 'Title (H1)', kind: 'length', group: 'Typography', default: '24px', min: 18, max: 38, step: 0.5, hint: 'Page / detail headings. Bricolage 700.' },
+  { name: 'fs-ui-section', label: 'Section title', kind: 'length', group: 'Typography', default: '17px', min: 14, max: 26, step: 0.5, hint: 'Card / section titles. Bricolage 700.' },
+  { name: 'fs-ui-subhead', label: 'Subhead', kind: 'length', group: 'Typography', default: '15px', min: 12, max: 22, step: 0.5, hint: 'Card sub-headings. Inter 600.' },
+  { name: 'fs-ui-body', label: 'Body', kind: 'length', group: 'Typography', default: '14px', min: 11, max: 18, step: 0.5, hint: 'Default body / paragraph text. Inter 400.' },
+  { name: 'fs-ui-value', label: 'Value', kind: 'length', group: 'Typography', default: '14px', min: 11, max: 18, step: 0.5, hint: 'Emphasised data values. Inter 600.' },
+  { name: 'fs-ui-label', label: 'Label / eyebrow', kind: 'length', group: 'Typography', default: '12px', min: 9, max: 16, step: 0.5, hint: 'Uppercase field/group labels. Inter 600.' },
+  { name: 'fs-ui-caption', label: 'Caption', kind: 'length', group: 'Typography', default: '12.5px', min: 9, max: 16, step: 0.5, hint: 'Hints, fine print, captions. Inter 400.' },
+  { name: 'fs-ui-button', label: 'Button', kind: 'length', group: 'Typography', default: '15px', min: 12, max: 20, step: 0.5, hint: 'Button label size. Inter 600.' },
 
   // Density / spacing — comfortable (creator) vs compact (partner). Overriding
   // here beats the per-app data-density defaults platform-wide.
