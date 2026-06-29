@@ -170,7 +170,7 @@ export function ThemeEditor({
   const searchHits = q ? tokens.filter((t) => t.label.toLowerCase().includes(q) || t.name.includes(q)) : []
 
   const control = (t: EditableThemeToken) => (
-    <Control key={t.name} t={t} value={vals[t.name] ?? t.default} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
+    <Control key={t.name} t={t} value={vals[t.name] ?? t.default} baseValue={baseOf(t.name, t.default)} fontOptions={fontOptions} onChange={(v) => setVal(t.name, v)} onReset={() => setVal(t.name, baseOf(t.name, t.default))} />
   )
   const renderGroups = (groupList: EditableThemeToken['group'][]) => (
     <div className="space-y-3">
@@ -286,94 +286,111 @@ export function ThemeEditor({
   )
 }
 
-/**
- * Small live specimen shown in front of every control — reflects the token's
- * CURRENT (proposed) value so it updates in real time as the control moves.
- * Switches on kind + token-name heuristics so each token previews what it
- * actually affects (color swatch / font "Ag" / glyph at a type size / scaled
- * glyph for a multiplier / rounded box for a radius / proportional box for a
- * width-or-padding length).
- */
-function TokenPreview({ t, value }: { t: EditableThemeToken; value: string }) {
-  const box = 'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-ink-200 bg-ink-50'
+// ── shape-aware live preview ───────────────────────────────────────────────
+// Each control's specimen is the ACTUAL thing the token affects, at its live
+// value: a real button / chip / field for radii, a card for card corners, the
+// color filling a control, "Aa" at the real type size, a scaled glyph for a
+// multiplier, a proportional box for a width/padding. Updates in real time.
 
-  if (t.kind === 'rgb') return <span className={box} style={{ background: `rgb(${value})` }} aria-hidden />
-  if (t.kind === 'color') return <span className={box} style={{ background: isHex(value) ? value : '#FFFFFF' }} aria-hidden />
-  if (t.kind === 'font')
-    return (
-      <span className={box} aria-hidden>
-        <span style={{ fontFamily: value, fontSize: 16, lineHeight: 1, color: 'var(--ink-900)' }}>Ag</span>
-      </span>
-    )
+const PV_WRAP = 'flex h-9 w-12 shrink-0 items-center justify-center'
 
+function ShapeGlyph({ size }: { size: number }) {
+  return <span style={{ fontSize: Math.max(10, Math.min(size, 26)), lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink-900)' }}>Aa</span>
+}
+function ShapeButton({ r }: { r: number }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 20, background: 'var(--ink-900)', color: '#fff', borderRadius: r, fontSize: 11, lineHeight: 1 }}>Aa</span>
+}
+function ShapeCard({ r }: { r: number }) {
+  return (
+    <span style={{ display: 'block', width: 36, height: 27, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, padding: '4px 5px' }}>
+      <span style={{ display: 'block', width: '60%', height: 3, background: 'var(--ink-900)', borderRadius: 2, marginBottom: 3 }} />
+      <span style={{ display: 'block', width: '90%', height: 2.5, background: 'var(--ink-300)', borderRadius: 2, marginBottom: 2 }} />
+      <span style={{ display: 'block', width: '75%', height: 2.5, background: 'var(--ink-300)', borderRadius: 2 }} />
+    </span>
+  )
+}
+function ShapeChip({ r }: { r: number }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 18, padding: '0 8px', background: 'var(--pink-50)', color: 'var(--pink-700)', border: '1px solid var(--pink-100)', borderRadius: r, fontSize: 10.5, lineHeight: 1, fontWeight: 600 }}>Tag</span>
+}
+function ShapeField({ r }: { r: number }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', width: 38, height: 18, background: '#fff', border: '1px solid var(--ink-300)', borderRadius: r, paddingLeft: 4 }}>
+      <span style={{ display: 'block', width: 2, height: 9, background: 'var(--ink-400)' }} />
+    </span>
+  )
+}
+
+function PreviewShape({ t, value }: { t: EditableThemeToken; value: string }) {
+  if (t.kind === 'rgb' || t.kind === 'color') {
+    const c = t.kind === 'rgb' ? `rgb(${value})` : isHex(value) ? value : '#FFFFFF'
+    return <span className={PV_WRAP} aria-hidden><span style={{ width: 30, height: 18, background: c, border: '0.5px solid var(--ink-200)', borderRadius: 999 }} /></span>
+  }
+  if (t.kind === 'font') {
+    return <span className={PV_WRAP} aria-hidden><span style={{ fontFamily: value, fontSize: 16, lineHeight: 1, color: 'var(--ink-900)' }}>Ag</span></span>
+  }
   if (t.kind === 'scale') {
     const n = Number(value) || 1
-    if (t.name === 'radius-scale')
-      return (
-        <span className={box} aria-hidden>
-          <span style={{ width: 18, height: 18, background: 'var(--ink-400)', borderRadius: Math.min(9 * n, 12) }} />
-        </span>
-      )
+    if (t.name === 'radius-scale') return <span className={PV_WRAP} aria-hidden><ShapeButton r={Math.min(10 * n, 16)} /></span>
     if (t.name === 'space-scale')
       return (
-        <span className={box} aria-hidden>
+        <span className={PV_WRAP} aria-hidden>
           <span style={{ display: 'flex', flexDirection: 'column', gap: Math.min(2.5 * n, 7) }}>
-            <i style={{ display: 'block', width: 16, height: 3, background: 'var(--ink-400)' }} />
-            <i style={{ display: 'block', width: 16, height: 3, background: 'var(--ink-400)' }} />
+            <i style={{ display: 'block', width: 18, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
+            <i style={{ display: 'block', width: 18, height: 3, background: 'var(--ink-400)', borderRadius: 2 }} />
           </span>
         </span>
       )
-    // type-scale multipliers (font/heading/body/landing) → glyph scaled by the value
-    return (
-      <span className={box} aria-hidden>
-        <span style={{ fontSize: Math.max(8, Math.min(13 * n, 27)), lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ink-900)' }}>Ag</span>
-      </span>
-    )
+    return <span className={PV_WRAP} aria-hidden><ShapeGlyph size={13 * n} /></span>
   }
-
   // length
   const px = parseFloat(value) || 0
   const nm = t.name
-  if (nm.includes('radius')) {
-    const r = t.pillable && px >= 100 ? 11 : Math.min(px, 11)
-    return (
-      <span className={box} aria-hidden>
-        <span style={{ width: 22, height: 22, background: 'var(--ink-400)', borderRadius: r }} />
-      </span>
-    )
-  }
-  if (nm.startsWith('fs-') || nm.endsWith('-fs')) {
-    return (
-      <span className={box} aria-hidden>
-        <span style={{ fontSize: Math.max(8, Math.min(px, 28)), lineHeight: 1, fontWeight: 700, fontFamily: nm.startsWith('fs-ui-') ? 'var(--font-display)' : 'inherit', color: 'var(--ink-900)' }}>Ag</span>
-      </span>
-    )
-  }
-  // width / height / padding / gap / py → proportional filled box
-  const dim = Math.max(4, Math.min(px / 9, 26))
-  return (
-    <span className={box} aria-hidden>
-      <span style={{ width: dim, height: dim, background: 'var(--ink-400)', borderRadius: 2 }} />
-    </span>
-  )
+  const pillR = (cap: number) => (t.pillable && px >= 100 ? cap : Math.min(px, cap))
+  if (nm === 'card-radius') return <span className={PV_WRAP} aria-hidden><ShapeCard r={Math.min(px, 13)} /></span>
+  if (nm === 'chip-radius' || nm === 'badge-radius') return <span className={PV_WRAP} aria-hidden><ShapeChip r={pillR(9)} /></span>
+  if (nm === 'input-radius') return <span className={PV_WRAP} aria-hidden><ShapeField r={Math.min(px, 9)} /></span>
+  if (nm.includes('radius')) return <span className={PV_WRAP} aria-hidden><ShapeButton r={pillR(10)} /></span>
+  if (nm.startsWith('fs-') || nm.endsWith('-fs')) return <span className={PV_WRAP} aria-hidden><ShapeGlyph size={px} /></span>
+  const dim = Math.max(5, Math.min(px / 9, 24))
+  return <span className={PV_WRAP} aria-hidden><span style={{ width: dim, height: Math.min(dim, 22), background: 'var(--ink-400)', borderRadius: 3 }} /></span>
 }
 
 function Control({
   t,
   value,
+  baseValue,
   fontOptions,
   onChange,
   onReset,
 }: {
   t: EditableThemeToken
   value: string
+  baseValue: string
   fontOptions: { label: string; value: string }[]
   onChange: (v: string) => void
   onReset: () => void
 }) {
+  const changed = value !== baseValue
   return (
-    <div className="flex items-center gap-4">
-      <TokenPreview t={t} value={value} />
+    <div className="group flex items-center gap-4">
+      {/* Shape-aware live preview; on hover/focus of a CHANGED control a small
+          before → after popover reveals the published value next to the new one. */}
+      <div className="relative shrink-0">
+        <PreviewShape t={t} value={value} />
+        {changed && (
+          <div className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 py-2 opacity-0 shadow-lg transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100">
+            <span className="flex flex-col items-center gap-0.5">
+              <span className="opacity-40"><PreviewShape t={t} value={baseValue} /></span>
+              <span className="text-[length:var(--fs-2xs)] text-ink-400">now</span>
+            </span>
+            <span className="text-ink-300" aria-hidden>→</span>
+            <span className="flex flex-col items-center gap-0.5">
+              <PreviewShape t={t} value={value} />
+              <span className="text-[length:var(--fs-2xs)] font-semibold text-pink-700">new</span>
+            </span>
+          </div>
+        )}
+      </div>
       <div className="w-44 shrink-0">
         <div className="text-[length:var(--fs-md)] font-semibold text-ink-900">{t.label}</div>
         {t.hint && <div className="text-[length:var(--fs-2xs)] leading-snug text-ink-500">{t.hint}</div>}
