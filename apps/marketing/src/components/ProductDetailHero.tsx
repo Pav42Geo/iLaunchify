@@ -13,7 +13,7 @@ import { SampleDrawer } from './SampleDrawer'
 /**
  * ProductDetailHero — the PDP redesign's 3-zone hero (client root).
  *
- * Desktop grid: gallery (1.15fr) · identity (1fr) · zone3 (340px configure box +
+ * Desktop grid: gallery (1.15fr) · identity (1fr) · zone3 (380px configure box +
  * business card). Collapses to a single stacked column under ~1000px so the
  * mobile/tablet experience is the stacked version.
  *
@@ -88,7 +88,7 @@ export function ProductDetailHero({
   const selectedPackageImage = detail.packaging.find((p) => p.id === selectedPackagingId)?.imageUrl
 
   return (
-    <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_340px] lg:gap-[26px]">
+    <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_380px] lg:gap-[26px]">
       {/* ZONE 1 — gallery */}
       <HeroGallery template={template} images={images} packageImage={selectedPackageImage} />
 
@@ -229,7 +229,7 @@ function HeroGallery({
 
         {/* Main image */}
         <div
-          className="flex aspect-square flex-1 items-center justify-center overflow-hidden rounded-2xl border border-ink-200"
+          className="flex aspect-square flex-1 items-center justify-center overflow-hidden rounded-[var(--card-radius)] border border-[var(--card-border)]"
           style={packageActive || hasImages ? undefined : { background: productGradient[mainGradient] }}
         >
           {packageActive ? (

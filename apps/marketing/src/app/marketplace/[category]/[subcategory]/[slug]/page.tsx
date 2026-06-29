@@ -262,7 +262,7 @@ export default async function ProductDetailPage({
         activeBrandId={activeBrandId}
       />
 
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div className="max-w-[1640px] mx-auto px-8 py-6">
         <Breadcrumb category={category} categoryTitle={categoryTitle} title={template.title} />
 
         {/* Restricted-category notice (labeling ≠ licensing) — this product
@@ -288,7 +288,7 @@ export default async function ProductDetailPage({
           </div>
         )}
 
-        {/* HERO — 3-zone: gallery (1.15fr) · identity (1fr) · zone3 (340px
+        {/* HERO — 3-zone: gallery (1.15fr) · identity (1fr) · zone3 (380px
             configure box + business card). Stacks to one column under ~1000px.
             ProductDetailHero is the client root; the identity column is
             server-rendered and passed through so taxonomy chips, the cert trust
@@ -331,13 +331,15 @@ export default async function ProductDetailPage({
         </div>
       </div>
 
-      {/* TABS — Recipe & nutrition · Packaging · Compliance & certificates.
-          The Recipe tab combines RecipeNutritionTab + the CustomizeRail (swaps,
-          add-ons, live "Contains", live Nutrition Facts) + the ingredients-tab
-          interactivity. Overview/Description dropped (now in the identity
-          column). */}
-      <section className="max-w-[1400px] mx-auto px-6 mb-20">
+      {/* TABS — Overview · Recipe & nutrition · Packaging · Compliance &
+          certificates. Overview (default) restores the product's About copy +
+          the "About this item" key attributes. The Recipe tab combines
+          RecipeNutritionTab + the CustomizeRail (swaps, add-ons, live
+          "Contains", live Nutrition Facts) + the ingredients-tab
+          interactivity. */}
+      <section className="max-w-[1640px] mx-auto px-8 mb-20">
         <ProductTabs
+          overview={<OverviewTab template={template} detail={detail} />}
           recipe={
             <RecipeTab
               template={template}
@@ -355,7 +357,7 @@ export default async function ProductDetailPage({
 
       {/* RELATED */}
       {related.length > 0 && (
-        <section className="max-w-[1400px] mx-auto px-6 mb-24">
+        <section className="max-w-[1640px] mx-auto px-8 mb-24">
           <h2 className="font-display text-ui-display mb-7">
             You might also like
           </h2>
@@ -449,7 +451,7 @@ function IdentityColumn({
                 <Link
                   key={n.slug}
                   href={`/launch/${n.slug}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700 transition-colors"
                 >
                   {n.iconEmoji && <span aria-hidden="true">{n.iconEmoji}</span>}
                   {n.name}
@@ -463,7 +465,7 @@ function IdentityColumn({
                 <Link
                   key={t.slug}
                   href={`/marketplace?tag=${encodeURIComponent(t.slug)}`}
-                  className="inline-flex items-center gap-1 rounded-pill border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-white hover:text-pink-700 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-pill border border-[var(--card-border)] bg-ink-50 px-2.5 py-1 text-[11px] font-medium text-ink-600 hover:border-pink-500 hover:bg-[var(--bg-surface)] hover:text-pink-700 transition-colors"
                 >
                   {t.iconEmoji && <span aria-hidden="true">{t.iconEmoji}</span>}
                   {t.name}
@@ -487,12 +489,100 @@ function IdentityColumn({
           { label: 'Lead', value: `${template.leadTimeDays}d` },
           { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}` },
         ]}
-        className="overflow-hidden rounded-xl"
+        className="overflow-hidden rounded-[var(--card-radius)]"
       />
 
       {/* Accordion — additional info from existing detail fields. */}
       <ProductAccordion rows={accordionRows} />
     </>
+  )
+}
+
+/* Overview tab (default) — restores the product's About copy + the "About this
+   item" attributes that were dropped in the PDP rebuild. Left column = the
+   long-form description + the performance/spec bullets; right column = a
+   key-attributes table reusing existing detail fields (no invented data). */
+function OverviewTab({
+  template,
+  detail,
+}: {
+  template: SampleTemplate
+  detail: ReturnType<typeof findTemplateDetail>
+}) {
+  const shelfLife = detail.properties.find((p) => /shelf life/i.test(p.label))?.label
+  const servings = detail.sizeChart[0]?.servings
+  const attributes = [
+    detail.format && { label: 'Format', value: detail.format },
+    detail.netWeight && { label: 'Net weight', value: detail.netWeight },
+    detail.productionMethod && { label: 'Production method', value: detail.productionMethod },
+    servings && { label: 'Servings', value: servings },
+    shelfLife && { label: 'Shelf life', value: shelfLife.replace(/^Shelf life\s*\(?|\)?$/gi, '') },
+    { label: 'Min. order', value: `${template.minUnits.toLocaleString()} units` },
+    { label: 'Lead time', value: `${template.leadTimeDays} days` },
+    { label: 'From', value: `$${template.pricePerUnit.toFixed(2)} / unit` },
+  ].filter(Boolean) as { label: string; value: string }[]
+
+  return (
+    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_360px] lg:items-start">
+      <div>
+        <h3 className="mb-4 font-display text-ui-title">About this product</h3>
+        <p className="mb-7 max-w-[68ch] text-[15px] leading-relaxed text-ink-700">
+          {detail.about}
+        </p>
+
+        {detail.performanceBullets.length > 0 && (
+          <>
+            <div className="mb-3 text-[13px] font-bold uppercase tracking-[0.06em] text-ink-700">
+              About this item
+            </div>
+            <ul className="space-y-2.5">
+              {detail.performanceBullets.map((b) => {
+                const [lead, ...rest] = b.split(/:\s*/)
+                const body = rest.join(': ')
+                return (
+                  <li
+                    key={b}
+                    className="flex gap-2.5 text-[14px] leading-relaxed text-ink-700"
+                  >
+                    <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-500" />
+                    <span>
+                      {body ? (
+                        <>
+                          <span className="font-semibold text-ink-900">{lead}:</span> {body}
+                        </>
+                      ) : (
+                        b
+                      )}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
+      </div>
+
+      {/* Key attributes — reuse existing detail fields. */}
+      <div className="lg:justify-self-end">
+        <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700">
+          Key attributes
+        </div>
+        <dl className="overflow-hidden rounded-[var(--card-radius)] border border-[var(--card-border)] bg-[var(--bg-surface)]">
+          {attributes.map((a, i) => (
+            <div
+              key={a.label}
+              className={
+                'flex items-baseline justify-between gap-4 px-4 py-3 text-[13px] ' +
+                (i === 0 ? '' : 'border-t border-ink-100')
+              }
+            >
+              <dt className="text-ink-500">{a.label}</dt>
+              <dd className="text-right font-semibold text-ink-900">{a.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
   )
 }
 
@@ -681,7 +771,7 @@ function ComplianceTab({
             items={certs}
             heading="This product can be produced with the following certifications"
             compact
-            className="rounded-xl border border-ink-200 bg-white p-5"
+            className="rounded-[var(--card-radius)] border border-[var(--card-border)] bg-[var(--bg-surface)] p-5"
           />
         </div>
       )}
@@ -711,7 +801,7 @@ function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> 
       <h3 className="font-display text-ui-title mb-5">
         Packing specifications
       </h3>
-      <div className="border border-ink-200 rounded-lg overflow-x-auto">
+      <div className="border border-[var(--card-border)] rounded-[var(--card-radius)] overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead className="bg-ink-50 text-ink-500">
             <tr>
@@ -726,7 +816,7 @@ function PackingTab({ detail }: { detail: ReturnType<typeof findTemplateDetail> 
           </thead>
           <tbody>
             {detail.packingSpecs.map((s, i) => (
-              <tr key={s.size} className={i % 2 === 0 ? 'bg-white' : 'bg-ink-50/40'}>
+              <tr key={s.size} className={i % 2 === 0 ? 'bg-[var(--bg-surface)]' : 'bg-ink-50/40'}>
                 <td className="px-4 py-3 text-ink-900 font-medium">{s.size}</td>
                 <td className="px-4 py-3 text-ink-700">{s.box}</td>
                 <td className="px-4 py-3 text-ink-700">{s.boxIn}</td>

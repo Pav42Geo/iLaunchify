@@ -23,7 +23,7 @@ export function ProductAccordion({ rows }: { rows: AccordionRow[] }) {
   if (rows.length === 0) return null
 
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border border-ink-200">
+    <div className="mt-5 overflow-hidden rounded-[var(--card-radius)] border border-[var(--card-border)]">
       {rows.map((row, i) => {
         const isOpen = openId === row.id
         return (

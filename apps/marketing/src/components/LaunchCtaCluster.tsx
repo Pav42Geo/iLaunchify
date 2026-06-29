@@ -14,7 +14,6 @@
 //                     creator login (no signup modal — email already exists).
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import { Button } from '@ilaunchify/ui'
 import { startLaunchFromTemplate } from '@/lib/launch-actions'
 import { creatorUrl } from '@/lib/app-urls'
@@ -105,6 +104,9 @@ export function LaunchCtaCluster({
 
   return (
     <div className="mt-1 space-y-2">
+      {/* Single primary CTA. The "Order a sample →" trigger lives in the
+          configure box (opens the SampleDrawer) — the duplicate sample button
+          that used to sit here was removed in the PDP polish pass. */}
       <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="primary"
@@ -112,12 +114,7 @@ export function LaunchCtaCluster({
           onClick={onLaunchClick}
           disabled={isPending}
         >
-          {isPending ? 'Setting up your design…' : 'Start Launching'}
-        </Button>
-        <Button asChild variant="secondary" size="md">
-          <Link href={`/products/sample?template=${templateSlug}`}>
-            Order sample
-          </Link>
+          {isPending ? 'Setting up your design…' : 'Launch this product'}
         </Button>
       </div>
       {error && (

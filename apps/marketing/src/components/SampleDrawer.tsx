@@ -74,7 +74,7 @@ export function SampleDrawer({
         aria-modal="true"
         aria-label="Order a sample"
         className={
-          'fixed inset-y-0 right-0 z-50 w-[400px] max-w-[92vw] overflow-y-auto bg-white p-5 shadow-xl transition-transform duration-base ease-out-quart ' +
+          'fixed inset-y-0 right-0 z-50 w-[400px] max-w-[92vw] overflow-y-auto bg-[var(--bg-surface)] p-5 shadow-xl transition-transform duration-base ease-out-quart ' +
           (open ? 'translate-x-0' : 'translate-x-full')
         }
       >

@@ -188,7 +188,8 @@ export function RecipeNutritionStudio({
   const addOnCount = addOnIds.length
   const statementChanged = swapCount > 0 || addOnCount > 0
 
-  const cardCx = 'rounded-xl border border-ink-200 bg-white p-3'
+  const cardCx =
+    'rounded-[var(--card-radius)] border border-[var(--card-border)] bg-[var(--bg-surface)] p-3'
   const cardLabelCx =
     'text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700'
 
@@ -206,7 +207,7 @@ export function RecipeNutritionStudio({
       {/* 3-column studio. left flexible · middle label · right rail.
           Stacks to one column under lg in source order:
           Recipe → Label preview → summary/ingredients/allergens/net weight. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(280px,360px)_1fr] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(300px,380px)_minmax(300px,360px)] lg:items-start">
         {/* ===== LEFT RAIL — Recipe ====================================== */}
         <div className={cardCx}>
           <header className="mb-3">
@@ -246,7 +247,7 @@ export function RecipeNutritionStudio({
                     aria-haspopup={swappable ? 'listbox' : undefined}
                     aria-expanded={swappable ? isOpen : undefined}
                     className={
-                      'flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ' +
+                      'group flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ' +
                       (swappable
                         ? 'cursor-pointer hover:bg-ink-50'
                         : 'cursor-default')
@@ -263,12 +264,15 @@ export function RecipeNutritionStudio({
                     <span className="flex flex-shrink-0 items-center gap-2 text-[11.5px] text-ink-500 tabular-nums">
                       {ing.percent.toFixed(1)}%
                       {swappable && (
-                        <ChevronDown
-                          className={
-                            'h-3.5 w-3.5 text-ink-500 transition-transform ' +
-                            (isOpen ? 'rotate-180' : '')
-                          }
-                        />
+                        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-pink-700 transition-colors group-hover:text-pink-600">
+                          Swap
+                          <ChevronDown
+                            className={
+                              'h-3.5 w-3.5 transition-transform ' +
+                              (isOpen ? 'rotate-180' : '')
+                            }
+                          />
+                        </span>
                       )}
                     </span>
                   </button>
@@ -276,7 +280,7 @@ export function RecipeNutritionStudio({
                   {swappable && isOpen && (
                     <ul
                       role="listbox"
-                      className="mt-1.5 overflow-hidden rounded-md border border-ink-200 bg-white"
+                      className="mt-1.5 overflow-hidden rounded-md border border-[var(--card-border)] bg-[var(--bg-surface)]"
                     >
                       {options.map((opt, idx) => {
                         const isDefault = idx === 0
@@ -298,7 +302,7 @@ export function RecipeNutritionStudio({
                                 'flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[12.5px] transition-colors ' +
                                 (isCurrent
                                   ? 'bg-pink-50 text-pink-900'
-                                  : 'bg-white text-ink-800 hover:bg-ink-50')
+                                  : 'bg-[var(--bg-surface)] text-ink-800 hover:bg-ink-50')
                               }
                             >
                               <span className="flex min-w-0 items-center gap-1.5">
@@ -382,7 +386,7 @@ export function RecipeNutritionStudio({
                               'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-sm border ' +
                               (on
                                 ? 'border-pink-500 bg-pink-500'
-                                : 'border-ink-300 bg-white')
+                                : 'border-ink-300 bg-[var(--bg-surface)]')
                             }
                           >
                             {on && <Check className="h-2.5 w-2.5 text-white" />}
@@ -446,7 +450,7 @@ export function RecipeNutritionStudio({
               <button
                 type="button"
                 onClick={() => setPreviewOpen(true)}
-                className="mt-3 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-pink-500 hover:text-pink-700"
+                className="mt-3 w-full rounded-md border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)] hover:text-pink-700"
               >
                 Preview full label
               </button>
@@ -554,8 +558,8 @@ export function RecipeNutritionStudio({
                         className={
                           'rounded-full border px-2 py-0.5 text-[11px] font-medium ' +
                           (isNew
-                            ? 'border-pink-400 bg-white font-semibold text-pink-700'
-                            : 'border-ink-200 bg-ink-50 text-ink-700')
+                            ? 'border-pink-400 bg-[var(--bg-surface)] font-semibold text-pink-700'
+                            : 'border-[var(--card-border)] bg-ink-50 text-ink-700')
                         }
                       >
                         {a}
@@ -615,7 +619,7 @@ export function RecipeNutritionStudio({
           onClick={() => setPreviewOpen(false)}
         >
           <div
-            className="relative max-h-[90vh] overflow-auto rounded-2xl border border-ink-200 bg-white p-6"
+            className="relative max-h-[90vh] overflow-auto rounded-[var(--card-radius)] border border-[var(--card-border)] bg-[var(--bg-surface)] p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <button

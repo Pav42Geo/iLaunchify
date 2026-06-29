@@ -8,7 +8,7 @@
 
 export function BusinessPromoCard() {
   return (
-    <div className="mt-4 rounded-2xl bg-ink-900 p-4 text-white">
+    <div className="mt-4 rounded-[var(--card-radius)] bg-[var(--ink-900)] p-4 text-white">
       <div className="flex items-center gap-2 font-display text-[16px] font-extrabold">
         <span className="h-2.5 w-2.5 rounded-full bg-[#B5FF3D]" aria-hidden="true" />
         iLaunchify Business

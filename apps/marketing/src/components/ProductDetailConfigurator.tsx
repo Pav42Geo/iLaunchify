@@ -152,7 +152,7 @@ export function ProductDetailConfigurator({
   )
 
   return (
-    <div className="flex flex-col gap-3.5 rounded-2xl border-2 border-pink-500 bg-white p-[18px]">
+    <div className="flex flex-col gap-3.5 rounded-[var(--card-radius)] border-2 border-pink-500 bg-[var(--bg-surface)] p-[18px]">
       <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-pink-700">
         Configure &amp; launch
       </div>
@@ -330,7 +330,7 @@ export function ProductDetailConfigurator({
           <button
             type="button"
             onClick={onOpenSample}
-            className="flex-1 rounded-pill border border-ink-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400"
+            className="flex-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
           >
             Order a sample →
           </button>
@@ -341,14 +341,14 @@ export function ProductDetailConfigurator({
             // Tell the below-hero tabs to switch to Recipe & nutrition + scroll.
             window.dispatchEvent(new CustomEvent('ilf:goto-recipe'))
           }}
-          className="flex-1 rounded-pill border border-ink-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400"
+          className="flex-1 rounded-pill border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-[var(--card-border-hover)]"
         >
           Customize recipe →
         </button>
       </div>
 
       {/* Subscribe & save (UI affordance — not yet wired to checkout). */}
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-ink-200 px-3 py-2.5">
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--card-radius)] border border-[var(--card-border)] px-3 py-2.5">
         <input
           type="checkbox"
           checked={subscribe}
@@ -375,7 +375,7 @@ export function ProductDetailConfigurator({
       <div className="group relative inline-flex w-fit cursor-help items-center gap-1.5 text-[12px] text-ink-500">
         <Info className="h-3.5 w-3.5" aria-hidden="true" />
         Production &amp; returns
-        <span className="pointer-events-none absolute bottom-[130%] left-0 z-10 hidden w-60 rounded-[10px] border border-ink-200 bg-white px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-700 shadow-md group-hover:block">
+        <span className="pointer-events-none absolute bottom-[130%] left-0 z-10 hidden w-60 rounded-[10px] border border-[var(--card-border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-700 shadow-md group-hover:block">
           Made to order. Once production starts a run can&rsquo;t be cancelled;
           defective units are remade or refunded. See full policy.
         </span>
