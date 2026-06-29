@@ -306,6 +306,8 @@ const SPECS: ProductSpec[] = [
     slug: 'demo-build-your-bar-box',
     name: 'Build-Your-Own Bar Box (pick 6)',
     description: 'Pick 6 bars from 5 flavors — demo of the customizable pick-N pack type.',
+    ratingAvg: 4.8,
+    ratingCount: 36,
     about: 'A build-your-own protein-bar box: the creator (and end buyer) pick 6 bars from a pool of 5 flavors. Demo of the customizable pick-N pack type with a real Nutrition Facts panel.',
     subcategorySlug: 'granola-bars',
     domain: 'FOOD',
@@ -415,6 +417,11 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
       packaging: spec.packaging,
     }
 
+    // Marketplace rating + launch count (optional per spec; drives the PDP
+    // "★★★★★ 4.8 · N launches" row). Cast-read so only the specs that set them
+    // need the fields.
+    const ratingAvg = (spec as { ratingAvg?: number }).ratingAvg ?? null
+    const ratingCount = (spec as { ratingCount?: number }).ratingCount ?? 0
     const tpl = await prisma.productTemplate.upsert({
       where: { slug: spec.slug },
       update: {
@@ -422,6 +429,7 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
         status: 'PUBLISHED', labelingType: spec.domain, priceFloorCents: spec.price.floorCents, unitCostCents: spec.price.costCents,
         longDescription: spec.about, marketingDetail: marketingDetail as object,
         packingProfileId: profile?.id ?? null, maxFlavorsPerPack: spec.maxFlavorsPerPack ?? null,
+        ratingAvg, ratingCount,
         ...(spec.formulationData ? { formulationData: spec.formulationData as object } : {}),
       },
       create: {
@@ -430,6 +438,7 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
         priceFloorCents: spec.price.floorCents, unitCostCents: spec.price.costCents,
         longDescription: spec.about, marketingDetail: marketingDetail as object,
         packingProfileId: profile?.id ?? null, maxFlavorsPerPack: spec.maxFlavorsPerPack ?? null,
+        ratingAvg, ratingCount,
         ...(spec.formulationData ? { formulationData: spec.formulationData as object } : {}),
       },
       select: { id: true },

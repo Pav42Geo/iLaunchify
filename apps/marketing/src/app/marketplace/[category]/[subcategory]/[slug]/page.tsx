@@ -387,6 +387,34 @@ function Breadcrumb({
   )
 }
 
+/* Rating + social-proof row — ★★★★★ 4.8 · N launches (prototype). Pink stars
+   on-brand; renders the real ratingAvg when present, otherwise a quiet "New".
+   `launches` is the ratingCount today (closest existing metric) — swap for a
+   dedicated launch count when one lands. Server component, no interactivity. */
+function RatingRow({ ratingAvg, launches }: { ratingAvg?: number | null; launches: number }) {
+  if (ratingAvg == null && launches <= 0) return null
+  const filled = ratingAvg != null ? Math.round(ratingAvg) : 0
+  return (
+    <div className="mb-3 flex items-center gap-2 text-[13px] text-ink-500">
+      {ratingAvg != null ? (
+        <>
+          <span className="inline-flex text-[14px] leading-none" aria-hidden>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} className={i < filled ? 'text-pink-600' : 'text-ink-200'}>
+                ★
+              </span>
+            ))}
+          </span>
+          <span className="font-semibold tabular-nums text-ink-800">{ratingAvg.toFixed(1)}</span>
+          {launches > 0 && <span>· {launches.toLocaleString()} launches</span>}
+        </>
+      ) : (
+        <span>New · {launches.toLocaleString()} launches</span>
+      )}
+    </div>
+  )
+}
+
 /* ZONE 2 — identity column. Server-rendered; passed into ProductDetailHero.
    Eyebrow · title · rating · CERT TRUST STRIP (moved here from the gallery) ·
    taxonomy chips · about blurb · key-facts strip (ProductSpecGrid data) ·
@@ -413,19 +441,25 @@ function IdentityColumn({
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
         {template.niche}
       </div>
-      <h1 className="mb-3 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
+      <h1 className="mb-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
         {template.title}
       </h1>
 
+      {/* Rating + social proof — ★★★★★ 4.8 · N launches (prototype). Pink stars
+          per the prototype's `.star{color:var(--pink)}`. Real data: ratingAvg
+          drives the score, ratingCount the launch count; "New" when unrated. */}
+      <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
+
       {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead · From.
           Reuses the spec-grid data (this is the single source of these facts —
-          the old rating/meta line that duplicated them is removed). */}
+          the old rating/meta line that duplicated them is removed). "From" value
+          uses the prototype's pink accent. */}
       <ProductSpecGrid
         items={[
           { label: 'Format', value: detail.format },
           { label: 'MOQ', value: template.minUnits.toLocaleString() },
           { label: 'Lead', value: `${template.leadTimeDays}d` },
-          { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}` },
+          { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}`, accent: true },
         ]}
         className="mb-3.5 overflow-hidden rounded-[var(--card-radius)]"
       />

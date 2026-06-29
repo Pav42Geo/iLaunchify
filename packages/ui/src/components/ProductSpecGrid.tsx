@@ -16,6 +16,9 @@ import { cn } from '../lib/utils'
 export interface SpecItem {
   label: string
   value: string
+  /** Renders the value in the brand pink (prototype's `.v.pink`) — e.g. the
+   *  "From" price. Defaults to the neutral ink-900 value color. */
+  accent?: boolean
 }
 
 export interface ProductSpecGridProps {
@@ -36,10 +39,12 @@ export function ProductSpecGrid({ items, className }: ProductSpecGridProps) {
     >
       {items.map((item) => (
         <div key={item.label} className="py-4 px-5">
-          <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-ink-700 mb-1.5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-500 mb-1.5">
             {item.label}
           </div>
-          <div className="text-[15px] font-semibold text-ink-900">{item.value}</div>
+          <div className={cn('text-[15px] font-bold', item.accent ? 'text-pink-700' : 'text-ink-900')}>
+            {item.value}
+          </div>
         </div>
       ))}
     </div>
