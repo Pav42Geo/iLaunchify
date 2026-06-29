@@ -133,7 +133,7 @@ export function ImportPanel() {
         </Button>
       </div>
 
-      <p className="text-xs text-ink-500">
+      <p className="text-ui-caption text-ink-500">
         Upsert by {family === 'certificate' ? 'certificateTypeSlug (variants appended by label)' : 'slug'}. Existing rows are
         updated; variants are appended when their label is new. Bad rows are skipped and reported — good rows still import.
       </p>
@@ -149,7 +149,7 @@ export function ImportPanel() {
       />
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-400">{json.length.toLocaleString()} chars</span>
+        <span className="text-ui-caption text-ink-400">{json.length.toLocaleString()} chars</span>
         <Button onClick={run} disabled={isPending || !json.trim()} className="bg-success-600 hover:bg-success-700">
           {isPending ? 'Importing…' : `Import ${FAMILY_LABEL[family]}`}
         </Button>
@@ -157,7 +157,7 @@ export function ImportPanel() {
 
       {result && (
         <div className="space-y-2 rounded-md border border-ink-200 bg-ink-50 p-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ui-body">
             <Stat label="Created" value={result.created} />
             <Stat label="Updated" value={result.updated} />
             <Stat label="Variants" value={result.variantsCreated} />
@@ -168,14 +168,14 @@ export function ImportPanel() {
               <p className="flex items-center gap-1 text-xs font-semibold text-warning-700">
                 <AlertTriangle className="h-3.5 w-3.5" /> {result.errors.length} issue(s):
               </p>
-              <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs text-warning-800">
+              <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-ui-caption text-warning-800">
                 {result.errors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
             </div>
           ) : (
-            <p className="flex items-center gap-1 text-xs font-medium text-success-700">
+            <p className="flex items-center gap-1 text-ui-caption font-medium text-success-700">
               <CheckCircle2 className="h-3.5 w-3.5" /> No errors.
             </p>
           )}
@@ -189,7 +189,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: 'wa
   return (
     <span className="inline-flex items-baseline gap-1">
       <span className={`font-display text-lg font-bold ${tone === 'warn' ? 'text-warning-700' : 'text-ink-900'}`}>{value}</span>
-      <span className="text-xs text-ink-500">{label}</span>
+      <span className="text-ui-caption text-ink-500">{label}</span>
     </span>
   )
 }

@@ -62,7 +62,7 @@ export function LabelFormatPreferenceEditor({
             max={100}
             value={score}
             onChange={(e) => setScore(Number(e.target.value))}
-            className="mt-1 w-28 rounded-md border border-ink-300 px-2.5 py-1.5 text-sm tabular-nums focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="mt-1 w-28 rounded-md border border-ink-300 px-2.5 py-1.5 text-ui-body tabular-nums focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
           />
         </div>
       </div>

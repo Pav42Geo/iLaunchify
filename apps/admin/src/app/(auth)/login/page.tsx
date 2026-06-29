@@ -15,7 +15,7 @@ export default async function LoginPage({
       </CardHeader>
       <CardContent>
         {error === 'unauthorized' && (
-          <div className="mb-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700">
+          <div className="mb-4 rounded-md bg-danger-50 p-3 text-ui-body text-danger-700">
             That account doesn&apos;t have admin access.
           </div>
         )}

@@ -133,7 +133,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
             <StatusPill status={inst.status} />
             <CertExpiryBadge expiryDate={inst.expiryDate} />
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-500">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-ui-caption text-ink-500">
             {inst.issuingBody && <span>{inst.issuingBody}</span>}
             {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
             {inst.issueDate && (
@@ -154,22 +154,22 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
           </div>
           {inst.certificateType.verificationNotes && (
             <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-ink-500 hover:text-ink-700">
+              <summary className="cursor-pointer text-ui-caption text-ink-500 hover:text-ink-700">
                 Verification notes
               </summary>
-              <p className="mt-1 rounded bg-ink-50 px-2 py-1.5 text-xs text-ink-700">
+              <p className="mt-1 rounded bg-ink-50 px-2 py-1.5 text-ui-caption text-ink-700">
                 {inst.certificateType.verificationNotes}
               </p>
             </details>
           )}
           {inst.status === 'REJECTED' && inst.rejectionReason && (
-            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-xs text-danger-800">
+            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-ui-caption text-danger-800">
               <span className="font-semibold">Rejection reason: </span>
               {inst.rejectionReason}
             </div>
           )}
           {inst.reviewedAt && (
-            <div className="mt-1 text-xs text-ink-400">
+            <div className="mt-1 text-ui-caption text-ink-400">
               Reviewed {new Date(inst.reviewedAt).toLocaleString()}
             </div>
           )}
@@ -179,7 +179,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
       {/* Reject form (revealed by Reject click) */}
       {showRejectForm && (
         <div className="mt-3 space-y-2 rounded-md border border-danger-200 bg-danger-50 p-3">
-          <label className="text-xs font-medium uppercase tracking-wider text-danger-800">
+          <label className="text-ui-label text-danger-800">
             Rejection reason (shown to partner)
           </label>
           <textarea
@@ -187,7 +187,7 @@ function CertReviewRow({ inst }: { inst: CertInstanceRow }) {
             onChange={(e) => setRejectionReason(e.target.value)}
             rows={2}
             placeholder="e.g. PDF expired in 2023. Upload a current certificate."
-            className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-sm focus:border-danger-400 focus:outline-none"
+            className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-ui-body focus:border-danger-400 focus:outline-none"
             disabled={isPending}
           />
           <div className="flex justify-end gap-2">

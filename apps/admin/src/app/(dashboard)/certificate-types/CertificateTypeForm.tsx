@@ -177,7 +177,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
               className={mode === 'edit' ? 'bg-ink-50' : ''}
             />
             {mode === 'edit' && (
-              <p className="text-xs text-ink-500">
+              <p className="text-ui-caption text-ink-500">
                 Slug is immutable — used in URLs + R2 keys. Create a new type if you need a different one.
               </p>
             )}
@@ -190,7 +190,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={2}
-            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
             disabled={isPending}
           />
         </Field>
@@ -203,7 +203,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
             value={verificationNotes}
             onChange={(e) => setVerificationNotes(e.target.value)}
             rows={3}
-            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
             disabled={isPending}
           />
         </Field>
@@ -211,8 +211,8 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
         {mode === 'edit' && (
           <div className="space-y-5 rounded-md border border-ink-100 bg-ink-50/60 p-4">
             <div>
-              <h3 className="text-sm font-semibold text-ink-900">Catalog metadata</h3>
-              <p className="mt-0.5 text-xs text-ink-500">
+              <h3 className="text-ui-value text-ink-900">Catalog metadata</h3>
+              <p className="mt-0.5 text-ui-caption text-ink-500">
                 Drives applicability + the partner cert picker. Seeded from the master
                 catalog; edit the scalars here. Applicability arrays are catalog-managed
                 (re-seed to change).
@@ -225,7 +225,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                   value={scope}
                   onChange={(e) => setScope(e.target.value as CertScope | '')}
                   disabled={isPending}
-                  className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+                  className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
                 >
                   <option value="">— Not set —</option>
                   {SCOPE_OPTIONS.map((o) => (
@@ -254,7 +254,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                 value={applicabilityNotes}
                 onChange={(e) => setApplicabilityNotes(e.target.value)}
                 rows={2}
-                className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+                className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
                 disabled={isPending}
               />
             </Field>
@@ -267,7 +267,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
               <ChipList label="Claim categories" items={initial?.claimCategories} />
             </div>
             {initial?.alternativeOfName && (
-              <p className="text-xs text-ink-500">
+              <p className="text-ui-caption text-ink-500">
                 Accepted as an alternative to{' '}
                 <span className="font-medium text-ink-700">{initial.alternativeOfName}</span>.
               </p>
@@ -276,7 +276,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
         )}
 
         {error && (
-          <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">
+          <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-ui-body text-danger-700">
             {error}
           </div>
         )}
@@ -293,7 +293,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
           {/* Badges — two assets per type: PNG for web UI, SVG for production. */}
           <div className="rounded-lg border border-ink-200 bg-white p-6">
             <h3 className="font-semibold text-ink-900">Branded badges</h3>
-            <p className="mt-1 text-sm text-ink-500">
+            <p className="mt-1 text-ui-body text-ink-500">
               Two assets per certificate. The PNG is the web badge; the SVG is the
               print/production badge. Upload both so the cert renders correctly
               everywhere it appears.
@@ -302,8 +302,8 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {/* PNG — web UI */}
               <div className="rounded-md border border-ink-200 p-4">
-                <h4 className="text-sm font-semibold text-ink-900">Web badge (PNG)</h4>
-                <p className="mt-1 text-xs text-ink-500">
+                <h4 className="text-ui-value text-ink-900">Web badge (PNG)</h4>
+                <p className="mt-1 text-ui-caption text-ink-500">
                   Shown on the marketplace product detail page + cert chips whenever a
                   partner has a VERIFIED instance. PNG/WebP, transparent background, ~256×256.
                 </p>
@@ -336,7 +336,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                     {initial?.hasThumbnail ? 'Replace PNG' : 'Upload PNG'}
                   </Button>
                   {initial?.hasThumbnail && (
-                    <span className="inline-flex items-center gap-1 text-xs text-success-700">
+                    <span className="inline-flex items-center gap-1 text-ui-caption text-success-700">
                       <ShieldCheck className="h-3.5 w-3.5" /> Uploaded
                     </span>
                   )}
@@ -345,8 +345,8 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
 
               {/* SVG — Design Studio / production */}
               <div className="rounded-md border border-ink-200 p-4">
-                <h4 className="text-sm font-semibold text-ink-900">Print badge (SVG)</h4>
-                <p className="mt-1 text-xs text-ink-500">
+                <h4 className="text-ui-value text-ink-900">Print badge (SVG)</h4>
+                <p className="mt-1 text-ui-caption text-ink-500">
                   Vector badge placed on labels/packaging in the Design Studio. Required
                   for print/production — vector keeps edges crisp at any size.
                 </p>
@@ -379,7 +379,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
                     {initial?.hasSvgBadge ? 'Replace SVG' : 'Upload SVG'}
                   </Button>
                   {initial?.hasSvgBadge && (
-                    <span className="inline-flex items-center gap-1 text-xs text-success-700">
+                    <span className="inline-flex items-center gap-1 text-ui-caption text-success-700">
                       <ShieldCheck className="h-3.5 w-3.5" /> Uploaded
                     </span>
                   )}
@@ -391,7 +391,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
           {/* Status toggle */}
           <div className="rounded-lg border border-ink-200 bg-white p-6">
             <h3 className="font-semibold text-ink-900">Status</h3>
-            <p className="mt-1 text-sm text-ink-500">
+            <p className="mt-1 text-ui-body text-ink-500">
               Deprecated types stay visible on existing partner instances but disappear from
               the partner picker. Use to retire a type without losing audit history.
             </p>
@@ -425,7 +425,7 @@ export function CertificateTypeForm({ mode, typeId, initial }: FormProps) {
 function ChipList({ label, items }: { label: string; items?: string[] }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-ink-700">{label}</p>
+      <p className="text-ui-caption font-medium text-ink-700">{label}</p>
       {items && items.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {items.map((it) => (
@@ -465,7 +465,7 @@ function Field({
           </span>
         )}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

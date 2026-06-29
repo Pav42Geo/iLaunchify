@@ -135,7 +135,7 @@ function FilterBar({
           name="q"
           defaultValue={q}
           placeholder="Search partner name or contact…"
-          className="pl-9 text-sm"
+          className="pl-9 text-ui-body"
         />
       </div>
       <div className="flex flex-wrap gap-1.5">

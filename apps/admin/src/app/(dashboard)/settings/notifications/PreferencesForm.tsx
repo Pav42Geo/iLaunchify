@@ -82,7 +82,7 @@ export function PreferencesForm({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-start" className="text-xs uppercase tracking-wide text-ink-500">
+          <Label htmlFor="quiet-start" className="text-ui-label text-ink-500">
             Start (UTC)
           </Label>
           <Input
@@ -94,7 +94,7 @@ export function PreferencesForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="quiet-end" className="text-xs uppercase tracking-wide text-ink-500">
+          <Label htmlFor="quiet-end" className="text-ui-label text-ink-500">
             End (UTC)
           </Label>
           <Input
@@ -132,8 +132,8 @@ export function PreferencesForm({
           Notification types
         </h3>
         <div className="overflow-hidden rounded-md border border-ink-200">
-          <table className="w-full text-sm">
-            <thead className="bg-ink-50 text-left text-xs font-semibold uppercase tracking-wide text-ink-500">
+          <table className="w-full text-ui-body">
+            <thead className="bg-ink-50 text-left text-ui-label text-ink-500">
               <tr>
                 <th className="px-4 py-2">Event</th>
                 <th className="w-24 px-4 py-2 text-center">In app</th>
@@ -145,7 +145,7 @@ export function PreferencesForm({
                 <tr key={e.value}>
                   <td className="px-4 py-3">
                     <div className="font-medium text-ink-900">{e.label}</div>
-                    <div className="text-xs text-ink-500">{e.help}</div>
+                    <div className="text-ui-caption text-ink-500">{e.help}</div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <Checkbox

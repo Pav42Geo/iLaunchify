@@ -92,7 +92,7 @@ export default async function ThemeStudioPage({ searchParams }: { searchParams: 
         actions={
           <a
             href="/theme-studio/logos"
-            className="inline-flex items-center gap-1 rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-sm font-semibold text-ink-800 hover:bg-ink-50"
+            className="inline-flex items-center gap-1 rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-ui-value text-ink-800 hover:bg-ink-50"
           >
             Manage logos →
           </a>

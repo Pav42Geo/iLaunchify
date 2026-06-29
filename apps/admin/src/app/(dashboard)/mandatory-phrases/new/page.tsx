@@ -13,11 +13,11 @@ export default async function NewPhrasePage() {
       <div>
         <Link
           href="/mandatory-phrases"
-          className="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-800"
+          className="inline-flex items-center gap-1 text-ui-body text-ink-500 hover:text-ink-800"
         >
           <ChevronLeft className="h-4 w-4" /> Mandatory phrases
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900">New mandatory phrase</h1>
+        <h1 className="mt-1 text-ui-title text-ink-900">New mandatory phrase</h1>
       </div>
       <PhraseForm
         mode="create"

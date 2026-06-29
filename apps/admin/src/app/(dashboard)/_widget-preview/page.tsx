@@ -218,7 +218,7 @@ export default function WidgetPreviewPage() {
               height={220}
               centerLabel={
                 <div>
-                  <p className="font-display text-2xl font-semibold tabular-nums text-ink-900">
+                  <p className="text-ui-title tabular-nums text-ink-900">
                     150
                   </p>
                   <p className="text-[11px] text-ink-500">total</p>

@@ -85,13 +85,13 @@ export function InvitePartnerDialog() {
 
         {result ? (
           <div className="space-y-4">
-            <div className="rounded-md bg-success-50 p-3 text-sm text-success-800">
+            <div className="rounded-md bg-success-50 p-3 text-ui-body text-success-800">
               {result.created
                 ? 'Invitation created. Share this link with the partner — magic-link auth lets them sign in without a password.'
                 : 'Partner re-invited. Share this link to bring them back into onboarding.'}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wide text-ink-500">
+              <Label className="text-ui-label text-ink-500">
                 Invitation URL
               </Label>
               <div className="flex gap-2">
@@ -105,7 +105,7 @@ export function InvitePartnerDialog() {
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-ink-500">
+              <p className="text-ui-caption text-ink-500">
                 Email integration ships in Phase B. Paste this into your email client for now.
               </p>
             </div>
@@ -156,7 +156,7 @@ export function InvitePartnerDialog() {
                   <SelectItem value="LABEL_PRINTING">Label printing</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-ink-500">
+              <p className="text-ui-caption text-ink-500">
                 The partner can add more services after they accept.
               </p>
             </div>

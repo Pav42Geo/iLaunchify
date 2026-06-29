@@ -46,7 +46,7 @@ export function PackagingVariantsManager({
   return (
     <div className="space-y-4">
       {variants.length === 0 && !adding && (
-        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
+        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-ui-body text-ink-500">
           No variants yet. Add the approved artwork(s) for this symbol.
         </div>
       )}
@@ -119,7 +119,7 @@ function VariantRow({ variant: v, onEdit }: { variant: PkgVariantView; onEdit: (
         </div>
         <div className="min-w-0 flex-1">
           <span className="font-semibold text-ink-900">{v.label}</span>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-600 sm:grid-cols-3">
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-ui-caption text-ink-600 sm:grid-cols-3">
             {(v.minWidthMm != null || v.maxWidthMm != null) && (
               <Spec label="Size">
                 {v.minWidthMm ?? '?'}–{v.maxWidthMm ?? '?'} mm
@@ -135,7 +135,7 @@ function VariantRow({ variant: v, onEdit }: { variant: PkgVariantView; onEdit: (
               </Spec>
             )}
           </dl>
-          {v.notes && <p className="mt-2 text-xs text-ink-500">{v.notes}</p>}
+          {v.notes && <p className="mt-2 text-ui-caption text-ink-500">{v.notes}</p>}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <input ref={svgRef} type="file" accept="image/svg+xml,.svg,application/pdf,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'SVG') }} />
@@ -276,9 +276,9 @@ function VariantForm({
         </Field>
       </div>
       <Field label="Notes">
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none" disabled={isPending} />
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none" disabled={isPending} />
       </Field>
-      {error && <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</div>}
+      {error && <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-ui-body text-danger-700">{error}</div>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>Cancel</Button>
         <Button type="submit" disabled={isPending || !label.trim()} className="bg-success-600 hover:bg-success-700">
@@ -306,7 +306,7 @@ function Field({
         {label}
         {required && <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">Required</span>}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

@@ -67,7 +67,7 @@ export default async function ThemeStudioLogosPage() {
         {LOGO_KINDS.map((kind) => (
           <section key={kind} className="rounded-3xl border border-ink-200 bg-white p-6">
             <h2 className="font-display text-lg font-semibold text-ink-900">{SLOT_LABEL[kind]}</h2>
-            <p className="mt-0.5 text-sm text-ink-600">{SLOT_HINT[kind]}</p>
+            <p className="mt-0.5 text-ui-body text-ink-600">{SLOT_HINT[kind]}</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {LOGO_VARIANTS.map((variant) => {
                 const current = byKey.get(`${kind}:${variant}`)
@@ -88,7 +88,7 @@ export default async function ThemeStudioLogosPage() {
       {/* Per-header placement */}
       <section className="rounded-3xl border border-ink-200 bg-white p-6">
         <h2 className="font-display text-lg font-semibold text-ink-900">Where each logo appears</h2>
-        <p className="mt-0.5 max-w-3xl text-sm text-ink-600">
+        <p className="mt-0.5 max-w-3xl text-ui-body text-ink-600">
           For every header, choose the <strong>full lockup</strong> or the <strong>mark only</strong>, and set an optional
           sublabel (e.g. “Admin Mode”, “Business”). Leave the sublabel blank to show no text.
         </p>

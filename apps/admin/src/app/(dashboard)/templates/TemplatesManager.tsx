@@ -37,8 +37,8 @@ const BUCKETS = ['WRAP', 'PANEL_WIDE', 'PANEL_SQUARE', 'PANEL_TALL', 'LONG_STRIP
 
 const DOMAIN_LABEL = Object.fromEntries(DOMAINS.map((d) => [d.value, d.label]))
 const field =
-  'mt-1 w-full rounded-md border border-ink-300 bg-white px-2.5 py-2 text-sm text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
-const lbl = 'text-xs font-medium text-ink-600'
+  'mt-1 w-full rounded-md border border-ink-300 bg-white px-2.5 py-2 text-ui-body text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+const lbl = 'text-ui-caption font-medium text-ink-600'
 
 export function TemplatesManager({ initial }: { initial: Row[] }) {
   const [rows, setRows] = React.useState<Row[]>(initial)
@@ -143,7 +143,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
     <div className="space-y-6">
       {/* Create */}
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-ink-900">Publish a template</h2>
+        <h2 className="mb-3 text-ui-value text-ink-900">Publish a template</h2>
 
         {/* Regular / Premium toggle */}
         <div className="mb-4 inline-flex rounded-lg border border-ink-200 p-0.5">
@@ -287,12 +287,12 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
           </div>
         )}
 
-        {error && <p className="mt-2 text-xs font-medium text-danger-600">{error}</p>}
+        {error && <p className="mt-2 text-ui-caption font-medium text-danger-600">{error}</p>}
         <button
           type="button"
           onClick={create}
           disabled={busy || !name.trim() || !json.trim()}
-          className="mt-4 inline-flex items-center gap-2 rounded-md bg-ink-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-ink-700 disabled:opacity-50"
+          className="mt-4 inline-flex items-center gap-2 rounded-md bg-ink-900 px-3.5 py-2 text-ui-value text-white hover:bg-ink-700 disabled:opacity-50"
         >
           <Plus className="h-4 w-4" /> {busy ? 'Publishing…' : `Publish ${isPremium ? 'premium' : 'regular'} template`}
         </button>
@@ -300,7 +300,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
 
       {/* Table */}
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full text-ui-body">
           <thead>
             <tr className="border-b border-ink-200 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500">
               <th className="px-4 py-3">Template</th>
@@ -313,7 +313,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-ink-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-ui-body text-ink-500">
                   No templates yet.
                 </td>
               </tr>

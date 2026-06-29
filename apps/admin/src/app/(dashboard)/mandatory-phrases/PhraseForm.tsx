@@ -53,7 +53,7 @@ export function PhraseForm({ mode, initial }: { mode: 'create' | 'edit'; initial
   }
 
   const field =
-    'w-full rounded-md border border-ink-300 px-2.5 py-1.5 text-sm focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-200'
+    'w-full rounded-md border border-ink-300 px-2.5 py-1.5 text-ui-body focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-200'
   const label = 'block text-[11px] font-semibold uppercase tracking-wide text-ink-500 mb-1'
 
   return (
@@ -109,7 +109,7 @@ export function PhraseForm({ mode, initial }: { mode: 'create' | 'edit'; initial
         <label className={label}>Applies to labeling types</label>
         <div className="flex flex-wrap gap-2">
           {PHRASE_LABELING_TYPES.map((t) => (
-            <label key={t} className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1 text-sm">
+            <label key={t} className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1 text-ui-body">
               <input
                 type="checkbox"
                 name="labelingTypes"
@@ -133,18 +133,18 @@ export function PhraseForm({ mode, initial }: { mode: 'create' | 'edit'; initial
         />
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-ink-700">
+      <label className="flex items-center gap-2 text-ui-body text-ink-700">
         <input type="checkbox" name="isActive" defaultChecked={initial.isActive} className="h-4 w-4 rounded border-ink-300" />
         Active (available to the compliance scanner + renderer)
       </label>
 
-      {error && <p className="text-sm text-danger-600">{error}</p>}
+      {error && <p className="text-ui-body text-danger-600">{error}</p>}
 
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-4 py-2 text-ui-value text-white hover:bg-black disabled:opacity-40"
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {mode === 'create' ? 'Create phrase' : 'Save changes'}
@@ -152,7 +152,7 @@ export function PhraseForm({ mode, initial }: { mode: 'create' | 'edit'; initial
         <button
           type="button"
           onClick={() => router.push('/mandatory-phrases')}
-          className="rounded-md border border-ink-300 px-4 py-2 text-sm hover:bg-ink-50"
+          className="rounded-md border border-ink-300 px-4 py-2 text-ui-body hover:bg-ink-50"
         >
           Cancel
         </button>

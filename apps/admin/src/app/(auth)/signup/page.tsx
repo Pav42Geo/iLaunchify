@@ -15,7 +15,7 @@ export default function AdminSignupBlockedPage() {
           New admin users are added by an existing admin via the team invite flow.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 text-sm text-ink-600">
+      <CardContent className="space-y-4 text-ui-body text-ink-600">
         <p>
           If you&apos;ve been invited, check your email for the invite link. If you already
           have an admin account, sign in below.
@@ -26,7 +26,7 @@ export default function AdminSignupBlockedPage() {
         >
           Sign in to admin
         </a>
-        <p className="text-xs text-ink-500">
+        <p className="text-ui-caption text-ink-500">
           Not an admin? Looking for the{' '}
           <a href="http://localhost:3000/signup" className="underline">
             creator signup

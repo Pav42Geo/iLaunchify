@@ -24,8 +24,8 @@ export default async function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <h1 className="text-ui-title">Notifications</h1>
+          <p className="mt-1 text-ui-body text-ink-500">
             {unread} unread of last {notifications.length}
           </p>
         </div>
@@ -74,7 +74,7 @@ export default async function NotificationsPage() {
                       {n.body && (
                         <CardDescription className="mt-1">{n.body}</CardDescription>
                       )}
-                      <div className="mt-2 text-xs text-ink-400">
+                      <div className="mt-2 text-ui-caption text-ink-400">
                         {new Date(n.createdAt).toLocaleString()} · {n.event.replace(/_/g, ' ').toLowerCase()}
                       </div>
                     </div>

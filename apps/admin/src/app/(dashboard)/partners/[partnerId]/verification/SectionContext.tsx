@@ -39,13 +39,13 @@ export function BusinessContext({
   ].filter(Boolean)
 
   return (
-    <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
+    <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-ui-body">
       <Row label="DBA" value={partner.companyName} />
       <Row label="Legal name" value={partner.legalName} />
       <Row label="Website" value={partner.websiteUrl} />
       <Row label="Phone" value={partner.contactPhone} />
       <div className="mt-2 border-t border-ink-200 pt-2">
-        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
+        <div className="text-ui-label text-ink-500">
           Primary facility address
         </div>
         {addressLines.length > 0 ? (
@@ -80,7 +80,7 @@ export function CapabilitiesContext({
 }) {
   if (services.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-ink-200 px-4 py-3 text-sm text-ink-500">
+      <div className="rounded-md border border-dashed border-ink-200 px-4 py-3 text-ui-body text-ink-500">
         Partner hasn&apos;t selected any service types yet.
       </div>
     )
@@ -89,7 +89,7 @@ export function CapabilitiesContext({
   return (
     <div className="space-y-2">
       {services.map((s) => (
-        <div key={s.id} className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
+        <div key={s.id} className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-ui-body">
           <div className="mb-2 flex items-center gap-2">
             <span className="rounded-full bg-success-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-success-800">
               {SERVICE_LABEL[s.type]}
@@ -123,7 +123,7 @@ function CapabilityFields({ capabilities }: { capabilities: Record<string, unkno
     <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
       {entries.map(([k, v]) => (
         <div key={k} className="flex flex-col">
-          <dt className="text-xs uppercase tracking-wider text-ink-500">{humanizeKey(k)}</dt>
+          <dt className="text-ui-label text-ink-500">{humanizeKey(k)}</dt>
           <dd className="text-ink-800">{formatValue(v)}</dd>
         </div>
       ))}
@@ -175,8 +175,8 @@ export function CommercialContext({
 }: CommercialContextProps) {
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
-        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
+      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-ui-body">
+        <div className="text-ui-label text-ink-500">
           Partner agreement
         </div>
         {contract && signedAt ? (
@@ -206,8 +206,8 @@ export function CommercialContext({
         )}
       </div>
 
-      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-sm">
-        <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
+      <div className="rounded-md border border-ink-200 bg-ink-50 px-4 py-3 text-ui-body">
+        <div className="text-ui-label text-ink-500">
           Stripe Connect (payouts)
         </div>
         <div className="mt-2 space-y-1">
@@ -224,7 +224,7 @@ export function CommercialContext({
           />
         </div>
         {stripeAccountStatus !== 'ACTIVE' && (
-          <p className="mt-2 text-xs text-warning-700">
+          <p className="mt-2 text-ui-caption text-warning-700">
             Payouts won&apos;t flow until this is ACTIVE. Partner must complete Stripe Connect Express
             onboarding from their /onboarding accordion.
           </p>
@@ -267,7 +267,7 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs uppercase tracking-wider text-ink-500">{label}</span>
+      <span className="text-ui-label text-ink-500">{label}</span>
       <span className="flex min-w-0 items-center gap-2 text-right">
         {value && (
           <span

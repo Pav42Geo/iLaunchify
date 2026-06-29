@@ -224,7 +224,7 @@ export function ProductReviewer({
         </CardHeader>
         <CardContent className="space-y-2">
           {!canApprove && !isPendingStatus && !canPause && !canResume && (
-            <p className="rounded-md border border-dashed border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+            <p className="rounded-md border border-dashed border-ink-200 bg-ink-50 px-3 py-2 text-ui-caption text-ink-600">
               {currentStatus === 'DRAFT'
                 ? 'Nothing to approve yet — this product is still a draft. Once the partner finishes the builder and submits, it moves to “Pending review” and the Approve / Request changes / Reject actions appear here.'
                 : currentStatus === 'REJECTED'
@@ -289,7 +289,7 @@ export function ProductReviewer({
           {/* Inline reject form */}
           {showRejectForm && (
             <div className="mt-3 space-y-2 rounded-md border border-danger-200 bg-danger-50 p-3">
-              <Label className="text-xs font-medium uppercase tracking-wider text-danger-800">
+              <Label className="text-ui-label text-danger-800">
                 Rejection reason (shown to partner)
               </Label>
               <textarea
@@ -297,7 +297,7 @@ export function ProductReviewer({
                 onChange={(e) => setRejectReason(e.target.value)}
                 rows={2}
                 placeholder='e.g. "Product category is not currently supported on iLaunchify."'
-                className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-sm focus:border-danger-400 focus:outline-none"
+                className="w-full rounded border border-danger-200 bg-white px-2 py-1.5 text-ui-body focus:border-danger-400 focus:outline-none"
                 disabled={isPending}
               />
               <Button
@@ -314,7 +314,7 @@ export function ProductReviewer({
           {/* Inline request-changes composer */}
           {showChecklist && (
             <div className="mt-3 space-y-3 rounded-md border border-warning-200 bg-warning-50 p-3">
-              <div className="text-xs font-medium uppercase tracking-wider text-warning-800">
+              <div className="text-ui-label text-warning-800">
                 Checklist of changes
               </div>
 
@@ -323,10 +323,10 @@ export function ProductReviewer({
                   {pendingItems.map((item, i) => (
                     <li
                       key={i}
-                      className="flex items-start justify-between gap-2 rounded bg-white px-2 py-1.5 text-sm"
+                      className="flex items-start justify-between gap-2 rounded bg-white px-2 py-1.5 text-ui-body"
                     >
                       <span>
-                        <span className="text-xs font-semibold uppercase text-warning-700">
+                        <span className="text-ui-label text-warning-700">
                           {item.category}:
                         </span>{' '}
                         {item.description}
@@ -351,7 +351,7 @@ export function ProductReviewer({
                   <select
                     value={newItemCategory}
                     onChange={(e) => setNewItemCategory(e.target.value)}
-                    className="rounded border border-warning-200 bg-white px-2 py-1.5 text-sm focus:border-warning-400 focus:outline-none"
+                    className="rounded border border-warning-200 bg-white px-2 py-1.5 text-ui-body focus:border-warning-400 focus:outline-none"
                     disabled={isPending}
                   >
                     {CATEGORIES.map((c) => (
@@ -385,7 +385,7 @@ export function ProductReviewer({
               </div>
 
               <div>
-                <Label className="text-xs font-medium uppercase tracking-wider text-warning-800">
+                <Label className="text-ui-label text-warning-800">
                   General note (optional)
                 </Label>
                 <textarea
@@ -393,7 +393,7 @@ export function ProductReviewer({
                   onChange={(e) => setGeneralNote(e.target.value)}
                   rows={2}
                   placeholder="Anything else the partner should know…"
-                  className="mt-1 w-full rounded border border-warning-200 bg-white px-2 py-1.5 text-sm focus:border-warning-400 focus:outline-none"
+                  className="mt-1 w-full rounded border border-warning-200 bg-white px-2 py-1.5 text-ui-body focus:border-warning-400 focus:outline-none"
                   disabled={isPending}
                 />
               </div>
@@ -421,8 +421,8 @@ export function ProductReviewer({
           <CardContent>
             <ul className="space-y-1.5">
               {openReviewItems.map((item) => (
-                <li key={item.id} className="rounded bg-warning-50 px-2 py-1.5 text-sm">
-                  <span className="text-xs font-semibold uppercase text-warning-700">
+                <li key={item.id} className="rounded bg-warning-50 px-2 py-1.5 text-ui-body">
+                  <span className="text-ui-label text-warning-700">
                     {item.category}:
                   </span>{' '}
                   {item.description}
@@ -439,13 +439,13 @@ export function ProductReviewer({
           <CardTitle className="flex items-center gap-2 text-base">
             <MessageCircle className="h-4 w-4 text-ink-500" />
             Notes
-            <span className="text-sm font-normal text-ink-500">{notes.length}</span>
+            <span className="text-ui-body text-ink-500">{notes.length}</span>
           </CardTitle>
           <CardDescription>Visible to the partner on their /edit page.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {notes.length === 0 ? (
-            <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
+            <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-ui-caption text-ink-500">
               No notes yet. Post the first message below.
             </p>
           ) : (
@@ -453,14 +453,14 @@ export function ProductReviewer({
               {notes.map((n) => (
                 <li
                   key={n.id}
-                  className={`rounded-md border px-3 py-2 text-sm ${
+                  className={`rounded-md border px-3 py-2 text-ui-body ${
                     n.authorType === 'ADMIN'
                       ? 'border-success-200 bg-success-50/50'
                       : 'border-ink-200 bg-ink-50'
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                    <span className="text-ui-label text-ink-500">
                       {n.authorType} · {n.authorName}
                     </span>
                     <span className="text-[10px] text-ink-400">
@@ -479,7 +479,7 @@ export function ProductReviewer({
               onChange={(e) => setNoteBody(e.target.value)}
               rows={2}
               placeholder="Post a note to the partner…"
-              className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+              className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
               disabled={isPending}
             />
             <Button

@@ -51,7 +51,7 @@ export function ResolveDisputeControls({
         onChange={(e) => setResolution(e.target.value)}
         placeholder="Resolution note (optional)"
         rows={2}
-        className="w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+        className="w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-ui-body focus-visible:ring-2 focus-visible:ring-pink-500"
       />
       <label className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-600">
         Refund if resolved:
@@ -63,7 +63,7 @@ export function ResolveDisputeControls({
             step="0.01"
             value={refundDollars}
             onChange={(e) => setRefundDollars(e.target.value)}
-            className="ml-0.5 w-28 rounded-lg border border-ink-200 px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+            className="ml-0.5 w-28 rounded-lg border border-ink-200 px-2 py-1 text-ui-body focus-visible:ring-2 focus-visible:ring-pink-500"
           />
         </span>
         <span className="text-[11px] text-ink-400">of ${(orderTotalCents / 100).toFixed(2)} total · 0 = none</span>

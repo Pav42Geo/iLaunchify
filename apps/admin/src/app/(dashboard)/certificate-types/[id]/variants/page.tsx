@@ -53,12 +53,12 @@ export default async function CertVariantsPage({ params }: PageProps) {
       <header>
         <Link
           href={`/certificate-types/${ct.id}`}
-          className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+          className="mb-2 inline-flex items-center gap-1 text-ui-body text-ink-500 hover:text-ink-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to {ct.name}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{ct.name} — brand assets</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-500">
+        <h1 className="text-ui-title">{ct.name} — brand assets</h1>
+        <p className="mt-1 max-w-2xl text-ui-body text-ink-500">
           Approved mark variants (color / black &amp; white / outline / contextual lockups) with
           reproduction standards. The SVG is the production vector; the PNG is the UI preview.
         </p>

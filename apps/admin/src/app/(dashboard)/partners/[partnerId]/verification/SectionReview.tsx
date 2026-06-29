@@ -99,7 +99,7 @@ export function SectionReview({
       <CardHeader className="flex-row items-start justify-between space-y-0">
         <div>
           <CardTitle className="text-base">{label}</CardTitle>
-          <p className="mt-0.5 text-xs text-ink-500">{description}</p>
+          <p className="mt-0.5 text-ui-caption text-ink-500">{description}</p>
         </div>
         <span
           className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium uppercase ${statusBadgeClass(
@@ -115,12 +115,12 @@ export function SectionReview({
             {files.map((file) => (
               <li
                 key={file.id}
-                className="flex items-center gap-2 rounded border border-ink-100 bg-ink-50 px-3 py-2 text-sm"
+                className="flex items-center gap-2 rounded border border-ink-100 bg-ink-50 px-3 py-2 text-ui-body"
               >
                 <FileText className="h-4 w-4 shrink-0 text-ink-400" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{file.originalFilename}</div>
-                  <div className="text-xs text-ink-500">
+                  <div className="text-ui-caption text-ink-500">
                     {file.kind} · {formatBytes(file.sizeBytes)} ·{' '}
                     {new Date(file.uploadedAt).toLocaleDateString()}
                   </div>
@@ -129,13 +129,13 @@ export function SectionReview({
             ))}
           </ul>
         ) : (
-          <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-xs text-ink-500">
+          <p className="rounded border border-dashed border-ink-200 px-3 py-2 text-ui-caption text-ink-500">
             No files uploaded by partner yet.
           </p>
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor={`notes-${sectionType}`} className="text-xs uppercase tracking-wide text-ink-500">
+          <Label htmlFor={`notes-${sectionType}`} className="text-ui-label text-ink-500">
             Admin notes (shown to partner)
           </Label>
           <textarea
@@ -145,7 +145,7 @@ export function SectionReview({
             disabled={isPending}
             placeholder='e.g. "Insurance COI is expired — please upload current policy."'
             rows={3}
-            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
           />
         </div>
 
@@ -171,7 +171,7 @@ export function SectionReview({
         </div>
 
         {current.verifiedAt && (
-          <p className="text-xs text-ink-500">
+          <p className="text-ui-caption text-ink-500">
             Last set {new Date(current.verifiedAt).toLocaleString()}
             {current.verifierName ? ` by ${current.verifierName}` : ''}
           </p>

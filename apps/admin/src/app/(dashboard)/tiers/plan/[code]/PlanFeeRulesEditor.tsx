@@ -109,7 +109,7 @@ function FeeRuleRowEditor({ rule }: { rule: FeeRuleRow }) {
             value={ratePercent}
             onChange={(e) => setRatePercent(e.target.value)}
             placeholder="—"
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Flat (cents)">
@@ -119,7 +119,7 @@ function FeeRuleRowEditor({ rule }: { rule: FeeRuleRow }) {
             value={flatCents}
             onChange={(e) => setFlatCents(e.target.value)}
             placeholder="—"
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Min (cents)">
@@ -129,7 +129,7 @@ function FeeRuleRowEditor({ rule }: { rule: FeeRuleRow }) {
             value={minCents}
             onChange={(e) => setMinCents(e.target.value)}
             placeholder="—"
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Max (cents)">
@@ -139,7 +139,7 @@ function FeeRuleRowEditor({ rule }: { rule: FeeRuleRow }) {
             value={maxCents}
             onChange={(e) => setMaxCents(e.target.value)}
             placeholder="—"
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
       </div>
@@ -152,7 +152,7 @@ function FeeRuleRowEditor({ rule }: { rule: FeeRuleRow }) {
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+          className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
         />
       </div>
 

@@ -56,11 +56,11 @@ export default async function EditPackagingSymbolPage({ params }: PageProps) {
         <div>
           <Link
             href="/assets/packaging-symbols"
-            className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-700"
+            className="mb-2 inline-flex items-center gap-1 text-ui-body text-ink-500 hover:text-ink-700"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to packaging symbols
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{sym.name}</h1>
+          <h1 className="text-ui-title">{sym.name}</h1>
         </div>
         <StatusToggle id={sym.id} status={sym.status} />
       </header>

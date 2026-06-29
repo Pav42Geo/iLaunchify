@@ -101,7 +101,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
             value={intVal}
             onChange={(e) => setIntVal(e.target.value)}
             placeholder="null = ∞"
-            className="w-28 rounded-md border border-ink-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="w-28 rounded-md border border-ink-200 px-2 py-1 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         )}
         {kind === 'string' && (
@@ -109,7 +109,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
             type="text"
             value={strVal}
             onChange={(e) => setStrVal(e.target.value)}
-            className="w-40 rounded-md border border-ink-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="w-40 rounded-md border border-ink-200 px-2 py-1 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         )}
         {kind === 'bool' && (
@@ -118,7 +118,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
               type="button"
               onClick={() => setBoolVal(false)}
               className={
-                'inline-flex h-7 w-9 items-center justify-center text-xs ' +
+                'inline-flex h-7 w-9 items-center justify-center text-ui-caption ' +
                 (!boolVal ? 'bg-ink-900 text-white' : 'bg-white text-ink-500')
               }
               aria-label="No"
@@ -129,7 +129,7 @@ function FeatureRowEditor({ feature }: { feature: FeatureRow }) {
               type="button"
               onClick={() => setBoolVal(true)}
               className={
-                'inline-flex h-7 w-9 items-center justify-center text-xs ' +
+                'inline-flex h-7 w-9 items-center justify-center text-ui-caption ' +
                 (boolVal ? 'bg-success-600 text-white' : 'bg-white text-ink-500')
               }
               aria-label="Yes"

@@ -50,7 +50,7 @@ export function RoutingPreviewForm({
   }
 
   const field =
-    'w-full rounded-md border border-ink-300 px-2.5 py-1.5 text-sm focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-200'
+    'w-full rounded-md border border-ink-300 px-2.5 py-1.5 text-ui-body focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-ink-200'
   const label = 'block text-[11px] font-semibold uppercase tracking-wide text-ink-500 mb-1'
 
   return (
@@ -104,20 +104,20 @@ export function RoutingPreviewForm({
             type="button"
             onClick={run}
             disabled={!productId || pending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-4 py-2 text-ui-value text-white hover:bg-black disabled:opacity-40"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Workflow className="h-4 w-4" />}
             Preview routing
           </button>
-          {error && <span className="ml-3 text-sm text-danger-600">{error}</span>}
+          {error && <span className="ml-3 text-ui-body text-danger-600">{error}</span>}
         </div>
       </div>
 
       {result && (
         <div className="overflow-x-auto rounded-xl border border-ink-200">
-          <table className="w-full text-sm">
+          <table className="w-full text-ui-body">
             <thead>
-              <tr className="border-b border-ink-200 bg-ink-50 text-left text-xs uppercase tracking-wider text-ink-500">
+              <tr className="border-b border-ink-200 bg-ink-50 text-left text-ui-label text-ink-500">
                 <th className="px-4 py-2.5 font-semibold">Manufacturer</th>
                 <th className="px-4 py-2.5 font-semibold">MOQ band</th>
                 <th className="px-4 py-2.5 font-semibold">Capability</th>

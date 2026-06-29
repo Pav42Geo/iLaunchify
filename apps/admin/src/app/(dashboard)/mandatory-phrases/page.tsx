@@ -149,9 +149,9 @@ export default async function MandatoryPhrasesPage({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-ink-200">
-        <table className="w-full text-sm">
+        <table className="w-full text-ui-body">
           <thead>
-            <tr className="border-b border-ink-200 bg-ink-50 text-left text-xs uppercase tracking-wider text-ink-500">
+            <tr className="border-b border-ink-200 bg-ink-50 text-left text-ui-label text-ink-500">
               <th className="px-4 py-2.5 font-semibold">Phrase</th>
               <th className="px-4 py-2.5 font-semibold">Requirement</th>
               <th className="px-4 py-2.5 font-semibold">Category</th>
@@ -164,7 +164,7 @@ export default async function MandatoryPhrasesPage({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-ui-body text-ink-400">
                   No phrases match this filter.
                 </td>
               </tr>

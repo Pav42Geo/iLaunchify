@@ -27,8 +27,8 @@ export default async function NotificationPreferencesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Notification preferences</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-ui-title">Notification preferences</h1>
+        <p className="mt-1 text-ui-body text-ink-500">
           Choose which admin notifications you receive and on which channel. Quiet hours
           apply to email only — in-app notifications always appear in your bell.
         </p>

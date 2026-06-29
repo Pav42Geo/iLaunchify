@@ -184,7 +184,7 @@ export function AccountTierEditor({
                 ? 'e.g. Promoted after agency contract signed 2026-04-02.'
                 : 'e.g. Promoted to Trusted — 25 orders + 92% on-time.'
             }
-            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
           <p className="mt-1 text-[11px] text-ink-500">
             Required. Shown on the AuditLog row alongside the before/after tier.
@@ -228,7 +228,7 @@ export function AccountTierEditor({
               value={overridePercent}
               onChange={(e) => setOverridePercent(e.target.value)}
               placeholder="e.g. 9.50"
-              className="mt-1 block w-32 rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+              className="mt-1 block w-32 rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
             />
           </div>
           <p className="pb-2 text-[12px] text-ink-500">
@@ -245,7 +245,7 @@ export function AccountTierEditor({
             onChange={(e) => setOverrideReason(e.target.value)}
             rows={2}
             placeholder="Why this override? Will appear in the audit log."
-            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="mt-1 block w-full rounded-md border border-ink-200 px-3 py-2 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </div>
 

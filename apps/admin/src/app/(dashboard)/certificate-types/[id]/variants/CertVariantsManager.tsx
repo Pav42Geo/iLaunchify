@@ -61,7 +61,7 @@ export function CertVariantsManager({
   return (
     <div className="space-y-4">
       {variants.length === 0 && !adding && (
-        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-sm text-ink-500">
+        <div className="rounded-lg border border-dashed border-ink-300 bg-ink-50 p-6 text-center text-ui-body text-ink-500">
           No variants yet. Add the approved color / B&amp;W / outline marks for this certification.
         </div>
       )}
@@ -152,7 +152,7 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
               {KIND_LABEL[v.kind]}
             </span>
           </div>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-600 sm:grid-cols-3">
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-ui-caption text-ink-600 sm:grid-cols-3">
             {(v.minWidthMm != null || v.maxWidthMm != null) && (
               <Spec label="Size">
                 {v.minWidthMm ?? '?'}–{v.maxWidthMm ?? '?'} mm
@@ -174,7 +174,7 @@ function VariantRow({ variant: v, onEdit }: { variant: VariantView; onEdit: () =
               </Spec>
             )}
           </dl>
-          {v.notes && <p className="mt-2 text-xs text-ink-500">{v.notes}</p>}
+          {v.notes && <p className="mt-2 text-ui-caption text-ink-500">{v.notes}</p>}
 
           {/* Upload + edit controls */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -333,7 +333,7 @@ function VariantForm({
             value={kind}
             onChange={(e) => setKind(e.target.value as CertAssetVariantKind)}
             disabled={isPending}
-            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+            className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
@@ -370,13 +370,13 @@ function VariantForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
 
       {error && (
-        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</div>
+        <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-ui-body text-danger-700">{error}</div>
       )}
 
       <div className="flex justify-end gap-2">
@@ -410,7 +410,7 @@ function Field({
           <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">Required</span>
         )}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )

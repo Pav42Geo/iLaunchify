@@ -98,13 +98,13 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-ink-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
-            <h3 className="text-sm font-semibold">Notifications</h3>
+            <h3 className="text-ui-value">Notifications</h3>
             {data.unread > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAll}
                 disabled={isPending}
-                className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-ink-900"
+                className="inline-flex items-center gap-1 text-ui-caption text-ink-500 hover:text-ink-900"
               >
                 <CheckCheck className="h-3.5 w-3.5" /> Mark all read
               </button>
@@ -113,7 +113,7 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {data.notifications.length === 0 ? (
-              <div className="p-6 text-center text-sm text-ink-500">
+              <div className="p-6 text-center text-ui-body text-ink-500">
                 No notifications yet.
               </div>
             ) : (
@@ -130,11 +130,11 @@ export function NotificationBell() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className={`text-sm ${isUnread ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
+                        <div className={`text-ui-body ${isUnread ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
                           {n.title}
                         </div>
                         {n.body && (
-                          <div className="mt-0.5 line-clamp-2 text-xs text-ink-500">
+                          <div className="mt-0.5 line-clamp-2 text-ui-caption text-ink-500">
                             {n.body}
                           </div>
                         )}
@@ -164,7 +164,7 @@ export function NotificationBell() {
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-ink-700 hover:text-ink-900"
+              className="text-ui-caption font-medium text-ink-700 hover:text-ink-900"
             >
               View all notifications
             </Link>

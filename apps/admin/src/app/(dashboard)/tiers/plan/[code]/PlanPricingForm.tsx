@@ -55,7 +55,7 @@ export function PlanPricingForm({
             min="0"
             value={monthly}
             onChange={(e) => setMonthly(e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Annual ($)">
@@ -65,7 +65,7 @@ export function PlanPricingForm({
             min="0"
             value={annual}
             onChange={(e) => setAnnual(e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
         <Field label="Description (admin)">
@@ -73,7 +73,7 @@ export function PlanPricingForm({
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="block w-full rounded-md border border-ink-200 px-3 py-1.5 text-ui-body focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           />
         </Field>
       </div>

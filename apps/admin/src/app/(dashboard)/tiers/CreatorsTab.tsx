@@ -93,7 +93,7 @@ function FilterBar({ q, activeTier }: { q: string; activeTier: string }) {
           name="q"
           defaultValue={q}
           placeholder="Search name, handle, or email…"
-          className="pl-9 text-sm"
+          className="pl-9 text-ui-body"
         />
       </div>
       <div className="flex flex-wrap gap-1.5">

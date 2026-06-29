@@ -45,7 +45,7 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
   }
 
   if (rows.length === 0) {
-    return <p className="rounded-2xl border border-ink-200 bg-white px-6 py-10 text-center text-sm text-ink-500">No packaging awaiting review.</p>
+    return <p className="rounded-2xl border border-ink-200 bg-white px-6 py-10 text-center text-ui-body text-ink-500">No packaging awaiting review.</p>
   }
 
   return (
@@ -57,7 +57,7 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-[15px] font-semibold text-ink-900">{r.name}</div>
-                <div className="text-xs text-ink-500">
+                <div className="text-ui-caption text-ink-500">
                   {r.topology}
                   {r.suggestedCategory ? ` · suggested: ${CAT_LABEL[r.suggestedCategory] ?? r.suggestedCategory}` : ''}
                   {r.submittedAt ? ` · ${new Date(r.submittedAt).toLocaleDateString()}` : ''}
@@ -87,20 +87,20 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
             )}
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <label className="text-xs font-medium text-ink-600">
+              <label className="text-ui-caption font-medium text-ink-600">
                 Catalog name
                 <input
                   value={d?.name ?? r.name}
                   onChange={(e) => edit(r.id, { name: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+                  className="mt-1 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-ui-body focus-visible:ring-2 focus-visible:ring-pink-500"
                 />
               </label>
-              <label className="text-xs font-medium text-ink-600">
+              <label className="text-ui-caption font-medium text-ink-600">
                 Container category
                 <select
                   value={d?.category ?? r.suggestedCategory ?? 'OTHER'}
                   onChange={(e) => edit(r.id, { category: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+                  className="mt-1 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-ui-body focus-visible:ring-2 focus-visible:ring-pink-500"
                 >
                   {CATEGORIES.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
                 </select>
@@ -111,7 +111,7 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
               value={d?.notes ?? ''}
               onChange={(e) => edit(r.id, { notes: e.target.value })}
               placeholder="Rejection note (optional)"
-              className="mt-2 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-pink-500"
+              className="mt-2 w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-ui-body focus-visible:ring-2 focus-visible:ring-pink-500"
             />
 
             <div className="mt-3 flex gap-2">

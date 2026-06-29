@@ -129,7 +129,7 @@ export function PackagingSymbolForm({ initial }: { initial?: SymbolFormInitial }
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+          className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
           disabled={isPending}
         />
       </Field>
@@ -150,7 +150,7 @@ export function PackagingSymbolForm({ initial }: { initial?: SymbolFormInitial }
         <Input value={requiredWhen} onChange={(e) => setRequiredWhen(e.target.value)} disabled={isPending} />
       </Field>
 
-      {error && <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700">{error}</div>}
+      {error && <div className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-ui-body text-danger-700">{error}</div>}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => router.push('/assets/packaging-symbols')} disabled={isPending}>
@@ -180,7 +180,7 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-ink-400 focus:outline-none"
+      className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ui-body focus:border-ink-400 focus:outline-none"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -208,7 +208,7 @@ function Field({
         {label}
         {required && <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-danger-600">Required</span>}
       </Label>
-      {hint && <p className="text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
     </div>
   )
