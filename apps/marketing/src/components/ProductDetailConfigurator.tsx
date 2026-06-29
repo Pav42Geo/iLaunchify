@@ -359,17 +359,16 @@ export function ProductDetailConfigurator({
         </div>
       </div>
 
-      {/* Pricing — the TOTAL is the headline (what the creator pays at
-          checkout: transparent + most visible); per-unit is the supporting
-          line. Reflects the Subscribe & save discount. */}
+      {/* Price line + tier pricing — per-unit is the headline; the all-in
+          total is a smaller gray supporting line below it (still visible +
+          transparent, just not the dominant figure). Reflects Subscribe & save. */}
       <div className="border-t border-ink-100 pt-3">
-        {/* Per-unit (secondary) + tier-pricing link */}
         <div className="flex items-baseline justify-between">
-          <div className="text-[15px] font-semibold text-ink-700 tabular-nums">
+          <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
             ${previewUnitCost.toFixed(2)}
-            <span className="ml-1 text-[12px] font-medium text-ink-500">/ unit</span>
+            <span className="ml-1 text-[13px] font-medium text-ink-500">/ unit</span>
             {subscribe && (
-              <span className="ml-1.5 text-[12px] font-medium text-ink-400 line-through">
+              <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
                 ${landedCost.toFixed(2)}
               </span>
             )}
@@ -388,21 +387,17 @@ export function ProductDetailConfigurator({
           />
         </div>
 
-        {/* Total (headline) — the all-in amount the creator pays. */}
-        <div className="mt-2 flex items-end justify-between gap-3">
-          <span className="text-[12px] font-semibold uppercase tracking-[0.04em] text-ink-500">
-            Total · {quantity.toLocaleString()} units
-          </span>
-          <div className="text-right">
-            <div className="font-display text-[34px] font-extrabold leading-none tracking-[-0.01em] text-ink-900 tabular-nums">
-              ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
+        {/* All-in total — smaller, gray, but always visible. */}
+        <div className="mt-1.5 flex items-baseline justify-between text-[13px] text-ink-500">
+          <span>Total · {quantity.toLocaleString()} units</span>
+          <span className="font-semibold tabular-nums text-ink-600">
+            ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             {subscribe && (
-              <div className="mt-0.5 text-[12px] font-medium text-ink-400 line-through tabular-nums">
+              <span className="ml-1.5 font-medium text-ink-400 line-through">
                 ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
+              </span>
             )}
-          </div>
+          </span>
         </div>
       </div>
 
