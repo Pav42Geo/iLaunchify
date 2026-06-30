@@ -60,6 +60,7 @@ import { prisma } from '@ilaunchify/db'
 import {
   cn,
   resolvePackMode,
+  effectiveFlavorLead,
   type PackMode,
   type PricingBasis,
   type FlavorPolicy,
@@ -871,6 +872,81 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     }
   })()
 
+  // Per-flavor recipes + lead (Slice 5). Each flavor can carry its own
+  // FlavorRecipeSlot[] (base ingredient + swap replacements) and optionals,
+  // plus a per-flavor lead that floors at the template's standard repeat lead
+  // (effectiveFlavorLead = max(standard, flavorLead)). Read-only mirror of the
+  // partner Passport. Cast-guarded — these relations post-date the generated
+  // client until db:push, so a stale client just yields an empty map.
+  const ingName = (
+    label: string | null,
+    ing: { labelDeclarationName: string | null; internalName: string | null; name: string },
+  ): string => label || ing.labelDeclarationName || ing.internalName || ing.name
+  const flavorRecipeMap = new Map<
+    string,
+    {
+      leadTimeDays: number | null
+      base: Array<{ name: string; swaps: string[] }>
+      optionals: string[]
+    }
+  >()
+  try {
+    const ING_SEL = {
+      select: { name: true, internalName: true, labelDeclarationName: true },
+    } as const
+    const rows = await (
+      prisma as unknown as {
+        flavorPreset: {
+          findMany: (a: unknown) => Promise<
+            Array<{
+              id: string
+              leadTimeDays: number | null
+              recipeSlots: Array<{
+                label: string | null
+                baseIngredient: { name: string; internalName: string | null; labelDeclarationName: string | null }
+                replacements: Array<{
+                  ingredient: { name: string; internalName: string | null; labelDeclarationName: string | null }
+                }>
+              }>
+              recipeOptionals: Array<{
+                label: string | null
+                ingredient: { name: string; internalName: string | null; labelDeclarationName: string | null }
+              }>
+            }>
+          >
+        }
+      }
+    ).flavorPreset.findMany({
+      where: { productTemplateId: template.id },
+      select: {
+        id: true,
+        leadTimeDays: true,
+        recipeSlots: {
+          orderBy: { displayOrder: 'asc' },
+          select: {
+            label: true,
+            baseIngredient: ING_SEL,
+            replacements: { orderBy: { displayOrder: 'asc' }, select: { ingredient: ING_SEL } },
+          },
+        },
+        recipeOptionals: { orderBy: { displayOrder: 'asc' }, select: { label: true, ingredient: ING_SEL } },
+      },
+    })
+    for (const r of rows) {
+      if (r.recipeSlots.length === 0 && r.recipeOptionals.length === 0 && r.leadTimeDays == null) continue
+      flavorRecipeMap.set(r.id, {
+        leadTimeDays: r.leadTimeDays ?? null,
+        base: r.recipeSlots.map((s) => ({
+          name: ingName(s.label, s.baseIngredient),
+          swaps: s.replacements.map((rep) => ingName(null, rep.ingredient)),
+        })),
+        optionals: r.recipeOptionals.map((o) => ingName(o.label, o.ingredient)),
+      })
+    }
+  } catch {
+    // Schema not migrated yet — leave the map empty; flavors render as before.
+  }
+
   // Tone + label resolution (strict-TS bang on Record<EnumKey, T>).
   const tone = STATUS_TONE[template.status]!
   const statusLabel = STATUS_LABELS[template.status]!
@@ -1617,6 +1693,14 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                   const slots = (f.slotResolution as Array<unknown> | null) ?? []
                   const extras = (f.extras as Array<unknown> | null) ?? []
                   const overrides = (f.nutrientOverrides as Array<unknown> | null) ?? []
+                  // Slice 5 — per-flavor recipe + lead (read-only).
+                  const recipe = flavorRecipeMap.get(f.id) ?? null
+                  const effLead =
+                    recipe && recipe.leadTimeDays != null
+                      ? effectiveFlavorLead(recipe.leadTimeDays, leadTimeRepeatDays ?? 0)
+                      : null
+                  const leadDelta =
+                    effLead != null && leadTimeRepeatDays != null ? effLead - leadTimeRepeatDays : null
                   return (
                     <li
                       key={f.id}
@@ -1632,6 +1716,11 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-medium text-ink-900">{f.name}</span>
                             <FlavorStatusPill status={f.status} />
+                            {recipe && recipe.base.length > 0 && (
+                              <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-pink-700">
+                                Own recipe
+                              </span>
+                            )}
                             {extras.length > 0 && (
                               <span className="inline-flex items-center rounded-full border border-info-200 bg-info-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-info-800">
                                 Has extras
@@ -1642,10 +1731,35 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
                                 Nutrient override
                               </span>
                             )}
+                            {effLead != null && (
+                              <span className="inline-flex items-center rounded-full border border-ink-200 bg-white px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-ink-700">
+                                {effLead}d lead
+                                {leadDelta != null && leadDelta > 0 ? ` · +${leadDelta} vs std` : ''}
+                              </span>
+                            )}
                           </div>
                           <div className="mt-0.5 text-[11px] text-ink-500">
                             {slots.length} slot{slots.length === 1 ? '' : 's'} overridden
                           </div>
+                          {recipe && (recipe.base.length > 0 || recipe.optionals.length > 0) && (
+                            <div className="mt-1 text-[11px] leading-relaxed text-ink-600">
+                              <span className="font-medium text-ink-700">Recipe:</span>{' '}
+                              {recipe.base.length > 0
+                                ? recipe.base
+                                    .map((b) =>
+                                      b.swaps.length > 0 ? `${b.name} (or ${b.swaps.join(' / ')})` : b.name,
+                                    )
+                                    .join(', ')
+                                : '—'}
+                              {recipe.optionals.length > 0 && (
+                                <>
+                                  {' '}
+                                  <span className="font-medium text-ink-700">· Optional:</span>{' '}
+                                  {recipe.optionals.join(', ')}
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="shrink-0 text-right">

@@ -37,6 +37,7 @@ import {
   SupplementFactsSvg,
   InciDeclarationSvg,
   GuaranteedAnalysisSvg,
+  effectiveFlavorLead,
 } from '@ilaunchify/ui'
 import { getProductPassport, type ProductPassport } from './review-actions'
 import { ComplianceCard } from './ComplianceCard'
@@ -639,27 +640,46 @@ export function ReviewSummary({
                       {d.flavors.length} flavor preset{d.flavors.length === 1 ? '' : 's'}
                     </span>
                   </div>
-                  {d.flavors.map((f) => (
-                    <div
-                      key={f.id}
-                      className="row"
-                      style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--ink-100)' }}
-                    >
-                      <span className="row" style={{ alignItems: 'center', gap: 9, minWidth: 0 }}>
-                        <span
-                          aria-hidden="true"
-                          style={{ width: 18, height: 18, borderRadius: 999, border: '1px solid var(--ink-200)', background: f.swatchHex ?? 'var(--ink-100)', flex: 'none' }}
-                        />
-                        <b style={{ fontSize: 'var(--fs-ui-value, 14px)', color: 'var(--ink-900)' }}>{f.name}</b>
-                        <span className={`pill ${f.status === 'ACTIVE' ? 'green' : 'amber'}`}>{f.status.toLowerCase()}</span>
-                        {f.hasExtras && <span className="pill">extras</span>}
-                        {f.hasOverrides && <span className="pill amber">nutrient override</span>}
-                      </span>
-                      <span className="tnum" style={{ fontSize: 'var(--fs-ui-value, 14px)', fontWeight: 600 }}>
-                        {f.priceDeltaCents === 0 ? 'Base' : `${f.priceDeltaCents > 0 ? '+' : ''}${usd(f.priceDeltaCents)}/unit`}
-                      </span>
+                  {d.flavors.map((f) => {
+                    const std = d.leadTimeRepeatDays ?? 0
+                    const lead = f.leadTimeDays != null ? effectiveFlavorLead(f.leadTimeDays, std) : null
+                    return (
+                    <div key={f.id} style={{ padding: '8px 0', borderTop: '1px solid var(--ink-100)' }}>
+                      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                        <span className="row" style={{ alignItems: 'center', gap: 9, minWidth: 0 }}>
+                          <span
+                            aria-hidden="true"
+                            style={{ width: 18, height: 18, borderRadius: 999, border: '1px solid var(--ink-200)', background: f.swatchHex ?? 'var(--ink-100)', flex: 'none' }}
+                          />
+                          <b style={{ fontSize: 'var(--fs-ui-value, 14px)', color: 'var(--ink-900)' }}>{f.name}</b>
+                          <span className={`pill ${f.status === 'ACTIVE' ? 'green' : 'amber'}`}>{f.status.toLowerCase()}</span>
+                          {f.recipe && <span className="pill">own recipe</span>}
+                          {f.hasExtras && <span className="pill">extras</span>}
+                          {f.hasOverrides && <span className="pill amber">nutrient override</span>}
+                          {lead != null && <span className="pill">{lead}d lead{lead > std ? ` · +${lead - std} vs standard` : ''}</span>}
+                        </span>
+                        <span className="tnum" style={{ fontSize: 'var(--fs-ui-value, 14px)', fontWeight: 600 }}>
+                          {f.priceDeltaCents === 0 ? 'Base' : `${f.priceDeltaCents > 0 ? '+' : ''}${usd(f.priceDeltaCents)}/unit`}
+                        </span>
+                      </div>
+                      {f.recipe && (
+                        <div style={{ marginTop: 6, paddingLeft: 27, fontSize: 'var(--fs-sm, 13px)', color: 'var(--ink-600)', lineHeight: 1.5 }}>
+                          <span style={{ color: 'var(--ink-500)' }}>Recipe: </span>
+                          {f.recipe.base.map((b, i) => (
+                            <span key={i}>
+                              {i > 0 && ', '}
+                              <span style={{ color: 'var(--ink-800)' }}>{b.name}</span>
+                              {b.replacements.length > 0 && <span style={{ color: 'var(--ink-400)' }}> (or {b.replacements.join(' / ')})</span>}
+                            </span>
+                          ))}
+                          {f.recipe.optionals.length > 0 && (
+                            <span style={{ color: 'var(--ink-500)' }}> · Optional: {f.recipe.optionals.map((o) => o.name).join(', ')}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </Section>

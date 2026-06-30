@@ -237,6 +237,10 @@ export interface ReviewDetailVariant {
   gtin: string | null
   netContentDisplay: string | null
 }
+export interface ReviewDetailFlavorRecipe {
+  base: { name: string; grams: number; replacements: string[] }[]
+  optionals: { name: string; grams: number; callout: string | null }[]
+}
 export interface ReviewDetailFlavor {
   id: string
   name: string
@@ -246,6 +250,10 @@ export interface ReviewDetailFlavor {
   slotCount: number
   hasExtras: boolean
   hasOverrides: boolean
+  /** Per-flavor lead override (days); null = use product standard. Slice 3/5. */
+  leadTimeDays: number | null
+  /** Per-flavor independent recipe (Slice 5). null = no per-flavor recipe authored. */
+  recipe: ReviewDetailFlavorRecipe | null
 }
 export interface ReviewDetailPricingTier {
   id: string
@@ -832,6 +840,39 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
     // gross weight / unit count live on the linked PackagingSystem catalog row
     // (inherited per docs/PACKAGING). Pull from the first linked system.
     const firstPackagingSystem = tpl.packagingSystems[0]?.packagingSystem ?? null
+    // Slice 5 — per-flavor recipe rows (read-only). Cast-guarded: FlavorRecipe*
+    // post-date the generated client until db:push. Empty/error → no per-flavor
+    // recipe shown (the flavor still lists its identity + lead).
+    const flavorRecipeMap = new Map<string, ReviewDetailFlavorRecipe>()
+    try {
+      const ingName = (label: string | null | undefined, ing: { name: string; internalName: string | null; labelDeclarationName: string | null }) =>
+        (label || ing.labelDeclarationName || ing.internalName || ing.name)
+      const fps = await (prisma as unknown as {
+        flavorPreset: { findMany: (a: unknown) => Promise<Array<{
+          id: string
+          recipeSlots: { weightG: unknown; label: string | null; baseIngredient: { name: string; internalName: string | null; labelDeclarationName: string | null }; replacements: { ingredient: { name: string; internalName: string | null; labelDeclarationName: string | null } }[] }[]
+          recipeOptionals: { weightG: unknown; calloutText: string | null; ingredient: { name: string; internalName: string | null; labelDeclarationName: string | null } }[]
+        }>> }
+      }).flavorPreset.findMany({
+        where: { productTemplateId: tpl.id },
+        select: {
+          id: true,
+          recipeSlots: {
+            orderBy: { displayOrder: 'asc' },
+            select: { weightG: true, label: true, baseIngredient: { select: { name: true, internalName: true, labelDeclarationName: true } }, replacements: { orderBy: { displayOrder: 'asc' }, select: { ingredient: { select: { name: true, internalName: true, labelDeclarationName: true } } } } },
+          },
+          recipeOptionals: { orderBy: { displayOrder: 'asc' }, select: { weightG: true, calloutText: true, ingredient: { select: { name: true, internalName: true, labelDeclarationName: true } } } },
+        },
+      })
+      for (const fp of fps) {
+        if (!fp.recipeSlots.length && !fp.recipeOptionals.length) continue
+        flavorRecipeMap.set(fp.id, {
+          base: fp.recipeSlots.map((s) => ({ name: ingName(s.label, s.baseIngredient), grams: Number(s.weightG) || 0, replacements: s.replacements.map((r) => ingName(null, r.ingredient)) })),
+          optionals: fp.recipeOptionals.map((o) => ({ name: ingName(null, o.ingredient), grams: Number(o.weightG) || 0, callout: o.calloutText ?? null })),
+        })
+      }
+    } catch { /* per-flavor recipe schema not migrated yet — skip */ }
+
     const packingProfile: ReviewDetailPackingProfile | null = tpl.packingProfile
       ? {
           name: tpl.packingProfile.name,
@@ -939,6 +980,8 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
           slotCount: slots.length,
           hasExtras: extras.length > 0,
           hasOverrides: overrides.length > 0,
+          leadTimeDays: (f as { leadTimeDays?: number | null }).leadTimeDays ?? null,
+          recipe: flavorRecipeMap.get(f.id) ?? null,
         }
       }),
       packModel,
