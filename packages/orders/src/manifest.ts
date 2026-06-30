@@ -13,6 +13,8 @@
 // ingest pipelines.
 
 import type { PrismaClient, Prisma } from '@ilaunchify/db'
+import { getOrderSettings } from '@ilaunchify/db'
+import { effectiveFlavorLeadDays, resolveOrderLeadDays } from './multi-flavor-lead'
 
 export const MANIFEST_VERSION = '1.0.0'
 
@@ -225,7 +227,21 @@ export interface ProductionManifest {
   // manufacturer produces these splits. Empty for single-flavor items. Each carries
   // the flavor's Statement of Identity snapshot for the per-flavor label column.
   // For a pack order, qty is the ORDER aggregate (packCount × per-pack slot units).
-  flavors: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null }>
+  // `leadTimeDays` is the flavor's EFFECTIVE lead (global floor governs; a flavor
+  // override only extends it). null = no per-flavor recipe lead → the standard.
+  flavors: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null; leadTimeDays: number | null }>
+  // ---- Production lead (LOCKED 2026-06-30 — global floor + changeover) -------
+  // The quoted production lead for THIS order. `leadTimeDays` is what the partner
+  // commits to: max(standard, max effective-flavor-lead) + (N-1)*changeover. For a
+  // single-recipe / non-pack item it equals the standard floor. basis names which
+  // path produced it so partner ingest can branch.
+  production: {
+    leadTimeDays: number
+    standardLeadDays: number
+    changeoverDays: number
+    flavorCount: number
+    basis: 'STANDARD' | 'MULTI_FLAVOR'
+  }
   // ---- Ship-to summary -----------------------------------------------------
   shipTo: {
     type: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER'
@@ -313,15 +329,38 @@ export async function generateOrderManifest(
   // OrderItemFlavor model post-dates the generated client until the migration.
   const itemFlavors = await (tx as unknown as {
     orderItemFlavor: {
-      findMany: (a: unknown) => Promise<Array<{ flavorName: string; qty: number; soiSnapshot: string | null }>>
+      findMany: (a: unknown) => Promise<
+        Array<{
+          flavorName: string
+          qty: number
+          soiSnapshot: string | null
+          flavorPreset: { leadTimeDays: number | null } | null
+        }>
+      >
     }
   }).orderItemFlavor
     .findMany({
       where: { orderItemId: item.id },
-      select: { flavorName: true, qty: true, soiSnapshot: true },
+      // flavorPreset.leadTimeDays post-dates the generated client until the
+      // migration; the whole call is cast-guarded + .catch so a stale client
+      // simply yields [] and the manifest falls back to the standard lead.
+      select: {
+        flavorName: true,
+        qty: true,
+        soiSnapshot: true,
+        flavorPreset: { select: { leadTimeDays: true } },
+      },
       orderBy: { qty: 'desc' },
     })
-    .catch(() => [] as Array<{ flavorName: string; qty: number; soiSnapshot: string | null }>)
+    .catch(
+      () =>
+        [] as Array<{
+          flavorName: string
+          qty: number
+          soiSnapshot: string | null
+          flavorPreset: { leadTimeDays: number | null } | null
+        }>,
+    )
 
   // Variety-pack STRUCTURE for THIS item (step 4). Cast-guarded — the pack columns
   // on OrderItem post-date the generated client until the migration. Null when the
@@ -402,6 +441,33 @@ export async function generateOrderManifest(
         }>),
   ])
 
+  // Production lead (LOCKED 2026-06-30). The standard repeat lead is the floor;
+  // each ordered flavor's per-flavor recipe lead can only EXTEND it; the order
+  // lead = max(floor, max effective flavor lead) + (N-1)*changeover. Read at
+  // placement time (this runs in the order-creation transaction) so it snapshots
+  // the order-time truth. All three reads are cast-guarded — a stale client or
+  // un-migrated column falls back to the standard floor (or 0).
+  const templateLead = await (tx as unknown as {
+    productTemplate: {
+      findUnique: (a: unknown) => Promise<{ leadTimeRepeatDays: number | null } | null>
+    }
+  }).productTemplate
+    .findUnique({
+      where: { id: product.productTemplateId ?? '__none__' },
+      select: { leadTimeRepeatDays: true },
+    })
+    .catch(() => null)
+  const standardLeadDays = Math.max(0, Math.floor(templateLead?.leadTimeRepeatDays ?? 0))
+  const changeoverDays = await getOrderSettings()
+    .then((s) => s.changeoverDays)
+    .catch(() => 1)
+  const flavorLeadOverrides = itemFlavors.map((f) => f.flavorPreset?.leadTimeDays ?? null)
+  const productionLeadDays = resolveOrderLeadDays({
+    standardLeadDays,
+    flavorLeadDays: flavorLeadOverrides,
+    changeoverDays,
+  })
+
   return {
     manifestVersion: MANIFEST_VERSION,
     generatedAt: new Date().toISOString(),
@@ -464,7 +530,18 @@ export async function generateOrderManifest(
       flavorName: f.flavorName,
       qty: f.qty,
       statementOfIdentity: f.soiSnapshot,
+      leadTimeDays:
+        f.flavorPreset?.leadTimeDays != null
+          ? effectiveFlavorLeadDays(f.flavorPreset.leadTimeDays, standardLeadDays)
+          : null,
     })),
+    production: {
+      leadTimeDays: productionLeadDays,
+      standardLeadDays,
+      changeoverDays,
+      flavorCount: itemFlavors.length,
+      basis: itemFlavors.length > 0 ? 'MULTI_FLAVOR' : 'STANDARD',
+    },
     shipTo: {
       type: dispatch.order.shipToType,
       contactName: dispatch.order.shipToContactName,

@@ -33,8 +33,19 @@ export interface ProductionManifestData {
     packagingTypeName: string | null
     decorationMethod: string
   }>
-  /** Variety-pack per-flavor production splits. Optional/empty for single-flavor. */
-  flavors?: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null }>
+  /** Variety-pack per-flavor production splits. Optional/empty for single-flavor.
+   *  `leadTimeDays` (when present) is the flavor's EFFECTIVE lead (global floor
+   *  governs). */
+  flavors?: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null; leadTimeDays?: number | null }>
+  /** Committed production lead (LOCKED 2026-06-30). Optional — older persisted
+   *  manifests predate it; absent → the block is hidden. */
+  production?: {
+    leadTimeDays: number
+    standardLeadDays: number
+    changeoverDays: number
+    flavorCount: number
+    basis: 'STANDARD' | 'MULTI_FLAVOR'
+  }
   shipTo: {
     type: string
     contactName: string
@@ -111,6 +122,34 @@ export function ProductionManifestView({
           />
         </Block>
 
+        {manifest.production && (
+          <Block title="Production lead">
+            <Row
+              label="Committed lead"
+              value={
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-[14px] font-semibold tabular-nums text-ink-900">
+                    {manifest.production.leadTimeDays} days
+                  </span>
+                  {manifest.production.basis === 'MULTI_FLAVOR' &&
+                    manifest.production.leadTimeDays > manifest.production.standardLeadDays && (
+                      <span className="rounded-full border border-pink-200 bg-pink-50 px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-pink-700">
+                        +{manifest.production.leadTimeDays - manifest.production.standardLeadDays} vs standard
+                      </span>
+                    )}
+                </span>
+              }
+            />
+            <Row label="Standard floor" value={`${manifest.production.standardLeadDays} days`} />
+            {manifest.production.flavorCount > 1 && (
+              <Row
+                label="Multi-flavor"
+                value={`${manifest.production.flavorCount} flavors · +${manifest.production.changeoverDays}d changeover each`}
+              />
+            )}
+          </Block>
+        )}
+
         {manifest.substrate && (
           <Block title="Label substrate">
             <Row label="Material" value={manifest.substrate.name} />
@@ -177,7 +216,14 @@ export function ProductionManifestView({
                     <span className="block truncate text-[13px] font-medium text-ink-900">{f.flavorName}</span>
                     {f.statementOfIdentity ? <span className="block truncate text-[11px] text-ink-500">{f.statementOfIdentity}</span> : null}
                   </span>
-                  <span className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-ink-800">{f.qty.toLocaleString()} units</span>
+                  <span className="flex flex-shrink-0 items-center gap-2">
+                    {f.leadTimeDays != null && (
+                      <span className="rounded-full border border-ink-200 bg-white px-1.5 py-[1px] text-[10px] font-semibold uppercase tracking-wider text-ink-600">
+                        {f.leadTimeDays}d lead
+                      </span>
+                    )}
+                    <span className="text-[13px] font-semibold tabular-nums text-ink-800">{f.qty.toLocaleString()} units</span>
+                  </span>
                 </li>
               ))}
             </ul>
