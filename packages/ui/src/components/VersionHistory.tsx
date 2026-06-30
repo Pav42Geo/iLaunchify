@@ -50,6 +50,7 @@ function fullStamp(date: Date): string {
 export function SavedIndicator({
   status,
   savedAt,
+  onSave,
   onOpenHistory,
   onPrev,
   onNext,
@@ -59,6 +60,9 @@ export function SavedIndicator({
 }: {
   status: SaveStatus
   savedAt: Date | null
+  /** When provided, the status icon becomes a "Save now" button — clicking it
+   *  flushes pending autosaves immediately instead of waiting for the debounce. */
+  onSave?: () => void | Promise<void>
   onOpenHistory?: () => void
   /** Step to the previous (older) version in the history panel. */
   onPrev?: () => void
@@ -98,12 +102,29 @@ export function SavedIndicator({
   const btn =
     'grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-600'
 
+  // When onSave is wired, the status icon doubles as a "Save now" button —
+  // shows live autosave state AND lets the user force a save on demand.
+  const saveTip = status === 'saving' ? 'Saving…' : `${tip} · click to save now`
+
   return (
     <div className={`inline-flex items-center gap-1 ${className}`}>
-      {/* Autosave status — icon + native tooltip, no inline text. */}
-      <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`} title={tip} aria-label={tip}>
-        <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
-      </span>
+      {/* Autosave status — icon + native tooltip. Clickable "Save now" when onSave. */}
+      {onSave ? (
+        <button
+          type="button"
+          onClick={() => { if (status !== 'saving') void onSave() }}
+          disabled={status === 'saving'}
+          className={`grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white ${tone} transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:cursor-default disabled:hover:border-ink-200 disabled:hover:bg-white`}
+          title={saveTip}
+          aria-label={saveTip}
+        >
+          <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
+        </button>
+      ) : (
+        <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`} title={tip} aria-label={tip}>
+          <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
+        </span>
+      )}
 
       {(onPrev || onNext) && (
         <>

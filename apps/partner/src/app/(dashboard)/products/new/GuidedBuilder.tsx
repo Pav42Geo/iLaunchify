@@ -327,6 +327,32 @@ export function GuidedBuilder({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   useEffect(() => { if (draftId) setLastSavedAt((p) => p ?? new Date()) }, [draftId])
 
+  // Manual "save now" — clicking the top-bar status icon flushes every step's
+  // pending debounced autosave immediately (no waiting on the debounce). Creates
+  // the draft shell first if the maker hasn't advanced past Basics yet.
+  const [manualSaving, setManualSaving] = useState(false)
+  async function saveNow() {
+    if (manualSaving) return
+    let id = draftId
+    if (!id) {
+      if (!basicsValid) { toast.error('Add a product name and category first.'); return }
+      const res = await createDraftShell({ name: name.trim(), subcategoryId })
+      if (!res || !res.ok) { toast.error(res?.error ?? 'Could not save.'); return }
+      id = res.data.id
+      setDraftId(id)
+    }
+    setManualSaving(true)
+    try {
+      await Promise.allSettled([...flushers.current].map((f) => f()))
+      setLastSavedAt(new Date())
+      toast.success('Saved')
+    } catch {
+      toast.error('Could not save — try again.')
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   async function loadHistory() {
     if (!draftId) return
     const rows = await listDraftSnapshots(draftId)
@@ -346,8 +372,9 @@ export function GuidedBuilder({
         <span className="gb gb-topinject">
           <TopMenu />
           <SavedIndicator
-            status={isPending ? 'saving' : 'saved'}
+            status={isPending || manualSaving ? 'saving' : 'saved'}
             savedAt={draftId ? lastSavedAt : null}
+            onSave={saveNow}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
         </span>, topSlots.left)}
