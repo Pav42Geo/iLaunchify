@@ -18,7 +18,7 @@
 //  • Single pack (packs-per-bundle = 1) → bundle copy + units collapse.
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { InfoTip } from '@ilaunchify/ui'
+import { InfoTip, leadConflictWarning } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, saveFlavorRules, savePackSizes, type FeeInput, type SampleOptionInput, type InitialDraft, type FlavorFillRuleInput, type PricingBasisInput, type FlavorPolicyInput, type PackSizeInput } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
@@ -52,6 +52,10 @@ export interface FlavorLine {
 // `ingId` is the legacy single-overlay field (kept for back-compat); the live
 // model is `lines` — a child mini-recipe of flavor-only additions.
 export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[]; priceCents?: number | null; thumbnailUrl?: string | null;
+  /** Optional per-flavor lead override (days) — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md
+   *  §4): it can only EXTEND the product standard lead, never shorten it. null/undefined
+   *  = use the standard. Persisted to FlavorPreset.leadTimeDays (cast-guarded). */
+  leadTimeDays?: number | null;
   /** Stable FlavorPreset id, populated by ensureFlavorPresets when the per-flavor
    *  recipe tab opens (docs/PER_FLAVOR_RECIPES.md §5). Per-flavor recipes attach to
    *  this durable id so a subsequent name/price save can't orphan them. */
@@ -211,7 +215,7 @@ export function VariantsPacksStep({
       {kind && (
         <>
           {kind === 'single' && <div className="card" style={{ marginBottom: 16 }}><SinglePack draftId={draftId} packing={initial?.packing ?? null} /></div>}
-          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} initialMin={initial?.minFlavorsPerPack ?? null} initialFillRule={initial?.flavorFillRule ?? null} initialBasis={initial?.pricingBasis ?? null} initialPolicy={initial?.flavorPolicy ?? null} initialFixedDistribution={initial?.fixedDistribution ?? null} initialPackSizes={initial?.packSizes ?? []} packing={initial?.packing ?? null} />}
+          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} initialMin={initial?.minFlavorsPerPack ?? null} initialFillRule={initial?.flavorFillRule ?? null} initialBasis={initial?.pricingBasis ?? null} initialPolicy={initial?.flavorPolicy ?? null} initialFixedDistribution={initial?.fixedDistribution ?? null} initialPackSizes={initial?.packSizes ?? []} packing={initial?.packing ?? null} standardLead={initial?.leadTimeRepeatDays ?? null} />}
           {kind === 'pack' && <div className="card" style={{ marginBottom: 16 }}><MultiPack draftId={draftId} packing={initial?.packing ?? null} /></div>}
 
           {/* Conditional add-ons — each its own card */}
@@ -370,7 +374,7 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
         <Field label="Order increment" hint={onDemand ? 'per order' : undefined}>
           <input className="input" type="number" min={1} value={effInc} disabled={onDemand} onChange={(e) => setIncrement(Math.max(1, parseInt(e.target.value, 10) || 1))} />
         </Field>
-        <Field label="Repeat lead time (days)" hint="re-orders">
+        <Field label="Standard lead time (days)" hint="re-orders">
           <input className="input" type="number" min={0} value={leadRepeat} onChange={(e) => setLeadRepeat(Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
         <Field label="New-SKU lead time (days)" hint="first run">
@@ -779,7 +783,7 @@ function FlavorImageControl({
   )
 }
 
-function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, initialMin, initialFillRule, initialBasis, initialPolicy, initialFixedDistribution, initialPackSizes, packing }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; initialMin?: number | null; initialFillRule?: FlavorFillRuleInput | null; initialBasis?: PricingBasisInput | null; initialPolicy?: FlavorPolicyInput | null; initialFixedDistribution?: Record<string, number[]> | null; initialPackSizes?: InitialDraft['packSizes']; packing: PackingInit }) {
+function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, initialMin, initialFillRule, initialBasis, initialPolicy, initialFixedDistribution, initialPackSizes, packing, standardLead }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; initialMin?: number | null; initialFillRule?: FlavorFillRuleInput | null; initialBasis?: PricingBasisInput | null; initialPolicy?: FlavorPolicyInput | null; initialFixedDistribution?: Record<string, number[]> | null; initialPackSizes?: InitialDraft['packSizes']; packing: PackingInit; standardLead?: number | null }) {
   const list = flavors.length ? flavors : [{ name: '', ingId: 'cane', soi: '' }]
   const [perFlavorCap, setPerFlavorCap] = useState(false)
   // Manufacturer's ceiling: how many DISTINCT flavors a Creator may combine into
@@ -844,6 +848,8 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
         name: f.name, statementOfIdentity: f.soi, sortOrder: i,
         // Per-flavor price (PER_FLAVOR basis); null when unset.
         unitPriceCents: f.priceCents ?? null,
+        // Per-flavor lead override (days) — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4).
+        leadTimeDays: f.leadTimeDays ?? null,
         // Carry the overlay lines through so editing names here never wipes the
         // flavor ingredients added in the Recipe step.
         extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
@@ -1061,7 +1067,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       </div>
 
       <table style={{ marginTop: 14 }}>
-        <thead><tr><th>#</th><th>Image</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{basis === 'PER_FLAVOR' && <th>Price / unit ($)</th>}{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
+        <thead><tr><th>#</th><th>Image</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{basis === 'PER_FLAVOR' && <th>Price / unit ($)</th>}<th>Lead (days)</th>{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
         <tbody>
           {list.map((f, i) => (
             <tr key={i}>
@@ -1084,6 +1090,14 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
                     onChange={(e) => set(i, { priceCents: e.target.value === '' ? null : Math.max(0, Math.round(parseFloat(e.target.value) * 100) || 0) })} />
                 </td>
               )}
+              <td>
+                {/* Optional per-flavor lead override (days). Blank = use the standard
+                    (which is the floor); a value only EXTENDS it. */}
+                <input className="input" type="number" min={0} style={{ width: 90 }}
+                  value={f.leadTimeDays == null ? '' : String(f.leadTimeDays)}
+                  placeholder={standardLead != null ? String(standardLead) : 'standard'}
+                  onChange={(e) => set(i, { leadTimeDays: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </td>
               {perFlavorCap && <><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 80 }} /></td><td><input className="input" type="number" min={1} placeholder="inherit" style={{ width: 90 }} /></td></>}
               <td>
                 <select className="sel">
@@ -1099,8 +1113,15 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       <p className="hint" style={{ marginTop: 8 }}>
         List all {list.length} flavor{list.length === 1 ? '' : 's'} the product can carry — the Creator picks up to {effCap} per pack.
         {basis === 'PER_FLAVOR' && ' Set a per-unit price on each flavor — the pack price sums them.'}
+        {' Lead is optional per flavor — blank uses the standard lead, which is the floor. A value only extends it.'}
         {perFlavorCap && ' Blank MOQ/capacity inherits the shared production values above.'}
       </p>
+      {/* Soft, NON-blocking note: a flavor lead set BELOW the standard won't apply
+          (the global floor governs). docs/PER_FLAVOR_RECIPES.md §4. */}
+      {standardLead != null && (() => {
+        const warn = leadConflictWarning(standardLead, list.map((f) => f.leadTimeDays ?? null))
+        return warn ? <div className="hint" style={{ marginTop: 6, color: 'var(--pink-700)' }}>ⓘ {warn}</div> : null
+      })()}
       </div>
 
       {/* Offered pack sizes — each row is a real size variant (spec §4.2). */}

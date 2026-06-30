@@ -745,6 +745,10 @@ export function RecipeBuilderStep({
     flavorSaveTimer.current = setTimeout(() => {
       void saveFlavors(draftId, flavors.map((f, i) => ({
         name: f.name, statementOfIdentity: f.soi, sortOrder: i,
+        // Carry per-flavor price + lead through so a recipe-step save never wipes
+        // values authored in the Variants step (docs/PER_FLAVOR_RECIPES.md §4).
+        unitPriceCents: f.priceCents ?? null,
+        leadTimeDays: f.leadTimeDays ?? null,
         extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
       })))
     }, 1000)
@@ -768,6 +772,10 @@ export function RecipeBuilderStep({
     if (flavorMode === 'MULTI') {
       await saveFlavors(draftId, flavors.map((f, i) => ({
         name: f.name, statementOfIdentity: f.soi, sortOrder: i,
+        // Carry per-flavor price + lead through so a recipe-step flush never wipes
+        // values authored in the Variants step (docs/PER_FLAVOR_RECIPES.md §4).
+        unitPriceCents: f.priceCents ?? null,
+        leadTimeDays: f.leadTimeDays ?? null,
         extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
       })))
       // Flush the currently-open flavor recipe tab (others persisted on tab blur

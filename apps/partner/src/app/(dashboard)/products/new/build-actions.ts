@@ -281,7 +281,7 @@ export interface InitialDraft {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
-  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null; thumbnailUrl?: string | null }>
+  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null; leadTimeDays: number | null; thumbnailUrl?: string | null }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
   // resuming a draft so the builder reopens on the right surface.
@@ -365,7 +365,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
-      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null; swatchImageFileId: string | null }>
+      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null; leadTimeDays: number | null; swatchImageFileId: string | null }>
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
@@ -397,7 +397,9 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         subcategory: { select: { categoryId: true } },
         // swatchImageFileId post-dates some generated clients → the whole load is
         // cast-guarded already; selecting it is safe (it's a real column post-push).
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true, swatchImageFileId: true } },
+        // leadTimeDays (per-flavor lead override) post-dates some generated clients
+        // but is a real column post-push — the whole load is cast-guarded already.
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true, leadTimeDays: true, swatchImageFileId: true } },
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
@@ -493,6 +495,8 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         name: f.name,
         soi: f.statementOfIdentity ?? '',
         unitPriceCents: f.unitPriceCents ?? null,
+        // Per-flavor lead override (days) — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4).
+        leadTimeDays: f.leadTimeDays ?? null,
         // Per-flavor thumbnail (task #203) — null when no image uploaded.
         thumbnailUrl: f.swatchImageFileId ? flavorThumbUrls.get(f.swatchImageFileId) ?? null : null,
         lines: Array.isArray(f.extras)
@@ -1434,6 +1438,11 @@ export interface FlavorInput {
   /** Absolute per-unit price (cents) — only meaningful when pricingBasis = PER_FLAVOR
    *  (docs/VARIETY_PACK_MODEL.md §5.1). undefined leaves it untouched; null clears. */
   unitPriceCents?: number | null
+  /** Optional per-flavor lead override (days) — GLOBAL FLOOR model
+   *  (docs/PER_FLAVOR_RECIPES.md §4): it can only EXTEND the product standard lead,
+   *  never shorten it. null/undefined → use the standard. Cast-guarded write
+   *  (FlavorPreset.leadTimeDays post-dates the generated client). */
+  leadTimeDays?: number | null
 }
 
 /** Replace the draft's flavor presets (the variety pool). Only named flavors
@@ -1463,6 +1472,10 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
         // Per-flavor price (PER_FLAVOR basis). undefined → omit (null in DB);
         // explicit null clears; otherwise floor to non-negative cents.
         unitPriceCents: f.unitPriceCents == null ? null : Math.max(0, Math.floor(f.unitPriceCents)),
+        // Per-flavor lead override (days). null/undefined clears (→ use standard);
+        // otherwise floor to a non-negative integer. The GLOBAL FLOOR governs at
+        // read time (effectiveFlavorLead), so a below-standard value is harmless.
+        leadTimeDays: f.leadTimeDays == null ? null : Math.max(0, Math.floor(f.leadTimeDays)),
         extras: (f.extras ?? [])
           .filter((l) => l.ingredientId && l.qty > 0)
           .map((l) => ({ ingredientId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
@@ -1500,6 +1513,7 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
         statementOfIdentity: f.soi,
         sortOrder: f.sortOrder,
         unitPriceCents: f.unitPriceCents, // per-flavor price (PER_FLAVOR basis)
+        leadTimeDays: f.leadTimeDays, // per-flavor lead override (days) — GLOBAL FLOOR
         slotResolution: [], // legacy slot overlay — unused by the live model
         extras: f.extras, // flavor-only overlay lines (ingredient + amount)
       }
