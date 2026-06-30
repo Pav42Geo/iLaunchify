@@ -685,7 +685,14 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   })
 
   const pool = list.length
-  const effCap = Math.min(maxPerPack ?? pool, pool)
+  // Max distinct flavors per pack is bounded by the PACK SIZE (you can't put more
+  // distinct flavors than units in the biggest offered pack) — NOT by how many
+  // flavors are in the pool. Clamping to the pool wrongly froze these inputs at 1
+  // before any flavors were entered. Pool is only a soft check (warn) below.
+  // Fallback cap (12) keeps the fields editable before any pack size is defined.
+  const maxUnits = sizes.reduce((m, s) => Math.max(m, typeof s.units === 'number' ? s.units : 0), 0)
+  const flavorCap = maxUnits > 0 ? maxUnits : 12
+  const effCap = Math.min(maxPerPack ?? flavorCap, flavorCap)
   function set(i: number, p: Partial<Flavor>) {
     onFlavors(list.map((f, j) => (j === i ? { ...f, ...p } : f)))
   }
@@ -716,8 +723,8 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
     if (rulesTimer.current) clearTimeout(rulesTimer.current)
     rulesTimer.current = setTimeout(() => {
       void saveFlavorRules(draftId, {
-        // effCap === pool means "no cap" → persist null.
-        maxFlavorsPerPack: maxPerPack == null || maxPerPack >= pool ? null : maxPerPack,
+        // max at/above the physical cap means "no manufacturer cap" → persist null.
+        maxFlavorsPerPack: maxPerPack == null || maxPerPack >= flavorCap ? null : maxPerPack,
         minFlavorsPerPack: minPerPack,
         flavorFillRule: fillRule,
         pricingBasis: basis,
@@ -725,7 +732,7 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
     }, 700)
     return () => { if (rulesTimer.current) clearTimeout(rulesTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxPerPack, minPerPack, fillRule, basis, pool, draftId])
+  }, [maxPerPack, minPerPack, fillRule, basis, flavorCap, draftId])
 
   // Persist offered pack sizes → ProductTemplateVariant rows (debounced). Only
   // rows with a valid units count are sent; ids round-trip so updates stay stable.
@@ -763,12 +770,12 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
         <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Pack rules</div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
           <Field label="Min flavors per pack">
-            <input className="input" type="number" min={1} max={pool} value={minPerPack}
-              onChange={(e) => setMinPerPack(Math.min(Math.max(1, parseInt(e.target.value, 10) || 1), pool))} />
+            <input className="input" type="number" min={1} max={flavorCap} value={minPerPack}
+              onChange={(e) => setMinPerPack(Math.min(Math.max(1, parseInt(e.target.value, 10) || 1), flavorCap))} />
           </Field>
           <Field label="Max flavors per pack">
-            <input className="input" type="number" min={1} max={pool} value={maxPerPack ?? pool}
-              onChange={(e) => { const v = parseInt(e.target.value, 10); setMaxPerPack(Number.isNaN(v) ? null : Math.min(Math.max(1, v), pool)) }} />
+            <input className="input" type="number" min={1} max={flavorCap} value={maxPerPack ?? flavorCap}
+              onChange={(e) => { const v = parseInt(e.target.value, 10); setMaxPerPack(Number.isNaN(v) ? null : Math.min(Math.max(1, v), flavorCap)) }} />
           </Field>
           <Field label="Fill rule">
             <select className="sel" value={fillRule} onChange={(e) => setFillRule(e.target.value as FlavorFillRuleInput)}>
@@ -789,6 +796,8 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           {basis === 'PER_FLAVOR' ? ' Pack price sums the picked flavors.' : ' Each pack size carries a flat price.'}
         </p>
         {minOverMax && <div className="warn">⚠ Min flavors ({minPerPack}) exceeds max ({effCap}) — a Creator would have no valid pick. Lower the min or raise the max.</div>}
+        {!minOverMax && effCap > pool && <div className="warn">⚠ This allows up to {effCap} flavors per pack but your pool has {pool} flavor{pool === 1 ? '' : 's'} — add more flavors below so Creators can reach that.</div>}
+        {maxUnits === 0 && <div className="hint" style={{ marginTop: 6 }}>Tip: add an offered pack size below to cap flavors to the pack’s unit count.</div>}
       </div>
 
       {/* Flavors — pool + per-flavor price (when basis = PER_FLAVOR). */}
