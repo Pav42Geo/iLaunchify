@@ -44,6 +44,11 @@ function fullStamp(date: Date): string {
   return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+/** Clock time only, e.g. "3:45 PM" — for the "Saved at …" hover tooltip. */
+function clockTime(date: Date): string {
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 // ---------------------------------------------------------------------------
 // SavedIndicator — autosave status pill + History button.
 // ---------------------------------------------------------------------------
@@ -80,8 +85,25 @@ export function SavedIndicator({
     return () => clearInterval(t)
   }, [savedAt])
 
+  // Brief "Saved!" confirmation flash after a manual click — a green check that
+  // pops, so the user sees their click did something. Clears after ~1.4s.
+  const [justSaved, setJustSaved] = React.useState(false)
+  const flashTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  React.useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current) }, [])
+  const handleSaveClick = React.useCallback(async () => {
+    if (status === 'saving') return
+    try {
+      await onSave?.()
+      setJustSaved(true)
+      if (flashTimer.current) clearTimeout(flashTimer.current)
+      flashTimer.current = setTimeout(() => setJustSaved(false), 1400)
+    } catch {
+      /* leave the live status to surface any error */
+    }
+  }, [status, onSave])
+
   let StatusIcon = Check
-  let tip = savedAt ? `Saved ${relativeTime(savedAt)}` : 'All changes saved automatically'
+  let tip = savedAt ? `Saved at ${clockTime(savedAt)}` : 'All changes saved automatically'
   let tone = 'text-success-600'
   let spin = false
   if (status === 'saving') {
@@ -99,8 +121,16 @@ export function SavedIndicator({
     tone = 'text-ink-500'
   }
 
+  // The confirmation flash overrides whatever the live status is showing.
+  if (justSaved && status !== 'saving') {
+    StatusIcon = Check
+    tone = 'text-success-600'
+    spin = false
+    tip = 'Saved!'
+  }
+
   const btn =
-    'grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-600'
+    'grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-600'
 
   // When onSave is wired, the status icon doubles as a "Save now" button —
   // shows live autosave state AND lets the user force a save on demand.
@@ -110,16 +140,31 @@ export function SavedIndicator({
     <div className={`inline-flex items-center gap-1 ${className}`}>
       {/* Autosave status — icon + native tooltip. Clickable "Save now" when onSave. */}
       {onSave ? (
-        <button
-          type="button"
-          onClick={() => { if (status !== 'saving') void onSave() }}
-          disabled={status === 'saving'}
-          className={`grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white ${tone} transition-colors hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 disabled:cursor-default disabled:hover:border-ink-200 disabled:hover:bg-white`}
-          title={saveTip}
-          aria-label={saveTip}
-        >
-          <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
-        </button>
+        <span className="relative">
+          <button
+            type="button"
+            onClick={() => { void handleSaveClick() }}
+            disabled={status === 'saving'}
+            className={`grid h-8 w-8 place-items-center rounded-lg border ${tone} transition-colors ${
+              justSaved
+                ? 'border-success-300 bg-success-50'
+                : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-100 hover:text-ink-900'
+            } disabled:cursor-default disabled:hover:border-ink-200 disabled:hover:bg-white`}
+            title={saveTip}
+            aria-label={saveTip}
+          >
+            <StatusIcon className={`h-4 w-4 transition-transform duration-200 ${spin ? 'animate-spin' : ''} ${justSaved ? 'scale-125' : 'scale-100'}`} />
+          </button>
+          {/* Confirmation — auto-shows for ~1.4s under the icon after a manual save. */}
+          {justSaved && savedAt && status !== 'saving' && (
+            <span
+              role="status"
+              className="pointer-events-none absolute top-full left-1/2 z-50 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-ink-200 bg-white px-2 py-1 text-[11px] font-medium text-success-600 shadow-lg"
+            >
+              Saved at {clockTime(savedAt)}
+            </span>
+          )}
+        </span>
       ) : (
         <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`} title={tip} aria-label={tip}>
           <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
