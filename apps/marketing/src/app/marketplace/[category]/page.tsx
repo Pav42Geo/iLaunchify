@@ -133,6 +133,7 @@ export default async function CategoryPage({
           certOptions={certOptions}
           packagingGroups={packagingGroups}
           marketOptions={marketOptions}
+          domain={categoryInfo.domain}
         />
 
         <main className="flex flex-col">

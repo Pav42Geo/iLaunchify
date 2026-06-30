@@ -13,5 +13,7 @@ export {
   CONTAINER_CATEGORY_LABELS,
   formatLabel,
   leadLabel,
+  formatOptionsForDomain,
+  processOptionsForDomain,
 } from '@ilaunchify/types'
 export type { FilterOption as Option } from '@ilaunchify/types'

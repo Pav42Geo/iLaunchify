@@ -311,6 +311,9 @@ export async function getMarketplaceCategorySections(): Promise<MarketplaceCateg
 export interface MarketplaceCategoryInfo {
   slug: string
   title: string
+  /** Product domain (LabelingType) this category belongs to — scopes the Format /
+   *  Manufacturing-process filters to relevant options. null when unknown (fixture). */
+  domain?: string | null
 }
 
 /**
@@ -325,13 +328,16 @@ export async function getMarketplaceCategory(slug: string): Promise<MarketplaceC
     return r ? { slug: r.slug, title: r.title } : null
   }
   try {
-    const cat = await prisma.category.findUnique({
+    // labelingType is cast-guarded (pending-migration column on Category).
+    const cat = await (prisma as unknown as {
+      category: { findUnique: (a: unknown) => Promise<{ slug: string; name: string; isActive: boolean; labelingType: string | null } | null> }
+    }).category.findUnique({
       where: { slug },
-      select: { slug: true, name: true, isActive: true },
+      select: { slug: true, name: true, isActive: true, labelingType: true },
     })
-    if (cat && cat.isActive !== false) return { slug: cat.slug, title: cat.name }
+    if (cat && cat.isActive !== false) return { slug: cat.slug, title: cat.name, domain: cat.labelingType }
     // Inactive or missing in DB → fixture (keeps demo categories rendering).
-    return fixture() ?? (cat ? { slug: cat.slug, title: cat.name } : null)
+    return fixture() ?? (cat ? { slug: cat.slug, title: cat.name, domain: cat.labelingType } : null)
   } catch {
     return fixture()
   }
