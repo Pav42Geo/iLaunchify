@@ -29,6 +29,10 @@ export interface PackBuilderData {
   maxFlavorsPerPack: number | null
   pool: PackBuilderFlavor[]
   changeoverDays: number
+  /** Product STANDARD (global) lead in days — the FLOOR for every flavor
+   *  (docs/PER_FLAVOR_RECIPES.md §4). `ProductTemplate.leadTimeRepeatDays`. null
+   *  when unset (non-migrated products) — the PDP falls back to its card lead. */
+  standardLead: number | null
   /** PDP flavor cards — per-flavor price deltas (cents) so each flavor shows its
    *  own resulting unit price. `saleDeltaCents` (when present, a non-zero
    *  REDUCTION) drives the strike-through "was" price. Keyed by flavor id. */
@@ -87,6 +91,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       maxFlavorsPerPack: null,
       pool: [],
       changeoverDays: settings.changeoverDays,
+      standardLead: null,
       flavorPricing: {},
       packSizes: [],
       minFlavors: null,
@@ -129,6 +134,10 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
     idSet.has(a.flavor) ? a : { flavor: idByName.get(a.flavor) ?? a.flavor, qty: a.qty },
   )
 
+  // flavorLeadTimeDays is an internal map (keyed by flavor id) — fold it onto the
+  // pool below, then drop it from the spread (not part of PackBuilderData).
+  const { flavorLeadTimeDays, ...packRest } = pack
+
   return {
     flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
     maxFlavorsPerPack: template.maxFlavorsPerPack,
@@ -139,10 +148,12 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       statementOfIdentity: f.statementOfIdentity,
       thumbnailUrl: flavorImages.get(f.id)?.thumbnailUrl ?? null,
       heroUrl: flavorImages.get(f.id)?.heroUrl ?? null,
+      // Per-flavor lead override (days) — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4).
+      leadTimeDays: flavorLeadTimeDays[f.id] ?? null,
     })),
     changeoverDays: settings.changeoverDays,
     flavorPricing,
-    ...pack,
+    ...packRest,
     assortment,
   }
 }
@@ -160,6 +171,10 @@ async function readPackModel(slug: string): Promise<{
   fillRule: PackBuilderData['fillRule']
   pricingBasis: PackBuilderData['pricingBasis']
   flavorUnitPriceCents: Record<string, number | null>
+  /** Product standard (global) lead — the floor (docs/PER_FLAVOR_RECIPES.md §4). */
+  standardLead: number | null
+  /** Per-flavor lead override (days), keyed by flavor id. null → use the standard. */
+  flavorLeadTimeDays: Record<string, number | null>
   structuralType: PackBuilderData['structuralType']
   flavorPolicy: PackBuilderData['flavorPolicy']
   assortment: PackBuilderData['assortment']
@@ -171,6 +186,8 @@ async function readPackModel(slug: string): Promise<{
     fillRule: null as PackBuilderData['fillRule'],
     pricingBasis: null as PackBuilderData['pricingBasis'],
     flavorUnitPriceCents: {} as Record<string, number | null>,
+    standardLead: null as number | null,
+    flavorLeadTimeDays: {} as Record<string, number | null>,
     structuralType: null as PackBuilderData['structuralType'],
     flavorPolicy: null as PackBuilderData['flavorPolicy'],
     assortment: [] as PackBuilderData['assortment'],
@@ -185,6 +202,7 @@ async function readPackModel(slug: string): Promise<{
           pricingBasis: PackBuilderData['pricingBasis']
           flavorPolicy: PackBuilderData['flavorPolicy']
           fixedDistribution: unknown
+          leadTimeRepeatDays: number | null
           packingProfile: { structuralType: string | null } | null
           variants: Array<{
             id: string
@@ -196,7 +214,7 @@ async function readPackModel(slug: string): Promise<{
             netContentDisplay: string | null
             assortmentFlavors: unknown
           }>
-          flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
+          flavorPresets: Array<{ id: string; unitPriceCents: number | null; leadTimeDays: number | null }>
         } | null>
       }
     }).productTemplate.findUnique({
@@ -207,6 +225,7 @@ async function readPackModel(slug: string): Promise<{
         pricingBasis: true,
         flavorPolicy: true,
         fixedDistribution: true,
+        leadTimeRepeatDays: true,
         packingProfile: { select: { structuralType: true } },
         variants: {
           where: { isActive: true },
@@ -223,7 +242,7 @@ async function readPackModel(slug: string): Promise<{
         },
         flavorPresets: {
           where: { status: 'ACTIVE' },
-          select: { id: true, unitPriceCents: true },
+          select: { id: true, unitPriceCents: true, leadTimeDays: true },
         },
       },
     })
@@ -245,7 +264,11 @@ async function readPackModel(slug: string): Promise<{
       .sort((a, b) => a.unitsPerPack - b.unitsPerPack)
 
     const flavorUnitPriceCents: Record<string, number | null> = {}
-    for (const f of t.flavorPresets ?? []) flavorUnitPriceCents[f.id] = f.unitPriceCents ?? null
+    const flavorLeadTimeDays: Record<string, number | null> = {}
+    for (const f of t.flavorPresets ?? []) {
+      flavorUnitPriceCents[f.id] = f.unitPriceCents ?? null
+      flavorLeadTimeDays[f.id] = f.leadTimeDays ?? null
+    }
 
     return {
       packSizes,
@@ -253,6 +276,8 @@ async function readPackModel(slug: string): Promise<{
       fillRule: t.flavorFillRule ?? null,
       pricingBasis: t.pricingBasis ?? null,
       flavorUnitPriceCents,
+      standardLead: t.leadTimeRepeatDays ?? null,
+      flavorLeadTimeDays,
       structuralType: (t.packingProfile?.structuralType ?? null) as PackBuilderData['structuralType'],
       flavorPolicy: t.flavorPolicy ?? null,
       // Fixed assortment — the first offered size carrying an assortmentFlavors

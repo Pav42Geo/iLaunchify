@@ -182,6 +182,7 @@ export function GuidedBuilder({
   const [flavors, setFlavors] = useState<Flavor[]>(
     initial?.flavors.map((f) => ({
       name: f.name, ingId: 'cane', soi: f.soi, priceCents: f.unitPriceCents ?? null,
+      leadTimeDays: f.leadTimeDays ?? null,
       thumbnailUrl: f.thumbnailUrl ?? null,
       lines: (f.lines ?? []).map((l) => ({ ingId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
     })) ?? [],

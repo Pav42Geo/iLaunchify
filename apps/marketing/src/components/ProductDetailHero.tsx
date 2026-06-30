@@ -45,6 +45,9 @@ export interface ProductDetailHeroProps {
   maxFlavorsPerPack?: number | null
   flavorPool?: PackBuilderFlavor[]
   changeoverDays?: number
+  /** Product STANDARD (global) lead — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4).
+   *  Forwarded to the configurator for the effective lead. */
+  standardLead?: number | null
   flavorPricing?: Record<
     string,
     { priceDeltaCents: number; saleDeltaCents: number | null }
@@ -91,6 +94,7 @@ export function ProductDetailHero({
   maxFlavorsPerPack,
   flavorPool,
   changeoverDays,
+  standardLead,
   flavorPricing,
   packSizes,
   minFlavors,
@@ -156,6 +160,7 @@ export function ProductDetailHero({
                 maxFlavorsPerPack={maxFlavorsPerPack}
                 flavorPool={flavorPool}
                 changeoverDays={changeoverDays}
+                standardLead={standardLead}
                 flavorPricing={flavorPricing}
                 {...packProps}
                 onPackagingChange={setSelectedPackagingId}
@@ -176,6 +181,7 @@ export function ProductDetailHero({
             maxFlavorsPerPack={maxFlavorsPerPack}
             flavorPool={flavorPool}
             changeoverDays={changeoverDays}
+            standardLead={standardLead}
             flavorPricing={flavorPricing}
             {...packProps}
             onPackagingChange={setSelectedPackagingId}

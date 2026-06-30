@@ -30,6 +30,10 @@ export interface PackBuilderFlavor {
    *  on chip hover. Both undefined/null → color circle + product hero (default). */
   thumbnailUrl?: string | null
   heroUrl?: string | null
+  /** Optional per-flavor lead override (days) — GLOBAL FLOOR
+   *  (docs/PER_FLAVOR_RECIPES.md §4). null/undefined → use the product standard
+   *  lead. A value only EXTENDS the standard; the PDP renders the EFFECTIVE lead. */
+  leadTimeDays?: number | null
 }
 
 export interface PackBuilderProps {

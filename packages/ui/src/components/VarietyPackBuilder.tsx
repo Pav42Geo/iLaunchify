@@ -29,6 +29,7 @@ import {
   type AssortmentEntry,
   type ComposedPack,
 } from '../lib/pack-model'
+import { effectiveFlavorLead } from '../lib/lead'
 
 /** A flavor in the pool, with display + (PER_FLAVOR) price. */
 export interface VarietyPoolFlavor extends PoolFlavor {
@@ -36,6 +37,10 @@ export interface VarietyPoolFlavor extends PoolFlavor {
   /** Per-flavor thumbnail (task #203) — when set, the chip renders this image in
    *  place of the color circle. null/undefined → swatch circle (default). */
   thumbnailUrl?: string | null
+  /** Optional per-flavor lead override (days) — GLOBAL FLOOR
+   *  (docs/PER_FLAVOR_RECIPES.md §4). The chip + "In this pack" rows render the
+   *  EFFECTIVE lead `effectiveFlavorLead(leadTimeDays, standardLead)`. */
+  leadTimeDays?: number | null
 }
 
 export interface VarietyPackValue {
@@ -65,6 +70,11 @@ export interface VarietyPackBuilderProps {
    *  in a PACK_PICK pack the creator picks WHICH flavors; their per-flavor units
    *  are derived from these weights (read-only). Ignored for the other fill rules. */
   fixedDistribution?: FixedDistribution | null
+  /** Product STANDARD (global) lead in days — the FLOOR for every flavor
+   *  (docs/PER_FLAVOR_RECIPES.md §4). When set, the chip + "In this pack" rows
+   *  render each flavor's EFFECTIVE lead `effectiveFlavorLead(flavor.leadTimeDays,
+   *  standardLead)`. null → no lead line (lead unknown). */
+  standardLead?: number | null
   value: VarietyPackValue
   onChange: (next: VarietyPackValue) => void
   /** Optional render callback receiving the live composition for the chosen
@@ -89,12 +99,21 @@ export function VarietyPackBuilder({
   mode = 'PACK_PICK',
   assortment = [],
   fixedDistribution = null,
+  standardLead = null,
   value,
   onChange,
   onCompose,
   onHoverFlavor,
   className,
 }: VarietyPackBuilderProps) {
+  // Effective per-flavor lead label (GLOBAL FLOOR) — only when a lead is known:
+  // a flavor override OR the product standard. Returns e.g. "19d lead" / "19d".
+  const leadLabel = (flavor: VarietyPoolFlavor, withSuffix: boolean): string | null => {
+    if (flavor.leadTimeDays == null && standardLead == null) return null
+    const eff = effectiveFlavorLead(flavor.leadTimeDays, standardLead ?? 0)
+    if (eff <= 0) return null
+    return withSuffix ? `${eff}d lead` : `${eff}d`
+  }
   const size = packSizes.find((s) => s.id === value.sizeId) ?? packSizes[0] ?? null
   const unitsPerPack = size?.unitsPerPack ?? 0
 
@@ -401,6 +420,10 @@ export function VarietyPackBuilder({
                 {showFlavorPrice && fl.unitPriceCents != null && (
                   <span className="text-[10.5px] text-ink-500 tabular-nums">{fmtCents(fl.unitPriceCents)}</span>
                 )}
+                {/* Effective per-flavor lead under the price (GLOBAL FLOOR). */}
+                {leadLabel(fl, true) && (
+                  <span className="text-[10px] text-ink-400 tabular-nums">{leadLabel(fl, true)}</span>
+                )}
               </button>
             )
           })}
@@ -445,11 +468,17 @@ export function VarietyPackBuilder({
                     <span className="block truncate text-[13px] font-medium text-ink-900">
                       {poolNameById.get(c.flavorPresetId) || 'Flavor'}
                     </span>
-                    {showFlavorPrice && fl?.unitPriceCents != null && (
+                    {(showFlavorPrice && fl?.unitPriceCents != null) || (fl && leadLabel(fl, false)) ? (
                       <span className="block text-[11.5px] text-ink-500 tabular-nums">
-                        {fmtCents(fl.unitPriceCents)} / unit
+                        {showFlavorPrice && fl?.unitPriceCents != null && <>{fmtCents(fl.unitPriceCents)} / unit</>}
+                        {/* Effective per-flavor lead (GLOBAL FLOOR) — e.g. "· 19d". */}
+                        {fl && leadLabel(fl, false) && (
+                          <span className="text-ink-400">
+                            {showFlavorPrice && fl.unitPriceCents != null ? ' · ' : ''}{leadLabel(fl, false)} lead
+                          </span>
+                        )}
                       </span>
-                    )}
+                    ) : null}
                     {flavorErr && <span className="block text-[11px] text-pink-700">{flavorErr}</span>}
                   </span>
 

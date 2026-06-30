@@ -301,6 +301,7 @@ export default async function ProductDetailPage({
             maxFlavorsPerPack={packData.maxFlavorsPerPack}
             flavorPool={packData.pool}
             changeoverDays={packData.changeoverDays}
+            standardLead={packData.standardLead}
             flavorPricing={packData.flavorPricing}
             packSizes={packData.packSizes}
             minFlavors={packData.minFlavors}

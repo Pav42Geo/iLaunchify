@@ -11,6 +11,7 @@ import {
   PerFlavorEarnings,
   PricingTierModal,
   applyFlavorChangeover,
+  effectiveProductLead,
   composePack,
   packPriceCents,
   orderTotalCents,
@@ -77,6 +78,10 @@ export interface ProductDetailConfiguratorProps {
   maxFlavorsPerPack?: number | null
   flavorPool?: PackBuilderFlavor[]
   changeoverDays?: number
+  /** Product STANDARD (global) lead in days — the FLOOR for every flavor
+   *  (docs/PER_FLAVOR_RECIPES.md §4). null → fall back to the matched band /
+   *  packaging / card lead (current behaviour for non-migrated products). */
+  standardLead?: number | null
   minPerFlavor?: number
   /* ── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6) — drive the NEW
        pack-based multi-flavor flow. All optional + cast-guarded upstream; when
@@ -131,6 +136,7 @@ export function ProductDetailConfigurator({
   maxFlavorsPerPack = null,
   flavorPool = [],
   changeoverDays = 0,
+  standardLead = null,
   minPerFlavor = 1,
   flavorPricing = {},
   packSizes = [],
@@ -439,8 +445,23 @@ export function ProductDetailConfigurator({
     matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
     template.leadTimeDays
-  const leadTimeDays =
-    applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
+  // Effective lead — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4). For multi-flavor
+  // packs with a known product standard lead, the displayed lead is
+  // max(standard, max chosen-flavor lead) + changeover; a flavor only EXTENDS the
+  // floor. Single-flavor (and non-migrated multi without a standard) keep the band
+  // /packaging lead + the existing changeover increment.
+  const leadByFlavorId = React.useMemo(() => {
+    const m = new Map<string, number | null>()
+    for (const f of flavorPool) m.set(f.id, f.leadTimeDays ?? null)
+    return m
+  }, [flavorPool])
+  const leadTimeDays = React.useMemo(() => {
+    if (isMultiFlavor && standardLead != null) {
+      const chosenLeads = composedPack.slots.map((s) => leadByFlavorId.get(s.flavorPresetId) ?? null)
+      return effectiveProductLead(standardLead, chosenLeads, changeoverDays)
+    }
+    return applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
+  }, [isMultiFlavor, standardLead, composedPack.slots, leadByFlavorId, changeoverDays, baseLeadTimeDays, flavorCount])
 
   // Resulting per-unit price for a given flavor card (base band cost × size +
   // packaging + that flavor's delta). Mirrors `landedCost` but flavor-specific.
@@ -496,12 +517,16 @@ export function ProductDetailConfigurator({
             swatchHex: f.swatchHex,
             thumbnailUrl: f.thumbnailUrl,
             unitPriceCents: flavorUnitPriceCents[f.id] ?? null,
+            // Per-flavor lead override (days) — the builder renders the EFFECTIVE
+            // lead under the price (GLOBAL FLOOR, docs/PER_FLAVOR_RECIPES.md §4).
+            leadTimeDays: f.leadTimeDays ?? null,
           }))}
           rules={packRules}
           pricingBasis={effPricingBasis}
           mode={packMode}
           assortment={assortment}
           fixedDistribution={fixedDistribution}
+          standardLead={standardLead}
           value={packValue}
           onChange={setPackValue}
           onHoverFlavor={setHoveredFlavorId}

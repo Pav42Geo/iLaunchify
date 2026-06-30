@@ -1,6 +1,7 @@
 import 'server-only'
 import { prisma, Prisma } from '@ilaunchify/db'
 import type { ProductGradient } from '@ilaunchify/ui'
+import { effectiveFlavorLead } from '@ilaunchify/ui'
 import { CATEGORY_ROWS, type SampleTemplate } from './sample-templates'
 import type { TemplateDetail } from './template-detail'
 
@@ -361,7 +362,14 @@ const includeForCard = {
   variants: { where: { isActive: true }, select: { moqMin: true, leadTimeDays: true } },
   // Lifestyle tags → card chips (diet/cert-ish). Capped to 3 in mapToCard.
   lifestyleTags: { include: { lifestyleTag: { select: { name: true, slug: true } } } },
-} as const
+  // Active flavor presets' per-flavor lead overrides — GLOBAL FLOOR model
+  // (docs/PER_FLAVOR_RECIPES.md §4): the card lead rises only when a flavor
+  // extends the product standard. leadTimeDays is a real column post-push; reads
+  // are cast-guarded in mapToCard (the DbTemplate intersection types it optional).
+  // The whole include is cast to Prisma.ProductTemplateInclude because the
+  // (possibly stale) generated client may not yet type FlavorPreset.leadTimeDays.
+  flavorPresets: { where: { status: 'ACTIVE' }, select: { leadTimeDays: true } },
+} as Prisma.ProductTemplateInclude
 
 /** Lead-time bucket → variant leadTimeDays range (days). */
 function leadRange(bucket?: string): { gte?: number; lte?: number } | undefined {
@@ -488,12 +496,45 @@ type DbTemplate = Awaited<
   // Manufacturing process slugs (ProductTemplate.manufacturingProcesses) — drives
   // the PDP "Process" fact. Empty/absent → the page shows "--".
   manufacturingProcesses?: string[]
+  // Per-flavor recipes — GLOBAL FLOOR lead model (docs/PER_FLAVOR_RECIPES.md §4).
+  // `leadTimeRepeatDays` = product standard (global) lead; flavorPresets' leadTimeDays
+  // are optional per-flavor extensions. Both post-date some generated clients →
+  // typed optional so reads compile (cast-guarded at use).
+  leadTimeRepeatDays?: number | null
+  flavorPresets?: Array<{ leadTimeDays: number | null }>
+}
+
+/**
+ * Card lead — GLOBAL FLOOR model (docs/PER_FLAVOR_RECIPES.md §4). The product
+ * STANDARD lead (`leadTimeRepeatDays`) is the floor; the card rises only when a
+ * flavor extends it: `max(standard, max effective flavor lead)`. No changeover —
+ * the card is the static worst-case display value, not a live order quote.
+ *
+ * Fallback: when the standard is unset (non-migrated products) we keep the prior
+ * min-variant value so existing cards are byte-for-byte unchanged. All reads are
+ * cast-guarded by the optional DbTemplate fields.
+ */
+function computeCardLead(t: DbTemplate, variantLeads: number[]): number {
+  const minVariant = variantLeads.length ? Math.min(...variantLeads) : 10
+  const standard = t.leadTimeRepeatDays
+  if (standard == null) return minVariant // non-migrated → unchanged
+  const flavorLeads = (t.flavorPresets ?? []).map((f) => f.leadTimeDays ?? null)
+  // Floor at the standard; a flavor only raises it (effectiveFlavorLead).
+  return flavorLeads.reduce<number>(
+    (max, f) => Math.max(max, effectiveFlavorLead(f, standard)),
+    standard,
+  )
 }
 
 function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
   const category = t.subcategory.category
   const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
   const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+  // Card lead — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4): the product STANDARD
+  // lead is the floor; the card rises only when a flavor extends it
+  // (max(standard, max flavor lead)). When the standard is unset (non-migrated
+  // products), keep the current min-variant value so cards are unchanged.
+  const cardLead = computeCardLead(t, leads)
   // Card chips from lifestyle tags (real data, domain-agnostic). Cap 3 for density.
   const tags = (t.lifestyleTags ?? []).slice(0, 3).map((j) => ({
     label: j.lifestyleTag.name,
@@ -510,7 +551,7 @@ function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
     imageUrl: heroUrl, // real product hero when available; card falls back to gradient
     tags,
     minUnits: moqs.length ? Math.min(...moqs) : 500,
-    leadTimeDays: leads.length ? Math.min(...leads) : 10,
+    leadTimeDays: cardLead,
     pricePerUnit: t.priceFloorCents / 100,
     ratingAvg: t.ratingAvg ?? null,
     ratingCount: t.ratingCount ?? 0,
