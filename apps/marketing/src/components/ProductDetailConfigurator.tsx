@@ -8,6 +8,7 @@ import {
   PackagingPicker,
   VarietyPackBuilder,
   EarningsCalculator,
+  PerFlavorEarnings,
   PricingTierModal,
   applyFlavorChangeover,
   composePack,
@@ -377,6 +378,33 @@ export function ProductDetailConfigurator({
   const earningsCost = earningsPerPack ? +(packPriceWithSub / 100).toFixed(2) : activeUnitCost
   const earningsUnitLabel = earningsPerPack ? 'pack' : 'unit'
 
+  // Per-flavor earnings — for a PER_FLAVOR multi-flavor pack, each flavor unit is
+  // its own sellable SKU, so a single blended margin is misleading. Build one row
+  // per flavor IN the composed pack: its landed cost/unit (the PER_FLAVOR price ×
+  // any subscribe discount) + how many units it contributes (weights the blend).
+  // Falls back to the single EarningsCalculator otherwise.
+  const subDiscountFactor = subscribe ? (10_000 - subDiscountBp) / 10_000 : 1
+  const perFlavorEarningsRows = React.useMemo(
+    () =>
+      composedPack.slots.map((s) => {
+        const fl = flavorPool.find((f) => f.id === s.flavorPresetId)
+        const baseCost = (flavorUnitPriceCents[s.flavorPresetId] ?? 0) / 100
+        return {
+          flavorPresetId: s.flavorPresetId,
+          name: fl?.name ?? 'Flavor',
+          swatchHex: fl?.swatchHex ?? null,
+          costPerUnit: +(baseCost * subDiscountFactor).toFixed(2),
+          unitsInPack: s.units,
+        }
+      }),
+    [composedPack.slots, flavorPool, flavorUnitPriceCents, subDiscountFactor],
+  )
+  const showPerFlavorEarnings =
+    isMultiFlavor &&
+    effPricingBasis === 'PER_FLAVOR' &&
+    perFlavorEarningsRows.length > 0 &&
+    perFlavorEarningsRows.some((r) => r.costPerUnit > 0)
+
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
@@ -658,8 +686,14 @@ export function ProductDetailConfigurator({
         </div>
       </div>
 
-      {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}
-      <EarningsCalculator costPerUnit={earningsCost} unitLabel={earningsUnitLabel} tone="neutral" />
+      {/* 5) Earnings — neutral gray surface (info panel, not a primary action).
+          PER_FLAVOR multi-flavor packs get the per-flavor breakdown (each flavor
+          is its own SKU); everything else gets the single blended calculator. */}
+      {showPerFlavorEarnings ? (
+        <PerFlavorEarnings rows={perFlavorEarningsRows} tone="neutral" />
+      ) : (
+        <EarningsCalculator costPerUnit={earningsCost} unitLabel={earningsUnitLabel} tone="neutral" />
+      )}
 
       {/* 6) Primary actions — stacked vertically, both full-width: "Order a
           sample" on TOP (opens the SampleDrawer) and Launch BELOW
