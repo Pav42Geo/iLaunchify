@@ -16,12 +16,15 @@ import { cn } from '../lib/utils'
 import {
   composePack,
   evenFill,
+  resolveFixedChoices,
   type PackSize,
   type PoolFlavor,
   type FlavorRules,
   type FlavorChoice,
   type FlavorFillRule,
   type PricingBasis,
+  type PackMode,
+  type AssortmentEntry,
   type ComposedPack,
 } from '../lib/pack-model'
 
@@ -43,6 +46,15 @@ export interface VarietyPackBuilderProps {
   pool: VarietyPoolFlavor[]
   rules: { minFlavors: number; maxFlavors: number | null; fillRule: FlavorFillRule }
   pricingBasis: PricingBasis
+  /** Configure mode (spec §8). Defaults to PACK_PICK (the original behaviour).
+   *  - PACK_PICK         — creator picks min..max distinct flavors (as before).
+   *  - PACK_ONE_FLAVOR   — creator picks EXACTLY ONE flavor; fill = whole pack.
+   *  - PACK_FIXED        — manufacturer-fixed assortment, read-only (no picking).
+   *  SINGLE_UNIT never renders this component. */
+  mode?: PackMode
+  /** Manufacturer's fixed assortment (PACK_FIXED only) — [{ flavor, qty }]. Scaled
+   *  per offered size via the engine. Ignored in the other modes. */
+  assortment?: AssortmentEntry[]
   value: VarietyPackValue
   onChange: (next: VarietyPackValue) => void
   /** Optional render callback receiving the live composition for the chosen
@@ -60,6 +72,8 @@ export function VarietyPackBuilder({
   pool,
   rules,
   pricingBasis,
+  mode = 'PACK_PICK',
+  assortment = [],
   value,
   onChange,
   onCompose,
@@ -68,39 +82,79 @@ export function VarietyPackBuilder({
   const size = packSizes.find((s) => s.id === value.sizeId) ?? packSizes[0] ?? null
   const unitsPerPack = size?.unitsPerPack ?? 0
 
+  // Mode shapes the flavor bounds (spec §8):
+  //  - PACK_ONE_FLAVOR pins min=max=1 (one flavor fills the whole pack).
+  //  - PACK_FIXED is manufacturer-authored; the creator never picks, so the
+  //    distinct count comes from the assortment, not from rules.
+  const oneFlavor = mode === 'PACK_ONE_FLAVOR'
+  const fixed = mode === 'PACK_FIXED'
+
   // Effective flavor cap: the manufacturer max, bounded by how many units the
   // pack can hold (mirrors the engine's own clamp so the UI agrees with it).
-  const effectiveMax =
-    rules.maxFlavors != null ? Math.min(rules.maxFlavors, unitsPerPack) : unitsPerPack
-  const minFlavors = Math.max(1, rules.minFlavors)
+  // PACK_ONE_FLAVOR clamps the whole window to 1.
+  const effectiveMax = oneFlavor
+    ? 1
+    : rules.maxFlavors != null
+      ? Math.min(rules.maxFlavors, unitsPerPack)
+      : unitsPerPack
+  const minFlavors = oneFlavor ? 1 : Math.max(1, rules.minFlavors)
 
+  // For PACK_ONE_FLAVOR the single picked flavor fills the entire pack — drive it
+  // as a MANUFACTURER_FIXED-style single slot so units = unitsPerPack. PACK_FIXED
+  // is composed from the assortment below, not from `choices`, so its engineRules
+  // don't bound the distinct count.
   const engineRules: FlavorRules = {
     minFlavorsPerPack: minFlavors,
-    maxFlavorsPerPack: rules.maxFlavors,
-    fillRule: rules.fillRule,
+    maxFlavorsPerPack: fixed ? null : effectiveMax,
+    fillRule: oneFlavor ? 'EVEN_AUTO' : rules.fillRule,
   }
 
-  const choices = value.choices
+  // PACK_FIXED — the per-pack slots come from the manufacturer's assortment,
+  // scaled to the chosen size. The creator can't edit them.
+  const fixedChoices: FlavorChoice[] = React.useMemo(
+    () => (fixed ? resolveFixedChoices(assortment, unitsPerPack) : []),
+    [fixed, assortment, unitsPerPack],
+  )
+
+  const choices = fixed ? fixedChoices : value.choices
   const chosenIds = new Set(choices.map((c) => c.flavorPresetId))
   const atFlavorCap = chosenIds.size >= effectiveMax
-  const creatorFills = rules.fillRule === 'CREATOR_CHOOSES'
+  // CREATOR_CHOOSES per-flavor steppers only apply in PACK_PICK; one-flavor and
+  // fixed packs are auto-filled.
+  const creatorFills = !oneFlavor && !fixed && rules.fillRule === 'CREATOR_CHOOSES'
 
-  const composed = composePack({ unitsPerPack }, choices, engineRules)
+  const composed = fixed
+    ? composePack({ unitsPerPack }, fixedChoices, { minFlavorsPerPack: 1, maxFlavorsPerPack: null, fillRule: 'MANUFACTURER_FIXED' })
+    : composePack({ unitsPerPack }, choices, engineRules)
 
-  // Surface the live composition to the parent (price/summary).
+  // Surface the live composition to the parent (price/summary). For PACK_FIXED the
+  // parent also needs the resolved fixed choices written into `value` so its
+  // pricing + order persistence see the assortment — push them up once per
+  // size/assortment change (the creator never edits them).
   React.useEffect(() => {
+    if (fixed) {
+      const same =
+        value.choices.length === fixedChoices.length &&
+        value.choices.every((c, i) => c.flavorPresetId === fixedChoices[i]?.flavorPresetId && (c.units ?? 0) === (fixedChoices[i]?.units ?? 0))
+      if (!same) onChange({ sizeId: value.sizeId, choices: fixedChoices })
+    }
     onCompose?.({ size, composed })
     // Re-fire whenever the inputs to composePack change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.sizeId, JSON.stringify(choices), unitsPerPack, rules.fillRule])
+  }, [value.sizeId, JSON.stringify(choices), unitsPerPack, rules.fillRule, fixed])
 
   // ── Mutators ────────────────────────────────────────────────────────────────
   function setSize(id: string) {
     const next = packSizes.find((s) => s.id === id)
     if (!next) return
+    if (fixed) {
+      // The assortment is resolved from the new size by the effect — just swap id.
+      onChange({ sizeId: id, choices: resolveFixedChoices(assortment, next.unitsPerPack) })
+      return
+    }
     // Re-seed choices for the new pack: keep picked flavors, re-even-fill counts
     // (CREATOR_CHOOSES) so the per-flavor steppers always sum to the new size.
-    const ids = choices.map((c) => c.flavorPresetId)
+    const ids = value.choices.map((c) => c.flavorPresetId)
     const reseeded = reseedChoices(ids, next.unitsPerPack, creatorFills)
     onChange({ sizeId: id, choices: reseeded })
   }
@@ -113,9 +167,13 @@ export function VarietyPackBuilder({
   }
 
   function toggleFlavor(id: string) {
+    if (fixed) return // assortment is manufacturer-fixed; not editable.
     if (chosenIds.has(id)) {
       const ids = choices.filter((c) => c.flavorPresetId !== id).map((c) => c.flavorPresetId)
       onChange({ ...value, choices: reseedChoices(ids, unitsPerPack, creatorFills) })
+    } else if (oneFlavor) {
+      // Single-flavor multipack — selecting a flavor REPLACES the current pick.
+      onChange({ ...value, choices: reseedChoices([id], unitsPerPack, creatorFills) })
     } else if (!atFlavorCap) {
       const ids = [...choices.map((c) => c.flavorPresetId), id]
       onChange({ ...value, choices: reseedChoices(ids, unitsPerPack, creatorFills) })
@@ -176,10 +234,15 @@ export function VarietyPackBuilder({
   return (
     <div className={cn('rounded-2xl border border-ink-200 bg-white p-4', className)}>
       <div>
-        <h3 className="font-display text-[14px] font-semibold text-ink-900">Build your variety pack</h3>
+        <h3 className="font-display text-[14px] font-semibold text-ink-900">
+          {fixed ? 'Choose your pack size' : oneFlavor ? 'Pick your flavor' : 'Build your variety pack'}
+        </h3>
         <p className="mt-0.5 text-[12px] text-ink-500">
-          Pick {minFlavors === effectiveMax ? `${effectiveMax}` : `${minFlavors}–${effectiveMax}`} flavor
-          {effectiveMax === 1 ? '' : 's'} for your {size?.label ?? `${unitsPerPack}-pack`}.
+          {fixed
+            ? `A fixed assortment of ${composed.distinctCount} flavor${composed.distinctCount === 1 ? '' : 's'} in your ${size?.label ?? `${unitsPerPack}-pack`}.`
+            : oneFlavor
+              ? `Pick one flavor for your ${size?.label ?? `${unitsPerPack}-pack`}.`
+              : `Pick ${minFlavors === effectiveMax ? `${effectiveMax}` : `${minFlavors}–${effectiveMax}`} flavor${effectiveMax === 1 ? '' : 's'} for your ${size?.label ?? `${unitsPerPack}-pack`}.`}
         </p>
       </div>
 
@@ -225,10 +288,14 @@ export function VarietyPackBuilder({
       </div>
 
       {/* 2) Flavor picker — a horizontal swatch carousel (scales to a big pool).
-          Each chip shows the flavor NAME; tap to add/remove. Arrows browse. */}
+          Each chip shows the flavor NAME; tap to add/remove. Arrows browse.
+          Hidden for PACK_FIXED (the assortment is manufacturer-set, read-only). */}
+      {!fixed && (
       <div className="relative mt-3">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <div className="text-[12px] font-semibold text-ink-700">Choose flavors</div>
+          <div className="text-[12px] font-semibold text-ink-700">
+            {oneFlavor ? 'Choose a flavor' : 'Choose flavors'}
+          </div>
           <div className="text-[11.5px] text-ink-500 tabular-nums">
             {chosenIds.size}/{effectiveMax} picked
           </div>
@@ -302,13 +369,16 @@ export function VarietyPackBuilder({
           </button>
         )}
       </div>
+      )}
 
-      {/* 3) "In this pack" — only the chosen flavors, with names + the fill
-          control (stepper for CREATOR_CHOOSES, ×N otherwise). Short by design
-          (≤ max flavors), so it stays compact even with a 24-flavor pool. */}
+      {/* 3) "In this pack" — the pack's flavors with the fill control (stepper for
+          CREATOR_CHOOSES, ×N otherwise). For PACK_FIXED these are the read-only
+          manufacturer assortment rows (no remove control). Short by design. */}
       {chosenIds.size > 0 && (
         <div className="mt-3">
-          <div className="mb-1.5 text-[12px] font-semibold text-ink-700">In this pack</div>
+          <div className="mb-1.5 text-[12px] font-semibold text-ink-700">
+            {fixed ? 'In every pack' : 'In this pack'}
+          </div>
           <ul className="space-y-1.5">
             {choices.map((c) => {
               const fl = pool.find((f) => f.flavorPresetId === c.flavorPresetId)
@@ -352,14 +422,16 @@ export function VarietyPackBuilder({
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => toggleFlavor(c.flavorPresetId)}
-                    aria-label={`Remove ${poolNameById.get(c.flavorPresetId) || 'flavor'}`}
-                    className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </button>
+                  {!fixed && (
+                    <button
+                      type="button"
+                      onClick={() => toggleFlavor(c.flavorPresetId)}
+                      aria-label={`Remove ${poolNameById.get(c.flavorPresetId) || 'flavor'}`}
+                      className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                  )}
                 </li>
               )
             })}

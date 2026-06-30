@@ -13,6 +13,89 @@
 export type FlavorFillRule = 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
 export type PricingBasis = 'PER_FLAVOR' | 'PER_PACK'
 
+// ── Configure mode (spec §8 per-bucket rollout) ───────────────────────────────
+//
+// The 6 StructuralPackType buckets all reuse the SAME pack machinery (offered
+// sizes + pack count + basis pricing); they differ ONLY in how flavors are
+// selected. `resolvePackMode` collapses (structuralType × flavorPolicy) into the
+// one knob the PDP + checkout both read, so the two surfaces can't disagree:
+//
+//   SINGLE_UNIT      → 'SINGLE_UNIT'    — units, per-unit price (no pack flow)
+//   MULTI_UNIT_SAME  → 'PACK_ONE_FLAVOR'— pack size + exactly ONE flavor
+//   MIXED/COMPARTMENT→ 'PACK_FIXED'     — manufacturer-fixed assortment, no pick
+//   PER_FLAVOR/PICK_N→ 'PACK_PICK'      — creator picks min..max flavors
+//
+// PARTNER_FIXED flavorPolicy forces 'PACK_FIXED' for any multi-flavor bucket
+// (the explicit promotion the spec §8 calls for). The mapping is exhaustive and
+// total — an unknown / null structuralType falls back to legacy behaviour: a
+// real authored pack matrix (offeredSizes>0) means PACK_PICK, else SINGLE_UNIT.
+
+/** The structural buckets (mirrors the Prisma `StructuralPackType` enum). */
+export type StructuralPackType =
+  | 'SINGLE_UNIT'
+  | 'MULTI_UNIT_SAME'
+  | 'MULTI_FLAVOR_MIXED'
+  | 'MULTI_FLAVOR_COMPARTMENT'
+  | 'PER_FLAVOR_IN_OUTER'
+  | 'CUSTOMIZABLE_PICK_N'
+
+/** Promoted FlavorPolicy field (spec §8) — who picks the flavors. */
+export type FlavorPolicy = 'CREATOR_PICK' | 'PARTNER_FIXED'
+
+/** The four configure modes the PDP + checkout drive `VarietyPackBuilder` with. */
+export type PackMode = 'SINGLE_UNIT' | 'PACK_PICK' | 'PACK_ONE_FLAVOR' | 'PACK_FIXED'
+
+export interface ResolvePackModeInput {
+  /** The product's structural bucket. */
+  structuralType?: StructuralPackType | null
+  /** Promoted policy field; PARTNER_FIXED forces a fixed assortment. */
+  flavorPolicy?: FlavorPolicy | null
+  /** Legacy flavor mode (SINGLE/MULTI) — used only when structuralType is absent. */
+  flavorMode?: 'SINGLE' | 'MULTI' | null
+  /** Count of offered pack sizes the manufacturer authored. */
+  offeredSizes?: number
+}
+
+/**
+ * Resolve the single configure mode both surfaces share (spec §8). Pure +
+ * deterministic. A PARTNER_FIXED policy wins for every multi-flavor bucket; a
+ * single-flavor multipack (MULTI_UNIT_SAME) is always pick-1; SINGLE_UNIT never
+ * uses the pack flow. Falls back to the legacy flavorMode + offeredSizes signal
+ * when structuralType is missing (pre-migration / un-seeded rows).
+ */
+export function resolvePackMode(input: ResolvePackModeInput): PackMode {
+  const { structuralType, flavorPolicy, flavorMode, offeredSizes = 0 } = input
+  const fixed = flavorPolicy === 'PARTNER_FIXED'
+
+  switch (structuralType) {
+    case 'SINGLE_UNIT':
+      return 'SINGLE_UNIT'
+    case 'MULTI_UNIT_SAME':
+      return 'PACK_ONE_FLAVOR'
+    case 'MULTI_FLAVOR_MIXED':
+    case 'MULTI_FLAVOR_COMPARTMENT':
+      return 'PACK_FIXED'
+    case 'PER_FLAVOR_IN_OUTER':
+    case 'CUSTOMIZABLE_PICK_N':
+      // A pick bucket still defers to an explicit PARTNER_FIXED override.
+      return fixed ? 'PACK_FIXED' : 'PACK_PICK'
+    default:
+      break
+  }
+
+  // No structuralType — derive from the legacy signal. A PARTNER_FIXED policy is
+  // still honoured; a MULTI product with an authored pack matrix is PACK_PICK.
+  if (fixed && flavorMode === 'MULTI') return 'PACK_FIXED'
+  if (flavorMode === 'MULTI' && offeredSizes > 0) return 'PACK_PICK'
+  if (flavorMode === 'MULTI') return 'PACK_PICK'
+  return 'SINGLE_UNIT'
+}
+
+/** True when the resolved mode renders the pack composer (any non-single mode). */
+export function isPackMode(mode: PackMode): boolean {
+  return mode !== 'SINGLE_UNIT'
+}
+
 /** One offered pack size — a ProductTemplateVariant row (spec §4.2). */
 export interface PackSize {
   /** Variant id. */
@@ -98,6 +181,75 @@ export function evenFill(units: number, n: number): number[] {
   const base = Math.floor(units / n)
   const remainder = units - base * n
   return Array.from({ length: n }, (_, i) => base + (i < remainder ? 1 : 0))
+}
+
+// ── Fixed assortment (PACK_FIXED — spec §8) ───────────────────────────────────
+
+/**
+ * One entry in a manufacturer's fixed assortment. `qty` is the per-pack unit
+ * count of that flavor for the BASE pack; `scalePerUnit` (default true) lets the
+ * assortment scale to other offered sizes proportionally. Stored on the variant
+ * as `assortmentFlavors` JSON: [{ flavor, qty }].
+ */
+export interface AssortmentEntry {
+  /** FlavorPreset id. */
+  flavor: string
+  /** Per-pack unit count for this flavor in the base assortment. */
+  qty: number
+}
+
+/**
+ * Resolve a manufacturer's fixed assortment into per-pack FlavorChoice counts
+ * for a pack of `unitsPerPack` units. The assortment is authored once (summing
+ * to a base total) and scaled proportionally to each offered size:
+ *   - assortment sums to `base`; we scale every qty by unitsPerPack/base, then
+ *     distribute any rounding remainder by `evenFill` order so the slots always
+ *     sum to exactly unitsPerPack.
+ * When the assortment already sums to unitsPerPack it passes through unchanged.
+ * Returns [] for an empty assortment. Pure + deterministic.
+ */
+export function resolveFixedChoices(
+  assortment: AssortmentEntry[],
+  unitsPerPack: number,
+): FlavorChoice[] {
+  const units = Math.max(0, Math.floor(unitsPerPack))
+  const entries = assortment.filter((a) => a.flavor && (a.qty ?? 0) > 0)
+  if (entries.length === 0 || units === 0) return []
+  const base = entries.reduce((t, a) => t + Math.max(0, Math.floor(a.qty)), 0)
+  if (base === 0) return []
+  if (base === units) {
+    return entries.map((a) => ({ flavorPresetId: a.flavor, units: Math.floor(a.qty) }))
+  }
+  // Scale proportionally (floor), then hand out the remainder front-loaded so the
+  // total lands exactly on `units` — matching evenFill's deterministic ordering.
+  const scaled = entries.map((a) => {
+    const exact = (Math.max(0, Math.floor(a.qty)) * units) / base
+    return { flavor: a.flavor, floor: Math.floor(exact), frac: exact - Math.floor(exact) }
+  })
+  let assigned = scaled.reduce((t, s) => t + s.floor, 0)
+  let remainder = units - assigned
+  // Give the remaining units to the entries with the largest fractional part
+  // first; ties break by original order (stable).
+  const order = scaled
+    .map((s, i) => ({ i, frac: s.frac }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of order) {
+    if (remainder <= 0) break
+    scaled[i]!.floor += 1
+    remainder -= 1
+  }
+  // Guarantee at least 1 unit for every listed flavor when the pack can hold them
+  // (a fixed assortment shouldn't silently drop a flavor); steal from the largest.
+  for (let i = 0; i < scaled.length; i += 1) {
+    if (scaled[i]!.floor === 0) {
+      const donor = scaled.reduce((mi, s, j) => (s.floor > scaled[mi]!.floor ? j : mi), 0)
+      if (scaled[donor]!.floor > 1) {
+        scaled[donor]!.floor -= 1
+        scaled[i]!.floor += 1
+      }
+    }
+  }
+  return scaled.map((s) => ({ flavorPresetId: s.flavor, units: s.floor }))
 }
 
 // ── Compose ───────────────────────────────────────────────────────────────────

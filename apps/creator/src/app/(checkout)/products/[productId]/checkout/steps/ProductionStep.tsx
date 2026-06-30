@@ -32,8 +32,11 @@ import {
   composePack,
   packSummary,
   orderTotalUnits,
+  resolvePackMode,
   type PackPreviewColumn,
   type PackSize,
+  type PackMode,
+  type FlavorRules,
   type VarietyPackValue,
 } from '@ilaunchify/ui'
 import { getVarietyPreviewColumns } from '@/components/labels/label-actions'
@@ -195,6 +198,28 @@ export function ProductionStep({
   // into `state.quantity`, while persisting the authoritative pack structure in
   // `state.pack` for order creation + manifest.
   const usePackModel = !!packMatrix?.enabled
+  // §8 — the ONE configure mode both surfaces share. SINGLE_UNIT never reaches
+  // here (usePackModel is false then); the rest map to pick-N / pick-1 / fixed.
+  const packMode: PackMode = useMemo(
+    () =>
+      resolvePackMode({
+        structuralType: packMatrix?.structuralType ?? null,
+        flavorPolicy: packMatrix?.flavorPolicy ?? null,
+        flavorMode: packConfig?.flavorMode ?? null,
+        offeredSizes: packMatrix?.packSizes.length ?? 0,
+      }),
+    [packMatrix, packConfig],
+  )
+  // Mode-aware compose rules — keeps writePack + render-time composition in lockstep.
+  const packRulesFor = (mode: PackMode): FlavorRules => {
+    if (mode === 'PACK_FIXED') return { minFlavorsPerPack: 1, maxFlavorsPerPack: null, fillRule: 'MANUFACTURER_FIXED' }
+    if (mode === 'PACK_ONE_FLAVOR') return { minFlavorsPerPack: 1, maxFlavorsPerPack: 1, fillRule: 'EVEN_AUTO' }
+    return {
+      minFlavorsPerPack: packMatrix?.minFlavors ?? 1,
+      maxFlavorsPerPack: packMatrix?.maxFlavors ?? null,
+      fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
+    }
+  }
   const packSizes: PackSize[] = useMemo(
     () =>
       (packMatrix?.packSizes ?? []).map((s) => ({
@@ -222,13 +247,9 @@ export function ProductionStep({
   const selectedPackSize = packSizes.find((s) => s.id === packValue.sizeId) ?? packSizes[0] ?? null
   const packUnitsPerPack = selectedPackSize?.unitsPerPack ?? 0
   const composedPack = useMemo(
-    () =>
-      composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, {
-        minFlavorsPerPack: packMatrix?.minFlavors ?? 1,
-        maxFlavorsPerPack: packMatrix?.maxFlavors ?? null,
-        fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
-      }),
-    [packUnitsPerPack, packValue.choices, packMatrix],
+    () => composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, packRulesFor(packMode)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [packUnitsPerPack, packValue.choices, packMatrix, packMode],
   )
   const packCount = state.pack?.packCount ?? 0
   const moqPacks = selectedPackSize?.moqPacks ?? 1
@@ -239,11 +260,7 @@ export function ProductionStep({
   function writePack(next: VarietyPackValue, nextPackCount: number) {
     const size = packSizes.find((s) => s.id === next.sizeId) ?? packSizes[0] ?? null
     const units = size?.unitsPerPack ?? 0
-    const composed = composePack({ unitsPerPack: units }, next.choices, {
-      minFlavorsPerPack: packMatrix?.minFlavors ?? 1,
-      maxFlavorsPerPack: packMatrix?.maxFlavors ?? null,
-      fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
-    })
+    const composed = composePack({ unitsPerPack: units }, next.choices, packRulesFor(packMode))
     const count = Math.max(0, Math.floor(nextPackCount))
     onChange({
       pack: {
@@ -439,6 +456,8 @@ export function ProductionStep({
               fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
             }}
             pricingBasis={packMatrix?.pricingBasis ?? 'PER_FLAVOR'}
+            mode={packMode}
+            assortment={packMatrix?.assortment ?? []}
             value={packValue}
             onChange={(next) => writePack(next, Math.max(moqPacks, packCount || moqPacks))}
           />

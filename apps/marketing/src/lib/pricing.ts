@@ -51,6 +51,15 @@ export interface PackBuilderData {
   pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
   /** Per-flavor absolute unit price (cents), keyed by flavor id. PER_FLAVOR. */
   flavorUnitPriceCents: Record<string, number | null>
+
+  /* ── §8 per-bucket rollout ────────────────────────────────────────────────
+     The product's structural bucket + promoted flavor policy + (for fixed
+     assortments) the manufacturer's [{flavor,qty}] list. Drive resolvePackMode
+     on the PDP so MULTI_UNIT_SAME (pick-1) and MIXED/COMPARTMENT (fixed) use the
+     same pack machinery as pick-N. All cast-guarded; null pre-migration. */
+  structuralType: import('@ilaunchify/ui').StructuralPackType | null
+  flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  assortment: import('@ilaunchify/ui').AssortmentEntry[]
 }
 
 export async function getPackBuilderData(slug: string): Promise<PackBuilderData> {
@@ -81,6 +90,9 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       fillRule: null,
       pricingBasis: null,
       flavorUnitPriceCents: {},
+      structuralType: null,
+      flavorPolicy: null,
+      assortment: [],
     }
   }
   // Per-flavor price deltas for the PDP flavor cards. saleDeltaCents stays null
@@ -98,6 +110,16 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
   // the PDP — the configurator's pre-migration fallback covers an empty result.
   const pack = await readPackModel(slug)
 
+  // The stored fixed assortment keys flavors by NAME (the builder authors names,
+  // not ids); the VarietyPackBuilder matches against flavorPresetId. Resolve
+  // name → id here where the pool (id + name) is in hand. Entries that already
+  // match an id, or that don't resolve, are passed through unchanged.
+  const idByName = new Map(template.flavorPresets.map((f) => [f.name, f.id]))
+  const idSet = new Set(template.flavorPresets.map((f) => f.id))
+  const assortment = pack.assortment.map((a) =>
+    idSet.has(a.flavor) ? a : { flavor: idByName.get(a.flavor) ?? a.flavor, qty: a.qty },
+  )
+
   return {
     flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
     maxFlavorsPerPack: template.maxFlavorsPerPack,
@@ -110,6 +132,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
     changeoverDays: settings.changeoverDays,
     flavorPricing,
     ...pack,
+    assortment,
   }
 }
 
@@ -126,6 +149,9 @@ async function readPackModel(slug: string): Promise<{
   fillRule: PackBuilderData['fillRule']
   pricingBasis: PackBuilderData['pricingBasis']
   flavorUnitPriceCents: Record<string, number | null>
+  structuralType: PackBuilderData['structuralType']
+  flavorPolicy: PackBuilderData['flavorPolicy']
+  assortment: PackBuilderData['assortment']
 }> {
   const empty = {
     packSizes: [] as PackSizeOption[],
@@ -133,6 +159,9 @@ async function readPackModel(slug: string): Promise<{
     fillRule: null as PackBuilderData['fillRule'],
     pricingBasis: null as PackBuilderData['pricingBasis'],
     flavorUnitPriceCents: {} as Record<string, number | null>,
+    structuralType: null as PackBuilderData['structuralType'],
+    flavorPolicy: null as PackBuilderData['flavorPolicy'],
+    assortment: [] as PackBuilderData['assortment'],
   }
   try {
     const t = await (prisma as unknown as {
@@ -141,6 +170,8 @@ async function readPackModel(slug: string): Promise<{
           minFlavorsPerPack: number | null
           flavorFillRule: PackBuilderData['fillRule']
           pricingBasis: PackBuilderData['pricingBasis']
+          flavorPolicy: PackBuilderData['flavorPolicy']
+          packingProfile: { structuralType: string | null } | null
           variants: Array<{
             id: string
             isActive: boolean
@@ -149,6 +180,7 @@ async function readPackModel(slug: string): Promise<{
             moqMin: number | null
             containerFormat: string | null
             netContentDisplay: string | null
+            assortmentFlavors: unknown
           }>
           flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
         } | null>
@@ -159,6 +191,8 @@ async function readPackModel(slug: string): Promise<{
         minFlavorsPerPack: true,
         flavorFillRule: true,
         pricingBasis: true,
+        flavorPolicy: true,
+        packingProfile: { select: { structuralType: true } },
         variants: {
           where: { isActive: true },
           select: {
@@ -169,6 +203,7 @@ async function readPackModel(slug: string): Promise<{
             moqMin: true,
             containerFormat: true,
             netContentDisplay: true,
+            assortmentFlavors: true,
           },
         },
         flavorPresets: {
@@ -181,8 +216,10 @@ async function readPackModel(slug: string): Promise<{
 
     // Offered pack sizes = variants that carry a typed unitsPerPack (the pack
     // matrix the builder authors). Variants without one aren't pack sizes.
-    const packSizes: PackSizeOption[] = (t.variants ?? [])
-      .filter((v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0)
+    const sizeVariants = (t.variants ?? []).filter(
+      (v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0,
+    )
+    const packSizes: PackSizeOption[] = sizeVariants
       .map((v) => ({
         variantId: v.id,
         unitsPerPack: v.unitsPerPack as number,
@@ -201,10 +238,32 @@ async function readPackModel(slug: string): Promise<{
       fillRule: t.flavorFillRule ?? null,
       pricingBasis: t.pricingBasis ?? null,
       flavorUnitPriceCents,
+      structuralType: (t.packingProfile?.structuralType ?? null) as PackBuilderData['structuralType'],
+      flavorPolicy: t.flavorPolicy ?? null,
+      // Fixed assortment — the first offered size carrying an assortmentFlavors
+      // list (it scales to other sizes in the engine). Coerce to [{flavor,qty}].
+      assortment: coerceAssortment(
+        sizeVariants.find((v) => Array.isArray(v.assortmentFlavors) && (v.assortmentFlavors as unknown[]).length > 0)?.assortmentFlavors,
+      ),
     }
   } catch {
     return empty
   }
+}
+
+/** Coerce a variant's `assortmentFlavors` JSON into typed [{flavor,qty}] entries.
+ *  Drops malformed rows; returns [] for anything non-array. */
+function coerceAssortment(raw: unknown): PackBuilderData['assortment'] {
+  if (!Array.isArray(raw)) return []
+  const out: PackBuilderData['assortment'] = []
+  for (const r of raw) {
+    const flavor = (r as { flavor?: unknown })?.flavor
+    const qty = Number((r as { qty?: unknown })?.qty)
+    if (typeof flavor === 'string' && flavor && Number.isFinite(qty) && qty > 0) {
+      out.push({ flavor, qty: Math.floor(qty) })
+    }
+  }
+  return out
 }
 
 /**

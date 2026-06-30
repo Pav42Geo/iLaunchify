@@ -229,3 +229,11 @@ Keep `packingConfig` readable for back-compat; new typed columns win when set.
   `priceDeltaCents`) — decide at build step 1.
 - Whether volume tiers price in packs or units for per-pack basis (lean: packs).
 - `MANUFACTURER_FIXED` distribution authoring UI (defer if not needed in V1).
+- **Required-fields / stepper validation — DEFERRED (Pavel 2026-06-29).** The Add
+  Product stepper should EVENTUALLY block "Next" when pricing is incomplete —
+  specifically PER_FLAVOR with any flavor missing `unitPriceCents`, and PER_PACK
+  with any offered size missing `pricePerPackCents`. NOT YET: don't gate the
+  stepper while the flow is still changing. First have the broader "what fields
+  are required in Add Product" conversation (per step × domain × pack type, how
+  errors surface, save-incomplete behavior), THEN wire the gates. Booked price
+  stays the safe `Math.max` floor (§5) meanwhile.

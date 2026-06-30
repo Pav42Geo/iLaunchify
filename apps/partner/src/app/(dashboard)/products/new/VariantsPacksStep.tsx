@@ -20,7 +20,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { InfoTip } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, saveFlavorRules, savePackSizes, type FeeInput, type SampleOptionInput, type InitialDraft, type FlavorFillRuleInput, type PricingBasisInput, type PackSizeInput } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, saveFlavorRules, savePackSizes, type FeeInput, type SampleOptionInput, type InitialDraft, type FlavorFillRuleInput, type PricingBasisInput, type FlavorPolicyInput, type PackSizeInput } from './build-actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -206,7 +206,7 @@ export function VariantsPacksStep({
       {kind && (
         <>
           {kind === 'single' && <div className="card" style={{ marginBottom: 16 }}><SinglePack draftId={draftId} packing={initial?.packing ?? null} /></div>}
-          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} initialMin={initial?.minFlavorsPerPack ?? null} initialFillRule={initial?.flavorFillRule ?? null} initialBasis={initial?.pricingBasis ?? null} initialPackSizes={initial?.packSizes ?? []} packing={initial?.packing ?? null} />}
+          {kind === 'multi' && <MultiFlavor draftId={draftId} facilities={facilities} baseSku={baseSku} maxColumns={selected!.labelColumns} flavors={flavors} onFlavors={onFlavors} initialMax={initial?.maxFlavorsPerPack ?? null} initialMin={initial?.minFlavorsPerPack ?? null} initialFillRule={initial?.flavorFillRule ?? null} initialBasis={initial?.pricingBasis ?? null} initialPolicy={initial?.flavorPolicy ?? null} initialPackSizes={initial?.packSizes ?? []} packing={initial?.packing ?? null} />}
           {kind === 'pack' && <div className="card" style={{ marginBottom: 16 }}><MultiPack draftId={draftId} packing={initial?.packing ?? null} /></div>}
 
           {/* Conditional add-ons — each its own card */}
@@ -658,7 +658,7 @@ const FILL_RULE_OPTIONS: Array<{ value: FlavorFillRuleInput; label: string }> = 
   { value: 'MANUFACTURER_FIXED', label: 'Fixed by you' },
 ]
 
-function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, initialMin, initialFillRule, initialBasis, initialPackSizes, packing }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; initialMin?: number | null; initialFillRule?: FlavorFillRuleInput | null; initialBasis?: PricingBasisInput | null; initialPackSizes?: InitialDraft['packSizes']; packing: PackingInit }) {
+function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, initialMin, initialFillRule, initialBasis, initialPolicy, initialPackSizes, packing }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; initialMin?: number | null; initialFillRule?: FlavorFillRuleInput | null; initialBasis?: PricingBasisInput | null; initialPolicy?: FlavorPolicyInput | null; initialPackSizes?: InitialDraft['packSizes']; packing: PackingInit }) {
   const list = flavors.length ? flavors : [{ name: '', ingId: 'cane', soi: '' }]
   const [perFlavorCap, setPerFlavorCap] = useState(false)
   // Manufacturer's ceiling: how many DISTINCT flavors a Creator may combine into
@@ -670,6 +670,18 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
   const [fillRule, setFillRule] = useState<FlavorFillRuleInput>(initialFillRule ?? 'CREATOR_CHOOSES')
   // Pricing basis (spec §5). PER_FLAVOR = price each flavor; PER_PACK = flat per size.
   const [basis, setBasis] = useState<PricingBasisInput>(initialBasis ?? 'PER_FLAVOR')
+  // §8 flavor policy — CREATOR_PICK (creator builds the pack) vs PARTNER_FIXED
+  // (a fixed assortment the creator can't edit). Default CREATOR_PICK.
+  const [policy, setPolicy] = useState<FlavorPolicyInput>(initialPolicy ?? 'CREATOR_PICK')
+  const fixedAssort = policy === 'PARTNER_FIXED'
+  // Fixed assortment — per-flavor count in the BASE pack, keyed by flavor NAME
+  // (resolved to preset ids by the loaders). Seeded from the first size's stored
+  // assortment on resume; otherwise empty.
+  const [assort, setAssort] = useState<Record<string, number>>(() => {
+    const seed: Record<string, number> = {}
+    for (const a of initialPackSizes?.[0]?.assortment ?? []) seed[a.flavor] = a.qty
+    return seed
+  })
 
   // Offered pack sizes (spec §4.2). Migrate a legacy single packingConfig.unitsPerPack
   // into one row when no typed size variants exist yet (back-compat).
@@ -728,11 +740,12 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
         minFlavorsPerPack: minPerPack,
         flavorFillRule: fillRule,
         pricingBasis: basis,
+        flavorPolicy: policy,
       })
     }, 700)
     return () => { if (rulesTimer.current) clearTimeout(rulesTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxPerPack, minPerPack, fillRule, basis, flavorCap, draftId])
+  }, [maxPerPack, minPerPack, fillRule, basis, policy, flavorCap, draftId])
 
   // Persist offered pack sizes → ProductTemplateVariant rows (debounced). Only
   // rows with a valid units count are sent; ids round-trip so updates stay stable.
@@ -743,6 +756,13 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
     if (!sizesHydrated.current) { sizesHydrated.current = true; return }
     if (sizesTimer.current) clearTimeout(sizesTimer.current)
     sizesTimer.current = setTimeout(() => {
+      // §8 — the fixed assortment (one list, scaled per size by the engine) is
+      // written onto EVERY size when PARTNER_FIXED; cleared otherwise.
+      const assortmentRows = fixedAssort
+        ? Object.entries(assort)
+            .filter(([flavor, qty]) => flavor && qty > 0)
+            .map(([flavor, qty]) => ({ flavor, qty }))
+        : []
       const rows: PackSizeInput[] = sizes
         .filter((s) => typeof s.units === 'number' && s.units >= 1)
         .map((s) => ({
@@ -751,12 +771,13 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           unitsPerPack: s.units as number,
           moqPacks: s.moqPacks === '' ? null : (s.moqPacks as number),
           pricePerPackCents: basis === 'PER_PACK' && s.pricePerPackCents !== '' ? (s.pricePerPackCents as number) : null,
+          assortment: assortmentRows,
         }))
       void savePackSizes(draftId, rows)
     }, 800)
     return () => { if (sizesTimer.current) clearTimeout(sizesTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sizes, basis, draftId])
+  }, [sizes, basis, fixedAssort, assort, draftId])
 
   function setSize(i: number, p: Partial<SizeRow>) {
     setSizes(sizes.map((s, j) => (j === i ? { ...s, ...p } : s)))
@@ -769,19 +790,29 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title"><span className="ic"><SlidersHorizontal size={16} strokeWidth={2} /></span> Pack rules</div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginTop: 12 }}>
-          <Field label="Min flavors per pack">
-            <input className="input" type="number" min={1} max={flavorCap} value={minPerPack}
-              onChange={(e) => setMinPerPack(Math.min(Math.max(1, parseInt(e.target.value, 10) || 1), flavorCap))} />
-          </Field>
-          <Field label="Max flavors per pack">
-            <input className="input" type="number" min={1} max={flavorCap} value={maxPerPack ?? flavorCap}
-              onChange={(e) => { const v = parseInt(e.target.value, 10); setMaxPerPack(Number.isNaN(v) ? null : Math.min(Math.max(1, v), flavorCap)) }} />
-          </Field>
-          <Field label="Fill rule">
-            <select className="sel" value={fillRule} onChange={(e) => setFillRule(e.target.value as FlavorFillRuleInput)}>
-              {FILL_RULE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <Field label="Flavor policy">
+            <select className="sel" value={policy} onChange={(e) => setPolicy(e.target.value as FlavorPolicyInput)}>
+              <option value="CREATOR_PICK">Creator picks flavors</option>
+              <option value="PARTNER_FIXED">Fixed assortment</option>
             </select>
           </Field>
+          {!fixedAssort && (
+            <>
+              <Field label="Min flavors per pack">
+                <input className="input" type="number" min={1} max={flavorCap} value={minPerPack}
+                  onChange={(e) => setMinPerPack(Math.min(Math.max(1, parseInt(e.target.value, 10) || 1), flavorCap))} />
+              </Field>
+              <Field label="Max flavors per pack">
+                <input className="input" type="number" min={1} max={flavorCap} value={maxPerPack ?? flavorCap}
+                  onChange={(e) => { const v = parseInt(e.target.value, 10); setMaxPerPack(Number.isNaN(v) ? null : Math.min(Math.max(1, v), flavorCap)) }} />
+              </Field>
+              <Field label="Fill rule">
+                <select className="sel" value={fillRule} onChange={(e) => setFillRule(e.target.value as FlavorFillRuleInput)}>
+                  {FILL_RULE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </Field>
+            </>
+          )}
           <Field label="Pricing basis">
             <select className="sel" value={basis} onChange={(e) => setBasis(e.target.value as PricingBasisInput)}>
               <option value="PER_FLAVOR">Per flavor</option>
@@ -790,14 +821,48 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
           </Field>
         </div>
         <p className="hint" style={{ marginTop: 8 }}>
-          {effCap >= pool
-            ? `A Creator can build a pack from all ${pool} flavor${pool === 1 ? '' : 's'}, ${minPerPack} minimum.`
-            : `A Creator picks ${minPerPack === effCap ? minPerPack : `${minPerPack}–${effCap}`} of your ${pool} flavors per pack.`}
-          {basis === 'PER_FLAVOR' ? ' Pack price sums the picked flavors.' : ' Each pack size carries a flat price.'}
+          {fixedAssort
+            ? 'You set a fixed assortment below — the Creator picks only the pack size. The mix scales to every offered size.'
+            : effCap >= pool
+              ? `A Creator can build a pack from all ${pool} flavor${pool === 1 ? '' : 's'}, ${minPerPack} minimum.`
+              : `A Creator picks ${minPerPack === effCap ? minPerPack : `${minPerPack}–${effCap}`} of your ${pool} flavors per pack.`}
+          {basis === 'PER_FLAVOR' ? ' Pack price sums the flavors.' : ' Each pack size carries a flat price.'}
         </p>
-        {minOverMax && <div className="warn">⚠ Min flavors ({minPerPack}) exceeds max ({effCap}) — a Creator would have no valid pick. Lower the min or raise the max.</div>}
-        {!minOverMax && effCap > pool && <div className="warn">⚠ This allows up to {effCap} flavors per pack but your pool has {pool} flavor{pool === 1 ? '' : 's'} — add more flavors below so Creators can reach that.</div>}
+        {!fixedAssort && minOverMax && <div className="warn">⚠ Min flavors ({minPerPack}) exceeds max ({effCap}) — a Creator would have no valid pick. Lower the min or raise the max.</div>}
+        {!fixedAssort && !minOverMax && effCap > pool && <div className="warn">⚠ This allows up to {effCap} flavors per pack but your pool has {pool} flavor{pool === 1 ? '' : 's'} — add more flavors below so Creators can reach that.</div>}
         {maxUnits === 0 && <div className="hint" style={{ marginTop: 6 }}>Tip: add an offered pack size below to cap flavors to the pack’s unit count.</div>}
+
+        {/* §8 fixed assortment — per-flavor BASE count, scaled to each size. */}
+        {fixedAssort && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--ink-200)' }}>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>Fixed assortment (base pack)</div>
+            {list.filter((f) => f.name.trim()).length === 0 ? (
+              <p className="hint">Add flavors below first, then set how many of each go in a pack.</p>
+            ) : (
+              <>
+                <table>
+                  <thead><tr><th>Flavor</th><th>Units per base pack</th></tr></thead>
+                  <tbody>
+                    {list.filter((f) => f.name.trim()).map((f) => (
+                      <tr key={f.name}>
+                        <td>{f.name}</td>
+                        <td>
+                          <input className="input" type="number" min={0} style={{ width: 110 }}
+                            value={assort[f.name] ?? ''} placeholder="0"
+                            onChange={(e) => setAssort((m) => ({ ...m, [f.name]: e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) }))} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="hint" style={{ marginTop: 8 }}>
+                  Base pack holds {Object.values(assort).reduce((t, n) => t + (n > 0 ? n : 0), 0)} unit
+                  {Object.values(assort).reduce((t, n) => t + (n > 0 ? n : 0), 0) === 1 ? '' : 's'}. This mix scales proportionally to each offered pack size.
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Flavors — pool + per-flavor price (when basis = PER_FLAVOR). */}

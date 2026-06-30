@@ -212,14 +212,23 @@ export interface VarietyPackSizeOption {
 }
 
 export interface VarietyPackMatrix {
-  /** True only when this product is MULTI-flavor AND ≥1 variant carries a typed
-   *  unitsPerPack (a real authored pack matrix). When false the caller uses the
-   *  legacy PackBuilder. */
+  /** True when ≥1 variant carries a typed unitsPerPack (a real authored pack
+   *  matrix), regardless of flavorMode — so single-flavor multipacks
+   *  (MULTI_UNIT_SAME → pick-1) and fixed assortments enable too. When false the
+   *  caller uses the legacy PackBuilder. */
   enabled: boolean
   minFlavors: number
   maxFlavors: number | null
   fillRule: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
   pricingBasis: 'PER_FLAVOR' | 'PER_PACK'
+  /* ── §8 per-bucket rollout — the configure-mode inputs both surfaces share. */
+  structuralType:
+    | 'SINGLE_UNIT' | 'MULTI_UNIT_SAME' | 'MULTI_FLAVOR_MIXED'
+    | 'MULTI_FLAVOR_COMPARTMENT' | 'PER_FLAVOR_IN_OUTER' | 'CUSTOMIZABLE_PICK_N'
+    | null
+  flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  /** Manufacturer's fixed assortment [{flavor,qty}] (PACK_FIXED). */
+  assortment: Array<{ flavor: string; qty: number }>
   packSizes: VarietyPackSizeOption[]
   pool: Array<{
     flavorPresetId: string
@@ -242,7 +251,6 @@ export async function getVarietyPackMatrix(
       productTemplate: {
         select: {
           maxFlavorsPerPack: true,
-          packingProfile: { select: { flavorMode: true } },
           flavorPresets: {
             where: { status: 'ACTIVE' },
             orderBy: { sortOrder: 'asc' },
@@ -259,6 +267,9 @@ export async function getVarietyPackMatrix(
     maxFlavors: product?.productTemplate?.maxFlavorsPerPack ?? null,
     fillRule: 'CREATOR_CHOOSES',
     pricingBasis: 'PER_FLAVOR',
+    structuralType: null,
+    flavorPolicy: null,
+    assortment: [],
     packSizes: [],
     pool: (product?.productTemplate?.flavorPresets ?? []).map((f) => ({
       flavorPresetId: f.id,
@@ -268,12 +279,13 @@ export async function getVarietyPackMatrix(
     })),
   }
 
-  const isMulti = product?.productTemplate?.packingProfile?.flavorMode === 'MULTI'
-  if (!product?.productTemplateId || !isMulti) return { ok: true, data: empty }
+  if (!product?.productTemplateId) return { ok: true, data: empty }
 
   // Cast-guarded read of the additive pack columns (mirrors readPackModel in
   // apps/marketing/src/lib/pricing.ts). try/catch so a P2022 "column does not
-  // exist" pre-push returns the legacy-fallback empty matrix, never crashes.
+  // exist" pre-push returns the legacy-fallback empty matrix, never crashes. The
+  // pack flow is enabled by the presence of typed pack sizes, NOT flavorMode —
+  // so MULTI_UNIT_SAME (pick-1) + fixed assortments enable too (spec §8).
   try {
     const t = await (prisma as unknown as {
       productTemplate: {
@@ -281,12 +293,15 @@ export async function getVarietyPackMatrix(
           minFlavorsPerPack: number | null
           flavorFillRule: VarietyPackMatrix['fillRule'] | null
           pricingBasis: VarietyPackMatrix['pricingBasis'] | null
+          flavorPolicy: VarietyPackMatrix['flavorPolicy']
+          packingProfile: { structuralType: string | null } | null
           variants: Array<{
             id: string
             isActive: boolean
             unitsPerPack: number | null
             pricePerPackCents: number | null
             moqMin: number | null
+            assortmentFlavors: unknown
           }>
           flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
         } | null>
@@ -297,17 +312,21 @@ export async function getVarietyPackMatrix(
         minFlavorsPerPack: true,
         flavorFillRule: true,
         pricingBasis: true,
+        flavorPolicy: true,
+        packingProfile: { select: { structuralType: true } },
         variants: {
           where: { isActive: true },
-          select: { id: true, isActive: true, unitsPerPack: true, pricePerPackCents: true, moqMin: true },
+          select: { id: true, isActive: true, unitsPerPack: true, pricePerPackCents: true, moqMin: true, assortmentFlavors: true },
         },
         flavorPresets: { where: { status: 'ACTIVE' }, select: { id: true, unitPriceCents: true } },
       },
     })
     if (!t) return { ok: true, data: empty }
 
-    const packSizes: VarietyPackSizeOption[] = (t.variants ?? [])
-      .filter((v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0)
+    const sizeVariants = (t.variants ?? []).filter(
+      (v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0,
+    )
+    const packSizes: VarietyPackSizeOption[] = sizeVariants
       .map((v) => ({
         variantId: v.id,
         unitsPerPack: v.unitsPerPack as number,
@@ -321,6 +340,22 @@ export async function getVarietyPackMatrix(
 
     const priceById = new Map((t.flavorPresets ?? []).map((f) => [f.id, f.unitPriceCents ?? null]))
 
+    // Fixed assortment — first size carrying an assortmentFlavors list (scaled by
+    // the engine). Coerce to typed [{flavor,qty}].
+    const rawAssort = sizeVariants.find(
+      (v) => Array.isArray(v.assortmentFlavors) && (v.assortmentFlavors as unknown[]).length > 0,
+    )?.assortmentFlavors
+    // The builder authors the assortment keyed by flavor NAME; the engine matches
+    // flavorPresetId. Resolve name → id (pass through anything already an id).
+    const idByName = new Map(empty.pool.map((f) => [f.name, f.flavorPresetId]))
+    const idSet = new Set(empty.pool.map((f) => f.flavorPresetId))
+    const assortment: Array<{ flavor: string; qty: number }> = Array.isArray(rawAssort)
+      ? (rawAssort as Array<{ flavor?: unknown; qty?: unknown }>)
+          .map((r) => ({ flavor: String(r?.flavor ?? ''), qty: Number(r?.qty) }))
+          .filter((r) => r.flavor && Number.isFinite(r.qty) && r.qty > 0)
+          .map((r) => ({ flavor: idSet.has(r.flavor) ? r.flavor : (idByName.get(r.flavor) ?? r.flavor), qty: Math.floor(r.qty) }))
+      : []
+
     return {
       ok: true,
       data: {
@@ -329,6 +364,9 @@ export async function getVarietyPackMatrix(
         maxFlavors: product.productTemplate?.maxFlavorsPerPack ?? null,
         fillRule: t.flavorFillRule ?? 'CREATOR_CHOOSES',
         pricingBasis: t.pricingBasis ?? 'PER_FLAVOR',
+        structuralType: (t.packingProfile?.structuralType ?? null) as VarietyPackMatrix['structuralType'],
+        flavorPolicy: t.flavorPolicy ?? null,
+        assortment,
         packSizes,
         pool: empty.pool.map((f) => ({
           ...f,

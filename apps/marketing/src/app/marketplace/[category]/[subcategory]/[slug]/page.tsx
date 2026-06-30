@@ -307,6 +307,9 @@ export default async function ProductDetailPage({
             fillRule={packData.fillRule}
             pricingBasis={packData.pricingBasis}
             flavorUnitPriceCents={packData.flavorUnitPriceCents}
+            structuralType={packData.structuralType}
+            flavorPolicy={packData.flavorPolicy}
+            assortment={packData.assortment}
             sample={
               sampleData.options.length > 0
                 ? {

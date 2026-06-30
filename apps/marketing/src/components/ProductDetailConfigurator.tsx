@@ -15,12 +15,16 @@ import {
   orderTotalCents,
   orderTotalUnits,
   packSummary,
+  resolvePackMode,
   type PricingTierRow,
   type PackBuilderFlavor,
   type PackSize,
   type PoolFlavor,
   type FlavorChoice,
   type PricingBasis,
+  type PackMode,
+  type StructuralPackType,
+  type AssortmentEntry,
   type ComposedPack,
   type VarietyPackValue,
 } from '@ilaunchify/ui'
@@ -86,6 +90,11 @@ export interface ProductDetailConfiguratorProps {
   fillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
   pricingBasis?: 'PER_FLAVOR' | 'PER_PACK' | null
   flavorUnitPriceCents?: Record<string, number | null>
+  /* ── §8 per-bucket rollout — structural bucket + flavor policy + fixed
+       assortment, resolved via resolvePackMode into the configure mode. */
+  structuralType?: StructuralPackType | null
+  flavorPolicy?: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  assortment?: AssortmentEntry[]
   /** Per-flavor price deltas (cents) keyed by flavor id — drives the flavor
    *  cards' per-flavor unit price + optional strike-through. */
   flavorPricing?: Record<
@@ -119,6 +128,9 @@ export function ProductDetailConfigurator({
   fillRule = null,
   pricingBasis = null,
   flavorUnitPriceCents = {},
+  structuralType = null,
+  flavorPolicy = null,
+  assortment = [],
   onPackagingChange,
   onOpenSample,
 }: ProductDetailConfiguratorProps) {
@@ -129,7 +141,20 @@ export function ProductDetailConfigurator({
   const [flavorId, setFlavorId] = React.useState<string>(
     detail.flavors[0]?.id ?? '',
   )
-  const isMultiFlavor = flavorMode === 'MULTI' && flavorPool.length > 0
+
+  // §8 per-bucket rollout — resolve the ONE configure mode both surfaces share.
+  // PACK_* modes all render the VarietyPackBuilder (pick-N / pick-1 / fixed);
+  // SINGLE_UNIT keeps the legacy units flow. We still require a real flavor pool
+  // for the pack modes (an empty pool can't compose a pack).
+  const packMode: PackMode = resolvePackMode({
+    structuralType,
+    flavorPolicy,
+    flavorMode,
+    offeredSizes: packSizes.length,
+  })
+  // "isMultiFlavor" = "use the pack flow" (kept as the var name the rest of this
+  // component already branches on). True for every non-single mode with a pool.
+  const isMultiFlavor = packMode !== 'SINGLE_UNIT' && flavorPool.length > 0
 
   // ── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6) ─────────────────────
   // Resolve the pack matrix, with a graceful pre-migration fallback: when the
@@ -179,15 +204,30 @@ export function ProductDetailConfigurator({
   // Live composition for the selected size (drives price + summary + lead time).
   const selectedPackSize = resolvedPackSizes.find((s) => s.id === packValue.sizeId) ?? resolvedPackSizes[0] ?? null
   const packUnitsPerPack = selectedPackSize?.unitsPerPack ?? 0
-  const composedPack: ComposedPack = React.useMemo(
-    () =>
-      composePack(
-        { unitsPerPack: packUnitsPerPack },
-        packValue.choices,
-        { minFlavorsPerPack: effMinFlavors, maxFlavorsPerPack: maxFlavorsPerPack ?? null, fillRule: effFillRule },
-      ),
-    [packUnitsPerPack, packValue.choices, effMinFlavors, maxFlavorsPerPack, effFillRule],
-  )
+  // Compose with mode-aware rules so the headline price + persistence mirror the
+  // builder (spec §8): PACK_FIXED is a manufacturer-fixed distribution (no min/max
+  // bound); PACK_ONE_FLAVOR pins exactly 1; PACK_PICK keeps the authored window.
+  const composedPack: ComposedPack = React.useMemo(() => {
+    if (packMode === 'PACK_FIXED') {
+      return composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, {
+        minFlavorsPerPack: 1,
+        maxFlavorsPerPack: null,
+        fillRule: 'MANUFACTURER_FIXED',
+      })
+    }
+    if (packMode === 'PACK_ONE_FLAVOR') {
+      return composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, {
+        minFlavorsPerPack: 1,
+        maxFlavorsPerPack: 1,
+        fillRule: 'EVEN_AUTO',
+      })
+    }
+    return composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, {
+      minFlavorsPerPack: effMinFlavors,
+      maxFlavorsPerPack: maxFlavorsPerPack ?? null,
+      fillRule: effFillRule,
+    })
+  }, [packMode, packUnitsPerPack, packValue.choices, effMinFlavors, maxFlavorsPerPack, effFillRule])
 
   // The order quantity field MEANS "number of packs" in multi-flavor mode and
   // "units" otherwise (single-flavor / non-pack). Distinct flavor count for the
@@ -395,6 +435,8 @@ export function ProductDetailConfigurator({
           }))}
           rules={packRules}
           pricingBasis={effPricingBasis}
+          mode={packMode}
+          assortment={assortment}
           value={packValue}
           onChange={setPackValue}
         />

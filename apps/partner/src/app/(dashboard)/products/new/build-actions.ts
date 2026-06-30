@@ -266,8 +266,11 @@ export interface InitialDraft {
   minFlavorsPerPack: number | null
   flavorFillRule: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
   pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
-  /** Offered pack sizes — the typed-`unitsPerPack` sibling variants (§4.2). */
-  packSizes: Array<{ id: string; label: string; unitsPerPack: number; moqPacks: number | null; pricePerPackCents: number | null }>
+  /** §8 — who picks the flavors. null = legacy (treated as CREATOR_PICK). */
+  flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  /** Offered pack sizes — the typed-`unitsPerPack` sibling variants (§4.2). Each
+   *  may carry a fixed assortment [{flavor,qty}] (PARTNER_FIXED). */
+  packSizes: Array<{ id: string; label: string; unitsPerPack: number; moqPacks: number | null; pricePerPackCents: number | null; assortment: Array<{ flavor: string; qty: number }> }>
   nicheIds: string[]
   lifestyleTagIds: string[]
   // §7 marketplace filter attributes (format / process / allergen-free / markets).
@@ -339,7 +342,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
-      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null
+      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null; flavorPolicy: string | null
       manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
@@ -350,7 +353,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       lifestyleTags: Array<{ lifestyleTagId: string }>
       variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null; netContentValue: unknown; netContentUnit: string | null; unitsPerPack: number | null }>
       // Offered pack sizes — every sibling variant carrying a typed unitsPerPack.
-      sizeVariants: Array<{ id: string; containerFormat: string; unitsPerPack: number | null; moqMin: number; pricePerPackCents: number | null }>
+      sizeVariants: Array<{ id: string; containerFormat: string; unitsPerPack: number | null; moqMin: number; pricePerPackCents: number | null; assortmentFlavors: unknown }>
       fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
       changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
       optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
@@ -369,7 +372,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
-        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true,
+        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true, flavorPolicy: true,
         manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true, countryOfOrigin: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
@@ -382,7 +385,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         // Filter to it so adding offered-size variants never hijacks the prod read.
         variants: { where: { unitsPerPack: null }, take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true, netContentValue: true, netContentUnit: true, unitsPerPack: true } },
         // Offered pack sizes — typed-unitsPerPack siblings (§4.2).
-        sizeVariants: { where: { unitsPerPack: { not: null } }, orderBy: { unitsPerPack: 'asc' }, select: { id: true, containerFormat: true, unitsPerPack: true, moqMin: true, pricePerPackCents: true } },
+        sizeVariants: { where: { unitsPerPack: { not: null } }, orderBy: { unitsPerPack: 'asc' }, select: { id: true, containerFormat: true, unitsPerPack: true, moqMin: true, pricePerPackCents: true, assortmentFlavors: true } },
         fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
         changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
         optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
@@ -429,6 +432,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       minFlavorsPerPack: tpl.minFlavorsPerPack ?? null,
       flavorFillRule: (tpl.flavorFillRule as InitialDraft['flavorFillRule']) ?? null,
       pricingBasis: (tpl.pricingBasis as InitialDraft['pricingBasis']) ?? null,
+      flavorPolicy: (tpl.flavorPolicy as InitialDraft['flavorPolicy']) ?? null,
       packSizes: (tpl.sizeVariants ?? [])
         .filter((v) => v.unitsPerPack != null)
         .map((v) => ({
@@ -437,6 +441,12 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
           unitsPerPack: Number(v.unitsPerPack),
           moqPacks: v.moqMin ?? null,
           pricePerPackCents: v.pricePerPackCents ?? null,
+          assortment: Array.isArray(v.assortmentFlavors)
+            ? (v.assortmentFlavors as Array<{ flavor?: unknown; qty?: unknown }>)
+                .map((a) => ({ flavor: String(a?.flavor ?? ''), qty: Number(a?.qty) }))
+                .filter((a) => a.flavor && Number.isFinite(a.qty) && a.qty > 0)
+                .map((a) => ({ flavor: a.flavor, qty: Math.floor(a.qty) }))
+            : [],
         })),
       recipeEntryMode: (tpl.recipeEntryMode as InitialDraft['recipeEntryMode']) ?? null,
       labelingType: String(tpl.labelingType ?? 'FOOD'),
@@ -1003,6 +1013,7 @@ export async function savePacking(productTemplateId: string, input: PackingInput
 
 export type FlavorFillRuleInput = 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
 export type PricingBasisInput = 'PER_FLAVOR' | 'PER_PACK'
+export type FlavorPolicyInput = 'CREATOR_PICK' | 'PARTNER_FIXED'
 
 export interface FlavorRulesInput {
   /** Distinct-flavor FLOOR a creator must pick (>= 1). null clears. */
@@ -1013,6 +1024,8 @@ export interface FlavorRulesInput {
   flavorFillRule?: FlavorFillRuleInput | null
   /** Per-flavor-summed vs flat per-pack pricing. null clears. */
   pricingBasis?: PricingBasisInput | null
+  /** §8 — who selects the flavors: creator picks, or a partner-fixed assortment. */
+  flavorPolicy?: FlavorPolicyInput | null
 }
 
 /** Persist the pack RULES onto the ProductTemplate (min flavors / fill rule /
@@ -1037,6 +1050,7 @@ export async function saveFlavorRules(productTemplateId: string, input: FlavorRu
     }
     if (input.flavorFillRule !== undefined) data.flavorFillRule = input.flavorFillRule
     if (input.pricingBasis !== undefined) data.pricingBasis = input.pricingBasis
+    if (input.flavorPolicy !== undefined) data.flavorPolicy = input.flavorPolicy
     if (Object.keys(data).length === 0) return { ok: true }
 
     await (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } })
@@ -1070,6 +1084,9 @@ export interface PackSizeInput {
   moqPacks?: number | null
   /** Flat per-pack price (cents) — only meaningful when pricingBasis = PER_PACK. null clears. */
   pricePerPackCents?: number | null
+  /** §8 — manufacturer fixed assortment for this size [{flavor,qty}] (PARTNER_FIXED).
+   *  Persisted to ProductTemplateVariant.assortmentFlavors. undefined leaves it. */
+  assortment?: Array<{ flavor: string; qty: number }> | null
 }
 
 /** Upsert the offered pack SIZES for a template (spec §4.2). Each row is a real
@@ -1111,6 +1128,14 @@ export async function savePackSizes(productTemplateId: string, rows: PackSizeInp
         label: r.label?.trim() || null,
         moqPacks: r.moqPacks == null ? null : Math.max(1, Math.floor(r.moqPacks)),
         pricePerPackCents: r.pricePerPackCents == null ? null : Math.max(0, Math.floor(r.pricePerPackCents)),
+        // §8 fixed assortment — clean [{flavor,qty}] (drop malformed). undefined =
+        // "leave as-is"; null / [] = clear.
+        assortment:
+          r.assortment === undefined
+            ? undefined
+            : (r.assortment ?? [])
+                .filter((a) => a && typeof a.flavor === 'string' && a.flavor && Number.isFinite(a.qty) && a.qty > 0)
+                .map((a) => ({ flavor: a.flavor, qty: Math.max(1, Math.floor(a.qty)) })),
       }))
       .filter((r) => r.unitsPerPack >= 1)
 
@@ -1126,6 +1151,8 @@ export async function savePackSizes(productTemplateId: string, rows: PackSizeInp
         pricePerPackCents: r.pricePerPackCents,
       }
       if (r.moqPacks != null) data.moqMin = r.moqPacks
+      // §8 — persist the fixed assortment when supplied (PARTNER_FIXED buckets).
+      if (r.assortment !== undefined) data.assortmentFlavors = r.assortment
 
       if (r.id && sizeVariantIds.has(r.id)) {
         await pv.productTemplateVariant.update({ where: { id: r.id }, data })

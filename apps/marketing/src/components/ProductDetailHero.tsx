@@ -62,6 +62,10 @@ export interface ProductDetailHeroProps {
   fillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
   pricingBasis?: 'PER_FLAVOR' | 'PER_PACK' | null
   flavorUnitPriceCents?: Record<string, number | null>
+  // §8 per-bucket rollout — passed straight through to the configurator.
+  structuralType?: import('@ilaunchify/ui').StructuralPackType | null
+  flavorPolicy?: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  assortment?: import('@ilaunchify/ui').AssortmentEntry[]
 
   // ----- sample drawer props (null sample → no sample button) -----
   sample?: {
@@ -92,11 +96,14 @@ export function ProductDetailHero({
   fillRule,
   pricingBasis,
   flavorUnitPriceCents,
+  structuralType,
+  flavorPolicy,
+  assortment,
   sample,
 }: ProductDetailHeroProps) {
   // Bundle the variety-pack model props once — passed through to both
   // configurator call sites (sample-wrapped + bare).
-  const packProps = { packSizes, minFlavors, fillRule, pricingBasis, flavorUnitPriceCents }
+  const packProps = { packSizes, minFlavors, fillRule, pricingBasis, flavorUnitPriceCents, structuralType, flavorPolicy, assortment }
   // Selected packaging — drives the per-package hero image when one exists.
   const [selectedPackagingId, setSelectedPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',

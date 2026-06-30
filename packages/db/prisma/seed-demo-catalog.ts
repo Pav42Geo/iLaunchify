@@ -44,6 +44,11 @@ interface ProductSpec {
   minFlavorsPerPack?: number
   flavorFillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
   pricingBasis?: 'PER_FLAVOR' | 'PER_PACK'
+  /** §8 — flavor policy. PARTNER_FIXED = a fixed assortment the creator can't edit. */
+  flavorPolicy?: 'CREATOR_PICK' | 'PARTNER_FIXED'
+  /** §8 — fixed assortment (base pack), keyed by flavor NAME [{flavor,qty}]. The
+   *  seed writes it onto every offered size variant; the engine scales it. */
+  assortment?: { flavor: string; qty: number }[]
   /** Offered pack sizes (one ProductTemplateVariant per size). */
   packSizes?: { unitsPerPack: number; moqPacks: number; pricePerPackCents?: number | null }[]
   /** PER_FLAVOR absolute per-unit price (cents) for each flavor, by index. */
@@ -128,6 +133,14 @@ const SPECS: ProductSpec[] = [
     packingProfileSlug: 'single-flavor-multipack',
     packingType: 'SINGLE_FLAVOR_MULTIPACK',
     flavorArrangement: 'SINGLE',
+    // §8 — single-flavor multipack → PACK_ONE_FLAVOR. Offered sizes drive the pack
+    // flow (creator picks ONE flavor + a size); per-pack flat pricing.
+    pricingBasis: 'PER_PACK',
+    packSizes: [
+      { unitsPerPack: 6, moqPacks: 200, pricePerPackCents: 1380 },
+      { unitsPerPack: 12, moqPacks: 100, pricePerPackCents: 2520 },
+      { unitsPerPack: 24, moqPacks: 60, pricePerPackCents: 4800 },
+    ],
     container: '12-bar box',
     servingSizeG: 50,
     servingsPerContainer: 12,
@@ -175,6 +188,21 @@ const SPECS: ProductSpec[] = [
     packingType: 'MULTI_FLAVOR_MIXED_PACK',
     flavorArrangement: 'MIXED',
     maxFlavorsPerPack: 3,
+    // §8 — fixed-assortment variety pack → PACK_FIXED. The manufacturer sets the
+    // mix (2 lime / 2 grapefruit / 2 black cherry per 6-pack); it scales to the
+    // 12 + 24 sizes. Flat per-pack pricing; creator picks only the size.
+    flavorPolicy: 'PARTNER_FIXED',
+    pricingBasis: 'PER_PACK',
+    assortment: [
+      { flavor: 'Lime', qty: 2 },
+      { flavor: 'Grapefruit', qty: 2 },
+      { flavor: 'Black Cherry', qty: 2 },
+    ],
+    packSizes: [
+      { unitsPerPack: 6, moqPacks: 200, pricePerPackCents: 960 },
+      { unitsPerPack: 12, moqPacks: 120, pricePerPackCents: 1860 },
+      { unitsPerPack: 24, moqPacks: 60, pricePerPackCents: 3600 },
+    ],
     container: '6 × 355 mL can',
     servingSizeG: 355,
     servingsPerContainer: 1,
@@ -220,6 +248,18 @@ const SPECS: ProductSpec[] = [
     packingType: 'MULTI_FLAVOR_COMPARTMENT_PACK',
     flavorArrangement: 'SEPARATED',
     maxFlavorsPerPack: 2,
+    // §8 — compartmented fixed assortment → PACK_FIXED. Equal chicken/salmon split
+    // per pouch, scaling to the larger sizes. Flat per-pack pricing.
+    flavorPolicy: 'PARTNER_FIXED',
+    pricingBasis: 'PER_PACK',
+    assortment: [
+      { flavor: 'Chicken', qty: 1 },
+      { flavor: 'Salmon', qty: 1 },
+    ],
+    packSizes: [
+      { unitsPerPack: 2, moqPacks: 250, pricePerPackCents: 600 },
+      { unitsPerPack: 4, moqPacks: 150, pricePerPackCents: 1140 },
+    ],
     container: '200 g pouch',
     servingSizeG: 10,
     servingsPerContainer: 20,
@@ -452,6 +492,7 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
       ...(spec.minFlavorsPerPack != null ? { minFlavorsPerPack: spec.minFlavorsPerPack } : {}),
       ...(spec.flavorFillRule ? { flavorFillRule: spec.flavorFillRule } : {}),
       ...(spec.pricingBasis ? { pricingBasis: spec.pricingBasis } : {}),
+      ...(spec.flavorPolicy ? { flavorPolicy: spec.flavorPolicy } : {}),
     } as Record<string, unknown>
     const tpl = await prisma.productTemplate.upsert({
       where: { slug: spec.slug },
@@ -534,6 +575,9 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
             moqMin: ps.moqPacks,
             unitsPerPack: ps.unitsPerPack,
             pricePerPackCents: ps.pricePerPackCents ?? null,
+            // §8 — fixed assortment (by flavor NAME; loaders resolve to preset ids).
+            // Written onto every size; the engine scales it per unitsPerPack.
+            ...(spec.assortment && spec.assortment.length > 0 ? { assortmentFlavors: spec.assortment } : {}),
           } as never,
         })
       }
