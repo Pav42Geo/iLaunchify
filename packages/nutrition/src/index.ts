@@ -14,6 +14,7 @@ export * from './supplement-facts'
 export * from './domain-labels'
 export * from './marketplace-recompose'
 export * from './contains-allergens'
+export * from './flavor-recipe-rows'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.

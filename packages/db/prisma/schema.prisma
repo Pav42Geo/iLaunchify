@@ -1250,6 +1250,10 @@ model Ingredient {
   templateSlotsAsBase      TemplateIngredientSlot[]        @relation("SlotBaseIngredient")
   templateReplacements     TemplateIngredientReplacement[] @relation("ReplacementIngredient")
   templateOptionals        TemplateOptionalIngredient[]    @relation("OptionalIngredient")
+  // Per-flavor recipe roles (docs/PER_FLAVOR_RECIPES.md §3.1) — additive.
+  flavorSlotsAsBase        FlavorRecipeSlot[]              @relation("FlavorSlotBaseIngredient")
+  flavorReplacements       FlavorRecipeReplacement[]       @relation("FlavorReplacementIngredient")
+  flavorOptionals          FlavorRecipeOptional[]          @relation("FlavorOptionalIngredient")
   // V1 new relations
   ownerPartner             Partner?                        @relation("PartnerPrivateIngredients", fields: [ownerPartnerId], references: [id])
   promotedFrom             Ingredient?                     @relation("IngredientPromotionLineage", fields: [promotedFromIngredientId], references: [id])
@@ -3452,6 +3456,72 @@ model TemplateOptionalIngredient {
   @@index([productTemplateId])
 }
 
+// =============================================================================
+// Per-flavor recipes (docs/PER_FLAVOR_RECIPES.md §3 — additive, CockroachDB-safe).
+// Each FlavorPreset owns a FULL independent recipe (base slots + replacements +
+// optionals), MIRRORING the template-level recipe models above
+// (TemplateIngredientSlot / TemplateIngredientReplacement /
+// TemplateOptionalIngredient). Single-flavor + legacy `extras`/`slotResolution`
+// paths are unchanged; multi-flavor reads these. Slice 1 = schema + pure engine
+// wiring only (no writes wired yet); cast-guard any client access (stale client).
+// =============================================================================
+
+// One slot per BASE ingredient FOR THIS FLAVOR. Mirrors TemplateIngredientSlot.
+model FlavorRecipeSlot {
+  id                  String                    @id @default(cuid())
+  flavorPresetId      String
+  baseIngredientId    String // default ingredient for this slot
+  weightG             Decimal // grams in this flavor's recipe (per batch) — same type as TemplateIngredientSlot.weightG
+  costPerKgCents      Int? // manufacturer's ingredient cost (¢ per kg)
+  displayOrder        Int                       @default(0)
+  // Manufacturer can lock specific slots from replacement. Mirrors
+  // TemplateIngredientSlot.allowReplacement (which defaults true); per the slice
+  // spec this per-flavor model defaults FALSE.
+  allowReplacement    Boolean                   @default(false)
+  label               String? // optional override of the ingredient name in UI
+  description         String?
+  // Relations
+  flavorPreset        FlavorPreset              @relation(fields: [flavorPresetId], references: [id], onDelete: Cascade)
+  baseIngredient      Ingredient                @relation("FlavorSlotBaseIngredient", fields: [baseIngredientId], references: [id])
+  replacements        FlavorRecipeReplacement[]
+  optionalIngredients FlavorRecipeOptional[]
+
+  @@index([flavorPresetId, displayOrder])
+}
+
+// Replaceable alternate for a per-flavor slot. Mirrors TemplateIngredientReplacement.
+model FlavorRecipeReplacement {
+  id              String           @id @default(cuid())
+  slotId          String
+  ingredientId    String // the swap option
+  weightGOverride Decimal? // optional weight override for the swap
+  displayOrder    Int              @default(0)
+  calloutText     String? // "Lower glycemic alternative"
+  // Relations
+  slot            FlavorRecipeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient       @relation("FlavorReplacementIngredient", fields: [ingredientId], references: [id])
+
+  @@unique([slotId, ingredientId])
+  @@index([slotId])
+}
+
+// Optionally-added ingredient for a per-flavor recipe. Mirrors
+// TemplateOptionalIngredient but keyed to FlavorPreset.
+model FlavorRecipeOptional {
+  id             String       @id @default(cuid())
+  flavorPresetId String
+  ingredientId   String
+  weightG        Decimal // grams added when toggled on
+  displayOrder   Int          @default(0)
+  calloutText    String? // "Adds 200mg L-Theanine for calm focus"
+  // Relations
+  flavorPreset   FlavorPreset @relation(fields: [flavorPresetId], references: [id], onDelete: Cascade)
+  ingredient     Ingredient   @relation("FlavorOptionalIngredient", fields: [ingredientId], references: [id])
+
+  @@unique([flavorPresetId, ingredientId])
+  @@index([flavorPresetId])
+}
+
 // One row per sellable SKU configuration: a particular combination of flavor
 // content + container + packing topology. The same ProductTemplate can offer
 // (Tropical Citrus 12oz single can), (6-pack of Tropical), (mixed 6-pack
@@ -5285,8 +5355,16 @@ model FlavorPreset {
   sortOrder           Int                @default(0)
   // V1 — per-flavor nutrient overrides (e.g., strawberry adds water content; shifts moisture)
   nutrientOverrides   Json? // [{ nutrient, value, reason }] — preset overrides win on conflict with ProductTemplate.nutrientOverrides
+  // Per-flavor optional lead-time override (docs/PER_FLAVOR_RECIPES.md §3.2/§4).
+  // null = use the product standard (ProductTemplate.leadTimeRepeatDays). A
+  // flavor's effective lead = leadTimeDays ?? standard; the product quotes the
+  // MAX effective lead across involved flavors + the existing changeover.
+  leadTimeDays        Int? // additive, cast-guarded
   productTemplate     ProductTemplate    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
   orderItemFlavors    OrderItemFlavor[] // variety-pack builder selections referencing this flavor
+  // Per-flavor independent recipe (docs/PER_FLAVOR_RECIPES.md §3.1) — additive.
+  recipeSlots         FlavorRecipeSlot[]
+  recipeOptionals     FlavorRecipeOptional[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 

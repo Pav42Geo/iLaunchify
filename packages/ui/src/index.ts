@@ -25,6 +25,7 @@
 export { cn } from './lib/utils'
 export * from './lib/certExpiry'
 export * from './lib/pack-composition'
+export * from './lib/lead'
 export * from './lib/pack-model'
 export * from './lib/template-match'
 export { brandThemeToCssVars } from './brand-theme'
